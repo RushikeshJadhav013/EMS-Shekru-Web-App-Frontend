@@ -1,0 +1,2933 @@
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Pagination } from '@/components/ui/pagination';
+import { toast } from '@/hooks/use-toast';
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Upload,
+  Download,
+  Search,
+  Users,
+  FileSpreadsheet,
+  Eye,
+  X,
+  Loader2,
+  Filter,
+  User as UserIcon,
+  FileText
+} from 'lucide-react';
+import { User } from '@/types';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { apiService, type Employee, type EmployeeData } from '@/lib/api';
+import { useFieldValidation } from '@/hooks/useFieldValidation';
+
+type ShiftType = 'general' | 'morning' | 'afternoon' | 'night' | 'rotational';
+
+interface Employee extends User {
+  employeeId: string;
+  photoUrl?: string;
+  resignationDate?: string;
+  gender?: 'male' | 'female' | 'other';
+  employeeType?: 'contract' | 'permanent';
+  countryCode?: string;
+  panCard?: string;
+  aadharCard?: string;
+  shift?: ShiftType;
+}
+
+const toCamelCase = (obj: any): any => {
+  if (!obj) return obj;
+  if (Array.isArray(obj)) return obj.map(toCamelCase);
+  if (typeof obj !== 'object') return obj;
+  
+  return Object.keys(obj).reduce((acc, key) => {
+    const camelKey = key.replace(/_([a-z])/g, (m, p1) => p1.toUpperCase());
+    acc[camelKey] = toCamelCase(obj[key]);
+    
+    // ✅ Special handling: Map user_id to id field for API compatibility
+    if (key === 'user_id') {
+      acc['id'] = obj[key];
+    }
+    
+    return acc;
+  }, {} as any);
+};
+
+type BulkUploadResult = {
+  row: number;
+  employeeId: string;
+  name: string;
+  status: 'success' | 'failed';
+  message?: string;
+};
+
+const normalizeHeader = (header: string) =>
+  header.replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+const parseCSVLine = (line: string): string[] => {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  result.push(current.trim());
+  return result;
+};
+
+const isValidEmail = (email: string) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+const isValidPan = (pan: string) => /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan);
+
+const isValidAadhar = (aadhar: string) => /^\d{4}-\d{4}-\d{4}$/.test(aadhar);
+
+const normalizeCountryCode = (value?: string) => {
+  if (!value) return '+91';
+  const trimmed = value.trim();
+  if (!trimmed) return '+91';
+  const digits = trimmed.replace(/[^0-9]/g, '');
+  if (!digits) return '+91';
+  const cleaned = digits.replace(/^0+/, '') || digits;
+  return `+${cleaned}`;
+};
+
+const sanitizePhoneDigits = (rawDigits: string, countryCode: string) => {
+  let digits = rawDigits.replace(/[^0-9]/g, '');
+  if (!digits) return '';
+
+  const countryDigits = countryCode.replace('+', '');
+  if (
+    countryDigits &&
+    digits.startsWith(countryDigits) &&
+    digits.length > countryDigits.length + 5
+  ) {
+    digits = digits.slice(countryDigits.length);
+  }
+
+  if (countryCode === '+91') {
+    if (digits.length === 11 && digits.startsWith('0')) {
+      digits = digits.slice(1);
+    }
+    if (digits.length > 10) {
+      digits = digits.slice(-10);
+    }
+  }
+
+  return digits;
+};
+
+const isValidPhone = (digits: string, countryCode: string) => {
+  if (!digits) return true;
+  if (countryCode === '+91') {
+    return digits.length === 10;
+  }
+  return digits.length >= 6 && digits.length <= 15;
+};
+
+const parsePhoneValue = (value: string, preferredCode?: string) => {
+  const fallbackCode = normalizeCountryCode(preferredCode);
+
+  if (!value) {
+    return { countryCode: fallbackCode, digits: '' };
+  }
+
+  const trimmed = value.trim();
+  let detectedCode = fallbackCode;
+
+  if (!preferredCode) {
+    const prefixMatch = trimmed.match(/^(\+\d{1,3})/);
+    if (prefixMatch) {
+      detectedCode = normalizeCountryCode(prefixMatch[1]);
+      const rest = trimmed.slice(prefixMatch[1].length);
+      const digits = sanitizePhoneDigits(rest.replace(/[^0-9]/g, ''), detectedCode);
+      return { countryCode: detectedCode, digits };
+    }
+
+    if (trimmed.includes('-')) {
+      const [code, ...rest] = trimmed.split('-');
+      if (code.startsWith('+')) {
+        detectedCode = normalizeCountryCode(code);
+        const digits = sanitizePhoneDigits(rest.join('-'), detectedCode);
+        return { countryCode: detectedCode, digits };
+      }
+    }
+  }
+
+  const digits = sanitizePhoneDigits(trimmed, detectedCode);
+  return { countryCode: detectedCode, digits };
+};
+
+const normalizeRole = (input: string) => {
+  if (!input) return 'Employee';
+  const key = input.replace(/\s+/g, '').toLowerCase();
+  switch (key) {
+    case 'admin':
+      return 'Admin';
+    case 'hr':
+      return 'HR';
+    case 'manager':
+      return 'Manager';
+    case 'teamlead':
+    case 'teamleader':
+      return 'TeamLead';
+    default:
+      return 'Employee';
+  }
+};
+
+const shiftDisplayMap: Record<string, { label: string; backend: ShiftType }> = {
+  general: { label: 'General (GS)', backend: 'general' },
+  gs: { label: 'General (GS)', backend: 'general' },
+  morning: { label: 'Morning', backend: 'morning' },
+  afternoon: { label: 'Afternoon', backend: 'afternoon' },
+  night: { label: 'Night', backend: 'night' },
+  rotational: { label: 'Rotational', backend: 'rotational' },
+  rotating: { label: 'Rotational', backend: 'rotational' },
+};
+
+const shiftOptions = [
+  { value: 'general', label: 'General (GS)' },
+  { value: 'morning', label: 'Morning' },
+  { value: 'afternoon', label: 'Afternoon' },
+  { value: 'night', label: 'Night' },
+  { value: 'rotational', label: 'Rotational' },
+];
+
+const normalizeShift = (input: string): ShiftType | '' => {
+  if (!input) return '';
+  const key = input.trim().toLowerCase();
+  if (shiftDisplayMap[key]) {
+    return shiftDisplayMap[key].backend;
+  }
+  return '';
+};
+
+const normalizeEmployeeType = (input: string) => {
+  if (!input) return '';
+  const key = input.trim().toLowerCase();
+  if (key === 'permanent') return 'permanent';
+  if (key === 'contract' || key === 'contract-based' || key === 'contractual') return 'contract';
+  return '';
+};
+
+const isDuplicateErrorMessage = (message?: string) => {
+  if (!message) return false;
+  const lower = message.toLowerCase();
+  return (
+    lower.includes('already exists') ||
+    lower.includes('already registered') ||
+    lower.includes('duplicate') ||
+    lower.includes('integrity error')
+  );
+};
+
+const formatDuplicateErrorMessage = (message: string, employeeId?: string, email?: string) => {
+  if (isDuplicateErrorMessage(message)) {
+    const identifiers = [
+      employeeId ? `ID ${employeeId}` : null,
+      email || null,
+    ].filter(Boolean);
+    const tag = identifiers.length ? ` (${identifiers.join(' / ')})` : '';
+    return `Employee already exists${tag}.`;
+  }
+  return message || 'Failed to create employee';
+};
+
+export default function EmployeeManagement() {
+  const { t } = useLanguage();
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [managers, setManagers] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState('all');
+  const [selectedRole, setSelectedRole] = useState('all');
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [viewEmployee, setViewEmployee] = useState<Employee | null>(null);
+  const [formData, setFormData] = useState<Partial<Employee>>({
+    name: '',
+    email: '',
+    employeeId: '',
+    department: '',
+    role: 'employee',
+    designation: '',
+    phone: '',
+    address: '',
+    joiningDate: new Date().toISOString().split('T')[0],
+    status: 'active',
+    resignationDate: undefined,
+    gender: undefined,
+    employeeType: undefined,
+    countryCode: '+91',
+    panCard: '',
+    aadharCard: '',
+    shift: undefined
+  });
+  
+  // For multiple department assignment (HR and Manager roles)
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
+
+  const [bulkData, setBulkData] = useState('');
+  const [bulkFileName, setBulkFileName] = useState('');
+  const [bulkSummary, setBulkSummary] = useState<BulkUploadResult[]>([]);
+  const [isBulkUploading, setIsBulkUploading] = useState(false);
+  
+  // Export dialog states
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [exportType, setExportType] = useState<'csv' | 'pdf' | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [phoneError, setPhoneError] = useState<string>('');
+  const [emailError, setEmailError] = useState<string>('');
+  const [panCardError, setPanCardError] = useState<string>('');
+  const [aadharCardError, setAadharCardError] = useState<string>('');
+  const [panCardDuplicateError, setPanCardDuplicateError] = useState<string>('');
+  const [aadharCardDuplicateError, setAadharCardDuplicateError] = useState<string>('');
+
+  // API states
+  const [isLoading, setIsLoading] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
+  // Delete confirmation states
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+
+  const createFileInputRef = useRef<HTMLInputElement>(null);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+  const bulkFileInputRef = useRef<HTMLInputElement>(null);
+
+  const countryCodes = [
+    { code: '+91', flag: '🇮🇳', name: 'India' },
+    { code: '+1', flag: '🇺🇸', name: 'United States' },
+    { code: '+44', flag: '🇬🇧', name: 'United Kingdom' },
+    { code: '+61', flag: '🇦🇺', name: 'Australia' },
+    { code: '+81', flag: '🇯🇵', name: 'Japan' },
+  ];
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      setIsLoading(true);
+      try {
+        const data = await apiService.getEmployees();
+        const mappedData = data.map(toCamelCase).map((emp: any) => {
+          // ✅ Fix photo URLs to include backend base URL
+          if (emp.profilePhoto && !emp.profilePhoto.startsWith('http')) {
+            emp.profilePhoto = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/${emp.profilePhoto}`;
+          }
+          if (emp.photoUrl && !emp.photoUrl.startsWith('http')) {
+            emp.photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/${emp.photoUrl}`;
+          }
+          // Also set photoUrl from profilePhoto if not set
+          if (!emp.photoUrl && emp.profilePhoto) {
+            emp.photoUrl = emp.profilePhoto;
+          }
+          // ✅ Map is_active to status
+          emp.status = emp.isActive ? 'active' : 'inactive';
+          return emp;
+        });
+        console.log('Loaded employees:', mappedData); // ✅ Debug log
+        console.log('First employee structure:', mappedData[0]); // ✅ Debug log
+        setEmployees(mappedData);
+      } catch (error) {
+        console.error('Failed to fetch employees:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load employees. Please try again.',
+          variant: 'destructive'
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const fetchDepartments = async () => {
+      try {
+        const departmentData = await apiService.getDepartmentNames();
+        const departmentNames = departmentData
+          .map(dept => dept.name)
+          .sort();
+        setDepartments(departmentNames);
+      } catch (error) {
+        console.error('Failed to fetch departments:', error);
+        toast({
+          title: 'Warning',
+          description: 'Failed to load departments. Please create departments first.',
+          variant: 'destructive'
+        });
+      }
+    };
+
+    const fetchManagers = async () => {
+      try {
+        const managerData = await apiService.getDepartmentManagers();
+        setManagers(managerData);
+      } catch (error) {
+        console.error('Failed to fetch managers:', error);
+        toast({
+          title: 'Warning',
+          description: 'Failed to load managers.',
+          variant: 'destructive'
+        });
+      }
+    };
+
+    fetchEmployees();
+    fetchDepartments();
+    fetchManagers();
+  }, []);
+
+  const filteredEmployees = useMemo(() => {
+    return employees.filter(emp => {
+    // ✅ Exclude Admin users - Admin is the boss and should not appear in employee lists
+    if (emp.role === 'Admin' || emp.role === 'admin') {
+      return false;
+    }
+    
+    const query = searchQuery.trim().toLowerCase();
+    const matchesSearch = 
+      emp.name.toLowerCase().includes(query) ||
+      emp.employeeId.toLowerCase().includes(query) ||
+      emp.email.toLowerCase().includes(query);
+    const matchesDepartment = selectedDepartment === 'all' || emp.department === selectedDepartment;
+    const matchesRole = selectedRole === 'all' || emp.role === selectedRole;
+    return matchesSearch && matchesDepartment && matchesRole;
+  });
+  }, [employees, searchQuery, selectedDepartment, selectedRole]);
+
+  // Paginated employees
+  const paginatedEmployees = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredEmployees.slice(startIndex, endIndex);
+  }, [filteredEmployees, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedDepartment, selectedRole]);
+
+  const validateEmail = (email: string) => {
+    if (!email) {
+      setEmailError('');
+      return true;
+    }
+    
+    // More strict email validation
+    // Allows: letters, numbers, dots, hyphens, underscores in local part
+    // Rejects: special characters like *, !, #, $, %, etc.
+    const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    
+    if (!emailRegex.test(email)) {
+      setEmailError('Please enter a valid email address (e.g., user@example.com)');
+      return false;
+    }
+    
+    // Additional checks
+    if (email.includes('..')) {
+      setEmailError('Email cannot contain consecutive dots');
+      return false;
+    }
+    
+    if (email.startsWith('.') || email.includes('@.') || email.includes('.@')) {
+      setEmailError('Email cannot start or end with a dot around @');
+      return false;
+    }
+    
+    // Check for invalid characters
+    const invalidChars = /[*!#$%^&()+=\[\]{}|\\;:'",<>?/]/;
+    if (invalidChars.test(email)) {
+      setEmailError('Email contains invalid characters (*, !, #, etc.)');
+      return false;
+    }
+    
+    setEmailError('');
+    return true;
+  };
+
+  const validatePhoneNumber = (phone: string, countryCode: string) => {
+    if (!phone) {
+      setPhoneError('');
+      return true;
+    }
+
+    const digits = phone.replace(/[^0-9]/g, '');
+    
+    if (countryCode === '+91') {
+      if (digits.length !== 10) {
+        setPhoneError('Indian phone numbers must be exactly 10 digits');
+        return false;
+      }
+      const phoneRegex = /^[789]\d{9}$/;
+      if (!phoneRegex.test(digits)) {
+        setPhoneError('Indian phone numbers must start with 7, 8, or 9 and be exactly 10 digits');
+        return false;
+      }
+    } else if (digits.length > 15) {
+      setPhoneError('Phone number cannot exceed 15 digits');
+      return false;
+    }
+
+    setPhoneError('');
+    return true;
+  };
+
+  const validatePanCard = (panCard: string) => {
+    if (!panCard) {
+      setPanCardError('PAN Card is required');
+      return false;
+    }
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+    if (!panRegex.test(panCard)) {
+      setPanCardError('Please enter a valid PAN Card number (e.g., ABCDE1234F)');
+      return false;
+    }
+    setPanCardError('');
+    return true;
+  };
+
+  const validateAadharCard = (aadharCard: string) => {
+    if (!aadharCard) {
+      setAadharCardError('Aadhar Card is required');
+      return false;
+    }
+    const aadharRegex = /^\d{4}-\d{4}-\d{4}$/;
+    if (!aadharRegex.test(aadharCard)) {
+      setAadharCardError('Please enter a valid Aadhar Card number (e.g., 1234-5678-9012)');
+      return false;
+    }
+    setAadharCardError('');
+    return true;
+  };
+
+  const formatPhoneNumber = (digits: string, countryCode: string) => {
+    if (!digits) return '';
+    if (countryCode === '+91') {
+      if (digits.length <= 3) return digits;
+      if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+      return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+    } else {
+      if (digits.length <= 3) return digits;
+      if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+      return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+    }
+  };
+
+  const handlePhoneInput = (value: string, countryCode: string) => {
+    const digits = value.replace(/[^0-9]/g, '');
+    if (countryCode === '+91' && digits.length > 10) {
+      setPhoneError('Indian phone numbers must be exactly 10 digits');
+      return formatPhoneNumber(digits.slice(0, 10), countryCode);
+    } else if (digits.length > 15) {
+      setPhoneError('Phone number cannot exceed 15 digits');
+      return formatPhoneNumber(digits.slice(0, 15), countryCode);
+    }
+    return formatPhoneNumber(digits, countryCode);
+  };
+
+const formatAadharInput = (value: string) => {
+  const digitsOnly = value.replace(/[^0-9]/g, '').slice(0, 12);
+  const parts = digitsOnly.match(/.{1,4}/g) || [];
+  return parts.join('-');
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const resetBulkUploadState = () => {
+    setBulkData('');
+    setBulkFileName('');
+    setBulkSummary([]);
+    setIsBulkUploading(false);
+    if (bulkFileInputRef.current) {
+      bulkFileInputRef.current.value = '';
+    }
+  };
+
+  const handleBulkFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setBulkFileName('');
+      return;
+    }
+
+    if (!file.name.endsWith('.csv')) {
+      toast({
+        title: 'Invalid File',
+        description: 'Please upload a CSV file.',
+        variant: 'destructive',
+      });
+      e.target.value = '';
+      return;
+    }
+
+    setBulkFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result;
+      if (typeof text === 'string') {
+        setBulkData(text);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleCreateEmployee = async () => {
+    // Clear any previous duplicate errors
+    setPanCardDuplicateError('');
+    setAadharCardDuplicateError('');
+    
+    // Validate required fields based on role
+    const isHROrManager = formData.role === 'HR' || formData.role === 'Manager';
+    const departmentValid = isHROrManager ? selectedDepartments.length > 0 : formData.department;
+    
+    if (!formData.name || !formData.email || !formData.employeeId || !departmentValid || !formData.panCard || !formData.aadharCard || !formData.shift || !formData.employeeType) {
+      toast({
+        title: 'Error',
+        description: isHROrManager 
+          ? 'Please fill in all required fields and select at least one department'
+          : 'Please fill in all required fields',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!validateEmail(formData.email)) {
+      toast({
+        title: 'Error',
+        description: emailError,
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!validatePhoneNumber(formData.phone?.replace(/[^0-9]/g, '') || '', formData.countryCode || '+91')) {
+      toast({
+        title: 'Error',
+        description: phoneError,
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!validatePanCard(formData.panCard)) {
+      toast({
+        title: 'Error',
+        description: panCardError,
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!validateAadharCard(formData.aadharCard)) {
+      toast({
+        title: 'Error',
+        description: aadharCardError,
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      // Handle department assignment based on role
+      const isHROrManager = formData.role === 'HR' || formData.role === 'Manager';
+      const departmentValue = isHROrManager ? selectedDepartments.join(',') : formData.department;
+
+      const employeeData: EmployeeData = {
+        name: formData.name,
+        email: formData.email,
+        employee_id: formData.employeeId,
+        department: departmentValue,
+        designation: formData.designation,
+        phone: formData.phone ? `${formData.countryCode || '+91'}-${formData.phone.replace(/[^0-9]/g, '')}` : '',
+        address: formData.address,
+        role: formData.role,
+        gender: formData.gender,
+        resignation_date: formData.resignationDate || null,
+        pan_card: formData.panCard,
+        aadhar_card: formData.aadharCard,
+        shift_type: formData.shift,
+        employee_type: formData.employeeType,
+        manager_id: formData.managerId,
+        profile_photo: imageFile || undefined
+      };
+
+      const newEmployee = await apiService.createEmployee(employeeData);
+      const mappedNewEmployee = toCamelCase(newEmployee);
+      setEmployees([...employees, mappedNewEmployee]);
+      setIsCreateDialogOpen(false);
+      resetForm();
+      toast({
+        title: 'Success',
+        description: 'Employee created successfully'
+      });
+    } catch (error) {
+      console.error('Failed to create employee:', error);
+      const rawMessage = error instanceof Error ? error.message : 'Failed to create employee. Please try again.';
+      
+      // Try to handle specific validation errors first
+      const isSpecificError = handleApiValidationError(rawMessage);
+      
+      if (isSpecificError) {
+        // Show a toast notification as well for better visibility
+        toast({
+          title: 'Validation Error',
+          description: 'Please check the form for errors and correct them.',
+          variant: 'destructive'
+        });
+      } else {
+        // If not a specific validation error, show general error message
+        const friendlyMessage = formatDuplicateErrorMessage(
+          rawMessage,
+          formData.employeeId,
+          formData.email
+        );
+        toast({
+          title: 'Error',
+          description: friendlyMessage,
+          variant: 'destructive'
+        });
+      }
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleUpdateEmployee = async () => {
+    if (!selectedEmployee) return;
+
+    // Clear any previous duplicate errors
+    setPanCardDuplicateError('');
+    setAadharCardDuplicateError('');
+
+    // Validate required fields based on role
+    const isHROrManager = formData.role === 'HR' || formData.role === 'Manager';
+    const departmentValid = isHROrManager ? selectedDepartments.length > 0 : formData.department;
+
+    if (!formData.name || !formData.email || !formData.employeeId || !departmentValid || !formData.panCard || !formData.aadharCard || !formData.shift) {
+      toast({
+        title: 'Error',
+        description: isHROrManager 
+          ? 'Please fill in all required fields and select at least one department'
+          : 'Please fill in all required fields',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!validateEmail(formData.email)) {
+      toast({
+        title: 'Error',
+        description: emailError,
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!validatePhoneNumber(formData.phone?.replace(/[^0-9]/g, '') || '', formData.countryCode || '+91')) {
+      toast({
+        title: 'Error',
+        description: phoneError,
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!validatePanCard(formData.panCard)) {
+      toast({
+        title: 'Error',
+        description: panCardError,
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!validateAadharCard(formData.aadharCard)) {
+      toast({
+        title: 'Error',
+        description: aadharCardError,
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      // Try multiple ways to get user_id for maximum compatibility
+      const userIdToUpdate = selectedEmployee?.id 
+        || formData.id 
+        || (selectedEmployee as any)?.userId 
+        || (selectedEmployee as any)?.user_id 
+        || (formData as any)?.userId 
+        || (formData as any)?.user_id 
+        || '';
+
+      console.log('=== UPDATE DEBUG ===');
+      console.log('selectedEmployee:', selectedEmployee);
+      console.log('formData:', formData);
+      console.log('userIdToUpdate:', userIdToUpdate);
+      console.log('===================');
+
+      // Validate that we have a user_id
+      if (!userIdToUpdate) {
+        console.error('Failed to find user_id in:', { selectedEmployee, formData });
+        toast({
+          title: 'Error',
+          description: 'Unable to identify employee. Missing user ID. Check console for details.',
+          variant: 'destructive'
+        });
+        setIsUpdating(false);
+        return;
+      }
+
+      console.log('Updating employee with user_id:', userIdToUpdate); // Debug log
+
+      // Handle department assignment based on role
+      const isHROrManager = formData.role === 'HR' || formData.role === 'Manager';
+      const departmentValue = isHROrManager ? selectedDepartments.join(',') : formData.department;
+
+      const employeeData: EmployeeData = {
+        name: formData.name,
+        email: formData.email,
+        employee_id: formData.employeeId,
+        department: departmentValue,
+        designation: formData.designation,
+        phone: formData.phone ? `${formData.countryCode || '+91'}-${formData.phone.replace(/[^0-9]/g, '')}` : '',
+        address: formData.address,
+        role: formData.role,
+        gender: formData.gender,
+        resignation_date: formData.resignationDate || undefined,
+        pan_card: formData.panCard,
+        aadhar_card: formData.aadharCard,
+        shift_type: formData.shift,
+        employee_type: formData.employeeType,
+        manager_id: formData.managerId,
+        profile_photo: imageFile || formData.profilePhoto || undefined, // Pass the file if available
+        is_verified: true,
+        created_at: formData.createdAt || new Date().toISOString()
+      };
+
+      // Call API with user_id instead of employee_id
+      const updatedEmployee = await apiService.updateEmployee(userIdToUpdate, employeeData);
+      const mappedUpdated = toCamelCase(updatedEmployee);
+      
+      // Fix photo URLs to include backend base URL
+      if (mappedUpdated.profilePhoto && !mappedUpdated.profilePhoto.startsWith('http')) {
+        mappedUpdated.profilePhoto = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/${mappedUpdated.profilePhoto}`;
+      }
+      if (mappedUpdated.photoUrl && !mappedUpdated.photoUrl.startsWith('http')) {
+        mappedUpdated.photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/${mappedUpdated.photoUrl}`;
+      }
+      if (!mappedUpdated.photoUrl && mappedUpdated.profilePhoto) {
+        mappedUpdated.photoUrl = mappedUpdated.profilePhoto;
+      }
+      
+      // Update the employee in the list using the id field
+      setEmployees(employees.map(emp => emp.id === userIdToUpdate ? mappedUpdated : emp));
+      setIsEditDialogOpen(false);
+      resetForm();
+      toast({
+        title: 'Success',
+        description: 'Employee updated successfully'
+      });
+    } catch (error) {
+      console.error('Failed to update employee:', error);
+      const rawMessage = error instanceof Error ? error.message : 'Failed to update employee. Please try again.';
+      
+      // Try to handle specific validation errors first
+      const isSpecificError = handleApiValidationError(rawMessage);
+      
+      if (isSpecificError) {
+        // Show a toast notification as well for better visibility
+        toast({
+          title: 'Validation Error',
+          description: 'Please check the form for errors and correct them.',
+          variant: 'destructive'
+        });
+      } else {
+        // If not a specific validation error, show general error message
+        toast({
+          title: 'Error',
+          description: rawMessage,
+          variant: 'destructive'
+        });
+      }
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+ const handleDeleteEmployee = async (userId: string) => {
+  setIsDeleting(userId);
+  try {
+    // Call delete API with user_id
+    await apiService.deleteEmployee(userId);
+    
+    // Remove employee from list using user_id (id field)
+    setEmployees(prev => prev.filter(emp => emp.id !== userId));
+    
+    toast({ 
+      title: 'Success', 
+      description: 'Employee deleted successfully' 
+    });
+  } catch (error) {
+    console.error('Failed to delete employee:', error);
+    toast({ 
+      title: 'Error', 
+      description: error instanceof Error ? error.message : 'Failed to delete employee', 
+      variant: 'destructive' 
+    });
+  } finally {
+    setIsDeleting(null);
+    setIsDeleteDialogOpen(false);
+  }
+};
+
+  const handleToggleStatus = async (employeeId: string) => {
+    const employee = employees.find(emp => emp.employeeId === employeeId);
+    if (!employee) return;
+
+    const newStatus = employee.status === 'active' ? 'inactive' : 'active';
+    const isActive = newStatus === 'active';
+
+    try {
+      // Call API to update status
+      const updatedEmployee = await apiService.updateEmployeeStatus(employee.id.toString(), isActive);
+      
+      // Update local state
+      setEmployees((prev) =>
+        prev.map((emp) =>
+          emp.employeeId === employeeId 
+            ? { ...emp, status: newStatus, updatedAt: new Date().toISOString() } 
+            : emp
+        )
+      );
+      
+      toast({ 
+        title: 'Success', 
+        description: `Employee ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully` 
+      });
+    } catch (error) {
+      console.error('Failed to update employee status:', error);
+      toast({ 
+        title: 'Error', 
+        description: error instanceof Error ? error.message : 'Failed to update employee status',
+        variant: 'destructive' 
+      });
+    }
+  };
+
+  const openViewDialog = (employee: Employee) => {
+    setViewEmployee(employee);
+    setIsViewDialogOpen(true);
+  };
+
+  const bulkSuccessCount = bulkSummary.filter((item) => item.status === 'success').length;
+  const bulkFailedCount = bulkSummary.length - bulkSuccessCount;
+
+  const handleBulkUpload = async () => {
+    if (!bulkData.trim()) {
+      toast({
+        title: 'No Data',
+        description: 'Please paste CSV data or upload a CSV file before importing.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const lines = bulkData
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    if (lines.length < 2) {
+      toast({
+        title: 'Invalid CSV',
+        description: 'CSV must include a header row and at least one data row.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const headers = parseCSVLine(lines[0]);
+    if (!headers.length) {
+      toast({
+        title: 'Invalid CSV',
+        description: 'Unable to read CSV headers. Please check the file format.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const parsedRows = lines.slice(1).map((line, index) => {
+      const values = parseCSVLine(line);
+      const rowObject: Record<string, string> = {};
+      headers.forEach((header, headerIndex) => {
+        rowObject[normalizeHeader(header)] = values[headerIndex] ?? '';
+      });
+      return {
+        rowNumber: index + 2,
+        data: rowObject,
+      };
+    });
+
+    setIsBulkUploading(true);
+    setBulkSummary([]);
+
+    const summary: BulkUploadResult[] = [];
+    const createdEmployees: Employee[] = [];
+    const existingEmployeeIds = new Set(
+      employees.map((emp) => emp.employeeId?.toLowerCase()).filter(Boolean) as string[]
+    );
+    const existingEmails = new Set(
+      employees.map((emp) => emp.email?.toLowerCase()).filter(Boolean) as string[]
+    );
+    const batchEmployeeIds = new Set<string>();
+    const batchEmails = new Set<string>();
+
+    for (const row of parsedRows) {
+      const data = row.data;
+      const employeeId = (data.employeeid || `EMP${Date.now()}${row.rowNumber}`).trim();
+      const employeeIdKey = employeeId.toLowerCase();
+      const name = (data.name || '').trim();
+      const email = (data.email || '').trim();
+      const emailKey = email.toLowerCase();
+      const department = (data.department || '').trim();
+      const role = normalizeRole(data.role);
+      const designation = (data.designation || '').trim();
+      const address = (data.address || '').trim();
+      const joiningDate = data.joiningdate || new Date().toISOString().split('T')[0];
+      const status = data.status || 'active';
+      const gender = (data.gender || '').trim();
+      const employeeType = normalizeEmployeeType(data.employeetype);
+      const resignationDate = data.resignationdate || '';
+      const panCard = (data.pancard || '').toUpperCase();
+      const aadharCard = (data.aadharcard || '').trim();
+      const shift = normalizeShift(data.shift);
+      const phoneValue = data.phone || '';
+      const csvCountryCode = data.countrycode || '';
+      const { countryCode, digits } = parsePhoneValue(phoneValue, csvCountryCode);
+      const phoneDigits = digits;
+      const phoneFormatted = phoneDigits ? `${countryCode}-${phoneDigits}` : '';
+
+      const errors: string[] = [];
+      if (existingEmployeeIds.has(employeeIdKey) || batchEmployeeIds.has(employeeIdKey)) {
+        errors.push('Duplicate employee ID found');
+      }
+      if (email && (existingEmails.has(emailKey) || batchEmails.has(emailKey))) {
+        errors.push('Duplicate email found');
+      }
+      if (!employeeId) errors.push('Employee ID is required');
+      if (!name) errors.push('Name is required');
+      if (!email || !isValidEmail(email)) errors.push('Valid email is required');
+      if (!department) errors.push('Department is required');
+      if (!panCard || !isValidPan(panCard.toUpperCase())) errors.push('Valid PAN card is required');
+      if (!aadharCard || !isValidAadhar(aadharCard)) errors.push('Valid Aadhar card is required');
+      if (!shift || !['day', 'night', 'rotating'].includes(shift.toLowerCase())) {
+        errors.push('Shift must be day, night, or rotating');
+      }
+      if (!employeeType) errors.push('Employee type is required');
+      if (!isValidPhone(phoneDigits, countryCode)) errors.push('Phone number is invalid');
+
+      if (errors.length > 0) {
+        summary.push({
+          row: row.rowNumber,
+          employeeId,
+          name: name || '-',
+          status: 'failed',
+          message: errors.join('; '),
+        });
+        continue;
+      }
+
+      const employeePayload: EmployeeData = {
+        name,
+        email,
+        employee_id: employeeId,
+        department,
+        designation,
+        phone: phoneFormatted,
+        address,
+        role,
+        gender,
+        resignation_date: resignationDate || undefined,
+        pan_card: panCard.toUpperCase(),
+        aadhar_card: aadharCard,
+        shift_type: shift.toLowerCase(),
+        employee_type: employeeType,
+      };
+
+      try {
+        const createdEmployee = await apiService.createEmployee(employeePayload);
+        const mappedEmployee = toCamelCase(createdEmployee);
+
+        if (mappedEmployee.profilePhoto && !mappedEmployee.profilePhoto.startsWith('http')) {
+          mappedEmployee.profilePhoto = `http://localhost:8000/${mappedEmployee.profilePhoto}`;
+        }
+        if (mappedEmployee.photoUrl && !mappedEmployee.photoUrl.startsWith('http')) {
+          mappedEmployee.photoUrl = `http://localhost:8000/${mappedEmployee.photoUrl}`;
+        }
+        if (!mappedEmployee.photoUrl && mappedEmployee.profilePhoto) {
+          mappedEmployee.photoUrl = mappedEmployee.profilePhoto;
+        }
+        mappedEmployee.status = mappedEmployee.isActive ? 'active' : mappedEmployee.status || status;
+
+        createdEmployees.push(mappedEmployee);
+        summary.push({
+          row: row.rowNumber,
+          employeeId: mappedEmployee.employeeId,
+          name: mappedEmployee.name,
+          status: 'success',
+        });
+        existingEmployeeIds.add(employeeIdKey);
+        existingEmails.add(emailKey);
+        batchEmployeeIds.add(employeeIdKey);
+        batchEmails.add(emailKey);
+      } catch (error: any) {
+        const rawMessage = error?.message || 'Failed to create employee';
+        const friendly = formatDuplicateErrorMessage(rawMessage, employeeId, email);
+        summary.push({
+          row: row.rowNumber,
+          employeeId,
+          name: name || '-',
+          status: 'failed',
+          message: friendly,
+        });
+      }
+    }
+
+    if (createdEmployees.length > 0) {
+      setEmployees((prev) => [...prev, ...createdEmployees]);
+    }
+
+    setBulkSummary(summary);
+    setIsBulkUploading(false);
+
+    const successCount = summary.filter((item) => item.status === 'success').length;
+    const failedCount = summary.length - successCount;
+
+    if (successCount > 0 && failedCount === 0) {
+      toast({
+        title: 'Bulk Import Complete',
+        description: `${successCount} employees imported successfully.`,
+      });
+      resetBulkUploadState();
+      setIsBulkUploadOpen(false);
+    } else {
+      toast({
+        title: failedCount > 0 ? 'Bulk Import Partial Success' : 'Bulk Import Result',
+        description: `${successCount} succeeded, ${failedCount} failed. See details below.`,
+        variant: failedCount > 0 ? 'destructive' : 'default',
+      });
+    }
+  };
+
+  // Export employees
+  const performExport = async () => {
+    if (!exportType) return;
+    
+    setIsExporting(true);
+    setIsExportDialogOpen(false);
+    
+    try {
+      const blob = exportType === 'csv' 
+        ? await apiService.exportEmployeesCSV()
+        : await apiService.exportEmployeesPDF();
+        
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `employees_${new Date().toISOString().split('T')[0]}.${exportType}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: 'Success',
+        description: `Employee data exported as ${exportType.toUpperCase()} successfully`
+      });
+    } catch (error) {
+      console.error(`Failed to export ${exportType}:`, error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : `Failed to export ${exportType.toUpperCase()}`,
+        variant: 'destructive'
+      });
+    } finally {
+      setIsExporting(false);
+      setExportType(null);
+    }
+  };
+
+  // Download CSV Template
+  const downloadCSVTemplate = () => {
+    const headers = [
+      'EmployeeID',
+      'Name',
+      'Email',
+      'Department',
+      'Role',
+      'Designation',
+      'Phone',
+      'Address',
+      'JoiningDate',
+      'Status',
+      'Gender',
+      'EmployeeType',
+      'ResignationDate',
+      'PANCard',
+      'AadharCard',
+      'Shift'
+    ];
+    
+    const sampleData = [
+      'EMP001',
+      'John Doe',
+      'john.doe@example.com',
+      'Engineering',
+      'Employee',
+      'Software Engineer',
+      '+91-98765-43210',
+      '123 Main St, City',
+      '2024-01-15',
+      'active',
+      'male',
+      'permanent',
+      '',
+      'ABCDE1234F',
+      '1234-5678-9012',
+      'general'
+    ];
+    
+    const csvContent = [
+      headers.join(','),
+      sampleData.join(',')
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'employee_bulk_upload_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: 'Template Downloaded',
+      description: 'CSV template has been downloaded successfully'
+    });
+  };
+
+  const clearValidationErrors = () => {
+    setPhoneError('');
+    setEmailError('');
+    setPanCardError('');
+    setAadharCardError('');
+    setPanCardDuplicateError('');
+    setAadharCardDuplicateError('');
+  };
+
+  const handleApiValidationError = (errorMessage: string) => {
+    // Clear previous errors
+    clearValidationErrors();
+    
+    // Check for specific validation errors and set them under the appropriate fields
+    if (errorMessage.toLowerCase().includes('phone number already exists')) {
+      setPhoneError('Phone number already exists. Please enter a unique phone number.');
+      return true;
+    }
+    
+    if (errorMessage.toLowerCase().includes('pan card already exists')) {
+      setPanCardDuplicateError('PAN Card already exists. Please enter a unique PAN Card number.');
+      return true;
+    }
+    
+    if (errorMessage.toLowerCase().includes('aadhar card already exists')) {
+      setAadharCardDuplicateError('Aadhar Card already exists. Please enter a unique Aadhar Card number.');
+      return true;
+    }
+    
+    return false; // Return false if no specific validation error was handled
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      email: '',
+      employeeId: '',
+      department: '',
+      role: 'employee',
+      designation: '',
+      phone: '',
+      address: '',
+      joiningDate: new Date().toISOString().split('T')[0],
+      status: 'active',
+      resignationDate: undefined,
+      gender: undefined,
+      employeeType: undefined,
+      countryCode: '+91',
+      panCard: '',
+      aadharCard: '',
+      shift: undefined,
+      managerId: undefined
+    });
+    setSelectedDepartments([]);
+    setImageFile(null);
+    setImagePreview('');
+    setSelectedEmployee(null);
+    clearValidationErrors();
+  };
+
+  const openCreateDialog = () => {
+    resetForm();
+    setIsCreateDialogOpen(true);
+  };
+
+  const openEditDialog = (employee: Employee) => {
+    console.log('=== OPEN EDIT DIALOG ===');
+    console.log('Employee data:', employee);
+    
+    // Normalize employee object keys to the formData shape (support snake_case or camelCase)
+    setSelectedEmployee(employee);
+    const emp = employee as unknown as Record<string, unknown>;
+
+    // Try multiple field names to find user_id
+    const id = String(emp['id'] ?? emp['user_id'] ?? emp['userId'] ?? '');
+    const employeeId = String(emp['employeeId'] ?? emp['employee_id'] ?? '');
+    
+    console.log('Extracted id (user_id):', id);
+    console.log('Extracted employeeId:', employeeId);
+    
+    // Extract all fields with fallbacks for snake_case/camelCase
+    const name = String(emp['name'] ?? '');
+    const email = String(emp['email'] ?? '');
+    const department = String(emp['department'] ?? '');
+    const role = String(emp['role'] ?? '');
+    const designation = String(emp['designation'] ?? '');
+    const address = String(emp['address'] ?? '');
+    const managerId = emp['managerId'] ?? emp['manager_id'] ?? undefined;
+    
+    // Prefer explicit joining_date if provided by API, otherwise fall back to created_at if available
+    const rawJoining = emp['joiningDate'] ?? emp['joining_date'] ?? emp['createdAt'] ?? emp['created_at'] ?? '';
+    let joiningDate = '';
+    if (rawJoining) {
+      try {
+        joiningDate = new Date(String(rawJoining)).toISOString().split('T')[0];
+      } catch (e) {
+        joiningDate = String(rawJoining);
+      }
+    }
+    
+    const status = String(emp['status'] ?? 'active');
+    const resignationDate = emp['resignationDate'] ?? emp['resignation_date'] ?? '';
+    
+    // ✅ Extract gender, employeeType, shift with proper fallbacks
+    const gender = String(emp['gender'] ?? '');
+    const employeeType = String(emp['employeeType'] ?? emp['employee_type'] ?? '');
+    const panCard = String(emp['panCard'] ?? emp['pan_card'] ?? '');
+    const aadharCard = String(emp['aadharCard'] ?? emp['aadhar_card'] ?? '');
+    const shift = String(emp['shift'] ?? emp['shiftType'] ?? emp['shift_type'] ?? '');
+    
+    // ✅ Fix: Map profile_photo from backend to photoUrl for frontend
+    let photoUrl = String(emp['photoUrl'] ?? emp['photo_url'] ?? emp['profilePhoto'] ?? emp['profile_photo'] ?? '');
+    
+    // ✅ If photo path exists and doesn't start with http, prepend backend URL
+    if (photoUrl && !photoUrl.startsWith('http')) {
+      photoUrl = `http://localhost:8000/${photoUrl}`;
+    }
+    
+    console.log('Extracted photo URL:', photoUrl);
+    console.log('Extracted gender:', gender);
+    console.log('Extracted employeeType:', employeeType);
+    console.log('Extracted shift:', shift);
+    console.log('=======================');
+
+    const rawPhone = String(emp['phone'] ?? '');
+    let countryCode = String(emp['countryCode'] ?? '+91');
+    let phone = '';
+
+    if (rawPhone.includes('-')) {
+      const parts = rawPhone.split('-');
+      countryCode = parts[0] || countryCode;
+      phone = parts.slice(1).join('-');
+    } else if (rawPhone.startsWith('+')) {
+      // try to split leading +country and rest
+      const m = rawPhone.match(/^(\+\d{1,3})(?:[\s-]?)(.*)$/);
+      if (m) {
+        countryCode = m[1];
+        phone = m[2] || '';
+      } else {
+        phone = rawPhone;
+      }
+    } else {
+      phone = rawPhone;
+    }
+
+    // Handle multiple departments for HR and Manager roles
+    const isHROrManager = role === 'HR' || role === 'Manager';
+    const departmentList = isHROrManager && department ? department.split(',').map(d => d.trim()) : [];
+    
+    setFormData({
+      id, // ✅ Include user_id
+      employeeId,
+      name,
+      email,
+      department: isHROrManager ? '' : department, // Clear department for HR/Manager
+      role,
+      designation,
+      address,
+      joiningDate,
+      status,
+      resignationDate,
+      gender: gender as 'male' | 'female' | 'other' | undefined,
+      employeeType: employeeType as 'contract' | 'permanent' | undefined,
+      panCard,
+      aadharCard,
+      shift: shift as ShiftType | undefined,
+      countryCode,
+      phone: formatPhoneNumber(phone.replace(/[^0-9]/g, ''), countryCode),
+      photoUrl,
+      managerId
+    } as Partial<Employee>);
+
+    // Set selected departments for HR/Manager roles
+    setSelectedDepartments(departmentList);
+
+    setImagePreview(photoUrl);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleCreateEmployee();
+    }
+  };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleUpdateEmployee();
+    }
+  };
+
+  return (
+    <div className="container mx-auto p-4 sm:p-6 space-y-6">
+      {/* Modern Header Section */}
+      <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800 rounded-2xl p-6 shadow-sm border">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+              <Users className="h-7 w-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Employee Management</h1>
+              <p className="text-sm text-muted-foreground mt-1">Manage your team members efficiently</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => setIsExportDialogOpen(true)}
+              variant="outline"
+              className="group gap-2 border-blue-200 text-slate-700 bg-white/70 hover:bg-gradient-to-r hover:from-blue-500 hover:to-indigo-500 hover:text-white hover:border-transparent shadow-sm hover:shadow-lg transition-all dark:text-slate-100 dark:bg-slate-900/60 dark:border-slate-700"
+            >
+              <Download className="h-4 w-4 text-blue-600 transition-colors group-hover:text-white" />
+              Export
+            </Button>
+            <Dialog
+              open={isBulkUploadOpen}
+              onOpenChange={(open) => {
+                setIsBulkUploadOpen(open);
+                if (!open) {
+                  resetBulkUploadState();
+                }
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="group gap-2 border-blue-200 text-slate-700 bg-white/70 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:border-transparent shadow-sm hover:shadow-lg transition-all dark:text-slate-100 dark:bg-slate-900/60 dark:border-slate-700"
+                >
+                  <Upload className="h-4 w-4 text-emerald-600 transition-colors group-hover:text-white" />
+                  Bulk Upload
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="w-[90vw] max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-semibold">Bulk Upload Employees</DialogTitle>
+                  <DialogDescription>Upload multiple employees at once using CSV format</DialogDescription>
+                </DialogHeader>
+                  <div className="space-y-4 overflow-y-auto pr-2" style={{ maxHeight: '55vh' }}>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <Label>CSV Format</Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          EmployeeID, Name, Email, Department, Role, Designation, Phone, Address, JoiningDate, Status, Gender, EmployeeType, ResignationDate, PANCard, AadharCard, Shift
+                        </p>
+                      </div>
+                      <Button
+                        onClick={downloadCSVTemplate}
+                        variant="outline"
+                        className="gap-2 border-green-200 text-green-700 bg-green-50 hover:bg-green-100 dark:bg-green-950 dark:text-green-300 dark:border-green-800 shadow-sm"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download Template
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bulk-file">CSV File</Label>
+                      <Input
+                        id="bulk-file"
+                        type="file"
+                        accept=".csv"
+                        onChange={handleBulkFileChange}
+                        ref={bulkFileInputRef}
+                      />
+                      {bulkFileName && (
+                        <p className="text-sm text-muted-foreground">Selected file: {bulkFileName}</p>
+                      )}
+                    </div>
+                    <Textarea
+                      placeholder="Paste CSV data here..."
+                      value={bulkData}
+                      onChange={(e) => setBulkData(e.target.value)}
+                      rows={10}
+                    />
+
+                    {bulkSummary.length > 0 && (
+                      <div className="border rounded-lg p-4 space-y-3 bg-slate-50 dark:bg-slate-900">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="font-semibold text-sm">Import Summary</p>
+                            <p className="text-xs text-muted-foreground">
+                              {bulkSuccessCount} succeeded • {bulkFailedCount} failed
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+                              Success: {bulkSuccessCount}
+                            </Badge>
+                            <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">
+                              Failed: {bulkFailedCount}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto rounded border bg-white dark:bg-slate-950">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>#</TableHead>
+                                <TableHead>Employee ID</TableHead>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Details</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {bulkSummary.map((item) => (
+                                <TableRow key={`${item.row}-${item.employeeId}`}>
+                                  <TableCell>{item.row}</TableCell>
+                                  <TableCell className="font-medium">{item.employeeId}</TableCell>
+                                  <TableCell>{item.name || '-'}</TableCell>
+                                  <TableCell>
+                                    <Badge
+                                      className={
+                                        item.status === 'success'
+                                          ? 'bg-green-500 text-white'
+                                          : 'bg-red-500 text-white'
+                                      }
+                                    >
+                                      {item.status === 'success' ? 'Imported' : 'Failed'}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-sm text-muted-foreground">
+                                    {item.message || '-'}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsBulkUploadOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleBulkUpload}
+                    className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                    disabled={isBulkUploading}
+                  >
+                    {isBulkUploading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Importing...
+                      </>
+                    ) : (
+                      <>
+                        <FileSpreadsheet className="h-4 w-4" />
+                        Import
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Card */}
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold">Employee Directory</CardTitle>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={openCreateDialog} className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
+                  <Plus className="h-4 w-4" />
+                  Add User
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto border-2 shadow-2xl">
+                <DialogHeader className="pb-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 -m-6 mb-0 p-6 rounded-t-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                      <Plus className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-2xl font-bold">Create New Employee</DialogTitle>
+                      <DialogDescription className="mt-1">Fill in the required fields marked with *</DialogDescription>
+                    </div>
+                  </div>
+                </DialogHeader>
+                  <div className="space-y-4" onKeyDown={handleKeyDown}>
+                    <div className="flex flex-col items-center gap-3">
+                      <div 
+                        className="relative w-28 h-28 cursor-pointer group" 
+                        onClick={() => createFileInputRef.current?.click()}
+                      >
+                        {imagePreview ? (
+                          <>
+                            <img 
+                              src={imagePreview} 
+                              alt="Preview" 
+                              className="w-full h-full object-cover rounded-full border-4 border-blue-200 shadow-lg group-hover:shadow-xl transition-shadow" 
+                            />
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="absolute -top-2 -right-2 h-7 w-7 rounded-full shadow-lg hover:shadow-xl"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setImageFile(null);
+                                setImagePreview('');
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full border-4 border-dashed border-blue-300 hover:border-blue-500 hover:bg-blue-100 transition-all shadow-md group-hover:shadow-lg">
+                            <Upload className="h-8 w-8 text-blue-500 mb-1" />
+                            <span className="text-xs font-semibold text-blue-600">Add Photo</span>
+                          </div>
+                        )}
+                        <Input
+                          id="create-photo"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          className="hidden"
+                          ref={createFileInputRef}
+                        />
+                      </div>
+                      <p className="text-sm text-center text-slate-600 dark:text-slate-400">
+                        Click to upload employee photo
+                      </p>
+                    </div>
+                    <div>
+                      <Label htmlFor="create-employeeId">Employee ID *</Label>
+                      <Input
+                        id="create-employeeId"
+                        value={formData.employeeId || ''}
+                        onChange={(e) => {
+                          // Remove all spaces from employee ID
+                          const value = e.target.value.replace(/\s/g, '');
+                          setFormData((prev) => ({ ...prev, employeeId: value }));
+                        }}
+                        required
+                        className="mt-1"
+                        placeholder="e.g., EMP001"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="create-name">Name *</Label>
+                      <Input
+                        id="create-name"
+                        value={formData.name || ''}
+                        onChange={(e) => {
+                          // Only allow alphabetic characters and spaces
+                          const value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                          setFormData((prev) => ({ ...prev, name: value }));
+                        }}
+                        required
+                        className="mt-1"
+                        placeholder="e.g., John Doe"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="create-email">Email *</Label>
+                      <Input
+                        id="create-email"
+                        type="email"
+                        value={formData.email || ''}
+                        onChange={(e) => {
+                          const email = e.target.value;
+                          setFormData((prev) => ({ ...prev, email }));
+                          validateEmail(email);
+                        }}
+                        required
+                        className={`mt-1 ${emailError ? 'border-red-500' : ''}`}
+                      />
+                      {emailError && (
+                        <p className="text-red-500 text-sm mt-1">{emailError}</p>
+                      )}
+                    </div>
+                    {/* Single Department Selection for other roles */}
+                    {formData.role !== 'HR' && formData.role !== 'Manager' && (
+                      <div>
+                        <Label htmlFor="create-department">Department *</Label>
+                        <Select
+                          value={formData.department || ''}
+                          onValueChange={(value) => setFormData((prev) => ({ ...prev, department: value }))}
+                          disabled={departments.length === 0}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder={departments.length === 0 ? "No departments available" : "Select Department"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {departments.length === 0 ? (
+                              <SelectItem value="no-departments" disabled>
+                                No active departments found. Please create departments first.
+                              </SelectItem>
+                            ) : (
+                              departments.map((dept) => (
+                                <SelectItem key={dept} value={dept}>
+                                  {dept}
+                                </SelectItem>
+                              ))
+                            )}
+                            {formData.department && !departments.some(d => d.toLowerCase() === formData.department?.toLowerCase()) && (
+                              <SelectItem value={formData.department}>{formData.department}</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {departments.length === 0 && (
+                          <p className="text-sm text-amber-600 mt-1">
+                            ⚠️ No departments available. Please go to Department Management to create departments first.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    <div>
+                      <Label htmlFor="create-role">Role *</Label>
+                      <Select
+                        value={formData.role || 'employee'}
+                        onValueChange={(value) => {
+                          setFormData((prev) => ({ ...prev, role: value as string }));
+                          // Reset department selections when role changes
+                          if (value === 'HR' || value === 'Manager') {
+                            setSelectedDepartments([]);
+                          } else {
+                            setSelectedDepartments([]);
+                            setFormData((prev) => ({ ...prev, department: '' }));
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select Role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Admin">Admin</SelectItem>
+                          <SelectItem value="HR">HR</SelectItem>
+                          <SelectItem value="Manager">Manager</SelectItem>
+                          <SelectItem value="TeamLead">Team Lead</SelectItem>
+                          <SelectItem value="Employee">Employee</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* Multiple Department Selection for HR and Manager */}
+                    {(formData.role === 'HR' || formData.role === 'Manager') && (
+                      <div>
+                        <Label>Assigned Departments *</Label>
+                        <div className="mt-2 space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
+                          {departments.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">No departments available</p>
+                          ) : (
+                            departments.map((dept) => (
+                              <div key={dept} className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  id={`dept-${dept}`}
+                                  checked={selectedDepartments.includes(dept)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedDepartments([...selectedDepartments, dept]);
+                                    } else {
+                                      setSelectedDepartments(selectedDepartments.filter(d => d !== dept));
+                                    }
+                                  }}
+                                  className="rounded border-gray-300"
+                                />
+                                <Label htmlFor={`dept-${dept}`} className="text-sm font-normal">
+                                  {dept}
+                                </Label>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        {selectedDepartments.length > 0 && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Selected: {selectedDepartments.join(', ')}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    <div>
+                      <Label htmlFor="create-designation">Designation</Label>
+                      <Input
+                        id="create-designation"
+                        value={formData.designation || ''}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, designation: e.target.value }))}
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    {/* Manager Selection - Show for all roles except Admin */}
+                    {formData.role !== 'Admin' && (
+                      <div>
+                        <Label htmlFor="create-manager">Reporting Manager</Label>
+                        <Select
+                          value={formData.managerId?.toString() || ''}
+                          onValueChange={(value) => setFormData((prev) => ({ ...prev, managerId: value && value !== 'none' ? parseInt(value) : undefined }))}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Select Manager (Optional)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No Manager</SelectItem>
+                            {managers.map((manager) => (
+                              <SelectItem key={manager.id} value={manager.id.toString()}>
+                                {manager.name} ({manager.role}) - {manager.department || 'No Dept'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Available managers: HR, Manager, and Team Lead roles
+                        </p>
+                      </div>
+                    )}
+                    <div>
+                      <Label htmlFor="create-joiningDate">Joining Date <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="create-joiningDate"
+                        type="date"
+                        value={formData.joiningDate || ''}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, joiningDate: e.target.value }))}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="create-countryCode">Country Code</Label>
+                      <Select
+                        value={formData.countryCode || '+91'}
+                        onValueChange={(value) => {
+                          setFormData((prev) => ({ ...prev, countryCode: value }));
+                          validatePhoneNumber(formData.phone?.replace(/[^0-9]/g, '') || '', value);
+                        }}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select Country Code" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countryCodes.map(({ code, flag, name }) => (
+                            <SelectItem key={code} value={code}>
+                              {flag} {code} ({name})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="create-phone">Phone <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="create-phone"
+                        value={formData.phone || ''}
+                        onChange={(e) => {
+                          const phone = handlePhoneInput(e.target.value, formData.countryCode || '+91');
+                          setFormData((prev) => ({ ...prev, phone }));
+                          validatePhoneNumber(phone.replace(/[^0-9]/g, ''), formData.countryCode || '+91');
+                        }}
+                        className={`mt-1 ${phoneError ? 'border-red-500' : ''}`}
+                        placeholder={formData.countryCode === '+91' ? 'e.g., 987-654-3210' : 'e.g., 123-456-7890'}
+                      />
+                      {phoneError && (
+                        <p className="text-red-500 text-sm mt-1">{phoneError}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="create-address">Address <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="create-address"
+                        value={formData.address || ''}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, address: e.target.value }))}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="create-panCard">PAN Card *</Label>
+                      <Input
+                        id="create-panCard"
+                        value={formData.panCard || ''}
+                        onChange={(e) => {
+                          // Limit to maximum 10 characters
+                          const panCard = e.target.value.toUpperCase().slice(0, 10);
+                          setFormData((prev) => ({ ...prev, panCard }));
+                          validatePanCard(panCard);
+                          // Clear duplicate error when user starts typing
+                          if (panCardDuplicateError) {
+                            setPanCardDuplicateError('');
+                          }
+                        }}
+                        required
+                        maxLength={10}
+                        className={`mt-1 ${panCardError || panCardDuplicateError ? 'border-red-500' : ''}`}
+                        placeholder="e.g., ABCDE1234F"
+                      />
+                      {panCardError && (
+                        <p className="text-red-500 text-sm mt-1">{panCardError}</p>
+                      )}
+                      {panCardDuplicateError && (
+                        <p className="text-red-500 text-sm mt-1">{panCardDuplicateError}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="create-aadharCard">Aadhar Card *</Label>
+                      <Input
+                        id="create-aadharCard"
+                        value={formData.aadharCard || ''}
+                        onChange={(e) => {
+                          const formatted = formatAadharInput(e.target.value);
+                          setFormData((prev) => ({ ...prev, aadharCard: formatted }));
+                          validateAadharCard(formatted);
+                          // Clear duplicate error when user starts typing
+                          if (aadharCardDuplicateError) {
+                            setAadharCardDuplicateError('');
+                          }
+                        }}
+                        required
+                        className={`mt-1 ${aadharCardError || aadharCardDuplicateError ? 'border-red-500' : ''}`}
+                        placeholder="e.g., 1234-5678-9012"
+                      />
+                      {aadharCardError && (
+                        <p className="text-red-500 text-sm mt-1">{aadharCardError}</p>
+                      )}
+                      {aadharCardDuplicateError && (
+                        <p className="text-red-500 text-sm mt-1">{aadharCardDuplicateError}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="create-shift">Shift *</Label>
+                      <Select
+                        value={formData.shift || ''}
+                        onValueChange={(value) =>
+                          setFormData((prev) => ({ ...prev, shift: value as ShiftType }))
+                        }
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select Shift" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {shiftOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Gender</Label>
+                      <RadioGroup
+                        value={formData.gender || ''}
+                        onValueChange={(value) => setFormData((prev) => ({ ...prev, gender: value as 'male' | 'female' | 'other' }))}
+                        className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-2"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="male" id="create-male" />
+                          <Label htmlFor="create-male">Male</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="female" id="create-female" />
+                          <Label htmlFor="create-female">Female</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="other" id="create-other" />
+                          <Label htmlFor="create-other">Other</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                    <div>
+                      <Label htmlFor="create-employeeType">Employee Type <span className="text-red-500">*</span></Label>
+                      <Select
+                        value={formData.employeeType || ''}
+                        onValueChange={(value) => setFormData((prev) => ({ ...prev, employeeType: value as 'contract' | 'permanent' }))}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select Employee Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="contract">Contract-based</SelectItem>
+                          <SelectItem value="permanent">Permanent</SelectItem>
+                          {formData.employeeType && !['contract','permanent'].includes(formData.employeeType) && (
+                            <SelectItem value={formData.employeeType}>{formData.employeeType}</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter className="mt-4 sticky bottom-0 bg-white py-2 flex flex-col sm:flex-row gap-2">
+                    <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="w-full sm:w-auto">
+                      Cancel
+                    </Button>
+                    <Button onClick={handleCreateEmployee} className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700" disabled={isCreating}>
+                      {isCreating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        'Create Employee'
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </CardHeader>
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+            <div className="flex-1 min-w-0">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <Input
+                  placeholder="Search by name, ID, or email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 h-11 w-full bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-blue-500 text-sm"
+                  aria-label="Search employees"
+                />
+              </div>
+            </div>
+            <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+              <SelectTrigger className="w-full sm:w-44 h-11 bg-white dark:bg-gray-950 border-2 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
+                <Filter className="h-4 w-4 mr-2 text-blue-600" />
+                <SelectValue placeholder="Department" />
+              </SelectTrigger>
+              <SelectContent className="border-2 shadow-2xl">
+                <SelectItem value="all" className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors font-medium">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600"></div>
+                    All Departments
+                  </div>
+                </SelectItem>
+                {departments.map(dept => (
+                  <SelectItem key={dept} value={dept} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-gradient-to-r from-slate-400 to-gray-600"></div>
+                      {dept}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedRole} onValueChange={setSelectedRole}>
+              <SelectTrigger className="w-full sm:w-44 h-11 bg-white dark:bg-gray-950 border-2 hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
+                <UserIcon className="h-4 w-4 mr-2 text-purple-600" />
+                <SelectValue placeholder="Role" />
+              </SelectTrigger>
+              <SelectContent className="border-2 shadow-2xl">
+                <SelectItem value="all" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors font-medium">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-600"></div>
+                    All Roles
+                  </div>
+                </SelectItem>
+                <SelectItem value="Admin" className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-gradient-to-r from-red-500 to-rose-600"></div>
+                    Admin
+                  </div>
+                </SelectItem>
+                <SelectItem value="HR" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-600"></div>
+                    HR
+                  </div>
+                </SelectItem>
+                <SelectItem value="Manager" className="cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-600"></div>
+                    Manager
+                  </div>
+                </SelectItem>
+                <SelectItem value="TeamLead" className="cursor-pointer hover:bg-cyan-50 dark:hover:bg-cyan-950 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600"></div>
+                    Team Lead
+                  </div>
+                </SelectItem>
+                <SelectItem value="Employee" className="cursor-pointer hover:bg-green-50 dark:hover:bg-green-950 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-600"></div>
+                    Employee
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="rounded-xl border-2 border-gray-200 dark:border-gray-800 overflow-hidden shadow-lg">
+            <Table>
+              <TableHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
+                <TableRow className="hover:bg-transparent border-b-2">
+                  <TableHead className="w-[60px] hidden sm:table-cell font-semibold">Photo</TableHead>
+                  <TableHead className="font-semibold">Employee ID</TableHead>
+                  <TableHead className="font-semibold">Name</TableHead>
+                  <TableHead className="hidden sm:table-cell font-semibold">Email</TableHead>
+                  <TableHead className="font-semibold">Department</TableHead>
+                  <TableHead className="hidden md:table-cell font-semibold">Role</TableHead>
+                  <TableHead className="font-semibold">Status</TableHead>
+                  <TableHead className="text-right font-semibold">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Loading employees...</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredEmployees.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      No employees found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedEmployees.map((employee) => (
+                    <TableRow key={employee.employeeId} className="hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors border-b">
+                      <TableCell className="hidden sm:table-cell">
+                        <Avatar className="h-10 w-10 border-2 border-blue-200 dark:border-blue-800">
+                          <AvatarImage src={employee.photoUrl} alt={employee.name} />
+                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold">{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                        </Avatar>
+                      </TableCell>
+                      <TableCell className="font-semibold text-blue-600 dark:text-blue-400">{employee.employeeId}</TableCell>
+                      <TableCell className="font-medium">{employee.name}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-muted-foreground">{employee.email}</TableCell>
+                      <TableCell>
+                        {employee.department && employee.department.includes(',') ? (
+                          <div className="flex flex-wrap gap-1">
+                            {employee.department.split(',').map((dept, index) => (
+                              <span key={index} className="inline-flex items-center px-2 py-0.5 rounded-md bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 text-xs font-medium">
+                                {dept.trim()}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 text-sm font-medium">
+                            {employee.department || 'No Dept'}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge className={`${
+                          employee.role === 'Admin' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white border-0' :
+                          employee.role === 'HR' ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white border-0' :
+                          employee.role === 'Manager' ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white border-0' :
+                          employee.role === 'TeamLead' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white border-0' :
+                          'bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0'
+                        } shadow-md`}>
+                          {employee.role ? employee.role.charAt(0).toUpperCase() + employee.role.slice(1) : '-'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`${
+                          employee.status === 'active' 
+                            ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-md' 
+                            : 'bg-gradient-to-r from-gray-400 to-slate-500 text-white border-0 shadow-md'
+                        }`}>
+                          {employee.status ? employee.status.charAt(0).toUpperCase() + employee.status.slice(1) : '-'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => openViewDialog(employee)}
+                            disabled={isDeleting === employee.employeeId}
+                            className="h-9 w-9 p-0 hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-900 transition-all hover:scale-110 rounded-lg"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => openEditDialog(employee)}
+                            disabled={isDeleting === employee.employeeId}
+                            className="h-9 w-9 p-0 hover:bg-amber-100 hover:text-amber-600 dark:hover:bg-amber-900 transition-all hover:scale-110 rounded-lg"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEmployeeToDelete(employee);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                            disabled={isDeleting === employee.id}
+                            className="h-9 w-9 p-0 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900 transition-all hover:scale-110 rounded-lg"
+                          >
+                            {isDeleting === employee.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleToggleStatus(employee.employeeId)}
+                            disabled={isDeleting === employee.employeeId}
+                            className="h-9 w-[90px] text-xs px-3 border-2 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950 dark:hover:to-indigo-950 transition-all font-medium"
+                          >
+                            {employee.status === 'active' ? 'Deactivate' : 'Activate'}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          
+          {/* Pagination */}
+          {filteredEmployees.length > 0 && (
+            <div className="mt-6 px-2">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredEmployees.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                showItemsPerPage={true}
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-[450px] max-h-[80vh] overflow-y-auto p-4">
+          <DialogHeader>
+            <DialogTitle>Update Employee / User</DialogTitle>
+            <DialogDescription>Update the employee / user details below</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4" onKeyDown={handleEditKeyDown}>
+            <div className="flex flex-col items-center gap-3">
+              <div 
+                className="relative w-28 h-28 cursor-pointer group" 
+                onClick={() => editFileInputRef.current?.click()}
+              >
+                {imagePreview ? (
+                  <>
+                    <img 
+                      src={imagePreview} 
+                      alt="Preview" 
+                      className="w-full h-full object-cover rounded-full border-4 border-blue-200 shadow-lg group-hover:shadow-xl transition-shadow" 
+                    />
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="absolute -top-2 -right-2 h-7 w-7 rounded-full shadow-lg hover:shadow-xl"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setImageFile(null);
+                        setImagePreview('');
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full border-4 border-dashed border-blue-300 hover:border-blue-500 hover:bg-blue-100 transition-all shadow-md group-hover:shadow-lg">
+                    <Upload className="h-8 w-8 text-blue-500 mb-1" />
+                    <span className="text-xs font-semibold text-blue-600">Add Photo</span>
+                  </div>
+                )}
+                <Input
+                  id="edit-photo"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                  ref={editFileInputRef}
+                />
+              </div>
+              <p className="text-sm text-center text-slate-600 dark:text-slate-400">
+                Click to upload or change photo
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="edit-employeeId">Employee ID *</Label>
+              <Input
+                id="edit-employeeId"
+                value={formData.employeeId || ''}
+                readOnly
+                disabled
+                aria-readonly="true"
+                required
+                className="mt-1 bg-gray-50 text-muted-foreground cursor-not-allowed"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-name">Name *</Label>
+              <Input
+                id="edit-name"
+                value={formData.name || ''}
+                onChange={(e) => {
+                  // Only allow alphabetic characters and spaces
+                  const value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                  setFormData((prev) => ({ ...prev, name: value }));
+                }}
+                required
+                className="mt-1"
+                placeholder="e.g., John Doe"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-email">Email *</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={formData.email || ''}
+                onChange={(e) => {
+                  const email = e.target.value;
+                  setFormData((prev) => ({ ...prev, email }));
+                  validateEmail(email);
+                }}
+                required
+                className={`mt-1 ${emailError ? 'border-red-500' : ''}`}
+              />
+              {emailError && (
+                <p className="text-red-500 text-sm mt-1">{emailError}</p>
+              )}
+            </div>
+            {/* Single Department Selection for other roles in Edit */}
+            {formData.role !== 'HR' && formData.role !== 'Manager' && (
+              <div>
+                <Label htmlFor="edit-department">Department *</Label>
+                <Select
+                  value={formData.department || ''}
+                  onValueChange={(value) => setFormData((prev) => ({ ...prev, department: value }))}
+                  disabled={departments.length === 0}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select Department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.length === 0 ? (
+                      <SelectItem value="no-departments" disabled>
+                        No active departments found. Please create departments first.
+                      </SelectItem>
+                    ) : (
+                      departments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))
+                    )}
+                    {formData.department && !departments.some(d => d.toLowerCase() === formData.department?.toLowerCase()) && (
+                      <SelectItem value={formData.department}>{formData.department}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div>
+              <Label htmlFor="edit-role">Role *</Label>
+              <Select
+                value={formData.role || 'employee'}
+                onValueChange={(value) => {
+                  setFormData((prev) => ({ ...prev, role: value as string }));
+                  // Reset department selections when role changes
+                  if (value === 'HR' || value === 'Manager') {
+                    setSelectedDepartments([]);
+                  } else {
+                    setSelectedDepartments([]);
+                    setFormData((prev) => ({ ...prev, department: '' }));
+                  }
+                }}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Admin">Admin</SelectItem>
+                  <SelectItem value="HR">HR</SelectItem>
+                  <SelectItem value="Manager">Manager</SelectItem>
+                  <SelectItem value="TeamLead">Team Lead</SelectItem>
+                  <SelectItem value="Employee">Employee</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Multiple Department Selection for HR and Manager in Edit */}
+            {(formData.role === 'HR' || formData.role === 'Manager') && (
+              <div>
+                <Label>Assigned Departments *</Label>
+                <div className="mt-2 space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
+                  {departments.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No departments available</p>
+                  ) : (
+                    departments.map((dept) => (
+                      <div key={dept} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`edit-dept-${dept}`}
+                          checked={selectedDepartments.includes(dept)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedDepartments([...selectedDepartments, dept]);
+                            } else {
+                              setSelectedDepartments(selectedDepartments.filter(d => d !== dept));
+                            }
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                        <Label htmlFor={`edit-dept-${dept}`} className="text-sm font-normal">
+                          {dept}
+                        </Label>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {selectedDepartments.length > 0 && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Selected: {selectedDepartments.join(', ')}
+                  </p>
+                )}
+              </div>
+            )}
+            <div>
+              <Label htmlFor="edit-designation">Designation</Label>
+              <Input
+                id="edit-designation"
+                value={formData.designation || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, designation: e.target.value }))}
+                className="mt-1"
+              />
+            </div>
+            
+            {/* Manager Selection in Edit - Show for all roles except Admin */}
+            {formData.role !== 'Admin' && (
+              <div>
+                <Label htmlFor="edit-manager">Reporting Manager</Label>
+                <Select
+                  value={formData.managerId?.toString() || ''}
+                  onValueChange={(value) => setFormData((prev) => ({ ...prev, managerId: value && value !== 'none' ? parseInt(value) : undefined }))}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select Manager (Optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Manager</SelectItem>
+                    {managers.map((manager) => (
+                      <SelectItem key={manager.id} value={manager.id.toString()}>
+                        {manager.name} ({manager.role}) - {manager.department || 'No Dept'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Available managers: HR, Manager, and Team Lead roles
+                </p>
+              </div>
+            )}
+            <div>
+              <Label htmlFor="edit-joiningDate">Joining Date <span className="text-red-500">*</span></Label>
+              <Input
+                id="edit-joiningDate"
+                type="date"
+                value={formData.joiningDate || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, joiningDate: e.target.value }))}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-countryCode">Country Code</Label>
+              <Select
+                value={formData.countryCode || '+91'}
+                onValueChange={(value) => {
+                  setFormData((prev) => ({ ...prev, countryCode: value }));
+                  validatePhoneNumber(formData.phone?.replace(/[^0-9]/g, '') || '', value);
+                }}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select Country Code" />
+                </SelectTrigger>
+                <SelectContent>
+                  {countryCodes.map(({ code, flag, name }) => (
+                    <SelectItem key={code} value={code}>
+                      {flag} {code} ({name})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="edit-phone">Phone <span className="text-red-500">*</span></Label>
+              <Input
+                id="edit-phone"
+                value={formData.phone || ''}
+                onChange={(e) => {
+                  const phone = handlePhoneInput(e.target.value, formData.countryCode || '+91');
+                  setFormData((prev) => ({ ...prev, phone }));
+                  validatePhoneNumber(phone.replace(/[^0-9]/g, ''), formData.countryCode || '+91');
+                }}
+                className={`mt-1 ${phoneError ? 'border-red-500' : ''}`}
+                placeholder={formData.countryCode === '+91' ? 'e.g., 987-654-3210' : 'e.g., 123-456-7890'}
+              />
+              {phoneError && (
+                <p className="text-red-500 text-sm mt-1">{phoneError}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="edit-address">Address <span className="text-red-500">*</span></Label>
+              <Input
+                id="edit-address"
+                value={formData.address || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, address: e.target.value }))}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-panCard">PAN Card *</Label>
+              <Input
+                id="edit-panCard"
+                value={formData.panCard || ''}
+                onChange={(e) => {
+                  // Limit to maximum 10 characters
+                  const panCard = e.target.value.toUpperCase().slice(0, 10);
+                  setFormData((prev) => ({ ...prev, panCard }));
+                  validatePanCard(panCard);
+                  // Clear duplicate error when user starts typing
+                  if (panCardDuplicateError) {
+                    setPanCardDuplicateError('');
+                  }
+                }}
+                required
+                maxLength={10}
+                className={`mt-1 ${panCardError || panCardDuplicateError ? 'border-red-500' : ''}`}
+                placeholder="e.g., ABCDE1234F"
+              />
+              {panCardError && (
+                <p className="text-red-500 text-sm mt-1">{panCardError}</p>
+              )}
+              {panCardDuplicateError && (
+                <p className="text-red-500 text-sm mt-1">{panCardDuplicateError}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="edit-aadharCard">Aadhar Card *</Label>
+              <Input
+                id="edit-aadharCard"
+                value={formData.aadharCard || ''}
+                onChange={(e) => {
+                          const formatted = formatAadharInput(e.target.value);
+                          setFormData((prev) => ({ ...prev, aadharCard: formatted }));
+                          validateAadharCard(formatted);
+                          // Clear duplicate error when user starts typing
+                          if (aadharCardDuplicateError) {
+                            setAadharCardDuplicateError('');
+                          }
+                }}
+                required
+                className={`mt-1 ${aadharCardError || aadharCardDuplicateError ? 'border-red-500' : ''}`}
+                placeholder="e.g., 1234-5678-9012"
+              />
+              {aadharCardError && (
+                <p className="text-red-500 text-sm mt-1">{aadharCardError}</p>
+              )}
+              {aadharCardDuplicateError && (
+                <p className="text-red-500 text-sm mt-1">{aadharCardDuplicateError}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="edit-shift">Shift *</Label>
+              <Select
+                value={formData.shift || ''}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, shift: value as ShiftType }))
+                }
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select Shift" />
+                </SelectTrigger>
+                <SelectContent>
+                  {shiftOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Gender</Label>
+              <RadioGroup
+                value={formData.gender || ''}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, gender: value as 'male' | 'female' | 'other' }))}
+                className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="male" id="edit-male" />
+                  <Label htmlFor="edit-male">Male</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="female" id="edit-female" />
+                  <Label htmlFor="edit-female">Female</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="other" id="edit-other" />
+                  <Label htmlFor="edit-other">Other</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            <div>
+              <Label htmlFor="edit-employeeType">Employee Type <span className="text-red-500">*</span></Label>
+              <Select
+                value={formData.employeeType || ''}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, employeeType: value as 'contract' | 'permanent' }))}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select Employee Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="contract">Contract-based</SelectItem>
+                  <SelectItem value="permanent">Permanent</SelectItem>
+                    {formData.employeeType && !['contract','permanent'].includes(formData.employeeType) && (
+                      <SelectItem value={formData.employeeType}>{formData.employeeType}</SelectItem>
+                    )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="edit-resignationDate">Date of Resignation</Label>
+              <Input
+                id="edit-resignationDate"
+                type="date"
+                value={formData.resignationDate || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, resignationDate: e.target.value }))}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-4 sticky bottom-0 bg-white dark:bg-gray-950 py-2 flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="w-full sm:w-auto">
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateEmployee} className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700" disabled={isUpdating}>
+              {isUpdating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                'Update Employee / User'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-[400px] p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">Employee Profile</DialogTitle>
+            <DialogDescription>Quick profile preview</DialogDescription>
+          </DialogHeader>
+          {viewEmployee && (
+            <div className="flex flex-col items-center space-y-4 pt-2">
+              <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-blue-100 dark:border-blue-900 shadow-lg">
+                <img 
+                  src={viewEmployee.photoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${viewEmployee.name}`} 
+                  alt={viewEmployee.name} 
+                  className="w-full h-full object-cover" 
+                />
+              </div>
+              <div className="text-center">
+                <h3 className="text-lg font-semibold">{viewEmployee.name}</h3>
+                <p className="text-sm text-muted-foreground mt-1">{viewEmployee.designation || '-'}</p>
+                <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mt-1">
+                  {viewEmployee.role ? viewEmployee.role.charAt(0).toUpperCase() + viewEmployee.role.slice(1) : '-'}
+                </p>
+                <Badge variant={viewEmployee.status === 'active' ? 'default' : 'secondary'} className="mt-2">
+                  {viewEmployee.status ? viewEmployee.status.charAt(0).toUpperCase() + viewEmployee.status.slice(1) : '-'}
+                </Badge>
+              </div>
+              <div className="w-full space-y-2 text-sm bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 p-4 rounded-lg">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Employee ID</span>
+                  <span className="font-medium">{viewEmployee.employeeId}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Email</span>
+                  <span className="font-medium">{viewEmployee.email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Department</span>
+                  <div className="font-medium">
+                    {viewEmployee.department && viewEmployee.department.includes(',') ? (
+                      <div className="flex flex-wrap gap-1">
+                        {viewEmployee.department.split(',').map((dept, index) => (
+                          <span key={index} className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-xs font-medium">
+                            {dept.trim()}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span>{viewEmployee.department || 'No Department'}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Role</span>
+                  <span className="font-medium">{viewEmployee.role ? viewEmployee.role.charAt(0).toUpperCase() + viewEmployee.role.slice(1) : '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Reporting Manager</span>
+                  <span className="font-medium">
+                    {viewEmployee.managerId ? (
+                      managers.find(m => m.id === viewEmployee.managerId)?.name || `Manager ID: ${viewEmployee.managerId}`
+                    ) : 'No Manager'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Phone</span>
+                  <span className="font-medium">{viewEmployee.phone || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Gender</span>
+                  <span className="font-medium">{viewEmployee.gender ? viewEmployee.gender.charAt(0).toUpperCase() + viewEmployee.gender.slice(1) : '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Employee Type</span>
+                  <span className="font-medium">{viewEmployee.employeeType ? viewEmployee.employeeType.charAt(0).toUpperCase() + viewEmployee.employeeType.slice(1) : '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Resignation Date</span>
+                  <span className="font-medium">{viewEmployee.resignationDate || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">PAN Card</span>
+                  <span className="font-medium">{viewEmployee.panCard || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Aadhar Card</span>
+                  <span className="font-medium">{viewEmployee.aadharCard || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Shift</span>
+                  <span className="font-medium">{viewEmployee.shift ? viewEmployee.shift.charAt(0).toUpperCase() + viewEmployee.shift.slice(1) : '-'}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">Confirm Delete</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this employee? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800"
+              onClick={() => {
+                if (employeeToDelete) {
+                  handleDeleteEmployee(employeeToDelete.id);
+                  setIsDeleteDialogOpen(false);
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Export Dialog */}
+      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Export Employee Data</DialogTitle>
+            <DialogDescription>
+              Choose the format to export employee data
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Export Format Selection */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Export Format</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setExportType('csv')}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    exportType === 'csv'
+                      ? 'border-green-600 bg-green-50 dark:bg-green-950'
+                      : 'border-gray-200 hover:border-green-300 dark:border-gray-700'
+                  }`}
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <FileSpreadsheet className={`h-8 w-8 ${exportType === 'csv' ? 'text-green-600' : 'text-gray-400'}`} />
+                    <span className={`font-semibold ${exportType === 'csv' ? 'text-green-600' : 'text-gray-600'}`}>
+                      CSV
+                    </span>
+                    <span className="text-xs text-muted-foreground text-center">
+                      Excel compatible
+                    </span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExportType('pdf')}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    exportType === 'pdf'
+                      ? 'border-red-600 bg-red-50 dark:bg-red-950'
+                      : 'border-gray-200 hover:border-red-300 dark:border-gray-700'
+                  }`}
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <FileText className={`h-8 w-8 ${exportType === 'pdf' ? 'text-red-600' : 'text-gray-400'}`} />
+                    <span className={`font-semibold ${exportType === 'pdf' ? 'text-red-600' : 'text-gray-600'}`}>
+                      PDF
+                    </span>
+                    <span className="text-xs text-muted-foreground text-center">
+                      Print ready
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsExportDialogOpen(false);
+                setExportType(null);
+              }}
+              disabled={isExporting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={performExport}
+              disabled={isExporting || !exportType}
+              className={exportType === 'csv' ? 'bg-green-600 hover:bg-green-700' : exportType === 'pdf' ? 'bg-red-600 hover:bg-red-700' : ''}
+            >
+              {isExporting ? 'Exporting...' : exportType ? `Export ${exportType.toUpperCase()}` : 'Select Format'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

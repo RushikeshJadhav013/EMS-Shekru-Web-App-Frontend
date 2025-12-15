@@ -1,0 +1,3152 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from '@/hooks/use-toast';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import AttendanceCamera from '@/components/attendance/AttendanceCamera';
+import OnlineStatusToggle from '@/components/attendance/OnlineStatusToggle';
+import OnlineStatusIndicator from '@/components/attendance/OnlineStatusIndicator';
+import { Clock, MapPin, Calendar, LogIn, LogOut, FileText, CheckCircle, AlertCircle, Users, Filter, User, X, Download, Search, Loader2, Home, Send } from 'lucide-react';
+import { AttendanceRecord, UserRole } from '@/types';
+import { format, subMonths } from 'date-fns';
+import { formatIST, formatDateTimeIST, formatTimeIST, formatDateIST, todayIST, formatDateTimeComponentsIST, parseToIST } from '@/utils/timezone';
+import { getCurrentLocation as fetchPreciseLocation, getCurrentLocationFast } from '@/utils/geolocation';
+import { DatePicker } from '@/components/ui/date-picker';
+
+type GeoLocation = {
+  latitude: number;
+  longitude: number;
+  accuracy?: number | null;
+  address?: string;
+};
+
+const fileToBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
+
+type ExportEmployee = {
+  user_id: number;
+  employee_id?: string;
+  name: string;
+  department?: string | null;
+};
+
+const AttendanceWithToggle: React.FC = () => {
+  const { user } = useAuth();
+  const { t } = useLanguage();
+  interface EmployeeAttendanceRecord extends AttendanceRecord {
+    name?: string;
+    email?: string;
+    department?: string;
+  }
+  const [viewMode, setViewMode] = useState<'self' | 'employee' | 'wfh' | 'wfh_requests'>('self');
+  const [showCamera, setShowCamera] = useState(false);
+  const [isCheckingIn, setIsCheckingIn] = useState(true);
+  const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
+  const [todaysWork, setTodaysWork] = useState('');
+  const [workPdf, setWorkPdf] = useState<File | null>(null);
+  const [currentAttendance, setCurrentAttendance] = useState<AttendanceRecord | null>(null);
+  const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
+  const [employeeAttendanceData, setEmployeeAttendanceData] = useState<EmployeeAttendanceRecord[]>([]);
+  const [location, setLocation] = useState<GeoLocation | null>(null);
+  const [isRefreshingLocation, setIsRefreshingLocation] = useState(false);
+  const [isGettingFastLocation, setIsGettingFastLocation] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(todayIST());
+  const [filterRole, setFilterRole] = useState<'all' | UserRole>('all');
+  const [selectedRecord, setSelectedRecord] = useState<EmployeeAttendanceRecord | null>(null);
+  const [showSelfieModal, setShowSelfieModal] = useState(false);
+  const [showWorkSummaryDialog, setShowWorkSummaryDialog] = useState(false);
+  const [showLocationDialog, setShowLocationDialog] = useState(false);
+  const [selectedWorkSummary, setSelectedWorkSummary] = useState<string>('');
+  const [selectedLocation, setSelectedLocation] = useState<{checkIn?: string, checkOut?: string}>({});
+  const initialLocationRequestedRef = useRef(false);
+  const lastGeocodeKeyRef = useRef<string | null>(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportType, setExportType] = useState<'csv' | 'pdf' | null>(null);
+  const [quickFilter, setQuickFilter] = useState('custom');
+  const [exportStartDate, setExportStartDate] = useState<Date | undefined>(undefined);
+  const [exportEndDate, setExportEndDate] = useState<Date | undefined>(new Date());
+  const [employeeExportFilter, setEmployeeExportFilter] = useState<'all' | 'specific'>('all');
+  const [exportEmployees, setExportEmployees] = useState<ExportEmployee[]>([]);
+  const [filteredExportEmployees, setFilteredExportEmployees] = useState<ExportEmployee[]>([]);
+  const [employeeExportSearch, setEmployeeExportSearch] = useState('');
+  const [selectedExportEmployee, setSelectedExportEmployee] = useState<ExportEmployee | null>(null);
+  const [selectedExportDepartment, setSelectedExportDepartment] = useState<string>('');
+  const [exportDepartments, setExportDepartments] = useState<string[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
+  
+  // Online/Offline status state
+  const [isOnline, setIsOnline] = useState(true);
+  const [hasLoadedOnlineStatus, setHasLoadedOnlineStatus] = useState(false);
+  const [workingHours, setWorkingHours] = useState('0:00');
+  const [onlineStatusMap, setOnlineStatusMap] = useState<Record<number, boolean>>({});
+  const [allUsersOnlineStatus, setAllUsersOnlineStatus] = useState<Record<string, boolean>>({});
+  const [historyDateFilter, setHistoryDateFilter] = useState<string>('');
+  
+  // Enhanced time tracking with proper timer logic
+  const [onlineWorkingHours, setOnlineWorkingHours] = useState('0 hrs - 0 mins');
+  const [totalOfflineTime, setTotalOfflineTime] = useState('0 hrs - 0 mins');
+  const [currentSessionOfflineTime, setCurrentSessionOfflineTime] = useState('0:00:00');
+  const [lastStatusChangeTime, setLastStatusChangeTime] = useState<Date | null>(null);
+  
+  // Timer state for proper tracking
+  const [onlineStartTime, setOnlineStartTime] = useState<Date | null>(null);
+  const [offlineStartTime, setOfflineStartTime] = useState<Date | null>(null);
+  const [accumulatedOnlineSeconds, setAccumulatedOnlineSeconds] = useState(0);
+  const [accumulatedOfflineSeconds, setAccumulatedOfflineSeconds] = useState(0);
+  
+  // Fresh check-in flag to prevent backend sync from overriding zero values
+  const [isFreshCheckIn, setIsFreshCheckIn] = useState(false);
+  const [checkInTime, setCheckInTime] = useState<Date | null>(null);
+
+  // WFH Request state
+  const [wfhStartDate, setWfhStartDate] = useState<Date | undefined>(undefined);
+  const [wfhEndDate, setWfhEndDate] = useState<Date | undefined>(undefined);
+  const [wfhReason, setWfhReason] = useState('');
+  const [wfhType, setWfhType] = useState<'full_day' | 'half_day'>('full_day');
+  const [isSubmittingWfh, setIsSubmittingWfh] = useState(false);
+  const [wfhRequests, setWfhRequests] = useState<any[]>([]);
+
+  // WFH Management state (for Admin, HR, Manager)
+  const [allWfhRequests, setAllWfhRequests] = useState<any[]>([]);
+  const [isLoadingWfhRequests, setIsLoadingWfhRequests] = useState(false);
+  const [wfhRequestFilter, setWfhRequestFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [selectedWfhRequest, setSelectedWfhRequest] = useState<any>(null);
+  const [showWfhRequestDialog, setShowWfhRequestDialog] = useState(false);
+  const [isProcessingWfhRequest, setIsProcessingWfhRequest] = useState(false);
+  const [showClearConfirmation, setShowClearConfirmation] = useState(false);
+
+  // Helper function to format time in "X hrs - Y mins" format with tags
+  const formatTimeDisplay = (totalSeconds: number): string => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    
+    if (hours === 0 && minutes === 0) {
+      return '0 hrs - 0 mins';
+    } else if (hours === 0) {
+      return `0 hrs - ${minutes} mins`;
+    } else if (minutes === 0) {
+      return `${hours} hrs - 0 mins`;
+    } else {
+      return `${hours} hrs - ${minutes} mins`;
+    }
+  };
+
+  // Helper function to format work hours from decimal to "X hrs - Y mins" format
+  const formatWorkHours = (decimalHours: number): string => {
+    if (!decimalHours || decimalHours === 0) {
+      return '0 hrs - 0 mins';
+    }
+    
+    const hours = Math.floor(decimalHours);
+    const minutes = Math.round((decimalHours - hours) * 60);
+    
+    if (hours === 0 && minutes === 0) {
+      return '0 hrs - 0 mins';
+    } else if (hours === 0) {
+      return `0 hrs - ${minutes} mins`;
+    } else if (minutes === 0) {
+      return `${hours} hrs - 0 mins`;
+    } else {
+      return `${hours} hrs - ${minutes} mins`;
+    }
+  };
+
+  // Filter attendance history based on selected date and sort by check-in time (most recent first)
+  const getFilteredAttendanceHistory = () => {
+    let filtered: AttendanceRecord[];
+    
+    if (!historyDateFilter) {
+      filtered = attendanceHistory.slice(0, 10); // Show first 10 records
+    } else {
+      const filterDate = formatDateIST(historyDateFilter);
+      filtered = attendanceHistory.filter(record => record.date === filterDate);
+    }
+    
+    // Sort by check-in time in descending order (most recent first)
+    return filtered.sort((a, b) => {
+      const timeA = new Date(a.checkInTime).getTime();
+      const timeB = new Date(b.checkInTime).getTime();
+      return timeB - timeA; // Descending order (most recent first)
+    });
+  };
+
+  const resolveStaticUrl = useCallback((url?: string | null) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    const normalized = url.startsWith('/') ? url : `/${url}`;
+    return `http://localhost:8000${normalized}`;
+  }, []);
+
+  // Determine if user can view employee attendance
+  const canViewEmployeeAttendance = user?.role && ['admin', 'hr', 'manager'].includes(user.role);
+  const canExportAttendance = user?.role === 'hr';
+
+  // Access rules for attendance viewing
+  const getViewableRoles = (): UserRole[] => {
+    if (user?.role === 'admin') return ['admin', 'hr', 'manager', 'team_lead', 'employee'];
+    if (user?.role === 'hr') return ['hr', 'manager', 'team_lead', 'employee'];
+    if (user?.role === 'manager') return ['team_lead', 'employee'];
+    return [];
+  };
+
+  const refreshLocation = useCallback(async () => {
+    try {
+      const preciseLocation = await fetchPreciseLocation();
+      setLocation({
+        latitude: preciseLocation.latitude,
+        longitude: preciseLocation.longitude,
+        accuracy: preciseLocation.accuracy ?? null,
+        address:
+          preciseLocation.address ||
+          `${preciseLocation.latitude.toFixed(6)}, ${preciseLocation.longitude.toFixed(6)}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Location Error',
+        description: error?.message || t.attendance.locationRequired,
+        variant: 'destructive',
+      });
+    }
+  }, [toast, t.attendance.locationRequired]);
+
+  const refreshLocationFast = useCallback(async () => {
+    try {
+      setIsGettingFastLocation(true);
+      const fastLocation = await getCurrentLocationFast();
+      setLocation({
+        latitude: fastLocation.latitude,
+        longitude: fastLocation.longitude,
+        accuracy: fastLocation.accuracy ?? null,
+        address: fastLocation.address || `${fastLocation.latitude.toFixed(6)}, ${fastLocation.longitude.toFixed(6)}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Location Error',
+        description: error?.message || t.attendance.locationRequired,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGettingFastLocation(false);
+    }
+  }, [toast, t.attendance.locationRequired]);
+
+  // Load all WFH requests for management view
+  const loadAllWfhRequests = useCallback(async () => {
+    if (!canViewEmployeeAttendance) return;
+    
+    setIsLoadingWfhRequests(true);
+    try {
+      // Frontend-only implementation - in real app, this would be an API call
+      // For demo purposes, we'll use the existing requests and add some sample data
+      // Generate accurate timestamps relative to current time
+      const now = new Date();
+      const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000); // 5 minutes ago
+      const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000); // 30 minutes ago
+      
+      const sampleRequests = [
+        {
+          id: 'sample-1',
+          startDate: format(new Date(now.getTime() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // Tomorrow
+          endDate: format(new Date(now.getTime() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+          reason: 'Medical appointment and need to work from home',
+          type: 'full_day',
+          status: 'pending',
+          submittedAt: fiveMinutesAgo.toISOString(), // 5 minutes ago
+          submittedBy: 'John Doe',
+          submittedById: '101',
+          department: user?.department || 'Engineering',
+          role: 'employee',
+        },
+        {
+          id: 'sample-2',
+          startDate: format(new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // Day after tomorrow
+          endDate: format(new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // 3 days from now
+          reason: 'Family emergency - need to work from home for a few days',
+          type: 'full_day',
+          status: 'pending',
+          submittedAt: thirtyMinutesAgo.toISOString(), // 30 minutes ago
+          submittedBy: 'Jane Smith',
+          submittedById: '102',
+          department: user?.department || 'Engineering',
+          role: 'team_lead',
+        }
+      ];
+      
+      // Combine with user's own requests
+      const combinedRequests = [...allWfhRequests, ...sampleRequests];
+      setAllWfhRequests(combinedRequests);
+    } catch (error) {
+      console.error('Failed to load WFH requests:', error);
+    } finally {
+      setIsLoadingWfhRequests(false);
+    }
+  }, [canViewEmployeeAttendance, allWfhRequests, user?.department]);
+
+  useEffect(() => {
+    loadFromBackend();
+    if (!initialLocationRequestedRef.current) {
+      initialLocationRequestedRef.current = true;
+      // Use fast location for immediate access when page loads
+      refreshLocationFast();
+    }
+  }, [refreshLocationFast]);
+
+  useEffect(() => {
+    if (viewMode === 'employee' && canViewEmployeeAttendance) {
+      loadEmployeeAttendance();
+    }
+    if (viewMode === 'wfh_requests' && canViewEmployeeAttendance) {
+      loadAllWfhRequests();
+      
+      // Refresh sample data every 30 seconds to keep timestamps current
+      const dataInterval = setInterval(() => {
+        loadAllWfhRequests();
+      }, 30000);
+      
+      // Force re-render every minute to update relative timestamps
+      const renderInterval = setInterval(() => {
+        setAllWfhRequests(prev => [...prev]); // Trigger re-render
+      }, 60000);
+      
+      return () => {
+        clearInterval(dataInterval);
+        clearInterval(renderInterval);
+      };
+    }
+  }, [viewMode, selectedDate, loadAllWfhRequests]);
+
+  useEffect(() => {
+    if (employeeExportFilter !== 'specific') {
+      setFilteredExportEmployees([]);
+      return;
+    }
+    let subset = exportEmployees;
+    const normalizedDept = selectedExportDepartment.trim().toLowerCase();
+    if (normalizedDept) {
+      subset = subset.filter(
+        (emp) => (emp.department || '').trim().toLowerCase() === normalizedDept,
+      );
+    }
+    const searchValue = employeeExportSearch.trim().toLowerCase();
+    if (searchValue) {
+      subset = subset.filter(
+        (emp) =>
+          emp.name.toLowerCase().includes(searchValue) ||
+          emp.employee_id?.toLowerCase().includes(searchValue),
+      );
+    }
+    setFilteredExportEmployees(subset);
+  }, [
+    employeeExportFilter,
+    exportEmployees,
+    selectedExportDepartment,
+    employeeExportSearch,
+  ]);
+
+  useEffect(() => {
+    if (employeeExportFilter === 'all') {
+      setSelectedExportEmployee(null);
+    }
+  }, [employeeExportFilter]);
+
+  const handleQuickFilter = (filter: string) => {
+    setQuickFilter(filter);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    switch (filter) {
+      case 'last_month':
+        setExportStartDate(subMonths(today, 1));
+        setExportEndDate(today);
+        break;
+      case 'last_3_months':
+        setExportStartDate(subMonths(today, 3));
+        setExportEndDate(today);
+        break;
+      case 'last_6_months':
+        setExportStartDate(subMonths(today, 6));
+        setExportEndDate(today);
+        break;
+      case 'custom':
+      default:
+        break;
+    }
+  };
+
+  const openExportModal = (type: 'csv' | 'pdf') => {
+    if (!canExportAttendance) {
+      return;
+    }
+    setExportType(type);
+    setExportModalOpen(true);
+    setQuickFilter('custom');
+    setExportStartDate(undefined);
+    setExportEndDate(new Date());
+    setEmployeeExportFilter('all');
+    setSelectedExportEmployee(null);
+    setEmployeeExportSearch('');
+    if (exportDepartments.length === 1) {
+      setSelectedExportDepartment(exportDepartments[0]);
+    } else if (user?.department) {
+      const normalized = exportDepartments.find(
+        (dept) => dept.trim().toLowerCase() === user.department.trim().toLowerCase(),
+      );
+      setSelectedExportDepartment(normalized || selectedExportDepartment || '');
+    }
+  };
+
+  const performExport = async () => {
+    if (!exportStartDate && !exportEndDate) {
+      toast({
+        title: 'Date Range Required',
+        description: 'Please select at least a start or end date.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (employeeExportFilter === 'specific' && !selectedExportEmployee) {
+      toast({
+        title: 'Employee Selection Required',
+        description: 'Choose an employee to export their attendance.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const departmentParam = (selectedExportDepartment || user?.department || '').trim();
+    if (!departmentParam && canExportAttendance) {
+      toast({
+        title: 'Department Required',
+        description: 'Please select a department to export.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsExporting(true);
+    setExportModalOpen(false);
+
+    try {
+      const params = new URLSearchParams();
+      if (departmentParam) {
+        params.append('department', departmentParam);
+      }
+      if (exportStartDate) {
+        params.append('start_date', format(exportStartDate, 'yyyy-MM-dd'));
+      }
+      if (exportEndDate) {
+        params.append('end_date', format(exportEndDate, 'yyyy-MM-dd'));
+      }
+      if (employeeExportFilter === 'specific' && selectedExportEmployee) {
+        params.append(
+          'employee_id',
+          selectedExportEmployee.employee_id || selectedExportEmployee.user_id.toString(),
+        );
+      }
+
+      const apiUrl = `http://localhost:8000/attendance/download/${exportType}?${params.toString()}`;
+      const res = await fetch(apiUrl, { method: 'GET' });
+      if (!res.ok) {
+        throw new Error(`Request failed with status ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+
+      const dateStr =
+        exportStartDate && exportEndDate
+          ? `${format(exportStartDate, 'yyyyMMdd')}_${format(exportEndDate, 'yyyyMMdd')}`
+          : exportStartDate
+          ? `from_${format(exportStartDate, 'yyyyMMdd')}`
+          : exportEndDate
+          ? `until_${format(exportEndDate, 'yyyyMMdd')}`
+          : 'all';
+
+      const empSuffix =
+        employeeExportFilter === 'specific' && selectedExportEmployee
+          ? `_${selectedExportEmployee.employee_id || selectedExportEmployee.user_id}`
+          : '';
+
+      a.download = `attendance_report${empSuffix}_${dateStr}.${exportType}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Export Successful',
+        description: `Attendance data exported as ${exportType?.toUpperCase()}.`,
+      });
+    } catch (error: any) {
+      console.error('Attendance export failed', error);
+      toast({
+        title: 'Export Failed',
+        description: error?.message || 'Unable to export attendance data.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
+      setExportType(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!exportDepartments.length) {
+      setSelectedExportDepartment('');
+      return;
+    }
+    if (
+      selectedExportDepartment &&
+      exportDepartments.some(
+        (dept) => dept.trim().toLowerCase() === selectedExportDepartment.trim().toLowerCase(),
+      )
+    ) {
+      return;
+    }
+    const preferred =
+      user?.department &&
+      exportDepartments.find(
+        (dept) => dept.trim().toLowerCase() === user.department.trim().toLowerCase(),
+      );
+    setSelectedExportDepartment(preferred || exportDepartments[0]);
+  }, [exportDepartments, selectedExportDepartment, user?.department]);
+
+  const loadFromBackend = async () => {
+    try {
+      if (!user?.id) return;
+      const res = await fetch(`http://localhost:8000/attendance/my-attendance/${user.id}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setAttendanceHistory(
+        data
+          .map((rec: any) => ({
+            id: String(rec.attendance_id),
+            userId: String(rec.user_id),
+            date: formatDateIST(rec.check_in),
+            checkInTime: rec.check_in,
+            checkOutTime: rec.check_out || undefined,
+            checkInLocation: {
+              latitude: 0,
+              longitude: 0,
+              address: rec.checkInLocationLabel || rec.locationLabel || 'N/A',
+            },
+            checkOutLocation: {
+              latitude: 0,
+              longitude: 0,
+              address: rec.checkOutLocationLabel || rec.locationLabel || 'N/A',
+            },
+            checkInSelfie: rec.checkInSelfie || '',
+            checkOutSelfie: rec.checkOutSelfie || '',
+            status: 'present',
+            workHours: rec.total_hours,
+            workSummary: rec.workSummary || rec.work_summary || null,
+            workReport: resolveStaticUrl(rec.workReport || rec.work_report),
+          }))
+          .reverse()
+      );
+      const today = todayIST();
+      const todayRecord = data.find((rec: any) => {
+        const recordDate = formatDateIST(rec.check_in);
+        return recordDate === today;
+      });
+
+      if (todayRecord) {
+        const attendance: AttendanceRecord = {
+          id: todayRecord.attendance_id.toString(),
+          userId: todayRecord.user_id.toString(),
+          date: formatDateIST(todayRecord.check_in),
+          checkInTime: todayRecord.check_in, // Use ISO datetime string
+          checkOutTime: todayRecord.check_out || undefined, // Use ISO datetime string
+          checkInLocation: {
+            latitude: 0,
+            longitude: 0,
+            address: todayRecord.checkInLocationLabel || todayRecord.locationLabel || todayRecord.gps_location || 'N/A',
+          },
+          checkOutLocation: {
+            latitude: 0,
+            longitude: 0,
+            address: todayRecord.checkOutLocationLabel || todayRecord.locationLabel || todayRecord.gps_location || 'N/A',
+          },
+          checkInSelfie: todayRecord.checkInSelfie || todayRecord.selfie || '',
+          checkOutSelfie: todayRecord.checkOutSelfie || '',
+          status: 'present',
+          workHours: todayRecord.total_hours,
+          workSummary: todayRecord.workSummary || todayRecord.work_summary || null,
+          workReport: resolveStaticUrl(todayRecord.workReport || todayRecord.work_report),
+        };
+        setCurrentAttendance(attendance);
+        
+        // Initialize timer state for existing attendance
+        if (!attendance.checkOutTime) {
+          const attendanceCheckInTime = new Date(attendance.checkInTime);
+          const now = new Date();
+          const timeSinceCheckIn = (now.getTime() - attendanceCheckInTime.getTime()) / 1000; // seconds
+          
+          // Check if this is a fresh check-in (less than 5 minutes ago)
+          const isRecentCheckIn = timeSinceCheckIn < 5 * 60; // 5 minutes
+          
+          if (isRecentCheckIn) {
+            // Fresh check-in - start with zero values
+            setOnlineStartTime(attendanceCheckInTime);
+            setOfflineStartTime(null);
+            setAccumulatedOnlineSeconds(0);
+            setAccumulatedOfflineSeconds(0);
+            setWorkingHours('0 hrs - 0 mins');
+            setOnlineWorkingHours('0 hrs - 0 mins');
+            setTotalOfflineTime('0 hrs - 0 mins');
+            setIsFreshCheckIn(true);
+            setCheckInTime(attendanceCheckInTime);
+            
+            // Clear fresh flag after remaining time
+            const remainingTime = (5 * 60 * 1000) - (timeSinceCheckIn * 1000);
+            setTimeout(() => {
+              setIsFreshCheckIn(false);
+              console.log('Fresh check-in period ended - backend sync enabled');
+            }, remainingTime);
+            
+            console.log(`Fresh check-in detected (${Math.floor(timeSinceCheckIn)}s ago) - starting with zero values`);
+          } else {
+            // Existing attendance - fetch actual work hours from backend
+            setOnlineStartTime(now);
+            setOfflineStartTime(null);
+            setIsFreshCheckIn(false);
+            setCheckInTime(attendanceCheckInTime);
+            
+            // Fetch actual work hours from backend
+            try {
+              const token = localStorage.getItem('token');
+              const workHoursResponse = await fetch(`http://localhost:8000/attendance/working-hours/${attendance.id}`, {
+                headers: {
+                  'Authorization': token ? `Bearer ${token}` : '',
+                },
+              });
+              
+              if (workHoursResponse.ok) {
+                const workHoursData = await workHoursResponse.json();
+                const backendOnlineSeconds = workHoursData.total_seconds || 0;
+                const backendOfflineSeconds = workHoursData.total_offline_seconds || 0;
+                const isCurrentlyOnline = workHoursData.is_currently_online || false;
+                
+                // Set accumulated to backend values (only actual tracked time)
+                setAccumulatedOnlineSeconds(backendOnlineSeconds);
+                setAccumulatedOfflineSeconds(backendOfflineSeconds);
+                
+                // Update display with actual tracked time
+                const onlineDisplay = formatTimeDisplay(backendOnlineSeconds);
+                const offlineDisplay = formatTimeDisplay(backendOfflineSeconds);
+                setOnlineWorkingHours(onlineDisplay);
+                setWorkingHours(onlineDisplay);
+                setTotalOfflineTime(offlineDisplay);
+                
+                // Set current online status from backend
+                setIsOnline(isCurrentlyOnline);
+                
+                console.log(`Existing attendance - loaded from backend: Online=${backendOnlineSeconds}s, Offline=${backendOfflineSeconds}s, CurrentlyOnline=${isCurrentlyOnline}`);
+              } else {
+                // If backend call fails, start with 0 hours (no tracked time)
+                setAccumulatedOnlineSeconds(0);
+                setAccumulatedOfflineSeconds(0);
+                setWorkingHours('0 hrs - 0 mins');
+                setOnlineWorkingHours('0 hrs - 0 mins');
+                setTotalOfflineTime('0 hrs - 0 mins');
+                setIsOnline(false);
+                console.log(`Existing attendance - backend call failed, starting with 0 hours`);
+              }
+            } catch (error) {
+              // If fetch fails, start with 0 hours (no tracked time)
+              setAccumulatedOnlineSeconds(0);
+              setAccumulatedOfflineSeconds(0);
+              setWorkingHours('0 hrs - 0 mins');
+              setOnlineWorkingHours('0 hrs - 0 mins');
+              setTotalOfflineTime('0 hrs - 0 mins');
+              setIsOnline(false);
+              console.log(`Existing attendance - fetch error, starting with 0 hours`);
+            }
+          }
+          
+          setLastStatusChangeTime(attendanceCheckInTime);
+        }
+
+        // Store all history
+        setAttendanceHistory((prev) => prev);
+      } else {
+        setCurrentAttendance(null);
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const loadEmployeeAttendance = async () => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:8000/attendance/all', {
+        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+      });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`Failed to load employee attendance: ${res.status}`, errorText);
+        toast({
+          title: 'Error',
+          description: `Failed to load attendance: ${res.status === 403 ? 'Access denied' : res.status === 400 ? 'Department not assigned' : 'Server error'}`,
+          variant: 'destructive',
+        });
+        setEmployeeAttendanceData([]);
+        return;
+      }
+      
+      const data = await res.json();
+      const records: EmployeeAttendanceRecord[] = data
+        .filter((rec: any) => rec.check_in && new Date(rec.check_in))
+        .map((rec: any) => ({
+          id: String(rec.attendance_id || rec.id || ''),
+          userId: String(rec.user_id || rec.employee_id || ''),
+          date: rec.check_in ? formatDateIST(rec.check_in) : selectedDate,
+          checkInTime: rec.check_in || undefined, // Use ISO datetime string if available
+          checkOutTime: rec.check_out || undefined, // Use ISO datetime string if available
+          checkInLocation: {
+            latitude: 0,
+            longitude: 0,
+            address: rec.checkInLocationLabel || rec.locationLabel || rec.gps_location || 'N/A',
+          },
+          checkOutLocation: {
+            latitude: 0,
+            longitude: 0,
+            address: rec.checkOutLocationLabel || rec.locationLabel || 'N/A',
+          },
+          checkInSelfie: rec.checkInSelfie || rec.selfie || '',
+          checkOutSelfie: rec.checkOutSelfie || '',
+          status: 'present',
+          workHours: rec.total_hours || 0,
+          name: rec.name || rec.userName || undefined,
+          email: rec.email || rec.userEmail || undefined,
+          department: rec.department || undefined,
+          workSummary: rec.workSummary || rec.work_summary || null,
+          workReport: resolveStaticUrl(rec.workReport || rec.work_report),
+        }))
+        .filter((r: AttendanceRecord) => r.date === selectedDate)
+        .sort((a, b) => {
+          // Sort by check-in time in descending order (most recent first)
+          const timeA = new Date(a.checkInTime || 0).getTime();
+          const timeB = new Date(b.checkInTime || 0).getTime();
+          return timeB - timeA;
+        });
+      setEmployeeAttendanceData(records);
+    } catch (e: any) {
+      console.error('Error loading employee attendance:', e);
+      toast({
+        title: 'Error',
+        description: e.message || 'Failed to load employee attendance',
+        variant: 'destructive',
+      });
+      setEmployeeAttendanceData([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadExportEmployees = useCallback(async () => {
+    if (!canExportAttendance) {
+      return;
+    }
+    try {
+      const res = await fetch('http://localhost:8000/employees');
+      if (!res.ok) {
+        throw new Error(`Failed to load employees: ${res.status}`);
+      }
+      const data = await res.json();
+      let mapped: ExportEmployee[] = data.map((emp: any) => ({
+        user_id: emp.user_id || emp.userId,
+        employee_id: emp.employee_id || emp.employeeId || '',
+        name: emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
+        department: emp.department || emp.department_name || '',
+      }));
+
+      if (user?.department) {
+        const normalizedDept = user.department.trim().toLowerCase();
+        mapped = mapped.filter(
+          (emp) => (emp.department || '').trim().toLowerCase() === normalizedDept,
+        );
+      }
+
+      setExportEmployees(mapped);
+      const deptSet = new Set(
+        mapped
+          .map((emp) => emp.department)
+          .filter((dept): dept is string => Boolean(dept && dept.trim())),
+      );
+      const deptList = Array.from(deptSet).sort((a, b) => a.localeCompare(b));
+      setExportDepartments(deptList);
+      if (deptList.length === 1) {
+        setSelectedExportDepartment(deptList[0]);
+      }
+    } catch (error) {
+      console.error('loadExportEmployees error', error);
+    }
+  }, [canExportAttendance, user?.department]);
+
+  useEffect(() => {
+    if (canExportAttendance) {
+      loadExportEmployees();
+    }
+  }, [canExportAttendance, loadExportEmployees]);
+
+  const handleCheckIn = () => {
+    if (!location) {
+      toast({
+        title: 'Error',
+        description: t.attendance.locationRequired,
+        variant: 'destructive',
+      });
+      return;
+    }
+    setIsCheckingIn(true);
+    setShowCamera(true);
+  };
+
+  const handleCheckOut = () => {
+    if (!location) {
+      toast({
+        title: 'Error',
+        description: t.attendance.locationRequired,
+        variant: 'destructive',
+      });
+      return;
+    }
+    setShowCheckoutDialog(true);
+  };
+
+  const confirmCheckOut = () => {
+    if (!todaysWork.trim()) {
+      toast({
+        title: 'Work Summary Required',
+        description: 'Please provide today\'s work summary before checking out.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setIsCheckingIn(false);
+    setShowCamera(true);
+    setShowCheckoutDialog(false);
+  };
+
+  // Helper function to compress base64 image
+  const compressBase64Image = async (base64: string, maxWidth = 800, quality = 0.7): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        // Calculate new dimensions while maintaining aspect ratio
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        // Convert to compressed base64
+        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressedBase64);
+      };
+      img.src = base64;
+    });
+  };
+
+  const handleCameraCapture = async (imageData: string) => {
+    setIsLoading(true);
+    try {
+      // ✅ Compress the image to reduce payload size (fixes 413 error)
+      const compressedImage = await compressBase64Image(imageData, 800, 0.7);
+      if (!location) {
+        await refreshLocation();
+      }
+      if (!location || !user?.id) throw new Error('Location or user missing');
+      if (!isCheckingIn && !todaysWork.trim()) {
+        throw new Error('Work summary is required to check out.');
+      }
+      const locationPayload = {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        accuracy: location.accuracy ?? null,
+        address: location.address ?? '',
+        timestamp: new Date().toISOString(),
+      };
+      if (location.accuracy && location.accuracy > 10) {
+        toast({ title: 'Low GPS Accuracy', description: `Proceeding with ±${Math.round(location.accuracy)}m.`, variant: 'default' });
+      }
+      let workReportBase64: string | undefined;
+      if (!isCheckingIn && workPdf) {
+        workReportBase64 = await fileToBase64(workPdf);
+      }
+      const payload = {
+        user_id: user.id,
+        gps_location: locationPayload,
+        location_data: {
+          [isCheckingIn ? 'check_in' : 'check_out']: locationPayload,
+        },
+        selfie: compressedImage, // ✅ Use compressed image
+        work_summary: !isCheckingIn ? todaysWork.trim() : undefined,
+        work_report: !isCheckingIn ? workReportBase64 : undefined,
+      };
+      const endpoint = isCheckingIn
+        ? 'http://localhost:8000/attendance/check-in/json'
+        : 'http://localhost:8000/attendance/check-out/json';
+      
+      // ✅ Get token from localStorage for authentication
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'Attendance API error');
+      }
+      await loadFromBackend();
+      toast({ title: 'Success', description: isCheckingIn ? t.attendance.checkedIn : t.attendance.checkedOut });
+      
+      // Set user online status based on check-in/check-out
+      if (isCheckingIn) {
+        setIsOnline(true);
+        // Initialize timers to 0 on check-in
+        const now = new Date();
+        setOnlineStartTime(now);
+        setOfflineStartTime(null);
+        setAccumulatedOnlineSeconds(0);
+        setAccumulatedOfflineSeconds(0);
+        setWorkingHours('0 hrs - 0 mins');
+        setOnlineWorkingHours('0 hrs - 0 mins');
+        setTotalOfflineTime('0 hrs - 0 mins');
+        setCurrentSessionOfflineTime('0:00:00');
+        setLastStatusChangeTime(now);
+        
+        // Set fresh check-in flag to prevent backend sync for 5 minutes
+        setIsFreshCheckIn(true);
+        setCheckInTime(now);
+        
+        // Clear fresh check-in flag after 5 minutes
+        setTimeout(() => {
+          setIsFreshCheckIn(false);
+          console.log('Fresh check-in period ended - backend sync enabled');
+        }, 5 * 60 * 1000); // 5 minutes
+        
+        console.log('User checked in - timers initialized to 0, fresh check-in flag set');
+      } else {
+        setIsOnline(false);
+        // Reset all timers on checkout
+        setOnlineStartTime(null);
+        setOfflineStartTime(null);
+        setAccumulatedOnlineSeconds(0);
+        setAccumulatedOfflineSeconds(0);
+        setWorkingHours('0 hrs - 0 mins');
+        setOnlineWorkingHours('0 hrs - 0 mins');
+        setTotalOfflineTime('0 hrs - 0 mins');
+        setCurrentSessionOfflineTime('0:00:00');
+        setLastStatusChangeTime(null);
+        setIsFreshCheckIn(false);
+        setCheckInTime(null);
+        console.log('User checked out - all timers reset');
+        setTodaysWork('');
+        setWorkPdf(null);
+      }
+    } catch (e: any) {
+      toast({ title: 'Error', description: e?.message || 'Failed to record attendance', variant: 'destructive' });
+    } finally {
+      setShowCamera(false);
+      setIsLoading(false);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setWorkPdf(file);
+    }
+  };
+
+  const handleWfhSubmit = async () => {
+    if (!wfhStartDate || !wfhEndDate || !wfhReason.trim()) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please fill in all required fields.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (wfhStartDate > wfhEndDate) {
+      toast({
+        title: 'Invalid Date Range',
+        description: 'End date must be after start date.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSubmittingWfh(true);
+    try {
+      // This is a frontend-only implementation
+      // In a real app, this would make an API call to submit the WFH request
+      const currentTime = new Date(); // Use current time for accurate timestamp
+      const newRequest = {
+        id: Date.now().toString(),
+        startDate: format(wfhStartDate, 'yyyy-MM-dd'),
+        endDate: format(wfhEndDate, 'yyyy-MM-dd'),
+        reason: wfhReason.trim(),
+        type: wfhType,
+        status: 'pending',
+        submittedAt: currentTime.toISOString(), // Use current time
+        submittedBy: user?.name || 'Unknown',
+        submittedById: user?.id || '',
+        department: user?.department || '',
+        role: user?.role || 'employee',
+      };
+
+      setWfhRequests(prev => [newRequest, ...prev]);
+      // Also add to all requests for managers to see
+      setAllWfhRequests(prev => [newRequest, ...prev]);
+      
+      toast({
+        title: 'WFH Request Submitted',
+        description: 'Your work from home request has been submitted for approval.',
+        variant: 'default',
+      });
+
+      // Reset form
+      setWfhStartDate(undefined);
+      setWfhEndDate(undefined);
+      setWfhReason('');
+      setWfhType('full_day');
+    } catch (error) {
+      toast({
+        title: 'Submission Failed',
+        description: 'Failed to submit WFH request. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmittingWfh(false);
+    }
+  };
+
+  // Handle WFH request approval/rejection
+  const handleWfhRequestAction = async (requestId: string, action: 'approve' | 'reject', reason?: string) => {
+    setIsProcessingWfhRequest(true);
+    try {
+      // Frontend-only implementation
+      const currentTime = new Date(); // Use current time for accurate timestamp
+      setAllWfhRequests(prev => 
+        prev.map(req => 
+          req.id === requestId 
+            ? { 
+                ...req, 
+                status: action === 'approve' ? 'approved' : 'rejected',
+                processedAt: currentTime.toISOString(), // Use current time
+                processedBy: user?.name || 'Unknown',
+                rejectionReason: action === 'reject' ? reason : undefined
+              }
+            : req
+        )
+      );
+
+      // Also update user's own requests if it's their request
+      setWfhRequests(prev => 
+        prev.map(req => 
+          req.id === requestId 
+            ? { 
+                ...req, 
+                status: action === 'approve' ? 'approved' : 'rejected',
+                processedAt: currentTime.toISOString(), // Use current time
+                processedBy: user?.name || 'Unknown',
+                rejectionReason: action === 'reject' ? reason : undefined
+              }
+            : req
+        )
+      );
+
+      toast({
+        title: `Request ${action === 'approve' ? 'Approved' : 'Rejected'}`,
+        description: `WFH request has been ${action === 'approve' ? 'approved' : 'rejected'} successfully.`,
+        variant: 'default',
+      });
+
+      setShowWfhRequestDialog(false);
+      setSelectedWfhRequest(null);
+    } catch (error) {
+      toast({
+        title: 'Action Failed',
+        description: `Failed to ${action} the request. Please try again.`,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessingWfhRequest(false);
+    }
+  };
+
+  // Get filtered WFH requests
+  const getFilteredWfhRequests = () => {
+    if (wfhRequestFilter === 'all') return allWfhRequests;
+    return allWfhRequests.filter(req => req.status === wfhRequestFilter);
+  };
+
+  // Get pending requests count for badge
+  const getPendingWfhCount = () => {
+    return allWfhRequests.filter(req => req.status === 'pending').length;
+  };
+
+  // Check if user has approved WFH for today
+  const getTodayWfhStatus = () => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const todayWfh = [...wfhRequests, ...allWfhRequests].find(req => 
+      req.submittedById === user?.id && 
+      req.status === 'approved' && 
+      req.startDate <= today && 
+      req.endDate >= today
+    );
+    return todayWfh;
+  };
+
+  // Format relative time for better user experience
+  const formatRelativeTime = (timestamp: string) => {
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diffInSeconds = Math.floor((now.getTime() - time.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return `${diffInSeconds} seconds ago`;
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    } else if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    } else {
+      const days = Math.floor(diffInSeconds / 86400);
+      return `${days} day${days > 1 ? 's' : ''} ago`;
+    }
+  };
+
+  const handleOnlineStatusChange = async (newStatus: boolean, reason?: string) => {
+    if (!currentAttendance?.id) {
+      throw new Error('No active attendance record');
+    }
+
+    const now = new Date();
+
+    // Update accumulated time before changing status
+    if (isOnline && onlineStartTime && !newStatus) {
+      // Was online, now going offline - accumulate online time
+      const onlineSessionSeconds = Math.floor((now.getTime() - onlineStartTime.getTime()) / 1000);
+      setAccumulatedOnlineSeconds(prev => {
+        const newTotal = prev + onlineSessionSeconds;
+        console.log(`Going offline - accumulated ${onlineSessionSeconds}s online time (total: ${newTotal}s)`);
+        return newTotal;
+      });
+      setOnlineStartTime(null);
+      setOfflineStartTime(now);
+    } else if (!isOnline && offlineStartTime && newStatus) {
+      // Was offline, now going online - accumulate offline time
+      const offlineSessionSeconds = Math.floor((now.getTime() - offlineStartTime.getTime()) / 1000);
+      setAccumulatedOfflineSeconds(prev => {
+        const newTotal = prev + offlineSessionSeconds;
+        console.log(`Going online - accumulated ${offlineSessionSeconds}s offline time (total: ${newTotal}s)`);
+        return newTotal;
+      });
+      setOfflineStartTime(null);
+      setOnlineStartTime(now);
+    } else if (newStatus && !onlineStartTime) {
+      // Starting online timer for first time or after reset
+      setOnlineStartTime(now);
+      console.log('Starting online timer for first time');
+    } else if (!newStatus && !offlineStartTime) {
+      // Starting offline timer for first time
+      setOfflineStartTime(now);
+      console.log('Starting offline timer for first time');
+    }
+
+    // Call API to update status
+    const token = localStorage.getItem('token');
+    const response = await fetch('http://localhost:8000/attendance/online-status', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+      body: JSON.stringify({
+        attendance_id: parseInt(currentAttendance.id),
+        is_online: newStatus,
+        reason: reason || null,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || 'Failed to update status');
+    }
+
+    // Update state after successful API call
+    setIsOnline(newStatus);
+    setLastStatusChangeTime(now);
+    
+    console.log(`Status changed successfully: ${newStatus ? 'Online' : 'Offline'} at ${now.toLocaleTimeString()}`);
+  };
+
+  const fetchWorkingHours = async () => {
+    if (!currentAttendance?.id) return;
+
+    // Skip backend sync during fresh check-in period (first 5 minutes)
+    if (isFreshCheckIn && checkInTime) {
+      const now = new Date();
+      const timeSinceCheckIn = (now.getTime() - checkInTime.getTime()) / 1000; // seconds
+      
+      if (timeSinceCheckIn < 5 * 60) { // Less than 5 minutes
+        console.log(`Skipping backend sync - fresh check-in (${Math.floor(timeSinceCheckIn)}s since check-in)`);
+        return;
+      }
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:8000/attendance/working-hours/${currentAttendance.id}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Only sync if there's meaningful backend activity (>1 minute)
+        const backendOnlineSeconds = data.total_seconds;
+        const backendOfflineSeconds = data.total_offline_seconds || 0;
+        
+        if (backendOnlineSeconds < 60 && isFreshCheckIn) {
+          console.log('Skipping sync - no meaningful backend activity yet');
+          return;
+        }
+        
+        // For fresh check-ins, calculate elapsed time from check-in instead of using backend total
+        // This ensures we start from 0 hrs - 0 mins at check-in time
+        let effectiveOnlineSeconds = backendOnlineSeconds;
+        let effectiveOfflineSeconds = backendOfflineSeconds;
+        
+        if (isFreshCheckIn && checkInTime) {
+          const now = new Date();
+          const timeSinceCheckIn = (now.getTime() - checkInTime.getTime()) / 1000; // seconds
+          
+          // For fresh check-in, use elapsed time since check-in as the source of truth
+          if (isOnline) {
+            // If currently online, use time since check-in
+            effectiveOnlineSeconds = timeSinceCheckIn;
+            effectiveOfflineSeconds = 0;
+            console.log(`Fresh check-in sync: Using elapsed time (${Math.floor(timeSinceCheckIn)}s) instead of backend value (${backendOnlineSeconds}s)`);
+          } else {
+            // If currently offline, backend offline time is valid, but online time should be from check-in to first offline
+            effectiveOnlineSeconds = Math.max(0, timeSinceCheckIn - backendOfflineSeconds);
+            console.log(`Fresh check-in sync (offline): Online=${Math.floor(effectiveOnlineSeconds)}s, Offline=${backendOfflineSeconds}s`);
+          }
+        }
+        
+        // Sync backend data with our local timer state
+        // The backend now properly tracks pause/resume from logout/login
+        const now = new Date();
+        
+        // Update accumulated times to match backend's pause/resume calculations
+        if (isOnline && onlineStartTime) {
+          // Currently online - set accumulated to effective value minus current session
+          const currentSessionSeconds = Math.floor((now.getTime() - onlineStartTime.getTime()) / 1000);
+          // Ensure we don't get negative values due to timezone or timing issues
+          const calculatedAccumulated = Math.max(0, effectiveOnlineSeconds - currentSessionSeconds);
+          setAccumulatedOnlineSeconds(calculatedAccumulated);
+          
+          console.log(`Online sync: Effective=${effectiveOnlineSeconds}s, CurrentSession=${currentSessionSeconds}s, Accumulated=${calculatedAccumulated}s`);
+        } else {
+          // Currently offline - set accumulated to effective value
+          setAccumulatedOnlineSeconds(effectiveOnlineSeconds);
+          console.log(`Online sync (offline): Effective=${effectiveOnlineSeconds}s, Accumulated=${effectiveOnlineSeconds}s`);
+        }
+        
+        if (!isOnline && offlineStartTime) {
+          // Currently offline - set accumulated to effective value minus current session
+          const currentSessionSeconds = Math.floor((now.getTime() - offlineStartTime.getTime()) / 1000);
+          // Ensure we don't get negative values due to timezone or timing issues
+          const calculatedAccumulated = Math.max(0, effectiveOfflineSeconds - currentSessionSeconds);
+          setAccumulatedOfflineSeconds(calculatedAccumulated);
+          
+          console.log(`Offline sync: Effective=${effectiveOfflineSeconds}s, CurrentSession=${currentSessionSeconds}s, Accumulated=${calculatedAccumulated}s`);
+        } else {
+          // Currently online - set accumulated to effective value
+          setAccumulatedOfflineSeconds(effectiveOfflineSeconds);
+          console.log(`Offline sync (online): Effective=${effectiveOfflineSeconds}s, Accumulated=${effectiveOfflineSeconds}s`);
+        }
+        
+        console.log(`Synced with backend - Online: ${effectiveOnlineSeconds}s, Offline: ${effectiveOfflineSeconds}s (fresh check-in aware)`);
+        
+      } else {
+        console.log('Backend sync failed, using local timer state');
+      }
+    } catch (error) {
+      console.error('Failed to fetch working hours:', error);
+    }
+  };
+
+  // Fetch user's current online status (preserves status across login/logout with pause/resume)
+  const fetchUserOnlineStatus = async () => {
+    if (!user?.id || hasLoadedOnlineStatus) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:8000/attendance/user-online-status/${user.id}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Only update online status if user is currently checked in and not checked out
+        if (data.is_checked_in && !data.checked_out) {
+          const wasOnline = data.is_online;
+          setIsOnline(wasOnline);
+          
+          // Use the actual last status change time from backend, not current time
+          const lastStatusChangeTime = new Date(data.last_status_change);
+          const now = new Date();
+          
+          // Debug logging for timezone issues
+          console.log(`🔍 Resume Debug Info:`);
+          console.log(`   Backend last_status_change: ${data.last_status_change}`);
+          console.log(`   Parsed as Date: ${lastStatusChangeTime.toISOString()}`);
+          console.log(`   Local time: ${lastStatusChangeTime.toLocaleString()}`);
+          console.log(`   Current time: ${now.toISOString()}`);
+          console.log(`   Time difference: ${(now.getTime() - lastStatusChangeTime.getTime()) / 1000}s`);
+          
+          if (wasOnline) {
+            // User was online when they logged back in - resume online timer from last status change
+            setOnlineStartTime(lastStatusChangeTime);
+            setOfflineStartTime(null);
+            console.log(`User online status preserved: Online (timer resumed from ${lastStatusChangeTime.toLocaleTimeString()})`);
+          } else {
+            // User was offline when they logged back in - resume offline timer from last status change
+            setOnlineStartTime(null);
+            setOfflineStartTime(lastStatusChangeTime);
+            console.log(`User online status preserved: Offline (timer resumed from ${lastStatusChangeTime.toLocaleTimeString()})`);
+          }
+          
+          setLastStatusChangeTime(lastStatusChangeTime);
+          
+          // Force a backend sync to get accurate accumulated times
+          // Don't rely on local calculations when resuming from logout
+          setAccumulatedOnlineSeconds(0);
+          setAccumulatedOfflineSeconds(0);
+          
+        } else {
+          // If not checked in, set to offline
+          setIsOnline(false);
+          setOnlineStartTime(null);
+          setOfflineStartTime(null);
+          console.log('User not checked in, setting status to offline');
+        }
+        setHasLoadedOnlineStatus(true);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user online status:', error);
+      // Default to offline if we can't fetch status
+      setIsOnline(false);
+      setOnlineStartTime(null);
+      setOfflineStartTime(null);
+      setHasLoadedOnlineStatus(true);
+    }
+  };
+
+  // Fetch working hours periodically when checked in
+  useEffect(() => {
+    if (currentAttendance && !currentAttendance.checkOutTime) {
+      fetchWorkingHours();
+      const interval = setInterval(fetchWorkingHours, 10000); // Update every 10 seconds for responsive tracking
+      return () => clearInterval(interval);
+    }
+  }, [currentAttendance]);
+
+  // Real-time timer updates
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    interval = setInterval(() => {
+      const now = new Date();
+      
+      if (isOnline && onlineStartTime) {
+        // Update online time display - current session + accumulated
+        const currentOnlineSeconds = Math.floor((now.getTime() - onlineStartTime.getTime()) / 1000);
+        const totalOnlineSeconds = accumulatedOnlineSeconds + currentOnlineSeconds;
+        const onlineDisplay = formatTimeDisplay(totalOnlineSeconds);
+        setOnlineWorkingHours(onlineDisplay);
+        setWorkingHours(onlineDisplay); // Main working hours shows online time
+        
+        // When online, show only accumulated offline time (current session is 0)
+        const offlineDisplay = formatTimeDisplay(accumulatedOfflineSeconds);
+        setTotalOfflineTime(offlineDisplay);
+        setCurrentSessionOfflineTime('0:00:00');
+        
+        console.log(`Timer Update (Online): Online=${onlineDisplay}, Offline=${offlineDisplay}`);
+      }
+      
+      if (!isOnline && offlineStartTime) {
+        // Update offline time displays - current session + accumulated
+        const currentOfflineSeconds = Math.floor((now.getTime() - offlineStartTime.getTime()) / 1000);
+        const totalOfflineSeconds = accumulatedOfflineSeconds + currentOfflineSeconds;
+        const offlineDisplay = formatTimeDisplay(totalOfflineSeconds);
+        setTotalOfflineTime(offlineDisplay);
+        
+        // Current session offline time in H:MM:SS format
+        const hours = Math.floor(currentOfflineSeconds / 3600);
+        const minutes = Math.floor((currentOfflineSeconds % 3600) / 60);
+        const seconds = currentOfflineSeconds % 60;
+        setCurrentSessionOfflineTime(`${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+        
+        // When offline, online time remains at accumulated value (no current session)
+        const onlineDisplay = formatTimeDisplay(accumulatedOnlineSeconds);
+        setOnlineWorkingHours(onlineDisplay);
+        setWorkingHours(onlineDisplay); // Main working hours shows accumulated online time only
+        
+        console.log(`Timer Update (Offline): Online=${onlineDisplay}, Offline=${offlineDisplay}, Current Session=${currentOfflineSeconds}s`);
+      }
+      
+      // If neither online nor offline timer is running, maintain current values
+      if ((!isOnline && !offlineStartTime) || (isOnline && !onlineStartTime)) {
+        const onlineDisplay = formatTimeDisplay(accumulatedOnlineSeconds);
+        const offlineDisplay = formatTimeDisplay(accumulatedOfflineSeconds);
+        setOnlineWorkingHours(onlineDisplay);
+        setWorkingHours(onlineDisplay);
+        setTotalOfflineTime(offlineDisplay);
+        setCurrentSessionOfflineTime('0:00:00');
+      }
+    }, 1000);
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isOnline, onlineStartTime, offlineStartTime, accumulatedOnlineSeconds, accumulatedOfflineSeconds]);
+
+  // Fetch user's online status when they have an active attendance record
+  useEffect(() => {
+    if (currentAttendance && !currentAttendance.checkOutTime && !hasLoadedOnlineStatus) {
+      fetchUserOnlineStatus();
+    }
+  }, [currentAttendance, hasLoadedOnlineStatus]);
+
+  // Fetch online status for all employees (for admin/hr/manager view)
+  const fetchAllOnlineStatus = useCallback(async () => {
+    if (!canViewEmployeeAttendance) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8000/attendance/current-online-status', {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Convert to simple map of user_id -> is_online
+        const statusMap: Record<number, boolean> = {};
+        Object.keys(data).forEach(userId => {
+          statusMap[parseInt(userId)] = data[userId].is_online;
+        });
+        setOnlineStatusMap(statusMap);
+      }
+    } catch (error) {
+      console.error('Failed to fetch online status:', error);
+    }
+  }, [canViewEmployeeAttendance]);
+
+  // Fetch online status periodically when viewing employee attendance
+  useEffect(() => {
+    if (viewMode === 'employee' && canViewEmployeeAttendance) {
+      fetchAllOnlineStatus();
+      const interval = setInterval(fetchAllOnlineStatus, 15000); // Update every 15 seconds
+      return () => clearInterval(interval);
+    }
+  }, [viewMode, canViewEmployeeAttendance, fetchAllOnlineStatus]);
+
+  // Fetch all users' online status (for Admin, HR, Manager viewing employee attendance)
+  const fetchAllUsersOnlineStatus = useCallback(async () => {
+    if (!canViewEmployeeAttendance) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8000/attendance/current-online-status', {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const statusMap: Record<string, boolean> = {};
+        Object.keys(data).forEach(userId => {
+          statusMap[userId] = data[userId].is_online;
+        });
+        setAllUsersOnlineStatus(statusMap);
+      }
+    } catch (error) {
+      console.error('Failed to fetch online status:', error);
+    }
+  }, [canViewEmployeeAttendance]);
+
+  // Fetch online status periodically when viewing employee attendance
+  useEffect(() => {
+    if (viewMode === 'employee' && canViewEmployeeAttendance) {
+      fetchAllUsersOnlineStatus();
+      const interval = setInterval(fetchAllUsersOnlineStatus, 15000); // Update every 15 seconds
+      return () => clearInterval(interval);
+    }
+  }, [viewMode, canViewEmployeeAttendance, fetchAllUsersOnlineStatus]);
+
+  const getStatusBadge = (status: string, checkInTime?: string, checkOutTime?: string) => {
+    // Check if check-in was late
+    const isCheckInLate = status === 'late' || (checkInTime && checkInTime > '09:30:00');
+    
+    // If check-in was late, always show "Late" badge regardless of check-out time
+    if (isCheckInLate) {
+      return <Badge variant="destructive">Late</Badge>;
+    }
+    
+    // For check-out badge: if check-out time is provided, check if it's early
+    if (checkOutTime && checkOutTime < '18:00:00') {
+      return <Badge variant="outline" className="border-orange-500 text-orange-500">Early</Badge>;
+    }
+    
+    // If check-in was on time and no early check-out, show "On Time"
+    if (status === 'present') {
+      return <Badge variant="default" className="bg-green-500">On Time</Badge>;
+    }
+    
+    return null;
+  };
+
+  const formatAttendanceTime = (dateString: string, timeString?: string) => {
+    if (!timeString) return '-';
+    return formatDateTimeComponentsIST(dateString, timeString, 'hh:mm a');
+  };
+
+  if (showCamera) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">
+            {isCheckingIn ? t.attendance.checkIn : t.attendance.checkOut}
+          </h2>
+        </div>
+        <AttendanceCamera
+          onCapture={handleCameraCapture}
+          onCancel={() => setShowCamera(false)}
+        />
+        {isLoading && (
+          <div className="text-center">
+            <p className="text-muted-foreground animate-pulse">Recognizing face...</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">{t.navigation.attendance}</h2>
+          <Badge variant="outline" className="text-lg px-3 py-1">
+            <Calendar className="h-4 w-4 mr-2" />
+            {format(new Date(), 'dd MMM yyyy')}
+          </Badge>
+        </div>
+        
+        <div className="flex justify-center w-full">
+          <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'self' | 'employee' | 'wfh' | 'wfh_requests')} className="w-full sm:w-auto">
+            <TabsList className={`grid ${canViewEmployeeAttendance ? 'grid-cols-4' : 'grid-cols-2'} h-14 w-full ${canViewEmployeeAttendance ? 'sm:w-[1000px]' : 'sm:w-[500px]'} bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm`}>
+            <TabsTrigger 
+              value="self"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+            >
+              <User className="h-4 w-4 mr-2" />
+              Self Attendance
+            </TabsTrigger>
+            {canViewEmployeeAttendance && (
+              <TabsTrigger 
+                value="employee"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-600 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+              >
+                <Users className="h-4 w-4 mr-2" />
+                Employee Attendance
+              </TabsTrigger>
+            )}
+            <TabsTrigger 
+              value="wfh"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+            >
+              <Home className="h-4 w-4 mr-2" />
+              Apply WFH
+            </TabsTrigger>
+            {canViewEmployeeAttendance && (
+              <TabsTrigger 
+                value="wfh_requests"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md relative"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                WFH Requests
+                {getPendingWfhCount() > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs font-bold bg-red-500 text-white border-2 border-white dark:border-gray-800"
+                  >
+                    {getPendingWfhCount()}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            )}
+            </TabsList>
+          </Tabs>
+        </div>
+      </div>
+
+      {canExportAttendance && viewMode === 'employee' && (
+        <div className="flex flex-col md:flex-row gap-2 justify-end">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => openExportModal('csv')}
+            disabled={isExporting}
+          >
+            <Download className="h-4 w-4" />
+            {isExporting && exportType === 'csv' ? 'Exporting...' : 'Export CSV'}
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => openExportModal('pdf')}
+            disabled={isExporting}
+          >
+            <Download className="h-4 w-4" />
+            {isExporting && exportType === 'pdf' ? 'Exporting...' : 'Export PDF'}
+          </Button>
+        </div>
+      )}
+
+      {viewMode === 'self' ? (
+        <>
+          {/* Self Attendance View */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t.attendance.todayStatus}</CardTitle>
+              <CardDescription>Your attendance status for today</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {isGettingFastLocation ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Getting location...</span>
+                  </div>
+                ) : location ? (
+                  <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4 mt-0.5" />
+                    <span className="flex-1">{location.address}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    <span>Location not available</span>
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {currentAttendance ? (
+                    <>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <LogIn className="h-4 w-4 text-green-500" />
+                          <span className="text-sm font-medium">Check-in Time</span>
+                          {getStatusBadge(currentAttendance.status, currentAttendance.checkInTime)}
+                          {getTodayWfhStatus() && (
+                            <Badge variant="outline" className="bg-orange-50 border-orange-500 text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+                              <Home className="h-3 w-3 mr-1" />
+                              WFH
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-lg font-semibold">
+                          {formatAttendanceTime(currentAttendance.date, currentAttendance.checkInTime)}
+                        </p>
+                        {getTodayWfhStatus() && (
+                          <p className="text-xs text-orange-600 dark:text-orange-400">
+                            Working from home today
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <LogOut className="h-4 w-4 text-red-500" />
+                          <span className="text-sm font-medium">Check-out Time</span>
+                          {currentAttendance.checkOutTime && 
+                            getStatusBadge(currentAttendance.status, currentAttendance.checkInTime, currentAttendance.checkOutTime)}
+                        </div>
+                        <p className="text-lg font-semibold">
+                          {currentAttendance.checkOutTime 
+                            ? formatAttendanceTime(currentAttendance.date, currentAttendance.checkOutTime)
+                            : '-'}
+                        </p>
+                      </div>
+                      
+                      <div className="col-span-2 space-y-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Clock className="h-4 w-4 text-blue-500" />
+                            <span className="text-sm font-medium">Total Work Hours</span>
+                          </div>
+                          <p className="text-lg font-semibold">
+                            {currentAttendance.checkOutTime 
+                              ? formatWorkHours(currentAttendance.workHours || 0)
+                              : workingHours}
+                          </p>
+                        </div>
+                          
+                          {/* Show online status indicator when checked in */}
+                          {!currentAttendance.checkOutTime && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+                              <span className="text-green-700 dark:text-green-300">Live tracking - updates in real-time</span>
+                            </div>
+                          )}
+                        </div>
+                    </>
+                  ) : (
+                    <div className="col-span-2 text-center py-8 text-muted-foreground">
+                      <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Not checked in yet</p>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex gap-3 pt-4">
+                  {!currentAttendance ? (
+                    <Button onClick={handleCheckIn} size="lg" className="flex-1">
+                      <LogIn className="h-5 w-5 mr-2" />
+                      {t.attendance.checkIn}
+                    </Button>
+                  ) : !currentAttendance.checkOutTime ? (
+                    <Button onClick={handleCheckOut} size="lg" variant="destructive" className="flex-1">
+                      <LogOut className="h-5 w-5 mr-2" />
+                      {t.attendance.checkOut}
+                    </Button>
+                  ) : (
+                    <div className="flex-1 text-center">
+                      <Badge variant="outline" className="px-4 py-2">
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Attendance Completed for Today
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Online/Offline Status Toggle */}
+          {currentAttendance && !currentAttendance.checkOutTime && (
+            <OnlineStatusToggle
+              isOnline={isOnline}
+              onStatusChange={handleOnlineStatusChange}
+              workingHours={onlineWorkingHours}
+              totalOfflineTime={totalOfflineTime}
+              currentSessionOfflineTime={currentSessionOfflineTime}
+              isVisible={true}
+              attendanceId={currentAttendance?.id ? parseInt(currentAttendance.id) : undefined}
+              userId={user?.id ? parseInt(user.id) : undefined}
+            />
+          )}
+
+          {/* Attendance History */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t.attendance.history}</CardTitle>
+              <CardDescription>Your recent attendance records</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex gap-3">
+                  <div className="flex-1 max-w-xs">
+                    <Label htmlFor="history-date-filter">Filter by Date</Label>
+                    <Input
+                      id="history-date-filter"
+                      type="date"
+                      value={historyDateFilter}
+                      onChange={(e) => setHistoryDateFilter(e.target.value)}
+                      className="mt-1"
+                      placeholder="Select date to filter"
+                    />
+                  </div>
+                  <div className="flex-1 max-w-xs">
+                    <Label>Quick Filters</Label>
+                    <div className="mt-1 flex gap-2">
+                      <Button
+                        variant={historyDateFilter === todayIST() ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setHistoryDateFilter(todayIST())}
+                      >
+                        Today
+                      </Button>
+                      <Button
+                        variant={!historyDateFilter ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setHistoryDateFilter('')}
+                      >
+                        All
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <Label>Total Records</Label>
+                    <div className="mt-1 px-3 py-2 bg-muted rounded-md text-sm flex items-center justify-between">
+                      <span>{getFilteredAttendanceHistory().length} of {attendanceHistory.length} records</span>
+                      {historyDateFilter && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setHistoryDateFilter('')}
+                          className="h-6 px-2 text-xs"
+                        >
+                          <X className="h-3 w-3 mr-1" />
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {attendanceHistory.length > 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Employee ID</TableHead>
+                        <TableHead>Department</TableHead>
+                        <TableHead>Online Status</TableHead>
+                        <TableHead>Check In</TableHead>
+                        <TableHead>Check Out</TableHead>
+                        <TableHead>Hours</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Selfie</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Work Summary</TableHead>
+                        <TableHead>Work Report</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getFilteredAttendanceHistory().map((record) => (
+                        <TableRow key={record.id}>
+                          <TableCell className="font-medium">
+                            {formatDateIST(record.date, 'dd MMM yyyy')}
+                          </TableCell>
+                          <TableCell className="font-medium">{user?.id || '-'}</TableCell>
+                          <TableCell>{user?.department || '-'}</TableCell>
+                          <TableCell>
+                            {!record.checkOutTime && record.date === todayIST() ? (
+                              <OnlineStatusIndicator 
+                                isOnline={isOnline} 
+                                size="md"
+                                showLabel={true}
+                              />
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                {record.checkOutTime ? 'Checked Out' : 'Past Date'}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>{formatAttendanceTime(record.date, record.checkInTime)}</TableCell>
+                          <TableCell>{formatAttendanceTime(record.date, record.checkOutTime)}</TableCell>
+                          <TableCell>{record.workHours ? formatWorkHours(record.workHours) : '-'}</TableCell>
+                          <TableCell>
+                            {record.checkInLocation?.address && record.checkInLocation.address !== 'N/A' ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedLocation({
+                                    checkIn: record.checkInLocation?.address,
+                                    checkOut: record.checkOutLocation?.address
+                                  });
+                                  setShowLocationDialog(true);
+                                }}
+                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-8 px-2"
+                              >
+                                <MapPin className="h-4 w-4 mr-1" />
+                                View
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {record.checkInSelfie ? (
+                              <div
+                                className="h-10 w-10 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => {
+                                  setSelectedRecord({
+                                    ...record,
+                                    name: user?.name,
+                                    email: user?.email,
+                                    department: user?.department
+                                  });
+                                  setShowSelfieModal(true);
+                                }}
+                              >
+                                <img
+                                  src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${record.checkInSelfie}`}
+                                  alt="Selfie"
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
+                          </TableCell>
+                          <TableCell className="text-sm max-w-[160px]">
+                            {record.workSummary ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedWorkSummary(record.workSummary || '');
+                                  setShowWorkSummaryDialog(true);
+                                }}
+                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-8 px-2"
+                              >
+                                <FileText className="h-4 w-4 mr-1" />
+                                View
+                              </Button>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {record.workReport ? (
+                              <a
+                                href={record.workReport}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-blue-600 hover:underline"
+                              >
+                                View
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <p className="text-center py-8 text-muted-foreground">No attendance history</p>
+              )}
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      ) : viewMode === 'employee' ? (
+        <>
+          {/* Employee Attendance View */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Employee Attendance
+              </CardTitle>
+              <CardDescription>View and manage team attendance records</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <Label htmlFor="date-filter">Date</Label>
+                    <Input
+                      id="date-filter"
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => {
+                        setSelectedDate(e.target.value);
+                        loadEmployeeAttendance();
+                      }}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label htmlFor="role-filter">Role Filter</Label>
+                    <Select value={filterRole} onValueChange={(value: any) => setFilterRole(value)}>
+                      <SelectTrigger id="role-filter" className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Roles</SelectItem>
+                        {getViewableRoles().map(role => (
+                          <SelectItem key={role} value={role}>{role}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Employee (Name & Email)</TableHead>
+                        <TableHead>Employee ID</TableHead>
+                        <TableHead>Department</TableHead>
+                        <TableHead>Online Status</TableHead>
+                        <TableHead>Check In</TableHead>
+                        <TableHead>Check Out</TableHead>
+                        <TableHead>Hours</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Selfie</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Work Summary</TableHead>
+                        <TableHead>Work Report</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {employeeAttendanceData.length > 0 ? (
+                        employeeAttendanceData.map((record) => (
+                          <TableRow key={record.id}>
+                            <TableCell className="text-sm">
+                              <div className="flex flex-col">
+                                <span className="font-medium truncate max-w-[220px]">{record.name || '-'}</span>
+                                <span className="text-muted-foreground truncate max-w-[220px]">{record.email || '-'}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-medium">{record.userId}</TableCell>
+                            <TableCell>{record.department || '-'}</TableCell>
+                            <TableCell>
+                              {!record.checkOutTime ? (
+                                <OnlineStatusIndicator 
+                                  isOnline={onlineStatusMap[parseInt(record.userId)] ?? true} 
+                                  size="md"
+                                  showLabel={true}
+                                />
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Checked Out</span>
+                              )}
+                            </TableCell>
+                            <TableCell>{formatAttendanceTime(record.date, record.checkInTime)}</TableCell>
+                            <TableCell>{formatAttendanceTime(record.date, record.checkOutTime)}</TableCell>
+                            <TableCell>{record.workHours ? formatWorkHours(record.workHours) : '-'}</TableCell>
+                            <TableCell>
+                              {record.checkInLocation?.address && record.checkInLocation.address !== 'N/A' ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedLocation({
+                                      checkIn: record.checkInLocation?.address,
+                                      checkOut: record.checkOutLocation?.address
+                                    });
+                                    setShowLocationDialog(true);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-8 px-2"
+                                >
+                                  <MapPin className="h-4 w-4 mr-1" />
+                                  View
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {record.checkInSelfie ? (
+                                <div
+                                  className="h-10 w-10 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={() => {
+                                    setSelectedRecord(record);
+                                    setShowSelfieModal(true);
+                                  }}
+                                >
+                                  <img
+                                    src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${record.checkInSelfie}`}
+                                    alt="Selfie"
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
+                            </TableCell>
+                            <TableCell className="text-sm max-w-[160px]">
+                              {record.workSummary ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedWorkSummary(record.workSummary || '');
+                                    setShowWorkSummaryDialog(true);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-8 px-2"
+                                >
+                                  <FileText className="h-4 w-4 mr-1" />
+                                  View
+                                </Button>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {record.workReport ? (
+                                <a
+                                  href={record.workReport}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-blue-600 hover:underline"
+                                >
+                                  View
+                                </a>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">—</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center text-muted-foreground">
+                            No records found for selected date
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      ) : viewMode === 'wfh_requests' ? (
+        <>
+          {/* WFH Requests Management View */}
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950">
+              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                <FileText className="h-5 w-5 text-purple-600" />
+                WFH Requests Management
+                {getPendingWfhCount() > 0 && (
+                  <Badge variant="destructive" className="ml-2">
+                    {getPendingWfhCount()} Pending
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription>Review and manage work from home requests</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                {/* Filter Controls */}
+                <div className="flex gap-3">
+                  <div className="flex-1 max-w-xs">
+                    <Label htmlFor="wfh-status-filter">Status Filter</Label>
+                    <Select value={wfhRequestFilter} onValueChange={(value: any) => setWfhRequestFilter(value)}>
+                      <SelectTrigger id="wfh-status-filter" className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Requests</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex-1">
+                    <Label>Total Requests</Label>
+                    <div className="mt-1 px-3 py-2 bg-muted rounded-md text-sm flex items-center justify-between">
+                      <span>{getFilteredWfhRequests().length} of {allWfhRequests.length} requests</span>
+                      {allWfhRequests.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowClearConfirmation(true)}
+                          className="h-6 px-2 text-xs"
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* WFH Requests Table */}
+                {isLoadingWfhRequests ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+                    <span className="ml-2 text-muted-foreground">Loading requests...</span>
+                  </div>
+                ) : getFilteredWfhRequests().length > 0 ? (
+                  <div className="space-y-3">
+                    {getFilteredWfhRequests().map((request) => (
+                      <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-2 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4 text-blue-600" />
+                                <span className="font-medium">{request.submittedBy}</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {request.role}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-green-600" />
+                                <span className="text-sm">
+                                  {format(new Date(request.startDate), 'dd MMM yyyy')} - {format(new Date(request.endDate), 'dd MMM yyyy')}
+                                </span>
+                                <Badge variant="outline" className="text-xs">
+                                  {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
+                                </Badge>
+                              </div>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{request.reason}</p>
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <span>Submitted: {formatRelativeTime(request.submittedAt)} ({format(new Date(request.submittedAt), 'dd MMM yyyy, hh:mm a')})</span>
+                              <span>Department: {request.department}</span>
+                              {request.processedAt && (
+                                <span>Processed: {formatRelativeTime(request.processedAt)} ({format(new Date(request.processedAt), 'dd MMM yyyy, hh:mm a')})</span>
+                              )}
+                            </div>
+                            {request.rejectionReason && (
+                              <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
+                                <p className="text-sm text-red-800 dark:text-red-200">
+                                  <strong>Rejection Reason:</strong> {request.rejectionReason}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 ml-4">
+                            <Badge 
+                              variant={request.status === 'approved' ? 'default' : request.status === 'rejected' ? 'destructive' : 'secondary'}
+                              className={request.status === 'approved' ? 'bg-green-500' : ''}
+                            >
+                              {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                            </Badge>
+                            {request.status === 'pending' && (
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-950"
+                                  onClick={() => handleWfhRequestAction(request.id, 'approve')}
+                                  disabled={isProcessingWfhRequest}
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                                  onClick={() => {
+                                    setSelectedWfhRequest(request);
+                                    setShowWfhRequestDialog(true);
+                                  }}
+                                  disabled={isProcessingWfhRequest}
+                                >
+                                  <X className="h-4 w-4 mr-1" />
+                                  Reject
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No WFH requests found</p>
+                    <p className="text-sm">
+                      {wfhRequestFilter === 'all' ? 'No requests have been submitted yet' : `No ${wfhRequestFilter} requests`}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        <>
+          {/* Work From Home Request View */}
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950 dark:to-red-950">
+              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                <Home className="h-5 w-5 text-orange-600" />
+                Apply for Work From Home
+              </CardTitle>
+              <CardDescription>Submit a request to work from home</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="space-y-6">
+                {/* WFH Request Form */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="wfh-start-date">Start Date <span className="text-red-500">*</span></Label>
+                    <DatePicker
+                      date={wfhStartDate}
+                      onDateChange={setWfhStartDate}
+                      placeholder="Select start date"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="wfh-end-date">End Date <span className="text-red-500">*</span></Label>
+                    <DatePicker
+                      date={wfhEndDate}
+                      onDateChange={setWfhEndDate}
+                      placeholder="Select end date"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="wfh-type">Work From Home Type</Label>
+                  <Select value={wfhType} onValueChange={(value: 'full_day' | 'half_day') => setWfhType(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="full_day">Full Day</SelectItem>
+                      <SelectItem value="half_day">Half Day</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="wfh-reason">Reason for WFH Request <span className="text-red-500">*</span></Label>
+                  <Textarea
+                    id="wfh-reason"
+                    placeholder="Please provide a detailed reason for your work from home request..."
+                    value={wfhReason}
+                    onChange={(e) => setWfhReason(e.target.value)}
+                    rows={4}
+                    className="resize-none"
+                  />
+                </div>
+
+                <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-blue-800 dark:text-blue-200">
+                      <p className="font-medium mb-1">Request Guidelines:</p>
+                      <ul className="list-disc list-inside space-y-1 text-xs">
+                        <li>Submit requests at least 24 hours in advance</li>
+                        <li>Provide a clear and valid reason for the request</li>
+                        <li>Ensure you have necessary equipment and internet connectivity</li>
+                        <li>Your request will be reviewed by your {user?.role === 'employee' || user?.role === 'team_lead' ? 'manager and HR' : 'admin'}</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    onClick={handleWfhSubmit}
+                    disabled={isSubmittingWfh || !wfhStartDate || !wfhEndDate || !wfhReason.trim()}
+                    className="flex-1 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
+                  >
+                    {isSubmittingWfh ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" />
+                        Submit WFH Request
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* WFH Request History */}
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+              <CardTitle className="text-xl font-semibold">Your WFH Requests</CardTitle>
+              <CardDescription>Track the status of your work from home requests</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                {wfhRequests.length > 0 ? (
+                  <div className="space-y-3">
+                    {wfhRequests.map((request) => (
+                      <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-blue-600" />
+                              <span className="font-medium">
+                                {format(new Date(request.startDate), 'dd MMM yyyy')} - {format(new Date(request.endDate), 'dd MMM yyyy')}
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{request.reason}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Submitted {formatRelativeTime(request.submittedAt)} ({format(new Date(request.submittedAt), 'dd MMM yyyy, hh:mm a')})
+                            </p>
+                          </div>
+                          <Badge 
+                            variant={request.status === 'approved' ? 'default' : request.status === 'rejected' ? 'destructive' : 'secondary'}
+                            className={request.status === 'approved' ? 'bg-green-500' : ''}
+                          >
+                            {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Home className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No WFH requests submitted yet</p>
+                    <p className="text-sm">Submit your first work from home request above</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {/* Checkout Confirmation Dialog */}
+      <Dialog open={showCheckoutDialog} onOpenChange={setShowCheckoutDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Check-out</DialogTitle>
+            <DialogDescription>
+              Please provide today's work summary before checking out. You can optionally upload a work report PDF.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="work-summary">Today's Work Summary <span className="text-red-500">*</span></Label>
+              <Input
+                id="work-summary"
+                placeholder="Brief description of today's work..."
+                value={todaysWork}
+                onChange={(e) => setTodaysWork(e.target.value)}
+                className="mt-2"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="work-pdf">Upload Work Report PDF (Optional)</Label>
+              <div className="mt-2 flex items-center gap-2">
+                <Input
+                  id="work-pdf"
+                  type="file"
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                  onChange={handleFileUpload}
+                />
+                {workPdf && (
+                  <Badge variant="outline">
+                    <FileText className="h-3 w-3 mr-1" />
+                    {workPdf.name}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCheckoutDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmCheckOut}>
+              Proceed to Check-out
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={exportModalOpen}
+        onOpenChange={(open) => {
+          setExportModalOpen(open);
+          if (!open) {
+            setExportType(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              Attendance Report {exportType ? `(${exportType.toUpperCase()})` : ''}
+            </DialogTitle>
+            <DialogDescription>
+              Configure date range and employee filters to export department attendance.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4 flex-1 overflow-y-auto pr-1">
+            <div className="space-y-2">
+              <Label htmlFor="quick-filter">Quick Filter</Label>
+              <Select value={quickFilter} onValueChange={handleQuickFilter}>
+                <SelectTrigger id="quick-filter">
+                  <SelectValue placeholder="Select time period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="last_month">Last Month</SelectItem>
+                  <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                  <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                  <SelectItem value="custom">Custom Date Range</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="export-start">Start Date</Label>
+                <DatePicker
+                  date={exportStartDate}
+                  onDateChange={setExportStartDate}
+                  placeholder="Select start date"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="export-end">End Date</Label>
+                <DatePicker
+                  date={exportEndDate}
+                  onDateChange={setExportEndDate}
+                  placeholder="Select end date"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Employee Filter</Label>
+              <div className="flex gap-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="export-all"
+                    name="employee-export-filter"
+                    className="h-4 w-4 text-blue-600"
+                    checked={employeeExportFilter === 'all'}
+                    onChange={() => setEmployeeExportFilter('all')}
+                  />
+                  <Label htmlFor="export-all" className="cursor-pointer">
+                    All Employees
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="export-specific"
+                    name="employee-export-filter"
+                    className="h-4 w-4 text-blue-600"
+                    checked={employeeExportFilter === 'specific'}
+                    onChange={() => setEmployeeExportFilter('specific')}
+                  />
+                  <Label htmlFor="export-specific" className="cursor-pointer">
+                    Specific Employee
+                  </Label>
+                </div>
+              </div>
+            </div>
+
+            {employeeExportFilter === 'specific' && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="export-department">Department</Label>
+                  <Select
+                    value={selectedExportDepartment}
+                    onValueChange={(value) => {
+                      setSelectedExportDepartment(value);
+                      setSelectedExportEmployee(null);
+                      setEmployeeExportSearch('');
+                    }}
+                  >
+                    <SelectTrigger id="export-department">
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {exportDepartments.length ? (
+                        exportDepartments.map((dept) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="__empty" disabled>
+                          No departments found
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedExportDepartment ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="export-employee-search">Select Employee</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="export-employee-search"
+                        placeholder="Search by name or employee ID..."
+                        value={employeeExportSearch}
+                        onChange={(e) => setEmployeeExportSearch(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <div className="border rounded-md max-h-40 overflow-y-auto mt-2">
+                      {filteredExportEmployees.length ? (
+                        filteredExportEmployees.map((emp) => {
+                          const isSelected = selectedExportEmployee?.user_id === emp.user_id;
+                          return (
+                            <button
+                              type="button"
+                              key={emp.user_id}
+                              onClick={() => setSelectedExportEmployee(emp)}
+                              className={`w-full text-left p-3 border-b last:border-b-0 transition-colors ${
+                                isSelected
+                                  ? 'bg-blue-50 dark:bg-blue-900'
+                                  : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                              }`}
+                            >
+                              <div className="font-medium">{emp.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {emp.employee_id ? `ID: ${emp.employee_id}` : `User: ${emp.user_id}`}
+                              </div>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="p-3 text-sm text-muted-foreground">
+                          No employees found for this department.
+                        </div>
+                      )}
+                    </div>
+                    {selectedExportEmployee && (
+                      <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900 rounded-md flex items-center justify-between">
+                        <div>
+                          <div className="font-medium">{selectedExportEmployee.name}</div>
+                          {selectedExportEmployee.employee_id && (
+                            <div className="text-sm text-muted-foreground">
+                              ID: {selectedExportEmployee.employee_id}
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedExportEmployee(null);
+                            setEmployeeExportSearch('');
+                          }}
+                        >
+                          Clear
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Select a department to view its employees.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setExportModalOpen(false);
+                setExportType(null);
+              }}
+              disabled={isExporting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={performExport}
+              disabled={
+                isExporting ||
+                (!exportStartDate && !exportEndDate) ||
+                (employeeExportFilter === 'specific' && !selectedExportEmployee)
+              }
+            >
+              {isExporting ? 'Exporting...' : `Export ${exportType?.toUpperCase() ?? ''}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Selfie Modal */}
+      <Dialog open={showSelfieModal} onOpenChange={setShowSelfieModal}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              {selectedRecord?.name || 'Employee'}'s Attendance
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+            {/* Check-in Selfie */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-green-500"></div>
+                <h3 className="font-medium">Check-in Selfie</h3>
+              </div>
+              <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+                {selectedRecord?.checkInSelfie ? (
+                  <img 
+                    src={selectedRecord.checkInSelfie.startsWith('http') ? selectedRecord.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${selectedRecord.checkInSelfie}`}
+                    alt="Check-in selfie" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                    <User className="h-12 w-12 mb-2" />
+                    <p>No selfie available</p>
+                  </div>
+                )}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
+                  <p className="font-medium">Check-in: {selectedRecord?.checkInTime ? formatAttendanceTime(selectedRecord.date, selectedRecord.checkInTime) : 'N/A'}</p>
+                  <p className="text-sm opacity-80">{selectedRecord?.checkInLocation?.address || 'Location not available'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Check-out Selfie */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-red-500"></div>
+                <h3 className="font-medium">Check-out Selfie</h3>
+              </div>
+              <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+                {selectedRecord?.checkOutSelfie ? (
+                  <img 
+                    src={selectedRecord.checkOutSelfie.startsWith('http') ? selectedRecord.checkOutSelfie : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${selectedRecord.checkOutSelfie}`}
+                    alt="Check-out selfie" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                    <User className="h-12 w-12 mb-2" />
+                    <p>No check-out selfie</p>
+                    <p className="text-sm">Not checked out yet</p>
+                  </div>
+                )}
+                {selectedRecord?.checkOutTime && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
+                    <p className="font-medium">Check-out: {formatAttendanceTime(selectedRecord.date, selectedRecord.checkOutTime)}</p>
+                    <p className="text-sm opacity-80">{selectedRecord?.checkOutLocation?.address || 'Location not available'}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-3 text-sm">
+            <div>
+              <p className="font-medium">Work Summary</p>
+              <p className="text-muted-foreground">
+                {selectedRecord?.workSummary || 'Not provided'}
+              </p>
+            </div>
+            {selectedRecord?.workReport && (
+              <div>
+                <p className="font-medium">Work Report</p>
+                <a
+                  href={selectedRecord.workReport}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  View Document
+                </a>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowSelfieModal(false)}
+              className="gap-2"
+            >
+              <X className="h-4 w-4" />
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Location Details Modal */}
+      <Dialog open={!!selectedRecord && !showSelfieModal} onOpenChange={(open) => !open && setSelectedRecord(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-blue-600" />
+              Location Details
+            </DialogTitle>
+            <DialogDescription>
+              Check-in and check-out location information
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Check-in Location */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-green-500"></div>
+                <h3 className="font-semibold text-base">Check-in Location</h3>
+              </div>
+              <div className="bg-green-50 dark:bg-green-950/20 border-2 border-green-200 dark:border-green-800 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <MapPin className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-1">
+                      {formatAttendanceTime(selectedRecord?.date || '', selectedRecord?.checkInTime)}
+                    </p>
+                    <p className="text-sm text-green-700 dark:text-green-300 leading-relaxed">
+                      {selectedRecord?.checkInLocation?.address || 'Location not available'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Check-out Location */}
+            {selectedRecord?.checkOutTime ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-red-500"></div>
+                  <h3 className="font-semibold text-base">Check-out Location</h3>
+                </div>
+                <div className="bg-red-50 dark:bg-red-950/20 border-2 border-red-200 dark:border-red-800 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <MapPin className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-red-900 dark:text-red-100 mb-1">
+                        {formatAttendanceTime(selectedRecord?.date || '', selectedRecord?.checkOutTime)}
+                      </p>
+                      <p className="text-sm text-red-700 dark:text-red-300 leading-relaxed">
+                        {selectedRecord?.checkOutLocation?.address || 'Location not available'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-slate-400"></div>
+                  <h3 className="font-semibold text-base">Check-out Location</h3>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-900/20 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-4">
+                  <p className="text-sm text-slate-600 dark:text-slate-400 text-center py-2">
+                    User has not checked out yet
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline"
+              onClick={() => setSelectedRecord(null)}
+              className="gap-2"
+            >
+              <X className="h-4 w-4" />
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Work Summary Dialog */}
+      <Dialog open={showWorkSummaryDialog} onOpenChange={setShowWorkSummaryDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              Work Summary Details
+            </DialogTitle>
+            <DialogDescription>
+              Detailed work summary for the selected attendance record
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border">
+              <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300 mb-2">Work Summary</h4>
+              <div className="text-sm text-slate-900 dark:text-slate-100 leading-relaxed whitespace-pre-wrap">
+                {selectedWorkSummary || 'No work summary provided'}
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setShowWorkSummaryDialog(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Location Details Dialog */}
+      <Dialog open={showLocationDialog} onOpenChange={setShowLocationDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-blue-600" />
+              Location Details
+            </DialogTitle>
+            <DialogDescription>
+              Check-in and check-out location information
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Check-in Location */}
+            {selectedLocation.checkIn && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-green-500"></div>
+                  <h4 className="font-medium text-sm">Check-in Location</h4>
+                </div>
+                <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-green-800 dark:text-green-200 leading-relaxed">
+                      {selectedLocation.checkIn}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Check-out Location */}
+            {selectedLocation.checkOut && selectedLocation.checkOut !== selectedLocation.checkIn && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-red-500"></div>
+                  <h4 className="font-medium text-sm">Check-out Location</h4>
+                </div>
+                <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-800 dark:text-red-200 leading-relaxed">
+                      {selectedLocation.checkOut}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Same location message */}
+            {selectedLocation.checkOut && selectedLocation.checkOut === selectedLocation.checkIn && (
+              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    Same location used for both check-in and check-out
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setShowLocationDialog(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* WFH Request Rejection Dialog */}
+      <Dialog open={showWfhRequestDialog} onOpenChange={setShowWfhRequestDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <X className="h-5 w-5 text-red-600" />
+              Reject WFH Request
+            </DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this work from home request.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedWfhRequest && (
+            <div className="space-y-4 py-4">
+              <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-blue-600" />
+                    <span className="font-medium">{selectedWfhRequest.submittedBy}</span>
+                    <Badge variant="outline" className="text-xs">
+                      {selectedWfhRequest.role}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-green-600" />
+                    <span className="text-sm">
+                      {format(new Date(selectedWfhRequest.startDate), 'dd MMM yyyy')} - {format(new Date(selectedWfhRequest.endDate), 'dd MMM yyyy')}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{selectedWfhRequest.reason}</p>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="rejection-reason">Rejection Reason <span className="text-red-500">*</span></Label>
+                <Textarea
+                  id="rejection-reason"
+                  placeholder="Please provide a clear reason for rejecting this request..."
+                  rows={3}
+                  className="resize-none"
+                  onChange={(e) => {
+                    setSelectedWfhRequest(prev => prev ? {...prev, rejectionReason: e.target.value} : null);
+                  }}
+                />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowWfhRequestDialog(false);
+                setSelectedWfhRequest(null);
+              }}
+              disabled={isProcessingWfhRequest}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={() => {
+                if (selectedWfhRequest?.rejectionReason?.trim()) {
+                  handleWfhRequestAction(selectedWfhRequest.id, 'reject', selectedWfhRequest.rejectionReason);
+                } else {
+                  toast({
+                    title: 'Rejection Reason Required',
+                    description: 'Please provide a reason for rejecting this request.',
+                    variant: 'destructive',
+                  });
+                }
+              }}
+              disabled={isProcessingWfhRequest || !selectedWfhRequest?.rejectionReason?.trim()}
+            >
+              {isProcessingWfhRequest ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Rejecting...
+                </>
+              ) : (
+                <>
+                  <X className="h-4 w-4 mr-2" />
+                  Reject Request
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clear All WFH Requests Confirmation Dialog */}
+      <AlertDialog open={showClearConfirmation} onOpenChange={setShowClearConfirmation}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear All WFH Requests</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to clear all requests? All pending requests will be automatically rejected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                // Clear all WFH requests from the UI
+                setAllWfhRequests([]);
+                setShowClearConfirmation(false);
+                toast({
+                  title: 'Requests Cleared',
+                  description: 'All WFH requests have been cleared and marked as rejected.',
+                });
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Clear All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+};
+
+export default AttendanceWithToggle;

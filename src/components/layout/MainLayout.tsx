@@ -1,0 +1,442 @@
+import React, { useState } from 'react';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { useNavigationGuard } from '@/hooks/useNavigationGuard';
+import TaskDeadlineWarnings from '@/components/tasks/TaskDeadlineWarnings';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Home,
+  Users,
+  Calendar,
+  ClipboardList,
+  BarChart3,
+  Bell,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  Globe,
+  User,
+  Briefcase,
+  Clock,
+  CalendarDays,
+  UserPlus,
+  MessageCircle,
+} from 'lucide-react';
+import { UserRole } from '@/types';
+import { Language } from '@/i18n/translations';
+import { Badge } from '@/components/ui/badge';
+import ChatNotificationBadge from '@/components/chat/ChatNotificationBadge';
+
+const MainLayout: React.FC = () => {
+  const { user, logout, showDeadlineWarnings, setShowDeadlineWarnings } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  
+  // Enable navigation guard to handle back/forward button
+  useNavigationGuard();
+
+  const handleLogoutClick = () => {
+    setShowLogoutDialog(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    setShowLogoutDialog(false);
+    logout();
+  };
+
+  if (!user) return null;
+
+  const getNavigationItems = () => {
+    const commonItems = [
+      { icon: Home, label: t.navigation.home, path: `/${user.role}` },
+      { icon: Clock, label: t.navigation.attendance, path: `/${user.role}/attendance` },
+      { icon: CalendarDays, label: t.navigation.leaves, path: `/${user.role}/leaves` },
+      { icon: ClipboardList, label: t.navigation.tasks, path: `/${user.role}/tasks` },
+      { icon: MessageCircle, label: 'Chat', path: `/${user.role}/chat` },
+    ];
+
+    const roleSpecificItems: Record<UserRole, typeof commonItems> = {
+      admin: [
+        ...commonItems,
+        { icon: Users, label: t.navigation.employees, path: '/admin/employees' },
+        { icon: Briefcase, label: t.navigation.departments, path: '/admin/departments' },
+        { icon: UserPlus, label: t.navigation.hiring, path: '/admin/hiring' },
+        { icon: BarChart3, label: t.navigation.reports, path: '/admin/reports' },
+      ],
+      hr: [
+        ...commonItems,
+        { icon: Users, label: t.navigation.employees, path: '/hr/employees' },
+        { icon: UserPlus, label: t.navigation.hiring, path: '/hr/hiring' },
+        { icon: BarChart3, label: t.navigation.reports, path: '/hr/reports' },
+      ],
+      manager: [
+        ...commonItems,
+        { icon: Clock, label: t.navigation.shiftSchedule, path: '/manager/shift-schedule' },
+        { icon: Users, label: t.navigation.team, path: '/manager/team' },
+        { icon: BarChart3, label: t.navigation.reports, path: '/manager/reports' },
+      ],
+      team_lead: [
+        ...commonItems,
+        { icon: Users, label: t.navigation.team, path: '/team_lead/team' },
+        { icon: BarChart3, label: t.navigation.reports, path: '/team_lead/reports' },
+      ],
+      employee: [
+        ...commonItems,
+        { icon: Users, label: t.navigation.team, path: '/employee/team' },
+      ],
+    };
+
+    return roleSpecificItems[user.role];
+  };
+
+  const navigationItems = getNavigationItems();
+
+  // Custom function to determine if a navigation item should be active
+  const isNavItemActive = (itemPath: string) => {
+    // For chat routes, consider any path starting with the chat base path as active
+    if (itemPath.includes('/chat')) {
+      return location.pathname.startsWith(itemPath);
+    }
+    // For other routes, use exact match
+    return location.pathname === itemPath;
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Top Navigation Bar */}
+      <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+        <div className="flex h-16 items-center px-4 gap-4">
+          {/* Sidebar Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hidden lg:flex"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+
+          {/* Logo */}
+          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate(`/${user.role}`)}>
+            <div className="relative">
+              {/* Animated glow background */}
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 blur-md opacity-75 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
+              
+              {/* Logo container */}
+              <div className="relative h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-700 flex items-center justify-center shadow-lg group-hover:shadow-2xl group-hover:scale-110 transition-all duration-300 border border-white/20">
+                <span className="text-white font-bold text-xl tracking-tight drop-shadow-md">S</span>
+              </div>
+              
+              {/* Corner accent */}
+              <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 shadow-md group-hover:scale-125 transition-transform duration-300"></div>
+            </div>
+            
+            <div className="hidden sm:flex flex-col">
+              <span className="font-bold text-lg bg-gradient-to-r from-blue-600 to-indigo-700 dark:from-blue-400 dark:to-indigo-500 bg-clip-text text-transparent leading-tight">
+                Shekru labs India
+              </span>
+              <span className="text-xs text-muted-foreground font-medium tracking-wide">
+                Employee Management
+              </span>
+            </div>
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Language Selector */}
+          <Select value={language} onValueChange={(value: Language) => setLanguage(value)}>
+            <SelectTrigger className="w-[140px] h-10 bg-white dark:bg-gray-950 border-2 hover:border-blue-400 dark:hover:border-blue-600 transition-all duration-300 hover:shadow-md">
+              <Globe className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="border-2 shadow-2xl">
+              <SelectItem value="en" className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors">
+                <span className="font-medium">English</span>
+              </SelectItem>
+              <SelectItem value="hi" className="cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors">
+                <span className="font-medium">हिंदी</span>
+              </SelectItem>
+              <SelectItem value="mr" className="cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors">
+                <span className="font-medium">मराठी</span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Notifications */}
+          <NotificationBell />
+
+          {/* User Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-12 w-12 rounded-full p-0 hover:bg-transparent transition-all duration-300 hover:scale-110">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 animate-pulse"></div>
+                  <Avatar className="h-11 w-11 border-2 border-white dark:border-gray-900 relative">
+                    <AvatarImage src={user.profilePhoto} alt={user.name} className="object-cover" />
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-lg">
+                      {user.name.split(' ').map(n => n[0]).join('')}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-gradient-to-r from-green-400 to-emerald-500 border-2 border-white dark:border-gray-900 shadow-md"></div>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-64 border-2 shadow-2xl" align="end" forceMount>
+              <DropdownMenuLabel className="font-normal p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-12 w-12 border-2 border-blue-200 dark:border-blue-800">
+                    <AvatarImage src={user.profilePhoto} alt={user.name} className="object-cover" />
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold">
+                      {user.name.split(' ').map(n => n[0]).join('')}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col space-y-1 flex-1">
+                    <p className="text-sm font-semibold leading-none">{user.name}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                    <Badge className="w-fit mt-1 text-xs bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 shadow-md">
+                      {t.roles[user.role]}
+                    </Badge>
+                  </div>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator className="my-0" />
+              <DropdownMenuItem onClick={() => navigate(`/${user.role}/profile`)} className="cursor-pointer py-3 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                    <User className="h-4 w-4 text-white" />
+                  </div>
+                  <span className="font-medium">{t.common.profile}</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate(`/${user.role}/settings`)} className="cursor-pointer py-3 hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
+                    <Settings className="h-4 w-4 text-white" />
+                  </div>
+                  <span className="font-medium">{t.common.settings}</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="my-0" />
+              <DropdownMenuItem onClick={handleLogoutClick} className="text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                {t.common.logout}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+
+      <div className="flex h-[calc(100vh-4rem)]">
+        {/* Sidebar */}
+        <aside
+          className={`${
+            sidebarOpen ? 'w-64' : 'w-20'
+          } hidden lg:flex flex-col border-r bg-gradient-to-b from-card via-card/95 to-card/90 backdrop-blur-sm transition-all duration-300 shadow-lg overflow-hidden`}
+        >
+          <nav className="flex-1 space-y-2 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+            {navigationItems.map((item, index) => {
+              const isActive = isNavItemActive(item.path);
+              return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end={!item.path.includes('/chat')} // Don't use end for chat routes
+                className={`group relative flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-300 overflow-hidden ${
+                  isActive 
+                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/50 scale-105' 
+                    : 'text-muted-foreground hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950/50 dark:hover:to-indigo-950/50 hover:text-foreground hover:scale-105 hover:shadow-md'
+                }`}
+              >
+                {/* Active indicator line */}
+                <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-yellow-400 to-orange-500 transition-all duration-300 ${
+                  isActive ? 'opacity-100' : 'opacity-0'
+                }`} />
+                
+                {/* Icon with background */}
+                <div className={`relative flex items-center justify-center h-9 w-9 rounded-lg transition-all duration-300 ${
+                  sidebarOpen ? '' : 'mx-auto'
+                }`}>
+                  <item.icon className="h-5 w-5 flex-shrink-0 relative z-10" />
+                  <div className="absolute inset-0 rounded-lg bg-white/10 dark:bg-white/5 group-hover:bg-white/20 dark:group-hover:bg-white/10 transition-all duration-300" />
+                  {item.label === 'Chat' && <ChatNotificationBadge />}
+                </div>
+                
+                {/* Label with animation */}
+                {sidebarOpen && (
+                  <span className="font-medium text-sm tracking-wide transition-all duration-300">
+                    {item.label}
+                  </span>
+                )}
+                
+                {/* Hover effect overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+              </NavLink>
+            )
+            })}
+          </nav>
+          
+          {/* Sidebar Footer */}
+          <div className="flex-shrink-0 p-4 border-t border-border/50 bg-gradient-to-b from-card via-card/95 to-card/90">
+            <div className={`rounded-xl bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 p-4 backdrop-blur-sm border border-blue-500/20 ${!sidebarOpen ? 'flex justify-center' : ''}`}>
+              <div className={`flex items-center gap-3 ${!sidebarOpen ? 'justify-center' : 'mb-2'}`}>
+                <Avatar className="h-8 w-8 border-2 border-blue-200 dark:border-blue-800 shadow-md">
+                  <AvatarImage src={user.profilePhoto} alt={user.name} className="object-cover" />
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-xs">
+                    {user.name.split(' ').map(n => n[0]).join('')}
+                  </AvatarFallback>
+                </Avatar>
+                {sidebarOpen && (
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{user.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{t.roles[user.role]}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* Mobile Sidebar */}
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-40 lg:hidden">
+            <div className="fixed inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+            <aside className="fixed left-0 top-16 bottom-0 w-64 border-r bg-gradient-to-b from-card via-card/95 to-card/90 backdrop-blur-sm shadow-2xl animate-slide-in flex flex-col overflow-hidden">
+              <nav className="flex-1 space-y-2 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                {navigationItems.map((item) => {
+                  const isActive = isNavItemActive(item.path);
+                  return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    end={!item.path.includes('/chat')} // Don't use end for chat routes
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`group relative flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-300 overflow-hidden ${
+                      isActive 
+                        ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/50 scale-105' 
+                        : 'text-muted-foreground hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950/50 dark:hover:to-indigo-950/50 hover:text-foreground hover:scale-105 hover:shadow-md'
+                    }`}
+                  >
+                    {/* Active indicator line */}
+                    <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-yellow-400 to-orange-500 transition-all duration-300 ${
+                      isActive ? 'opacity-100' : 'opacity-0'
+                    }`} />
+                    
+                    {/* Icon with background */}
+                    <div className="relative flex items-center justify-center h-9 w-9 rounded-lg transition-all duration-300">
+                      <item.icon className="h-5 w-5 flex-shrink-0 relative z-10" />
+                      <div className="absolute inset-0 rounded-lg bg-white/10 dark:bg-white/5 group-hover:bg-white/20 dark:group-hover:bg-white/10 transition-all duration-300" />
+                      {item.label === 'Chat' && <ChatNotificationBadge />}
+                    </div>
+                    
+                    <span className="font-medium text-sm tracking-wide transition-all duration-300">{item.label}</span>
+                    
+                    {/* Hover effect overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                  </NavLink>
+                )
+                })}
+              </nav>
+              
+              {/* Mobile Sidebar Footer */}
+              <div className="flex-shrink-0 p-4 border-t border-border/50 bg-gradient-to-b from-card via-card/95 to-card/90">
+                <div className="rounded-xl bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 p-4 backdrop-blur-sm border border-blue-500/20">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8 border-2 border-blue-200 dark:border-blue-800 shadow-md">
+                      <AvatarImage src={user.profilePhoto} alt={user.name} className="object-cover" />
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-xs">
+                        {user.name.split(' ').map(n => n[0]).join('')}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{user.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{t.roles[user.role]}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        )}
+
+        {/* Main Content */}
+        <main className={`flex-1 ${location.pathname.includes('/chat') ? 'overflow-hidden' : 'overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent'}`}>
+          <div className={`h-full animate-fade-in ${location.pathname.includes('/chat') ? '' : 'container mx-auto p-6'}`}>
+            <Outlet />
+          </div>
+        </main>
+      </div>
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to logout? You will need to login again to access your account.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogoutConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Logout
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Task Deadline Warnings Dialog */}
+      <TaskDeadlineWarnings
+        isOpen={showDeadlineWarnings}
+        onClose={() => setShowDeadlineWarnings(false)}
+        userId={user?.id}
+      />
+    </div>
+  );
+};
+
+export default MainLayout;

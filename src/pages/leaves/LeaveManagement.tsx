@@ -1,0 +1,2507 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Pagination } from '@/components/ui/pagination';
+
+type Holiday = {
+  date: Date;
+  name: string;
+  description?: string;
+};
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Calendar } from '@/components/ui/calendar';
+import { CalendarWithSelect } from '@/components/ui/calendar-with-select';
+import { DatePicker } from '@/components/ui/date-picker';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { addDays, isSameDay } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { toast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { formatIST, formatDateTimeIST, formatDateIST, todayIST, parseToIST, nowIST } from '@/utils/timezone';
+import { useAuth } from '@/contexts/AuthContext';
+import { apiService } from '@/lib/api';
+import { 
+  CalendarDays, 
+  Clock, 
+  CheckCircle, 
+  XCircle, 
+  AlertCircle,
+  Calendar as CalendarIcon,
+  User,
+  FileText,
+  Timer,
+  Pencil,
+  Trash2
+} from 'lucide-react';
+
+interface LeaveRequest {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  department: string;
+  type: 'annual' | 'sick' | 'casual' | 'maternity' | 'paternity' | 'unpaid';
+  startDate: Date;
+  endDate: Date;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
+  comments?: string;
+  requestDate: Date;
+}
+
+export default function LeaveManagement() {
+  const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [displayedMonth, setDisplayedMonth] = useState<Date>(new Date());
+  
+  // Initialize leave requests from localStorage or use default mock data
+  const initializeLeaveRequests = (): LeaveRequest[] => {
+    const stored = localStorage.getItem('leaveRequests');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as LeaveRequest[];
+        // Convert date strings back to Date objects
+        return parsed.map((req) => ({
+          ...req,
+          startDate: new Date(req.startDate),
+          endDate: new Date(req.endDate),
+          requestDate: new Date(req.requestDate)
+        }));
+      } catch (error) {
+        console.error('Error parsing leave requests:', error);
+      }
+    }
+    // Default mock data
+    return [
+      {
+        id: '1',
+        employeeId: 'EMP001',
+        employeeName: 'John Doe',
+        department: 'Engineering',
+        type: 'annual',
+        startDate: new Date(2024, 0, 15),
+        endDate: new Date(2024, 0, 17),
+        reason: 'Family vacation',
+        status: 'pending',
+        requestDate: new Date(2024, 0, 10)
+      },
+      {
+        id: '2',
+        employeeId: 'EMP002',
+        employeeName: 'Jane Smith',
+        department: 'Marketing',
+        type: 'sick',
+        startDate: new Date(2024, 0, 20),
+        endDate: new Date(2024, 0, 21),
+        reason: 'Medical appointment',
+        status: 'approved',
+        approvedBy: 'Manager',
+        requestDate: new Date(2024, 0, 18)
+      }
+    ];
+  };
+  
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(initializeLeaveRequests());
+  const loadStoredHolidays = () => {
+    const stored = localStorage.getItem('companyHolidays');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as { date: string; name: string }[];
+        return parsed.map((h) => ({ date: new Date(h.date), name: h.name }));
+      } catch (error) {
+        console.error('Failed to parse stored holidays:', error);
+      }
+    }
+    return [
+      { date: new Date(2025, 0, 1), name: 'New Year' },
+      { date: new Date(2025, 1, 26), name: 'Republic Day' },
+    ];
+  };
+  const [approvalRequests, setApprovalRequests] = useState<LeaveRequest[]>([]);
+  const [approvalHistory, setApprovalHistory] = useState<LeaveRequest[]>([]);
+  const [historyFilter, setHistoryFilter] = useState<string>('current_month');
+  const [customHistoryStartDate, setCustomHistoryStartDate] = useState<Date | undefined>(undefined);
+  const [customHistoryEndDate, setCustomHistoryEndDate] = useState<Date | undefined>(new Date());
+
+  const [formData, setFormData] = useState({
+    type: 'annual',
+    startDate: new Date(),
+    endDate: new Date(),
+    reason: ''
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [approvingLeaveId, setApprovingLeaveId] = useState<string | null>(null);
+  const [leaveHistoryPeriod, setLeaveHistoryPeriod] = useState<string>('current_month');
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingLeave, setEditingLeave] = useState<LeaveRequest | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    startDate: new Date(),
+    endDate: new Date(),
+    reason: ''
+  });
+  const [isUpdatingLeave, setIsUpdatingLeave] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [leaveToDelete, setLeaveToDelete] = useState<LeaveRequest | null>(null);
+  const [isDeletingLeave, setIsDeletingLeave] = useState(false);
+
+  // Pagination states for approval requests
+  const [approvalCurrentPage, setApprovalCurrentPage] = useState(1);
+  const [approvalItemsPerPage, setApprovalItemsPerPage] = useState(20);
+
+  // Pagination states for approval history
+  const [historyCurrentPage, setHistoryCurrentPage] = useState(1);
+  const [historyItemsPerPage, setHistoryItemsPerPage] = useState(20);
+
+  // Company holidays state
+  const [holidays, setHolidays] = useState<Holiday[]>(loadStoredHolidays());
+  const [selectedHoliday, setSelectedHoliday] = useState<Holiday | null>(null);
+  const [isHolidayDialogOpen, setIsHolidayDialogOpen] = useState(false);
+
+  const [holidayForm, setHolidayForm] = useState<{ date: Date; name: string; description?: string }>({ 
+    date: new Date(), 
+    name: '',
+    description: ''
+  });
+
+  const handleAddHoliday = () => {
+    if (!holidayForm.name) {
+      toast({ 
+        title: 'Error', 
+        description: 'Please enter a holiday name.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    // Check if the date is in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDate = new Date(holidayForm.date);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+      toast({ 
+        title: 'Error', 
+        description: 'Cannot set holidays for past dates. Please select a current or future date.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    // Check if holiday already exists for this date
+    const existingHoliday = holidays.find(h => isSameDay(h.date, holidayForm.date));
+    if (existingHoliday) {
+      toast({ 
+        title: 'Error', 
+        description: `A holiday "${existingHoliday.name}" already exists for this date.`,
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    setHolidays([...holidays, { 
+      date: holidayForm.date, 
+      name: holidayForm.name,
+      description: holidayForm.description 
+    }]);
+    setHolidayForm({ date: new Date(), name: '', description: '' });
+    toast({ 
+      title: 'Holiday added', 
+      description: `${holidayForm.name} has been added to the calendar.` 
+    });
+  };
+
+  const handleDayClick = (date: Date | undefined) => {
+    if (!date) return;
+    
+    const holiday = holidays.find(h => isSameDay(h.date, date));
+    if (holiday) {
+      // If clicking on a holiday, show the dialog but don't change selected date
+      setSelectedHoliday(holiday);
+      setIsHolidayDialogOpen(true);
+      return; // Don't update selectedDate
+    }
+    // Only update selected date if it's not a holiday
+    setSelectedDate(date);
+  };
+
+  const handleRemoveHoliday = (date: Date) => {
+    setHolidays(holidays.filter(h => !isSameDay(h.date, date)));
+    toast({ title: 'Holiday removed', description: 'Company holiday removed from calendar.' });
+  };
+
+  const handleSaveWeekOff = () => {
+    const department = weekOffForm.department.trim();
+    if (!department) {
+      toast({
+        title: 'Department required',
+        description: 'Please enter or pick a department before saving the week-off.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (weekOffForm.days.length === 0) {
+      toast({
+        title: 'Pick at least one day',
+        description: 'Select one or more days to mark as weekly off.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const uniqueDays = Array.from(new Set(weekOffForm.days));
+    setWeekOffConfig((prev) => ({
+      ...prev,
+      [department]: uniqueDays,
+    }));
+    toast({
+      title: 'Week-off saved',
+      description: `${department} will now have days off on ${uniqueDays
+        .map((day) => weekDayLabels[day] || day)
+        .join(', ')}.`,
+    });
+  };
+
+  const handleRemoveWeekOff = (department: string) => {
+    setWeekOffConfig((prev) => {
+      const updated = { ...prev };
+      delete updated[department];
+      return updated;
+    });
+    toast({
+      title: 'Week-off removed',
+      description: `${department} no longer has a dedicated weekly off set.`,
+    });
+  };
+
+  const loadStoredWeekOffs = () => {
+    const stored = localStorage.getItem('departmentWeekOffs');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === 'object') {
+          return parsed as Record<string, string[]>;
+        }
+      } catch (error) {
+        console.error('Failed to parse week-off rules:', error);
+      }
+    }
+    return {};
+  };
+
+  const [weekOffConfig, setWeekOffConfig] = useState<Record<string, string[]>>(loadStoredWeekOffs);
+  const [companyDepartments, setCompanyDepartments] = useState<string[]>([]);
+  const [weekOffForm, setWeekOffForm] = useState<{ department: string; days: string[] }>({
+    department: '',
+    days: ['saturday'],
+  });
+
+  useEffect(() => {
+    localStorage.setItem('departmentWeekOffs', JSON.stringify(weekOffConfig));
+  }, [weekOffConfig]);
+
+  const [leaveBalance, setLeaveBalance] = useState({
+    annual: { allocated: 15, used: 0, remaining: 15 },
+    sick: { allocated: 10, used: 0, remaining: 10 },
+    casual: { allocated: 5, used: 0, remaining: 5 },
+    unpaid: { allocated: 0, used: 0, remaining: 0 }, // Unpaid leave counter (no allocation, only tracks usage)
+  });
+
+  // Leave Allocation Configuration (Admin only)
+  const [leaveAllocationConfig, setLeaveAllocationConfig] = useState({
+    total_annual_leave: 15,
+    sick_leave_allocation: 10,
+    casual_leave_allocation: 5,
+    other_leave_allocation: 0,
+  });
+  const [isSavingLeaveConfig, setIsSavingLeaveConfig] = useState(false);
+
+  const weekDayOptions = [
+    { value: 'sunday', label: 'Sunday', emoji: '☀️' },
+    { value: 'monday', label: 'Monday', emoji: '🌤️' },
+    { value: 'tuesday', label: 'Tuesday', emoji: '🌥️' },
+    { value: 'wednesday', label: 'Wednesday', emoji: '⛅' },
+    { value: 'thursday', label: 'Thursday', emoji: '🌦️' },
+    { value: 'friday', label: 'Friday', emoji: '🌈' },
+    { value: 'saturday', label: 'Saturday', emoji: '💫' },
+  ];
+
+  const weekDayLabels = weekDayOptions.reduce<Record<string, string>>((acc, day) => {
+    acc[day.value] = `${day.label}`;
+    return acc;
+  }, {});
+
+  const weekDayIndexMap: Record<string, number> = {
+    sunday: 0,
+    monday: 1,
+    tuesday: 2,
+    wednesday: 3,
+    thursday: 4,
+    friday: 5,
+    saturday: 6,
+  };
+
+  const departmentOptions = useMemo(() => {
+    const deptSet = new Set<string>();
+    companyDepartments.forEach((dept) => dept && deptSet.add(dept));
+    leaveRequests.forEach((req) => req.department && deptSet.add(req.department));
+    approvalRequests.forEach((req) => req.department && deptSet.add(req.department));
+    if (user?.department) {
+      deptSet.add(user.department);
+    }
+    Object.keys(weekOffConfig).forEach((dept) => dept && deptSet.add(dept));
+    return Array.from(deptSet).filter(Boolean).sort((a, b) => a.localeCompare(b));
+  }, [companyDepartments, leaveRequests, approvalRequests, user?.department, weekOffConfig]);
+
+  useEffect(() => {
+    if (!weekOffForm.department && departmentOptions.length > 0) {
+      setWeekOffForm((prev) => ({ ...prev, department: departmentOptions[0] }));
+    }
+  }, [departmentOptions, weekOffForm.department]);
+
+  useEffect(() => {
+    if (!weekOffForm.department) {
+      return;
+    }
+    const existing = weekOffConfig[weekOffForm.department];
+    if (existing) {
+      const sameLength = existing.length === weekOffForm.days.length;
+      const sameValues = sameLength && existing.every((day) => weekOffForm.days.includes(day));
+      if (!sameValues) {
+        setWeekOffForm((prev) => ({
+          ...prev,
+          days: existing,
+        }));
+      }
+    } else if (weekOffForm.days.length === 0) {
+      setWeekOffForm((prev) => ({ ...prev, days: ['saturday'] }));
+    }
+  }, [weekOffForm.department, weekOffForm.days.length, weekOffConfig]);
+
+  const userWeekOffDays = useMemo(() => {
+    if (!user?.department) return [];
+    return weekOffConfig[user.department] || [];
+  }, [user?.department, weekOffConfig]);
+
+  const canApproveLeaves = ['admin', 'hr', 'manager'].includes(user?.role || '');
+  const canViewTeamLeaves = ['team_lead'].includes(user?.role || '');
+  // Admins should not have an option to apply for leave from the admin dashboard
+  const canApply = user?.role !== 'admin';
+
+  // determine default tab based on available tabs for the current user
+  const getDefaultTab = () => {
+    return canApply
+      ? 'request'
+      : (canApproveLeaves || canViewTeamLeaves) ? 'approvals' : 'calendar';
+  };
+
+  const [activeTab, setActiveTab] = useState(getDefaultTab());
+
+  // Save leave requests to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('leaveRequests', JSON.stringify(leaveRequests));
+  }, [leaveRequests]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      'companyHolidays',
+      JSON.stringify(
+        holidays.map((h) => ({
+          ...h,
+          date: h.date.toISOString(),
+        })),
+      ),
+    );
+  }, [holidays]);
+
+  useEffect(() => {
+    const loadDepartments = async () => {
+      try {
+        const response = await apiService.getDepartmentNames();
+        if (Array.isArray(response)) {
+          const names = response
+            .map((dept: any) => dept.name || '')
+            .filter(Boolean);
+          setCompanyDepartments(names);
+        }
+      } catch (error) {
+        console.error('Failed to fetch departments for week-off planner:', error);
+        // Fallback: if user has a department, at least show their own
+        if (user?.department) {
+          setCompanyDepartments([user.department]);
+        }
+      }
+    };
+
+    loadDepartments();
+  }, [user?.department]);
+
+  const loadLeaveRequests = useCallback(async (period: string = leaveHistoryPeriod) => {
+    if (!user) return;
+    try {
+      const requests = await apiService.getLeaveRequests(period);
+      
+      // Convert API response to our local format
+      const formattedRequests: LeaveRequest[] = requests.map((req) => {
+        const leaveType = (req.leave_type || 'annual').toLowerCase() as LeaveRequest['type'];
+        const status = (String(req.status || 'pending').toLowerCase() as LeaveRequest['status']);
+        return {
+          id: String(req.leave_id),
+          employeeId: String(req.user_id),
+          employeeName: user?.name || String(req.user_id),
+          department: user?.department || '',
+          type: leaveType,
+          startDate: new Date(req.start_date),
+          endDate: new Date(req.end_date),
+          reason: req.reason,
+          status,
+          requestDate: new Date(req.start_date)
+        };
+      });
+      
+      setLeaveRequests(formattedRequests);
+    } catch (error) {
+      console.error('Error fetching leave requests:', error);
+      // If API fails, use localStorage data
+    }
+  }, [leaveHistoryPeriod, user]);
+
+  const loadLeaveBalance = useCallback(async () => {
+    if (!user) return;
+    try {
+      const response = await apiService.getLeaveBalance();
+      const defaults = {
+        annual: { allocated: 15, used: 0, remaining: 15 },
+        sick: { allocated: 10, used: 0, remaining: 10 },
+        casual: { allocated: 5, used: 0, remaining: 5 },
+        unpaid: { allocated: 0, used: 0, remaining: 0 },
+      };
+
+      // Track unpaid leave count separately
+      let unpaidCount = 0;
+
+      response.balances.forEach((item) => {
+        const key = item.leave_type.toLowerCase();
+        if (key === 'unpaid') {
+          // For unpaid leave, just track the count
+          unpaidCount = item.used;
+        } else if (key in defaults) {
+          defaults[key as keyof typeof defaults] = {
+            allocated: item.allocated,
+            used: item.used,
+            remaining: item.remaining,
+          };
+        }
+      });
+
+      // Set unpaid leave count
+      defaults.unpaid = {
+        allocated: 0,
+        used: unpaidCount,
+        remaining: 0,
+      };
+
+      setLeaveBalance(defaults);
+    } catch (error) {
+      console.error('Error fetching leave balance:', error);
+    }
+  }, [user]);
+
+  // Load leave allocation configuration (Admin only)
+  const loadLeaveAllocationConfig = useCallback(async () => {
+    if (user?.role !== 'admin') return;
+    try {
+      const config = await apiService.getCurrentLeaveAllocation();
+      setLeaveAllocationConfig({
+        total_annual_leave: config.total_annual_leave,
+        sick_leave_allocation: config.sick_leave_allocation,
+        casual_leave_allocation: config.casual_leave_allocation,
+        other_leave_allocation: config.other_leave_allocation,
+      });
+    } catch (error) {
+      console.error('Error fetching leave allocation config:', error);
+    }
+  }, [user]);
+
+  // Save leave allocation configuration
+  const handleSaveLeaveAllocationConfig = async () => {
+    if (!user?.id) return;
+
+    // Validation
+    const total = leaveAllocationConfig.total_annual_leave;
+    const sick = leaveAllocationConfig.sick_leave_allocation;
+    const casual = leaveAllocationConfig.casual_leave_allocation;
+    const other = leaveAllocationConfig.other_leave_allocation;
+
+    if (total < 1) {
+      toast({
+        title: 'Invalid Configuration',
+        description: 'Total annual leave must be at least 1 day.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (sick < 0 || casual < 0 || other < 0) {
+      toast({
+        title: 'Invalid Configuration',
+        description: 'Leave allocations cannot be negative.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSavingLeaveConfig(true);
+
+    try {
+      await apiService.createLeaveAllocationConfig(leaveAllocationConfig);
+      
+      toast({
+        title: 'Configuration Saved',
+        description: 'Leave allocation has been updated successfully. All users will see the new allocations.',
+      });
+
+      // Reload leave balance to reflect new configuration
+      await loadLeaveBalance();
+    } catch (error) {
+      console.error('Error saving leave allocation config:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save leave allocation configuration. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingLeaveConfig(false);
+    }
+  };
+
+  // Load leave requests from API on component mount and when period changes
+  useEffect(() => {
+    const fetchLeaveRequests = async () => {
+      await loadLeaveRequests(leaveHistoryPeriod);
+    };
+
+    const fetchApprovals = async () => {
+      try {
+        if (!(canApproveLeaves || canViewTeamLeaves)) return;
+        const approvals = await apiService.getLeaveApprovals();
+        const formatted: LeaveRequest[] = approvals.map((req) => ({
+          id: String(req.leave_id),
+          employeeId: String(req.user_id),
+          employeeName: req.name || req.employee_id,
+          department: req.department || '',
+          type: (req.leave_type || 'annual').toLowerCase() as LeaveRequest['type'],
+          startDate: new Date(req.start_date),
+          endDate: new Date(req.end_date),
+          reason: req.reason,
+          status: (String(req.status || 'pending').toLowerCase() as LeaveRequest['status']),
+          requestDate: new Date(req.start_date)
+        }));
+        setApprovalRequests(formatted);
+      } catch (error) {
+        console.error('Error fetching approvals:', error);
+      }
+    };
+
+    const fetchApprovalHistory = async () => {
+      try {
+        if (!canApproveLeaves) return;
+        const history = await apiService.getLeaveApprovalsHistory();
+        const formatted: LeaveRequest[] = history.map((req) => ({
+          id: String(req.leave_id),
+          employeeId: String(req.user_id),
+          employeeName: req.name || req.employee_id,
+          department: req.department || '',
+          type: (req.leave_type || 'annual').toLowerCase() as LeaveRequest['type'],
+          startDate: new Date(req.start_date),
+          endDate: new Date(req.end_date),
+          reason: req.reason,
+          status: (String(req.status || 'approved').toLowerCase() as LeaveRequest['status']),
+          requestDate: new Date(req.start_date)
+        }));
+        // Merge with existing history to preserve locally added decisions (both approved and rejected)
+        setApprovalHistory(prev => {
+          const existingIds = new Set(formatted.map(r => r.id));
+          // Keep locally added decisions that aren't in the API response
+          const localDecisions = prev.filter(r => !existingIds.has(r.id) && r.status !== 'pending');
+          // Combine API data with local decisions, removing duplicates
+          const combined = [...localDecisions, ...formatted];
+          // Sort by request date descending (most recent first)
+          return combined.sort((a, b) => {
+            const timeA = new Date(a.requestDate).getTime();
+            const timeB = new Date(b.requestDate).getTime();
+            return timeB - timeA;
+          });
+        });
+      } catch (error) {
+        console.error('Error fetching approvals history:', error);
+      }
+    };
+
+    if (user) {
+      fetchLeaveRequests();
+      fetchApprovals();
+      fetchApprovalHistory();
+      loadLeaveBalance();
+      loadLeaveAllocationConfig();
+    }
+  }, [user, leaveHistoryPeriod, loadLeaveRequests, loadLeaveBalance, loadLeaveAllocationConfig]);
+
+  // Handle URL parameters for tab navigation and leave highlighting
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    const leaveId = searchParams.get('leaveId');
+    
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+    
+    // If leaveId is provided, highlight the specific request
+    if (leaveId) {
+      setTimeout(() => {
+        const element = document.getElementById(`leave-request-${leaveId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+          setTimeout(() => {
+            element.classList.remove('ring-2', 'ring-primary', 'ring-offset-2');
+          }, 3000);
+        }
+      }, 300);
+    }
+  }, [searchParams]);
+  // compute visible tabs count and columns class for the TabsList
+  const tabsCount = (canApply ? 1 : 0) + ((canApproveLeaves || canViewTeamLeaves) ? 1 : 0) + 1; // calendar always present
+  const colsClass = tabsCount === 3 ? 'grid-cols-3' : (tabsCount === 2 ? 'grid-cols-2' : 'grid-cols-1');
+
+  const handleSubmitRequest = async () => {
+    if (!user?.id || !formData.reason.trim() || formData.reason.trim().length < 10) {
+      toast({
+        title: 'Error',
+        description: formData.reason.trim().length < 10 
+          ? 'Leave reason must be at least 10 characters long'
+          : 'Please fill in all required fields',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Calculate number of leave days
+    const leaveDays = Math.ceil((formData.endDate.getTime() - formData.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+    // Validation 1: Sick leave minimum duration check
+    if (formData.type === 'sick' && leaveDays < 3) {
+      toast({
+        title: 'Invalid Sick Leave Duration',
+        description: 'Sick leave can only be applied for 3 or more days. For shorter periods (1-2 days), please use Casual Leave instead.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Validation 2: Advance notice requirements
+    const now = new Date();
+    const startDate = new Date(formData.startDate);
+    const timeDifference = startDate.getTime() - now.getTime();
+    const hoursDifference = timeDifference / (1000 * 60 * 60);
+
+    if (formData.type === 'sick') {
+      // Sick leave requires minimum 2 hours advance notice
+      if (hoursDifference < 2) {
+        toast({
+          title: 'Insufficient Advance Notice for Sick Leave',
+          description: 'Sick leave must be applied at least 2 hours before the start date. Please select a start date that is at least 2 hours from now.',
+          variant: 'destructive'
+        });
+        return;
+      }
+    } else {
+      // Other leaves require 24 hours advance notice
+      if (hoursDifference < 24) {
+        toast({
+          title: 'Insufficient Advance Notice',
+          description: 'Leave requests (except sick leave) must be submitted at least 24 hours in advance. Please select a start date that is at least 24 hours from now.',
+          variant: 'destructive'
+        });
+        return;
+      }
+    }
+
+    // Frontend validation: Check if user has sufficient annual leave balance
+    // For Annual, Sick, and Casual leave types, deduct from Annual Leave balance
+    if (['annual', 'sick', 'casual'].includes(formData.type)) {
+      if (leaveDays > leaveBalance.annual.remaining) {
+        toast({
+          title: 'Insufficient Leave Balance',
+          description: `You need ${leaveDays} days but only have ${leaveBalance.annual.remaining} days remaining in your Annual Leave balance. ${formData.type === 'annual' ? '' : `Note: ${formData.type.charAt(0).toUpperCase() + formData.type.slice(1)} Leave deducts from your Annual Leave balance.`}`,
+          variant: 'destructive'
+        });
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Prepare data for API
+      const leaveRequestData = {
+        employee_id: String(user.id),
+        start_date: format(formData.startDate, 'yyyy-MM-dd'),
+        end_date: format(formData.endDate, 'yyyy-MM-dd'),
+        reason: formData.reason,
+        leave_type: formData.type
+      };
+
+      // Submit to API
+      const response = await apiService.submitLeaveRequest(leaveRequestData);
+
+      // Update local leave balance immediately for better UX
+      setLeaveBalance(prev => {
+        const updated = { ...prev };
+        
+        if (formData.type === 'unpaid') {
+          // For unpaid leave, increment the unpaid counter
+          updated.unpaid = {
+            ...prev.unpaid,
+            used: prev.unpaid.used + leaveDays
+          };
+        } else if (['annual', 'sick', 'casual'].includes(formData.type)) {
+          // For Annual, Sick, and Casual leave, deduct from Annual Leave balance
+          updated.annual = {
+            ...prev.annual,
+            used: prev.annual.used + leaveDays,
+            remaining: prev.annual.remaining - leaveDays
+          };
+        }
+        
+        return updated;
+      });
+
+      // Create local leave request object for immediate UI update
+      const newRequest: LeaveRequest = {
+        id: String(response.leave_id),
+        employeeId: user.id,
+        employeeName: user.name || '',
+        department: user.department || '',
+        type: formData.type as LeaveRequest['type'],
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        reason: formData.reason,
+        status: 'pending',
+        requestDate: new Date()
+      };
+
+      // Refresh leave history from API to get the latest data
+      try {
+        await loadLeaveRequests(leaveHistoryPeriod);
+        await loadLeaveBalance();
+      } catch (refreshError) {
+        console.error('Error refreshing leave requests:', refreshError);
+        // Fallback: add to local state if refresh fails
+        setLeaveRequests([...leaveRequests, newRequest]);
+      }
+      
+      toast({
+        title: 'Success',
+        description: `Leave request submitted successfully. ${formData.type === 'unpaid' ? 'Unpaid leave does not deduct from your Annual Leave balance.' : formData.type !== 'annual' ? 'This leave has been deducted from your Annual Leave balance.' : ''}`
+      });
+      
+      // Reset form
+      setFormData({
+        type: 'annual',
+        startDate: new Date(),
+        endDate: new Date(),
+        reason: ''
+      });
+    } catch (error) {
+      console.error('Error submitting leave request:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to submit leave request. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleApproveReject = async (id: string, status: 'approved' | 'rejected') => {
+    const request = approvalRequests.find(req => req.id === id) || leaveRequests.find(req => req.id === id);
+    
+    if (!request) {
+      toast({
+        title: 'Error',
+        description: 'Leave request not found',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Prevent multiple clicks
+    if (approvingLeaveId) {
+      return;
+    }
+
+    setApprovingLeaveId(id);
+
+    try {
+      // Call API to approve/reject
+      const approved = status === 'approved';
+      await apiService.approveLeaveRequest(id, approved);
+      
+      // Update approvals list - move approved/rejected request to the top
+      const updatedRequest = { ...request, status, approvedBy: user?.name };
+      const otherRequests = approvalRequests.filter(req => req.id !== id);
+      
+      // Move the updated request to the top of the list
+      setApprovalRequests([updatedRequest, ...otherRequests]);
+      
+      // Reset pagination to show the updated request at the top
+      setApprovalCurrentPage(1);
+
+      // Add the decision to approval history for real-time display
+      // This ensures both approved and rejected requests appear in Recent Decisions
+      setApprovalHistory(prev => [updatedRequest, ...prev]);
+
+      // Refresh leave history to get updated status
+      try {
+        await loadLeaveRequests(leaveHistoryPeriod);
+        await loadLeaveBalance();
+      } catch (refreshError) {
+        console.error('Error refreshing leave requests:', refreshError);
+        // Fallback: update local state if refresh fails
+        setLeaveRequests(leaveRequests.map(req => 
+          req.id === id 
+            ? { ...req, status, approvedBy: user?.name }
+            : req
+        ));
+      }
+      
+      toast({
+        title: 'Success',
+        description: `Leave request ${status} successfully`
+      });
+    } catch (error) {
+      console.error('Error approving/rejecting leave request:', error);
+      toast({
+        title: 'Error',
+        description: `Failed to ${status} leave request. Please try again.`,
+        variant: 'destructive'
+      });
+    } finally {
+      setApprovingLeaveId(null);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'approved': return 'default';
+      case 'rejected': return 'destructive';
+      case 'pending': return 'secondary';
+      default: return 'outline';
+    }
+  };
+
+  const getStatusBadgeStyle = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return 'bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-white border-2 border-amber-300 dark:border-amber-600 shadow-lg shadow-amber-200/50 dark:shadow-amber-900/50';
+      case 'approved':
+        return 'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white border-2 border-emerald-300 dark:border-emerald-600 shadow-lg shadow-emerald-200/50 dark:shadow-emerald-900/50';
+      case 'rejected':
+        return 'bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white border-2 border-rose-300 dark:border-rose-600 shadow-lg shadow-rose-200/50 dark:shadow-rose-900/50';
+      default:
+        return 'bg-gray-500 text-white';
+    }
+  };
+
+  const getLeaveTypeColor = (type: string) => {
+    switch (type) {
+      case 'annual': return 'bg-blue-100 text-blue-800';
+      case 'sick': return 'bg-red-100 text-red-800';
+      case 'casual': return 'bg-green-100 text-green-800';
+      case 'maternity': return 'bg-purple-100 text-purple-800';
+      case 'paternity': return 'bg-indigo-100 text-indigo-800';
+      case 'unpaid': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const handleEditLeave = (leave: LeaveRequest) => {
+    setEditingLeave(leave);
+    setEditFormData({
+      startDate: leave.startDate,
+      endDate: leave.endDate,
+      reason: leave.reason
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editingLeave) return;
+    if (!editFormData.reason.trim() || editFormData.reason.trim().length < 10) {
+      toast({
+        title: 'Error',
+        description: editFormData.reason.trim().length < 10 
+          ? 'Leave reason must be at least 10 characters long'
+          : 'Reason is required',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Calculate number of leave days for validation
+    const leaveDays = Math.ceil((editFormData.endDate.getTime() - editFormData.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+    // Validation 1: Sick leave minimum duration check
+    if (editingLeave.type === 'sick' && leaveDays < 3) {
+      toast({
+        title: 'Invalid Sick Leave Duration',
+        description: 'Sick leave can only be applied for 3 or more days. For shorter periods (1-2 days), please use Casual Leave instead.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Validation 2: Advance notice requirements
+    const now = new Date();
+    const startDate = new Date(editFormData.startDate);
+    const timeDifference = startDate.getTime() - now.getTime();
+    const hoursDifference = timeDifference / (1000 * 60 * 60);
+
+    if (editingLeave.type === 'sick') {
+      // Sick leave requires minimum 2 hours advance notice
+      if (hoursDifference < 2) {
+        toast({
+          title: 'Insufficient Advance Notice for Sick Leave',
+          description: 'Sick leave must be applied at least 2 hours before the start date. Please select a start date that is at least 2 hours from now.',
+          variant: 'destructive'
+        });
+        return;
+      }
+    } else {
+      // Other leaves require 24 hours advance notice
+      if (hoursDifference < 24) {
+        toast({
+          title: 'Insufficient Advance Notice',
+          description: 'Leave requests (except sick leave) must be submitted at least 24 hours in advance. Please select a start date that is at least 24 hours from now.',
+          variant: 'destructive'
+        });
+        return;
+      }
+    }
+
+    setIsUpdatingLeave(true);
+    try {
+      await apiService.updateLeaveRequest(editingLeave.id, {
+        start_date: format(editFormData.startDate, 'yyyy-MM-dd'),
+        end_date: format(editFormData.endDate, 'yyyy-MM-dd'),
+        reason: editFormData.reason,
+        leave_type: editingLeave.type
+      });
+      await loadLeaveRequests(leaveHistoryPeriod);
+      await loadLeaveBalance();
+      toast({
+        title: 'Leave Updated',
+        description: 'Your leave request has been updated successfully.'
+      });
+      setIsEditDialogOpen(false);
+      setEditingLeave(null);
+    } catch (error) {
+      console.error('Error updating leave request:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update leave request. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsUpdatingLeave(false);
+    }
+  };
+
+  const handleDeleteLeave = (leave: LeaveRequest) => {
+    console.log('🗑️ Delete button clicked for leave:', leave);
+    
+    // Ensure we have a valid leave request
+    if (!leave || !leave.id) {
+      console.error('❌ Invalid leave request:', leave);
+      toast({
+        title: 'Error',
+        description: 'Invalid leave request. Please refresh the page and try again.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Only allow deletion of pending requests
+    if (leave.status !== 'pending') {
+      toast({
+        title: 'Cannot Delete',
+        description: 'Only pending leave requests can be deleted.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Set the leave to delete and open dialog
+    console.log('🔄 Setting leave to delete and opening dialog...');
+    setLeaveToDelete(leave);
+    setIsDeleteDialogOpen(true);
+    console.log('✅ Delete dialog state set for leave ID:', leave.id);
+    
+    // Force a small delay to ensure state updates
+    setTimeout(() => {
+      console.log('🔍 Dialog state after timeout:', {
+        isDeleteDialogOpen: true,
+        leaveToDelete: leave.id
+      });
+    }, 100);
+  };
+
+  const confirmDeleteLeave = async () => {
+    console.log('🗑️ Confirming delete for leave:', leaveToDelete);
+    
+    if (!leaveToDelete) {
+      console.error('❌ No leave to delete');
+      return;
+    }
+    
+    setIsDeletingLeave(true);
+    
+    try {
+      console.log('🔄 Calling API to delete leave request:', leaveToDelete.id);
+      await apiService.deleteLeaveRequest(leaveToDelete.id);
+      
+      console.log('✅ Leave request deleted successfully, refreshing data...');
+      
+      // Refresh the leave requests and balance
+      await loadLeaveRequests(leaveHistoryPeriod);
+      await loadLeaveBalance();
+      
+      // Show success message
+      toast({
+        title: 'Leave Request Deleted',
+        description: `Your leave request from ${formatDateIST(leaveToDelete.startDate)} to ${formatDateIST(leaveToDelete.endDate)} has been successfully deleted.`,
+      });
+      
+      // Close dialog and clear state
+      setIsDeleteDialogOpen(false);
+      setLeaveToDelete(null);
+      
+      console.log('✅ Delete operation completed successfully');
+      
+    } catch (error) {
+      console.error('❌ Error deleting leave request:', error);
+      
+      let errorMessage = 'Failed to delete leave request. Please try again.';
+      
+      // Handle specific error cases
+      if (error instanceof Error) {
+        if (error.message.includes('404')) {
+          errorMessage = 'Leave request not found. It may have already been deleted.';
+        } else if (error.message.includes('400')) {
+          errorMessage = 'Cannot delete this leave request. Only pending requests can be deleted.';
+        } else if (error.message.includes('403')) {
+          errorMessage = 'You do not have permission to delete this leave request.';
+        }
+      }
+      
+      toast({
+        title: 'Delete Failed',
+        description: errorMessage,
+        variant: 'destructive'
+      });
+    } finally {
+      setIsDeletingLeave(false);
+    }
+  };
+
+  // Filter requests based on role
+  const getFilteredRequests = () => {
+    // Admin can see all leave requests
+    if (user?.role === 'admin') {
+      return leaveRequests;
+    } 
+    // HR can see all leave requests (except admin requests if any)
+    else if (user?.role === 'hr') {
+      return leaveRequests.filter(req => req.employeeId !== user?.id);
+    } 
+    // Manager can see requests from their department or team
+    else if (user?.role === 'manager') {
+      return leaveRequests.filter(req => 
+        req.employeeId !== user?.id && req.department === user?.department
+      );
+    } 
+    // Team lead can see requests from their team
+    else if (user?.role === 'team_lead') {
+      return leaveRequests.filter(req => 
+        req.employeeId !== user?.id && req.department === user?.department
+      );
+    }
+    // Employees see only their own requests
+    return leaveRequests.filter(req => req.employeeId === user?.id);
+  };
+
+  // Filter approval history based on date range and sort by most recent first
+  const getFilteredApprovalHistory = useMemo(() => {
+    if (approvalHistory.length === 0) return [];
+
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
+    switch (historyFilter) {
+      case 'current_month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case 'last_3_months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+        break;
+      case 'last_6_months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+        break;
+      case 'custom':
+        if (!customHistoryStartDate || !customHistoryEndDate) {
+          // Sort by request date in descending order (most recent first)
+          return [...approvalHistory].sort((a, b) => {
+            const timeA = new Date(a.requestDate).getTime();
+            const timeB = new Date(b.requestDate).getTime();
+            return timeB - timeA; // Descending order (most recent first)
+          });
+        }
+        startDate = new Date(customHistoryStartDate.getFullYear(), customHistoryStartDate.getMonth(), customHistoryStartDate.getDate(), 0, 0, 0);
+        endDate = new Date(customHistoryEndDate.getFullYear(), customHistoryEndDate.getMonth(), customHistoryEndDate.getDate(), 23, 59, 59);
+        break;
+      default:
+        // Sort by request date in descending order (most recent first)
+        return [...approvalHistory].sort((a, b) => {
+          const timeA = new Date(a.requestDate).getTime();
+          const timeB = new Date(b.requestDate).getTime();
+          return timeB - timeA; // Descending order (most recent first)
+        });
+    }
+
+    const filtered = approvalHistory.filter(request => {
+      const requestDate = new Date(request.startDate);
+      return requestDate >= startDate && requestDate <= endDate;
+    });
+
+    // Sort by request date in descending order (most recent first)
+    return filtered.sort((a, b) => {
+      const timeA = new Date(a.requestDate).getTime();
+      const timeB = new Date(b.requestDate).getTime();
+      return timeB - timeA; // Descending order (most recent first)
+    });
+  }, [approvalHistory, historyFilter, customHistoryStartDate, customHistoryEndDate]);
+
+  // Paginated approval requests - sorted by most recent first
+  const paginatedApprovalRequests = useMemo(() => {
+    // Sort by request date in descending order (most recent first)
+    const sorted = [...approvalRequests].sort((a, b) => {
+      const timeA = new Date(a.requestDate).getTime();
+      const timeB = new Date(b.requestDate).getTime();
+      return timeB - timeA; // Descending order (most recent first)
+    });
+    
+    const startIndex = (approvalCurrentPage - 1) * approvalItemsPerPage;
+    const endIndex = startIndex + approvalItemsPerPage;
+    return sorted.slice(startIndex, endIndex);
+  }, [approvalRequests, approvalCurrentPage, approvalItemsPerPage]);
+
+  // Paginated approval history
+  const paginatedApprovalHistory = useMemo(() => {
+    const startIndex = (historyCurrentPage - 1) * historyItemsPerPage;
+    const endIndex = startIndex + historyItemsPerPage;
+    return getFilteredApprovalHistory.slice(startIndex, endIndex);
+  }, [getFilteredApprovalHistory, historyCurrentPage, historyItemsPerPage]);
+
+  const approvalTotalPages = Math.ceil(approvalRequests.length / approvalItemsPerPage);
+  const historyTotalPages = Math.ceil(getFilteredApprovalHistory.length / historyItemsPerPage);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setApprovalCurrentPage(1);
+  }, [approvalRequests.length]);
+
+  useEffect(() => {
+    setHistoryCurrentPage(1);
+  }, [historyFilter, customHistoryStartDate, customHistoryEndDate]);
+
+
+  return (
+    <div className="container mx-auto p-4 sm:p-6 space-y-6">
+      {/* Modern Header */}
+      <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800 rounded-2xl p-6 shadow-sm border">
+        <div className="flex items-center gap-4">
+          <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg">
+            <CalendarDays className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Leave Management</h1>
+            <p className="text-sm text-muted-foreground mt-1">Manage leave requests and view calendar</p>
+          </div>
+        </div>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className={`grid w-full ${colsClass} h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm`}>
+          {canApply && (
+            <TabsTrigger 
+              value="request" 
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+            >
+              Apply Leave
+            </TabsTrigger>
+          )}
+          {(canApproveLeaves || canViewTeamLeaves) && (
+            <TabsTrigger 
+              value="approvals"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-600 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+            >
+              {canApproveLeaves ? 'Approvals' : 'Team Leaves'}
+            </TabsTrigger>
+          )}
+          <TabsTrigger 
+            value="calendar"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+          >
+            Leave Calendar
+          </TabsTrigger>
+        </TabsList>
+
+        {canApply && (
+          <TabsContent value="request" className="space-y-4">
+          {/* Leave Balance Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="border-0 bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-blue-50">Annual Leave</p>
+                    <p className="text-3xl font-bold mt-1">
+                      {leaveBalance.annual.remaining}/{leaveBalance.annual.allocated}
+                    </p>
+                    <p className="text-xs text-blue-100 mt-1">{leaveBalance.annual.used} used</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <CalendarDays className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-0 bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-red-50">Sick Leave</p>
+                    <p className="text-3xl font-bold mt-1">
+                      {leaveBalance.sick.remaining}/{leaveBalance.sick.allocated}
+                    </p>
+                    <p className="text-xs text-red-100 mt-1">{leaveBalance.sick.used} used</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <AlertCircle className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-0 bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-green-50">Casual Leave</p>
+                    <p className="text-3xl font-bold mt-1">
+                      {leaveBalance.casual.remaining}/{leaveBalance.casual.allocated}
+                    </p>
+                    <p className="text-xs text-green-100 mt-1">{leaveBalance.casual.used} used</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <Clock className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-0 bg-gradient-to-br from-gray-500 to-slate-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-50">Unpaid Leave</p>
+                    <p className="text-3xl font-bold mt-1">
+                      {leaveBalance.unpaid.used}
+                    </p>
+                    <p className="text-xs text-gray-100 mt-1">days taken</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <FileText className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Leave Request Form */}
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+              <CardTitle className="text-xl font-semibold">Request Leave</CardTitle>
+              <div className="mt-2 space-y-3">
+                <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <strong>Note:</strong> Annual, Sick, and Casual leave requests will deduct from your <strong>Annual Leave</strong> balance. 
+                    Only <strong>Unpaid Leave</strong> does not affect your Annual Leave balance.
+                  </p>
+                </div>
+                <div className="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    <strong>Leave Restrictions:</strong>
+                  </p>
+                  <ul className="text-sm text-amber-700 dark:text-amber-300 mt-1 space-y-1">
+                    <li>• <strong>Sick Leave:</strong> Can only be applied for 3 or more days (use Casual Leave for 1-2 days)</li>
+                    <li>• <strong>Sick Leave:</strong> Must be applied at least 2 hours in advance</li>
+                    <li>• <strong>Other Leaves:</strong> Must be applied at least 24 hours in advance</li>
+                  </ul>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Leave Type</Label>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(value) => setFormData({...formData, type: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="annual">Annual Leave</SelectItem>
+                      <SelectItem value="sick">Sick Leave</SelectItem>
+                      <SelectItem value="casual">Casual Leave</SelectItem>
+                      <SelectItem value="maternity">Maternity Leave</SelectItem>
+                      <SelectItem value="paternity">Paternity Leave</SelectItem>
+                      <SelectItem value="unpaid">Unpaid Leave</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Duration</Label>
+                  <div className="flex gap-2">
+                    <DatePicker
+                      date={formData.startDate}
+                      onDateChange={(date) => date && setFormData({...formData, startDate: date})}
+                      placeholder="Start date"
+                    />
+                    <DatePicker
+                      date={formData.endDate}
+                      onDateChange={(date) => date && setFormData({...formData, endDate: date})}
+                      placeholder="End date"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Dynamic validation feedback */}
+              {(() => {
+                const leaveDays = Math.ceil((formData.endDate.getTime() - formData.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                const now = new Date();
+                const startDate = new Date(formData.startDate);
+                const timeDifference = startDate.getTime() - now.getTime();
+                const hoursDifference = timeDifference / (1000 * 60 * 60);
+                
+                const validationMessages = [];
+                
+                // Check sick leave duration
+                if (formData.type === 'sick' && leaveDays < 3) {
+                  validationMessages.push({
+                    type: 'error',
+                    message: `Sick leave requires minimum 3 days. Current selection: ${leaveDays} day${leaveDays === 1 ? '' : 's'}. Consider using Casual Leave for shorter periods.`
+                  });
+                }
+                
+                // Check advance notice requirements
+                if (formData.type === 'sick') {
+                  // Sick leave requires 2 hours advance notice
+                  if (hoursDifference < 2 && hoursDifference >= 0) {
+                    const hoursRemaining = Math.ceil(2 - hoursDifference);
+                    const minutesRemaining = Math.ceil((2 - hoursDifference) * 60);
+                    validationMessages.push({
+                      type: 'error',
+                      message: `Sick leave must be applied 2 hours in advance. Please select a date at least ${hoursRemaining > 0 ? `${hoursRemaining} hour${hoursRemaining === 1 ? '' : 's'}` : `${minutesRemaining} minute${minutesRemaining === 1 ? '' : 's'}`} from now.`
+                    });
+                  }
+                } else {
+                  // Other leaves require 24 hours advance notice
+                  if (hoursDifference < 24 && hoursDifference >= 0) {
+                    const hoursRemaining = Math.ceil(24 - hoursDifference);
+                    validationMessages.push({
+                      type: 'error',
+                      message: `Leave must be applied 24 hours in advance. Please select a date at least ${hoursRemaining} hours from now.`
+                    });
+                  }
+                }
+                
+                // Show success message when valid
+                if (validationMessages.length === 0 && leaveDays > 0) {
+                  if (formData.type === 'sick') {
+                    validationMessages.push({
+                      type: 'success',
+                      message: `✓ Valid sick leave request for ${leaveDays} day${leaveDays === 1 ? '' : 's'} with ${Math.floor(hoursDifference)} hours advance notice.`
+                    });
+                  } else if (hoursDifference >= 24) {
+                    validationMessages.push({
+                      type: 'success',
+                      message: `✓ Valid leave request with ${Math.floor(hoursDifference)} hours advance notice.`
+                    });
+                  }
+                }
+                
+                return validationMessages.length > 0 ? (
+                  <div className="space-y-2">
+                    {validationMessages.map((msg, index) => (
+                      <div 
+                        key={index}
+                        className={`p-3 rounded-lg border text-sm ${
+                          msg.type === 'error' 
+                            ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
+                            : 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200'
+                        }`}
+                      >
+                        {msg.message}
+                      </div>
+                    ))}
+                  </div>
+                ) : null;
+              })()}
+              
+              <div className="space-y-2">
+                <Label>Reason *</Label>
+                <Textarea
+                  value={formData.reason}
+                  onChange={(e) => setFormData({...formData, reason: e.target.value})}
+                  placeholder="Please provide a reason for your leave request (minimum 10 characters)..."
+                  rows={3}
+                  className={formData.reason.trim().length > 0 && formData.reason.trim().length < 10 ? 'border-red-500' : ''}
+                />
+                <div className="flex justify-between text-sm">
+                  <span className={`${formData.reason.trim().length < 10 ? 'text-red-500' : 'text-green-600'}`}>
+                    {formData.reason.trim().length < 10 
+                      ? `${formData.reason.trim().length}/10 characters (minimum required)`
+                      : `${formData.reason.trim().length}/500 characters`
+                    }
+                  </span>
+                  {formData.reason.trim().length < 10 && formData.reason.trim().length > 0 && (
+                    <span className="text-red-500 text-xs">Minimum 10 characters required</span>
+                  )}
+                </div>
+              </div>
+              <Button 
+                onClick={handleSubmitRequest}
+                disabled={isSubmitting || formData.reason.trim().length < 10}
+                className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md disabled:opacity-50"
+              >
+                <CalendarIcon className="h-4 w-4" />
+                {isSubmitting ? 'Submitting...' : 'Submit Request'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* My Leave History - Premium UI */}
+          <Card className="border-0 shadow-xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 overflow-hidden">
+            <CardHeader className="border-b bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950 dark:via-purple-950 dark:to-pink-950">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+                    <CalendarDays className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
+                      My Leave History
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Track all your leave requests and their status
+                    </p>
+                  </div>
+                </div>
+                <Select
+                  value={leaveHistoryPeriod}
+                  onValueChange={(value) => setLeaveHistoryPeriod(value)}
+                >
+                  <SelectTrigger className="w-[200px] bg-white dark:bg-slate-800 border-2 shadow-md hover:shadow-lg transition-all">
+                    <SelectValue placeholder="Select period" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="current_month">Current Month</SelectItem>
+                    <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                    <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                    <SelectItem value="last_1_year">Last 1 Year</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              {leaveRequests.filter(req => String(req.employeeId) === String(user?.id)).length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="h-24 w-24 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 flex items-center justify-center mx-auto mb-4">
+                    <AlertCircle className="h-12 w-12 text-indigo-500 dark:text-indigo-400 opacity-50" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">No Leave History</h3>
+                  <p className="text-sm text-muted-foreground">No leave requests found for the selected period.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {leaveRequests
+                    .filter(req => String(req.employeeId) === String(user?.id))
+                    .sort((a, b) => {
+                      // Sort by request date in descending order (most recent first)
+                      const timeA = new Date(a.requestDate).getTime();
+                      const timeB = new Date(b.requestDate).getTime();
+                      return timeB - timeA; // Descending order (most recent first)
+                    })
+                    .map((request) => {
+                    const daysCount = Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                    const statusConfig = {
+                      pending: { 
+                        bg: 'bg-amber-50 dark:bg-amber-950', 
+                        border: 'border-amber-200 dark:border-amber-800',
+                        icon: Clock,
+                        iconColor: 'text-amber-600 dark:text-amber-400'
+                      },
+                      approved: { 
+                        bg: 'bg-emerald-50 dark:bg-emerald-950', 
+                        border: 'border-emerald-200 dark:border-emerald-800',
+                        icon: CheckCircle,
+                        iconColor: 'text-emerald-600 dark:text-emerald-400'
+                      },
+                      rejected: { 
+                        bg: 'bg-red-50 dark:bg-red-950', 
+                        border: 'border-red-200 dark:border-red-800',
+                        icon: XCircle,
+                        iconColor: 'text-red-600 dark:text-red-400'
+                      }
+                    };
+                    const config = statusConfig[request.status] || statusConfig.pending;
+                    const StatusIcon = config.icon;
+                    
+                    return (
+                      <div 
+                        key={request.id} 
+                        className={`group relative overflow-hidden rounded-xl border-2 ${config.border} ${config.bg} p-5 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 space-y-3">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <div className={`h-10 w-10 rounded-lg ${config.bg} flex items-center justify-center shadow-md`}>
+                                <StatusIcon className={`h-5 w-5 ${config.iconColor}`} />
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 flex-wrap">
+                                  <div className="flex items-center gap-2">
+                                    <CalendarIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                      {format(request.startDate, 'MMM dd, yyyy')}
+                                    </span>
+                                    <span className="text-gray-400">→</span>
+                                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                      {format(request.endDate, 'MMM dd, yyyy')}
+                                    </span>
+                                  </div>
+                                  <Badge className={`${getLeaveTypeColor(request.type)} font-medium`}>
+                                    {request.type}
+                                  </Badge>
+                                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                    <Timer className="h-3.5 w-3.5" />
+                                    <span>{daysCount} {daysCount === 1 ? 'day' : 'days'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="pl-13">
+                              <div className="flex items-start gap-2">
+                                <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                  {request.reason}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col items-end gap-2">
+                            {request.status === 'pending' && (
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  className="group gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-500 px-4 py-2 font-semibold text-white shadow-lg shadow-indigo-200/50 transition-all hover:from-sky-500 hover:via-indigo-500 hover:to-indigo-600 hover:shadow-indigo-300/70 dark:shadow-indigo-900/50"
+                                  onClick={() => handleEditLeave(request)}
+                                >
+                                  <Pencil className="h-4 w-4 transition-transform group-hover:scale-110" />
+                                  <span className="hidden sm:inline">Edit</span>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="group gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-red-500 to-orange-500 px-4 py-2 font-semibold text-white shadow-lg shadow-rose-200/50 transition-all hover:from-rose-600 hover:via-red-500 hover:to-red-600 hover:shadow-rose-300/70 dark:shadow-rose-900/50"
+                                  onClick={() => handleDeleteLeave(request)}
+                                >
+                                  <Trash2 className="h-4 w-4 transition-transform group-hover:scale-110" />
+                                  <span className="hidden sm:inline">Delete</span>
+                                </Button>
+                              </div>
+                            )}
+                            <Badge 
+                              className={`px-5 py-2 text-sm font-bold capitalize transition-all duration-300 ${getStatusBadgeStyle(request.status)}`}
+                            >
+                              {request.status}
+                            </Badge>
+                            {request.approvedBy && (
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <User className="h-3 w-3" />
+                                <span>by {request.approvedBy}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Decorative gradient overlay */}
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-200/20 to-purple-200/20 dark:from-indigo-800/20 dark:to-purple-800/20 rounded-full blur-2xl -z-0" />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        )}
+
+        <TabsContent value="calendar">
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+              <CardTitle className="text-xl font-semibold">Leave Calendar</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {/* Admin holiday management UI */}
+              {user?.role === 'admin' && (
+                <div className="mb-6 space-y-6 mt-4">
+                  {/* Leave Allocation Configuration Panel */}
+                  <div className="p-6 border-2 rounded-xl bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-950 dark:via-indigo-950 dark:to-blue-950 shadow-lg">
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div>
+                        <h3 className="font-bold text-lg mb-1 flex items-center gap-2">
+                          <FileText className="h-6 w-6 text-purple-600" />
+                          Leave Allocation Configuration
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Set the total annual leave and distribute it across different leave types. Changes apply to all users immediately.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-6">
+                      <div className="space-y-2">
+                        <Label className="font-semibold text-purple-700 dark:text-purple-300">
+                          Total Annual Leave
+                        </Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="365"
+                          value={leaveAllocationConfig.total_annual_leave}
+                          onChange={(e) =>
+                            setLeaveAllocationConfig((prev) => ({
+                              ...prev,
+                              total_annual_leave: parseInt(e.target.value) || 0,
+                            }))
+                          }
+                          className="border-2 border-purple-200 dark:border-purple-800 focus:border-purple-500"
+                          placeholder="e.g., 15"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Total days per year
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="font-semibold text-red-700 dark:text-red-300">
+                          Sick Leave
+                        </Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="365"
+                          value={leaveAllocationConfig.sick_leave_allocation}
+                          onChange={(e) =>
+                            setLeaveAllocationConfig((prev) => ({
+                              ...prev,
+                              sick_leave_allocation: parseInt(e.target.value) || 0,
+                            }))
+                          }
+                          className="border-2 border-red-200 dark:border-red-800 focus:border-red-500"
+                          placeholder="e.g., 10"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Days allocated
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="font-semibold text-green-700 dark:text-green-300">
+                          Casual Leave
+                        </Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="365"
+                          value={leaveAllocationConfig.casual_leave_allocation}
+                          onChange={(e) =>
+                            setLeaveAllocationConfig((prev) => ({
+                              ...prev,
+                              casual_leave_allocation: parseInt(e.target.value) || 0,
+                            }))
+                          }
+                          className="border-2 border-green-200 dark:border-green-800 focus:border-green-500"
+                          placeholder="e.g., 5"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Days allocated
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="font-semibold text-gray-700 dark:text-gray-300">
+                          Other Leave
+                        </Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="365"
+                          value={leaveAllocationConfig.other_leave_allocation}
+                          onChange={(e) =>
+                            setLeaveAllocationConfig((prev) => ({
+                              ...prev,
+                              other_leave_allocation: parseInt(e.target.value) || 0,
+                            }))
+                          }
+                          className="border-2 border-gray-200 dark:border-gray-800 focus:border-gray-500"
+                          placeholder="e.g., 0"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Days allocated
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        <strong>Note:</strong> Annual, Sick, and Casual leave requests will deduct from the <strong>Total Annual Leave</strong> balance. 
+                        The individual allocations (Sick, Casual, Other) are for reference and tracking purposes.
+                      </p>
+                    </div>
+
+                    <div className="mt-6 flex items-center gap-3">
+                      <Button
+                        onClick={handleSaveLeaveAllocationConfig}
+                        disabled={isSavingLeaveConfig}
+                        className="gap-2 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:via-indigo-700 hover:to-blue-700 shadow-lg"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        {isSavingLeaveConfig ? 'Saving...' : 'Save Configuration'}
+                      </Button>
+                      <p className="text-sm text-muted-foreground">
+                        Changes will apply to all users immediately
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 border rounded-lg bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950">
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <CalendarIcon className="h-5 w-5 text-amber-600" />
+                    Set Company Holidays
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex gap-2 items-start">
+                      <div className="flex-1 space-y-2">
+                        <DatePicker
+                          date={holidayForm.date}
+                          onDateChange={(date) => date && setHolidayForm({ ...holidayForm, date })}
+                          placeholder="Select holiday date"
+                          className="w-full"
+                          disablePastDates={true}
+                        />
+                        <Input
+                          type="text"
+                          placeholder="Holiday name (e.g., Diwali, New Year)"
+                          value={holidayForm.name}
+                          onChange={e => setHolidayForm({ ...holidayForm, name: e.target.value })}
+                        />
+                        <Textarea
+                          placeholder="Description (optional) - e.g., Festival of Lights celebration"
+                          value={holidayForm.description || ''}
+                          onChange={e => setHolidayForm({ ...holidayForm, description: e.target.value })}
+                          rows={2}
+                          className="resize-none"
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleAddHoliday} 
+                        className="gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-lg mt-0"
+                      >
+                        <CalendarIcon className="h-4 w-4" />
+                        Add Holiday
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-1">Current Holidays:</h4>
+                    <ul>
+                      {holidays.map(h => (
+                        <li key={h.date.toISOString()} className="flex items-center gap-2 mb-1">
+                          <span>{h.name} ({h.date.toDateString()})</span>
+                          <Button size="sm" variant="destructive" onClick={() => handleRemoveHoliday(h.date)}>Remove</Button>
+                        </li>
+                      ))}
+                    </ul>
+                    </div>
+                  </div>
+
+                  <div className="p-4 border rounded-lg bg-gradient-to-r from-sky-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-semibold mb-1 flex items-center gap-2">
+                          <Clock className="h-5 w-5 text-sky-600" />
+                          Department Week-off Planner
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Define weekly off days for each department to keep schedules aligned.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid gap-4 md:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label>Department</Label>
+                        {departmentOptions.length > 0 ? (
+                          <Select
+                            value={weekOffForm.department}
+                            onValueChange={(value) =>
+                              setWeekOffForm((prev) => ({ ...prev, department: value }))
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select department" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {departmentOptions.map((dept) => (
+                                <SelectItem key={dept} value={dept}>
+                                  {dept}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            placeholder="e.g., Engineering"
+                            value={weekOffForm.department}
+                            onChange={(e) =>
+                              setWeekOffForm((prev) => ({ ...prev, department: e.target.value }))
+                            }
+                          />
+                        )}
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <Label>Weekly Off Days</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {weekDayOptions.map((day) => {
+                            const isSelected = weekOffForm.days.includes(day.value);
+                            return (
+                              <button
+                                key={day.value}
+                                type="button"
+                                onClick={() =>
+                                  setWeekOffForm((prev) => {
+                                    const exists = prev.days.includes(day.value);
+                                    const nextDays = exists
+                                      ? prev.days.filter((d) => d !== day.value)
+                                      : prev.days.length >= 2
+                                        ? prev.days
+                                        : [...prev.days, day.value];
+                                    if (!exists && prev.days.length >= 2) {
+                                      toast({
+                                        title: 'Limit reached',
+                                        description: 'You can only select up to two weekly off days.',
+                                      });
+                                    }
+                                    return { ...prev, days: nextDays };
+                                  })
+                                }
+                                className={`rounded-full px-3 py-1 text-sm border transition ${
+                                  isSelected
+                                    ? 'border-sky-500 bg-white text-sky-600 shadow-sm'
+                                    : 'border-slate-300 text-slate-600 hover:bg-white'
+                                }`}
+                              >
+                                {day.emoji} {day.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Tip: Select up to two days if the department enjoys a long weekend.
+                        </p>
+                      </div>
+                      <div className="space-y-2 flex flex-col justify-end md:col-span-3">
+                        <Button
+                          className="rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 self-start"
+                          onClick={handleSaveWeekOff}
+                        >
+                          Save Week-off
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <h4 className="font-medium mb-2">Active Week-off Rules</h4>
+                      {Object.keys(weekOffConfig).length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          No department-specific week-offs defined yet.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {Object.entries(weekOffConfig).map(([dept, days]) => (
+                            <div
+                              key={dept}
+                              className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/60 px-3 py-2 text-sm"
+                            >
+                              <div>
+                                <p className="font-semibold text-slate-800 dark:text-slate-100">
+                                  {dept}
+                                </p>
+                                <p className="text-muted-foreground text-xs">
+                                  Weekly off: {days.map((day) => weekDayLabels[day] || day).join(', ')}
+                                </p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-rose-500 hover:text-rose-600"
+                                onClick={() => handleRemoveWeekOff(dept)}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* Calendar with holidays highlighted */}
+              <div className="flex justify-center">
+                <CalendarWithSelect
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDayClick}
+                  currentMonth={displayedMonth}
+                  onMonthChange={setDisplayedMonth}
+                  className="rounded-xl border-2 shadow-lg p-4 bg-white dark:bg-gray-950"
+                modifiers={{
+                    holiday: holidays.map(h => h.date),
+                    weekOff: (date) =>
+                      userWeekOffDays.some(
+                        (day) => weekDayIndexMap[day] === date.getDay(),
+                      ),
+                }}
+                modifiersClassNames={{
+                    holiday:
+                      'bg-gradient-to-br from-red-500 to-rose-600 text-white font-bold hover:from-red-600 hover:to-rose-700 transition-all duration-300 shadow-lg cursor-pointer ring-2 ring-red-300 dark:ring-red-700',
+                    weekOff:
+                      'border border-sky-400 text-sky-600 font-semibold bg-sky-50 hover:bg-sky-100',
+                }}
+                footer={
+                  (() => {
+                    // Filter holidays for the currently displayed month
+                    const displayedYear = displayedMonth.getFullYear();
+                    const displayedMonthIndex = displayedMonth.getMonth();
+                    const monthHolidays = holidays.filter(h => 
+                      h.date.getFullYear() === displayedYear && 
+                      h.date.getMonth() === displayedMonthIndex
+                    );
+                    
+                    return (
+                      <div className="mt-4 p-4 bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 rounded-lg">
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                          <CalendarIcon className="h-5 w-5 text-red-600" />
+                          Holidays in {format(displayedMonth, 'MMMM yyyy')}:
+                        </h4>
+                        {monthHolidays.length === 0 ? (
+                          <p className="text-sm text-muted-foreground italic">No holidays in this month</p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {monthHolidays.map(h => (
+                          <li 
+                            key={h.date.toISOString()} 
+                            className="text-sm flex items-start gap-2 p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                            onClick={() => {
+                              setSelectedHoliday(h);
+                              setIsHolidayDialogOpen(true);
+                            }}
+                          >
+                            <span className="h-3 w-3 mt-0.5 rounded-full bg-gradient-to-r from-red-500 to-rose-600 shadow-sm flex-shrink-0"></span>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-slate-800 dark:text-slate-200">{h.name}</span>
+                                <span className="text-xs text-muted-foreground">({format(h.date, 'MMM dd, yyyy')})</span>
+                              </div>
+                              {h.description && (
+                                <p className="text-xs text-muted-foreground mt-0.5">{h.description}</p>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {Object.keys(weekOffConfig).length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="font-semibold mb-2 flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-sky-600" />
+                          Department Week-offs:
+                        </h4>
+                        <ul className="space-y-1">
+                          {Object.entries(weekOffConfig).map(([dept, days]) => (
+                            <li key={`weekoff-${dept}`} className="text-sm flex items-center gap-2">
+                              <span className="h-2 w-2 rounded-full bg-sky-400" />
+                              <span className="font-medium">{dept}</span>
+                              <span className="text-muted-foreground">
+                                {days.map((day) => weekDayLabels[day] || day).join(', ')}
+                              </span>
+                        </li>
+                      ))}
+                    </ul>
+                      </div>
+                        )}
+                      </div>
+                    );
+                  })()
+                }
+                />
+              </div>
+              {userWeekOffDays.length > 0 && (
+                <p className="mt-4 text-sm text-muted-foreground text-center">
+                  Your department ({user?.department || 'N/A'}) enjoys weekly off on{' '}
+                  <span className="font-medium text-sky-600">
+                    {userWeekOffDays.map((day) => weekDayLabels[day] || day).join(', ')}
+                  </span>
+                  .
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {(canApproveLeaves || canViewTeamLeaves) && (
+          <TabsContent value="approvals">
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+                <CardTitle className="text-xl font-semibold">
+                  {canApproveLeaves ? 'Leave Approval Requests' : 'Team Leave Requests'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {(approvalRequests.length === 0) ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>No leave requests to display</p>
+                    </div>
+                  ) : (
+                    paginatedApprovalRequests.map((request) => (
+                    <div 
+                      key={request.id} 
+                      id={`leave-request-${request.id}`}
+                      className="border rounded-lg p-4 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-md">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-2 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <User className="h-4 w-4" />
+                            <span className="font-medium">{request.employeeName}</span>
+                            <Badge className={getLeaveTypeColor(request.type)}>
+                              {request.type}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              ID: {request.employeeId}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                            <div className="flex items-center gap-1">
+                              <FileText className="h-3 w-3" />
+                              <span>{request.department}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <CalendarDays className="h-3 w-3" />
+                              <span>
+                                {format(request.startDate, 'MMM dd')} - {format(request.endDate, 'MMM dd, yyyy')}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              <span>
+                                {Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1} days
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-sm">
+                            <span className="font-medium">Reason:</span> {request.reason}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {request.status === 'pending' && canApproveLeaves ? (
+                            <>
+                              <Button
+                                size="sm"
+                                className="gap-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                                onClick={() => handleApproveReject(request.id, 'approved')}
+                                disabled={approvingLeaveId === request.id}
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                                {approvingLeaveId === request.id ? 'Processing...' : 'Approve'}
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="gap-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700"
+                                onClick={() => handleApproveReject(request.id, 'rejected')}
+                                disabled={approvingLeaveId === request.id}
+                              >
+                                <XCircle className="h-4 w-4" />
+                                {approvingLeaveId === request.id ? 'Processing...' : 'Reject'}
+                              </Button>
+                            </>
+                          ) : (
+                            <Badge className={`px-4 py-1.5 text-sm font-bold capitalize transition-all duration-300 ${getStatusBadgeStyle(request.status)}`}>
+                              {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                            </Badge>
+                          )}
+                          {request.status !== 'pending' && request.approvedBy && (
+                            <span className="text-xs text-muted-foreground">
+                              by {request.approvedBy}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )))}
+                  
+                  {/* Pagination for Approval Requests */}
+                  {approvalRequests.length > 0 && (
+                    <div className="mt-6 px-2">
+                      <Pagination
+                        currentPage={approvalCurrentPage}
+                        totalPages={approvalTotalPages}
+                        totalItems={approvalRequests.length}
+                        itemsPerPage={approvalItemsPerPage}
+                        onPageChange={setApprovalCurrentPage}
+                        onItemsPerPageChange={setApprovalItemsPerPage}
+                        showItemsPerPage={true}
+                      />
+                    </div>
+                  )}
+                  
+                  <div className="pt-6 border-t mt-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold">Recent Decisions</h3>
+                      <div className="flex items-center gap-2">
+                        <Select value={historyFilter} onValueChange={setHistoryFilter}>
+                          <SelectTrigger className="w-[180px] h-9 bg-white dark:bg-gray-950">
+                            <SelectValue placeholder="Select period" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="current_month">Current Month</SelectItem>
+                            <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                            <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                            <SelectItem value="custom">Custom Range</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    {historyFilter === 'custom' && (
+                      <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <div className="flex-1 min-w-[150px]">
+                            <Label className="text-xs mb-1">Start Date</Label>
+                            <DatePicker
+                              date={customHistoryStartDate}
+                              onDateChange={setCustomHistoryStartDate}
+                              placeholder="Select start date"
+                              className="w-full"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-[150px]">
+                            <Label className="text-xs mb-1">End Date</Label>
+                            <DatePicker
+                              date={customHistoryEndDate}
+                              onDateChange={setCustomHistoryEndDate}
+                              placeholder="Select end date"
+                              className="w-full"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {getFilteredApprovalHistory.length === 0 ? (
+                      <div className="text-center py-6 text-muted-foreground bg-slate-50 dark:bg-slate-900 rounded-lg">
+                        <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No decisions found for the selected period.</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="space-y-3">
+                          {paginatedApprovalHistory.map((request) => (
+                            <div key={`hist-${request.id}`} className="border rounded-lg p-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                              <div className="text-sm flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-medium">{request.employeeName}</span>
+                                  <Badge className={`${getLeaveTypeColor(request.type)} text-xs`}>
+                                    {request.type}
+                                  </Badge>
+                                </div>
+                                <div className="text-muted-foreground text-xs">
+                                  {format(request.startDate, 'MMM dd')} - {format(request.endDate, 'MMM dd, yyyy')} • {request.department}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge className={`px-4 py-1.5 text-sm font-bold capitalize transition-all duration-300 ${getStatusBadgeStyle(request.status)}`}>
+                                  {request.status}
+                                </Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Pagination for Approval History */}
+                        {getFilteredApprovalHistory.length > 0 && (
+                          <div className="mt-6 px-2">
+                            <Pagination
+                              currentPage={historyCurrentPage}
+                              totalPages={historyTotalPages}
+                              totalItems={getFilteredApprovalHistory.length}
+                              itemsPerPage={historyItemsPerPage}
+                              onPageChange={setHistoryCurrentPage}
+                              onItemsPerPageChange={setHistoryItemsPerPage}
+                              showItemsPerPage={true}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+      </Tabs>
+
+      {/* Edit Leave Dialog */}
+      <Dialog
+        open={isEditDialogOpen}
+        onOpenChange={(open) => {
+          setIsEditDialogOpen(open);
+          if (!open) {
+            setEditingLeave(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Leave Request</DialogTitle>
+            <DialogDescription>
+              Update your leave dates or reason. Only pending requests can be modified.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Start Date</Label>
+                <DatePicker
+                  date={editFormData.startDate}
+                  onDateChange={(date) => date && setEditFormData(prev => ({ ...prev, startDate: date }))}
+                />
+              </div>
+              <div>
+                <Label>End Date</Label>
+                <DatePicker
+                  date={editFormData.endDate}
+                  onDateChange={(date) => date && setEditFormData(prev => ({ ...prev, endDate: date }))}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Reason *</Label>
+              <Textarea
+                value={editFormData.reason}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, reason: e.target.value }))}
+                rows={4}
+                placeholder="Update the reason for your leave request (minimum 10 characters)..."
+                className={editFormData.reason.trim().length > 0 && editFormData.reason.trim().length < 10 ? 'border-red-500' : ''}
+              />
+              <div className="flex justify-between text-sm mt-1">
+                <span className={`${editFormData.reason.trim().length < 10 ? 'text-red-500' : 'text-green-600'}`}>
+                  {editFormData.reason.trim().length < 10 
+                    ? `${editFormData.reason.trim().length}/10 characters (minimum required)`
+                    : `${editFormData.reason.trim().length}/500 characters`
+                  }
+                </span>
+                {editFormData.reason.trim().length < 10 && editFormData.reason.trim().length > 0 && (
+                  <span className="text-red-500 text-xs">Minimum 10 characters required</span>
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isUpdatingLeave}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditSubmit} disabled={isUpdatingLeave || editFormData.reason.trim().length < 10}>
+              {isUpdatingLeave ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Leave Confirmation */}
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          console.log('🔄 Delete dialog onOpenChange:', open);
+          setIsDeleteDialogOpen(open);
+          if (!open) {
+            setLeaveToDelete(null);
+            console.log('🔄 Dialog closed, cleared leaveToDelete');
+          }
+        }}
+      >
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-xl">
+              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg">
+                <Trash2 className="h-5 w-5 text-white" />
+              </div>
+              Confirm Delete Leave Request
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              Are you sure you want to delete this leave request? This action cannot be undone and will permanently remove your leave request from the system.
+              {leaveToDelete && (
+                <div className="mt-3 p-3 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-800">
+                  <p className="font-medium text-red-800 dark:text-red-200">
+                    Leave Details:
+                  </p>
+                  <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                    {formatDateIST(leaveToDelete.startDate)} to {formatDateIST(leaveToDelete.endDate)}
+                  </p>
+                  <p className="text-sm text-red-700 dark:text-red-300">
+                    Type: {leaveToDelete.type.charAt(0).toUpperCase() + leaveToDelete.type.slice(1)}
+                  </p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              disabled={isDeletingLeave}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-800"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-semibold"
+              onClick={confirmDeleteLeave}
+              disabled={isDeletingLeave}
+            >
+              {isDeletingLeave ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Request
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Holiday Details Dialog */}
+      <Dialog open={isHolidayDialogOpen} onOpenChange={setIsHolidayDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg">
+                <CalendarIcon className="h-5 w-5 text-white" />
+              </div>
+              Holiday Information
+            </DialogTitle>
+          </DialogHeader>
+          {selectedHoliday && (
+            <div className="space-y-4 py-4">
+              <div className="bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-950 dark:to-rose-950 rounded-lg p-4 border-2 border-red-200 dark:border-red-800">
+                <h3 className="text-2xl font-bold text-red-700 dark:text-red-300 mb-2">
+                  {selectedHoliday.name}
+                </h3>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                  <CalendarDays className="h-4 w-4" />
+                  <span className="font-semibold">{format(selectedHoliday.date, 'EEEE, MMMM dd, yyyy')}</span>
+                </div>
+                {selectedHoliday.description && (
+                  <div className="mt-3 pt-3 border-t border-red-200 dark:border-red-800">
+                    <p className="text-sm text-slate-700 dark:text-slate-300">
+                      {selectedHoliday.description}
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 text-sm text-muted-foreground">
+                <p className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-red-500"></span>
+                  This is a company-wide holiday. All offices will be closed.
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button 
+              onClick={() => setIsHolidayDialogOpen(false)}
+              className="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700"
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
