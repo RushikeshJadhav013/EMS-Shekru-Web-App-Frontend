@@ -192,7 +192,7 @@ const AttendanceWithToggle: React.FC = () => {
       return url;
     }
     const normalized = url.startsWith('/') ? url : `/${url}`;
-    return `http://localhost:8000${normalized}`;
+    return `https://staffly.space${normalized}`;
   }, []);
 
   // Determine if user can view employee attendance
@@ -463,7 +463,7 @@ const AttendanceWithToggle: React.FC = () => {
         );
       }
 
-      const apiUrl = `http://localhost:8000/attendance/download/${exportType}?${params.toString()}`;
+      const apiUrl = `https://staffly.space/attendance/download/${exportType}?${params.toString()}`;
       const res = await fetch(apiUrl, { method: 'GET' });
       if (!res.ok) {
         throw new Error(`Request failed with status ${res.status}`);
@@ -535,7 +535,7 @@ const AttendanceWithToggle: React.FC = () => {
   const loadFromBackend = async () => {
     try {
       if (!user?.id) return;
-      const res = await fetch(`http://localhost:8000/attendance/my-attendance/${user.id}`);
+      const res = await fetch(`https://staffly.space/attendance/my-attendance/${user.id}`);
       if (!res.ok) return;
       const data = await res.json();
       setAttendanceHistory(
@@ -636,7 +636,7 @@ const AttendanceWithToggle: React.FC = () => {
             // Fetch actual work hours from backend
             try {
               const token = localStorage.getItem('token');
-              const workHoursResponse = await fetch(`http://localhost:8000/attendance/working-hours/${attendance.id}`, {
+              const workHoursResponse = await fetch(`https://staffly.space/attendance/working-hours/${attendance.id}`, {
                 headers: {
                   'Authorization': token ? `Bearer ${token}` : '',
                 },
@@ -702,7 +702,7 @@ const AttendanceWithToggle: React.FC = () => {
     try {
       setIsLoading(true);
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/attendance/all', {
+      const res = await fetch('https://staffly.space/attendance/all', {
         headers: { 'Authorization': token ? `Bearer ${token}` : '' }
       });
       
@@ -773,7 +773,7 @@ const AttendanceWithToggle: React.FC = () => {
       return;
     }
     try {
-      const res = await fetch('http://localhost:8000/employees');
+      const res = await fetch('https://staffly.space/employees');
       if (!res.ok) {
         throw new Error(`Failed to load employees: ${res.status}`);
       }
@@ -919,8 +919,8 @@ const AttendanceWithToggle: React.FC = () => {
         work_report: !isCheckingIn ? workReportBase64 : undefined,
       };
       const endpoint = isCheckingIn
-        ? 'http://localhost:8000/attendance/check-in/json'
-        : 'http://localhost:8000/attendance/check-out/json';
+        ? 'https://staffly.space/attendance/check-in/json'
+        : 'https://staffly.space/attendance/check-out/json';
       
       // ✅ Get token from localStorage for authentication
       const token = localStorage.getItem('token');
@@ -1200,7 +1200,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     // Call API to update status
     const token = localStorage.getItem('token');
-    const response = await fetch('http://localhost:8000/attendance/online-status', {
+    const response = await fetch('https://staffly.space/attendance/online-status', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1241,7 +1241,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/attendance/working-hours/${currentAttendance.id}`, {
+      const response = await fetch(`https://staffly.space/attendance/working-hours/${currentAttendance.id}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -1330,7 +1330,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/attendance/user-online-status/${user.id}`, {
+      const response = await fetch(`https://staffly.space/attendance/user-online-status/${user.id}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -1475,7 +1475,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/attendance/current-online-status', {
+      const response = await fetch('https://staffly.space/attendance/current-online-status', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -1510,7 +1510,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/attendance/current-online-status', {
+      const response = await fetch('https://staffly.space/attendance/current-online-status', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -1939,7 +1939,7 @@ const AttendanceWithToggle: React.FC = () => {
                                 }}
                               >
                                 <img
-                                  src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${record.checkInSelfie}`}
+                                  src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${record.checkInSelfie}`}
                                   alt="Selfie"
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
@@ -2116,7 +2116,7 @@ const AttendanceWithToggle: React.FC = () => {
                                   }}
                                 >
                                   <img
-                                    src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${record.checkInSelfie}`}
+                                    src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${record.checkInSelfie}`}
                                     alt="Selfie"
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
@@ -2761,7 +2761,7 @@ const AttendanceWithToggle: React.FC = () => {
               <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                 {selectedRecord?.checkInSelfie ? (
                   <img 
-                    src={selectedRecord.checkInSelfie.startsWith('http') ? selectedRecord.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${selectedRecord.checkInSelfie}`}
+                    src={selectedRecord.checkInSelfie.startsWith('http') ? selectedRecord.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${selectedRecord.checkInSelfie}`}
                     alt="Check-in selfie" 
                     className="w-full h-full object-cover"
                   />
@@ -2787,7 +2787,7 @@ const AttendanceWithToggle: React.FC = () => {
               <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                 {selectedRecord?.checkOutSelfie ? (
                   <img 
-                    src={selectedRecord.checkOutSelfie.startsWith('http') ? selectedRecord.checkOutSelfie : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${selectedRecord.checkOutSelfie}`}
+                    src={selectedRecord.checkOutSelfie.startsWith('http') ? selectedRecord.checkOutSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${selectedRecord.checkOutSelfie}`}
                     alt="Check-out selfie" 
                     className="w-full h-full object-cover"
                   />

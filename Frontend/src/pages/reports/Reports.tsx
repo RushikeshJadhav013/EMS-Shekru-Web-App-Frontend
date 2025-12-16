@@ -111,7 +111,7 @@ export default function Reports() {
   const loadDepartments = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/reports/departments', {
+      const response = await fetch('https://staffly.space/reports/departments', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -156,9 +156,9 @@ export default function Reports() {
 
       // Fetch all data in parallel
       const [empResponse, deptResponse, summaryResponse] = await Promise.all([
-        fetch(`http://localhost:8000/reports/employee-performance?${empParams}`, { headers }),
-        fetch(`http://localhost:8000/reports/department-metrics?${deptParams}`, { headers }),
-        fetch(`http://localhost:8000/reports/executive-summary?${summaryParams}`, { headers }),
+        fetch(`https://staffly.space/reports/employee-performance?${empParams}`, { headers }),
+        fetch(`https://staffly.space/reports/department-metrics?${deptParams}`, { headers }),
+        fetch(`https://staffly.space/reports/executive-summary?${summaryParams}`, { headers }),
       ]);
 
       // Handle employee performance response
@@ -323,7 +323,7 @@ export default function Reports() {
       }
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/reports/export?${params}`, {
+      const response = await fetch(`https://staffly.space/reports/export?${params}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },

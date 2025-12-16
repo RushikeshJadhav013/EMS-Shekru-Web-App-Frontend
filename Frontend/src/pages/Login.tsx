@@ -20,7 +20,7 @@ import {
 import { Language } from '@/i18n/translations';
 
 // API endpoints
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
 const API_ENDPOINTS = {
   sendOtp: `${API_BASE_URL}/auth/send-otp`,
   verifyOtp: `${API_BASE_URL}/auth/verify-otp`

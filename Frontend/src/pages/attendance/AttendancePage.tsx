@@ -92,7 +92,7 @@ const AttendancePage: React.FC = () => {
   const fetchTodayAttendance = async () => {
     if (!user?.id) return;
     try {
-      const res = await fetch(`http://localhost:8000/attendance/my-attendance/${user.id}`);
+      const res = await fetch(`https://staffly.space/attendance/my-attendance/${user.id}`);
       if (!res.ok) throw new Error('Failed to fetch attendance');
       const data = await res.json();
       
@@ -418,7 +418,7 @@ const AttendancePage: React.FC = () => {
 
       // For now, we'll skip the selfie requirement for checkout
       // In a real implementation, you might want to add selfie capture here
-      const response = await fetch('http://localhost:8000/attendance/check-out', { 
+      const response = await fetch('https://staffly.space/attendance/check-out', { 
         method: 'POST', 
         body: formData 
       });
@@ -488,8 +488,8 @@ const AttendancePage: React.FC = () => {
       formData.append('selfie', selfieBlob, 'selfie.jpg');
       
       let apiUrl = '';
-      if (isCheckingIn) apiUrl = 'http://localhost:8000/attendance/check-in';
-      else apiUrl = 'http://localhost:8000/attendance/check-out';
+      if (isCheckingIn) apiUrl = 'https://staffly.space/attendance/check-in';
+      else apiUrl = 'https://staffly.space/attendance/check-out';
       
       const response = await fetch(apiUrl, { method: 'POST', body: formData });
       if (!response.ok) {

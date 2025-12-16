@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
 const FETCH_INTERVAL_MS = 60_000;
 const POLLING_IDLE_TIMEOUT_MS = 5 * 60_000;
 

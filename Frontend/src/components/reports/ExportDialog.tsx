@@ -78,7 +78,7 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
       });
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/reports/export?${params}`, {
+      const response = await fetch(`https://staffly.space/reports/export?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

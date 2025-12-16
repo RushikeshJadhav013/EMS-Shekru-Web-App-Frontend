@@ -11,7 +11,7 @@
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
-    Content-Security-Policy = "connect-src 'self' http://localhost:8080 https://nominatim.openstreetmap.org 'unsafe-inline'; img-src 'self' data: http://localhost:8080 https://nominatim.openstreetmap.org"
+    Content-Security-Policy = "connect-src 'self' https://staffly.space https://nominatim.openstreetmap.org 'unsafe-inline'; img-src 'self' data: https://staffly.space https://nominatim.openstreetmap.org"
     Referrer-Policy = "no-referrer-when-downgrade"
 
 
@@ -37,7 +37,7 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "http://localhost:8080/:splat"
+  to = "https://staffly.space/:splat"
   status = 200
   force = true
 

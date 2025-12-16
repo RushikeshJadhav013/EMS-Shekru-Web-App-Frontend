@@ -351,10 +351,10 @@ export default function EmployeeManagement() {
         const mappedData = data.map(toCamelCase).map((emp: any) => {
           // ✅ Fix photo URLs to include backend base URL
           if (emp.profilePhoto && !emp.profilePhoto.startsWith('http')) {
-            emp.profilePhoto = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/${emp.profilePhoto}`;
+            emp.profilePhoto = `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}/${emp.profilePhoto}`;
           }
           if (emp.photoUrl && !emp.photoUrl.startsWith('http')) {
-            emp.photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/${emp.photoUrl}`;
+            emp.photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}/${emp.photoUrl}`;
           }
           // Also set photoUrl from profilePhoto if not set
           if (!emp.photoUrl && emp.profilePhoto) {
@@ -863,10 +863,10 @@ const formatAadharInput = (value: string) => {
       
       // Fix photo URLs to include backend base URL
       if (mappedUpdated.profilePhoto && !mappedUpdated.profilePhoto.startsWith('http')) {
-        mappedUpdated.profilePhoto = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/${mappedUpdated.profilePhoto}`;
+        mappedUpdated.profilePhoto = `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}/${mappedUpdated.profilePhoto}`;
       }
       if (mappedUpdated.photoUrl && !mappedUpdated.photoUrl.startsWith('http')) {
-        mappedUpdated.photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/${mappedUpdated.photoUrl}`;
+        mappedUpdated.photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}/${mappedUpdated.photoUrl}`;
       }
       if (!mappedUpdated.photoUrl && mappedUpdated.profilePhoto) {
         mappedUpdated.photoUrl = mappedUpdated.profilePhoto;
@@ -1112,10 +1112,10 @@ const formatAadharInput = (value: string) => {
         const mappedEmployee = toCamelCase(createdEmployee);
 
         if (mappedEmployee.profilePhoto && !mappedEmployee.profilePhoto.startsWith('http')) {
-          mappedEmployee.profilePhoto = `http://localhost:8000/${mappedEmployee.profilePhoto}`;
+          mappedEmployee.profilePhoto = `https://staffly.space/${mappedEmployee.profilePhoto}`;
         }
         if (mappedEmployee.photoUrl && !mappedEmployee.photoUrl.startsWith('http')) {
-          mappedEmployee.photoUrl = `http://localhost:8000/${mappedEmployee.photoUrl}`;
+          mappedEmployee.photoUrl = `https://staffly.space/${mappedEmployee.photoUrl}`;
         }
         if (!mappedEmployee.photoUrl && mappedEmployee.profilePhoto) {
           mappedEmployee.photoUrl = mappedEmployee.profilePhoto;
@@ -1386,7 +1386,7 @@ const formatAadharInput = (value: string) => {
     
     // ✅ If photo path exists and doesn't start with http, prepend backend URL
     if (photoUrl && !photoUrl.startsWith('http')) {
-      photoUrl = `http://localhost:8000/${photoUrl}`;
+      photoUrl = `https://staffly.space/${photoUrl}`;
     }
     
     console.log('Extracted photo URL:', photoUrl);

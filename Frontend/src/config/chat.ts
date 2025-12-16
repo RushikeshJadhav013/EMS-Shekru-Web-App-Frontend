@@ -4,7 +4,7 @@ export const CHAT_CONFIG = {
   DEVELOPMENT_MODE: true,
   
   // API Base URL
-  API_BASE_URL: 'http://localhost:8000',
+  API_BASE_URL: 'https://staffly.space',
   
   // Chat settings
   MESSAGE_LIMIT_PER_PAGE: 50,
