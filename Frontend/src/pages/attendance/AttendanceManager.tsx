@@ -805,10 +805,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
     try {
       const date = new Date();
       date.setHours(Number(hour), Number(minute));
-      return date.toLocaleTimeString('en-IN', {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
+      return formatTimeIST(date, 'HH:mm');
     } catch {
       return normalized;
     }
@@ -888,8 +885,8 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
       const adminWfhRequests = [
         {
           id: 'admin-sample-1',
-          startDate: format(new Date(now.getTime() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // Tomorrow
-          endDate: format(new Date(now.getTime() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+          startDate: formatDateIST(new Date(now.getTime() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // Tomorrow
+          endDate: formatDateIST(new Date(now.getTime() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
           reason: 'Important client meeting requires home office setup for better connectivity',
           type: 'full_day',
           status: 'pending',
@@ -901,8 +898,8 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
         },
         {
           id: 'admin-sample-2',
-          startDate: format(new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // Day after tomorrow
-          endDate: format(new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // 4 days from now
+          startDate: formatDateIST(new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // Day after tomorrow
+          endDate: formatDateIST(new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // 4 days from now
           reason: 'Team planning session and quarterly review preparation - need focused environment',
           type: 'full_day',
           status: 'pending',
@@ -2255,7 +2252,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                                 <div className="flex items-center gap-2">
                                   <Calendar className="h-4 w-4 text-green-600" />
                                   <span className="text-sm">
-                                    {format(new Date(request.startDate), 'dd MMM yyyy')} - {format(new Date(request.endDate), 'dd MMM yyyy')}
+                                    {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
                                   </span>
                                   <Badge variant="outline" className="text-xs">
                                     {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
@@ -2264,10 +2261,10 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                               </div>
                               <p className="text-sm text-muted-foreground">{request.reason}</p>
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span>Submitted: {formatRelativeTime(request.submittedAt)} ({format(new Date(request.submittedAt), 'dd MMM yyyy, hh:mm a')})</span>
+                                <span>Submitted: {formatRelativeTime(request.submittedAt)} ({formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')})</span>
                                 <span>Department: {request.department}</span>
                                 {request.processedAt && (
-                                  <span>Processed: {formatRelativeTime(request.processedAt)} ({format(new Date(request.processedAt), 'dd MMM yyyy, hh:mm a')})</span>
+                                  <span>Processed: {formatRelativeTime(request.processedAt)} ({formatDateTimeIST(request.processedAt, 'dd MMM yyyy, hh:mm a')})</span>
                                 )}
                               </div>
                               {request.rejectionReason && (
@@ -2369,7 +2366,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-green-600" />
                     <span className="text-sm">
-                      {format(new Date(selectedWfhRequest.startDate), 'dd MMM yyyy')} - {format(new Date(selectedWfhRequest.endDate), 'dd MMM yyyy')}
+                      {formatDateIST(selectedWfhRequest.startDate, 'dd MMM yyyy')} - {formatDateIST(selectedWfhRequest.endDate, 'dd MMM yyyy')}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">{selectedWfhRequest.reason}</p>

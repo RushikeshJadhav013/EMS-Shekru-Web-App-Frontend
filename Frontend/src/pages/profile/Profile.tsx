@@ -32,6 +32,7 @@ import {
   Bell,
   BellOff,
 } from 'lucide-react';
+import { formatDateIST } from '@/utils/timezone';
 
 const Profile: React.FC = () => {
   const { user, updateUser } = useAuth();
@@ -207,7 +208,7 @@ const Profile: React.FC = () => {
                   </span>
                   <span className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    Joined {new Date(user.joiningDate).toLocaleDateString()}
+                    Joined {formatDateIST(user.joiningDate, 'MMM dd, yyyy')}
                   </span>
                 </div>
               </div>

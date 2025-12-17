@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatDateIST, formatDateTimeIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
 
 interface Vacancy {
@@ -591,7 +592,7 @@ export default function HiringManagement() {
 
   return (
     <div className="space-y-6 relative min-h-screen">
-      <V2Overlay />
+      <V2Overlay fallbackPath={user?.role === 'admin' ? '/admin' : '/hr'} />
       {/* Gradient header */}
       <div className="rounded-3xl border border-slate-200/80 bg-gradient-to-r from-sky-500 via-indigo-500 to-violet-500 px-6 py-5 text-white shadow-sm dark:border-slate-800/80 dark:from-slate-900 dark:via-indigo-900 dark:to-violet-900">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -941,7 +942,7 @@ export default function HiringManagement() {
                           <TableCell>{candidate.vacancy_title || '-'}</TableCell>
                           <TableCell>{candidate.vacancy_department || '-'}</TableCell>
                           <TableCell>
-                            {new Date(candidate.applied_at).toLocaleDateString()}
+                            {formatDateIST(candidate.applied_at, 'MMM dd, yyyy')}
                           </TableCell>
                           <TableCell>
                             <Select
@@ -1588,7 +1589,7 @@ export default function HiringManagement() {
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Applied Date</Label>
-                  <p>{new Date(selectedCandidate.applied_at).toLocaleString()}</p>
+                  <p>{formatDateTimeIST(selectedCandidate.applied_at, 'MMM dd, yyyy HH:mm')}</p>
                 </div>
               </div>
               {selectedCandidate.cover_letter && (

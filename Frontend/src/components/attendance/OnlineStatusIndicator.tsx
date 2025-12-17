@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Timer, History, User } from 'lucide-react';
+import { formatDateTimeIST } from '@/utils/timezone';
 
 interface OnlineStatusIndicatorProps {
   isOnline: boolean;
@@ -98,13 +99,7 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
   };
 
   const formatDateTime = (timestamp: string): string => {
-    return new Date(timestamp).toLocaleString('en-IN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      day: '2-digit',
-      month: 'short'
-    });
+    return formatDateTimeIST(timestamp, 'dd MMM HH:mm:ss');
   };
 
   return (

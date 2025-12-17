@@ -85,7 +85,7 @@ const MainLayout: React.FC = () => {
       { icon: Clock, label: t.navigation.attendance, path: `/${user.role}/attendance` },
       { icon: CalendarDays, label: t.navigation.leaves, path: `/${user.role}/leaves` },
       { icon: ClipboardList, label: t.navigation.tasks, path: `/${user.role}/tasks` },
-      { icon: MessageCircle, label: 'Chat', path: `/${user.role}/chat` },
+      { icon: MessageCircle, label: t.navigation.chat, path: `/${user.role}/chat` },
     ];
 
     const roleSpecificItems: Record<UserRole, typeof commonItems> = {
@@ -300,7 +300,7 @@ const MainLayout: React.FC = () => {
                 }`}>
                   <item.icon className="h-5 w-5 flex-shrink-0 relative z-10" />
                   <div className="absolute inset-0 rounded-lg bg-white/10 dark:bg-white/5 group-hover:bg-white/20 dark:group-hover:bg-white/10 transition-all duration-300" />
-                  {item.label === 'Chat' && <ChatNotificationBadge />}
+                  {item.path.includes('/chat') && <ChatNotificationBadge />}
                 </div>
                 
                 {/* Label with animation */}
@@ -367,7 +367,7 @@ const MainLayout: React.FC = () => {
                     <div className="relative flex items-center justify-center h-9 w-9 rounded-lg transition-all duration-300">
                       <item.icon className="h-5 w-5 flex-shrink-0 relative z-10" />
                       <div className="absolute inset-0 rounded-lg bg-white/10 dark:bg-white/5 group-hover:bg-white/20 dark:group-hover:bg-white/10 transition-all duration-300" />
-                      {item.label === 'Chat' && <ChatNotificationBadge />}
+                      {item.path.includes('/chat') && <ChatNotificationBadge />}
                     </div>
                     
                     <span className="font-medium text-sm tracking-wide transition-all duration-300">{item.label}</span>

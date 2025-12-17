@@ -3,7 +3,7 @@ import { Reply, Edit, Trash2, Copy, Check, CheckCheck } from 'lucide-react';
 import { ChatMessage } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { format } from 'date-fns';
+import { formatTimeIST } from '@/utils/timezone';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -36,7 +36,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   };
 
   const formatTime = (timestamp: string) => {
-    return format(new Date(timestamp), 'h:mm a');
+    return formatTimeIST(timestamp, 'h:mm a');
   };
 
   // Get user profile photo (this will be connected to the profile system)
@@ -61,10 +61,21 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       )}
 
       <div className={cn('max-w-xs lg:max-w-md', isOwn ? 'order-1' : 'order-2')}>
-        {/* Sender name for group chats (only for others) */}
+        {/* Sender name and role for group chats (only for others) */}
         {!isOwn && (
           <div className={cn("text-xs mb-1 ml-3 font-medium", isDark ? "text-gray-400" : "text-gray-600")}>
-            {message.senderName}
+            <span>{message.senderName}</span>
+            {message.senderRole && (
+              <span className={cn("ml-2 px-2 py-0.5 rounded text-xs font-semibold", 
+                message.senderRole === 'admin' ? 'bg-red-500/20 text-red-400' :
+                message.senderRole === 'hr' ? 'bg-blue-500/20 text-blue-400' :
+                message.senderRole === 'manager' ? 'bg-purple-500/20 text-purple-400' :
+                message.senderRole === 'team_lead' ? 'bg-orange-500/20 text-orange-400' :
+                'bg-gray-500/20 text-gray-400'
+              )}>
+                {message.senderRole.charAt(0).toUpperCase() + message.senderRole.slice(1).replace('_', ' ')}
+              </span>
+            )}
           </div>
         )}
 

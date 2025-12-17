@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Clock, FileText, Send } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatDateIST } from '@/utils/timezone';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
 
@@ -178,7 +178,7 @@ const WorkSummaryDialog: React.FC<WorkSummaryDialogProps> = ({
                       <div className="flex-1">
                         <h4 className="font-medium text-gray-900">{task.title}</h4>
                         <p className="text-sm text-gray-600">
-                          Due: {format(new Date(task.due_date), 'MMM dd, yyyy')} • Status: {task.status}
+                          Due: {formatDateIST(task.due_date, 'MMM dd, yyyy')} • Status: {task.status}
                         </p>
                       </div>
                       <Badge variant="outline" className="text-orange-600 border-orange-300">

@@ -340,7 +340,7 @@ export default function TeamShifts() {
                       {schedule.upcoming_shifts.map((assignment) => (
                         <TableRow key={assignment.assignment_id}>
                           <TableCell className="font-medium">
-                            {format(new Date(assignment.assignment_date), 'MMM dd, yyyy')}
+                            {formatDateIST(assignment.assignment_date, 'MMM dd, yyyy')}
                           </TableCell>
                           <TableCell>{assignment.shift?.name || 'N/A'}</TableCell>
                           <TableCell>
@@ -387,7 +387,7 @@ export default function TeamShifts() {
                       {schedule.past_shifts.map((assignment) => (
                         <TableRow key={assignment.assignment_id}>
                           <TableCell className="font-medium">
-                            {format(new Date(assignment.assignment_date), 'MMM dd, yyyy')}
+                            {formatDateIST(assignment.assignment_date, 'MMM dd, yyyy')}
                           </TableCell>
                           <TableCell>{assignment.shift?.name || 'N/A'}</TableCell>
                           <TableCell>

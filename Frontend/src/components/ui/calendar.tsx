@@ -12,6 +12,7 @@ function Calendar({ className, classNames, showOutsideDays = false, ...props }: 
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn("p-0", className)}
+      firstWeekContainsDate={1}
       classNames={{
         months: "flex flex-col sm:flex-row",
         month: "space-y-3 w-full",

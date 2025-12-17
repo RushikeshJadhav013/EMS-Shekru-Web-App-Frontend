@@ -20,7 +20,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { formatTimeIST } from '@/utils/timezone';
+import { formatTimeIST, formatIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
 
 type HRActivity = {
@@ -287,7 +287,7 @@ const HRDashboard: React.FC = () => {
             {t.common.welcome}, HR!
           </h1>
           <p className="text-purple-100 mt-2 ml-15">
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            {formatIST(new Date(), 'EEEE, MMMM dd, yyyy')}
           </p>
         </div>
         <Button onClick={() => navigate('/hr/employees/new')} className="gap-2 bg-white text-purple-700 hover:bg-purple-50">
@@ -323,7 +323,7 @@ const HRDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="card-hover border-0 bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => navigate('/hr/attendance')}>
+        <Card className="card-hover border-0 bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => navigate('/hr/attendance', { state: { viewMode: 'employee' } })}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-green-50">
               {t.dashboard.presentToday}
@@ -339,7 +339,7 @@ const HRDashboard: React.FC = () => {
               className="p-0 h-auto mt-2 text-white hover:text-green-100" 
               onClick={(e) => {
                 e.stopPropagation();
-                navigate('/hr/attendance');
+                navigate('/hr/attendance', { state: { viewMode: 'employee' } });
               }}
             >
               <span className="text-sm">View all</span>
@@ -348,7 +348,7 @@ const HRDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="card-hover border-0 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+        <Card className="card-hover border-0 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => navigate('/hr/leaves', { state: { viewMode: 'approvals' } })}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-amber-50">
               {t.dashboard.pendingApprovals}
@@ -359,7 +359,10 @@ const HRDashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{stats.pendingLeaves}</div>
-            <Button variant="link" className="p-0 h-auto mt-2 text-white hover:text-amber-100" onClick={() => navigate('/hr/leaves')}>
+            <Button variant="link" className="p-0 h-auto mt-2 text-white hover:text-amber-100" onClick={(e) => {
+              e.stopPropagation();
+              navigate('/hr/leaves', { state: { viewMode: 'approvals' } });
+            }}>
               <span className="text-sm">Review requests</span>
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
@@ -480,7 +483,7 @@ const HRDashboard: React.FC = () => {
               <Clock className="h-5 w-5" />
               <span className="text-xs">View Attendance</span>
             </Button>
-            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/hr/leaves')}>
+            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/hr/leaves', { state: { tab: 'approvals' } })}>
               <CalendarDays className="h-5 w-5" />
               <span className="text-xs">Process Leaves</span>
             </Button>

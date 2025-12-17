@@ -529,11 +529,11 @@ const ManagerDashboard: React.FC = () => {
               <Users className="h-5 w-5" />
               <span className="text-xs">{t.navigation.viewTeam}</span>
             </Button>
-            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/manager/attendance')}>
+            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/manager/attendance', { state: { viewMode: 'employee' } })}>
               <Clock className="h-5 w-5" />
               <span className="text-xs">{t.navigation.teamAttendance}</span>
             </Button>
-            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/manager/leaves')}>
+            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/manager/leaves', { state: { tab: 'approvals' } })}>
               <CalendarDays className="h-5 w-5" />
               <span className="text-xs">Approve Leaves</span>
             </Button>

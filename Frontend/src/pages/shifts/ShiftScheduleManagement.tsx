@@ -71,10 +71,10 @@ export default function ShiftScheduleManagement() {
   const { t } = useLanguage();
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [schedule, setSchedule] = useState<DepartmentSchedule | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [selectedDate, setSelectedDate] = useState<string>(formatDateIST(new Date(), 'yyyy-MM-dd'));
   const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
-  const [weekStartDate, setWeekStartDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
-  const [weekEndDate, setWeekEndDate] = useState<string>(format(addDays(new Date(), 6), 'yyyy-MM-dd'));
+  const [weekStartDate, setWeekStartDate] = useState<string>(formatDateIST(new Date(), 'yyyy-MM-dd'));
+  const [weekEndDate, setWeekEndDate] = useState<string>(formatDateIST(addDays(new Date(), 6), 'yyyy-MM-dd'));
   const [weeklySchedule, setWeeklySchedule] = useState<DepartmentScheduleRange | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -450,6 +450,10 @@ export default function ShiftScheduleManagement() {
     if (shiftId) {
       setAssignFormData({ ...assignFormData, shift_id: shiftId });
     }
+    // Ensure shifts are loaded before opening dialog
+    if (shifts.length === 0) {
+      loadShifts();
+    }
     setIsAssignDialogOpen(true);
   };
 
@@ -776,7 +780,7 @@ export default function ShiftScheduleManagement() {
                   Users on Leave
                 </CardTitle>
                 <CardDescription>
-                  Users who are on approved leave for {format(new Date(selectedDate), 'MMM dd, yyyy')}
+                  Users who are on approved leave for {formatDateIST(selectedDate, 'MMM dd, yyyy')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -822,7 +826,7 @@ export default function ShiftScheduleManagement() {
                   Unassigned Users
                 </CardTitle>
                 <CardDescription>
-                  Users who are not assigned to any shift for {format(new Date(selectedDate), 'MMM dd, yyyy')}
+                  Users who are not assigned to any shift for {formatDateIST(selectedDate, 'MMM dd, yyyy')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -930,7 +934,7 @@ export default function ShiftScheduleManagement() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <CalendarDays className="h-5 w-5" />
-                    {format(new Date(weeklySchedule.start_date), 'MMM dd, yyyy')} - {format(new Date(weeklySchedule.end_date), 'MMM dd, yyyy')}
+                    {formatDateIST(weeklySchedule.start_date, 'MMM dd, yyyy')} - {formatDateIST(weeklySchedule.end_date, 'MMM dd, yyyy')}
                   </CardTitle>
                   <CardDescription>
                     {weeklySchedule.days.length} days of coverage • {weeklySchedule.department} department
@@ -945,7 +949,7 @@ export default function ShiftScheduleManagement() {
                       <div>
                         <CardTitle className="flex items-center gap-2">
                           <Calendar className="h-5 w-5" />
-                          {format(new Date(day.date), 'EEEE, MMM dd')}
+                          {formatDateIST(day.date, 'EEEE, MMM dd')}
                         </CardTitle>
                         <CardDescription>
                           {day.shifts.length} shifts • {day.users_on_leave.length} on leave
@@ -1105,21 +1109,37 @@ export default function ShiftScheduleManagement() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="shift_select">Shift *</Label>
-              <Select
-                value={assignFormData.shift_id.toString()}
-                onValueChange={(value) => setAssignFormData({ ...assignFormData, shift_id: parseInt(value) })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a shift" />
-                </SelectTrigger>
-                <SelectContent>
-                  {shifts.map((shift) => (
-                    <SelectItem key={shift.shift_id} value={shift.shift_id.toString()}>
-                      {shift.name} ({shift.start_time} - {shift.end_time})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {shifts.length === 0 ? (
+                <div className="p-3 rounded-lg border border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 dark:border-yellow-800">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                    No shifts available. Please create a shift first.
+                  </p>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={loadShifts}
+                    className="mt-2"
+                  >
+                    Reload Shifts
+                  </Button>
+                </div>
+              ) : (
+                <Select
+                  value={assignFormData.shift_id.toString()}
+                  onValueChange={(value) => setAssignFormData({ ...assignFormData, shift_id: parseInt(value) })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a shift" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {shifts.map((shift) => (
+                      <SelectItem key={shift.shift_id} value={shift.shift_id.toString()}>
+                        {shift.name} ({shift.start_time} - {shift.end_time})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="assignment_date">Date *</Label>

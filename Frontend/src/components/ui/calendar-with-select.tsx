@@ -44,21 +44,27 @@ export function CalendarWithSelect({
 
   const handleYearChange = (year: string) => {
     const newDate = new Date(parseInt(year), currentMonthIndex, 1);
+    // Ensure the date is set correctly in IST timezone
+    newDate.setHours(0, 0, 0, 0);
     handleMonthChange(newDate);
   };
 
   const handleMonthSelect = (monthIndex: string) => {
     const newDate = new Date(currentYear, parseInt(monthIndex), 1);
+    // Ensure the date is set correctly in IST timezone
+    newDate.setHours(0, 0, 0, 0);
     handleMonthChange(newDate);
   };
 
   const goToPreviousMonth = () => {
     const newDate = new Date(currentYear, currentMonthIndex - 1, 1);
+    newDate.setHours(0, 0, 0, 0);
     handleMonthChange(newDate);
   };
 
   const goToNextMonth = () => {
     const newDate = new Date(currentYear, currentMonthIndex + 1, 1);
+    newDate.setHours(0, 0, 0, 0);
     handleMonthChange(newDate);
   };
 
@@ -118,6 +124,7 @@ export function CalendarWithSelect({
         <Calendar
           month={month}
           onMonthChange={handleMonthChange}
+          firstWeekContainsDate={1}
           {...props}
         />
       </div>

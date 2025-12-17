@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { User } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { formatDateIST } from '@/utils/timezone';
 import { apiService, type Employee, type EmployeeData } from '@/lib/api';
 import { useFieldValidation } from '@/hooks/useFieldValidation';
 
@@ -362,6 +363,10 @@ export default function EmployeeManagement() {
           }
           // ✅ Map is_active to status
           emp.status = emp.isActive ? 'active' : 'inactive';
+          // ✅ Ensure shift field is properly set (handle multiple possible field names)
+          if (!emp.shift && emp.shiftType) {
+            emp.shift = emp.shiftType;
+          }
           return emp;
         });
         console.log('Loaded employees:', mappedData); // ✅ Debug log
@@ -1379,7 +1384,7 @@ const formatAadharInput = (value: string) => {
     const employeeType = String(emp['employeeType'] ?? emp['employee_type'] ?? '');
     const panCard = String(emp['panCard'] ?? emp['pan_card'] ?? '');
     const aadharCard = String(emp['aadharCard'] ?? emp['aadhar_card'] ?? '');
-    const shift = String(emp['shift'] ?? emp['shiftType'] ?? emp['shift_type'] ?? '');
+    const shift = String(emp['shift'] ?? emp['shiftType'] ?? emp['shift_type'] ?? emp['shifttype'] ?? emp['Shift'] ?? '');
     
     // ✅ Fix: Map profile_photo from backend to photoUrl for frontend
     let photoUrl = String(emp['photoUrl'] ?? emp['photo_url'] ?? emp['profilePhoto'] ?? emp['profile_photo'] ?? '');
@@ -2728,94 +2733,101 @@ const formatAadharInput = (value: string) => {
       </Dialog>
 
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-[400px] p-6">
-          <DialogHeader>
+        <DialogContent className="w-[95vw] max-w-[450px] max-h-[85vh] flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0 border-b">
             <DialogTitle className="text-xl font-semibold">Employee Profile</DialogTitle>
             <DialogDescription>Quick profile preview</DialogDescription>
           </DialogHeader>
           {viewEmployee && (
-            <div className="flex flex-col items-center space-y-4 pt-2">
-              <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-blue-100 dark:border-blue-900 shadow-lg">
-                <img 
-                  src={viewEmployee.photoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${viewEmployee.name}`} 
-                  alt={viewEmployee.name} 
-                  className="w-full h-full object-cover" 
-                />
-              </div>
-              <div className="text-center">
-                <h3 className="text-lg font-semibold">{viewEmployee.name}</h3>
-                <p className="text-sm text-muted-foreground mt-1">{viewEmployee.designation || '-'}</p>
-                <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mt-1">
-                  {viewEmployee.role ? viewEmployee.role.charAt(0).toUpperCase() + viewEmployee.role.slice(1) : '-'}
-                </p>
-                <Badge variant={viewEmployee.status === 'active' ? 'default' : 'secondary'} className="mt-2">
-                  {viewEmployee.status ? viewEmployee.status.charAt(0).toUpperCase() + viewEmployee.status.slice(1) : '-'}
-                </Badge>
-              </div>
-              <div className="w-full space-y-2 text-sm bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 p-4 rounded-lg">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Employee ID</span>
-                  <span className="font-medium">{viewEmployee.employeeId}</span>
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-blue-100 dark:border-blue-900 shadow-lg flex-shrink-0">
+                  <img 
+                    src={viewEmployee.photoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${viewEmployee.name}`} 
+                    alt={viewEmployee.name} 
+                    className="w-full h-full object-cover" 
+                  />
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Email</span>
-                  <span className="font-medium">{viewEmployee.email}</span>
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold">{viewEmployee.name}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">{viewEmployee.designation || '-'}</p>
+                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mt-1">
+                    {viewEmployee.role ? viewEmployee.role.charAt(0).toUpperCase() + viewEmployee.role.slice(1) : '-'}
+                  </p>
+                  <Badge variant={viewEmployee.status === 'active' ? 'default' : 'secondary'} className="mt-2">
+                    {viewEmployee.status ? viewEmployee.status.charAt(0).toUpperCase() + viewEmployee.status.slice(1) : '-'}
+                  </Badge>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Department</span>
-                  <div className="font-medium">
-                    {viewEmployee.department && viewEmployee.department.includes(',') ? (
-                      <div className="flex flex-wrap gap-1">
-                        {viewEmployee.department.split(',').map((dept, index) => (
-                          <span key={index} className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-xs font-medium">
-                            {dept.trim()}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span>{viewEmployee.department || 'No Department'}</span>
-                    )}
+                <div className="w-full space-y-2 text-sm bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 p-4 rounded-lg">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Employee ID</span>
+                    <span className="font-medium">{viewEmployee.employeeId}</span>
                   </div>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Role</span>
-                  <span className="font-medium">{viewEmployee.role ? viewEmployee.role.charAt(0).toUpperCase() + viewEmployee.role.slice(1) : '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Reporting Manager</span>
-                  <span className="font-medium">
-                    {viewEmployee.managerId ? (
-                      managers.find(m => m.id === viewEmployee.managerId)?.name || `Manager ID: ${viewEmployee.managerId}`
-                    ) : 'No Manager'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Phone</span>
-                  <span className="font-medium">{viewEmployee.phone || '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Gender</span>
-                  <span className="font-medium">{viewEmployee.gender ? viewEmployee.gender.charAt(0).toUpperCase() + viewEmployee.gender.slice(1) : '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Employee Type</span>
-                  <span className="font-medium">{viewEmployee.employeeType ? viewEmployee.employeeType.charAt(0).toUpperCase() + viewEmployee.employeeType.slice(1) : '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Resignation Date</span>
-                  <span className="font-medium">{viewEmployee.resignationDate || '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">PAN Card</span>
-                  <span className="font-medium">{viewEmployee.panCard || '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Aadhar Card</span>
-                  <span className="font-medium">{viewEmployee.aadharCard || '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Shift</span>
-                  <span className="font-medium">{viewEmployee.shift ? viewEmployee.shift.charAt(0).toUpperCase() + viewEmployee.shift.slice(1) : '-'}</span>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Email</span>
+                    <span className="font-medium">{viewEmployee.email}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Department</span>
+                    <div className="font-medium">
+                      {viewEmployee.department && viewEmployee.department.includes(',') ? (
+                        <div className="flex flex-wrap gap-1">
+                          {viewEmployee.department.split(',').map((dept, index) => (
+                            <span key={index} className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-xs font-medium">
+                              {dept.trim()}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span>{viewEmployee.department || 'No Department'}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Role</span>
+                    <span className="font-medium">{viewEmployee.role ? viewEmployee.role.charAt(0).toUpperCase() + viewEmployee.role.slice(1) : '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Reporting Manager</span>
+                    <span className="font-medium">
+                      {viewEmployee.managerId ? (
+                        managers.find(m => m.id === viewEmployee.managerId)?.name || `Manager ID: ${viewEmployee.managerId}`
+                      ) : 'No Manager'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Phone</span>
+                    <span className="font-medium">{viewEmployee.phone || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Gender</span>
+                    <span className="font-medium">{viewEmployee.gender ? viewEmployee.gender.charAt(0).toUpperCase() + viewEmployee.gender.slice(1) : '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Employee Type</span>
+                    <span className="font-medium">{viewEmployee.employeeType ? viewEmployee.employeeType.charAt(0).toUpperCase() + viewEmployee.employeeType.slice(1) : '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Resignation Date</span>
+                    <span className="font-medium">{viewEmployee.resignationDate || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">PAN Card</span>
+                    <span className="font-medium">{viewEmployee.panCard || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Aadhar Card</span>
+                    <span className="font-medium">{viewEmployee.aadharCard || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Shift</span>
+                    <span className="font-medium">
+                      {viewEmployee.shift && viewEmployee.shift.trim() 
+                        ? viewEmployee.shift.charAt(0).toUpperCase() + viewEmployee.shift.slice(1).toLowerCase()
+                        : '-'
+                      }
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

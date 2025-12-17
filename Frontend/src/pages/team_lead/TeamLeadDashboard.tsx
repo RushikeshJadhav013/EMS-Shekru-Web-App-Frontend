@@ -18,6 +18,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { formatIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
 
 interface TeamMemberStatus {
@@ -153,7 +154,7 @@ const TeamLeadDashboard: React.FC = () => {
             {t.common.welcome}, Team Lead!
           </h1>
           <p className="text-emerald-100 mt-2 ml-15">
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            {formatIST(new Date(), 'EEEE, MMMM dd, yyyy')}
           </p>
         </div>
         <Button onClick={() => navigate('/team_lead/tasks')} className="gap-2 bg-white text-emerald-700 hover:bg-emerald-50">

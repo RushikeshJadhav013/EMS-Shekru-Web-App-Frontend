@@ -254,6 +254,66 @@ const formatRoleLabel = (role?: UserRole) => {
   }
 };
 
+// WhatsApp-style time formatting for comments
+const getCommentTimeDisplay = (createdAt?: string): string => {
+  if (!createdAt) return '';
+  
+  const commentDate = parseToIST(createdAt);
+  if (!commentDate) return '';
+  
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const commentDateOnly = new Date(commentDate.getFullYear(), commentDate.getMonth(), commentDate.getDate());
+  
+  // If today, show time only
+  if (commentDateOnly.getTime() === today.getTime()) {
+    return formatDateTimeIST(commentDate, 'hh:mm a');
+  }
+  
+  // If yesterday, show "Yesterday"
+  if (commentDateOnly.getTime() === yesterday.getTime()) {
+    return 'Yesterday';
+  }
+  
+  // If within last 7 days, show day name
+  const daysDiff = Math.floor((today.getTime() - commentDateOnly.getTime()) / (1000 * 60 * 60 * 24));
+  if (daysDiff < 7) {
+    return formatDateTimeIST(commentDate, 'EEEE');
+  }
+  
+  // Otherwise show date
+  return formatDateTimeIST(commentDate, 'MMM dd, yyyy');
+};
+
+// Get date separator for WhatsApp-style grouping
+const getDateSeparator = (createdAt?: string): string | null => {
+  if (!createdAt) return null;
+  
+  const commentDate = parseToIST(createdAt);
+  if (!commentDate) return null;
+  
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const commentDateOnly = new Date(commentDate.getFullYear(), commentDate.getMonth(), commentDate.getDate());
+  
+  // If today
+  if (commentDateOnly.getTime() === today.getTime()) {
+    return 'Today';
+  }
+  
+  // If yesterday
+  if (commentDateOnly.getTime() === yesterday.getTime()) {
+    return 'Yesterday';
+  }
+  
+  // Otherwise show date
+  return formatDateTimeIST(commentDate, 'MMM dd, yyyy');
+};
+
 const TaskManagement: React.FC = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -278,6 +338,7 @@ const TaskManagement: React.FC = () => {
   });
   const [departments, setDepartments] = useState<string[]>([]);
   const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
+  const [userCache, setUserCache] = useState<Map<string, EmployeeSummary>>(new Map());
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
@@ -452,6 +513,8 @@ const TaskManagement: React.FC = () => {
       });
     }
   }, [authToken, authorizedHeaders, toast, user?.department]);
+
+
 
   const fetchTasks = useCallback(async () => {
     if (!userId) return;
@@ -640,6 +703,12 @@ const TaskManagement: React.FC = () => {
     employees.forEach((emp) => {
       map.set(emp.userId, emp);
     });
+    // Add cached users (including admin)
+    userCache.forEach((user, userId) => {
+      if (!map.has(userId)) {
+        map.set(userId, user);
+      }
+    });
     if (user && userId && !map.has(userId)) {
       map.set(userId, {
         userId,
@@ -651,7 +720,7 @@ const TaskManagement: React.FC = () => {
       });
     }
     return map;
-  }, [employees, user, userId]);
+  }, [employees, user, userId, userCache]);
 
   const getAssigneeLabel = useCallback((assigneeId: string) => {
     if (!assigneeId) return 'Self';
@@ -691,6 +760,20 @@ const TaskManagement: React.FC = () => {
       roleLabel: undefined,
     };
   }, [employeesById, user?.name, user?.role, userId]);
+
+  // Add current user to cache if they're an admin or not in employees list
+  useEffect(() => {
+    if (user && userId && !userCache.has(userId)) {
+      setUserCache((prev) => new Map(prev).set(userId, {
+        userId,
+        employeeId: '',
+        name: user.name,
+        email: user.email,
+        department: user.department || undefined,
+        role: user.role,
+      }));
+    }
+  }, [user, userId, userCache]);
 
   useEffect(() => {
     if (!user || !userId || !isCreateDialogOpen) return;
@@ -759,7 +842,7 @@ const TaskManagement: React.FC = () => {
 
     // Apply department filter for "All Tasks" view
     if (taskOwnershipFilter === 'all' && selectedDepartmentFilter !== 'all') {
-      return baseTasks.filter(task => {
+      baseTasks = baseTasks.filter(task => {
         // Get task creator and assignee info
         const creator = employees.find(emp => emp.userId === task.assignedBy);
         const assignees = task.assignedTo.map(id => employees.find(emp => emp.userId === id));
@@ -770,7 +853,32 @@ const TaskManagement: React.FC = () => {
       });
     }
 
-    return baseTasks;
+    // Re-sort tasks by status priority first, then by deadline within each status
+    // This ensures consistent ordering regardless of when tasks were updated
+    return baseTasks.sort((a, b) => {
+      // Define status priority order: todo -> in-progress -> completed -> cancelled
+      const statusOrder = { 'todo': 0, 'in-progress': 1, 'completed': 2, 'cancelled': 3 };
+      const aStatusPriority = statusOrder[a.status] ?? 999;
+      const bStatusPriority = statusOrder[b.status] ?? 999;
+      
+      // First sort by status priority
+      if (aStatusPriority !== bStatusPriority) {
+        return aStatusPriority - bStatusPriority;
+      }
+      
+      // Within same status, sort by creation date (newest first for "created" view, oldest first for others)
+      if (taskOwnershipFilter === 'created') {
+        // For created tasks, show newest first
+        const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bCreated - aCreated; // Descending order (newest first)
+      } else {
+        // For received and all tasks, sort by deadline (earliest first)
+        const aDeadline = a.deadline ? new Date(a.deadline).getTime() : Number.MAX_SAFE_INTEGER;
+        const bDeadline = b.deadline ? new Date(b.deadline).getTime() : Number.MAX_SAFE_INTEGER;
+        return aDeadline - bDeadline;
+      }
+    });
   }, [filteredCreatedTasks, filteredReceivedTasks, filteredTasks, taskOwnershipFilter, selectedDepartmentFilter, employees]);
 
   const selectedTaskAssignerInfo = useMemo(() => {
@@ -1025,6 +1133,31 @@ const TaskManagement: React.FC = () => {
     }
   }, []);
 
+  // Optimized function to sync comments without blinking - only adds new comments
+  const syncTaskComments = useCallback(async (taskId: number) => {
+    try {
+      const data = await apiService.getTaskComments(taskId);
+      if (!data) return;
+      
+      // Only update if there are new comments (compare by ID)
+      setTaskComments(prevComments => {
+        const existingIds = new Set(prevComments.map(c => c.id));
+        const newComments = data.filter(c => !existingIds.has(c.id));
+        
+        // If there are new comments, add them without replacing the entire list
+        if (newComments.length > 0) {
+          return [...prevComments, ...newComments];
+        }
+        
+        // If no new comments, return the same reference to prevent re-renders
+        return prevComments;
+      });
+    } catch (error) {
+      console.error('Failed to sync comments:', error);
+      // Silently fail - don't disrupt the user experience
+    }
+  }, []);
+
   const handlePostComment = useCallback(async () => {
     if ((!newComment.trim() && attachedFiles.length === 0) || !selectedTask) return;
     
@@ -1035,25 +1168,27 @@ const TaskManagement: React.FC = () => {
         for (let i = 0; i < attachedFiles.length; i++) {
           const file = attachedFiles[i];
           const commentText = i === 0 ? newComment.trim() : undefined; // Only send text with first file
-          const comment = await apiService.addTaskComment(
+          await apiService.addTaskComment(
             Number(selectedTask.id),
             commentText,
             file
           );
-          setTaskComments(prev => [...prev, comment]);
         }
       } else {
         // Just text comment
-        const comment = await apiService.addTaskComment(
+        await apiService.addTaskComment(
           Number(selectedTask.id),
           newComment.trim()
         );
-        setTaskComments(prev => [...prev, comment]);
       }
       
       setNewComment('');
       setAttachedFiles([]);
       setShowEmojiPicker(false);
+      
+      // Sync comments immediately after posting (only adds new comments, no blinking)
+      await syncTaskComments(Number(selectedTask.id));
+      
       toast({
         title: 'Success',
         description: 'Comment posted successfully',
@@ -1072,7 +1207,7 @@ const TaskManagement: React.FC = () => {
     } finally {
       setIsPostingComment(false);
     }
-  }, [newComment, attachedFiles, selectedTask, toast]);
+  }, [newComment, attachedFiles, selectedTask, toast, syncTaskComments]);
 
   const handleEmojiSelect = useCallback((emoji: string) => {
     setNewComment(prev => prev + emoji);
@@ -1128,11 +1263,19 @@ const TaskManagement: React.FC = () => {
   useEffect(() => {
     if (selectedTask) {
       loadTaskComments(Number(selectedTask.id));
+      
+      // Set up polling to sync new comments every 1 second for instant real-time updates
+      // Uses syncTaskComments instead of loadTaskComments to avoid blinking
+      const commentPollInterval = setInterval(() => {
+        syncTaskComments(Number(selectedTask.id));
+      }, 1000);
+      
+      return () => clearInterval(commentPollInterval);
     } else {
       setTaskComments([]);
       setNewComment('');
     }
-  }, [selectedTask, loadTaskComments]);
+  }, [selectedTask, loadTaskComments, syncTaskComments]);
 
   // Auto-scroll to bottom when comments change
   useEffect(() => {
@@ -1326,7 +1469,7 @@ const TaskManagement: React.FC = () => {
     } finally {
       setIsReassigning(false);
     }
-  }, [authToken, authorizedHeaders, fetchAndStoreHistory, getAssigneeLabel, reassignForm, reassignTask, resetReassignState, toast]);
+  }, [authToken, authorizedHeaders, fetchAndStoreHistory, getAssigneeLabel, reassignForm, reassignTask, resetReassignState, toast, user, userId, addNotification]);
 
   const handleUpdateTask = useCallback(async () => {
     if (!editingTask) return;
@@ -1742,7 +1885,7 @@ const TaskManagement: React.FC = () => {
     const userFilter = exportUserFilter !== 'all' ? `_user_${exportUserFilter}` : '';
     
     link.setAttribute('href', url);
-    link.setAttribute('download', `task_report_${dateRange}${userFilter}_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    link.setAttribute('download', `task_report_${dateRange}${userFilter}_${formatDateIST(new Date(), 'yyyy-MM-dd')}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -1825,7 +1968,7 @@ const TaskManagement: React.FC = () => {
             <p><strong>Date Range:</strong> ${dateRange}</p>
             <p><strong>User Filter:</strong> ${userFilter}</p>
             <p><strong>Total Tasks:</strong> ${filteredTasks.length}</p>
-            <p><strong>Generated on:</strong> ${format(new Date(), 'MMM dd, yyyy HH:mm')}</p>
+            <p><strong>Generated on:</strong> ${formatDateTimeIST(new Date(), 'MMM dd, yyyy HH:mm')}</p>
           </div>
           <table>
             <thead>
@@ -2308,7 +2451,7 @@ const TaskManagement: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => setIsExportDialogOpen(true)}
-                    className="gap-2 h-10 bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 hover:bg-violet-50 dark:hover:bg-violet-950"
+                    className="gap-2 h-10 bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 hover:border-violet-400 dark:hover:border-violet-600 hover:shadow-md hover:shadow-violet-200 dark:hover:shadow-violet-900/50 transition-all duration-200"
                   >
                     <Download className="h-4 w-4" />
                     Export
@@ -2408,66 +2551,75 @@ const TaskManagement: React.FC = () => {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Select
-                              value={task.status}
-                              onValueChange={(value: BaseTask['status']) => {
-                                if (isStatusTransitionAllowed(task.status, value)) {
-                                  updateTaskStatus(task.id, value);
-                                } else {
-                                  toast({
-                                    title: 'Invalid Status Change',
-                                    description: 'Cannot move back to this status once the task has progressed further.',
-                                    variant: 'destructive',
-                                  });
-                                }
-                              }}
-                              disabled={updatingTaskId === task.id}
-                            >
-                              <SelectTrigger className="w-[170px] h-10 bg-white dark:bg-gray-950 border-2 hover:border-violet-300 dark:hover:border-violet-700 transition-all duration-300 hover:shadow-md">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="border-2 shadow-2xl min-w-[200px]">
-                                {/* Show "To Do" only if allowed */}
-                                {isStatusTransitionAllowed(task.status, 'todo') && (
-                                  <SelectItem value="todo" className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors py-2.5">
-                                    <div className="flex items-center gap-3">
-                                      <div className="h-3 w-3 rounded-full bg-gradient-to-br from-slate-400 to-slate-600 shadow-md animate-pulse flex-shrink-0" />
-                                      <span className="font-medium text-sm">To Do</span>
-                                    </div>
-                                  </SelectItem>
-                                )}
-                                {/* Show "In Progress" only if allowed */}
-                                {isStatusTransitionAllowed(task.status, 'in-progress') && (
-                                  <SelectItem value="in-progress" className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors py-2.5">
-                                    <div className="flex items-center gap-3">
-                                      <div className="h-3 w-3 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 shadow-md animate-pulse flex-shrink-0" />
-                                      <span className="font-medium text-sm">In Progress</span>
-                                    </div>
-                                  </SelectItem>
-                                )}
+                            {(task.status as string) === 'completed' || (task.status as string) === 'cancelled' ? (
+                              <div className="w-[170px] h-10 bg-white dark:bg-gray-950 border-2 border-violet-200 dark:border-violet-800 rounded-md flex items-center px-3 gap-2">
+                                <div className={`h-3 w-3 rounded-full ${(task.status as string) === 'cancelled' ? 'bg-gradient-to-br from-red-400 to-rose-600' : 'bg-gradient-to-br from-green-400 to-emerald-600'} shadow-md flex-shrink-0`} />
+                                <span className="font-medium text-sm">{(task.status as string) === 'cancelled' ? 'Cancelled' : 'Completed'}</span>
+                                {(task.status as string) === 'completed' && <CheckCircle2 className="h-3.5 w-3.5 text-green-600 flex-shrink-0 ml-auto" />}
+                                {(task.status as string) === 'cancelled' && <XCircle className="h-3.5 w-3.5 text-red-600 flex-shrink-0 ml-auto" />}
+                              </div>
+                            ) : (
+                              <Select
+                                value={task.status}
+                                onValueChange={(value: BaseTask['status']) => {
+                                  if (isStatusTransitionAllowed(task.status, value)) {
+                                    updateTaskStatus(task.id, value);
+                                  } else {
+                                    toast({
+                                      title: 'Invalid Status Change',
+                                      description: 'Cannot move back to this status once the task has progressed further.',
+                                      variant: 'destructive',
+                                    });
+                                  }
+                                }}
+                                disabled={updatingTaskId === task.id}
+                              >
+                                <SelectTrigger className="w-[170px] h-10 bg-white dark:bg-gray-950 border-2 hover:border-violet-300 dark:hover:border-violet-700 transition-all duration-300 hover:shadow-md">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="border-2 shadow-2xl min-w-[200px]">
+                                  {/* Show "To Do" only if allowed */}
+                                  {isStatusTransitionAllowed(task.status, 'todo') && (
+                                    <SelectItem value="todo" className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors py-2.5">
+                                      <div className="flex items-center gap-3">
+                                        <div className="h-3 w-3 rounded-full bg-gradient-to-br from-slate-400 to-slate-600 shadow-md animate-pulse flex-shrink-0" />
+                                        <span className="font-medium text-sm">To Do</span>
+                                      </div>
+                                    </SelectItem>
+                                  )}
+                                  {/* Show "In Progress" only if allowed */}
+                                  {isStatusTransitionAllowed(task.status, 'in-progress') && (
+                                    <SelectItem value="in-progress" className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors py-2.5">
+                                      <div className="flex items-center gap-3">
+                                        <div className="h-3 w-3 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 shadow-md animate-pulse flex-shrink-0" />
+                                        <span className="font-medium text-sm">In Progress</span>
+                                      </div>
+                                    </SelectItem>
+                                  )}
 
-                                {/* Show "Completed" only if allowed */}
-                                {isStatusTransitionAllowed(task.status, 'completed') && (
-                                  <SelectItem value="completed" className="cursor-pointer hover:bg-green-50 dark:hover:bg-green-950 transition-colors py-2.5">
-                                    <div className="flex items-center gap-3">
-                                      <div className="h-3 w-3 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 shadow-md flex-shrink-0" />
-                                      <span className="font-medium text-sm flex-1">Completed</span>
-                                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
-                                    </div>
-                                  </SelectItem>
-                                )}
-                                {/* Show Cancel option to task creator for any status except already cancelled/completed */}
-                                {canManageTask && task.status !== 'cancelled' && task.status !== 'completed' && (
-                                  <SelectItem value="cancelled" className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950 transition-colors py-2.5">
-                                    <div className="flex items-center gap-3">
-                                      <div className="h-3 w-3 rounded-full bg-gradient-to-br from-red-400 to-rose-600 shadow-md flex-shrink-0" />
-                                      <span className="font-medium text-sm flex-1">Cancelled</span>
-                                      <XCircle className="h-3.5 w-3.5 text-red-600 flex-shrink-0" />
-                                    </div>
-                                  </SelectItem>
-                                )}
-                              </SelectContent>
-                            </Select>
+                                  {/* Show "Completed" only if allowed */}
+                                  {isStatusTransitionAllowed(task.status, 'completed') && (
+                                    <SelectItem value="completed" className="cursor-pointer hover:bg-green-50 dark:hover:bg-green-950 transition-colors py-2.5">
+                                      <div className="flex items-center gap-3">
+                                        <div className="h-3 w-3 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 shadow-md flex-shrink-0" />
+                                        <span className="font-medium text-sm flex-1">Completed</span>
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+                                      </div>
+                                    </SelectItem>
+                                  )}
+                                  {/* Show Cancel option to task creator for any status except already cancelled/completed */}
+                                  {canManageTask && (task.status as string) !== 'cancelled' && (task.status as string) !== 'completed' && (
+                                    <SelectItem value="cancelled" className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950 transition-colors py-2.5">
+                                      <div className="flex items-center gap-3">
+                                        <div className="h-3 w-3 rounded-full bg-gradient-to-br from-red-400 to-rose-600 shadow-md flex-shrink-0" />
+                                        <span className="font-medium text-sm flex-1">Cancelled</span>
+                                        <XCircle className="h-3.5 w-3.5 text-red-600 flex-shrink-0" />
+                                      </div>
+                                    </SelectItem>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            )}
                           </TableCell>
                           <TableCell>
                             {task.lastPassedBy && task.lastPassedTo ? (
@@ -2509,7 +2661,7 @@ const TaskManagement: React.FC = () => {
                                   Pass
                                 </Button>
                               )}
-                              {task.status !== 'completed' && canManageTask && (
+                              {task.status !== 'completed' && (task.status as string) !== 'cancelled' && canManageTask && (
                                 <>
                                   <Button
                                     variant="outline"
@@ -2637,7 +2789,7 @@ const TaskManagement: React.FC = () => {
                           </div>
                         )}
                       </div>
-                      {task.status !== 'completed' && canManageTask && (
+                      {task.status !== 'completed' && (task.status as string) !== 'cancelled' && canManageTask && (
                         <div className="flex items-center gap-2 pt-2">
                           <Button
                             variant="outline"
@@ -3363,21 +3515,38 @@ const TaskManagement: React.FC = () => {
                       </div>
                     ) : (
                       <>
-                        {taskComments.map((comment) => {
+                        {taskComments.map((comment, index) => {
                           const isOwnComment = comment.user_id === user?.id;
                           const commentUser = employeesById.get(String(comment.user_id));
                           const userPhotoUrl = commentUser?.photo_url;
                           const userInitials = comment.user_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
                           
-                          // Parse the timestamp correctly and format in IST
-                          const commentDate = parseToIST(comment.created_at);
-                          const formattedTime = commentDate ? formatDateTimeIST(commentDate, 'hh:mm a') : '';
+                          // Use WhatsApp-style time formatting
+                          const formattedTime = getCommentTimeDisplay(comment.created_at);
+                          const dateSeparator = getDateSeparator(comment.created_at);
+                          
+                          // Check if we need to show date separator (different from previous comment's date)
+                          const previousComment = index > 0 ? taskComments[index - 1] : null;
+                          const previousDateSeparator = previousComment ? getDateSeparator(previousComment.created_at) : null;
+                          const showDateSeparator = dateSeparator && dateSeparator !== previousDateSeparator;
                           
                           return (
-                            <div
-                              key={comment.id}
-                              className={`flex gap-2 ${isOwnComment ? 'flex-row-reverse' : 'flex-row'} animate-in slide-in-from-bottom-2`}
-                            >
+                            <div key={comment.id}>
+                              {/* Date Separator */}
+                              {showDateSeparator && (
+                                <div className="flex items-center gap-3 my-4">
+                                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
+                                    {dateSeparator}
+                                  </span>
+                                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                                </div>
+                              )}
+                              
+                              {/* Comment */}
+                              <div
+                                className={`flex gap-2 ${isOwnComment ? 'flex-row-reverse' : 'flex-row'} animate-in slide-in-from-bottom-2`}
+                              >
                               {/* Profile Photo */}
                               <div className="flex-shrink-0">
                                 {userPhotoUrl ? (
@@ -3496,6 +3665,7 @@ const TaskManagement: React.FC = () => {
                                     )}
                                   </div>
                                 </div>
+                              </div>
                               </div>
                             </div>
                           );

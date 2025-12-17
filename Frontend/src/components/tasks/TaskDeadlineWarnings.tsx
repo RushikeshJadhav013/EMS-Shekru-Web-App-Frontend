@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Clock, Calendar, CheckCircle2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatDateIST } from '@/utils/timezone';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
 
@@ -150,7 +150,7 @@ const TaskDeadlineWarnings: React.FC<TaskDeadlineWarningsProps> = ({
 
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), 'MMM dd, yyyy');
+      return formatDateIST(dateString, 'MMM dd, yyyy');
     } catch {
       return dateString;
     }

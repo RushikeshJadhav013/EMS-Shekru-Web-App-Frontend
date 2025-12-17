@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,6 +49,7 @@ type ExportEmployee = {
 const AttendanceWithToggle: React.FC = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const routerLocation = useLocation();
   interface EmployeeAttendanceRecord extends AttendanceRecord {
     name?: string;
     email?: string;
@@ -255,50 +257,14 @@ const AttendanceWithToggle: React.FC = () => {
     setIsLoadingWfhRequests(true);
     try {
       // Frontend-only implementation - in real app, this would be an API call
-      // For demo purposes, we'll use the existing requests and add some sample data
-      // Generate accurate timestamps relative to current time
-      const now = new Date();
-      const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000); // 5 minutes ago
-      const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000); // 30 minutes ago
-      
-      const sampleRequests = [
-        {
-          id: 'sample-1',
-          startDate: format(new Date(now.getTime() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // Tomorrow
-          endDate: format(new Date(now.getTime() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
-          reason: 'Medical appointment and need to work from home',
-          type: 'full_day',
-          status: 'pending',
-          submittedAt: fiveMinutesAgo.toISOString(), // 5 minutes ago
-          submittedBy: 'John Doe',
-          submittedById: '101',
-          department: user?.department || 'Engineering',
-          role: 'employee',
-        },
-        {
-          id: 'sample-2',
-          startDate: format(new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // Day after tomorrow
-          endDate: format(new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // 3 days from now
-          reason: 'Family emergency - need to work from home for a few days',
-          type: 'full_day',
-          status: 'pending',
-          submittedAt: thirtyMinutesAgo.toISOString(), // 30 minutes ago
-          submittedBy: 'Jane Smith',
-          submittedById: '102',
-          department: user?.department || 'Engineering',
-          role: 'team_lead',
-        }
-      ];
-      
-      // Combine with user's own requests
-      const combinedRequests = [...allWfhRequests, ...sampleRequests];
-      setAllWfhRequests(combinedRequests);
+      // Just load existing requests without adding duplicate sample data
+      setAllWfhRequests(allWfhRequests);
     } catch (error) {
       console.error('Failed to load WFH requests:', error);
     } finally {
       setIsLoadingWfhRequests(false);
     }
-  }, [canViewEmployeeAttendance, allWfhRequests, user?.department]);
+  }, [canViewEmployeeAttendance, allWfhRequests]);
 
   useEffect(() => {
     loadFromBackend();
@@ -308,6 +274,14 @@ const AttendanceWithToggle: React.FC = () => {
       refreshLocationFast();
     }
   }, [refreshLocationFast]);
+
+  // Handle navigation from HR Dashboard with viewMode state
+  useEffect(() => {
+    const state = routerLocation.state as { viewMode?: string } | null;
+    if (state?.viewMode === 'employee') {
+      setViewMode('employee');
+    }
+  }, [routerLocation.state]);
 
   useEffect(() => {
     if (viewMode === 'employee' && canViewEmployeeAttendance) {
@@ -1130,7 +1104,7 @@ const AttendanceWithToggle: React.FC = () => {
 
   // Check if user has approved WFH for today
   const getTodayWfhStatus = () => {
-    const today = format(new Date(), 'yyyy-MM-dd');
+    const today = formatDateIST(new Date(), 'yyyy-MM-dd');
     const todayWfh = [...wfhRequests, ...allWfhRequests].find(req => 
       req.submittedById === user?.id && 
       req.status === 'approved' && 
@@ -1593,7 +1567,7 @@ const AttendanceWithToggle: React.FC = () => {
           <h2 className="text-2xl font-bold">{t.navigation.attendance}</h2>
           <Badge variant="outline" className="text-lg px-3 py-1">
             <Calendar className="h-4 w-4 mr-2" />
-            {format(new Date(), 'dd MMM yyyy')}
+            {formatDateIST(new Date(), 'dd MMM yyyy')}
           </Badge>
         </div>
         
@@ -2254,7 +2228,7 @@ const AttendanceWithToggle: React.FC = () => {
                               <div className="flex items-center gap-2">
                                 <Calendar className="h-4 w-4 text-green-600" />
                                 <span className="text-sm">
-                                  {format(new Date(request.startDate), 'dd MMM yyyy')} - {format(new Date(request.endDate), 'dd MMM yyyy')}
+                                  {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
                                 </span>
                                 <Badge variant="outline" className="text-xs">
                                   {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
@@ -2263,10 +2237,10 @@ const AttendanceWithToggle: React.FC = () => {
                             </div>
                             <p className="text-sm text-muted-foreground">{request.reason}</p>
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span>Submitted: {formatRelativeTime(request.submittedAt)} ({format(new Date(request.submittedAt), 'dd MMM yyyy, hh:mm a')})</span>
+                              <span>Submitted: {formatRelativeTime(request.submittedAt)} ({formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')})</span>
                               <span>Department: {request.department}</span>
                               {request.processedAt && (
-                                <span>Processed: {formatRelativeTime(request.processedAt)} ({format(new Date(request.processedAt), 'dd MMM yyyy, hh:mm a')})</span>
+                                <span>Processed: {formatRelativeTime(request.processedAt)} ({formatDateTimeIST(request.processedAt, 'dd MMM yyyy, hh:mm a')})</span>
                               )}
                             </div>
                             {request.rejectionReason && (
@@ -2442,7 +2416,7 @@ const AttendanceWithToggle: React.FC = () => {
                             <div className="flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-blue-600" />
                               <span className="font-medium">
-                                {format(new Date(request.startDate), 'dd MMM yyyy')} - {format(new Date(request.endDate), 'dd MMM yyyy')}
+                                {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
                               </span>
                               <Badge variant="outline" className="text-xs">
                                 {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
@@ -2450,7 +2424,7 @@ const AttendanceWithToggle: React.FC = () => {
                             </div>
                             <p className="text-sm text-muted-foreground">{request.reason}</p>
                             <p className="text-xs text-muted-foreground">
-                              Submitted {formatRelativeTime(request.submittedAt)} ({format(new Date(request.submittedAt), 'dd MMM yyyy, hh:mm a')})
+                              Submitted {formatRelativeTime(request.submittedAt)} ({formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')})
                             </p>
                           </div>
                           <Badge 
@@ -3053,7 +3027,7 @@ const AttendanceWithToggle: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-green-600" />
                     <span className="text-sm">
-                      {format(new Date(selectedWfhRequest.startDate), 'dd MMM yyyy')} - {format(new Date(selectedWfhRequest.endDate), 'dd MMM yyyy')}
+                      {formatDateIST(selectedWfhRequest.startDate, 'dd MMM yyyy')} - {formatDateIST(selectedWfhRequest.endDate, 'dd MMM yyyy')}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">{selectedWfhRequest.reason}</p>

@@ -145,8 +145,9 @@ export function formatBackendDateIST(
 /**
  * Convert a date and time string to IST formatted string
  * Useful for attendance records where date and time come separately
- * @param dateStr - Date string (e.g., '2024-01-15')
- * @param timeStr - Time string (e.g., '09:30:00' or full ISO string)
+ * NOTE: Backend sends times in IST already (without timezone indicator)
+ * @param dateStr - Date string (e.g., '2024-01-15') - used only when timeStr is just time
+ * @param timeStr - Time string (e.g., '09:30:00' or full ISO string like '2024-01-15T22:27:00' in IST)
  * @param formatStr - Format string (default: 'HH:mm:ss')
  * @returns Formatted time string in IST
  */
@@ -160,16 +161,45 @@ export function formatDateTimeComponentsIST(
   try {
     let date: Date;
     
-    // Check if timeStr is a full ISO datetime
-    if (timeStr.includes('T') || timeStr.includes(' ')) {
-      date = new Date(timeStr);
-      if (!timeStr.includes('Z') && !timeStr.includes('+')) {
-        // Assume UTC if no timezone
-        date = new Date(timeStr + 'Z');
+    // Check if timeStr is a full ISO datetime (contains T or space with time)
+    if (timeStr.includes('T') || (timeStr.includes(' ') && timeStr.includes(':'))) {
+      // It's a full ISO datetime string from backend
+      // Backend sends times in IST without timezone indicator
+      
+      // Check if it has explicit timezone info
+      if (timeStr.includes('Z') || timeStr.includes('+') || /\-\d{2}:\d{2}$/.test(timeStr)) {
+        // Has timezone info - parse as UTC and convert to IST
+        date = new Date(timeStr);
+        return formatIST(date, formatStr);
+      } else {
+        // No timezone info - backend sent IST time without Z
+        // Parse as local time and format directly without conversion
+        // Extract the time components
+        const match = timeStr.match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})/);
+        if (match) {
+          const [, year, month, day, hours, minutes, seconds] = match;
+          // Create a date object and format it directly
+          date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes), parseInt(seconds));
+          return dateFnsFormat(date, formatStr);
+        }
+        // Fallback: parse as-is
+        date = new Date(timeStr);
       }
     } else {
-      // It's just a time string, combine with date
-      const combinedStr = `${dateStr}T${timeStr}Z`;
+      // It's just a time string (HH:mm:ss format)
+      // Combine with date - backend sends IST times
+      const match = timeStr.match(/(\d{2}):(\d{2}):(\d{2})/);
+      if (match) {
+        const [, hours, minutes, seconds] = match;
+        const dateMatch = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/);
+        if (dateMatch) {
+          const [, year, month, day] = dateMatch;
+          date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes), parseInt(seconds));
+          return dateFnsFormat(date, formatStr);
+        }
+      }
+      // Fallback
+      const combinedStr = `${dateStr}T${timeStr}`;
       date = new Date(combinedStr);
     }
     
@@ -177,7 +207,8 @@ export function formatDateTimeComponentsIST(
       return 'Invalid time';
     }
     
-    return formatIST(date, formatStr);
+    // Format the date directly (already in IST)
+    return dateFnsFormat(date, formatStr);
   } catch (error) {
     console.error('Error formatting date-time components:', error);
     return 'Error';

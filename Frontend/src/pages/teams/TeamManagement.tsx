@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatTimeIST, formatDateIST } from '@/utils/timezone';
 import V2Overlay from '@/components/ui/V2Overlay';
 import { 
   Users, 
@@ -249,7 +250,7 @@ export default function TeamManagement() {
 
   return (
     <div className="relative min-h-screen">
-      {user?.role === 'manager' && <V2Overlay />}
+      {user?.role === 'manager' && <V2Overlay fallbackPath="/manager" />}
     <div className="container mx-auto p-6 space-y-6">
       {/* Team Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -466,7 +467,7 @@ export default function TeamManagement() {
                           <div className="flex items-center justify-between mb-1">
                             <span className="font-medium text-sm">{message.senderName}</span>
                             <span className="text-xs text-muted-foreground">
-                              {message.timestamp.toLocaleTimeString()}
+                              {formatTimeIST(message.timestamp, 'HH:mm')}
                             </span>
                           </div>
                           <p className="text-sm">{message.message}</p>
@@ -533,7 +534,7 @@ export default function TeamManagement() {
                           <div>
                             <p className="font-medium text-sm">{update.senderName}</p>
                             <p className="text-xs text-muted-foreground">
-                              {update.timestamp.toLocaleDateString()}
+                              {formatDateIST(update.timestamp, 'MMM dd, yyyy')}
                             </p>
                           </div>
                         </div>

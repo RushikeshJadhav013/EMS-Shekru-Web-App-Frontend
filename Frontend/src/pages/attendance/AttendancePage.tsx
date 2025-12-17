@@ -59,7 +59,7 @@ const AttendancePage: React.FC = () => {
 
   // Check if user has approved WFH for today
   const getTodayWfhStatus = () => {
-    const today = format(new Date(), 'yyyy-MM-dd');
+    const today = formatDateIST(new Date(), 'yyyy-MM-dd');
     const todayWfh = wfhRequests.find(req => 
       req.status === 'approved' && 
       req.startDate <= today && 
@@ -97,9 +97,9 @@ const AttendancePage: React.FC = () => {
       const data = await res.json();
       
       // Parse backend response and find today's record
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = formatDateIST(new Date(), 'yyyy-MM-dd');
       const todayRecord = data.find((rec: any) => {
-        const recordDate = format(new Date(rec.check_in), 'yyyy-MM-dd');
+        const recordDate = formatDateIST(rec.check_in, 'yyyy-MM-dd');
         return recordDate === today;
       });
       
@@ -127,7 +127,7 @@ const AttendancePage: React.FC = () => {
           .map((rec: any) => ({
             id: rec.attendance_id.toString(),
             userId: rec.user_id.toString(),
-            date: format(new Date(rec.check_in), 'yyyy-MM-dd'),
+            date: formatDateIST(rec.check_in, 'yyyy-MM-dd'),
             checkInTime: rec.check_in, // Use ISO datetime string
             checkOutTime: rec.check_out || undefined, // Use ISO datetime string
             checkInLocation: { latitude: 0, longitude: 0, address: rec.gps_location || 'N/A' },
@@ -491,7 +491,12 @@ const AttendancePage: React.FC = () => {
       if (isCheckingIn) apiUrl = 'https://staffly.space/attendance/check-in';
       else apiUrl = 'https://staffly.space/attendance/check-out';
       
-      const response = await fetch(apiUrl, { method: 'POST', body: formData });
+      const token = localStorage.getItem('token');
+      const response = await fetch(apiUrl, { 
+        method: 'POST', 
+        body: formData,
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
         throw new Error(errorData.detail || 'Attendance API error');
@@ -646,7 +651,7 @@ const AttendancePage: React.FC = () => {
           </div>
           <Badge variant="outline" className="text-base px-4 py-2 bg-white dark:bg-gray-950">
             <Calendar className="h-4 w-4 mr-2" />
-            {format(new Date(), 'dd MMM yyyy')}
+            {formatDateIST(new Date(), 'dd MMM yyyy')}
           </Badge>
         </div>
       </div>
@@ -799,11 +804,7 @@ const AttendancePage: React.FC = () => {
                   </div>
                   {location.updatedAt && (
                     <span>
-                      {new Date(location.updatedAt).toLocaleTimeString('en-IN', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      })}
+                      {formatTimeIST(location.updatedAt, 'HH:mm:ss')}
                     </span>
                   )}
                 </div>
@@ -1061,7 +1062,7 @@ const AttendancePage: React.FC = () => {
                             <div className="flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-blue-600" />
                               <span className="font-medium">
-                                {format(new Date(request.startDate), 'dd MMM yyyy')} - {format(new Date(request.endDate), 'dd MMM yyyy')}
+                                {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
                               </span>
                               <Badge variant="outline" className="text-xs">
                                 {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
@@ -1069,7 +1070,7 @@ const AttendancePage: React.FC = () => {
                             </div>
                             <p className="text-sm text-muted-foreground">{request.reason}</p>
                             <p className="text-xs text-muted-foreground">
-                              Submitted {formatRelativeTime(request.submittedAt)} ({format(new Date(request.submittedAt), 'dd MMM yyyy, hh:mm a')})
+                              Submitted {formatRelativeTime(request.submittedAt)} ({formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')})
                             </p>
                           </div>
                           <Badge 

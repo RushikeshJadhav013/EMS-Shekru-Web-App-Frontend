@@ -286,8 +286,18 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-xl">{dept.performance}%</p>
-                    <Badge variant={dept.performance >= 90 ? 'default' : 'secondary'} className="text-xs mt-1">
-                      {dept.performance >= 90 ? 'Excellent' : 'Good'}
+                    <Badge 
+                      variant={
+                        dept.performance >= 80 ? 'default' : 
+                        dept.performance >= 60 ? 'secondary' : 
+                        'destructive'
+                      } 
+                      className="text-xs mt-1"
+                    >
+                      {dept.performance >= 80 ? 'Excellent' : 
+                       dept.performance >= 60 ? 'Good' : 
+                       dept.performance >= 40 ? 'Average' : 
+                       'Poor'}
                     </Badge>
                   </div>
                 </div>

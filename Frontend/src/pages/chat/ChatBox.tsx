@@ -14,7 +14,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { format } from 'date-fns';
+import { formatDateIST } from '@/utils/timezone';
 import { cn } from '@/lib/utils';
 import EmojiPicker from '../../components/chat/EmojiPicker';
 import MessageBubble from '../../components/chat/MessageBubble';
@@ -262,8 +262,8 @@ const ChatBox: React.FC = () => {
           <div className="space-y-3 pb-4">
             {messages.map((message, index) => {
               const showDateSeparator = index === 0 || 
-                format(new Date(message.timestamp), 'yyyy-MM-dd') !== 
-                format(new Date(messages[index - 1].timestamp), 'yyyy-MM-dd');
+                formatDateIST(message.timestamp, 'yyyy-MM-dd') !== 
+                formatDateIST(messages[index - 1].timestamp, 'yyyy-MM-dd');
               
               return (
                 <div key={message.id} className="animate-fade-in">
@@ -272,7 +272,7 @@ const ChatBox: React.FC = () => {
                       <span className={cn("backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium shadow-md", 
                         isDark ? "bg-gray-800/80 text-gray-300 border-gray-700" : "bg-white/80 text-gray-600 border-gray-300", 
                         "border")}>
-                        {format(new Date(message.timestamp), 'MMMM d, yyyy')}
+                        {formatDateIST(message.timestamp, 'MMMM d, yyyy')}
                       </span>
                     </div>
                   )}

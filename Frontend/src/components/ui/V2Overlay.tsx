@@ -1,18 +1,22 @@
 import React from 'react';
 import { Construction, Sparkles, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 
 interface V2OverlayProps {
   message?: string;
   title?: string;
+  fallbackPath?: string;
 }
 
 export const V2Overlay: React.FC<V2OverlayProps> = ({ 
   message = "Version 2 features are under development. Coming soon.",
-  title = "Coming Soon"
+  title = "Coming Soon",
+  fallbackPath
 }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   return (
     <div className="absolute inset-0 z-[30] flex items-center justify-center">
@@ -68,11 +72,20 @@ export const V2Overlay: React.FC<V2OverlayProps> = ({
           </div>
           
           {/* Back button */}
-          <div className="flex justify-center mt-8">
+          <div className="flex justify-center mt-8" onClick={(e) => e.stopPropagation()}>
             <Button
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
-                navigate(-1);
+                // Try to go back in history first, if that fails use fallback path
+                if (window.history.length > 1) {
+                  navigate(-1);
+                } else if (fallbackPath) {
+                  navigate(fallbackPath);
+                } else if (user) {
+                  // Default fallback to dashboard
+                  navigate(`/${user.role}`);
+                }
               }}
               className="group relative overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl px-6 py-2.5 cursor-pointer z-10"
             >

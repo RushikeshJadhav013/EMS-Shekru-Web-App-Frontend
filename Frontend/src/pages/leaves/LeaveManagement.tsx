@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { Pagination } from '@/components/ui/pagination';
 
 type Holiday = {
@@ -74,6 +74,7 @@ interface LeaveRequest {
 export default function LeaveManagement() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const locationState = useLocation();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [displayedMonth, setDisplayedMonth] = useState<Date>(new Date());
   
@@ -419,6 +420,14 @@ export default function LeaveManagement() {
   };
 
   const [activeTab, setActiveTab] = useState(getDefaultTab());
+
+  // Handle navigation from HR Dashboard or Manager Dashboard with viewMode/tab state
+  useEffect(() => {
+    const state = locationState.state as { viewMode?: string; tab?: string } | null;
+    if (state?.viewMode === 'approvals' || state?.tab === 'approvals') {
+      setActiveTab('approvals');
+    }
+  }, [locationState.state]);
 
   // Save leave requests to localStorage whenever they change
   useEffect(() => {

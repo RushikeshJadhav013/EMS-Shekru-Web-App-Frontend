@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Department } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { formatDateIST } from '@/utils/timezone';
 import { apiService, type Department as ApiDepartment } from '@/lib/api';
 
 interface ExtendedDepartment extends Department {
@@ -944,10 +945,10 @@ export default function DepartmentManagement() {
               )}
               <div className="flex items-center justify-between pt-4 border-t">
                 <div className="text-xs text-muted-foreground">
-                  Created: {viewDepartment.createdAt ? new Date(viewDepartment.createdAt).toLocaleDateString() : 'Unknown'}
+                  Created: {viewDepartment.createdAt ? formatDateIST(viewDepartment.createdAt, 'MMM dd, yyyy') : 'Unknown'}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Updated: {viewDepartment.updatedAt ? new Date(viewDepartment.updatedAt).toLocaleDateString() : 'Unknown'}
+                  Updated: {viewDepartment.updatedAt ? formatDateIST(viewDepartment.updatedAt, 'MMM dd, yyyy') : 'Unknown'}
                 </div>
               </div>
             </div>
@@ -1068,7 +1069,7 @@ function DepartmentForm({
             </div>
             {!isCreateMode && selectedDepartment?.updatedAt && (
               <p className="text-[11px] text-muted-foreground">
-                Updated {new Date(selectedDepartment.updatedAt).toLocaleDateString()}
+                Updated {formatDateIST(selectedDepartment.updatedAt, 'MMM dd, yyyy')}
               </p>
             )}
           </div>

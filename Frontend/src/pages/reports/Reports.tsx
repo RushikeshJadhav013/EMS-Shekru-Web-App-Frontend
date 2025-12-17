@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { nowIST } from '@/utils/timezone';
+import { nowIST, formatIST } from '@/utils/timezone';
 import { toast } from '@/hooks/use-toast';
 import RatingDialog, { EmployeeRating } from '@/components/rating/RatingDialog';
 import ExportDialog from '@/components/reports/ExportDialog';
@@ -288,15 +288,16 @@ export default function Reports() {
   };
 
   const getPerformanceColor = (score: number) => {
-    if (score >= 90) return 'text-green-600';
-    if (score >= 75) return 'text-yellow-600';
+    if (score >= 80) return 'text-green-600';
+    if (score >= 60) return 'text-blue-600';
+    if (score >= 40) return 'text-yellow-600';
     return 'text-red-600';
   };
 
   const getPerformanceBadge = (score: number) => {
-    if (score >= 90) return { variant: 'default' as const, text: 'Excellent' };
-    if (score >= 75) return { variant: 'secondary' as const, text: 'Good' };
-    if (score >= 60) return { variant: 'outline' as const, text: 'Average' };
+    if (score >= 80) return { variant: 'default' as const, text: 'Excellent' };
+    if (score >= 60) return { variant: 'secondary' as const, text: 'Good' };
+    if (score >= 40) return { variant: 'outline' as const, text: 'Average' };
     return { variant: 'destructive' as const, text: 'Poor' };
   };
 
@@ -341,7 +342,7 @@ export default function Reports() {
       const a = document.createElement('a');
       a.href = url;
       
-      const monthName = new Date(parseInt(selectedYear), parseInt(selectedMonth)).toLocaleString('default', { month: 'long' });
+      const monthName = formatIST(new Date(parseInt(selectedYear), parseInt(selectedMonth)), 'MMMM');
       const filename = `performance_report_${monthName}_${selectedYear}.${format}`;
       
       a.download = filename;
@@ -366,7 +367,7 @@ export default function Reports() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 relative">
-      {(user?.role === 'manager' || user?.role === 'team_lead') && <V2Overlay />}
+      {(user?.role === 'manager' || user?.role === 'team_lead') && <V2Overlay fallbackPath={user?.role === 'manager' ? '/manager' : '/team_lead'} />}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6">
         {/* Header Section */}
         <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-4 sm:p-6 lg:p-8">
