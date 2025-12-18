@@ -1754,6 +1754,34 @@ const formatAadharInput = (value: string) => {
                         <p className="text-red-500 text-sm mt-1">{emailError}</p>
                       )}
                     </div>
+                    <div>
+                      <Label htmlFor="create-role">Role *</Label>
+                      <Select
+                        value={formData.role || 'employee'}
+                        onValueChange={(value) => {
+                          setFormData((prev) => ({ ...prev, role: value as string }));
+                          // Reset department selections when role changes
+                          if (value === 'HR' || value === 'Manager') {
+                            setSelectedDepartments([]);
+                          } else {
+                            setSelectedDepartments([]);
+                            setFormData((prev) => ({ ...prev, department: '' }));
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select Role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Admin">Admin</SelectItem>
+                          <SelectItem value="HR">HR</SelectItem>
+                          <SelectItem value="Manager">Manager</SelectItem>
+                          <SelectItem value="TeamLead">Team Lead</SelectItem>
+                          <SelectItem value="Employee">Employee</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
                     {/* Single Department Selection for other roles */}
                     {formData.role !== 'HR' && formData.role !== 'Manager' && (
                       <div>
@@ -1790,33 +1818,6 @@ const formatAadharInput = (value: string) => {
                         )}
                       </div>
                     )}
-                    <div>
-                      <Label htmlFor="create-role">Role *</Label>
-                      <Select
-                        value={formData.role || 'employee'}
-                        onValueChange={(value) => {
-                          setFormData((prev) => ({ ...prev, role: value as string }));
-                          // Reset department selections when role changes
-                          if (value === 'HR' || value === 'Manager') {
-                            setSelectedDepartments([]);
-                          } else {
-                            setSelectedDepartments([]);
-                            setFormData((prev) => ({ ...prev, department: '' }));
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select Role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Admin">Admin</SelectItem>
-                          <SelectItem value="HR">HR</SelectItem>
-                          <SelectItem value="Manager">Manager</SelectItem>
-                          <SelectItem value="TeamLead">Team Lead</SelectItem>
-                          <SelectItem value="Employee">Employee</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                     
                     {/* Multiple Department Selection for HR and Manager */}
                     {(formData.role === 'HR' || formData.role === 'Manager') && (
@@ -2404,6 +2405,34 @@ const formatAadharInput = (value: string) => {
                 <p className="text-red-500 text-sm mt-1">{emailError}</p>
               )}
             </div>
+            <div>
+              <Label htmlFor="edit-role">Role *</Label>
+              <Select
+                value={formData.role || 'employee'}
+                onValueChange={(value) => {
+                  setFormData((prev) => ({ ...prev, role: value as string }));
+                  // Reset department selections when role changes
+                  if (value === 'HR' || value === 'Manager') {
+                    setSelectedDepartments([]);
+                  } else {
+                    setSelectedDepartments([]);
+                    setFormData((prev) => ({ ...prev, department: '' }));
+                  }
+                }}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Admin">Admin</SelectItem>
+                  <SelectItem value="HR">HR</SelectItem>
+                  <SelectItem value="Manager">Manager</SelectItem>
+                  <SelectItem value="TeamLead">Team Lead</SelectItem>
+                  <SelectItem value="Employee">Employee</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
             {/* Single Department Selection for other roles in Edit */}
             {formData.role !== 'HR' && formData.role !== 'Manager' && (
               <div>
@@ -2435,33 +2464,6 @@ const formatAadharInput = (value: string) => {
                 </Select>
               </div>
             )}
-            <div>
-              <Label htmlFor="edit-role">Role *</Label>
-              <Select
-                value={formData.role || 'employee'}
-                onValueChange={(value) => {
-                  setFormData((prev) => ({ ...prev, role: value as string }));
-                  // Reset department selections when role changes
-                  if (value === 'HR' || value === 'Manager') {
-                    setSelectedDepartments([]);
-                  } else {
-                    setSelectedDepartments([]);
-                    setFormData((prev) => ({ ...prev, department: '' }));
-                  }
-                }}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Admin">Admin</SelectItem>
-                  <SelectItem value="HR">HR</SelectItem>
-                  <SelectItem value="Manager">Manager</SelectItem>
-                  <SelectItem value="TeamLead">Team Lead</SelectItem>
-                  <SelectItem value="Employee">Employee</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             
             {/* Multiple Department Selection for HR and Manager in Edit */}
             {(formData.role === 'HR' || formData.role === 'Manager') && (

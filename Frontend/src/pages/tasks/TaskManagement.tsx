@@ -923,20 +923,28 @@ const TaskManagement: React.FC = () => {
   const handleCreateTask = async () => {
     if (!user || !userId) return;
 
+    // Validate deadline is required
+    if (!newTask.deadline) {
+      toast({
+        title: 'Deadline required',
+        description: 'Please set a deadline for the task.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Validate deadline is not in the past
-    if (newTask.deadline) {
-      const selectedDate = new Date(newTask.deadline);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
-      
-      if (selectedDate < today) {
-        toast({
-          title: 'Invalid deadline',
-          description: 'Task deadline cannot be in the past. Please select today or a future date.',
-          variant: 'destructive',
-        });
-        return;
-      }
+    const selectedDate = new Date(newTask.deadline);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+    
+    if (selectedDate < today) {
+      toast({
+        title: 'Invalid deadline',
+        description: 'Task deadline cannot be in the past. Please select today or a future date.',
+        variant: 'destructive',
+      });
+      return;
     }
 
     const assignedEmployee = newTask.assignedTo[0] || userId;
@@ -1482,20 +1490,28 @@ const TaskManagement: React.FC = () => {
       return;
     }
 
+    // Validate deadline is required
+    if (!editTaskForm.deadline) {
+      toast({
+        title: 'Deadline required',
+        description: 'Please set a deadline for the task.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Validate deadline is not in the past
-    if (editTaskForm.deadline) {
-      const selectedDate = new Date(editTaskForm.deadline);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
-      
-      if (selectedDate < today) {
-        toast({
-          title: 'Invalid deadline',
-          description: 'Task deadline cannot be in the past. Please select today or a future date.',
-          variant: 'destructive',
-        });
-        return;
-      }
+    const selectedDate = new Date(editTaskForm.deadline);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+    
+    if (selectedDate < today) {
+      toast({
+        title: 'Invalid deadline',
+        description: 'Task deadline cannot be in the past. Please select today or a future date.',
+        variant: 'destructive',
+      });
+      return;
     }
 
     const trimmedTitle = editTaskForm.title.trim();
@@ -2152,7 +2168,7 @@ const TaskManagement: React.FC = () => {
                   <div className="space-y-2">
                     <Label htmlFor="deadline" className="text-sm font-semibold flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-violet-600" />
-                      Deadline
+                      Deadline <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="deadline"
@@ -3062,7 +3078,7 @@ const TaskManagement: React.FC = () => {
               <div className="space-y-2">
                 <Label htmlFor="edit-deadline" className="text-sm font-semibold flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-blue-600" />
-                  Deadline
+                  Deadline <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="edit-deadline"

@@ -20,9 +20,10 @@ import OnlineStatusIndicator from '@/components/attendance/OnlineStatusIndicator
 import { Clock, MapPin, Calendar, LogIn, LogOut, FileText, CheckCircle, AlertCircle, Users, Filter, User, X, Download, Search, Loader2, Home, Send } from 'lucide-react';
 import { AttendanceRecord, UserRole } from '@/types';
 import { format, subMonths } from 'date-fns';
-import { formatIST, formatDateTimeIST, formatTimeIST, formatDateIST, todayIST, formatDateTimeComponentsIST, parseToIST } from '@/utils/timezone';
+import { formatIST, formatDateTimeIST, formatTimeIST, formatDateIST, todayIST, formatDateTimeComponentsIST, parseToIST, nowIST } from '@/utils/timezone';
 import { getCurrentLocation as fetchPreciseLocation, getCurrentLocationFast } from '@/utils/geolocation';
 import { DatePicker } from '@/components/ui/date-picker';
+import { apiService } from '@/lib/api';
 
 type GeoLocation = {
   latitude: number;
@@ -123,6 +124,9 @@ const AttendanceWithToggle: React.FC = () => {
   const [wfhType, setWfhType] = useState<'full_day' | 'half_day'>('full_day');
   const [isSubmittingWfh, setIsSubmittingWfh] = useState(false);
   const [wfhRequests, setWfhRequests] = useState<any[]>([]);
+  const [editingWfhId, setEditingWfhId] = useState<string | null>(null);
+  const [isDeletingWfhId, setIsDeletingWfhId] = useState<string | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   // WFH Management state (for Admin, HR, Manager)
   const [allWfhRequests, setAllWfhRequests] = useState<any[]>([]);
@@ -973,20 +977,67 @@ const AttendanceWithToggle: React.FC = () => {
     }
   };
 
-  const handleWfhSubmit = async () => {
-    if (!wfhStartDate || !wfhEndDate || !wfhReason.trim()) {
-      toast({
-        title: 'Missing Information',
-        description: 'Please fill in all required fields.',
-        variant: 'destructive',
-      });
-      return;
+  // Helper function to get tomorrow's date (start of day in IST)
+  const getTomorrowIST = (): Date => {
+    const tomorrow = nowIST();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    return tomorrow;
+  };
+
+  // Helper function to check if a date is valid for WFH (must be tomorrow or later)
+  const isValidWfhDate = (date: Date | undefined): boolean => {
+    if (!date) return false;
+    const tomorrow = getTomorrowIST();
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+    return checkDate >= tomorrow;
+  };
+
+  // Helper function to validate WFH form
+  const validateWfhForm = (): { valid: boolean; message?: string } => {
+    // Check start date
+    if (!wfhStartDate) {
+      return { valid: false, message: 'Please select a start date.' };
     }
 
-    if (wfhStartDate > wfhEndDate) {
+    if (!isValidWfhDate(wfhStartDate)) {
+      return { valid: false, message: 'Start date must be tomorrow or later.' };
+    }
+
+    // For full day, check end date
+    if (wfhType === 'full_day') {
+      if (!wfhEndDate) {
+        return { valid: false, message: 'Please select an end date.' };
+      }
+
+      if (!isValidWfhDate(wfhEndDate)) {
+        return { valid: false, message: 'End date must be tomorrow or later.' };
+      }
+
+      if (wfhEndDate < wfhStartDate) {
+        return { valid: false, message: 'End date must be on or after the start date.' };
+      }
+    }
+
+    // Check reason
+    if (!wfhReason.trim()) {
+      return { valid: false, message: 'Please provide a reason for your WFH request.' };
+    }
+
+    if (wfhReason.trim().length < 10) {
+      return { valid: false, message: 'Reason must be at least 10 characters long.' };
+    }
+
+    return { valid: true };
+  };
+
+  const handleWfhSubmit = async () => {
+    const validation = validateWfhForm();
+    if (!validation.valid) {
       toast({
-        title: 'Invalid Date Range',
-        description: 'End date must be after start date.',
+        title: 'Invalid Information',
+        description: validation.message || 'Please fill in all required fields correctly.',
         variant: 'destructive',
       });
       return;
@@ -994,17 +1045,28 @@ const AttendanceWithToggle: React.FC = () => {
 
     setIsSubmittingWfh(true);
     try {
-      // This is a frontend-only implementation
-      // In a real app, this would make an API call to submit the WFH request
-      const currentTime = new Date(); // Use current time for accurate timestamp
-      const newRequest = {
-        id: Date.now().toString(),
-        startDate: format(wfhStartDate, 'yyyy-MM-dd'),
-        endDate: format(wfhEndDate, 'yyyy-MM-dd'),
+      // Call API to submit WFH request
+      const wfhTypeLabel = wfhType === 'full_day' ? 'Full Day' : 'Half Day';
+      // For half day, use start date as both start and end date
+      const endDate = wfhType === 'half_day' ? wfhStartDate : wfhEndDate;
+      
+      const response = await apiService.submitWFHRequest({
+        start_date: format(wfhStartDate!, 'yyyy-MM-dd'),
+        end_date: format(endDate!, 'yyyy-MM-dd'),
+        wfh_type: wfhTypeLabel,
         reason: wfhReason.trim(),
+      });
+
+      // Map the API response to our local format
+      const newRequest = {
+        id: response.wfh_id?.toString() || Date.now().toString(),
+        wfhId: response.wfh_id,
+        startDate: response.start_date,
+        endDate: response.end_date,
+        reason: response.reason,
         type: wfhType,
-        status: 'pending',
-        submittedAt: currentTime.toISOString(), // Use current time
+        status: response.status || 'pending',
+        submittedAt: response.created_at || new Date().toISOString(),
         submittedBy: user?.name || 'Unknown',
         submittedById: user?.id || '',
         department: user?.department || '',
@@ -1026,14 +1088,114 @@ const AttendanceWithToggle: React.FC = () => {
       setWfhEndDate(undefined);
       setWfhReason('');
       setWfhType('full_day');
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Submission Failed',
-        description: 'Failed to submit WFH request. Please try again.',
+        description: error.message || 'Failed to submit WFH request. Please try again.',
         variant: 'destructive',
       });
     } finally {
       setIsSubmittingWfh(false);
+    }
+  };
+
+  const handleEditWfh = (request: any) => {
+    setEditingWfhId(request.id || request.wfhId);
+    setWfhStartDate(new Date(request.startDate));
+    setWfhEndDate(new Date(request.endDate));
+    setWfhReason(request.reason);
+    setWfhType(request.type === 'Full Day' || request.type === 'full_day' ? 'full_day' : 'half_day');
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateWfh = async () => {
+    if (!editingWfhId) {
+      toast({
+        title: 'Error',
+        description: 'No WFH request selected for update.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const validation = validateWfhForm();
+    if (!validation.valid) {
+      toast({
+        title: 'Invalid Information',
+        description: validation.message || 'Please fill in all required fields correctly.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSubmittingWfh(true);
+    try {
+      const wfhTypeLabel = wfhType === 'full_day' ? 'Full Day' : 'Half Day';
+      // For half day, use start date as both start and end date
+      const endDate = wfhType === 'half_day' ? wfhStartDate : wfhEndDate;
+      
+      const response = await apiService.updateWFHRequest(parseInt(editingWfhId!), {
+        start_date: format(wfhStartDate!, 'yyyy-MM-dd'),
+        end_date: format(endDate!, 'yyyy-MM-dd'),
+        wfh_type: wfhTypeLabel,
+        reason: wfhReason.trim(),
+      });
+
+      setWfhRequests(prev => prev.map(req => 
+        (req.id === editingWfhId || req.wfhId === parseInt(editingWfhId!))
+          ? {
+              ...req,
+              startDate: response.start_date,
+              endDate: response.end_date,
+              reason: response.reason,
+              type: wfhType,
+            }
+          : req
+      ));
+
+      toast({
+        title: 'WFH Request Updated',
+        description: 'Your work from home request has been updated successfully.',
+        variant: 'default',
+      });
+
+      setIsEditDialogOpen(false);
+      setEditingWfhId(null);
+      setWfhStartDate(undefined);
+      setWfhEndDate(undefined);
+      setWfhReason('');
+      setWfhType('full_day');
+    } catch (error: any) {
+      toast({
+        title: 'Update Failed',
+        description: error.message || 'Failed to update WFH request. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmittingWfh(false);
+    }
+  };
+
+  const handleDeleteWfh = async (wfhId: string) => {
+    setIsDeletingWfhId(wfhId);
+    try {
+      await apiService.deleteWFHRequest(parseInt(wfhId));
+      
+      setWfhRequests(prev => prev.filter(req => req.id !== wfhId && req.wfhId !== parseInt(wfhId)));
+      
+      toast({
+        title: 'WFH Request Deleted',
+        description: 'Your work from home request has been deleted successfully.',
+        variant: 'default',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Delete Failed',
+        description: error.message || 'Failed to delete WFH request. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeletingWfhId(null);
     }
   };
 
@@ -1145,21 +1307,17 @@ const AttendanceWithToggle: React.FC = () => {
     if (isOnline && onlineStartTime && !newStatus) {
       // Was online, now going offline - accumulate online time
       const onlineSessionSeconds = Math.floor((now.getTime() - onlineStartTime.getTime()) / 1000);
-      setAccumulatedOnlineSeconds(prev => {
-        const newTotal = prev + onlineSessionSeconds;
-        console.log(`Going offline - accumulated ${onlineSessionSeconds}s online time (total: ${newTotal}s)`);
-        return newTotal;
-      });
+      const newAccumulatedOnline = accumulatedOnlineSeconds + onlineSessionSeconds;
+      setAccumulatedOnlineSeconds(newAccumulatedOnline);
+      console.log(`Going offline - accumulated ${onlineSessionSeconds}s online time (total: ${newAccumulatedOnline}s)`);
       setOnlineStartTime(null);
       setOfflineStartTime(now);
     } else if (!isOnline && offlineStartTime && newStatus) {
       // Was offline, now going online - accumulate offline time
       const offlineSessionSeconds = Math.floor((now.getTime() - offlineStartTime.getTime()) / 1000);
-      setAccumulatedOfflineSeconds(prev => {
-        const newTotal = prev + offlineSessionSeconds;
-        console.log(`Going online - accumulated ${offlineSessionSeconds}s offline time (total: ${newTotal}s)`);
-        return newTotal;
-      });
+      const newAccumulatedOffline = accumulatedOfflineSeconds + offlineSessionSeconds;
+      setAccumulatedOfflineSeconds(newAccumulatedOffline);
+      console.log(`Going online - accumulated ${offlineSessionSeconds}s offline time (total: ${newAccumulatedOffline}s)`);
       setOfflineStartTime(null);
       setOnlineStartTime(now);
     } else if (newStatus && !onlineStartTime) {
@@ -1214,19 +1372,17 @@ const AttendanceWithToggle: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`https://staffly.space/attendance/working-hours/${currentAttendance.id}`, {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Only sync if there's meaningful backend activity (>1 minute)
-        const backendOnlineSeconds = data.total_seconds;
+      const data = await apiService.getWorkingHours(parseInt(currentAttendance.id));
+      
+      if (data) {
+        // Fetch correct values from backend
+        // The backend should return:
+        // - total_online_seconds: Total accumulated online time (paused when offline)
+        // - total_offline_seconds: Total accumulated offline time (paused when online)
+        // - is_currently_online: Current online status
+        const backendOnlineSeconds = data.total_online_seconds || data.total_seconds || 0;
         const backendOfflineSeconds = data.total_offline_seconds || 0;
+        const backendIsOnline = data.is_currently_online !== undefined ? data.is_currently_online : isOnline;
         
         if (backendOnlineSeconds < 60 && isFreshCheckIn) {
           console.log('Skipping sync - no meaningful backend activity yet');
@@ -1397,9 +1553,7 @@ const AttendanceWithToggle: React.FC = () => {
         setCurrentSessionOfflineTime('0:00:00');
         
         console.log(`Timer Update (Online): Online=${onlineDisplay}, Offline=${offlineDisplay}`);
-      }
-      
-      if (!isOnline && offlineStartTime) {
+      } else if (!isOnline && offlineStartTime) {
         // Update offline time displays - current session + accumulated
         const currentOfflineSeconds = Math.floor((now.getTime() - offlineStartTime.getTime()) / 1000);
         const totalOfflineSeconds = accumulatedOfflineSeconds + currentOfflineSeconds;
@@ -1418,10 +1572,8 @@ const AttendanceWithToggle: React.FC = () => {
         setWorkingHours(onlineDisplay); // Main working hours shows accumulated online time only
         
         console.log(`Timer Update (Offline): Online=${onlineDisplay}, Offline=${offlineDisplay}, Current Session=${currentOfflineSeconds}s`);
-      }
-      
-      // If neither online nor offline timer is running, maintain current values
-      if ((!isOnline && !offlineStartTime) || (isOnline && !onlineStartTime)) {
+      } else {
+        // If neither online nor offline timer is running, maintain current values
         const onlineDisplay = formatTimeDisplay(accumulatedOnlineSeconds);
         const offlineDisplay = formatTimeDisplay(accumulatedOfflineSeconds);
         setOnlineWorkingHours(onlineDisplay);
@@ -2317,25 +2469,6 @@ const AttendanceWithToggle: React.FC = () => {
             <CardContent className="pt-6">
               <div className="space-y-6">
                 {/* WFH Request Form */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="wfh-start-date">Start Date <span className="text-red-500">*</span></Label>
-                    <DatePicker
-                      date={wfhStartDate}
-                      onDateChange={setWfhStartDate}
-                      placeholder="Select start date"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="wfh-end-date">End Date <span className="text-red-500">*</span></Label>
-                    <DatePicker
-                      date={wfhEndDate}
-                      onDateChange={setWfhEndDate}
-                      placeholder="Select end date"
-                    />
-                  </div>
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="wfh-type">Work From Home Type</Label>
                   <Select value={wfhType} onValueChange={(value: 'full_day' | 'half_day') => setWfhType(value)}>
@@ -2349,6 +2482,42 @@ const AttendanceWithToggle: React.FC = () => {
                   </Select>
                 </div>
 
+                <div className={wfhType === 'half_day' ? 'space-y-2' : 'grid grid-cols-1 md:grid-cols-2 gap-6'}>
+                  <div className="space-y-2">
+                    <Label htmlFor="wfh-start-date">
+                      {wfhType === 'half_day' ? 'Date' : 'Start Date'} <span className="text-red-500">*</span>
+                    </Label>
+                    <DatePicker
+                      date={wfhStartDate}
+                      onDateChange={setWfhStartDate}
+                      placeholder={wfhType === 'half_day' ? 'Select date' : 'Select start date'}
+                      disablePastDates={true}
+                      fromDate={getTomorrowIST()}
+                    />
+                    {wfhStartDate && !isValidWfhDate(wfhStartDate) && (
+                      <p className="text-xs text-red-500 mt-1">Date must be tomorrow or later</p>
+                    )}
+                  </div>
+                  {wfhType === 'full_day' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="wfh-end-date">End Date <span className="text-red-500">*</span></Label>
+                      <DatePicker
+                        date={wfhEndDate}
+                        onDateChange={setWfhEndDate}
+                        placeholder="Select end date"
+                        disablePastDates={true}
+                        fromDate={wfhStartDate || getTomorrowIST()}
+                      />
+                      {wfhEndDate && !isValidWfhDate(wfhEndDate) && (
+                        <p className="text-xs text-red-500 mt-1">Date must be tomorrow or later</p>
+                      )}
+                      {wfhStartDate && wfhEndDate && wfhEndDate < wfhStartDate && (
+                        <p className="text-xs text-red-500 mt-1">End date must be on or after start date</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="wfh-reason">Reason for WFH Request <span className="text-red-500">*</span></Label>
                   <Textarea
@@ -2359,6 +2528,11 @@ const AttendanceWithToggle: React.FC = () => {
                     rows={4}
                     className="resize-none"
                   />
+                  <div className="flex items-center justify-between">
+                    <p className={`text-xs ${wfhReason.trim().length < 10 && wfhReason.length > 0 ? 'text-red-500' : 'text-gray-500'}`}>
+                      Characters must be more than 10 (Current: {wfhReason.length})
+                    </p>
+                  </div>
                 </div>
 
                 <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
@@ -2379,7 +2553,7 @@ const AttendanceWithToggle: React.FC = () => {
                 <div className="flex gap-3 pt-4">
                   <Button
                     onClick={handleWfhSubmit}
-                    disabled={isSubmittingWfh || !wfhStartDate || !wfhEndDate || !wfhReason.trim()}
+                    disabled={isSubmittingWfh || !validateWfhForm().valid}
                     className="flex-1 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
                   >
                     {isSubmittingWfh ? (
@@ -2411,15 +2585,15 @@ const AttendanceWithToggle: React.FC = () => {
                   <div className="space-y-3">
                     {wfhRequests.map((request) => (
                       <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-2">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-2 flex-1">
                             <div className="flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-blue-600" />
                               <span className="font-medium">
                                 {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
                               </span>
                               <Badge variant="outline" className="text-xs">
-                                {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
+                                {request.type === 'full_day' || request.type === 'Full Day' ? 'Full Day' : 'Half Day'}
                               </Badge>
                             </div>
                             <p className="text-sm text-muted-foreground">{request.reason}</p>
@@ -2427,12 +2601,35 @@ const AttendanceWithToggle: React.FC = () => {
                               Submitted {formatRelativeTime(request.submittedAt)} ({formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')})
                             </p>
                           </div>
-                          <Badge 
-                            variant={request.status === 'approved' ? 'default' : request.status === 'rejected' ? 'destructive' : 'secondary'}
-                            className={request.status === 'approved' ? 'bg-green-500' : ''}
-                          >
-                            {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant={request.status === 'approved' ? 'default' : request.status === 'rejected' ? 'destructive' : 'secondary'}
+                              className={request.status === 'approved' ? 'bg-green-500' : ''}
+                            >
+                              {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                            </Badge>
+                            {request.status === 'pending' && (
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleEditWfh(request)}
+                                  className="h-8 px-2 text-xs"
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleDeleteWfh(request.id || request.wfhId)}
+                                  disabled={isDeletingWfhId === (request.id || request.wfhId)}
+                                  className="h-8 px-2 text-xs"
+                                >
+                                  {isDeletingWfhId === (request.id || request.wfhId) ? 'Deleting...' : 'Delete'}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -3119,6 +3316,83 @@ const AttendanceWithToggle: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit WFH Request Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit WFH Request</DialogTitle>
+            <DialogDescription>Update your work from home request details</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Start Date *</Label>
+                <DatePicker
+                  date={wfhStartDate}
+                  onDateChange={setWfhStartDate}
+                  placeholder="Select start date"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>End Date *</Label>
+                <DatePicker
+                  date={wfhEndDate}
+                  onDateChange={setWfhEndDate}
+                  placeholder="Select end date"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-wfh-type">WFH Type *</Label>
+              <Select value={wfhType} onValueChange={(value: any) => setWfhType(value)}>
+                <SelectTrigger id="edit-wfh-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full_day">Full Day</SelectItem>
+                  <SelectItem value="half_day">Half Day</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-wfh-reason">Reason *</Label>
+              <Textarea
+                id="edit-wfh-reason"
+                placeholder="Enter reason for WFH request"
+                value={wfhReason}
+                onChange={(e) => setWfhReason(e.target.value)}
+                className="min-h-24"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsEditDialogOpen(false);
+                setEditingWfhId(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateWfh}
+              disabled={isSubmittingWfh}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            >
+              {isSubmittingWfh ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                'Update Request'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

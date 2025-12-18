@@ -79,6 +79,7 @@ export function DatePicker({
               onSelect={handleSelect}
               currentMonth={currentMonth}
               onMonthChange={setCurrentMonth}
+              minDate={minDate}
               disabled={(date) => {
                 if (minDate && date < minDate) {
                   // Disable dates before minDate

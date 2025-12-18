@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import { formatIST, formatDateTimeIST, formatTimeIST, formatDateIST, todayIST, formatDateTimeComponentsIST, parseToIST, nowIST } from '@/utils/timezone';
 import { getCurrentLocation as fetchPreciseLocation, getCurrentLocationFast, getCurrentLocationWithContinuousImprovement } from '@/utils/geolocation';
 import { DatePicker } from '@/components/ui/date-picker';
+import { apiService } from '@/lib/api';
 
 type GeoLocation = {
   latitude: number;
@@ -56,6 +57,9 @@ const AttendancePage: React.FC = () => {
   const [wfhType, setWfhType] = useState<'full_day' | 'half_day'>('full_day');
   const [isSubmittingWfh, setIsSubmittingWfh] = useState(false);
   const [wfhRequests, setWfhRequests] = useState<any[]>([]);
+  const [editingWfhId, setEditingWfhId] = useState<string | null>(null);
+  const [isDeletingWfhId, setIsDeletingWfhId] = useState<string | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   // Check if user has approved WFH for today
   const getTodayWfhStatus = () => {
@@ -555,17 +559,25 @@ const AttendancePage: React.FC = () => {
 
     setIsSubmittingWfh(true);
     try {
-      // This is a frontend-only implementation
-      // In a real app, this would make an API call to submit the WFH request
-      const currentTime = new Date(); // Use current time for accurate timestamp
-      const newRequest = {
-        id: Date.now().toString(),
-        startDate: format(wfhStartDate, 'yyyy-MM-dd'),
-        endDate: format(wfhEndDate, 'yyyy-MM-dd'),
+      // Call API to submit WFH request
+      const wfhTypeLabel = wfhType === 'full_day' ? 'Full Day' : 'Half Day';
+      const response = await apiService.submitWFHRequest({
+        start_date: format(wfhStartDate, 'yyyy-MM-dd'),
+        end_date: format(wfhEndDate, 'yyyy-MM-dd'),
+        wfh_type: wfhTypeLabel,
         reason: wfhReason.trim(),
+      });
+
+      // Map the API response to our local format
+      const newRequest = {
+        id: response.wfh_id?.toString() || Date.now().toString(),
+        wfhId: response.wfh_id,
+        startDate: response.start_date,
+        endDate: response.end_date,
+        reason: response.reason,
         type: wfhType,
-        status: 'pending',
-        submittedAt: currentTime.toISOString(), // Use current time
+        status: response.status || 'pending',
+        submittedAt: response.created_at || new Date().toISOString(),
         submittedBy: user?.name || 'Unknown',
         submittedById: user?.id || '',
         department: user?.department || '',
@@ -585,14 +597,110 @@ const AttendancePage: React.FC = () => {
       setWfhEndDate(undefined);
       setWfhReason('');
       setWfhType('full_day');
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Submission Failed',
-        description: 'Failed to submit WFH request. Please try again.',
+        description: error.message || 'Failed to submit WFH request. Please try again.',
         variant: 'destructive',
       });
     } finally {
       setIsSubmittingWfh(false);
+    }
+  };
+
+  const handleEditWfh = (request: any) => {
+    setEditingWfhId(request.id || request.wfhId);
+    setWfhStartDate(new Date(request.startDate));
+    setWfhEndDate(new Date(request.endDate));
+    setWfhReason(request.reason);
+    setWfhType(request.type === 'Full Day' || request.type === 'full_day' ? 'full_day' : 'half_day');
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateWfh = async () => {
+    if (!editingWfhId || !wfhStartDate || !wfhEndDate || !wfhReason.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (wfhEndDate < wfhStartDate) {
+      toast({
+        title: 'Error',
+        description: 'End date must be after start date.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSubmittingWfh(true);
+    try {
+      const wfhTypeLabel = wfhType === 'full_day' ? 'Full Day' : 'Half Day';
+      const response = await apiService.updateWFHRequest(parseInt(editingWfhId), {
+        start_date: format(wfhStartDate, 'yyyy-MM-dd'),
+        end_date: format(wfhEndDate, 'yyyy-MM-dd'),
+        wfh_type: wfhTypeLabel,
+        reason: wfhReason.trim(),
+      });
+
+      setWfhRequests(prev => prev.map(req => 
+        (req.id === editingWfhId || req.wfhId === parseInt(editingWfhId))
+          ? {
+              ...req,
+              startDate: response.start_date,
+              endDate: response.end_date,
+              reason: response.reason,
+              type: wfhType,
+            }
+          : req
+      ));
+
+      toast({
+        title: 'WFH Request Updated',
+        description: 'Your work from home request has been updated successfully.',
+        variant: 'default',
+      });
+
+      setIsEditDialogOpen(false);
+      setEditingWfhId(null);
+      setWfhStartDate(undefined);
+      setWfhEndDate(undefined);
+      setWfhReason('');
+      setWfhType('full_day');
+    } catch (error: any) {
+      toast({
+        title: 'Update Failed',
+        description: error.message || 'Failed to update WFH request. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmittingWfh(false);
+    }
+  };
+
+  const handleDeleteWfh = async (wfhId: string) => {
+    setIsDeletingWfhId(wfhId);
+    try {
+      await apiService.deleteWFHRequest(parseInt(wfhId));
+      
+      setWfhRequests(prev => prev.filter(req => req.id !== wfhId && req.wfhId !== parseInt(wfhId)));
+      
+      toast({
+        title: 'WFH Request Deleted',
+        description: 'Your work from home request has been deleted successfully.',
+        variant: 'default',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Delete Failed',
+        description: error.message || 'Failed to delete WFH request. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeletingWfhId(null);
     }
   };
 
@@ -1057,15 +1165,15 @@ const AttendancePage: React.FC = () => {
                   <div className="space-y-3">
                     {wfhRequests.map((request) => (
                       <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-2">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-2 flex-1">
                             <div className="flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-blue-600" />
                               <span className="font-medium">
                                 {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
                               </span>
                               <Badge variant="outline" className="text-xs">
-                                {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
+                                {request.type === 'full_day' || request.type === 'Full Day' ? 'Full Day' : 'Half Day'}
                               </Badge>
                             </div>
                             <p className="text-sm text-muted-foreground">{request.reason}</p>
@@ -1073,12 +1181,35 @@ const AttendancePage: React.FC = () => {
                               Submitted {formatRelativeTime(request.submittedAt)} ({formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')})
                             </p>
                           </div>
-                          <Badge 
-                            variant={request.status === 'approved' ? 'default' : request.status === 'rejected' ? 'destructive' : 'secondary'}
-                            className={request.status === 'approved' ? 'bg-green-500' : ''}
-                          >
-                            {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant={request.status === 'approved' ? 'default' : request.status === 'rejected' ? 'destructive' : 'secondary'}
+                              className={request.status === 'approved' ? 'bg-green-500' : ''}
+                            >
+                              {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                            </Badge>
+                            {request.status === 'pending' && (
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleEditWfh(request)}
+                                  className="h-8 px-2 text-xs"
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleDeleteWfh(request.id || request.wfhId)}
+                                  disabled={isDeletingWfhId === (request.id || request.wfhId)}
+                                  className="h-8 px-2 text-xs"
+                                >
+                                  {isDeletingWfhId === (request.id || request.wfhId) ? 'Deleting...' : 'Delete'}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1095,6 +1226,83 @@ const AttendancePage: React.FC = () => {
           </Card>
         </>
       )}
+
+      {/* Edit WFH Request Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit WFH Request</DialogTitle>
+            <DialogDescription>Update your work from home request details</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Start Date *</Label>
+                <DatePicker
+                  date={wfhStartDate}
+                  onDateChange={setWfhStartDate}
+                  placeholder="Select start date"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>End Date *</Label>
+                <DatePicker
+                  date={wfhEndDate}
+                  onDateChange={setWfhEndDate}
+                  placeholder="Select end date"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-wfh-type">WFH Type *</Label>
+              <Select value={wfhType} onValueChange={(value: any) => setWfhType(value)}>
+                <SelectTrigger id="edit-wfh-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full_day">Full Day</SelectItem>
+                  <SelectItem value="half_day">Half Day</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-wfh-reason">Reason *</Label>
+              <Textarea
+                id="edit-wfh-reason"
+                placeholder="Enter reason for WFH request"
+                value={wfhReason}
+                onChange={(e) => setWfhReason(e.target.value)}
+                className="min-h-24"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsEditDialogOpen(false);
+                setEditingWfhId(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateWfh}
+              disabled={isSubmittingWfh}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            >
+              {isSubmittingWfh ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                'Update Request'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -9,11 +9,13 @@ import { nowIST } from "@/utils/timezone";
 type CalendarWithSelectProps = React.ComponentProps<typeof DayPicker> & {
   currentMonth?: Date;
   onMonthChange?: (date: Date) => void;
+  minDate?: Date;
 };
 
 export function CalendarWithSelect({
   currentMonth = nowIST(),
   onMonthChange,
+  minDate,
   ...props
 }: CalendarWithSelectProps) {
   const [month, setMonth] = React.useState<Date>(currentMonth);
@@ -23,6 +25,18 @@ export function CalendarWithSelect({
   }, [currentMonth]);
 
   const handleMonthChange = (newMonth: Date) => {
+    // Prevent navigation to months before minDate
+    if (minDate) {
+      const minYear = minDate.getFullYear();
+      const minMonthIndex = minDate.getMonth();
+      const newYear = newMonth.getFullYear();
+      const newMonthIndex = newMonth.getMonth();
+      
+      if (newYear < minYear || (newYear === minYear && newMonthIndex < minMonthIndex)) {
+        return;
+      }
+    }
+    
     setMonth(newMonth);
     onMonthChange?.(newMonth);
   };
@@ -68,6 +82,14 @@ export function CalendarWithSelect({
     handleMonthChange(newDate);
   };
 
+  // Check if previous month button should be disabled
+  const isPreviousMonthDisabled = React.useMemo(() => {
+    if (!minDate) return false;
+    const minYear = minDate.getFullYear();
+    const minMonthIndex = minDate.getMonth();
+    return currentYear < minYear || (currentYear === minYear && currentMonthIndex <= minMonthIndex);
+  }, [minDate, currentYear, currentMonthIndex]);
+
   return (
     <div className="w-full max-w-sm mx-auto">
       {/* Modern Header with Navigation */}
@@ -76,7 +98,8 @@ export function CalendarWithSelect({
           variant="ghost"
           size="icon"
           onClick={goToPreviousMonth}
-          className="h-8 w-8 flex-shrink-0 rounded-full hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/40 dark:hover:to-indigo-900/40 hover:scale-110 transition-all duration-200"
+          disabled={isPreviousMonthDisabled}
+          className="h-8 w-8 flex-shrink-0 rounded-full hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/40 dark:hover:to-indigo-900/40 hover:scale-110 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ChevronLeft className="h-4 w-4 text-slate-600 dark:text-slate-300" />
         </Button>

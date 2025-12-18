@@ -852,6 +852,93 @@ class ApiService {
       method: 'DELETE',
     });
   }
+
+  // Work From Home (WFH) APIs
+  async submitWFHRequest(wfhData: {
+    start_date: string;
+    end_date: string;
+    wfh_type: 'Full Day' | 'Half Day';
+    reason: string;
+  }) {
+    return this.request('/wfh/request', {
+      method: 'POST',
+      body: JSON.stringify(wfhData),
+    });
+  }
+
+  async getWFHRequests(period: string = 'current_month') {
+    return this.request(`/wfh/requests?period=${period}`);
+  }
+
+  async getMyWFHRequests() {
+    return this.request('/wfh/my-requests');
+  }
+
+  async getWFHRequestById(wfhId: number) {
+    return this.request(`/wfh/request/${wfhId}`);
+  }
+
+  async updateWFHRequest(wfhId: number, wfhData: Partial<{
+    start_date: string;
+    end_date: string;
+    wfh_type: 'Full Day' | 'Half Day';
+    reason: string;
+  }>) {
+    return this.request(`/wfh/my-requests/${wfhId}`, {
+      method: 'PUT',
+      body: JSON.stringify(wfhData),
+    });
+  }
+
+  async deleteWFHRequest(wfhId: number) {
+    return this.request(`/wfh/my-requests/${wfhId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getWFHApprovals() {
+    return this.request('/wfh/approvals');
+  }
+
+  async approveWFHRequest(wfhId: number, approved: boolean, rejectionReason?: string) {
+    return this.request(`/wfh/request/${wfhId}/approve`, {
+      method: 'PUT',
+      body: JSON.stringify({ 
+        approved,
+        ...(rejectionReason && { rejection_reason: rejectionReason })
+      }),
+    });
+  }
+
+  // Attendance APIs
+  async getWorkingHours(attendanceId: number) {
+    return this.request(`/attendance/working-hours/${attendanceId}`);
+  }
+
+  async getAttendanceStatus() {
+    return this.request('/attendance/status');
+  }
+
+  async checkIn(location?: { latitude: number; longitude: number }) {
+    return this.request('/attendance/check-in', {
+      method: 'POST',
+      body: JSON.stringify(location || {}),
+    });
+  }
+
+  async checkOut(location?: { latitude: number; longitude: number }) {
+    return this.request('/attendance/check-out', {
+      method: 'POST',
+      body: JSON.stringify(location || {}),
+    });
+  }
+
+  async updateOnlineStatus(isOnline: boolean) {
+    return this.request('/attendance/online-status', {
+      method: 'PUT',
+      body: JSON.stringify({ is_online: isOnline }),
+    });
+  }
 }
 
 export const apiService = new ApiService(API_BASE_URL);
