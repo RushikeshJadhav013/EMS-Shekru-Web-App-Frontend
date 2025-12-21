@@ -1,10 +1,14 @@
 import React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import {
   Users,
@@ -18,10 +22,14 @@ import {
   Activity,
   FileText,
   UserCheck,
+  Home,
+  Timer,
+  Plus,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatTimeIST, formatIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
+import { toast } from '@/hooks/use-toast';
 
 type HRActivity = {
   id: string | number;
@@ -34,6 +42,7 @@ type HRActivity = {
 
 const HRDashboard: React.FC = () => {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [stats, setStats] = useState({
@@ -52,6 +61,14 @@ const HRDashboard: React.FC = () => {
   const [isLoadingActivities, setIsLoadingActivities] = useState(true);
   const [activitiesPage, setActivitiesPage] = useState(1);
   const ACTIVITIES_PER_PAGE = 15;
+
+  // WFH Requests state
+  const [wfhRequests, setWfhRequests] = useState<any[]>([]);
+  const [isLoadingWfhRequests, setIsLoadingWfhRequests] = useState(false);
+  const [isProcessingWfhRequest, setIsProcessingWfhRequest] = useState(false);
+  const [selectedWfhRequest, setSelectedWfhRequest] = useState<any>(null);
+  const [showWfhRequestDialog, setShowWfhRequestDialog] = useState(false);
+  const [wfhRejectionReason, setWfhRejectionReason] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -77,11 +94,98 @@ const HRDashboard: React.FC = () => {
     };
   }, []);
 
+  // Load WFH requests for HR (both own and employee/team lead requests)
+  useEffect(() => {
+    const loadWFHRequests = async () => {
+      setIsLoadingWfhRequests(true);
+      try {
+        // Fetch all WFH requests using the new API method
+        const response = await apiService.getAllWFHRequests();
+        
+        // Handle response - it's always an array
+        let requests = Array.isArray(response) ? response : [];
+        
+        // Transform API response to match our UI format
+        // The API returns requests with fields like: wfh_id, user_id, start_date, end_date, wfh_type, reason, status, employee_id, name, department, role, approver_name
+        const formattedRequests = requests.map((req: any) => ({
+          id: req.wfh_id || req.id,
+          user_id: req.user_id,
+          user_name: req.name || req.employee_name || 'Unknown',
+          employee_id: req.employee_id || '',
+          start_date: req.start_date,
+          end_date: req.end_date,
+          reason: req.reason,
+          wfh_type: (req.wfh_type || 'Full Day').toLowerCase().includes('full') ? 'full_day' : 'half_day',
+          status: (req.status || 'Pending').toLowerCase(),
+          created_at: req.created_at,
+          updated_at: req.updated_at,
+          rejection_reason: req.rejection_reason,
+          approved_by: req.approver_name || req.approved_by,
+          department: req.department || 'Unknown',
+          user_role: (req.role || 'employee').toLowerCase(),
+        }));
+        setWfhRequests(formattedRequests);
+      } catch (error) {
+        // Silently fail - endpoint may not be implemented yet
+        // The API method already handles errors gracefully
+        setWfhRequests([]);
+      } finally {
+        setIsLoadingWfhRequests(false);
+      }
+    };
+
+    loadWFHRequests();
+  }, []);
+
   const safePercentage = (value: number, total: number): number => {
     if (!total || total <= 0) return 0;
     const percent = (value / total) * 100;
     if (!Number.isFinite(percent)) return 0;
     return Math.min(100, Math.max(0, percent));
+  };
+
+  // Handle WFH request approval/rejection for HR
+  const handleWfhRequestAction = async (requestId: number, action: 'approve' | 'reject', reason?: string) => {
+    setIsProcessingWfhRequest(true);
+    try {
+      const approved = action === 'approve';
+      await apiService.approveWFHRequest(requestId, approved, reason);
+
+      // Update local state optimistically
+      const currentTime = new Date();
+      setWfhRequests(prev => 
+        prev.map(req => 
+          req.id === requestId 
+            ? { 
+                ...req, 
+                status: action === 'approve' ? 'approved' : 'rejected',
+                updated_at: currentTime.toISOString(),
+                approved_by: user?.name || 'HR',
+                rejection_reason: action === 'reject' ? reason : undefined
+              }
+            : req
+        )
+      );
+
+      toast({
+        title: `Request ${action === 'approve' ? 'Approved' : 'Rejected'}`,
+        description: `WFH request has been ${action === 'approve' ? 'approved' : 'rejected'} successfully.`,
+        variant: 'default',
+      });
+
+      setShowWfhRequestDialog(false);
+      setSelectedWfhRequest(null);
+      setWfhRejectionReason('');
+    } catch (error) {
+      console.error('Error processing WFH request:', error);
+      toast({
+        title: 'Action Failed',
+        description: `Failed to ${action} the request. Please try again.`,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessingWfhRequest(false);
+    }
   };
 
   const formatActivityTime = (value?: string) => {
@@ -467,6 +571,120 @@ const HRDashboard: React.FC = () => {
         </Card>
       </div>
 
+      {/* WFH Requests */}
+      <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
+                <Home className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-xl">My WFH Requests</CardTitle>
+                <CardDescription className="text-base">Your work from home requests</CardDescription>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => navigate('/hr/wfh')}
+              className="gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              View All
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoadingWfhRequests ? (
+            <div className="flex items-center justify-center py-8">
+              <Timer className="h-6 w-6 animate-spin text-orange-600" />
+              <span className="ml-2 text-muted-foreground">Loading requests...</span>
+            </div>
+          ) : wfhRequests.length === 0 ? (
+            <div className="text-center py-8">
+              <Home className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-muted-foreground">No WFH requests yet</p>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigate('/hr/wfh')}
+                className="mt-4 gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Submit Request
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {wfhRequests.slice(0, 3).map((request) => (
+                <div key={request.id} className="border rounded-lg p-3 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm">{request.user_name}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {request.user_role}
+                        </Badge>
+                        <Badge 
+                          variant={
+                            request.status === 'approved' ? 'default' :
+                            request.status === 'rejected' ? 'destructive' :
+                            'secondary'
+                          }
+                          className={request.status === 'approved' ? 'bg-green-500' : ''}
+                        >
+                          {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <CalendarDays className="h-3 w-3" />
+                        <span>{request.start_date} to {request.end_date}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{request.reason}</p>
+                    </div>
+                    {request.status === 'pending' && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-950"
+                          onClick={() => handleWfhRequestAction(request.id, 'approve')}
+                          disabled={isProcessingWfhRequest}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                          onClick={() => {
+                            setSelectedWfhRequest(request);
+                            setShowWfhRequestDialog(true);
+                          }}
+                          disabled={isProcessingWfhRequest}
+                        >
+                          Reject
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {wfhRequests.length > 3 && (
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => navigate('/hr/wfh')}
+                >
+                  View all {wfhRequests.length} requests
+                </Button>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Quick Actions */}
       <Card>
         <CardHeader>
@@ -498,6 +716,59 @@ const HRDashboard: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* WFH Request Rejection Dialog */}
+      <Dialog open={showWfhRequestDialog} onOpenChange={setShowWfhRequestDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject WFH Request</DialogTitle>
+            <DialogDescription>
+              Provide a reason for rejecting this work from home request
+            </DialogDescription>
+          </DialogHeader>
+          {selectedWfhRequest && (
+            <div className="space-y-4">
+              <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg space-y-2">
+                <p className="text-sm"><strong>Employee:</strong> {selectedWfhRequest.user_name}</p>
+                <p className="text-sm"><strong>Date:</strong> {selectedWfhRequest.start_date} to {selectedWfhRequest.end_date}</p>
+                <p className="text-sm"><strong>Reason:</strong> {selectedWfhRequest.reason}</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="rejection-reason">Rejection Reason *</Label>
+                <Textarea
+                  id="rejection-reason"
+                  placeholder="Please provide a reason for rejection..."
+                  value={wfhRejectionReason}
+                  onChange={(e) => setWfhRejectionReason(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowWfhRequestDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (selectedWfhRequest && wfhRejectionReason.trim()) {
+                  handleWfhRequestAction(selectedWfhRequest.id, 'reject', wfhRejectionReason);
+                } else {
+                  toast({
+                    title: 'Error',
+                    description: 'Please provide a rejection reason',
+                    variant: 'destructive',
+                  });
+                }
+              }}
+              disabled={isProcessingWfhRequest || !wfhRejectionReason.trim()}
+            >
+              {isProcessingWfhRequest ? 'Rejecting...' : 'Reject Request'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

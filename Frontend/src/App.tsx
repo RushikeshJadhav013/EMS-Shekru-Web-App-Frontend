@@ -8,6 +8,8 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ChatProvider } from "@/contexts/ChatContext";
+import { LeaveBalanceProvider } from "@/contexts/LeaveBalanceContext";
+import { HolidayProvider } from "@/contexts/HolidayContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import MainLayout from "@/components/layout/MainLayout";
 import Login from "@/pages/Login";
@@ -35,6 +37,9 @@ import Profile from "@/pages/profile/Profile";
 import SettingsPage from "@/pages/settings/SettingsPage";
 import ContactSupport from "@/pages/ContactSupport";
 import Chat from "@/pages/chat/Chat";
+import WFHRequests from "@/pages/wfh/WFHRequests";
+import RouteRestorer from "@/components/RouteRestorer";
+import { WFHProvider } from "@/contexts/WFHContext";
 
 const queryClient = new QueryClient();
 
@@ -45,8 +50,12 @@ const App = () => (
         <ThemeProvider>
           <LanguageProvider>
             <AuthProvider>
-              <ChatProvider>
-                <NotificationProvider>
+              <WFHProvider>
+              <RouteRestorer>
+                <LeaveBalanceProvider>
+                  <HolidayProvider>
+                    <ChatProvider>
+                      <NotificationProvider>
                 <Toaster />
                 <Sonner />
             <Routes>
@@ -160,6 +169,11 @@ const App = () => (
                     <LeaveManagement />
                   </ProtectedRoute>
                 } />
+                <Route path="/hr/wfh" element={
+                  <ProtectedRoute allowedRoles={['hr']}>
+                    <WFHRequests />
+                  </ProtectedRoute>
+                } />
                 <Route path="/hr/employees" element={
                   <ProtectedRoute allowedRoles={['hr']}>
                     <EmployeeManagement />
@@ -244,6 +258,11 @@ const App = () => (
                     <LeaveManagement />
                   </ProtectedRoute>
                 } />
+                <Route path="/manager/wfh" element={
+                  <ProtectedRoute allowedRoles={['manager']}>
+                    <WFHRequests />
+                  </ProtectedRoute>
+                } />
                 <Route path="/manager/reports" element={
                   <ProtectedRoute allowedRoles={['manager']}>
                     <Reports />
@@ -284,6 +303,11 @@ const App = () => (
                 <Route path="/team_lead/leaves" element={
                   <ProtectedRoute allowedRoles={['team_lead']}>
                     <LeaveManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/team_lead/wfh" element={
+                  <ProtectedRoute allowedRoles={['team_lead']}>
+                    <WFHRequests />
                   </ProtectedRoute>
                 } />
                 <Route path="/team_lead/team" element={
@@ -348,6 +372,11 @@ const App = () => (
                     <LeaveManagement />
                   </ProtectedRoute>
                 } />
+                <Route path="/employee/wfh" element={
+                  <ProtectedRoute allowedRoles={['employee', 'hr', 'manager', 'team_lead']}>
+                    <WFHRequests />
+                  </ProtectedRoute>
+                } />
                 <Route path="/employee/profile" element={
                   <ProtectedRoute allowedRoles={['employee']}>
                     <Profile />
@@ -368,8 +397,12 @@ const App = () => (
               {/* 404 Route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-                </NotificationProvider>
-              </ChatProvider>
+                    </NotificationProvider>
+                  </ChatProvider>
+                  </HolidayProvider>
+                </LeaveBalanceProvider>
+              </RouteRestorer>
+              </WFHProvider>
             </AuthProvider>
         </LanguageProvider>
         </ThemeProvider>

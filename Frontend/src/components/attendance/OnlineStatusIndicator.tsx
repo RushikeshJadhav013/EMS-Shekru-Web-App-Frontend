@@ -98,6 +98,25 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
     }
   };
 
+  const formatWorkingHours = (decimalHours: number): string => {
+    if (!decimalHours || decimalHours === 0) {
+      return '0 hrs - 0 mins';
+    }
+    
+    const hours = Math.floor(decimalHours);
+    const minutes = Math.round((decimalHours - hours) * 60);
+    
+    if (hours === 0 && minutes === 0) {
+      return '0 hrs - 0 mins';
+    } else if (hours === 0) {
+      return `0 hrs - ${minutes} mins`;
+    } else if (minutes === 0) {
+      return `${hours} hrs - 0 mins`;
+    } else {
+      return `${hours} hrs - ${minutes} mins`;
+    }
+  };
+
   const formatDateTime = (timestamp: string): string => {
     return formatDateTimeIST(timestamp, 'dd MMM HH:mm:ss');
   };
@@ -165,7 +184,7 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
                       <span className="text-sm font-medium text-blue-600">Working Hours</span>
                     </div>
                     <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
-                      {workingHours.working_hours}h
+                      {formatWorkingHours(workingHours.working_hours)}
                     </div>
                   </div>
                   <div className="text-center">

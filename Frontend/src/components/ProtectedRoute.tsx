@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
@@ -11,6 +11,13 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
+
+  // Store the current path in localStorage for persistence across page refreshes
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user && location.pathname !== '/login') {
+      localStorage.setItem('lastAuthenticatedPath', location.pathname);
+    }
+  }, [isLoading, isAuthenticated, user, location.pathname]);
 
   if (isLoading) {
     return (

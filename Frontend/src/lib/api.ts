@@ -238,6 +238,11 @@ class ApiService {
     return this.request('/employees');
   }
 
+  // Get employee by ID
+  async getEmployeeById(userId: string | number) {
+    return this.request(`/employees/${userId}`);
+  }
+
   async getDepartmentManagers() {
     return this.request('/departments/managers');
   }
@@ -866,8 +871,26 @@ class ApiService {
     });
   }
 
-  async getWFHRequests(period: string = 'current_month') {
-    return this.request(`/wfh/requests?period=${period}`);
+  async getWFHRequests(period?: string) {
+    // Fetch all WFH requests for admin/hr/manager approval
+    // This endpoint returns all WFH requests that need approval
+    try {
+      const response = await this.request('/wfh/requests');
+      return Array.isArray(response) ? response : (response?.data || response?.requests || []);
+    } catch (error: any) {
+      // If the endpoint returns 500 or is not available, silently return empty array
+      // The backend may not have this endpoint fully implemented yet
+      if (import.meta.env.DEV) {
+        console.warn('WFH Requests endpoint not available:', error?.message || error);
+      }
+      return [];
+    }
+  }
+
+  async getAllWFHRequests() {
+    // Fetch all WFH requests for admin/hr/manager approval
+    // This is an alias for getWFHRequests with better naming
+    return this.getWFHRequests();
   }
 
   async getMyWFHRequests() {
@@ -897,11 +920,15 @@ class ApiService {
   }
 
   async getWFHApprovals() {
-    return this.request('/wfh/approvals');
+    // Fetch all WFH requests for admin approval
+    // NOTE: Backend needs to implement GET /wfh/requests endpoint that returns all WFH requests
+    // This endpoint should return requests from all users (not just current user)
+    // and should support filtering by role, status, and date range
+    return this.request('/wfh/requests');
   }
 
   async approveWFHRequest(wfhId: number, approved: boolean, rejectionReason?: string) {
-    return this.request(`/wfh/request/${wfhId}/approve`, {
+    return this.request(`/wfh/requests/${wfhId}/approve`, {
       method: 'PUT',
       body: JSON.stringify({ 
         approved,

@@ -2,6 +2,7 @@ import React from 'react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useLeaveBalance } from '@/contexts/LeaveBalanceContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -24,6 +25,7 @@ import { apiService } from '@/lib/api';
 const EmployeeDashboard: React.FC = () => {
   const { user } = useAuth();
   const { t, language } = useLanguage();
+  const { leaveBalance } = useLeaveBalance();
   const navigate = useNavigate();
 
   const [stats, setStats] = useState({
@@ -146,7 +148,7 @@ const EmployeeDashboard: React.FC = () => {
             <div className="text-3xl font-bold">{stats.tasksAssigned}</div>
             <div className="flex items-center gap-1 mt-2">
               <CheckCircle2 className="h-4 w-4 text-indigo-100" />
-              <span className="text-sm text-indigo-100">{stats.tasksCompleted} {t.dashboard.completed}</span>
+              <span className="text-sm text-indigo-100">{stats.tasksCompleted} completed</span>
             </div>
           </CardContent>
         </Card>
@@ -176,9 +178,9 @@ const EmployeeDashboard: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.leavesAvailable}</div>
+            <div className="text-3xl font-bold">{leaveBalance.annual.remaining}</div>
             <div className="flex items-center gap-1 mt-2">
-              <span className="text-sm text-cyan-100">{stats.leavesTaken} {t.dashboard.usedThisYear}</span>
+              <span className="text-sm text-cyan-100">{leaveBalance.annual.used} {t.dashboard.usedThisYear}</span>
             </div>
           </CardContent>
         </Card>

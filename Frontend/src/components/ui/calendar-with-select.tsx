@@ -5,20 +5,26 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DayPicker } from "react-day-picker";
 import { nowIST } from "@/utils/timezone";
+import { useHolidays } from "@/contexts/HolidayContext";
+import { cn } from "@/lib/utils";
 
 type CalendarWithSelectProps = React.ComponentProps<typeof DayPicker> & {
   currentMonth?: Date;
   onMonthChange?: (date: Date) => void;
   minDate?: Date;
+  showHolidayIndicator?: boolean;
 };
 
 export function CalendarWithSelect({
   currentMonth = nowIST(),
   onMonthChange,
   minDate,
+  showHolidayIndicator = true,
+  classNames,
   ...props
 }: CalendarWithSelectProps) {
   const [month, setMonth] = React.useState<Date>(currentMonth);
+  const { holidays } = useHolidays();
 
   React.useEffect(() => {
     setMonth(currentMonth);
@@ -90,6 +96,33 @@ export function CalendarWithSelect({
     return currentYear < minYear || (currentYear === minYear && currentMonthIndex <= minMonthIndex);
   }, [minDate, currentYear, currentMonthIndex]);
 
+  // Create modifiers for holidays
+  const modifiers = React.useMemo(() => {
+    const holidayDates: Record<string, boolean> = {};
+    holidays.forEach((holiday) => {
+      const dateKey = holiday.date.toISOString().split('T')[0];
+      holidayDates[dateKey] = true;
+    });
+    return holidayDates;
+  }, [holidays]);
+
+  const modifiersClassNames = React.useMemo(() => {
+    const classNameMap: Record<string, string> = {};
+    holidays.forEach((holiday) => {
+      const dateKey = holiday.date.toISOString().split('T')[0];
+      classNameMap[dateKey] = "holiday-day";
+    });
+    return classNameMap;
+  }, [holidays]);
+
+  const enhancedClassNames = {
+    ...classNames,
+    day: cn(
+      classNames?.day,
+      "relative"
+    ),
+  };
+
   return (
     <div className="w-full max-w-sm mx-auto">
       {/* Modern Header with Navigation */}
@@ -143,13 +176,43 @@ export function CalendarWithSelect({
       </div>
 
       {/* Calendar */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 p-3">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 p-3 relative">
         <Calendar
           month={month}
           onMonthChange={handleMonthChange}
           firstWeekContainsDate={1}
+          classNames={enhancedClassNames}
+          modifiers={modifiers}
+          modifiersClassNames={modifiersClassNames}
           {...props}
         />
+        {showHolidayIndicator && holidays.length > 0 && (
+          <style>{`
+            .holiday-day {
+              background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(249, 115, 22, 0.1) 100%) !important;
+              border: 1px solid rgba(239, 68, 68, 0.3);
+              border-radius: 0.5rem;
+              position: relative;
+            }
+            
+            .holiday-day::after {
+              content: '';
+              position: absolute;
+              bottom: 1px;
+              left: 50%;
+              transform: translateX(-50%);
+              width: 4px;
+              height: 4px;
+              background-color: rgb(239, 68, 68);
+              border-radius: 50%;
+            }
+            
+            .dark .holiday-day {
+              background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(249, 115, 22, 0.2) 100%) !important;
+              border-color: rgba(239, 68, 68, 0.5);
+            }
+          `}</style>
+        )}
       </div>
     </div>
   );

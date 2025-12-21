@@ -755,11 +755,21 @@ const TaskManagement: React.FC = () => {
       };
     }
 
+    // If not found in employees list, try to fetch from cache or return ID
+    // The user cache should have been populated when tasks were loaded
+    const cachedUser = userCache.get(assignedById);
+    if (cachedUser) {
+      return {
+        name: cachedUser.name,
+        roleLabel: formatRoleLabel(cachedUser.role),
+      };
+    }
+
     return {
       name: `User #${assignedById}`,
       roleLabel: undefined,
     };
-  }, [employeesById, user?.name, user?.role, userId]);
+  }, [employeesById, user?.name, user?.role, userId, userCache]);
 
   // Add current user to cache if they're an admin or not in employees list
   useEffect(() => {
@@ -1782,11 +1792,16 @@ const TaskManagement: React.FC = () => {
   const getPriorityColor = (priority: BaseTask['priority']) => {
     switch (priority) {
       case 'low': return 'bg-green-100 text-green-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'high': return 'bg-orange-100 text-orange-800';
+      case 'medium': return 'bg-gray-100 text-gray-800';
+      case 'high': return 'bg-gray-100 text-gray-800';
       case 'urgent': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  // Capitalize priority text
+  const capitalizePriority = (priority: BaseTask['priority']) => {
+    return priority.charAt(0).toUpperCase() + priority.slice(1);
   };
 
   // Export functions
@@ -2555,7 +2570,7 @@ const TaskManagement: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <Badge className={getPriorityColor(task.priority)}>
-                              {task.priority}
+                              {capitalizePriority(task.priority)}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -2661,10 +2676,10 @@ const TaskManagement: React.FC = () => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setSelectedTask(task)}
-                                className="hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-950"
+                                className="hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-950 p-2 h-auto"
+                                title="View task details"
                               >
-                                View
-                                <ChevronRight className="h-4 w-4 ml-1" />
+                                👁
                               </Button>
                               {task.status !== 'completed' && canPassTask && (
                                 <Button
@@ -2680,24 +2695,23 @@ const TaskManagement: React.FC = () => {
                               {task.status !== 'completed' && (task.status as string) !== 'cancelled' && canManageTask && (
                                 <>
                                   <Button
-                                    variant="outline"
+                                    variant="ghost"
                                     size="sm"
                                     onClick={() => handleEditClick(task)}
-                                    className="flex items-center gap-1"
+                                    className="hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950 p-2 h-auto"
+                                    title="Edit task"
                                   >
-                                    <Pencil className="h-4 w-4" />
-                                    Edit
+                                    ✏️
                                   </Button>
                                   <Button
-                                    variant="destructive"
+                                    variant="ghost"
                                     size="sm"
                                     onClick={() => handleDeleteTask(task.id)}
                                     disabled={deletingTaskId === task.id || !canDeleteTask(task)}
-                                    className="flex items-center gap-1"
-                                    title={!canDeleteTask(task) ? 'Cannot delete task once work has started' : ''}
+                                    className="hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 p-2 h-auto disabled:opacity-50"
+                                    title={!canDeleteTask(task) ? 'Cannot delete task once work has started' : 'Delete task'}
                                   >
-                                    <Trash2 className="h-4 w-4" />
-                                    {deletingTaskId === task.id ? 'Deleting...' : 'Delete'}
+                                    {deletingTaskId === task.id ? <Loader2 className="h-4 w-4 animate-spin" /> : '🗑'}
                                   </Button>
                                 </>
                               )}
@@ -2747,7 +2761,7 @@ const TaskManagement: React.FC = () => {
                           </CardDescription>
                         </div>
                         <Badge className={getPriorityColor(task.priority)}>
-                          {task.priority}
+                          {capitalizePriority(task.priority)}
                         </Badge>
                       </div>
                     </CardHeader>
@@ -2808,30 +2822,29 @@ const TaskManagement: React.FC = () => {
                       {task.status !== 'completed' && (task.status as string) !== 'cancelled' && canManageTask && (
                         <div className="flex items-center gap-2 pt-2">
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={(event) => {
                               event.stopPropagation();
                               handleEditClick(task);
                             }}
-                            className="flex items-center gap-1"
+                            className="hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950 p-2 h-auto"
+                            title="Edit task"
                           >
-                            <Pencil className="h-4 w-4" />
-                            Edit
+                            ✏️
                           </Button>
                           <Button
-                            variant="destructive"
+                            variant="ghost"
                             size="sm"
                             onClick={(event) => {
                               event.stopPropagation();
                               handleDeleteTask(task.id);
                             }}
                             disabled={deletingTaskId === task.id || !canDeleteTask(task)}
-                            className="flex items-center gap-1"
-                            title={!canDeleteTask(task) ? 'Cannot delete task once work has started' : ''}
+                            className="hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 p-2 h-auto disabled:opacity-50"
+                            title={!canDeleteTask(task) ? 'Cannot delete task once work has started' : 'Delete task'}
                           >
-                            <Trash2 className="h-4 w-4" />
-                            {deletingTaskId === task.id ? 'Deleting...' : 'Delete'}
+                            {deletingTaskId === task.id ? <Loader2 className="h-4 w-4 animate-spin" /> : '🗑'}
                           </Button>
                         </div>
                       )}
@@ -3310,7 +3323,7 @@ const TaskManagement: React.FC = () => {
                         Priority
                       </h4>
                       <Badge className={getPriorityColor(selectedTask.priority)}>
-                        {selectedTask.priority}
+                        {capitalizePriority(selectedTask.priority)}
                       </Badge>
                     </div>
 

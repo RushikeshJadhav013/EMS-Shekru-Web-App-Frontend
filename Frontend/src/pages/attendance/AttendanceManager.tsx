@@ -17,6 +17,7 @@ import { format, subMonths, subDays } from 'date-fns';
 import { formatIST, formatDateTimeIST, formatTimeIST, formatDateIST, todayIST, formatDateTimeComponentsIST, parseToIST, nowIST } from '@/utils/timezone';
 import { DatePicker } from '@/components/ui/date-picker';
 import OnlineStatusIndicator from '@/components/attendance/OnlineStatusIndicator';
+import { apiService } from '@/lib/api';
 
 interface EmployeeAttendance extends AttendanceRecord {
   userName: string;
@@ -874,61 +875,37 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
     
     setIsLoadingWfhRequests(true);
     try {
-      // Frontend-only implementation - Admin sees only HR and Manager requests
-      // Generate timestamps that are accurate to the current time
-      const now = new Date();
-      const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000); // 2 minutes ago
-      const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000); // 15 minutes ago
-      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000); // 1 hour ago
-      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 1 day ago
+      // Call API to get all WFH requests for admin/hr/manager approval
+      const response = await apiService.getAllWFHRequests();
       
-      const adminWfhRequests = [
-        {
-          id: 'admin-sample-1',
-          startDate: formatDateIST(new Date(now.getTime() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // Tomorrow
-          endDate: formatDateIST(new Date(now.getTime() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
-          reason: 'Important client meeting requires home office setup for better connectivity',
-          type: 'full_day',
-          status: 'pending',
-          submittedAt: twoMinutesAgo.toISOString(), // 2 minutes ago
-          submittedBy: 'Sarah Johnson',
-          submittedById: '201',
-          department: 'Human Resources',
-          role: 'hr',
-        },
-        {
-          id: 'admin-sample-2',
-          startDate: formatDateIST(new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // Day after tomorrow
-          endDate: formatDateIST(new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // 4 days from now
-          reason: 'Team planning session and quarterly review preparation - need focused environment',
-          type: 'full_day',
-          status: 'pending',
-          submittedAt: fifteenMinutesAgo.toISOString(), // 15 minutes ago
-          submittedBy: 'Michael Chen',
-          submittedById: '301',
-          department: 'Engineering',
-          role: 'manager',
-        },
-        {
-          id: 'admin-sample-3',
-          startDate: format(yesterday, 'yyyy-MM-dd'), // Yesterday
-          endDate: format(yesterday, 'yyyy-MM-dd'),
-          reason: 'Annual performance reviews and HR policy updates',
-          type: 'full_day',
-          status: 'approved',
-          submittedAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-          submittedBy: 'Lisa Rodriguez',
-          submittedById: '202',
-          department: 'Human Resources',
-          role: 'hr',
-          processedAt: oneHourAgo.toISOString(), // 1 hour ago
-          processedBy: 'Admin',
-        }
-      ];
+      // Handle response - it might be wrapped in an object or be an array directly
+      let requests = Array.isArray(response) ? response : (response?.data || response?.requests || []);
       
-      setAllWfhRequests(adminWfhRequests);
-    } catch (error) {
-      console.error('Failed to load WFH requests:', error);
+      // Transform API response to match our UI format
+      // The API returns requests with fields like: wfh_id, user_id, start_date, end_date, wfh_type, reason, status, employee_id, name, department, role, approver_name
+      const formattedRequests = requests.map((req: any) => ({
+        id: String(req.wfh_id || req.id),
+        startDate: req.start_date,
+        endDate: req.end_date,
+        reason: req.reason,
+        type: (req.wfh_type || 'Full Day').toLowerCase().includes('full') ? 'full_day' : 'half_day',
+        status: (req.status || 'Pending').toLowerCase(),
+        submittedAt: req.created_at,
+        submittedBy: req.name || req.employee_name || 'Unknown',
+        submittedById: String(req.user_id),
+        employeeId: req.employee_id || '',
+        department: req.department || 'Unknown',
+        role: (req.role || 'employee').toLowerCase(),
+        processedAt: req.updated_at,
+        processedBy: req.approver_name || req.approved_by || 'Pending',
+        rejectionReason: req.rejection_reason,
+      }));
+      
+      setAllWfhRequests(formattedRequests);
+    } catch (error: any) {
+      // Silently fail - endpoint may not be implemented yet
+      // The API method already handles errors gracefully
+      setAllWfhRequests([]);
     } finally {
       setIsLoadingWfhRequests(false);
     }
@@ -938,15 +915,21 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
   const handleAdminWfhRequestAction = async (requestId: string, action: 'approve' | 'reject', reason?: string) => {
     setIsProcessingWfhRequest(true);
     try {
-      // Frontend-only implementation
-      const currentTime = new Date(); // Use current time for accurate timestamp
+      // Call API to approve/reject WFH request
+      const wfhId = parseInt(requestId);
+      const approved = action === 'approve';
+      
+      await apiService.approveWFHRequest(wfhId, approved, reason);
+
+      // Update local state optimistically
+      const currentTime = new Date();
       setAllWfhRequests(prev => 
         prev.map(req => 
           req.id === requestId 
             ? { 
                 ...req, 
                 status: action === 'approve' ? 'approved' : 'rejected',
-                processedAt: currentTime.toISOString(), // Use current time
+                processedAt: currentTime.toISOString(),
                 processedBy: user?.name || 'Admin',
                 rejectionReason: action === 'reject' ? reason : undefined
               }
@@ -956,13 +939,17 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
 
       toast({
         title: `Request ${action === 'approve' ? 'Approved' : 'Rejected'}`,
-        description: `WFH request from ${action === 'approve' ? 'HR/Manager' : 'HR/Manager'} has been ${action === 'approve' ? 'approved' : 'rejected'} successfully.`,
+        description: `WFH request has been ${action === 'approve' ? 'approved' : 'rejected'} successfully.`,
         variant: 'default',
       });
 
       setShowWfhRequestDialog(false);
       setSelectedWfhRequest(null);
+      
+      // Reload requests to ensure consistency
+      await loadAdminWfhRequests();
     } catch (error) {
+      console.error('Error processing WFH request:', error);
       toast({
         title: 'Action Failed',
         description: `Failed to ${action} the request. Please try again.`,
@@ -1117,8 +1104,8 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
               <table className="w-full">
                 <thead className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
                   <tr className="hover:bg-transparent">
-                    <th className="text-left p-3 font-medium">{t.attendance.employee}</th>
                     <th className="text-left p-3 font-medium">{t.attendance.employeeId}</th>
+                    <th className="text-left p-3 font-medium">{t.attendance.employee}</th>
                     <th className="text-left p-3 font-medium">{t.attendance.department}</th>
                     <th className="text-left p-3 font-medium">Work Location</th>
                     <th className="text-left p-3 font-medium">Online Status</th>
@@ -1138,14 +1125,14 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                       <tr key={record.id} className="border-t hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
                         <td className="p-3">
                           <div>
-                            <p className="font-medium">{record.userName}</p>
-                            <p className="text-sm text-muted-foreground">{record.userEmail}</p>
+                            <p className="font-medium text-sm">{record.employeeId || record.userId || 'N/A'}</p>
+                            <p className="text-xs text-muted-foreground">ID: {record.userId}</p>
                           </div>
                         </td>
                         <td className="p-3">
                           <div>
-                            <p className="font-medium text-sm">{record.employeeId || record.userId || 'N/A'}</p>
-                            <p className="text-xs text-muted-foreground">ID: {record.userId}</p>
+                            <p className="font-medium">{record.userName}</p>
+                            <p className="text-sm text-muted-foreground">{record.userEmail}</p>
                           </div>
                         </td>
                         <td className="p-3">

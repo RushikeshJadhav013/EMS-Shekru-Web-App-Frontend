@@ -71,6 +71,7 @@ const AttendanceWithToggle: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(todayIST());
   const [filterRole, setFilterRole] = useState<'all' | UserRole>('all');
+  const [timePeriodFilter, setTimePeriodFilter] = useState<'today' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_12_months'>('today');
   const [selectedRecord, setSelectedRecord] = useState<EmployeeAttendanceRecord | null>(null);
   const [showSelfieModal, setShowSelfieModal] = useState(false);
   const [showWorkSummaryDialog, setShowWorkSummaryDialog] = useState(false);
@@ -697,6 +698,29 @@ const AttendanceWithToggle: React.FC = () => {
       }
       
       const data = await res.json();
+      
+      // Calculate date range based on time period filter
+      const today = new Date();
+      let startDate = new Date();
+      
+      switch (timePeriodFilter) {
+        case 'today':
+          startDate = new Date(today);
+          break;
+        case 'last_month':
+          startDate = subMonths(today, 1);
+          break;
+        case 'last_3_months':
+          startDate = subMonths(today, 3);
+          break;
+        case 'last_6_months':
+          startDate = subMonths(today, 6);
+          break;
+        case 'last_12_months':
+          startDate = subMonths(today, 12);
+          break;
+      }
+      
       const records: EmployeeAttendanceRecord[] = data
         .filter((rec: any) => rec.check_in && new Date(rec.check_in))
         .map((rec: any) => ({
@@ -725,7 +749,11 @@ const AttendanceWithToggle: React.FC = () => {
           workSummary: rec.workSummary || rec.work_summary || null,
           workReport: resolveStaticUrl(rec.workReport || rec.work_report),
         }))
-        .filter((r: AttendanceRecord) => r.date === selectedDate)
+        .filter((r: AttendanceRecord) => {
+          // Filter by date range based on time period
+          const recordDate = new Date(r.date);
+          return recordDate >= startDate && recordDate <= today;
+        })
         .sort((a, b) => {
           // Sort by check-in time in descending order (most recent first)
           const timeA = new Date(a.checkInTime || 0).getTime();
@@ -2137,31 +2165,22 @@ const AttendanceWithToggle: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <Label htmlFor="date-filter">Date</Label>
-                    <Input
-                      id="date-filter"
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => {
-                        setSelectedDate(e.target.value);
-                        loadEmployeeAttendance();
-                      }}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <Label htmlFor="role-filter">Role Filter</Label>
-                    <Select value={filterRole} onValueChange={(value: any) => setFilterRole(value)}>
-                      <SelectTrigger id="role-filter" className="mt-1">
+                <div className="flex gap-3 items-end">
+                  <div className="w-48">
+                    <Label htmlFor="time-period-filter" className="text-sm">Time Period</Label>
+                    <Select value={timePeriodFilter} onValueChange={(value: any) => {
+                      setTimePeriodFilter(value);
+                      loadEmployeeAttendance();
+                    }}>
+                      <SelectTrigger id="time-period-filter" className="mt-1 h-9 text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Roles</SelectItem>
-                        {getViewableRoles().map(role => (
-                          <SelectItem key={role} value={role}>{role}</SelectItem>
-                        ))}
+                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="last_month">Last Month</SelectItem>
+                        <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                        <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                        <SelectItem value="last_12_months">Last 12 Months</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -2171,8 +2190,8 @@ const AttendanceWithToggle: React.FC = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Employee (Name & Email)</TableHead>
                         <TableHead>Employee ID</TableHead>
+                        <TableHead>Employee (Name & Email)</TableHead>
                         <TableHead>Department</TableHead>
                         <TableHead>Online Status</TableHead>
                         <TableHead>Check In</TableHead>
@@ -2189,13 +2208,13 @@ const AttendanceWithToggle: React.FC = () => {
                       {employeeAttendanceData.length > 0 ? (
                         employeeAttendanceData.map((record) => (
                           <TableRow key={record.id}>
+                            <TableCell className="font-medium">{record.userId}</TableCell>
                             <TableCell className="text-sm">
                               <div className="flex flex-col">
                                 <span className="font-medium truncate max-w-[220px]">{record.name || '-'}</span>
                                 <span className="text-muted-foreground truncate max-w-[220px]">{record.email || '-'}</span>
                               </div>
                             </TableCell>
-                            <TableCell className="font-medium">{record.userId}</TableCell>
                             <TableCell>{record.department || '-'}</TableCell>
                             <TableCell>
                               {!record.checkOutTime ? (

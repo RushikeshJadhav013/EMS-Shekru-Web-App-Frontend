@@ -1,12 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { Pagination } from '@/components/ui/pagination';
-
-type Holiday = {
-  date: Date;
-  name: string;
-  description?: string;
-};
+import { useLeaveBalance } from '@/contexts/LeaveBalanceContext';
+import { useHolidays } from '@/contexts/HolidayContext';
+import { calculateLeaveDays, getLeaveDeductionTypes, isLeaveTypeDisabled, getAvailableLeaveTypes, validateLeaveRequest } from '@/utils/leaveUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,6 +70,7 @@ interface LeaveRequest {
 
 export default function LeaveManagement() {
   const { user } = useAuth();
+  const { holidays, addHoliday, removeHoliday, isHoliday, getHolidayName } = useHolidays();
   const [searchParams, setSearchParams] = useSearchParams();
   const locationState = useLocation();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -126,21 +124,6 @@ export default function LeaveManagement() {
   };
   
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(initializeLeaveRequests());
-  const loadStoredHolidays = () => {
-    const stored = localStorage.getItem('companyHolidays');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as { date: string; name: string }[];
-        return parsed.map((h) => ({ date: new Date(h.date), name: h.name }));
-      } catch (error) {
-        console.error('Failed to parse stored holidays:', error);
-      }
-    }
-    return [
-      { date: new Date(2025, 0, 1), name: 'New Year' },
-      { date: new Date(2025, 1, 26), name: 'Republic Day' },
-    ];
-  };
   const [approvalRequests, setApprovalRequests] = useState<LeaveRequest[]>([]);
   const [approvalHistory, setApprovalHistory] = useState<LeaveRequest[]>([]);
   const [historyFilter, setHistoryFilter] = useState<string>('current_month');
@@ -148,7 +131,7 @@ export default function LeaveManagement() {
   const [customHistoryEndDate, setCustomHistoryEndDate] = useState<Date | undefined>(new Date());
 
   const [formData, setFormData] = useState({
-    type: 'annual',
+    type: 'sick',
     startDate: new Date(),
     endDate: new Date(),
     reason: ''
@@ -177,9 +160,8 @@ export default function LeaveManagement() {
   const [historyCurrentPage, setHistoryCurrentPage] = useState(1);
   const [historyItemsPerPage, setHistoryItemsPerPage] = useState(20);
 
-  // Company holidays state
-  const [holidays, setHolidays] = useState<Holiday[]>(loadStoredHolidays());
-  const [selectedHoliday, setSelectedHoliday] = useState<Holiday | null>(null);
+  // Holiday dialog state
+  const [selectedHoliday, setSelectedHoliday] = useState<typeof holidays[0] | null>(null);
   const [isHolidayDialogOpen, setIsHolidayDialogOpen] = useState(false);
 
   const [holidayForm, setHolidayForm] = useState<{ date: Date; name: string; description?: string }>({ 
@@ -213,27 +195,24 @@ export default function LeaveManagement() {
       return;
     }
     
-    // Check if holiday already exists for this date
-    const existingHoliday = holidays.find(h => isSameDay(h.date, holidayForm.date));
-    if (existingHoliday) {
+    try {
+      addHoliday({ 
+        date: holidayForm.date, 
+        name: holidayForm.name,
+        description: holidayForm.description 
+      });
+      setHolidayForm({ date: new Date(), name: '', description: '' });
+      toast({ 
+        title: 'Holiday added', 
+        description: `${holidayForm.name} has been added to the calendar.` 
+      });
+    } catch (error) {
       toast({ 
         title: 'Error', 
-        description: `A holiday "${existingHoliday.name}" already exists for this date.`,
+        description: error instanceof Error ? error.message : 'Failed to add holiday.',
         variant: 'destructive'
       });
-      return;
     }
-    
-    setHolidays([...holidays, { 
-      date: holidayForm.date, 
-      name: holidayForm.name,
-      description: holidayForm.description 
-    }]);
-    setHolidayForm({ date: new Date(), name: '', description: '' });
-    toast({ 
-      title: 'Holiday added', 
-      description: `${holidayForm.name} has been added to the calendar.` 
-    });
   };
 
   const handleDayClick = (date: Date | undefined) => {
@@ -251,7 +230,7 @@ export default function LeaveManagement() {
   };
 
   const handleRemoveHoliday = (date: Date) => {
-    setHolidays(holidays.filter(h => !isSameDay(h.date, date)));
+    removeHoliday(date);
     toast({ title: 'Holiday removed', description: 'Company holiday removed from calendar.' });
   };
 
@@ -324,12 +303,7 @@ export default function LeaveManagement() {
     localStorage.setItem('departmentWeekOffs', JSON.stringify(weekOffConfig));
   }, [weekOffConfig]);
 
-  const [leaveBalance, setLeaveBalance] = useState({
-    annual: { allocated: 15, used: 0, remaining: 15 },
-    sick: { allocated: 10, used: 0, remaining: 10 },
-    casual: { allocated: 5, used: 0, remaining: 5 },
-    unpaid: { allocated: 0, used: 0, remaining: 0 }, // Unpaid leave counter (no allocation, only tracks usage)
-  });
+  const { leaveBalance, loadLeaveBalance, updateLeaveBalance } = useLeaveBalance();
 
   // Leave Allocation Configuration (Admin only)
   const [leaveAllocationConfig, setLeaveAllocationConfig] = useState({
@@ -435,18 +409,6 @@ export default function LeaveManagement() {
   }, [leaveRequests]);
 
   useEffect(() => {
-    localStorage.setItem(
-      'companyHolidays',
-      JSON.stringify(
-        holidays.map((h) => ({
-          ...h,
-          date: h.date.toISOString(),
-        })),
-      ),
-    );
-  }, [holidays]);
-
-  useEffect(() => {
     const loadDepartments = async () => {
       try {
         const response = await apiService.getDepartmentNames();
@@ -498,46 +460,7 @@ export default function LeaveManagement() {
     }
   }, [leaveHistoryPeriod, user]);
 
-  const loadLeaveBalance = useCallback(async () => {
-    if (!user) return;
-    try {
-      const response = await apiService.getLeaveBalance();
-      const defaults = {
-        annual: { allocated: 15, used: 0, remaining: 15 },
-        sick: { allocated: 10, used: 0, remaining: 10 },
-        casual: { allocated: 5, used: 0, remaining: 5 },
-        unpaid: { allocated: 0, used: 0, remaining: 0 },
-      };
 
-      // Track unpaid leave count separately
-      let unpaidCount = 0;
-
-      response.balances.forEach((item) => {
-        const key = item.leave_type.toLowerCase();
-        if (key === 'unpaid') {
-          // For unpaid leave, just track the count
-          unpaidCount = item.used;
-        } else if (key in defaults) {
-          defaults[key as keyof typeof defaults] = {
-            allocated: item.allocated,
-            used: item.used,
-            remaining: item.remaining,
-          };
-        }
-      });
-
-      // Set unpaid leave count
-      defaults.unpaid = {
-        allocated: 0,
-        used: unpaidCount,
-        remaining: 0,
-      };
-
-      setLeaveBalance(defaults);
-    } catch (error) {
-      console.error('Error fetching leave balance:', error);
-    }
-  }, [user]);
 
   // Load leave allocation configuration (Admin only)
   const loadLeaveAllocationConfig = useCallback(async () => {
@@ -788,25 +711,9 @@ export default function LeaveManagement() {
       const response = await apiService.submitLeaveRequest(leaveRequestData);
 
       // Update local leave balance immediately for better UX
-      setLeaveBalance(prev => {
-        const updated = { ...prev };
-        
-        if (formData.type === 'unpaid') {
-          // For unpaid leave, increment the unpaid counter
-          updated.unpaid = {
-            ...prev.unpaid,
-            used: prev.unpaid.used + leaveDays
-          };
-        } else if (['annual', 'sick', 'casual'].includes(formData.type)) {
-          // For Annual, Sick, and Casual leave, deduct from Annual Leave balance
-          updated.annual = {
-            ...prev.annual,
-            used: prev.annual.used + leaveDays,
-            remaining: prev.annual.remaining - leaveDays
-          };
-        }
-        
-        return updated;
+      const deductionTypes = getLeaveDeductionTypes(formData.type as any);
+      deductionTypes.forEach(type => {
+        updateLeaveBalance(type as any, leaveDays, 'deduct');
       });
 
       // Create local leave request object for immediate UI update
@@ -840,7 +747,7 @@ export default function LeaveManagement() {
       
       // Reset form
       setFormData({
-        type: 'annual',
+        type: 'sick',
         startDate: new Date(),
         endDate: new Date(),
         reason: ''
@@ -880,6 +787,15 @@ export default function LeaveManagement() {
       // Call API to approve/reject
       const approved = status === 'approved';
       await apiService.approveLeaveRequest(id, approved);
+      
+      // If approved, update leave balance
+      if (status === 'approved') {
+        const leaveDays = calculateLeaveDays(request.startDate, request.endDate);
+        const deductionTypes = getLeaveDeductionTypes(request.type as any);
+        deductionTypes.forEach(type => {
+          updateLeaveBalance(type as any, leaveDays, 'deduct');
+        });
+      }
       
       // Update approvals list - move approved/rejected request to the top
       const updatedRequest = { ...request, status, approvedBy: user?.name };
@@ -1309,7 +1225,7 @@ export default function LeaveManagement() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-blue-50">Annual Leave</p>
+                    <p className="text-sm text-blue-50">Total Leaves</p>
                     <p className="text-3xl font-bold mt-1">
                       {leaveBalance.annual.remaining}/{leaveBalance.annual.allocated}
                     </p>
@@ -1403,12 +1319,15 @@ export default function LeaveManagement() {
                     onValueChange={(value) => setFormData({...formData, type: value})}
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select Leave Type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="annual">Annual Leave</SelectItem>
-                      <SelectItem value="sick">Sick Leave</SelectItem>
-                      <SelectItem value="casual">Casual Leave</SelectItem>
+                      <SelectItem value="sick" disabled={isLeaveTypeDisabled('sick', leaveBalance)}>
+                        Sick Leave {leaveBalance.sick.remaining <= 0 ? '(No balance)' : `(${leaveBalance.sick.remaining} days)`}
+                      </SelectItem>
+                      <SelectItem value="casual" disabled={isLeaveTypeDisabled('casual', leaveBalance)}>
+                        Casual Leave {leaveBalance.casual.remaining <= 0 ? '(No balance)' : `(${leaveBalance.casual.remaining} days)`}
+                      </SelectItem>
                       <SelectItem value="maternity">Maternity Leave</SelectItem>
                       <SelectItem value="paternity">Paternity Leave</SelectItem>
                       <SelectItem value="unpaid">Unpaid Leave</SelectItem>

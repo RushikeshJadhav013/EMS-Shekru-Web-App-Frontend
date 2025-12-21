@@ -75,7 +75,15 @@ const Login: React.FC = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/admin', { replace: true });
+      // Check if there's a last authenticated path stored
+      const lastPath = localStorage.getItem('lastAuthenticatedPath');
+      if (lastPath && lastPath !== '/login' && lastPath !== '/') {
+        // Redirect to the last authenticated path
+        navigate(lastPath, { replace: true });
+      } else {
+        // Fallback to admin dashboard
+        navigate('/admin', { replace: true });
+      }
     }
   }, [isAuthenticated, navigate]);
 

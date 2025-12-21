@@ -168,7 +168,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const mapBackendTaskNotification = useCallback((notification: BackendTaskNotification): Notification => {
+  const mapBackendTaskNotification = useCallback((notification: BackendTaskNotification, currentUserId?: string): Notification | null => {
     let parsedDetails: Record<string, unknown> | null = null;
     if (notification.pass_details) {
       if (typeof notification.pass_details === 'string') {
@@ -186,10 +186,23 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const toValue = parsedDetails && typeof parsedDetails === 'object' ? parsedDetails['to'] : undefined;
     const noteValue = parsedDetails && typeof parsedDetails === 'object' ? parsedDetails['note'] : undefined;
 
+    // ✅ Filter out self-notifications: only show if the notification is for the current user
+    // and the sender is different from the recipient
+    const notificationUserId = String(notification.user_id);
+    if (currentUserId && notificationUserId !== currentUserId) {
+      // This notification is not for the current user, filter it out
+      return null;
+    }
+
+    // ✅ Prevent self-notifications: if sender and recipient are the same, don't show
+    if (fromValue !== undefined && String(fromValue) === notificationUserId) {
+      return null;
+    }
+
     return {
       id: `backend-task-${notification.notification_id}`,
       backendId: notification.notification_id,
-      userId: String(notification.user_id),
+      userId: notificationUserId,
       title: notification.title,
       message: notification.message,
       type: 'task',
@@ -207,11 +220,18 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
   }, []);
 
-  const mapBackendLeaveNotification = useCallback((notification: BackendLeaveNotification): Notification => {
+  const mapBackendLeaveNotification = useCallback((notification: BackendLeaveNotification, currentUserId?: string): Notification | null => {
+    // ✅ Filter out self-notifications: only show if the notification is for the current user
+    const notificationUserId = String(notification.user_id);
+    if (currentUserId && notificationUserId !== currentUserId) {
+      // This notification is not for the current user, filter it out
+      return null;
+    }
+
     return {
       id: `backend-leave-${notification.notification_id}`,
       backendId: notification.notification_id,
-      userId: String(notification.user_id),
+      userId: notificationUserId,
       title: notification.title,
       message: notification.message,
       type: 'leave',
@@ -223,7 +243,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
   }, []);
 
-  const mapBackendShiftNotification = useCallback((notification: BackendShiftNotification, userRole?: string): Notification => {
+  const mapBackendShiftNotification = useCallback((notification: BackendShiftNotification, userRole?: string, currentUserId?: string): Notification | null => {
+    // ✅ Filter out self-notifications: only show if the notification is for the current user
+    const notificationUserId = String(notification.user_id);
+    if (currentUserId && notificationUserId !== currentUserId) {
+      // This notification is not for the current user, filter it out
+      return null;
+    }
+
     // Determine the team page route based on user role
     let teamRoute = '/employee/team';
     if (userRole === 'team_lead') {
@@ -235,7 +262,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return {
       id: `backend-shift-${notification.notification_id}`,
       backendId: notification.notification_id,
-      userId: String(notification.user_id),
+      userId: notificationUserId,
       title: notification.title,
       message: notification.message,
       type: 'shift',
@@ -415,9 +442,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
 
       const backendNotifications = [
-        ...taskData.map(mapBackendTaskNotification),
-        ...leaveData.map(mapBackendLeaveNotification),
-        ...shiftData.map(n => mapBackendShiftNotification(n, user.role)),
+        ...taskData.map(n => mapBackendTaskNotification(n, user.id)).filter((n): n is Notification => n !== null),
+        ...leaveData.map(n => mapBackendLeaveNotification(n, user.id)).filter((n): n is Notification => n !== null),
+        ...shiftData.map(n => mapBackendShiftNotification(n, user.role, user.id)).filter((n): n is Notification => n !== null),
       ];
 
       setNotifications((prev) => {
@@ -521,6 +548,24 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     // Check if notifications are enabled
     if (!areNotificationsEnabled()) {
       return;
+    }
+
+    // ✅ Prevent self-notifications: check if the requester is the same as the current user
+    // For task notifications, check if the requesterId matches the current user
+    if (notification.type === 'task' && notification.metadata?.requesterId) {
+      if (String(notification.metadata.requesterId) === String(user.id)) {
+        // Don't show self-notification for task assignments
+        return;
+      }
+    }
+
+    // ✅ Prevent self-notifications: check if the requester is the same as the current user
+    // For leave notifications, check if the requesterId matches the current user
+    if (notification.type === 'leave' && notification.metadata?.requesterId) {
+      if (String(notification.metadata.requesterId) === String(user.id)) {
+        // Don't show self-notification for leave approvals
+        return;
+      }
     }
 
     const newNotification: Notification = {

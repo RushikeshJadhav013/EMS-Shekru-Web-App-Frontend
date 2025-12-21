@@ -299,6 +299,16 @@ export default function EmployeeManagement() {
   
   // For multiple department assignment (HR and Manager roles)
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
+  
+  // Address fields
+  const [addressFields, setAddressFields] = useState({
+    houseNo: '',
+    street: '',
+    area: '',
+    city: '',
+    pincode: '',
+    state: ''
+  });
 
   const [bulkData, setBulkData] = useState('');
   const [bulkFileName, setBulkFileName] = useState('');
@@ -313,6 +323,7 @@ export default function EmployeeManagement() {
   const [imagePreview, setImagePreview] = useState<string>('');
   const [phoneError, setPhoneError] = useState<string>('');
   const [emailError, setEmailError] = useState<string>('');
+  const [genderError, setGenderError] = useState<string>('');
   const [panCardError, setPanCardError] = useState<string>('');
   const [aadharCardError, setAadharCardError] = useState<string>('');
   const [panCardDuplicateError, setPanCardDuplicateError] = useState<string>('');
@@ -490,6 +501,29 @@ export default function EmployeeManagement() {
     return true;
   };
 
+  const validateEmployeeId = (employeeId: string) => {
+    if (!employeeId) {
+      return { valid: false, message: 'Employee ID is required' };
+    }
+    
+    // Check if it contains at least one letter
+    if (!/[A-Z]/.test(employeeId)) {
+      return { valid: false, message: 'Employee ID must contain at least one uppercase letter' };
+    }
+    
+    // Check if it contains at least one number
+    if (!/[0-9]/.test(employeeId)) {
+      return { valid: false, message: 'Employee ID must contain at least one number' };
+    }
+    
+    // Check if it only contains uppercase letters and numbers
+    if (!/^[A-Z0-9]+$/.test(employeeId)) {
+      return { valid: false, message: 'Employee ID can only contain uppercase letters and numbers' };
+    }
+    
+    return { valid: true, message: '' };
+  };
+
   const validatePhoneNumber = (phone: string, countryCode: string) => {
     if (!phone) {
       setPhoneError('');
@@ -503,9 +537,9 @@ export default function EmployeeManagement() {
         setPhoneError('Indian phone numbers must be exactly 10 digits');
         return false;
       }
-      const phoneRegex = /^[789]\d{9}$/;
+      const phoneRegex = /^[6789]\d{9}$/;
       if (!phoneRegex.test(digits)) {
-        setPhoneError('Indian phone numbers must start with 7, 8, or 9 and be exactly 10 digits');
+        setPhoneError('Indian phone numbers must start with 6, 7, 8, or 9 and be exactly 10 digits');
         return false;
       }
     } else if (digits.length > 15) {
@@ -630,17 +664,32 @@ const formatAadharInput = (value: string) => {
     // Clear any previous duplicate errors
     setPanCardDuplicateError('');
     setAadharCardDuplicateError('');
+    setGenderError('');
     
     // Validate required fields based on role
     const isHROrManager = formData.role === 'HR' || formData.role === 'Manager';
     const departmentValid = isHROrManager ? selectedDepartments.length > 0 : formData.department;
     
-    if (!formData.name || !formData.email || !formData.employeeId || !departmentValid || !formData.panCard || !formData.aadharCard || !formData.shift || !formData.employeeType) {
+    if (!formData.name || !formData.email || !formData.employeeId || !departmentValid || !formData.panCard || !formData.aadharCard || !formData.shift || !formData.employeeType || !formData.gender) {
+      if (!formData.gender) {
+        setGenderError('Gender is required');
+      }
       toast({
         title: 'Error',
         description: isHROrManager 
           ? 'Please fill in all required fields and select at least one department'
           : 'Please fill in all required fields',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Validate Employee ID format
+    const employeeIdValidation = validateEmployeeId(formData.employeeId);
+    if (!employeeIdValidation.valid) {
+      toast({
+        title: 'Error',
+        description: employeeIdValidation.message,
         variant: 'destructive'
       });
       return;
@@ -688,6 +737,16 @@ const formatAadharInput = (value: string) => {
       const isHROrManager = formData.role === 'HR' || formData.role === 'Manager';
       const departmentValue = isHROrManager ? selectedDepartments.join(',') : formData.department;
 
+      // Combine address fields
+      const fullAddress = [
+        addressFields.houseNo,
+        addressFields.street,
+        addressFields.area,
+        addressFields.city,
+        addressFields.pincode,
+        addressFields.state
+      ].filter(Boolean).join(', ');
+
       const employeeData: EmployeeData = {
         name: formData.name,
         email: formData.email,
@@ -695,7 +754,7 @@ const formatAadharInput = (value: string) => {
         department: departmentValue,
         designation: formData.designation,
         phone: formData.phone ? `${formData.countryCode || '+91'}-${formData.phone.replace(/[^0-9]/g, '')}` : '',
-        address: formData.address,
+        address: fullAddress,
         role: formData.role,
         gender: formData.gender,
         resignation_date: formData.resignationDate || null,
@@ -765,6 +824,17 @@ const formatAadharInput = (value: string) => {
         description: isHROrManager 
           ? 'Please fill in all required fields and select at least one department'
           : 'Please fill in all required fields',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Validate Employee ID format
+    const employeeIdValidation = validateEmployeeId(formData.employeeId);
+    if (!employeeIdValidation.valid) {
+      toast({
+        title: 'Error',
+        description: employeeIdValidation.message,
         variant: 'destructive'
       });
       return;
@@ -841,6 +911,16 @@ const formatAadharInput = (value: string) => {
       const isHROrManager = formData.role === 'HR' || formData.role === 'Manager';
       const departmentValue = isHROrManager ? selectedDepartments.join(',') : formData.department;
 
+      // Combine address fields
+      const fullAddress = [
+        addressFields.houseNo,
+        addressFields.street,
+        addressFields.area,
+        addressFields.city,
+        addressFields.pincode,
+        addressFields.state
+      ].filter(Boolean).join(', ');
+
       const employeeData: EmployeeData = {
         name: formData.name,
         email: formData.email,
@@ -848,7 +928,7 @@ const formatAadharInput = (value: string) => {
         department: departmentValue,
         designation: formData.designation,
         phone: formData.phone ? `${formData.countryCode || '+91'}-${formData.phone.replace(/[^0-9]/g, '')}` : '',
-        address: formData.address,
+        address: fullAddress,
         role: formData.role,
         gender: formData.gender,
         resignation_date: formData.resignationDate || undefined,
@@ -1296,12 +1376,12 @@ const formatAadharInput = (value: string) => {
     }
     
     if (errorMessage.toLowerCase().includes('pan card already exists')) {
-      setPanCardDuplicateError('PAN Card already exists. Please enter a unique PAN Card number.');
+      setPanCardDuplicateError('PAN Card already exists. Please use a different PAN Card.');
       return true;
     }
     
     if (errorMessage.toLowerCase().includes('aadhar card already exists')) {
-      setAadharCardDuplicateError('Aadhar Card already exists. Please enter a unique Aadhar Card number.');
+      setAadharCardDuplicateError('Aadhar Card already exists. Please use a different Aadhar Card.');
       return true;
     }
     
@@ -1330,6 +1410,14 @@ const formatAadharInput = (value: string) => {
       managerId: undefined
     });
     setSelectedDepartments([]);
+    setAddressFields({
+      houseNo: '',
+      street: '',
+      area: '',
+      city: '',
+      pincode: '',
+      state: ''
+    });
     setImageFile(null);
     setImagePreview('');
     setSelectedEmployee(null);
@@ -1425,6 +1513,17 @@ const formatAadharInput = (value: string) => {
     const isHROrManager = role === 'HR' || role === 'Manager';
     const departmentList = isHROrManager && department ? department.split(',').map(d => d.trim()) : [];
     
+    // Parse address into individual fields
+    const addressParts = address.split(',').map(part => part.trim());
+    const parsedAddress = {
+      houseNo: addressParts[0] || '',
+      street: addressParts[1] || '',
+      area: addressParts[2] || '',
+      city: addressParts[3] || '',
+      pincode: addressParts[4] || '',
+      state: addressParts[5] || ''
+    };
+    
     setFormData({
       id, // ✅ Include user_id
       employeeId,
@@ -1450,6 +1549,9 @@ const formatAadharInput = (value: string) => {
 
     // Set selected departments for HR/Manager roles
     setSelectedDepartments(departmentList);
+    
+    // Set address fields
+    setAddressFields(parsedAddress);
 
     setImagePreview(photoUrl);
     setIsEditDialogOpen(true);
@@ -1707,19 +1809,25 @@ const formatAadharInput = (value: string) => {
                       </p>
                     </div>
                     <div>
-                      <Label htmlFor="create-employeeId">Employee ID *</Label>
+                      <Label htmlFor="create-employeeId">Employee ID * <span className="text-xs text-gray-500">(Uppercase & Numbers only)</span></Label>
                       <Input
                         id="create-employeeId"
                         value={formData.employeeId || ''}
                         onChange={(e) => {
-                          // Remove all spaces from employee ID
-                          const value = e.target.value.replace(/\s/g, '');
+                          // Convert to uppercase and remove all non-alphanumeric characters
+                          let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
                           setFormData((prev) => ({ ...prev, employeeId: value }));
                         }}
                         required
                         className="mt-1"
                         placeholder="e.g., EMP001"
                       />
+                      {formData.employeeId && !/[A-Z]/.test(formData.employeeId) && (
+                        <p className="text-red-500 text-sm mt-1">Employee ID must contain at least one letter</p>
+                      )}
+                      {formData.employeeId && !/[0-9]/.test(formData.employeeId) && (
+                        <p className="text-red-500 text-sm mt-1">Employee ID must contain at least one number</p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="create-name">Name *</Label>
@@ -1759,7 +1867,15 @@ const formatAadharInput = (value: string) => {
                       <Select
                         value={formData.role || 'employee'}
                         onValueChange={(value) => {
-                          setFormData((prev) => ({ ...prev, role: value as string }));
+                          // Auto-set designation based on role
+                          let designation = '';
+                          if (value === 'HR') {
+                            designation = 'HR';
+                          } else if (value === 'Manager') {
+                            designation = 'Manager';
+                          }
+                          
+                          setFormData((prev) => ({ ...prev, role: value as string, designation }));
                           // Reset department selections when role changes
                           if (value === 'HR' || value === 'Manager') {
                             setSelectedDepartments([]);
@@ -1822,7 +1938,24 @@ const formatAadharInput = (value: string) => {
                     {/* Multiple Department Selection for HR and Manager */}
                     {(formData.role === 'HR' || formData.role === 'Manager') && (
                       <div>
-                        <Label>Assigned Departments *</Label>
+                        <div className="flex items-center justify-between mb-2">
+                          <Label>Assigned Departments *</Label>
+                          {departments.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (selectedDepartments.length === departments.length) {
+                                  setSelectedDepartments([]);
+                                } else {
+                                  setSelectedDepartments([...departments]);
+                                }
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                            >
+                              {selectedDepartments.length === departments.length ? 'Deselect All' : 'Select All'}
+                            </button>
+                          )}
+                        </div>
                         <div className="mt-2 space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
                           {departments.length === 0 ? (
                             <p className="text-sm text-muted-foreground">No departments available</p>
@@ -1856,15 +1989,19 @@ const formatAadharInput = (value: string) => {
                         )}
                       </div>
                     )}
-                    <div>
-                      <Label htmlFor="create-designation">Designation</Label>
-                      <Input
-                        id="create-designation"
-                        value={formData.designation || ''}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, designation: e.target.value }))}
-                        className="mt-1"
-                      />
-                    </div>
+                    
+                    {/* Designation Field - Hide for HR and Manager roles */}
+                    {formData.role !== 'HR' && formData.role !== 'Manager' && (
+                      <div>
+                        <Label htmlFor="create-designation">Designation</Label>
+                        <Input
+                          id="create-designation"
+                          value={formData.designation || ''}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, designation: e.target.value }))}
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
                     
                     {/* Manager Selection - Show for all roles except Admin */}
                     {formData.role !== 'Admin' && (
@@ -1939,14 +2076,74 @@ const formatAadharInput = (value: string) => {
                         <p className="text-red-500 text-sm mt-1">{phoneError}</p>
                       )}
                     </div>
-                    <div>
-                      <Label htmlFor="create-address">Address <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="create-address"
-                        value={formData.address || ''}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, address: e.target.value }))}
-                        className="mt-1"
-                      />
+                    <div className="space-y-3">
+                      <Label>Address <span className="text-red-500">*</span></Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label htmlFor="create-houseNo" className="text-xs">House No</Label>
+                          <Input
+                            id="create-houseNo"
+                            value={addressFields.houseNo || ''}
+                            onChange={(e) => setAddressFields((prev) => ({ ...prev, houseNo: e.target.value }))}
+                            className="mt-1 text-sm"
+                            placeholder="e.g., 123"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="create-street" className="text-xs">Street/Landmark</Label>
+                          <Input
+                            id="create-street"
+                            value={addressFields.street || ''}
+                            onChange={(e) => setAddressFields((prev) => ({ ...prev, street: e.target.value }))}
+                            className="mt-1 text-sm"
+                            placeholder="e.g., Main St"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="create-area" className="text-xs">Area</Label>
+                          <Input
+                            id="create-area"
+                            value={addressFields.area || ''}
+                            onChange={(e) => setAddressFields((prev) => ({ ...prev, area: e.target.value }))}
+                            className="mt-1 text-sm"
+                            placeholder="e.g., Downtown"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="create-city" className="text-xs">City</Label>
+                          <Input
+                            id="create-city"
+                            value={addressFields.city || ''}
+                            onChange={(e) => setAddressFields((prev) => ({ ...prev, city: e.target.value }))}
+                            className="mt-1 text-sm"
+                            placeholder="e.g., Mumbai"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="create-pincode" className="text-xs">Pincode</Label>
+                          <Input
+                            id="create-pincode"
+                            value={addressFields.pincode || ''}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+                              setAddressFields((prev) => ({ ...prev, pincode: value }));
+                            }}
+                            className="mt-1 text-sm"
+                            placeholder="e.g., 400001"
+                            maxLength={6}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="create-state" className="text-xs">State</Label>
+                          <Input
+                            id="create-state"
+                            value={addressFields.state || ''}
+                            onChange={(e) => setAddressFields((prev) => ({ ...prev, state: e.target.value }))}
+                            className="mt-1 text-sm"
+                            placeholder="e.g., Maharashtra"
+                          />
+                        </div>
+                      </div>
                     </div>
                     <div>
                       <Label htmlFor="create-panCard">PAN Card *</Label>
@@ -2021,10 +2218,13 @@ const formatAadharInput = (value: string) => {
                       </Select>
                     </div>
                     <div>
-                      <Label>Gender</Label>
+                      <Label>Gender <span className="text-red-500">*</span></Label>
                       <RadioGroup
                         value={formData.gender || ''}
-                        onValueChange={(value) => setFormData((prev) => ({ ...prev, gender: value as 'male' | 'female' | 'other' }))}
+                        onValueChange={(value) => {
+                          setFormData((prev) => ({ ...prev, gender: value as 'male' | 'female' | 'other' }));
+                          setGenderError('');
+                        }}
                         className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-2"
                       >
                         <div className="flex items-center space-x-2">
@@ -2040,6 +2240,9 @@ const formatAadharInput = (value: string) => {
                           <Label htmlFor="create-other">Other</Label>
                         </div>
                       </RadioGroup>
+                      {genderError && (
+                        <p className="text-red-500 text-sm mt-1">{genderError}</p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="create-employeeType">Employee Type <span className="text-red-500">*</span></Label>
@@ -2410,7 +2613,15 @@ const formatAadharInput = (value: string) => {
               <Select
                 value={formData.role || 'employee'}
                 onValueChange={(value) => {
-                  setFormData((prev) => ({ ...prev, role: value as string }));
+                  // Auto-set designation based on role
+                  let designation = '';
+                  if (value === 'HR') {
+                    designation = 'HR';
+                  } else if (value === 'Manager') {
+                    designation = 'Manager';
+                  }
+                  
+                  setFormData((prev) => ({ ...prev, role: value as string, designation }));
                   // Reset department selections when role changes
                   if (value === 'HR' || value === 'Manager') {
                     setSelectedDepartments([]);
@@ -2468,7 +2679,24 @@ const formatAadharInput = (value: string) => {
             {/* Multiple Department Selection for HR and Manager in Edit */}
             {(formData.role === 'HR' || formData.role === 'Manager') && (
               <div>
-                <Label>Assigned Departments *</Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>Assigned Departments *</Label>
+                  {departments.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedDepartments.length === departments.length) {
+                          setSelectedDepartments([]);
+                        } else {
+                          setSelectedDepartments([...departments]);
+                        }
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      {selectedDepartments.length === departments.length ? 'Deselect All' : 'Select All'}
+                    </button>
+                  )}
+                </div>
                 <div className="mt-2 space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
                   {departments.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No departments available</p>
@@ -2502,15 +2730,19 @@ const formatAadharInput = (value: string) => {
                 )}
               </div>
             )}
-            <div>
-              <Label htmlFor="edit-designation">Designation</Label>
-              <Input
-                id="edit-designation"
-                value={formData.designation || ''}
-                onChange={(e) => setFormData((prev) => ({ ...prev, designation: e.target.value }))}
-                className="mt-1"
-              />
-            </div>
+            
+            {/* Designation Field - Hide for HR and Manager roles */}
+            {formData.role !== 'HR' && formData.role !== 'Manager' && (
+              <div>
+                <Label htmlFor="edit-designation">Designation</Label>
+                <Input
+                  id="edit-designation"
+                  value={formData.designation || ''}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, designation: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+            )}
             
             {/* Manager Selection in Edit - Show for all roles except Admin */}
             {formData.role !== 'Admin' && (
@@ -2585,14 +2817,74 @@ const formatAadharInput = (value: string) => {
                 <p className="text-red-500 text-sm mt-1">{phoneError}</p>
               )}
             </div>
-            <div>
-              <Label htmlFor="edit-address">Address <span className="text-red-500">*</span></Label>
-              <Input
-                id="edit-address"
-                value={formData.address || ''}
-                onChange={(e) => setFormData((prev) => ({ ...prev, address: e.target.value }))}
-                className="mt-1"
-              />
+            <div className="space-y-3">
+              <Label>Address <span className="text-red-500">*</span></Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="edit-houseNo" className="text-xs">House No</Label>
+                  <Input
+                    id="edit-houseNo"
+                    value={addressFields.houseNo || ''}
+                    onChange={(e) => setAddressFields((prev) => ({ ...prev, houseNo: e.target.value }))}
+                    className="mt-1 text-sm"
+                    placeholder="e.g., 123"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-street" className="text-xs">Street/Landmark</Label>
+                  <Input
+                    id="edit-street"
+                    value={addressFields.street || ''}
+                    onChange={(e) => setAddressFields((prev) => ({ ...prev, street: e.target.value }))}
+                    className="mt-1 text-sm"
+                    placeholder="e.g., Main St"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-area" className="text-xs">Area</Label>
+                  <Input
+                    id="edit-area"
+                    value={addressFields.area || ''}
+                    onChange={(e) => setAddressFields((prev) => ({ ...prev, area: e.target.value }))}
+                    className="mt-1 text-sm"
+                    placeholder="e.g., Downtown"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-city" className="text-xs">City</Label>
+                  <Input
+                    id="edit-city"
+                    value={addressFields.city || ''}
+                    onChange={(e) => setAddressFields((prev) => ({ ...prev, city: e.target.value }))}
+                    className="mt-1 text-sm"
+                    placeholder="e.g., Mumbai"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-pincode" className="text-xs">Pincode</Label>
+                  <Input
+                    id="edit-pincode"
+                    value={addressFields.pincode || ''}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+                      setAddressFields((prev) => ({ ...prev, pincode: value }));
+                    }}
+                    className="mt-1 text-sm"
+                    placeholder="e.g., 400001"
+                    maxLength={6}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-state" className="text-xs">State</Label>
+                  <Input
+                    id="edit-state"
+                    value={addressFields.state || ''}
+                    onChange={(e) => setAddressFields((prev) => ({ ...prev, state: e.target.value }))}
+                    className="mt-1 text-sm"
+                    placeholder="e.g., Maharashtra"
+                  />
+                </div>
+              </div>
             </div>
             <div>
               <Label htmlFor="edit-panCard">PAN Card *</Label>
@@ -2667,10 +2959,13 @@ const formatAadharInput = (value: string) => {
               </Select>
             </div>
             <div>
-              <Label>Gender</Label>
+              <Label>Gender <span className="text-red-500">*</span></Label>
               <RadioGroup
                 value={formData.gender || ''}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, gender: value as 'male' | 'female' | 'other' }))}
+                onValueChange={(value) => {
+                  setFormData((prev) => ({ ...prev, gender: value as 'male' | 'female' | 'other' }));
+                  setGenderError('');
+                }}
                 className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-2"
               >
                 <div className="flex items-center space-x-2">
@@ -2686,6 +2981,9 @@ const formatAadharInput = (value: string) => {
                   <Label htmlFor="edit-other">Other</Label>
                 </div>
               </RadioGroup>
+              {genderError && (
+                <p className="text-red-500 text-sm mt-1">{genderError}</p>
+              )}
             </div>
             <div>
               <Label htmlFor="edit-employeeType">Employee Type <span className="text-red-500">*</span></Label>
