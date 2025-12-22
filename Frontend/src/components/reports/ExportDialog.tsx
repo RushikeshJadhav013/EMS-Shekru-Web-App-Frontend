@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -7,7 +7,6 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { FileText, FileSpreadsheet, Calendar as CalendarIcon, Download, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { formatIST, formatDateIST, todayIST, nowIST } from '@/utils/timezone';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -20,12 +19,110 @@ interface ExportDialogProps {
 type ExportFormat = 'csv' | 'pdf';
 type TimeRange = 'monthly' | 'last3months' | 'last6months' | 'yearly' | 'custom';
 
+interface Employee {
+  id: string;
+  name: string;
+  department: string;
+}
+
 export default function ExportDialog({ open, onOpenChange, selectedEmployee }: ExportDialogProps) {
   const [exportFormat, setExportFormat] = useState<ExportFormat>('csv');
   const [timeRange, setTimeRange] = useState<TimeRange>('monthly');
   const [customStartDate, setCustomStartDate] = useState<Date>();
   const [customEndDate, setCustomEndDate] = useState<Date>();
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
+  const [selectedUser, setSelectedUser] = useState<string>('all');
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [isLoadingDepts, setIsLoadingDepts] = useState(false);
+  const [isLoadingEmps, setIsLoadingEmps] = useState(false);
+
+  // Load departments on mount
+  useEffect(() => {
+    loadDepartments();
+  }, []);
+
+  // Load employees when department changes
+  useEffect(() => {
+    if (selectedDepartment !== 'all') {
+      loadEmployees(selectedDepartment);
+    } else {
+      loadAllEmployees();
+    }
+  }, [selectedDepartment]);
+
+  const loadDepartments = async () => {
+    setIsLoadingDepts(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('https://staffly.space/reports/departments', {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDepartments(data.departments || []);
+      }
+    } catch (error) {
+      console.error('Failed to load departments:', error);
+    } finally {
+      setIsLoadingDepts(false);
+    }
+  };
+
+  const loadEmployees = async (department: string) => {
+    setIsLoadingEmps(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`https://staffly.space/employees?department=${department}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const emps = Array.isArray(data) ? data : data.employees || [];
+        setEmployees(emps.map((emp: any) => ({
+          id: emp.id || emp.user_id,
+          name: emp.name,
+          department: emp.department,
+        })));
+      }
+    } catch (error) {
+      console.error('Failed to load employees:', error);
+      setEmployees([]);
+    } finally {
+      setIsLoadingEmps(false);
+    }
+  };
+
+  const loadAllEmployees = async () => {
+    setIsLoadingEmps(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('https://staffly.space/employees', {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const emps = Array.isArray(data) ? data : data.employees || [];
+        setEmployees(emps.map((emp: any) => ({
+          id: emp.id || emp.user_id,
+          name: emp.name,
+          department: emp.department,
+        })));
+      }
+    } catch (error) {
+      console.error('Failed to load employees:', error);
+      setEmployees([]);
+    } finally {
+      setIsLoadingEmps(false);
+    }
+  };
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -75,6 +172,8 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
         start_date: format(startDate, 'yyyy-MM-dd'),
         end_date: format(endDate, 'yyyy-MM-dd'),
         ...(selectedEmployee && { employee_id: selectedEmployee.id }),
+        ...(selectedDepartment !== 'all' && { department: selectedDepartment }),
+        ...(selectedUser !== 'all' && { employee_id: selectedUser }),
       });
 
       const token = localStorage.getItem('token');
@@ -96,11 +195,19 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
       const a = document.createElement('a');
       a.href = url;
       
-      const filename = selectedEmployee
-        ? `performance_${selectedEmployee.name}_${format(startDate, 'yyyy-MM-dd')}_to_${format(endDate, 'yyyy-MM-dd')}.${exportFormat}`
-        : `performance_all_employees_${format(startDate, 'yyyy-MM-dd')}_to_${format(endDate, 'yyyy-MM-dd')}.${exportFormat}`;
+      let filename = 'performance_report';
+      if (selectedEmployee) {
+        filename = `performance_${selectedEmployee.name}_${format(startDate, 'yyyy-MM-dd')}_to_${format(endDate, 'yyyy-MM-dd')}`;
+      } else if (selectedUser !== 'all') {
+        const user = employees.find(e => e.id === selectedUser);
+        filename = `performance_${user?.name || 'employee'}_${format(startDate, 'yyyy-MM-dd')}_to_${format(endDate, 'yyyy-MM-dd')}`;
+      } else if (selectedDepartment !== 'all') {
+        filename = `performance_${selectedDepartment}_${format(startDate, 'yyyy-MM-dd')}_to_${format(endDate, 'yyyy-MM-dd')}`;
+      } else {
+        filename = `performance_all_employees_${format(startDate, 'yyyy-MM-dd')}_to_${format(endDate, 'yyyy-MM-dd')}`;
+      }
       
-      a.download = filename;
+      a.download = `${filename}.${exportFormat}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -126,14 +233,14 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             Export Performance Report
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-6 py-4 overflow-y-auto flex-1 pr-4">
           {/* Employee Info */}
           {selectedEmployee && (
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
@@ -212,6 +319,38 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
             </Select>
           </div>
 
+          {/* Department Selection */}
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Select Department</Label>
+            <Select value={selectedDepartment} onValueChange={setSelectedDepartment} disabled={isLoadingDepts}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {departments.map(dept => (
+                  <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* User Selection */}
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Select User</Label>
+            <Select value={selectedUser} onValueChange={setSelectedUser} disabled={isLoadingEmps}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Users</SelectItem>
+                {employees.map(emp => (
+                  <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Custom Date Range */}
           {timeRange === 'custom' && (
             <div className="space-y-3">
@@ -286,7 +425,7 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3">
+        <div className="flex gap-3 pt-4 border-t mt-auto sticky bottom-0 bg-white dark:bg-slate-950">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}

@@ -63,7 +63,8 @@ import {
   FileDown,
   Send,
   Image as ImageIcon,
-  File as FileIcon
+  File as FileIcon,
+  Building2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatIST, formatDateTimeIST, formatDateIST, todayIST, parseToIST, nowIST } from '@/utils/timezone';
@@ -393,6 +394,7 @@ const TaskManagement: React.FC = () => {
   const [exportDateRange, setExportDateRange] = useState<'1month' | '3months' | '6months' | 'custom' | 'all'>('all');
   const [exportStartDate, setExportStartDate] = useState('');
   const [exportEndDate, setExportEndDate] = useState('');
+  const [exportDepartmentFilter, setExportDepartmentFilter] = useState<string>('all');
   const [exportUserFilter, setExportUserFilter] = useState<string>('all');
   const [isExporting, setIsExporting] = useState(false);
 
@@ -1841,6 +1843,15 @@ const TaskManagement: React.FC = () => {
       });
     }
     
+    // Apply department filter
+    if (exportDepartmentFilter !== 'all') {
+      filteredTasks = filteredTasks.filter(task => {
+        const assignee = employeesById.get(task.assignedTo[0] || '');
+        const assigner = employeesById.get(task.assignedBy);
+        return (assignee?.department === exportDepartmentFilter) || (assigner?.department === exportDepartmentFilter);
+      });
+    }
+    
     // Apply user filter
     if (exportUserFilter !== 'all') {
       filteredTasks = filteredTasks.filter(task => 
@@ -1859,7 +1870,7 @@ const TaskManagement: React.FC = () => {
     }
     
     return filteredTasks;
-  }, [tasks, exportDateRange, exportStartDate, exportEndDate, exportUserFilter, user, employeesById]);
+  }, [tasks, exportDateRange, exportStartDate, exportEndDate, exportDepartmentFilter, exportUserFilter, user, employeesById]);
 
   const exportToCSV = useCallback(() => {
     const filteredTasks = getFilteredTasksForExport();
@@ -2293,60 +2304,74 @@ const TaskManagement: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-        <Card className="border-0 bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
+        <Card className="border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 shadow-sm hover:shadow-md transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-50">Total Tasks</CardTitle>
-            <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <ListTodo className="h-5 w-5 text-white" />
+            <CardTitle className="text-xs font-medium text-slate-700 dark:text-slate-300">Total Tasks</CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+              <ListTodo className="h-4 w-4 text-slate-600 dark:text-slate-400" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{tasks.length}</div>
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{tasks.length}</div>
           </CardContent>
         </Card>
         
-        <Card className="border-0 bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+        <Card className="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 shadow-sm hover:shadow-md transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-cyan-50">In Progress</CardTitle>
-            <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <Clock className="h-5 w-5 text-white" />
+            <CardTitle className="text-xs font-medium text-blue-700 dark:text-blue-300">In Progress</CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-blue-200 dark:bg-blue-800 flex items-center justify-center">
+              <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
+            <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
               {tasks.filter(t => t.status === 'in-progress').length}
             </div>
           </CardContent>
         </Card>
         
-        <Card className="border-0 bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+        <Card className="border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 shadow-sm hover:shadow-md transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-50">Completed</CardTitle>
-            <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <CheckCircle2 className="h-5 w-5 text-white" />
+            <CardTitle className="text-xs font-medium text-green-700 dark:text-green-300">Completed</CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-green-200 dark:bg-green-800 flex items-center justify-center">
+              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
+            <div className="text-2xl font-bold text-green-900 dark:text-green-100">
               {tasks.filter(t => t.status === 'completed').length}
             </div>
           </CardContent>
         </Card>
         
-        <Card className="border-0 bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+        <Card className="border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950 shadow-sm hover:shadow-md transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-red-50">Overdue</CardTitle>
-            <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <AlertCircle className="h-5 w-5 text-white" />
+            <CardTitle className="text-xs font-medium text-orange-700 dark:text-orange-300">Overdue</CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-orange-200 dark:bg-orange-800 flex items-center justify-center">
+              <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
+            <div className="text-2xl font-bold text-orange-900 dark:text-orange-100">
               {tasks.filter(t => 
                 t.status !== 'completed' && 
                 new Date(t.deadline) < new Date()
               ).length}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shadow-sm hover:shadow-md transition-all duration-300">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-medium text-gray-700 dark:text-gray-300">Cancelled</CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
+              <XCircle className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {tasks.filter(t => t.status === 'cancelled').length}
             </div>
           </CardContent>
         </Card>
@@ -3901,6 +3926,27 @@ const TaskManagement: React.FC = () => {
               )}
             </div>
 
+            {/* Department Filter */}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-emerald-600" />
+                Department Filter
+              </Label>
+              <Select value={exportDepartmentFilter} onValueChange={setExportDepartmentFilter}>
+                <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-2 shadow-xl max-h-72 overflow-auto">
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept} value={dept} className="cursor-pointer">
+                      {dept}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* User Filter */}
             <div className="space-y-3">
               <Label className="text-sm font-semibold flex items-center gap-2">
@@ -3933,6 +3979,9 @@ const TaskManagement: React.FC = () => {
                   {exportDateRange === 'all' ? 'All Time' : 
                    exportDateRange === 'custom' ? `${exportStartDate || 'Not set'} - ${exportEndDate || 'Not set'}` :
                    `Last ${exportDateRange.replace('months', ' Months').replace('1month', '1 Month')}`}
+                </span></p>
+                <p>• Department Filter: <span className="font-medium text-foreground">
+                  {exportDepartmentFilter === 'all' ? 'All Departments' : exportDepartmentFilter}
                 </span></p>
                 <p>• User Filter: <span className="font-medium text-foreground">
                   {exportUserFilter === 'all' ? 'All Users' : 

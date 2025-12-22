@@ -298,33 +298,6 @@ const EmployeeDashboard: React.FC = () => {
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.dashboard.quickActions}</CardTitle>
-          <CardDescription>{t.dashboard.frequentlyUsed}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/employee/attendance')}>
-              <Clock className="h-5 w-5" />
-              <span className="text-xs">{t.navigation.attendance}</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/employee/leaves')}>
-              <CalendarDays className="h-5 w-5" />
-              <span className="text-xs">{t.dashboard.applyLeave}</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/employee/tasks')}>
-              <ClipboardList className="h-5 w-5" />
-              <span className="text-xs">{t.dashboard.myTasks}</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/employee/profile')}>
-              <Award className="h-5 w-5" />
-              <span className="text-xs">{t.dashboard.myProfile}</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

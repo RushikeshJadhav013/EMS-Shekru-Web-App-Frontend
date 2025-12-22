@@ -317,7 +317,7 @@ const TeamLeadDashboard: React.FC = () => {
                 </div>
                 <div className="flex-1 space-y-1">
                   <p className="text-sm font-medium">{activity.user}</p>
-                  <p className="text-xs text-muted-foreground">{activity.action}</p>
+                  <p className="text-xs text-muted-foreground">{activity.status}</p>
                   <p className="text-xs text-muted-foreground">{activity.time}</p>
                 </div>
               </div>
@@ -326,33 +326,6 @@ const TeamLeadDashboard: React.FC = () => {
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.dashboard.quickActions}</CardTitle>
-          <CardDescription>Frequently used team lead actions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/team_lead/teams')}>
-              <Users className="h-5 w-5" />
-              <span className="text-xs">{t.navigation.viewTeam}</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/team_lead/attendance')}>
-              <Clock className="h-5 w-5" />
-              <span className="text-xs">{t.navigation.teamAttendance}</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/team_lead/leaves')}>
-              <CalendarDays className="h-5 w-5" />
-              <span className="text-xs">Leave Requests</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/team_lead/tasks')}>
-              <ClipboardList className="h-5 w-5" />
-              <span className="text-xs">Manage Tasks</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

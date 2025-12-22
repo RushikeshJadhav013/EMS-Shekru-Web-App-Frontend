@@ -500,33 +500,6 @@ const ManagerDashboard: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.dashboard.quickActions}</CardTitle>
-          <CardDescription>Frequently used manager actions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/manager/shift-schedule')}>
-              <Clock className="h-5 w-5" />
-              <span className="text-xs">{t.navigation.shiftSchedule}</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/manager/attendance', { state: { viewMode: 'employee' } })}>
-              <Clock className="h-5 w-5" />
-              <span className="text-xs">{t.navigation.teamAttendance}</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/manager/leaves', { state: { tab: 'approvals' } })}>
-              <CalendarDays className="h-5 w-5" />
-              <span className="text-xs">Approve Leaves</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/manager/tasks')}>
-              <ClipboardList className="h-5 w-5" />
-              <span className="text-xs">Manage Tasks</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
