@@ -3,11 +3,11 @@
 import * as React from "react"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
-import { formatIST, nowIST } from "@/utils/timezone"
+import { nowIST } from "@/utils/timezone"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { CalendarWithSelect } from "@/components/ui/calendar-with-select"
+import { CalendarDatePicker } from "@/components/ui/calendar-date-picker"
 import {
   Dialog,
   DialogContent,
@@ -73,7 +73,7 @@ export function DatePicker({
             </DialogTitle>
           </DialogHeader>
           <div className="px-2 pb-4">
-            <CalendarWithSelect
+            <CalendarDatePicker
               mode="single"
               selected={date}
               onSelect={handleSelect}
