@@ -55,27 +55,30 @@ export function CalendarWithHolidays({
       {showHolidayIndicator && holidays.length > 0 && (
         <style>{`
           .holiday-day {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(249, 115, 22, 0.1) 100%) !important;
-            border: 1px solid rgba(239, 68, 68, 0.3);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(249, 115, 22, 0.15) 100%) !important;
+            border: 2px solid rgba(239, 68, 68, 0.4);
             border-radius: 0.5rem;
             position: relative;
+            font-weight: 600;
+            color: rgb(127, 29, 29);
           }
           
           .holiday-day::after {
             content: '';
             position: absolute;
-            bottom: 1px;
+            bottom: 2px;
             left: 50%;
             transform: translateX(-50%);
-            width: 4px;
-            height: 4px;
+            width: 5px;
+            height: 5px;
             background-color: rgb(239, 68, 68);
             border-radius: 50%;
           }
           
           .dark .holiday-day {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(249, 115, 22, 0.2) 100%) !important;
-            border-color: rgba(239, 68, 68, 0.5);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(249, 115, 22, 0.25) 100%) !important;
+            border-color: rgba(239, 68, 68, 0.6);
+            color: rgb(254, 226, 226);
           }
         `}</style>
       )}

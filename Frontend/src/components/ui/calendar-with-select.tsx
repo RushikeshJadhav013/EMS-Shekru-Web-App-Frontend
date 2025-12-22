@@ -124,22 +124,22 @@ export function CalendarWithSelect({
   };
 
   return (
-    <div className="w-full max-w-sm mx-auto">
+    <div className="w-full max-w-md mx-auto">
       {/* Modern Header with Navigation */}
-      <div className="flex items-center justify-between gap-2 mb-4 px-2">
+      <div className="flex items-center justify-between gap-2 mb-4 px-1">
         <Button
           variant="ghost"
           size="icon"
           onClick={goToPreviousMonth}
           disabled={isPreviousMonthDisabled}
-          className="h-8 w-8 flex-shrink-0 rounded-full hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/40 dark:hover:to-indigo-900/40 hover:scale-110 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="h-8 w-8 flex-shrink-0 rounded-full hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/40 dark:hover:to-indigo-900/40 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ChevronLeft className="h-4 w-4 text-slate-600 dark:text-slate-300" />
         </Button>
 
         <div className="flex items-center gap-2 flex-1 justify-center min-w-0">
           <Select value={currentMonthIndex.toString()} onValueChange={handleMonthSelect}>
-            <SelectTrigger className="flex-1 h-8 text-sm font-semibold border-0 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900/50 dark:hover:to-indigo-900/50 transition-all shadow-sm min-w-0">
+            <SelectTrigger className="flex-1 h-8 text-xs font-semibold border-0 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900/50 dark:hover:to-indigo-900/50 transition-all shadow-sm min-w-0">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -152,7 +152,7 @@ export function CalendarWithSelect({
           </Select>
 
           <Select value={currentYear.toString()} onValueChange={handleYearChange}>
-            <SelectTrigger className="w-[70px] h-8 text-sm font-semibold border-0 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 hover:from-purple-100 hover:to-pink-100 dark:hover:from-purple-900/50 dark:hover:to-pink-900/50 transition-all shadow-sm flex-shrink-0">
+            <SelectTrigger className="w-[65px] h-8 text-xs font-semibold border-0 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 hover:from-purple-100 hover:to-pink-100 dark:hover:from-purple-900/50 dark:hover:to-pink-900/50 transition-all shadow-sm flex-shrink-0">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="max-h-[300px]">
@@ -169,14 +169,14 @@ export function CalendarWithSelect({
           variant="ghost"
           size="icon"
           onClick={goToNextMonth}
-          className="h-8 w-8 flex-shrink-0 rounded-full hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/40 dark:hover:to-indigo-900/40 hover:scale-110 transition-all duration-200"
+          className="h-8 w-8 flex-shrink-0 rounded-full hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/40 dark:hover:to-indigo-900/40 transition-all duration-200"
         >
           <ChevronRight className="h-4 w-4 text-slate-600 dark:text-slate-300" />
         </Button>
       </div>
 
       {/* Calendar */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 p-3 relative">
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 relative">
         <Calendar
           month={month}
           onMonthChange={handleMonthChange}
@@ -189,27 +189,30 @@ export function CalendarWithSelect({
         {showHolidayIndicator && holidays.length > 0 && (
           <style>{`
             .holiday-day {
-              background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(249, 115, 22, 0.1) 100%) !important;
-              border: 1px solid rgba(239, 68, 68, 0.3);
+              background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(249, 115, 22, 0.15) 100%) !important;
+              border: 2px solid rgba(239, 68, 68, 0.4);
               border-radius: 0.5rem;
               position: relative;
+              font-weight: 600;
+              color: rgb(127, 29, 29);
             }
             
             .holiday-day::after {
               content: '';
               position: absolute;
-              bottom: 1px;
+              bottom: 2px;
               left: 50%;
               transform: translateX(-50%);
-              width: 4px;
-              height: 4px;
+              width: 5px;
+              height: 5px;
               background-color: rgb(239, 68, 68);
               border-radius: 50%;
             }
             
             .dark .holiday-day {
-              background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(249, 115, 22, 0.2) 100%) !important;
-              border-color: rgba(239, 68, 68, 0.5);
+              background: linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(249, 115, 22, 0.25) 100%) !important;
+              border-color: rgba(239, 68, 68, 0.6);
+              color: rgb(254, 226, 226);
             }
           `}</style>
         )}

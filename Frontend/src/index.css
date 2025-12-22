@@ -182,6 +182,39 @@ All colors MUST be HSL.
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
   
+  /* Prevent text cursor on non-editable elements */
+  h1, h2, h3, h4, h5, h6,
+  p, span, div, label, section, article,
+  button:not([contenteditable]),
+  .heading, .title, .label, .description,
+  [role="heading"], [role="status"], [role="alert"] {
+    @apply select-none cursor-default;
+    user-select: none;
+  }
+  
+  /* Allow selection and cursor on editable elements */
+  input, textarea, [contenteditable="true"],
+  input[type="text"], input[type="email"], input[type="password"],
+  input[type="search"], input[type="number"], input[type="tel"],
+  input[type="url"], input[type="date"], input[type="time"],
+  input[type="datetime-local"], input[type="month"], input[type="week"],
+  select, [role="textbox"], [role="searchbox"] {
+    @apply select-text cursor-text;
+    user-select: text;
+  }
+  
+  /* Allow selection on links */
+  a {
+    @apply select-none cursor-pointer;
+    user-select: none;
+  }
+  
+  /* Allow selection on interactive elements */
+  button, [role="button"], [role="menuitem"], [role="tab"] {
+    @apply select-none cursor-pointer;
+    user-select: none;
+  }
+  
   /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 8px;
@@ -249,6 +282,22 @@ All colors MUST be HSL.
   
   .scrollbar-track-gray-100::-webkit-scrollbar-track {
     @apply bg-gray-100 rounded-full;
+  }
+  
+  /* Text cursor control utilities */
+  .text-no-select {
+    @apply select-none cursor-default;
+    user-select: none;
+  }
+  
+  .text-selectable {
+    @apply select-text cursor-text;
+    user-select: text;
+  }
+  
+  .cursor-pointer-no-select {
+    @apply select-none cursor-pointer;
+    user-select: none;
   }
 
   /* Animation classes */
