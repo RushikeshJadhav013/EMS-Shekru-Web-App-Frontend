@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import AttendanceCamera from '@/components/attendance/AttendanceCamera';
 import WorkSummaryDialog from '@/components/attendance/WorkSummaryDialog';
-import { Clock, MapPin, Calendar, LogIn, LogOut, FileText, CheckCircle, AlertCircle, Loader2, User, Home, Send } from 'lucide-react';
+import { Clock, MapPin, Calendar, LogIn, LogOut, FileText, CheckCircle, AlertCircle, Loader2, User, Home, Send, Edit, Trash2 } from 'lucide-react';
 import { AttendanceRecord } from '@/types';
 import { format } from 'date-fns';
 import { formatIST, formatDateTimeIST, formatTimeIST, formatDateIST, todayIST, formatDateTimeComponentsIST, parseToIST, nowIST } from '@/utils/timezone';
@@ -256,6 +256,50 @@ const AttendancePage: React.FC = () => {
 
   useEffect(() => {
     fetchTodayAttendance();
+    
+    // Load WFH requests from backend
+    const loadWFHRequests = async () => {
+      if (!user?.id) return;
+      try {
+        const wfhResponse = await apiService.getMyWFHRequests();
+        let wfhData = [];
+        
+        if (Array.isArray(wfhResponse)) {
+          wfhData = wfhResponse;
+        } else if (wfhResponse && typeof wfhResponse === 'object') {
+          if (wfhResponse.data && Array.isArray(wfhResponse.data)) {
+            wfhData = wfhResponse.data;
+          } else if (wfhResponse.requests && Array.isArray(wfhResponse.requests)) {
+            wfhData = wfhResponse.requests;
+          } else if (wfhResponse.wfh_requests && Array.isArray(wfhResponse.wfh_requests)) {
+            wfhData = wfhResponse.wfh_requests;
+          } else if (wfhResponse.results && Array.isArray(wfhResponse.results)) {
+            wfhData = wfhResponse.results;
+          }
+        }
+        
+        const formattedWfhRequests = wfhData.map((req: any) => ({
+          id: req.wfh_id || req.id,
+          wfhId: req.wfh_id || req.id,
+          startDate: req.start_date,
+          endDate: req.end_date,
+          reason: req.reason,
+          type: ((req.wfh_type || 'Full Day').toLowerCase().includes('full') ? 'full_day' : 'half_day'),
+          status: (req.status || 'pending').toLowerCase(),
+          submittedAt: req.created_at,
+          submittedById: req.user_id,
+          rejectionReason: req.rejection_reason,
+          approvedBy: req.approved_by,
+        }));
+        
+        setWfhRequests(formattedWfhRequests);
+      } catch (wfhError) {
+        console.error('Failed to load WFH requests:', wfhError);
+        setWfhRequests([]);
+      }
+    };
+    
+    loadWFHRequests();
     
     // Get location immediately when page loads
     const initLocation = async () => {
@@ -1189,23 +1233,25 @@ const AttendancePage: React.FC = () => {
                               {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                             </Badge>
                             {request.status === 'pending' && (
-                              <div className="flex gap-2">
+                              <div className="flex gap-1">
                                 <Button
                                   size="sm"
-                                  variant="outline"
+                                  variant="ghost"
                                   onClick={() => handleEditWfh(request)}
-                                  className="h-8 px-2 text-xs"
+                                  className="h-8 w-8 p-0"
+                                  title="Edit request"
                                 >
-                                  Edit
+                                  <Edit className="h-4 w-4 text-blue-600 hover:text-blue-700" />
                                 </Button>
                                 <Button
                                   size="sm"
-                                  variant="destructive"
+                                  variant="ghost"
                                   onClick={() => handleDeleteWfh(request.id || request.wfhId)}
                                   disabled={isDeletingWfhId === (request.id || request.wfhId)}
-                                  className="h-8 px-2 text-xs"
+                                  className="h-8 w-8 p-0"
+                                  title="Delete request"
                                 >
-                                  {isDeletingWfhId === (request.id || request.wfhId) ? 'Deleting...' : 'Delete'}
+                                  <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                 </Button>
                               </div>
                             )}

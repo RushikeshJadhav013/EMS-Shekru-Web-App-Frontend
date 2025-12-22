@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AttendanceCamera from '@/components/attendance/AttendanceCamera';
 import OnlineStatusToggle from '@/components/attendance/OnlineStatusToggle';
 import OnlineStatusIndicator from '@/components/attendance/OnlineStatusIndicator';
-import { Clock, MapPin, Calendar, LogIn, LogOut, FileText, CheckCircle, AlertCircle, Users, Filter, User, X, Download, Search, Loader2, Home, Send } from 'lucide-react';
+import { Clock, MapPin, Calendar, LogIn, LogOut, FileText, CheckCircle, AlertCircle, Users, Filter, User, X, Download, Search, Loader2, Home, Send, Edit, Trash2, History } from 'lucide-react';
 import { AttendanceRecord, UserRole } from '@/types';
 import { format, subMonths } from 'date-fns';
 import { formatIST, formatDateTimeIST, formatTimeIST, formatDateIST, todayIST, formatDateTimeComponentsIST, parseToIST, nowIST } from '@/utils/timezone';
@@ -132,7 +132,7 @@ const AttendanceWithToggle: React.FC = () => {
   // WFH Management state (for Admin, HR, Manager)
   const [allWfhRequests, setAllWfhRequests] = useState<any[]>([]);
   const [isLoadingWfhRequests, setIsLoadingWfhRequests] = useState(false);
-  const [wfhRequestFilter, setWfhRequestFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [wfhRequestFilter, setWfhRequestFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [selectedWfhRequest, setSelectedWfhRequest] = useState<any>(null);
   const [showWfhRequestDialog, setShowWfhRequestDialog] = useState(false);
   const [isProcessingWfhRequest, setIsProcessingWfhRequest] = useState(false);
@@ -544,6 +544,46 @@ const AttendanceWithToggle: React.FC = () => {
           }))
           .reverse()
       );
+      
+      // Load WFH requests from backend
+      try {
+        const wfhResponse = await apiService.getMyWFHRequests();
+        let wfhData = [];
+        
+        if (Array.isArray(wfhResponse)) {
+          wfhData = wfhResponse;
+        } else if (wfhResponse && typeof wfhResponse === 'object') {
+          if (wfhResponse.data && Array.isArray(wfhResponse.data)) {
+            wfhData = wfhResponse.data;
+          } else if (wfhResponse.requests && Array.isArray(wfhResponse.requests)) {
+            wfhData = wfhResponse.requests;
+          } else if (wfhResponse.wfh_requests && Array.isArray(wfhResponse.wfh_requests)) {
+            wfhData = wfhResponse.wfh_requests;
+          } else if (wfhResponse.results && Array.isArray(wfhResponse.results)) {
+            wfhData = wfhResponse.results;
+          }
+        }
+        
+        const formattedWfhRequests = wfhData.map((req: any) => ({
+          id: req.wfh_id || req.id,
+          wfhId: req.wfh_id || req.id,
+          startDate: req.start_date,
+          endDate: req.end_date,
+          reason: req.reason,
+          type: ((req.wfh_type || 'Full Day').toLowerCase().includes('full') ? 'full_day' : 'half_day'),
+          status: (req.status || 'pending').toLowerCase(),
+          submittedAt: req.created_at,
+          submittedById: req.user_id,
+          rejectionReason: req.rejection_reason,
+          approvedBy: req.approved_by,
+        }));
+        
+        setWfhRequests(formattedWfhRequests);
+      } catch (wfhError) {
+        console.error('Failed to load WFH requests:', wfhError);
+        setWfhRequests([]);
+      }
+      
       const today = todayIST();
       const todayRecord = data.find((rec: any) => {
         const recordDate = formatDateIST(rec.check_in);
@@ -2326,65 +2366,150 @@ const AttendanceWithToggle: React.FC = () => {
         </>
       ) : viewMode === 'wfh_requests' ? (
         <>
-          {/* WFH Requests Management View */}
+          {/* Pending WFH Requests Section */}
           <Card className="border-0 shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950">
               <CardTitle className="text-xl font-semibold flex items-center gap-2">
                 <FileText className="h-5 w-5 text-purple-600" />
-                WFH Requests Management
+                Pending WFH Requests
                 {getPendingWfhCount() > 0 && (
                   <Badge variant="destructive" className="ml-2">
-                    {getPendingWfhCount()} Pending
+                    {getPendingWfhCount()}
                   </Badge>
                 )}
               </CardTitle>
-              <CardDescription>Review and manage work from home requests</CardDescription>
+              <CardDescription>Review and approve/reject pending work from home requests</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {isLoadingWfhRequests ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+                  <span className="ml-2 text-muted-foreground">Loading requests...</span>
+                </div>
+              ) : allWfhRequests.filter(req => req.status === 'pending').length > 0 ? (
+                <div className="space-y-3">
+                  {allWfhRequests.filter(req => req.status === 'pending').map((request) => (
+                    <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-blue-600" />
+                              <span className="font-medium">{request.submittedBy}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {request.role}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-green-600" />
+                              <span className="text-sm">
+                                {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
+                              </Badge>
+                            </div>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{request.reason}</p>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>Submitted: {formatRelativeTime(request.submittedAt)} ({formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')})</span>
+                            <span>Department: {request.department}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 ml-4">
+                          <Badge variant="secondary">Pending</Badge>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-950"
+                              onClick={() => handleWfhRequestAction(request.id, 'approve')}
+                              disabled={isProcessingWfhRequest}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                              onClick={() => {
+                                setSelectedWfhRequest(request);
+                                setShowWfhRequestDialog(true);
+                              }}
+                              disabled={isProcessingWfhRequest}
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              Reject
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No pending WFH requests</p>
+                  <p className="text-sm">All requests have been processed</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recent Decisions Section */}
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                    <History className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-semibold">Recent Decisions</CardTitle>
+                    <CardDescription>Approved and rejected WFH requests</CardDescription>
+                  </div>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-4">
-                {/* Filter Controls */}
+                {/* Filter Controls for Recent Decisions */}
                 <div className="flex gap-3">
                   <div className="flex-1 max-w-xs">
-                    <Label htmlFor="wfh-status-filter">Status Filter</Label>
+                    <Label htmlFor="decision-status-filter">Decision Status</Label>
                     <Select value={wfhRequestFilter} onValueChange={(value: any) => setWfhRequestFilter(value)}>
-                      <SelectTrigger id="wfh-status-filter" className="mt-1">
+                      <SelectTrigger id="decision-status-filter" className="mt-1">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Requests</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="all">All Decisions</SelectItem>
                         <SelectItem value="approved">Approved</SelectItem>
                         <SelectItem value="rejected">Rejected</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="flex-1">
-                    <Label>Total Requests</Label>
+                    <Label>Total Decisions</Label>
                     <div className="mt-1 px-3 py-2 bg-muted rounded-md text-sm flex items-center justify-between">
-                      <span>{getFilteredWfhRequests().length} of {allWfhRequests.length} requests</span>
-                      {allWfhRequests.length > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowClearConfirmation(true)}
-                          className="h-6 px-2 text-xs"
-                        >
-                          Clear
-                        </Button>
-                      )}
+                      <span>{allWfhRequests.filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter)).length} of {allWfhRequests.filter(req => req.status !== 'pending').length} decisions</span>
                     </div>
                   </div>
                 </div>
 
-                {/* WFH Requests Table */}
+                {/* Recent Decisions Table */}
                 {isLoadingWfhRequests ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-                    <span className="ml-2 text-muted-foreground">Loading requests...</span>
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                    <span className="ml-2 text-muted-foreground">Loading decisions...</span>
                   </div>
-                ) : getFilteredWfhRequests().length > 0 ? (
+                ) : allWfhRequests.filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter)).length > 0 ? (
                   <div className="space-y-3">
-                    {getFilteredWfhRequests().map((request) => (
+                    {allWfhRequests
+                      .filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter))
+                      .sort((a, b) => new Date(b.processedAt || b.submittedAt).getTime() - new Date(a.processedAt || a.submittedAt).getTime())
+                      .map((request) => (
                       <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
                         <div className="flex items-start justify-between">
                           <div className="space-y-2 flex-1">
@@ -2408,11 +2533,9 @@ const AttendanceWithToggle: React.FC = () => {
                             </div>
                             <p className="text-sm text-muted-foreground">{request.reason}</p>
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span>Submitted: {formatRelativeTime(request.submittedAt)} ({formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')})</span>
+                              <span>Submitted: {formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
+                              <span>Decision: {formatDateTimeIST(request.processedAt || request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
                               <span>Department: {request.department}</span>
-                              {request.processedAt && (
-                                <span>Processed: {formatRelativeTime(request.processedAt)} ({formatDateTimeIST(request.processedAt, 'dd MMM yyyy, hh:mm a')})</span>
-                              )}
                             </div>
                             {request.rejectionReason && (
                               <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
@@ -2424,38 +2547,11 @@ const AttendanceWithToggle: React.FC = () => {
                           </div>
                           <div className="flex items-center gap-2 ml-4">
                             <Badge 
-                              variant={request.status === 'approved' ? 'default' : request.status === 'rejected' ? 'destructive' : 'secondary'}
+                              variant={request.status === 'approved' ? 'default' : 'destructive'}
                               className={request.status === 'approved' ? 'bg-green-500' : ''}
                             >
                               {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                             </Badge>
-                            {request.status === 'pending' && (
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-950"
-                                  onClick={() => handleWfhRequestAction(request.id, 'approve')}
-                                  disabled={isProcessingWfhRequest}
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-1" />
-                                  Approve
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-                                  onClick={() => {
-                                    setSelectedWfhRequest(request);
-                                    setShowWfhRequestDialog(true);
-                                  }}
-                                  disabled={isProcessingWfhRequest}
-                                >
-                                  <X className="h-4 w-4 mr-1" />
-                                  Reject
-                                </Button>
-                              </div>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -2463,10 +2559,10 @@ const AttendanceWithToggle: React.FC = () => {
                   </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No WFH requests found</p>
+                    <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No decisions yet</p>
                     <p className="text-sm">
-                      {wfhRequestFilter === 'all' ? 'No requests have been submitted yet' : `No ${wfhRequestFilter} requests`}
+                      {wfhRequestFilter === 'all' ? 'No requests have been approved or rejected' : `No ${wfhRequestFilter} requests`}
                     </p>
                   </div>
                 )}
@@ -2628,23 +2724,25 @@ const AttendanceWithToggle: React.FC = () => {
                               {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                             </Badge>
                             {request.status === 'pending' && (
-                              <div className="flex gap-2">
+                              <div className="flex gap-1">
                                 <Button
                                   size="sm"
-                                  variant="outline"
+                                  variant="ghost"
                                   onClick={() => handleEditWfh(request)}
-                                  className="h-8 px-2 text-xs"
+                                  className="h-8 w-8 p-0"
+                                  title="Edit request"
                                 >
-                                  Edit
+                                  <Edit className="h-4 w-4 text-blue-600 hover:text-blue-700" />
                                 </Button>
                                 <Button
                                   size="sm"
-                                  variant="destructive"
+                                  variant="ghost"
                                   onClick={() => handleDeleteWfh(request.id || request.wfhId)}
                                   disabled={isDeletingWfhId === (request.id || request.wfhId)}
-                                  className="h-8 px-2 text-xs"
+                                  className="h-8 w-8 p-0"
+                                  title="Delete request"
                                 >
-                                  {isDeletingWfhId === (request.id || request.wfhId) ? 'Deleting...' : 'Delete'}
+                                  <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                 </Button>
                               </div>
                             )}

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, Clock, MapPin, Search, Filter, Download, AlertCircle, CheckCircle, Users, X, User, Settings, LogOut, AlertTriangle, CheckCircle2, Timer, FileSpreadsheet, FileText, Home, Send } from 'lucide-react';
+import { Calendar, Clock, MapPin, Search, Filter, Download, AlertCircle, CheckCircle, Users, X, User, Settings, LogOut, AlertTriangle, CheckCircle2, Timer, FileSpreadsheet, FileText, Home, Send, History } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AttendanceRecord } from '@/types';
 import { format, subMonths, subDays } from 'date-fns';
@@ -126,7 +126,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
   // WFH Requests state (Admin only sees HR and Manager requests)
   const [allWfhRequests, setAllWfhRequests] = useState<any[]>([]);
   const [isLoadingWfhRequests, setIsLoadingWfhRequests] = useState(false);
-  const [wfhRequestFilter, setWfhRequestFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [wfhRequestFilter, setWfhRequestFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [selectedWfhRequest, setSelectedWfhRequest] = useState<any>(null);
   const [showWfhRequestDialog, setShowWfhRequestDialog] = useState(false);
   const [isProcessingWfhRequest, setIsProcessingWfhRequest] = useState(false);
@@ -2158,66 +2158,157 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
             {officeHoursContent}
           </TabsContent>
           <TabsContent value="wfh-requests" className="space-y-6">
-            {/* WFH Requests Management for Admin */}
+            {/* Pending WFH Requests Section */}
             <Card className="border-0 shadow-lg">
               <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950">
                 <CardTitle className="text-xl font-semibold flex items-center gap-2">
                   <FileText className="h-5 w-5 text-purple-600" />
-                  WFH Requests from HR & Managers
+                  Pending WFH Requests from HR & Managers
                   {getAdminPendingWfhCount() > 0 && (
                     <Badge variant="destructive" className="ml-2">
-                      {getAdminPendingWfhCount()} Pending
+                      {getAdminPendingWfhCount()}
                     </Badge>
                   )}
                 </CardTitle>
-                <CardDescription>Review and manage work from home requests from HR and Manager roles</CardDescription>
+                <CardDescription>Review and approve/reject pending work from home requests from HR and Manager roles</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {isLoadingWfhRequests ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Timer className="h-8 w-8 animate-spin text-purple-600" />
+                    <span className="ml-2 text-muted-foreground">Loading requests...</span>
+                  </div>
+                ) : allWfhRequests.filter(req => req.status === 'pending').length > 0 ? (
+                  <div className="space-y-3">
+                    {allWfhRequests.filter(req => req.status === 'pending').map((request) => (
+                      <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-2 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4 text-blue-600" />
+                                <span className="font-medium">{request.submittedBy}</span>
+                                <Badge 
+                                  variant="outline" 
+                                  className={`text-xs ${
+                                    request.role === 'hr' 
+                                      ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950' 
+                                      : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
+                                  }`}
+                                >
+                                  {request.role === 'hr' ? 'HR' : 'Manager'}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-green-600" />
+                                <span className="text-sm">
+                                  {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
+                                </span>
+                                <Badge variant="outline" className="text-xs">
+                                  {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
+                                </Badge>
+                              </div>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{request.reason}</p>
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <span>Submitted: {formatRelativeTime(request.submittedAt)} ({formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')})</span>
+                              <span>Department: {request.department}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 ml-4">
+                            <Badge variant="secondary">Pending</Badge>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-950"
+                                onClick={() => handleAdminWfhRequestAction(request.id, 'approve')}
+                                disabled={isProcessingWfhRequest}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                                onClick={() => {
+                                  setSelectedWfhRequest(request);
+                                  setShowWfhRequestDialog(true);
+                                }}
+                                disabled={isProcessingWfhRequest}
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Reject
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No pending WFH requests</p>
+                    <p className="text-sm">All requests have been processed</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recent Decisions Section */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                      <History className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl font-semibold">Recent Decisions</CardTitle>
+                      <CardDescription>Approved and rejected WFH requests from HR & Managers</CardDescription>
+                    </div>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="space-y-4">
-                  {/* Filter Controls */}
+                  {/* Filter Controls for Recent Decisions */}
                   <div className="flex gap-3">
                     <div className="flex-1 max-w-xs">
-                      <Label htmlFor="admin-wfh-status-filter">Status Filter</Label>
+                      <Label htmlFor="decision-status-filter">Decision Status</Label>
                       <Select value={wfhRequestFilter} onValueChange={(value: any) => setWfhRequestFilter(value)}>
-                        <SelectTrigger id="admin-wfh-status-filter" className="mt-1">
+                        <SelectTrigger id="decision-status-filter" className="mt-1">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">All Requests</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="all">All Decisions</SelectItem>
                           <SelectItem value="approved">Approved</SelectItem>
                           <SelectItem value="rejected">Rejected</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="flex-1">
-                      <Label>Total Requests</Label>
+                      <Label>Total Decisions</Label>
                       <div className="mt-1 px-3 py-2 bg-muted rounded-md text-sm flex items-center justify-between">
-                        <span>{getFilteredAdminWfhRequests().length} of {allWfhRequests.length} requests</span>
-                        {wfhRequestFilter !== 'all' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setWfhRequestFilter('all')}
-                            className="h-6 px-2 text-xs"
-                          >
-                            <X className="h-3 w-3 mr-1" />
-                            Clear
-                          </Button>
-                        )}
+                        <span>{allWfhRequests.filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter)).length} of {allWfhRequests.filter(req => req.status !== 'pending').length} decisions</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* WFH Requests List */}
+                  {/* Recent Decisions Table */}
                   {isLoadingWfhRequests ? (
                     <div className="flex items-center justify-center py-8">
-                      <Timer className="h-8 w-8 animate-spin text-purple-600" />
-                      <span className="ml-2 text-muted-foreground">Loading requests...</span>
+                      <Timer className="h-8 w-8 animate-spin text-blue-600" />
+                      <span className="ml-2 text-muted-foreground">Loading decisions...</span>
                     </div>
-                  ) : getFilteredAdminWfhRequests().length > 0 ? (
+                  ) : allWfhRequests.filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter)).length > 0 ? (
                     <div className="space-y-3">
-                      {getFilteredAdminWfhRequests().map((request) => (
+                      {allWfhRequests
+                        .filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter))
+                        .sort((a, b) => new Date(b.processedAt || b.submittedAt).getTime() - new Date(a.processedAt || a.submittedAt).getTime())
+                        .map((request) => (
                         <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
                           <div className="flex items-start justify-between">
                             <div className="space-y-2 flex-1">
@@ -2248,11 +2339,9 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                               </div>
                               <p className="text-sm text-muted-foreground">{request.reason}</p>
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span>Submitted: {formatRelativeTime(request.submittedAt)} ({formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')})</span>
+                                <span>Submitted: {formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
+                                <span>Decision: {formatDateTimeIST(request.processedAt || request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
                                 <span>Department: {request.department}</span>
-                                {request.processedAt && (
-                                  <span>Processed: {formatRelativeTime(request.processedAt)} ({formatDateTimeIST(request.processedAt, 'dd MMM yyyy, hh:mm a')})</span>
-                                )}
                               </div>
                               {request.rejectionReason && (
                                 <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
@@ -2264,38 +2353,11 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                             </div>
                             <div className="flex items-center gap-2 ml-4">
                               <Badge 
-                                variant={request.status === 'approved' ? 'default' : request.status === 'rejected' ? 'destructive' : 'secondary'}
+                                variant={request.status === 'approved' ? 'default' : 'destructive'}
                                 className={request.status === 'approved' ? 'bg-green-500' : ''}
                               >
                                 {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                               </Badge>
-                              {request.status === 'pending' && (
-                                <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-950"
-                                    onClick={() => handleAdminWfhRequestAction(request.id, 'approve')}
-                                    disabled={isProcessingWfhRequest}
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-                                    onClick={() => {
-                                      setSelectedWfhRequest(request);
-                                      setShowWfhRequestDialog(true);
-                                    }}
-                                    disabled={isProcessingWfhRequest}
-                                  >
-                                    <X className="h-4 w-4 mr-1" />
-                                    Reject
-                                  </Button>
-                                </div>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -2303,10 +2365,10 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                     </div>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
-                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No WFH requests found</p>
+                      <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No decisions yet</p>
                       <p className="text-sm">
-                        {wfhRequestFilter === 'all' ? 'No requests from HR or Managers yet' : `No ${wfhRequestFilter} requests from HR or Managers`}
+                        {wfhRequestFilter === 'all' ? 'No requests have been approved or rejected' : `No ${wfhRequestFilter} requests`}
                       </p>
                     </div>
                   )}

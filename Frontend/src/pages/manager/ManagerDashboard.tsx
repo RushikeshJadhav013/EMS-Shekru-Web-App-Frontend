@@ -245,7 +245,7 @@ const ManagerDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="card-hover border-0 bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => navigate('/manager/attendance')}>
+        <Card className="card-hover border-0 bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => navigate('/manager/attendance', { state: { viewMode: 'employee' } })}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-green-50">
               Present Today
@@ -261,7 +261,7 @@ const ManagerDashboard: React.FC = () => {
               className="p-0 h-auto mt-2 text-white hover:text-green-100" 
               onClick={(e) => {
                 e.stopPropagation();
-                navigate('/manager/attendance');
+                navigate('/manager/attendance', { state: { viewMode: 'employee' } });
               }}
             >
               <span className="text-sm">View all</span>
@@ -285,7 +285,7 @@ const ManagerDashboard: React.FC = () => {
               <span className="text-sm text-cyan-100">{stats.completedTasks} completed</span>
             </div>
             <Button variant="link" className="p-0 h-auto mt-1 text-white hover:text-cyan-100" onClick={() => navigate('/manager/tasks')}>
-              <span className="text-sm">Manage tasks</span>
+              <span className="text-sm">View All</span>
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </CardContent>
@@ -307,7 +307,7 @@ const ManagerDashboard: React.FC = () => {
               className="p-0 h-auto mt-2 text-white hover:text-amber-100" 
               onClick={(e) => {
                 e.stopPropagation();
-                navigate('/manager/leaves');
+                navigate('/manager/leaves', { state: { tab: 'approvals' } });
               }}
             >
               <span className="text-sm">View all</span>
@@ -511,10 +511,6 @@ const ManagerDashboard: React.FC = () => {
             <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/manager/shift-schedule')}>
               <Clock className="h-5 w-5" />
               <span className="text-xs">{t.navigation.shiftSchedule}</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/manager/teams')}>
-              <Users className="h-5 w-5" />
-              <span className="text-xs">{t.navigation.viewTeam}</span>
             </Button>
             <Button variant="outline" className="h-auto py-3 flex-col gap-2" onClick={() => navigate('/manager/attendance', { state: { viewMode: 'employee' } })}>
               <Clock className="h-5 w-5" />

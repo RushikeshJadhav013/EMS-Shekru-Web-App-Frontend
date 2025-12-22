@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { useWFH } from '@/contexts/WFHContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,11 +27,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Calendar, Clock, Home, Plus, Trash2, Edit, CheckCircle, XCircle, Clock as ClockIcon, AlertCircle } from 'lucide-react';
+import { Calendar, Home, Plus, Trash2, Edit, CheckCircle, XCircle, Clock as ClockIcon, AlertCircle, History } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { apiService } from '@/lib/api';
 import { format } from 'date-fns';
-import { formatIST, formatDateIST, formatDateTimeIST, nowIST } from '@/utils/timezone';
+import { formatDateIST, formatDateTimeIST } from '@/utils/timezone';
 
 interface WFHRequest {
   id: number;
@@ -51,14 +49,14 @@ interface WFHRequest {
 
 const WFHRequests: React.FC = () => {
   const { user } = useAuth();
-  const { t } = useLanguage();
-  const { wfhRequests: contextWfhRequests, isLoading: contextIsLoading, refreshWFHRequests } = useWFH();
+  const { wfhRequests: contextWfhRequests, isLoading: contextIsLoading, refreshWFHRequests, recentDecisions, isLoadingDecisions, refreshRecentDecisions } = useWFH();
 
   // State management
   const [wfhRequests, setWfhRequests] = useState<WFHRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'my-requests' | 'submit'>('my-requests');
+  const [activeTab, setActiveTab] = useState<'my-requests' | 'submit' | 'recent-decisions'>('my-requests');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [decisionFilter, setDecisionFilter] = useState<'all' | 'approved' | 'rejected'>('all');
 
   // Sync context data with local state
   useEffect(() => {
@@ -86,7 +84,8 @@ const WFHRequests: React.FC = () => {
   useEffect(() => {
     // Ensure requests are loaded when component mounts
     refreshWFHRequests();
-  }, [refreshWFHRequests]);
+    refreshRecentDecisions();
+  }, [refreshWFHRequests, refreshRecentDecisions]);
 
   const handleSubmitRequest = async () => {
     if (!user?.id) {
@@ -295,7 +294,7 @@ const WFHRequests: React.FC = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm">
+        <TabsList className="grid w-full grid-cols-3 h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm">
           <TabsTrigger
             value="my-requests"
             className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
@@ -308,6 +307,13 @@ const WFHRequests: React.FC = () => {
           >
             <Plus className="h-4 w-4 mr-2" />
             Submit Request
+          </TabsTrigger>
+          <TabsTrigger
+            value="recent-decisions"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+          >
+            <History className="h-4 w-4 mr-2" />
+            Recent Decisions
           </TabsTrigger>
         </TabsList>
 
@@ -475,6 +481,86 @@ const WFHRequests: React.FC = () => {
                 <Home className="h-4 w-4" />
                 {isSubmitting ? 'Submitting...' : 'Submit Request'}
               </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Recent Decisions Tab */}
+        <TabsContent value="recent-decisions" className="space-y-4">
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl font-semibold">Recent Decisions</CardTitle>
+                  <CardDescription>View recently approved and rejected WFH requests</CardDescription>
+                </div>
+                <Select value={decisionFilter} onValueChange={(value: any) => setDecisionFilter(value)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Decisions</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {isLoadingDecisions ? (
+                <div className="flex items-center justify-center py-8">
+                  <ClockIcon className="h-8 w-8 animate-spin text-orange-600" />
+                  <span className="ml-2 text-muted-foreground">Loading decisions...</span>
+                </div>
+              ) : recentDecisions.length === 0 ? (
+                <div className="text-center py-8">
+                  <History className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-muted-foreground">No decisions found yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {recentDecisions
+                    .filter(decision => decisionFilter === 'all' || decision.status === decisionFilter)
+                    .map((decision) => (
+                      <div key={decision.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <span className="font-medium text-sm">{decision.employee_name}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {decision.wfh_type === 'full_day' ? 'Full Day' : 'Half Day'}
+                              </Badge>
+                              {getStatusBadge(decision.status)}
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Calendar className="h-4 w-4" />
+                              <span>
+                                {formatDateIST(new Date(decision.start_date), 'dd MMM yyyy')} - {formatDateIST(new Date(decision.end_date), 'dd MMM yyyy')}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{decision.reason}</p>
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <span>Decision: {formatDateTimeIST(new Date(decision.updated_at), 'dd MMM yyyy, hh:mm a')}</span>
+                              {decision.approved_by && (
+                                <span>By: {decision.approved_by}</span>
+                              )}
+                            </div>
+                            {decision.rejection_reason && (
+                              <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
+                                <p className="text-sm text-red-800 dark:text-red-200">
+                                  <strong>Rejection Reason:</strong> {decision.rejection_reason}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(decision.status)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
