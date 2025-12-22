@@ -170,7 +170,7 @@ export default function LeaveManagement() {
     description: ''
   });
 
-  const handleAddHoliday = () => {
+  const handleAddHoliday = async () => {
     if (!holidayForm.name) {
       toast({ 
         title: 'Error', 
@@ -196,7 +196,7 @@ export default function LeaveManagement() {
     }
     
     try {
-      addHoliday({ 
+      await addHoliday({ 
         date: holidayForm.date, 
         name: holidayForm.name,
         description: holidayForm.description 
@@ -229,9 +229,17 @@ export default function LeaveManagement() {
     setSelectedDate(date);
   };
 
-  const handleRemoveHoliday = (date: Date) => {
-    removeHoliday(date);
-    toast({ title: 'Holiday removed', description: 'Company holiday removed from calendar.' });
+  const handleRemoveHoliday = async (id: number) => {
+    try {
+      await removeHoliday(id);
+      toast({ title: 'Holiday removed', description: 'Company holiday removed from calendar.' });
+    } catch (error) {
+      toast({ 
+        title: 'Error', 
+        description: error instanceof Error ? error.message : 'Failed to remove holiday.',
+        variant: 'destructive'
+      });
+    }
   };
 
   const handleSaveWeekOff = () => {
@@ -1807,7 +1815,7 @@ export default function LeaveManagement() {
                       {holidays.map(h => (
                         <li key={h.date.toISOString()} className="flex items-center gap-2 mb-1">
                           <span>{h.name} ({h.date.toDateString()})</span>
-                          <Button size="sm" variant="destructive" onClick={() => handleRemoveHoliday(h.date)}>Remove</Button>
+                          <Button size="sm" variant="destructive" onClick={() => h.id && handleRemoveHoliday(h.id)}>Remove</Button>
                         </li>
                       ))}
                     </ul>

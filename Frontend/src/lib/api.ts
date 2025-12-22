@@ -966,6 +966,37 @@ class ApiService {
       body: JSON.stringify({ is_online: isOnline }),
     });
   }
+
+  // Holiday Management APIs
+  async getHolidays(): Promise<Array<{ id: number; date: string; name: string; description?: string; created_at: string; updated_at: string }>> {
+    return this.request('/holidays');
+  }
+
+  async createHoliday(data: { date: string; name: string; description?: string }): Promise<{ id: number; date: string; name: string; description?: string; created_at: string; updated_at: string }> {
+    return this.request('/holidays', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  }
+
+  async updateHoliday(id: number, data: { date?: string; name?: string; description?: string }): Promise<{ id: number; date: string; name: string; description?: string; created_at: string; updated_at: string }> {
+    return this.request(`/holidays/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  }
+
+  async deleteHoliday(id: number): Promise<void> {
+    await this.request(`/holidays/${id}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 export const apiService = new ApiService(API_BASE_URL);
