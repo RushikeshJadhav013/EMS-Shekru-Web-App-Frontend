@@ -116,7 +116,7 @@ class ApiService {
 
     // Get auth token from localStorage
     const token = localStorage.getItem('token');
-    
+
     const config: RequestInit = {
       ...options,
       headers: {
@@ -136,7 +136,7 @@ class ApiService {
           const errorData = await response.json();
           if (errorData.detail) {
             if (Array.isArray(errorData.detail)) {
-              errorMessage = errorData.detail.map((item: any) => 
+              errorMessage = errorData.detail.map((item: any) =>
                 typeof item === 'string' ? item : item.msg || JSON.stringify(item)
               ).join(', ');
             } else if (typeof errorData.detail === 'string') {
@@ -151,7 +151,7 @@ class ApiService {
           // If JSON parsing fails, use status text
           errorMessage = response.statusText || `HTTP error! status: ${response.status}`;
         }
-        
+
         if (response.status === 401) {
           // Token is invalid or expired - clear auth data and redirect to login
           console.error('Authentication failed - token invalid or expired');
@@ -189,7 +189,7 @@ class ApiService {
       // Check if response has content before trying to parse JSON
       const contentType = response.headers.get('content-type');
       const text = await response.text();
-      
+
       // If response is empty, return null
       if (!text || text.trim().length === 0) {
         return null;
@@ -222,12 +222,12 @@ class ApiService {
         }
         throw networkError;
       }
-      
+
       // Log other errors normally
       if (import.meta.env.DEV) {
         console.error('API request failed:', error);
       }
-      
+
       // Re-throw other errors as-is
       throw error;
     }
@@ -252,7 +252,7 @@ class ApiService {
     return this.request('/departments');
   }
 
-  async getDepartmentNames(): Promise<{name: string, code: string}[]> {
+  async getDepartmentNames(): Promise<{ name: string, code: string }[]> {
     return this.request('/departments/names');
   }
 
@@ -352,10 +352,10 @@ class ApiService {
   async updateEmployee(userId: string, employeeData: Partial<EmployeeData>): Promise<Employee> {
     // Get auth token from localStorage
     const token = localStorage.getItem('token');
-    
+
     // Backend expects FormData, so always use FormData
     const formData = new FormData();
-    
+
     // Add all fields to FormData
     Object.entries(employeeData).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -367,12 +367,12 @@ class ApiService {
         }
       }
     });
-    
+
     const headers: Record<string, string> = {
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     };
     // Don't set Content-Type for FormData - browser will set it with boundary
-    
+
     const response = await fetch(`${this.baseURL}/employees/${userId}`, {
       method: 'PUT',
       headers,
@@ -391,7 +391,7 @@ class ApiService {
   async deleteEmployee(userId: string): Promise<void> {
     // Get auth token from localStorage
     const token = localStorage.getItem('token');
-    
+
     const response = await fetch(`${this.baseURL}/employees/${userId}`, {
       method: 'DELETE',
       headers: {
@@ -408,7 +408,7 @@ class ApiService {
   // Update employee status (activate/deactivate)
   async updateEmployeeStatus(userId: string, isActive: boolean): Promise<Employee> {
     const token = localStorage.getItem('token');
-    
+
     const response = await fetch(`${this.baseURL}/employees/${userId}/status`, {
       method: 'PUT',
       headers: {
@@ -633,13 +633,13 @@ class ApiService {
   async createCandidate(candidateData: any, resumeFile?: File) {
     const token = localStorage.getItem('token');
     const formData = new FormData();
-    
+
     Object.entries(candidateData).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         formData.append(key, String(value));
       }
     });
-    
+
     if (resumeFile) {
       formData.append('resume', resumeFile);
     }
@@ -739,14 +739,14 @@ class ApiService {
     if (startDate) params.append('start_date', startDate);
     if (endDate) params.append('end_date', endDate);
     const query = params.toString();
-    
+
     // Debug authentication for shift schedule
     const token = localStorage.getItem('token');
     if (!token) {
       console.error('No authentication token found for shift schedule request');
       throw new Error('Not authenticated - please log in again');
     }
-    
+
     return this.request(`/shift/schedule/my${query ? `?${query}` : ''}`);
   }
 
@@ -794,7 +794,7 @@ class ApiService {
       ...(params.department && params.department !== 'all' && { department: params.department }),
       ...(params.employeeId && { employee_id: params.employeeId }),
     });
-    
+
     return this.request(`/reports/employee-performance?${query}`);
   }
 
@@ -803,7 +803,7 @@ class ApiService {
       month: params.month.toString(),
       year: params.year.toString(),
     });
-    
+
     return this.request(`/reports/department-metrics?${query}`);
   }
 
@@ -812,7 +812,7 @@ class ApiService {
       month: params.month.toString(),
       year: params.year.toString(),
     });
-    
+
     return this.request(`/reports/executive-summary?${query}`);
   }
 
@@ -828,7 +828,7 @@ class ApiService {
   async addTaskComment(taskId: number, comment?: string, file?: File) {
     const token = localStorage.getItem('token');
     const formData = new FormData();
-    
+
     if (comment) {
       formData.append('comment', comment);
     }
@@ -930,7 +930,7 @@ class ApiService {
   async approveWFHRequest(wfhId: number, approved: boolean, rejectionReason?: string) {
     return this.request(`/wfh/requests/${wfhId}/approve`, {
       method: 'PUT',
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         approved,
         ...(rejectionReason && { rejection_reason: rejectionReason })
       }),
@@ -965,6 +965,64 @@ class ApiService {
       method: 'PUT',
       body: JSON.stringify({ is_online: isOnline }),
     });
+  }
+
+  // Export attendance as CSV
+  async exportAttendanceCSV(params: {
+    employee_id?: string;
+    department?: string;
+    start_date?: string;
+    end_date?: string;
+  }): Promise<Blob> {
+    const queryParams = new URLSearchParams();
+    if (params.employee_id) queryParams.append('employee_id', params.employee_id);
+    if (params.department) queryParams.append('department', params.department);
+    if (params.start_date) queryParams.append('start_date', params.start_date);
+    if (params.end_date) queryParams.append('end_date', params.end_date);
+
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${this.baseURL}/attendance/download/csv?${queryParams.toString()}`, {
+      method: 'GET',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.blob();
+  }
+
+  // Export attendance as PDF
+  async exportAttendancePDF(params: {
+    employee_id?: string;
+    department?: string;
+    start_date?: string;
+    end_date?: string;
+  }): Promise<Blob> {
+    const queryParams = new URLSearchParams();
+    if (params.employee_id) queryParams.append('employee_id', params.employee_id);
+    if (params.department) queryParams.append('department', params.department);
+    if (params.start_date) queryParams.append('start_date', params.start_date);
+    if (params.end_date) queryParams.append('end_date', params.end_date);
+
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${this.baseURL}/attendance/download/pdf?${queryParams.toString()}`, {
+      method: 'GET',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.blob();
   }
 
   // Holiday Management APIs

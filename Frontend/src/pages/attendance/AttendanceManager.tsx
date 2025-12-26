@@ -64,10 +64,10 @@ const AttendanceManager: React.FC = () => {
     if (!decimalHours || decimalHours === 0) {
       return '0 hrs - 0 mins';
     }
-    
+
     const hours = Math.floor(decimalHours);
     const minutes = Math.round((decimalHours - hours) * 60);
-    
+
     if (hours === 0 && minutes === 0) {
       return '0 hrs - 0 mins';
     } else if (hours === 0) {
@@ -83,7 +83,7 @@ const AttendanceManager: React.FC = () => {
   const [filteredRecords, setFilteredRecords] = useState<EmployeeAttendance[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<EmployeeAttendance | null>(null);
   const [showSelfieModal, setShowSelfieModal] = useState(false);
-const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: string | null }>({ open: false, summary: null });
+  const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: string | null }>({ open: false, summary: null });
   const [locationModal, setLocationModal] = useState<{ open: boolean; location: EmployeeAttendance | null }>({ open: false, location: null });
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -91,7 +91,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
   const [selectedDate, setSelectedDate] = useState<Date>(nowIST());
   const [isExporting, setIsExporting] = useState(false);
   const [summary, setSummary] = useState<{ total_employees: number; present_today: number; late_arrivals: number; early_departures: number; absent_today: number }>({ total_employees: 0, present_today: 0, late_arrivals: 0, early_departures: 0, absent_today: 0 });
-  
+
   // Export modal states
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportType, setExportType] = useState<'csv' | 'pdf' | null>(null);
@@ -122,7 +122,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
     checkOutGrace: 0,
   });
   const [onlineStatusMap, setOnlineStatusMap] = useState<Record<number, boolean>>({});
-  
+
   // WFH Requests state (Admin only sees HR and Manager requests)
   const [allWfhRequests, setAllWfhRequests] = useState<any[]>([]);
   const [isLoadingWfhRequests, setIsLoadingWfhRequests] = useState(false);
@@ -130,10 +130,10 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
   const [selectedWfhRequest, setSelectedWfhRequest] = useState<any>(null);
   const [showWfhRequestDialog, setShowWfhRequestDialog] = useState(false);
   const [isProcessingWfhRequest, setIsProcessingWfhRequest] = useState(false);
-  
+
   // Ref for scrolling to department form when editing
   const departmentFormRef = useRef<HTMLDivElement>(null);
- 
+
   const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
     return token ? { Authorization: token } : {};
@@ -173,7 +173,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
     fetchSummary();
     loadEmployees();
     fetchAllOnlineStatus();
-    
+
     // Fetch online status every 15 seconds
     const interval = setInterval(fetchAllOnlineStatus, 15000);
     return () => clearInterval(interval);
@@ -188,17 +188,17 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
   useEffect(() => {
     if (activeTab === 'wfh-requests' && isAdmin) {
       loadAdminWfhRequests();
-      
+
       // Refresh sample data every 30 seconds to keep timestamps current
       const dataInterval = setInterval(() => {
         loadAdminWfhRequests();
       }, 30000);
-      
+
       // Force re-render every minute to update relative timestamps
       const renderInterval = setInterval(() => {
         setAllWfhRequests(prev => [...prev]); // Trigger re-render
       }, 60000);
-      
+
       return () => {
         clearInterval(dataInterval);
         clearInterval(renderInterval);
@@ -255,8 +255,8 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
           departmentSet.add(department);
         }
         return {
-        user_id: emp.user_id || emp.userId,
-        employee_id: emp.employee_id || emp.employeeId || '',
+          user_id: emp.user_id || emp.userId,
+          employee_id: emp.employee_id || emp.employeeId || '',
           name: emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
           department,
         };
@@ -400,15 +400,15 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
       checkInGrace: timing.check_in_grace_minutes ?? 0,
       checkOutGrace: timing.check_out_grace_minutes ?? 0,
     });
-    
+
     // Scroll to the form and provide visual feedback
     setTimeout(() => {
       if (departmentFormRef.current) {
-        departmentFormRef.current.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center' 
+        departmentFormRef.current.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
         });
-        
+
         // Add a brief highlight effect
         departmentFormRef.current.classList.add('ring-4', 'ring-purple-400', 'ring-opacity-50');
         setTimeout(() => {
@@ -416,7 +416,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
         }, 2000);
       }
     }, 100);
-    
+
     // Show toast notification
     toast({
       title: 'Editing Department Timing',
@@ -486,16 +486,16 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
       try {
         const query = targetDate ? `?date=${encodeURIComponent(targetDate)}` : '';
         const res = await fetch(`https://staffly.space/attendance/today${query}`);
-        
+
         if (!res.ok) {
           const errorText = await res.text();
           console.error(`Failed to load attendance: ${res.status}`, errorText);
           throw new Error(`Failed to load attendance: ${res.status} - ${errorText}`);
         }
-        
+
         const data = await res.json();
         console.log('Attendance data received:', data);
-        
+
         // Transform backend data to EmployeeAttendance format
         const transformedData: EmployeeAttendance[] = data
           .map((rec: any) => {
@@ -508,7 +508,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
             const checkOutStatus = rec.checkOutStatus || rec.check_out_status || null;
             const scheduledStart = rec.scheduledStart || rec.scheduled_start || null;
             const scheduledEnd = rec.scheduledEnd || rec.scheduled_end || null;
-            
+
             return {
               id: String(rec.attendance_id || rec.id || ''),
               userId: String(rec.user_id || rec.userId || ''),
@@ -519,10 +519,10 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
               date: checkInDate ? formatDateIST(checkInDate) : todayIST(),
               checkInTime: checkIn || undefined,
               checkOutTime: checkOut || undefined,
-              checkInLocation: { 
-                latitude: 0, 
-                longitude: 0, 
-                address: rec.checkInLocationLabel || rec.locationLabel || rec.gps_location || rec.checkInLocation?.address || 'N/A' 
+              checkInLocation: {
+                latitude: 0,
+                longitude: 0,
+                address: rec.checkInLocationLabel || rec.locationLabel || rec.gps_location || rec.checkInLocation?.address || 'N/A'
               },
               checkInSelfie: resolveMediaUrl(rec.checkInSelfie || rec.selfie || rec.selfie_url),
               checkOutSelfie: resolveMediaUrl(rec.checkOutSelfie || rec.check_out_selfie || rec.checkout_selfie_url),
@@ -538,7 +538,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
             };
           })
           .reverse();
-        
+
         console.log('Transformed attendance records:', transformedData);
         setAttendanceRecords(transformedData);
       } catch (err) {
@@ -554,10 +554,10 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
 
   const filterRecords = () => {
     let filtered = [...attendanceRecords];
-    
+
     // Filter by search term
     if (searchTerm) {
-      filtered = filtered.filter(record => 
+      filtered = filtered.filter(record =>
         record.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         record.userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
         record.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -565,7 +565,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
         (record.userId && record.userId.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
-    
+
     // Filter by status
     if (filterStatus !== 'all') {
       filtered = filtered.filter(record => {
@@ -584,23 +584,23 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
         return true;
       });
     }
-    
+
     // Filter by date
     if (filterDate) {
       filtered = filtered.filter(record => record.date === filterDate);
     }
-    
+
     setFilteredRecords(filtered);
   };
 
   const getStatusBadge = (record: EmployeeAttendance) => {
     const badges: React.ReactNode[] = [];
-    
+
     if (!record.checkOutTime) {
       badges.push(
-        <Badge 
-          key="active" 
-          variant="default" 
+        <Badge
+          key="active"
+          variant="default"
           className="bg-blue-500 hover:bg-blue-600 text-white text-[10px] flex items-center gap-0.5 px-1.5 py-0.5 shadow-sm"
         >
           <Timer className="h-2.5 w-2.5" />
@@ -608,12 +608,12 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
         </Badge>,
       );
     }
-    
+
     if (record.checkInStatus === 'late' || record.status === 'late') {
       badges.push(
-        <Badge 
-          key="late" 
-          variant="destructive" 
+        <Badge
+          key="late"
+          variant="destructive"
           className="bg-red-500 hover:bg-red-600 text-white text-[10px] flex items-center gap-0.5 px-1.5 py-0.5 shadow-sm"
         >
           <AlertTriangle className="h-2.5 w-2.5" />
@@ -624,9 +624,9 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
 
     if (record.checkOutStatus === 'early') {
       badges.push(
-        <Badge 
-          key="early" 
-          variant="outline" 
+        <Badge
+          key="early"
+          variant="outline"
           className="border-orange-500 bg-orange-50 text-orange-600 hover:bg-orange-100 text-[10px] flex items-center gap-0.5 px-1.5 py-0.5 shadow-sm"
         >
           <LogOut className="h-2.5 w-2.5" />
@@ -637,9 +637,9 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
 
     if (badges.length === 0) {
       badges.push(
-        <Badge 
-          key="ontime" 
-          variant="default" 
+        <Badge
+          key="ontime"
+          variant="default"
           className="bg-green-500 hover:bg-green-600 text-white text-[10px] flex items-center gap-0.5 px-1.5 py-0.5 shadow-sm"
         >
           <CheckCircle2 className="h-2.5 w-2.5" />
@@ -647,7 +647,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
         </Badge>,
       );
     }
-    
+
     return badges;
   };
 
@@ -660,7 +660,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
     setQuickFilter(filter);
     const today = new Date();
     today.setHours(23, 59, 59, 999);
-    
+
     switch (filter) {
       case 'last_month':
         setStartDate(subMonths(today, 1));
@@ -719,47 +719,50 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
     setExportModalOpen(false);
 
     try {
-      const params = new URLSearchParams();
-      
+      const exportParams: {
+        employee_id?: string;
+        department?: string;
+        start_date?: string;
+        end_date?: string;
+      } = {};
+
       if (employeeFilter === 'specific' && selectedEmployee) {
-        params.append('employee_id', selectedEmployee.employee_id || selectedEmployee.user_id.toString());
+        exportParams.employee_id = selectedEmployee.employee_id || selectedEmployee.user_id.toString();
         if (selectedDepartmentFilter) {
-          params.append('department', selectedDepartmentFilter);
+          exportParams.department = selectedDepartmentFilter;
         }
       }
-      
+
       if (startDate) {
-        params.append('start_date', format(startDate, 'yyyy-MM-dd'));
+        exportParams.start_date = format(startDate, 'yyyy-MM-dd');
       }
-      
+
       if (endDate) {
-        params.append('end_date', format(endDate, 'yyyy-MM-dd'));
+        exportParams.end_date = format(endDate, 'yyyy-MM-dd');
       }
 
-      const apiUrl = `https://staffly.space/attendance/download/${exportType}?${params.toString()}`;
-      const res = await fetch(apiUrl, { method: 'GET' });
+      // Use apiService for export with proper authentication
+      const blob = exportType === 'csv'
+        ? await apiService.exportAttendanceCSV(exportParams)
+        : await apiService.exportAttendancePDF(exportParams);
 
-      if (!res.ok) {
-        throw new Error(`Request failed with status ${res.status}`);
-      }
-
-      const blob = await res.blob();
+      // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      
-      const dateStr = startDate && endDate 
+
+      const dateStr = startDate && endDate
         ? `${format(startDate, 'yyyyMMdd')}_${format(endDate, 'yyyyMMdd')}`
-        : startDate 
-        ? `from_${format(startDate, 'yyyyMMdd')}`
-        : endDate 
-        ? `until_${format(endDate, 'yyyyMMdd')}`
-        : 'all';
-      
+        : startDate
+          ? `from_${format(startDate, 'yyyyMMdd')}`
+          : endDate
+            ? `until_${format(endDate, 'yyyyMMdd')}`
+            : 'all';
+
       const empStr = employeeFilter === 'specific' && selectedEmployee
         ? `_${selectedEmployee.employee_id || selectedEmployee.user_id}`
         : '';
-      
+
       a.download = `attendance_report${empStr}_${dateStr}.${exportType}`;
       document.body.appendChild(a);
       a.click();
@@ -872,15 +875,15 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
   // Load WFH requests for Admin (only HR and Manager requests)
   const loadAdminWfhRequests = async () => {
     if (!isAdmin) return;
-    
+
     setIsLoadingWfhRequests(true);
     try {
       // Call API to get all WFH requests for admin/hr/manager approval
       const response = await apiService.getAllWFHRequests();
-      
+
       // Handle response - it might be wrapped in an object or be an array directly
       let requests = Array.isArray(response) ? response : (response?.data || response?.requests || []);
-      
+
       // Transform API response to match our UI format
       // The API returns requests with fields like: wfh_id, user_id, start_date, end_date, wfh_type, reason, status, employee_id, name, department, role, approver_name
       const formattedRequests = requests.map((req: any) => ({
@@ -900,7 +903,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
         processedBy: req.approver_name || req.approved_by || 'Pending',
         rejectionReason: req.rejection_reason,
       }));
-      
+
       setAllWfhRequests(formattedRequests);
     } catch (error: any) {
       // Silently fail - endpoint may not be implemented yet
@@ -918,21 +921,21 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
       // Call API to approve/reject WFH request
       const wfhId = parseInt(requestId);
       const approved = action === 'approve';
-      
+
       await apiService.approveWFHRequest(wfhId, approved, reason);
 
       // Update local state optimistically
       const currentTime = new Date();
-      setAllWfhRequests(prev => 
-        prev.map(req => 
-          req.id === requestId 
-            ? { 
-                ...req, 
-                status: action === 'approve' ? 'approved' : 'rejected',
-                processedAt: currentTime.toISOString(),
-                processedBy: user?.name || 'Admin',
-                rejectionReason: action === 'reject' ? reason : undefined
-              }
+      setAllWfhRequests(prev =>
+        prev.map(req =>
+          req.id === requestId
+            ? {
+              ...req,
+              status: action === 'approve' ? 'approved' : 'rejected',
+              processedAt: currentTime.toISOString(),
+              processedBy: user?.name || 'Admin',
+              rejectionReason: action === 'reject' ? reason : undefined
+            }
             : req
         )
       );
@@ -945,7 +948,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
 
       setShowWfhRequestDialog(false);
       setSelectedWfhRequest(null);
-      
+
       // Reload requests to ensure consistency
       await loadAdminWfhRequests();
     } catch (error) {
@@ -976,7 +979,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
     const now = new Date();
     const time = new Date(timestamp);
     const diffInSeconds = Math.floor((now.getTime() - time.getTime()) / 1000);
-    
+
     if (diffInSeconds < 60) {
       return `${diffInSeconds} seconds ago`;
     } else if (diffInSeconds < 3600) {
@@ -1004,9 +1007,9 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
               <p className="text-sm text-muted-foreground mt-1">{t.attendance.monitorTeamAttendance}</p>
             </div>
           </div>
-          <Button 
-            onClick={() => setExportModalOpen(true)} 
-            variant="outline" 
+          <Button
+            onClick={() => setExportModalOpen(true)}
+            variant="outline"
             className="gap-2 bg-white dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 border-2 border-blue-600 hover:border-blue-700 font-medium shadow-md hover:shadow-lg transition-all"
             disabled={isExporting}
             style={{ color: '#2563eb' }}
@@ -1153,8 +1156,8 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                         </td>
                         <td className="p-3">
                           {!record.checkOutTime ? (
-                            <OnlineStatusIndicator 
-                              isOnline={onlineStatusMap[parseInt(record.userId)] ?? true} 
+                            <OnlineStatusIndicator
+                              isOnline={onlineStatusMap[parseInt(record.userId)] ?? true}
                               size="md"
                               showLabel={true}
                               clickable={isAdmin}
@@ -1209,7 +1212,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                           )}
                         </td>
                         <td className="p-3">
-                          <div 
+                          <div
                             className="h-10 w-10 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity"
                             onClick={() => {
                               setSelectedRecord(record);
@@ -1217,9 +1220,9 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                             }}
                           >
                             {record.checkInSelfie ? (
-                              <img 
-                                src={record.checkInSelfie} 
-                                alt={`${record.userName}'s selfie`} 
+                              <img
+                                src={record.checkInSelfie}
+                                alt={`${record.userName}'s selfie`}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                   const target = e.currentTarget as HTMLImageElement;
@@ -1301,7 +1304,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
               View check-in and check-out selfies with location and time information
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
             {/* Check-in Selfie */}
             <div className="space-y-4">
@@ -1311,9 +1314,9 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
               </div>
               <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                 {selectedRecord?.checkInSelfie ? (
-                  <img 
-                    src={selectedRecord.checkInSelfie} 
-                    alt="Check-in selfie" 
+                  <img
+                    src={selectedRecord.checkInSelfie}
+                    alt="Check-in selfie"
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       const target = e.currentTarget as HTMLImageElement;
@@ -1346,9 +1349,9 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
               </div>
               <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                 {selectedRecord?.checkOutSelfie ? (
-                  <img 
-                    src={selectedRecord.checkOutSelfie} 
-                    alt="Check-out selfie" 
+                  <img
+                    src={selectedRecord.checkOutSelfie}
+                    alt="Check-out selfie"
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       const target = e.currentTarget as HTMLImageElement;
@@ -1376,10 +1379,10 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
               </div>
             </div>
           </div>
-          
+
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setShowSelfieModal(false)}
               className="gap-2"
             >
@@ -1438,8 +1441,8 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
             </div>
           </div>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setLocationModal({ open: false, location: null })}
               className="gap-2"
             >
@@ -1459,7 +1462,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
               {t.attendance.configureExport}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-6 py-4 flex-1 overflow-y-auto overflow-x-visible pr-1">
             {/* Export Format Selection */}
             <div className="space-y-2">
@@ -1468,11 +1471,10 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                 <button
                   type="button"
                   onClick={() => setExportType('csv')}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    exportType === 'csv'
+                  className={`p-4 rounded-lg border-2 transition-all ${exportType === 'csv'
                       ? 'border-green-600 bg-green-50 dark:bg-green-950'
                       : 'border-gray-200 hover:border-green-300 dark:border-gray-700'
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-col items-center gap-2">
                     <FileSpreadsheet className={`h-8 w-8 ${exportType === 'csv' ? 'text-green-600' : 'text-gray-400'}`} />
@@ -1487,11 +1489,10 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                 <button
                   type="button"
                   onClick={() => setExportType('pdf')}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    exportType === 'pdf'
+                  className={`p-4 rounded-lg border-2 transition-all ${exportType === 'pdf'
                       ? 'border-red-600 bg-red-50 dark:bg-red-950'
                       : 'border-gray-200 hover:border-red-300 dark:border-gray-700'
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-col items-center gap-2">
                     <FileText className={`h-8 w-8 ${exportType === 'pdf' ? 'text-red-600' : 'text-gray-400'}`} />
@@ -1509,15 +1510,15 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
             <div className="space-y-2">
               <Label htmlFor="quick-filter" className="text-sm font-medium">Quick Filter</Label>
               <Select value={quickFilter} onValueChange={handleQuickFilter}>
-                <SelectTrigger 
-                  id="quick-filter" 
+                <SelectTrigger
+                  id="quick-filter"
                   className="w-full h-10 border-2 border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                 >
                   <SelectValue placeholder="Select time period" />
                 </SelectTrigger>
-                <SelectContent 
-                  position="popper" 
-                  className="w-[var(--radix-select-trigger-width)] min-w-[200px] max-w-[400px] z-50" 
+                <SelectContent
+                  position="popper"
+                  className="w-[var(--radix-select-trigger-width)] min-w-[200px] max-w-[400px] z-50"
                   sideOffset={5}
                   align="start"
                 >
@@ -1571,8 +1572,8 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                       setEmployeeFilter('all');
                       setSelectedEmployee(null);
                       setEmployeeSearch('');
-                    setSelectedDepartmentFilter('');
-                    setFilteredEmployees([]);
+                      setSelectedDepartmentFilter('');
+                      setFilteredEmployees([]);
                     }}
                     className="h-4 w-4 text-blue-600"
                   />
@@ -1611,15 +1612,15 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                       setEmployeeSearch('');
                     }}
                   >
-                    <SelectTrigger 
-                      id="department-select" 
+                    <SelectTrigger
+                      id="department-select"
                       className="w-full h-10 border-2 border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                     >
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
-                    <SelectContent 
-                      position="popper" 
-                      className="w-[var(--radix-select-trigger-width)] min-w-[200px] max-w-[400px] max-h-[300px] z-50" 
+                    <SelectContent
+                      position="popper"
+                      className="w-[var(--radix-select-trigger-width)] min-w-[200px] max-w-[400px] max-h-[300px] z-50"
                       sideOffset={5}
                       align="start"
                     >
@@ -1660,11 +1661,10 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                               type="button"
                               key={emp.user_id}
                               onClick={() => setSelectedEmployee(emp)}
-                              className={`w-full text-left p-3 border-b last:border-b-0 transition-colors ${
-                                isSelected
+                              className={`w-full text-left p-3 border-b last:border-b-0 transition-colors ${isSelected
                                   ? 'bg-blue-50 dark:bg-blue-900'
                                   : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                              }`}
+                                }`}
                             >
                               <div className="font-medium">{emp.name}</div>
                               <div className="text-sm text-muted-foreground">
@@ -1778,76 +1778,76 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
             <CardDescription>
               Default schedule applied to every department unless specifically overridden.
             </CardDescription>
-        </CardHeader>
+          </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
+              <div className="space-y-2">
                 <Label htmlFor="global-start" className="text-sm font-medium text-blue-600">
                   Start Time
                 </Label>
-              <Input
-                id="global-start"
-                type="time"
-                value={globalTimingForm.startTime}
+                <Input
+                  id="global-start"
+                  type="time"
+                  value={globalTimingForm.startTime}
                   onChange={(e) =>
                     setGlobalTimingForm((prev) => ({ ...prev, startTime: e.target.value }))
                   }
                   className="h-12 border-2 border-blue-100 focus:border-blue-400"
-              />
-            </div>
-            <div className="space-y-2">
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="global-end" className="text-sm font-medium text-blue-600">
                   End Time
                 </Label>
-              <Input
-                id="global-end"
-                type="time"
-                value={globalTimingForm.endTime}
+                <Input
+                  id="global-end"
+                  type="time"
+                  value={globalTimingForm.endTime}
                   onChange={(e) =>
                     setGlobalTimingForm((prev) => ({ ...prev, endTime: e.target.value }))
                   }
                   className="h-12 border-2 border-blue-100 focus:border-blue-400"
-              />
-            </div>
-            <div className="space-y-2">
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="global-grace-in" className="text-sm font-medium text-blue-600">
                   Check-in Grace (minutes)
                 </Label>
-              <Input
-                id="global-grace-in"
-                type="number"
-                min={0}
-                max={180}
-                value={globalTimingForm.checkInGrace}
-                onChange={(e) =>
-                  setGlobalTimingForm((prev) => ({
-                    ...prev,
-                    checkInGrace: e.target.value === '' ? '' : Number(e.target.value),
-                  }))
-                }
-                className="h-12 border-2 border-blue-100 focus:border-blue-400"
-              />
-            </div>
-            <div className="space-y-2">
+                <Input
+                  id="global-grace-in"
+                  type="number"
+                  min={0}
+                  max={180}
+                  value={globalTimingForm.checkInGrace}
+                  onChange={(e) =>
+                    setGlobalTimingForm((prev) => ({
+                      ...prev,
+                      checkInGrace: e.target.value === '' ? '' : Number(e.target.value),
+                    }))
+                  }
+                  className="h-12 border-2 border-blue-100 focus:border-blue-400"
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="global-grace-out" className="text-sm font-medium text-blue-600">
                   Check-out Grace (minutes)
                 </Label>
-              <Input
-                id="global-grace-out"
-                type="number"
-                min={0}
-                max={180}
-                value={globalTimingForm.checkOutGrace}
-                onChange={(e) =>
-                  setGlobalTimingForm((prev) => ({
-                    ...prev,
-                    checkOutGrace: e.target.value === '' ? '' : Number(e.target.value),
-                  }))
-                }
-                className="h-12 border-2 border-blue-100 focus:border-blue-400"
-              />
+                <Input
+                  id="global-grace-out"
+                  type="number"
+                  min={0}
+                  max={180}
+                  value={globalTimingForm.checkOutGrace}
+                  onChange={(e) =>
+                    setGlobalTimingForm((prev) => ({
+                      ...prev,
+                      checkOutGrace: e.target.value === '' ? '' : Number(e.target.value),
+                    }))
+                  }
+                  className="h-12 border-2 border-blue-100 focus:border-blue-400"
+                />
+              </div>
             </div>
-          </div>
             <div className="flex flex-wrap justify-end gap-3">
               <Button
                 variant="outline"
@@ -1862,11 +1862,11 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                 disabled={officeFormLoading}
                 className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md"
               >
-              {officeFormLoading ? 'Saving...' : 'Save Global Settings'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+                {officeFormLoading ? 'Saving...' : 'Save Global Settings'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card ref={departmentFormRef} className="shadow-xl border border-purple-100 dark:border-slate-800 transition-all duration-300">
           <CardHeader className="space-y-1 pb-4">
@@ -1874,19 +1874,19 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
             <CardDescription>
               Override the global schedule for particular departments or create new ones.
             </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+          </CardHeader>
+          <CardContent className="space-y-6">
             <div className="space-y-2">
               <Label className="text-sm font-medium text-purple-600">Department</Label>
               {departments.length > 0 && (
                 <Select
                   value={
                     departmentTimingForm.department &&
-                    departments.some(
-                      (dept) =>
-                        dept.trim().toLowerCase() ===
-                        departmentTimingForm.department?.trim().toLowerCase(),
-                    )
+                      departments.some(
+                        (dept) =>
+                          dept.trim().toLowerCase() ===
+                          departmentTimingForm.department?.trim().toLowerCase(),
+                      )
                       ? departmentTimingForm.department
                       : '__custom__'
                   }
@@ -1911,16 +1911,16 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                   </SelectContent>
                 </Select>
               )}
-            <Input
-              id="department-name"
-              placeholder="e.g., Engineering"
-              value={departmentTimingForm.department}
+              <Input
+                id="department-name"
+                placeholder="e.g., Engineering"
+                value={departmentTimingForm.department}
                 onChange={(e) =>
                   setDepartmentTimingForm((prev) => ({ ...prev, department: e.target.value }))
                 }
                 className="h-12 border-2 border-purple-100 focus:border-purple-400"
-            />
-            {departments.length > 0 && (
+              />
+              {departments.length > 0 && (
                 <div className="flex flex-wrap gap-2 pt-1">
                   {departments.map((dept) => {
                     const isSelected =
@@ -1928,119 +1928,118 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                       departmentTimingForm.department?.trim().toLowerCase();
                     return (
                       <button
-                    key={dept}
-                    type="button"
+                        key={dept}
+                        type="button"
                         onClick={() => handleDepartmentSelect(dept)}
-                        className={`px-3 py-1.5 rounded-full text-sm transition-all ${
-                          isSelected
+                        className={`px-3 py-1.5 rounded-full text-sm transition-all ${isSelected
                             ? 'bg-purple-600 text-white shadow-lg'
                             : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
-                        }`}
-                  >
-                    {dept}
+                          }`}
+                      >
+                        {dept}
                       </button>
                     );
                   })}
-              </div>
-            )}
-          </div>
+                </div>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
+              <div className="space-y-2">
                 <Label htmlFor="dept-start" className="text-sm font-medium text-purple-600">
                   Start Time
                 </Label>
-              <Input
-                id="dept-start"
-                type="time"
-                value={departmentTimingForm.startTime}
+                <Input
+                  id="dept-start"
+                  type="time"
+                  value={departmentTimingForm.startTime}
                   onChange={(e) =>
                     setDepartmentTimingForm((prev) => ({ ...prev, startTime: e.target.value }))
                   }
                   className="h-12 border-2 border-purple-100 focus:border-purple-400"
-              />
-            </div>
-            <div className="space-y-2">
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="dept-end" className="text-sm font-medium text-purple-600">
                   End Time
                 </Label>
-              <Input
-                id="dept-end"
-                type="time"
-                value={departmentTimingForm.endTime}
+                <Input
+                  id="dept-end"
+                  type="time"
+                  value={departmentTimingForm.endTime}
                   onChange={(e) =>
                     setDepartmentTimingForm((prev) => ({ ...prev, endTime: e.target.value }))
                   }
                   className="h-12 border-2 border-purple-100 focus:border-purple-400"
-              />
-            </div>
-            <div className="space-y-2">
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="dept-grace-in" className="text-sm font-medium text-purple-600">
                   Check-in Grace (minutes)
                 </Label>
-              <Input
-                id="dept-grace-in"
-                type="number"
-                min={0}
-                max={180}
-                value={departmentTimingForm.checkInGrace}
-                onChange={(e) =>
-                  setDepartmentTimingForm((prev) => ({
-                    ...prev,
-                    checkInGrace: e.target.value === '' ? '' : Number(e.target.value),
-                  }))
-                }
-                className="h-12 border-2 border-purple-100 focus:border-purple-400"
-              />
-            </div>
-            <div className="space-y-2">
+                <Input
+                  id="dept-grace-in"
+                  type="number"
+                  min={0}
+                  max={180}
+                  value={departmentTimingForm.checkInGrace}
+                  onChange={(e) =>
+                    setDepartmentTimingForm((prev) => ({
+                      ...prev,
+                      checkInGrace: e.target.value === '' ? '' : Number(e.target.value),
+                    }))
+                  }
+                  className="h-12 border-2 border-purple-100 focus:border-purple-400"
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="dept-grace-out" className="text-sm font-medium text-purple-600">
                   Check-out Grace (minutes)
                 </Label>
-              <Input
-                id="dept-grace-out"
-                type="number"
-                min={0}
-                max={180}
-                value={departmentTimingForm.checkOutGrace}
-                onChange={(e) =>
-                  setDepartmentTimingForm((prev) => ({
-                    ...prev,
-                    checkOutGrace: e.target.value === '' ? '' : Number(e.target.value),
-                  }))
-                }
-                className="h-12 border-2 border-purple-100 focus:border-purple-400"
-              />
+                <Input
+                  id="dept-grace-out"
+                  type="number"
+                  min={0}
+                  max={180}
+                  value={departmentTimingForm.checkOutGrace}
+                  onChange={(e) =>
+                    setDepartmentTimingForm((prev) => ({
+                      ...prev,
+                      checkOutGrace: e.target.value === '' ? '' : Number(e.target.value),
+                    }))
+                  }
+                  className="h-12 border-2 border-purple-100 focus:border-purple-400"
+                />
+              </div>
             </div>
-          </div>
 
             <div className="flex flex-wrap justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                setDepartmentTimingForm({
-                  department: '',
-                  startTime: globalTimingForm.startTime,
-                  endTime: globalTimingForm.endTime,
-                  checkInGrace: globalTimingForm.checkInGrace,
-                  checkOutGrace: globalTimingForm.checkOutGrace,
-                })
-              }
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  setDepartmentTimingForm({
+                    department: '',
+                    startTime: globalTimingForm.startTime,
+                    endTime: globalTimingForm.endTime,
+                    checkInGrace: globalTimingForm.checkInGrace,
+                    checkOutGrace: globalTimingForm.checkOutGrace,
+                  })
+                }
                 className="border-2 border-purple-200 text-purple-600 hover:bg-purple-50 dark:text-purple-300"
-            >
-              Reset
-            </Button>
+              >
+                Reset
+              </Button>
               <Button
                 onClick={handleDepartmentTimingSave}
                 disabled={officeFormLoading || !departmentTimingForm.department.trim()}
                 className="gap-2 bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 shadow-md"
               >
-              {officeFormLoading ? 'Saving...' : 'Save Department Timing'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+                {officeFormLoading ? 'Saving...' : 'Save Department Timing'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="shadow-xl border border-slate-100 dark:border-slate-800">
@@ -2053,9 +2052,9 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
         <CardContent>
           {officeTimings.length > 0 ? (
             <div className="grid gap-4">
-                  {officeTimings.map((timing) => {
-                    const isGlobalTiming = !timing.department;
-                    return (
+              {officeTimings.map((timing) => {
+                const isGlobalTiming = !timing.department;
+                return (
                   <div
                     key={timing.id}
                     className="group border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-gradient-to-r from-white to-slate-50 dark:from-slate-900 dark:to-slate-950 shadow-sm hover:shadow-lg transition-shadow"
@@ -2065,7 +2064,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                         {isGlobalTiming ? 'Global Schedule' : 'Department'}
                       </p>
                       <h3 className="text-xl font-semibold">
-                          {isGlobalTiming ? 'All Departments' : timing.department}
+                        {isGlobalTiming ? 'All Departments' : timing.department}
                       </h3>
                       <div className="mt-3 flex flex-wrap gap-3">
                         <Badge variant="secondary" className="bg-blue-50 text-blue-700">
@@ -2083,29 +2082,29 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
+                      <Button
+                        size="sm"
+                        variant="outline"
                         className="border-2 border-blue-200 text-blue-600 hover:bg-blue-50 dark:text-blue-300"
-                            onClick={() => handleDepartmentTimingEdit(timing)}
-                          >
-                            Edit
-                          </Button>
-                          {!isGlobalTiming && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
+                        onClick={() => handleDepartmentTimingEdit(timing)}
+                      >
+                        Edit
+                      </Button>
+                      {!isGlobalTiming && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           className="text-destructive hover:bg-red-50"
-                              onClick={() => handleDepartmentTimingDelete(timing)}
-                              disabled={officeFormLoading}
-                            >
-                              Remove
-                            </Button>
-                          )}
+                          onClick={() => handleDepartmentTimingDelete(timing)}
+                          disabled={officeFormLoading}
+                        >
+                          Remove
+                        </Button>
+                      )}
                     </div>
                   </div>
-                    );
-                  })}
+                );
+              })}
             </div>
           ) : (
             <div className="p-10 text-center">
@@ -2142,8 +2141,8 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
               <FileText className="h-4 w-4" />
               WFH Requests
               {getAdminPendingWfhCount() > 0 && (
-                <Badge 
-                  variant="destructive" 
+                <Badge
+                  variant="destructive"
                   className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs font-bold bg-red-500 text-white border-2 border-white dark:border-gray-800"
                 >
                   {getAdminPendingWfhCount()}
@@ -2188,13 +2187,12 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                               <div className="flex items-center gap-2">
                                 <User className="h-4 w-4 text-blue-600" />
                                 <span className="font-medium">{request.submittedBy}</span>
-                                <Badge 
-                                  variant="outline" 
-                                  className={`text-xs ${
-                                    request.role === 'hr' 
-                                      ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950' 
+                                <Badge
+                                  variant="outline"
+                                  className={`text-xs ${request.role === 'hr'
+                                      ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950'
                                       : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
-                                  }`}
+                                    }`}
                                 >
                                   {request.role === 'hr' ? 'HR' : 'Manager'}
                                 </Badge>
@@ -2309,59 +2307,58 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                         .filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter))
                         .sort((a, b) => new Date(b.processedAt || b.submittedAt).getTime() - new Date(a.processedAt || a.submittedAt).getTime())
                         .map((request) => (
-                        <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-2 flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <div className="flex items-center gap-2">
-                                  <User className="h-4 w-4 text-blue-600" />
-                                  <span className="font-medium">{request.submittedBy}</span>
-                                  <Badge 
-                                    variant="outline" 
-                                    className={`text-xs ${
-                                      request.role === 'hr' 
-                                        ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950' 
-                                        : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
-                                    }`}
-                                  >
-                                    {request.role === 'hr' ? 'HR' : 'Manager'}
-                                  </Badge>
+                          <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-2 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4 text-blue-600" />
+                                    <span className="font-medium">{request.submittedBy}</span>
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-xs ${request.role === 'hr'
+                                          ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950'
+                                          : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
+                                        }`}
+                                    >
+                                      {request.role === 'hr' ? 'HR' : 'Manager'}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Calendar className="h-4 w-4 text-green-600" />
+                                    <span className="text-sm">
+                                      {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
+                                    </span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
+                                    </Badge>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="h-4 w-4 text-green-600" />
-                                  <span className="text-sm">
-                                    {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
-                                  </span>
-                                  <Badge variant="outline" className="text-xs">
-                                    {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
-                                  </Badge>
+                                <p className="text-sm text-muted-foreground">{request.reason}</p>
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                  <span>Submitted: {formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
+                                  <span>Decision: {formatDateTimeIST(request.processedAt || request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
+                                  <span>Department: {request.department}</span>
                                 </div>
+                                {request.rejectionReason && (
+                                  <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
+                                    <p className="text-sm text-red-800 dark:text-red-200">
+                                      <strong>Rejection Reason:</strong> {request.rejectionReason}
+                                    </p>
+                                  </div>
+                                )}
                               </div>
-                              <p className="text-sm text-muted-foreground">{request.reason}</p>
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span>Submitted: {formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
-                                <span>Decision: {formatDateTimeIST(request.processedAt || request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
-                                <span>Department: {request.department}</span>
+                              <div className="flex items-center gap-2 ml-4">
+                                <Badge
+                                  variant={request.status === 'approved' ? 'default' : 'destructive'}
+                                  className={request.status === 'approved' ? 'bg-green-500' : ''}
+                                >
+                                  {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                                </Badge>
                               </div>
-                              {request.rejectionReason && (
-                                <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
-                                  <p className="text-sm text-red-800 dark:text-red-200">
-                                    <strong>Rejection Reason:</strong> {request.rejectionReason}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 ml-4">
-                              <Badge 
-                                variant={request.status === 'approved' ? 'default' : 'destructive'}
-                                className={request.status === 'approved' ? 'bg-green-500' : ''}
-                              >
-                                {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                              </Badge>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
@@ -2393,7 +2390,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
               Please provide a reason for rejecting this work from home request from HR/Manager.
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedWfhRequest && (
             <div className="space-y-4 py-4">
               <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border">
@@ -2401,13 +2398,12 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-blue-600" />
                     <span className="font-medium">{selectedWfhRequest.submittedBy}</span>
-                    <Badge 
-                      variant="outline" 
-                      className={`text-xs ${
-                        selectedWfhRequest.role === 'hr' 
-                          ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950' 
+                    <Badge
+                      variant="outline"
+                      className={`text-xs ${selectedWfhRequest.role === 'hr'
+                          ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950'
                           : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
-                      }`}
+                        }`}
                     >
                       {selectedWfhRequest.role === 'hr' ? 'HR' : 'Manager'}
                     </Badge>
@@ -2421,7 +2417,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                   <p className="text-sm text-muted-foreground">{selectedWfhRequest.reason}</p>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="admin-rejection-reason">Rejection Reason <span className="text-red-500">*</span></Label>
                 <Textarea
@@ -2430,16 +2426,16 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
                   rows={3}
                   className="resize-none"
                   onChange={(e) => {
-                    setSelectedWfhRequest(prev => prev ? {...prev, rejectionReason: e.target.value} : null);
+                    setSelectedWfhRequest(prev => prev ? { ...prev, rejectionReason: e.target.value } : null);
                   }}
                 />
               </div>
             </div>
           )}
-          
+
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setShowWfhRequestDialog(false);
                 setSelectedWfhRequest(null);
@@ -2448,7 +2444,7 @@ const [summaryModal, setSummaryModal] = useState<{ open: boolean; summary: strin
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               variant="destructive"
               onClick={() => {
                 if (selectedWfhRequest?.rejectionReason?.trim()) {
