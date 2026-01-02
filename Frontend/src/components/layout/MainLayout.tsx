@@ -272,10 +272,10 @@ const MainLayout: React.FC = () => {
         {/* Sidebar */}
         <aside
           className={`${
-            sidebarOpen ? 'w-64' : 'w-20'
-          } hidden lg:flex flex-col border-r bg-gradient-to-b from-card via-card/95 to-card/90 backdrop-blur-sm transition-all duration-300 shadow-lg overflow-hidden`}
+            sidebarOpen ? 'w-64' : 'w-24'
+          } hidden lg:flex flex-col border-r bg-white dark:bg-slate-950 transition-all duration-300 shadow-sm overflow-hidden`}
         >
-          <nav className="flex-1 space-y-2 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+          <nav className="flex-1 space-y-1 p-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
             {navigationItems.map((item, index) => {
               const isActive = isNavItemActive(item.path);
               return (
@@ -283,54 +283,57 @@ const MainLayout: React.FC = () => {
                 key={item.path}
                 to={item.path}
                 end={!item.path.includes('/chat')} // Don't use end for chat routes
-                className={`group relative flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-300 overflow-hidden ${
+                title={!sidebarOpen ? item.label : ''}
+                className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 overflow-hidden ${
                   isActive 
-                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/50 scale-105' 
-                    : 'text-muted-foreground hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950/50 dark:hover:to-indigo-950/50 hover:text-foreground hover:scale-105 hover:shadow-md'
+                    ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-medium shadow-sm' 
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-900 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
                 {/* Active indicator line */}
-                <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-yellow-400 to-orange-500 transition-all duration-300 ${
+                <div className={`absolute left-0 top-0 bottom-0 w-1 bg-blue-500 transition-all duration-200 ${
                   isActive ? 'opacity-100' : 'opacity-0'
                 }`} />
                 
-                {/* Icon with background */}
-                <div className={`relative flex items-center justify-center h-9 w-9 rounded-lg transition-all duration-300 ${
-                  sidebarOpen ? '' : 'mx-auto'
+                {/* Icon */}
+                <div className={`relative flex items-center justify-center h-8 w-8 rounded-md flex-shrink-0 transition-all duration-200 ${
+                  isActive 
+                    ? 'bg-blue-100 dark:bg-blue-900/50' 
+                    : 'group-hover:bg-gray-100 dark:group-hover:bg-slate-800'
                 }`}>
-                  <item.icon className="h-5 w-5 flex-shrink-0 relative z-10" />
-                  <div className="absolute inset-0 rounded-lg bg-white/10 dark:bg-white/5 group-hover:bg-white/20 dark:group-hover:bg-white/10 transition-all duration-300" />
+                  <item.icon className={`h-5 w-5 relative z-10 transition-colors duration-200 ${
+                    isActive 
+                      ? 'text-blue-600 dark:text-blue-400' 
+                      : 'text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-200'
+                  }`} />
                   {item.path.includes('/chat') && <ChatNotificationBadge />}
                 </div>
                 
                 {/* Label with animation */}
                 {sidebarOpen && (
-                  <span className="font-medium text-sm tracking-wide transition-all duration-300">
+                  <span className="font-medium text-sm transition-all duration-200 truncate">
                     {item.label}
                   </span>
                 )}
-                
-                {/* Hover effect overlay */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
               </NavLink>
             )
             })}
           </nav>
           
           {/* Sidebar Footer */}
-          <div className="flex-shrink-0 p-4 border-t border-border/50 bg-gradient-to-b from-card via-card/95 to-card/90">
-            <div className={`rounded-xl bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 p-4 backdrop-blur-sm border border-blue-500/20 ${!sidebarOpen ? 'flex justify-center' : ''}`}>
-              <div className={`flex items-center gap-3 ${!sidebarOpen ? 'justify-center' : 'mb-2'}`}>
-                <Avatar className="h-8 w-8 border-2 border-blue-200 dark:border-blue-800 shadow-md">
+          <div className="flex-shrink-0 p-3 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/50">
+            <div className={`rounded-lg p-2.5 ${!sidebarOpen ? 'flex justify-center' : ''}`}>
+              <div className={`flex items-center gap-2.5 ${!sidebarOpen ? 'justify-center' : ''}`}>
+                <Avatar className="h-8 w-8 border border-gray-200 dark:border-slate-700 shadow-sm flex-shrink-0">
                   <AvatarImage src={user.profilePhoto} alt={user.name} className="object-cover" />
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-xs">
+                  <AvatarFallback className="bg-blue-500 text-white font-bold text-xs">
                     {user.name.split(' ').map(n => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
                 {sidebarOpen && (
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{user.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{t.roles[user.role]}</p>
+                    <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">{user.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{t.roles[user.role]}</p>
                   </div>
                 )}
               </div>
@@ -342,8 +345,8 @@ const MainLayout: React.FC = () => {
         {mobileMenuOpen && (
           <div className="fixed inset-0 z-40 lg:hidden">
             <div className="fixed inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
-            <aside className="fixed left-0 top-16 bottom-0 w-64 border-r bg-gradient-to-b from-card via-card/95 to-card/90 backdrop-blur-sm shadow-2xl animate-slide-in flex flex-col overflow-hidden">
-              <nav className="flex-1 space-y-2 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+            <aside className="fixed left-0 top-16 bottom-0 w-64 border-r bg-white dark:bg-slate-950 shadow-lg flex flex-col overflow-hidden animate-slide-in">
+              <nav className="flex-1 space-y-1 p-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
                 {navigationItems.map((item) => {
                   const isActive = isNavItemActive(item.path);
                   return (
@@ -352,46 +355,50 @@ const MainLayout: React.FC = () => {
                     to={item.path}
                     end={!item.path.includes('/chat')} // Don't use end for chat routes
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`group relative flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-300 overflow-hidden ${
+                    className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 overflow-hidden ${
                       isActive 
-                        ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/50 scale-105' 
-                        : 'text-muted-foreground hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950/50 dark:hover:to-indigo-950/50 hover:text-foreground hover:scale-105 hover:shadow-md'
+                        ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-medium shadow-sm' 
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-900 hover:text-gray-900 dark:hover:text-gray-200'
                     }`}
                   >
                     {/* Active indicator line */}
-                    <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-yellow-400 to-orange-500 transition-all duration-300 ${
+                    <div className={`absolute left-0 top-0 bottom-0 w-1 bg-blue-500 transition-all duration-200 ${
                       isActive ? 'opacity-100' : 'opacity-0'
                     }`} />
                     
-                    {/* Icon with background */}
-                    <div className="relative flex items-center justify-center h-9 w-9 rounded-lg transition-all duration-300">
-                      <item.icon className="h-5 w-5 flex-shrink-0 relative z-10" />
-                      <div className="absolute inset-0 rounded-lg bg-white/10 dark:bg-white/5 group-hover:bg-white/20 dark:group-hover:bg-white/10 transition-all duration-300" />
+                    {/* Icon */}
+                    <div className={`relative flex items-center justify-center h-8 w-8 rounded-md flex-shrink-0 transition-all duration-200 ${
+                      isActive 
+                        ? 'bg-blue-100 dark:bg-blue-900/50' 
+                        : 'group-hover:bg-gray-100 dark:group-hover:bg-slate-800'
+                    }`}>
+                      <item.icon className={`h-5 w-5 relative z-10 transition-colors duration-200 ${
+                        isActive 
+                          ? 'text-blue-600 dark:text-blue-400' 
+                          : 'text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-200'
+                      }`} />
                       {item.path.includes('/chat') && <ChatNotificationBadge />}
                     </div>
                     
-                    <span className="font-medium text-sm tracking-wide transition-all duration-300">{item.label}</span>
-                    
-                    {/* Hover effect overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                    <span className="font-medium text-sm transition-all duration-200 truncate">{item.label}</span>
                   </NavLink>
                 )
                 })}
               </nav>
               
               {/* Mobile Sidebar Footer */}
-              <div className="flex-shrink-0 p-4 border-t border-border/50 bg-gradient-to-b from-card via-card/95 to-card/90">
-                <div className="rounded-xl bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 p-4 backdrop-blur-sm border border-blue-500/20">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8 border-2 border-blue-200 dark:border-blue-800 shadow-md">
+              <div className="flex-shrink-0 p-3 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/50">
+                <div className="rounded-lg p-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <Avatar className="h-8 w-8 border border-gray-200 dark:border-slate-700 shadow-sm flex-shrink-0">
                       <AvatarImage src={user.profilePhoto} alt={user.name} className="object-cover" />
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-xs">
+                      <AvatarFallback className="bg-blue-500 text-white font-bold text-xs">
                         {user.name.split(' ').map(n => n[0]).join('')}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">{user.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{t.roles[user.role]}</p>
+                      <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">{user.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{t.roles[user.role]}</p>
                     </div>
                   </div>
                 </div>

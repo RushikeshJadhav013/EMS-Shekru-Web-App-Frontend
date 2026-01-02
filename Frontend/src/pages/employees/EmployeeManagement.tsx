@@ -28,15 +28,15 @@ import {
   User as UserIcon,
   FileText
 } from 'lucide-react';
-import { User } from '@/types';
+import { User, type UserRole } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDateIST } from '@/utils/timezone';
-import { apiService, type Employee, type EmployeeData } from '@/lib/api';
+import { apiService, type EmployeeData } from '@/lib/api';
 import { useFieldValidation } from '@/hooks/useFieldValidation';
 
 type ShiftType = 'general' | 'morning' | 'afternoon' | 'night' | 'rotational';
 
-interface Employee extends User {
+interface EmployeeRecord extends User {
   employeeId: string;
   photoUrl?: string;
   resignationDate?: string;
@@ -265,19 +265,18 @@ const formatDuplicateErrorMessage = (message: string, employeeId?: string, email
 
 export default function EmployeeManagement() {
   const { t } = useLanguage();
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
-  const [managers, setManagers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [selectedRole, setSelectedRole] = useState('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRecord | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [viewEmployee, setViewEmployee] = useState<Employee | null>(null);
-  const [formData, setFormData] = useState<Partial<Employee>>({
+  const [viewEmployee, setViewEmployee] = useState<EmployeeRecord | null>(null);
+  const [formData, setFormData] = useState<Partial<EmployeeRecord>>({
     name: '',
     email: '',
     employeeId: '',
@@ -337,7 +336,7 @@ export default function EmployeeManagement() {
 
   // Delete confirmation states
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+  const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeRecord | null>(null);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -412,29 +411,14 @@ export default function EmployeeManagement() {
       }
     };
 
-    const fetchManagers = async () => {
-      try {
-        const managerData = await apiService.getDepartmentManagers();
-        setManagers(managerData);
-      } catch (error) {
-        console.error('Failed to fetch managers:', error);
-        toast({
-          title: 'Warning',
-          description: 'Failed to load managers.',
-          variant: 'destructive'
-        });
-      }
-    };
-
     fetchEmployees();
     fetchDepartments();
-    fetchManagers();
   }, []);
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(emp => {
     // ✅ Exclude Admin users - Admin is the boss and should not appear in employee lists
-    if (emp.role === 'Admin' || emp.role === 'admin') {
+    if (emp.role === 'admin') {
       return false;
     }
     
@@ -667,7 +651,7 @@ const formatAadharInput = (value: string) => {
     setGenderError('');
     
     // Validate required fields based on role
-    const isHROrManager = formData.role === 'HR' || formData.role === 'Manager';
+    const isHROrManager = formData.role === 'hr' || formData.role === 'manager';
     const departmentValid = isHROrManager ? selectedDepartments.length > 0 : formData.department;
     
     if (!formData.name || !formData.email || !formData.employeeId || !departmentValid || !formData.panCard || !formData.aadharCard || !formData.shift || !formData.employeeType || !formData.gender) {
@@ -734,7 +718,7 @@ const formatAadharInput = (value: string) => {
     setIsCreating(true);
     try {
       // Handle department assignment based on role
-      const isHROrManager = formData.role === 'HR' || formData.role === 'Manager';
+      const isHROrManager = formData.role === 'hr' || formData.role === 'manager';
       const departmentValue = isHROrManager ? selectedDepartments.join(',') : formData.department;
 
       // Combine address fields
@@ -762,7 +746,6 @@ const formatAadharInput = (value: string) => {
         aadhar_card: formData.aadharCard,
         shift_type: formData.shift,
         employee_type: formData.employeeType,
-        manager_id: formData.managerId,
         profile_photo: imageFile || undefined
       };
 
@@ -815,7 +798,7 @@ const formatAadharInput = (value: string) => {
     setAadharCardDuplicateError('');
 
     // Validate required fields based on role
-    const isHROrManager = formData.role === 'HR' || formData.role === 'Manager';
+    const isHROrManager = formData.role === 'hr' || formData.role === 'manager';
     const departmentValid = isHROrManager ? selectedDepartments.length > 0 : formData.department;
 
     if (!formData.name || !formData.email || !formData.employeeId || !departmentValid || !formData.panCard || !formData.aadharCard || !formData.shift) {
@@ -908,7 +891,7 @@ const formatAadharInput = (value: string) => {
       console.log('Updating employee with user_id:', userIdToUpdate); // Debug log
 
       // Handle department assignment based on role
-      const isHROrManager = formData.role === 'HR' || formData.role === 'Manager';
+      const isHROrManager = formData.role === 'hr' || formData.role === 'manager';
       const departmentValue = isHROrManager ? selectedDepartments.join(',') : formData.department;
 
       // Combine address fields
@@ -936,7 +919,6 @@ const formatAadharInput = (value: string) => {
         aadhar_card: formData.aadharCard,
         shift_type: formData.shift,
         employee_type: formData.employeeType,
-        manager_id: formData.managerId,
         profile_photo: imageFile || formData.profilePhoto || undefined, // Pass the file if available
         is_verified: true,
         created_at: formData.createdAt || new Date().toISOString()
@@ -1052,7 +1034,7 @@ const formatAadharInput = (value: string) => {
     }
   };
 
-  const openViewDialog = (employee: Employee) => {
+  const openViewDialog = (employee: EmployeeRecord) => {
     setViewEmployee(employee);
     setIsViewDialogOpen(true);
   };
@@ -1110,7 +1092,7 @@ const formatAadharInput = (value: string) => {
     setBulkSummary([]);
 
     const summary: BulkUploadResult[] = [];
-    const createdEmployees: Employee[] = [];
+    const createdEmployees: EmployeeRecord[] = [];
     const existingEmployeeIds = new Set(
       employees.map((emp) => emp.employeeId?.toLowerCase()).filter(Boolean) as string[]
     );
@@ -1146,23 +1128,46 @@ const formatAadharInput = (value: string) => {
       const phoneFormatted = phoneDigits ? `${countryCode}-${phoneDigits}` : '';
 
       const errors: string[] = [];
-      if (existingEmployeeIds.has(employeeIdKey) || batchEmployeeIds.has(employeeIdKey)) {
+      
+      // REQUIRED FIELDS - Must be present and valid
+      if (!name) errors.push('Name is required');
+      if (!email) errors.push('Email is required');
+      if (email && !isValidEmail(email)) errors.push('Email format is invalid');
+      if (!department) errors.push('Department is required');
+      
+      // Check for duplicates only if provided
+      if (employeeId && (existingEmployeeIds.has(employeeIdKey) || batchEmployeeIds.has(employeeIdKey))) {
         errors.push('Duplicate employee ID found');
       }
       if (email && (existingEmails.has(emailKey) || batchEmails.has(emailKey))) {
         errors.push('Duplicate email found');
       }
-      if (!employeeId) errors.push('Employee ID is required');
-      if (!name) errors.push('Name is required');
-      if (!email || !isValidEmail(email)) errors.push('Valid email is required');
-      if (!department) errors.push('Department is required');
-      if (!panCard || !isValidPan(panCard.toUpperCase())) errors.push('Valid PAN card is required');
-      if (!aadharCard || !isValidAadhar(aadharCard)) errors.push('Valid Aadhar card is required');
-      if (!shift || !['day', 'night', 'rotating'].includes(shift.toLowerCase())) {
-        errors.push('Shift must be day, night, or rotating');
+      
+      // OPTIONAL FIELDS - Only validate if provided (not empty)
+      // PAN Card - optional, but if provided must be valid
+      if (panCard && !isValidPan(panCard.toUpperCase())) {
+        errors.push('PAN card format is invalid (must be like ABCDE1234F)');
       }
-      if (!employeeType) errors.push('Employee type is required');
-      if (!isValidPhone(phoneDigits, countryCode)) errors.push('Phone number is invalid');
+      
+      // Aadhar Card - optional, but if provided must be valid
+      if (aadharCard && !isValidAadhar(aadharCard)) {
+        errors.push('Aadhar card format is invalid (must be like 1234-5678-9012)');
+      }
+      
+      // Shift - optional, but if provided must be valid
+      if (shift && !['general', 'morning', 'afternoon', 'night', 'rotational'].includes(shift.toLowerCase())) {
+        errors.push('Shift must be general, morning, afternoon, night, or rotational');
+      }
+      
+      // Employee Type - optional, but if provided must be valid
+      if (employeeType && !['contract', 'permanent'].includes(employeeType.toLowerCase())) {
+        errors.push('Employee type must be contract or permanent');
+      }
+      
+      // Phone - optional, but if provided must be valid
+      if (phoneDigits && !isValidPhone(phoneDigits, countryCode)) {
+        errors.push('Phone number format is invalid');
+      }
 
       if (errors.length > 0) {
         summary.push({
@@ -1180,16 +1185,16 @@ const formatAadharInput = (value: string) => {
         email,
         employee_id: employeeId,
         department,
-        designation,
-        phone: phoneFormatted,
-        address,
+        designation: designation || undefined,
+        phone: phoneFormatted || undefined,
+        address: address || undefined,
         role,
-        gender,
+        gender: gender || undefined,
         resignation_date: resignationDate || undefined,
-        pan_card: panCard.toUpperCase(),
-        aadhar_card: aadharCard,
-        shift_type: shift.toLowerCase(),
-        employee_type: employeeType,
+        pan_card: panCard || undefined,
+        aadhar_card: aadharCard || undefined,
+        shift_type: shift || undefined,
+        employee_type: employeeType || undefined,
       };
 
       try {
@@ -1406,8 +1411,7 @@ const formatAadharInput = (value: string) => {
       countryCode: '+91',
       panCard: '',
       aadharCard: '',
-      shift: undefined,
-      managerId: undefined
+      shift: undefined
     });
     setSelectedDepartments([]);
     setAddressFields({
@@ -1429,7 +1433,7 @@ const formatAadharInput = (value: string) => {
     setIsCreateDialogOpen(true);
   };
 
-  const openEditDialog = (employee: Employee) => {
+  const openEditDialog = (employee: EmployeeRecord) => {
     console.log('=== OPEN EDIT DIALOG ===');
     console.log('Employee data:', employee);
     
@@ -1451,7 +1455,6 @@ const formatAadharInput = (value: string) => {
     const role = String(emp['role'] ?? '');
     const designation = String(emp['designation'] ?? '');
     const address = String(emp['address'] ?? '');
-    const managerId = emp['managerId'] ?? emp['manager_id'] ?? undefined;
     
     // Prefer explicit joining_date if provided by API, otherwise fall back to created_at if available
     const rawJoining = emp['joiningDate'] ?? emp['joining_date'] ?? emp['createdAt'] ?? emp['created_at'] ?? '';
@@ -1510,7 +1513,7 @@ const formatAadharInput = (value: string) => {
     }
 
     // Handle multiple departments for HR and Manager roles
-    const isHROrManager = role === 'HR' || role === 'Manager';
+    const isHROrManager = role === 'hr' || role === 'manager';
     const departmentList = isHROrManager && department ? department.split(',').map(d => d.trim()) : [];
     
     // Parse address into individual fields
@@ -1543,9 +1546,8 @@ const formatAadharInput = (value: string) => {
       shift: shift as ShiftType | undefined,
       countryCode,
       phone: formatPhoneNumber(phone.replace(/[^0-9]/g, ''), countryCode),
-      photoUrl,
-      managerId
-    } as Partial<Employee>);
+      photoUrl
+    } as Partial<EmployeeRecord>);
 
     // Set selected departments for HR/Manager roles
     setSelectedDepartments(departmentList);
@@ -1606,118 +1608,176 @@ const formatAadharInput = (value: string) => {
               <DialogTrigger asChild>
                 <Button
                   variant="outline"
-                  className="group gap-2 border-blue-200 text-slate-700 bg-white/70 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:border-transparent shadow-sm hover:shadow-lg transition-all dark:text-slate-100 dark:bg-slate-900/60 dark:border-slate-700"
+                  className="group gap-2 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:border-transparent shadow-sm hover:shadow-lg transition-all"
                 >
-                  <Upload className="h-4 w-4 text-emerald-600 transition-colors group-hover:text-white" />
+                  <Upload className="h-4 w-4 transition-colors group-hover:text-white" />
                   Bulk Upload
                 </Button>
               </DialogTrigger>
-              <DialogContent className="w-[90vw] max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
-                <DialogHeader>
-                  <DialogTitle className="text-xl font-semibold">Bulk Upload Employees</DialogTitle>
-                  <DialogDescription>Upload multiple employees at once using CSV format</DialogDescription>
+              <DialogContent className="w-[90vw] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col bg-white border-0 shadow-2xl rounded-2xl">
+                <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-100 bg-gradient-to-r from-emerald-50 to-teal-50">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+                      <FileSpreadsheet className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-2xl font-bold text-gray-900">Bulk Upload Employees</DialogTitle>
+                      <DialogDescription className="text-gray-600 mt-1">Import multiple employees at once using CSV format</DialogDescription>
+                    </div>
+                  </div>
                 </DialogHeader>
-                  <div className="space-y-4 overflow-y-auto pr-2" style={{ maxHeight: '55vh' }}>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <Label>CSV Format</Label>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          EmployeeID, Name, Email, Department, Role, Designation, Phone, Address, JoiningDate, Status, Gender, EmployeeType, ResignationDate, PANCard, AadharCard, Shift
-                        </p>
-                      </div>
-                      <Button
-                        onClick={downloadCSVTemplate}
-                        variant="outline"
-                        className="gap-2 border-green-200 text-green-700 bg-green-50 hover:bg-green-100 dark:bg-green-950 dark:text-green-300 dark:border-green-800 shadow-sm"
-                      >
-                        <Download className="h-4 w-4" />
-                        Download Template
-                      </Button>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="bulk-file">CSV File</Label>
-                      <Input
-                        id="bulk-file"
-                        type="file"
-                        accept=".csv"
-                        onChange={handleBulkFileChange}
-                        ref={bulkFileInputRef}
-                      />
-                      {bulkFileName && (
-                        <p className="text-sm text-muted-foreground">Selected file: {bulkFileName}</p>
-                      )}
-                    </div>
-                    <Textarea
-                      placeholder="Paste CSV data here..."
-                      value={bulkData}
-                      onChange={(e) => setBulkData(e.target.value)}
-                      rows={10}
-                    />
-
-                    {bulkSummary.length > 0 && (
-                      <div className="border rounded-lg p-4 space-y-3 bg-slate-50 dark:bg-slate-900">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div>
-                            <p className="font-semibold text-sm">Import Summary</p>
-                            <p className="text-xs text-muted-foreground">
-                              {bulkSuccessCount} succeeded • {bulkFailedCount} failed
+                  <div className="space-y-5 overflow-y-auto px-6 py-5" style={{ maxHeight: 'calc(90vh - 200px)' }}>
+                    {/* Format Info Card */}
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-4 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <FileText className="h-4 w-4 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-900 text-sm">CSV Format Guide</p>
+                          <div className="text-sm text-gray-700 mt-2 space-y-1.5">
+                            <div className="flex items-start gap-2">
+                              <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold flex-shrink-0 mt-0.5">*</span>
+                              <span><strong>Required:</strong> EmployeeID, Name, Email, Department</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-gray-300 text-white text-xs font-bold flex-shrink-0 mt-0.5">○</span>
+                              <span><strong>Optional:</strong> Role, Designation, Phone, Address, JoiningDate, Status, Gender, EmployeeType, ResignationDate, PANCard, AadharCard, Shift</span>
+                            </div>
+                          </div>
+                          <div className="mt-3 p-3 bg-white rounded-lg border border-blue-200">
+                            <p className="text-xs text-blue-700 flex items-start gap-2">
+                              <span className="text-lg leading-none">💡</span>
+                              <span><strong>Pro Tip:</strong> Leave optional fields empty if not available. Only invalid data will be rejected.</span>
                             </p>
                           </div>
-                          <div className="flex gap-2">
-                            <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-                              Success: {bulkSuccessCount}
-                            </Badge>
-                            <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">
-                              Failed: {bulkFailedCount}
-                            </Badge>
-                          </div>
                         </div>
-                        <div className="max-h-60 overflow-y-auto rounded border bg-white dark:bg-slate-950">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>#</TableHead>
-                                <TableHead>Employee ID</TableHead>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Details</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {bulkSummary.map((item) => (
-                                <TableRow key={`${item.row}-${item.employeeId}`}>
-                                  <TableCell>{item.row}</TableCell>
-                                  <TableCell className="font-medium">{item.employeeId}</TableCell>
-                                  <TableCell>{item.name || '-'}</TableCell>
-                                  <TableCell>
-                                    <Badge
-                                      className={
-                                        item.status === 'success'
-                                          ? 'bg-green-500 text-white'
-                                          : 'bg-red-500 text-white'
-                                      }
-                                    >
-                                      {item.status === 'success' ? 'Imported' : 'Failed'}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell className="text-sm text-muted-foreground">
-                                    {item.message || '-'}
-                                  </TableCell>
+                        <Button
+                          onClick={downloadCSVTemplate}
+                          variant="outline"
+                          className="gap-2 border-green-300 text-green-700 bg-green-50 hover:bg-green-100 hover:border-green-400 shadow-sm flex-shrink-0 font-medium"
+                        >
+                          <Download className="h-4 w-4" />
+                          Template
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* File Upload Section */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">1</div>
+                        <Label htmlFor="bulk-file" className="font-semibold text-gray-900">Upload CSV File</Label>
+                      </div>
+                      <div className="relative">
+                        <Input
+                          id="bulk-file"
+                          type="file"
+                          accept=".csv"
+                          onChange={handleBulkFileChange}
+                          ref={bulkFileInputRef}
+                          className="border-2 border-dashed border-gray-300 hover:border-purple-400 rounded-xl p-3 cursor-pointer transition-colors bg-gray-50 hover:bg-purple-50"
+                        />
+                      </div>
+                      {bulkFileName && (
+                        <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs">✓</div>
+                          <p className="text-sm text-green-700 font-medium">{bulkFileName}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Paste Data Section */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-white text-sm font-bold">2</div>
+                        <Label htmlFor="bulk-textarea" className="font-semibold text-gray-900">Or Paste CSV Data</Label>
+                      </div>
+                      <Textarea
+                        id="bulk-textarea"
+                        placeholder="Paste your CSV data here (EmployeeID,Name,Email,Department,...)"
+                        value={bulkData}
+                        onChange={(e) => setBulkData(e.target.value)}
+                        rows={8}
+                        className="border-2 border-gray-200 hover:border-orange-300 focus:border-orange-400 rounded-xl resize-none transition-colors bg-gray-50 focus:bg-white"
+                      />
+                    </div>
+
+                    {/* Import Summary */}
+                    {bulkSummary.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="h-6 w-6 rounded-full bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center text-white text-sm font-bold">3</div>
+                          <p className="font-semibold text-gray-900">Import Results</p>
+                        </div>
+                        <div className="border-2 border-gray-200 rounded-xl overflow-hidden bg-white">
+                          <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                            <div>
+                              <p className="font-semibold text-gray-900 text-sm">Summary</p>
+                              <p className="text-xs text-gray-600 mt-0.5">
+                                {bulkSuccessCount} succeeded • {bulkFailedCount} failed
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-md">
+                                ✓ {bulkSuccessCount}
+                              </Badge>
+                              <Badge className="bg-gradient-to-r from-red-500 to-rose-600 text-white border-0 shadow-md">
+                                ✕ {bulkFailedCount}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="max-h-64 overflow-y-auto">
+                            <Table>
+                              <TableHeader className="bg-gray-50 sticky top-0">
+                                <TableRow className="border-b border-gray-200 hover:bg-gray-50">
+                                  <TableHead className="text-gray-700 font-semibold">#</TableHead>
+                                  <TableHead className="text-gray-700 font-semibold">Employee ID</TableHead>
+                                  <TableHead className="text-gray-700 font-semibold">Name</TableHead>
+                                  <TableHead className="text-gray-700 font-semibold">Status</TableHead>
+                                  <TableHead className="text-gray-700 font-semibold">Details</TableHead>
                                 </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
+                              </TableHeader>
+                              <TableBody>
+                                {bulkSummary.map((item) => (
+                                  <TableRow key={`${item.row}-${item.employeeId}`} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                    <TableCell className="text-gray-600 text-sm">{item.row}</TableCell>
+                                    <TableCell className="font-semibold text-gray-900">{item.employeeId}</TableCell>
+                                    <TableCell className="text-gray-700">{item.name || '-'}</TableCell>
+                                    <TableCell>
+                                      <Badge
+                                        className={
+                                          item.status === 'success'
+                                            ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-sm'
+                                            : 'bg-gradient-to-r from-red-500 to-rose-600 text-white border-0 shadow-sm'
+                                        }
+                                      >
+                                        {item.status === 'success' ? '✓ Imported' : '✕ Failed'}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-xs text-gray-600 max-w-xs truncate">
+                                      {item.message || '-'}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
                         </div>
                       </div>
                     )}
                   </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsBulkUploadOpen(false)}>
+                <DialogFooter className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex gap-3">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsBulkUploadOpen(false)}
+                    className="border-gray-300 text-gray-700 hover:bg-gray-100 font-medium"
+                  >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleBulkUpload}
-                    className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                    className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg font-medium"
                     disabled={isBulkUploading}
                   >
                     {isBulkUploading ? (
@@ -1728,7 +1788,7 @@ const formatAadharInput = (value: string) => {
                     ) : (
                       <>
                         <FileSpreadsheet className="h-4 w-4" />
-                        Import
+                        Import Employees
                       </>
                     )}
                   </Button>
@@ -1875,7 +1935,15 @@ const formatAadharInput = (value: string) => {
                             designation = 'Manager';
                           }
                           
-                          setFormData((prev) => ({ ...prev, role: value as string, designation }));
+                          // Convert to proper format for UserRole type
+                          let roleValue: UserRole = 'employee';
+                          if (value === 'Admin') roleValue = 'admin';
+                          else if (value === 'HR') roleValue = 'hr';
+                          else if (value === 'Manager') roleValue = 'manager';
+                          else if (value === 'TeamLead') roleValue = 'team_lead';
+                          else if (value === 'Employee') roleValue = 'employee';
+                          
+                          setFormData((prev) => ({ ...prev, role: roleValue, designation }));
                           // Reset department selections when role changes
                           if (value === 'HR' || value === 'Manager') {
                             setSelectedDepartments([]);
@@ -1886,20 +1954,62 @@ const formatAadharInput = (value: string) => {
                         }}
                       >
                         <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select Role" />
+                          {formData.role ? (
+                            <div className="flex items-center gap-2">
+                              {formData.role === 'admin' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-red-500 to-rose-600"></div>}
+                              {formData.role === 'hr' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-600"></div>}
+                              {formData.role === 'manager' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-600"></div>}
+                              {formData.role === 'team_lead' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600"></div>}
+                              {formData.role === 'employee' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-600"></div>}
+                              <span>
+                                {formData.role === 'admin' && 'Admin'}
+                                {formData.role === 'hr' && 'HR'}
+                                {formData.role === 'manager' && 'Manager'}
+                                {formData.role === 'team_lead' && 'Team Lead'}
+                                {formData.role === 'employee' && 'Employee'}
+                              </span>
+                            </div>
+                          ) : (
+                            <SelectValue placeholder="Select Role" />
+                          )}
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Admin">Admin</SelectItem>
-                          <SelectItem value="HR">HR</SelectItem>
-                          <SelectItem value="Manager">Manager</SelectItem>
-                          <SelectItem value="TeamLead">Team Lead</SelectItem>
-                          <SelectItem value="Employee">Employee</SelectItem>
+                          <SelectItem value="Admin">
+                            <div className="flex items-center gap-2">
+                              {formData.role === 'admin' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-red-500 to-rose-600"></div>}
+                              Admin
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="HR">
+                            <div className="flex items-center gap-2">
+                              {formData.role === 'hr' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-600"></div>}
+                              HR
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="Manager">
+                            <div className="flex items-center gap-2">
+                              {formData.role === 'manager' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-600"></div>}
+                              Manager
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="TeamLead">
+                            <div className="flex items-center gap-2">
+                              {formData.role === 'team_lead' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600"></div>}
+                              Team Lead
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="Employee">
+                            <div className="flex items-center gap-2">
+                              {formData.role === 'employee' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-600"></div>}
+                              Employee
+                            </div>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     
                     {/* Single Department Selection for other roles */}
-                    {formData.role !== 'HR' && formData.role !== 'Manager' && (
+                    {formData.role !== 'hr' && formData.role !== 'manager' && (
                       <div>
                         <Label htmlFor="create-department">Department *</Label>
                         <Select
@@ -1936,7 +2046,7 @@ const formatAadharInput = (value: string) => {
                     )}
                     
                     {/* Multiple Department Selection for HR and Manager */}
-                    {(formData.role === 'HR' || formData.role === 'Manager') && (
+                    {(formData.role === 'hr' || formData.role === 'manager') && (
                       <div>
                         <div className="flex items-center justify-between mb-2">
                           <Label>Assigned Departments *</Label>
@@ -1991,7 +2101,7 @@ const formatAadharInput = (value: string) => {
                     )}
                     
                     {/* Designation Field - Hide for HR and Manager roles */}
-                    {formData.role !== 'HR' && formData.role !== 'Manager' && (
+                    {formData.role !== 'hr' && formData.role !== 'manager' && (
                       <div>
                         <Label htmlFor="create-designation">Designation</Label>
                         <Input
@@ -2003,31 +2113,7 @@ const formatAadharInput = (value: string) => {
                       </div>
                     )}
                     
-                    {/* Manager Selection - Show for all roles except Admin */}
-                    {formData.role !== 'Admin' && (
-                      <div>
-                        <Label htmlFor="create-manager">Reporting Manager</Label>
-                        <Select
-                          value={formData.managerId?.toString() || ''}
-                          onValueChange={(value) => setFormData((prev) => ({ ...prev, managerId: value && value !== 'none' ? parseInt(value) : undefined }))}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="Select Manager (Optional)" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No Manager</SelectItem>
-                            {managers.map((manager) => (
-                              <SelectItem key={manager.id} value={manager.id.toString()}>
-                                {manager.name} ({manager.role}) - {manager.department || 'No Dept'}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Available managers: HR, Manager, and Team Lead roles
-                        </p>
-                      </div>
-                    )}
+
                     <div>
                       <Label htmlFor="create-joiningDate">Joining Date <span className="text-red-500">*</span></Label>
                       <Input
@@ -2297,25 +2383,47 @@ const formatAadharInput = (value: string) => {
               </div>
             </div>
             <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-              <SelectTrigger className="w-full sm:w-44 h-11 bg-white dark:bg-gray-950 border-2 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
-                <Filter className="h-4 w-4 mr-2 text-blue-600" />
+              <SelectTrigger className={`w-full sm:w-44 h-11 bg-white dark:bg-gray-950 border-2 transition-all duration-300 hover:shadow-md flex-shrink-0 ${
+                selectedDepartment === 'all' 
+                  ? 'border-blue-400 dark:border-blue-600 hover:border-blue-400 dark:hover:border-blue-600' 
+                  : 'hover:border-blue-300 dark:hover:border-blue-700 border-gray-200 dark:border-gray-800'
+              }`}>
+                <Filter className={`h-4 w-4 mr-2 ${
+                  selectedDepartment === 'all' 
+                    ? 'text-blue-600' 
+                    : 'text-gray-600 dark:text-gray-400'
+                }`} />
                 <SelectValue placeholder="Department" />
               </SelectTrigger>
               <SelectContent className="border-2 shadow-2xl">
                 <SelectItem value="all" className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors font-medium">
                   <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600"></div>
+                    {selectedDepartment === 'all' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600"></div>}
                     All Departments
                   </div>
                 </SelectItem>
-                {departments.map(dept => (
-                  <SelectItem key={dept} value={dept} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-gradient-to-r from-slate-400 to-gray-600"></div>
-                      {dept}
-                    </div>
-                  </SelectItem>
-                ))}
+                {departments.map((dept, index) => {
+                  const departmentColors = [
+                    'from-red-500 to-rose-600',
+                    'from-orange-500 to-amber-600',
+                    'from-yellow-500 to-lime-600',
+                    'from-green-500 to-emerald-600',
+                    'from-cyan-500 to-blue-600',
+                    'from-purple-500 to-pink-600',
+                    'from-indigo-500 to-violet-600',
+                    'from-slate-500 to-gray-600',
+                  ];
+                  const colorClass = departmentColors[index % departmentColors.length];
+                  
+                  return (
+                    <SelectItem key={dept} value={dept} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                      <div className="flex items-center gap-2">
+                        {selectedDepartment === dept && <div className={`h-2 w-2 rounded-full bg-gradient-to-r ${colorClass}`}></div>}
+                        {dept}
+                      </div>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
             <Select value={selectedRole} onValueChange={setSelectedRole}>
@@ -2326,37 +2434,37 @@ const formatAadharInput = (value: string) => {
               <SelectContent className="border-2 shadow-2xl">
                 <SelectItem value="all" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors font-medium">
                   <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-600"></div>
+                    {selectedRole === 'all' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-600"></div>}
                     All Roles
                   </div>
                 </SelectItem>
                 <SelectItem value="Admin" className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950 transition-colors">
                   <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-gradient-to-r from-red-500 to-rose-600"></div>
+                    {selectedRole === 'Admin' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-red-500 to-rose-600"></div>}
                     Admin
                   </div>
                 </SelectItem>
                 <SelectItem value="HR" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors">
                   <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-600"></div>
+                    {selectedRole === 'HR' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-600"></div>}
                     HR
                   </div>
                 </SelectItem>
                 <SelectItem value="Manager" className="cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors">
                   <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-600"></div>
+                    {selectedRole === 'Manager' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-600"></div>}
                     Manager
                   </div>
                 </SelectItem>
                 <SelectItem value="TeamLead" className="cursor-pointer hover:bg-cyan-50 dark:hover:bg-cyan-950 transition-colors">
                   <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600"></div>
+                    {selectedRole === 'TeamLead' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600"></div>}
                     Team Lead
                   </div>
                 </SelectItem>
                 <SelectItem value="Employee" className="cursor-pointer hover:bg-green-50 dark:hover:bg-green-950 transition-colors">
                   <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-600"></div>
+                    {selectedRole === 'Employee' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-600"></div>}
                     Employee
                   </div>
                 </SelectItem>
@@ -2423,10 +2531,10 @@ const formatAadharInput = (value: string) => {
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <Badge className={`${
-                          employee.role === 'Admin' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white border-0' :
-                          employee.role === 'HR' ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white border-0' :
-                          employee.role === 'Manager' ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white border-0' :
-                          employee.role === 'TeamLead' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white border-0' :
+                          employee.role === 'admin' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white border-0' :
+                          employee.role === 'hr' ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white border-0' :
+                          employee.role === 'manager' ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white border-0' :
+                          employee.role === 'team_lead' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white border-0' :
                           'bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0'
                         } shadow-md`}>
                           {employee.role ? employee.role.charAt(0).toUpperCase() + employee.role.slice(1) : '-'}
@@ -2621,7 +2729,9 @@ const formatAadharInput = (value: string) => {
                     designation = 'Manager';
                   }
                   
-                  setFormData((prev) => ({ ...prev, role: value as string, designation }));
+                  // Convert to lowercase for UserRole type
+                  const roleValue = value.toLowerCase() as UserRole;
+                  setFormData((prev) => ({ ...prev, role: roleValue, designation }));
                   // Reset department selections when role changes
                   if (value === 'HR' || value === 'Manager') {
                     setSelectedDepartments([]);
@@ -2645,7 +2755,7 @@ const formatAadharInput = (value: string) => {
             </div>
             
             {/* Single Department Selection for other roles in Edit */}
-            {formData.role !== 'HR' && formData.role !== 'Manager' && (
+            {formData.role !== 'hr' && formData.role !== 'manager' && (
               <div>
                 <Label htmlFor="edit-department">Department *</Label>
                 <Select
@@ -2677,7 +2787,7 @@ const formatAadharInput = (value: string) => {
             )}
             
             {/* Multiple Department Selection for HR and Manager in Edit */}
-            {(formData.role === 'HR' || formData.role === 'Manager') && (
+            {(formData.role === 'hr' || formData.role === 'manager') && (
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label>Assigned Departments *</Label>
@@ -2732,7 +2842,7 @@ const formatAadharInput = (value: string) => {
             )}
             
             {/* Designation Field - Hide for HR and Manager roles */}
-            {formData.role !== 'HR' && formData.role !== 'Manager' && (
+            {formData.role !== 'hr' && formData.role !== 'manager' && (
               <div>
                 <Label htmlFor="edit-designation">Designation</Label>
                 <Input
@@ -2744,31 +2854,7 @@ const formatAadharInput = (value: string) => {
               </div>
             )}
             
-            {/* Manager Selection in Edit - Show for all roles except Admin */}
-            {formData.role !== 'Admin' && (
-              <div>
-                <Label htmlFor="edit-manager">Reporting Manager</Label>
-                <Select
-                  value={formData.managerId?.toString() || ''}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, managerId: value && value !== 'none' ? parseInt(value) : undefined }))}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select Manager (Optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No Manager</SelectItem>
-                    {managers.map((manager) => (
-                      <SelectItem key={manager.id} value={manager.id.toString()}>
-                        {manager.name} ({manager.role}) - {manager.department || 'No Dept'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Available managers: HR, Manager, and Team Lead roles
-                </p>
-              </div>
-            )}
+
             <div>
               <Label htmlFor="edit-joiningDate">Joining Date <span className="text-red-500">*</span></Label>
               <Input
@@ -3087,14 +3173,7 @@ const formatAadharInput = (value: string) => {
                     <span className="text-muted-foreground">Role</span>
                     <span className="font-medium">{viewEmployee.role ? viewEmployee.role.charAt(0).toUpperCase() + viewEmployee.role.slice(1) : '-'}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Reporting Manager</span>
-                    <span className="font-medium">
-                      {viewEmployee.managerId ? (
-                        managers.find(m => m.id === viewEmployee.managerId)?.name || `Manager ID: ${viewEmployee.managerId}`
-                      ) : 'No Manager'}
-                    </span>
-                  </div>
+
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Phone</span>
                     <span className="font-medium">{viewEmployee.phone || '-'}</span>
