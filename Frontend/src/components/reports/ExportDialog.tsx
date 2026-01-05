@@ -194,7 +194,7 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      
+
       let filename = 'performance_report';
       if (selectedEmployee) {
         filename = `performance_${selectedEmployee.name}_${format(startDate, 'yyyy-MM-dd')}_to_${format(endDate, 'yyyy-MM-dd')}`;
@@ -206,7 +206,7 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
       } else {
         filename = `performance_all_employees_${format(startDate, 'yyyy-MM-dd')}_to_${format(endDate, 'yyyy-MM-dd')}`;
       }
-      
+
       a.download = `${filename}.${exportFormat}`;
       document.body.appendChild(a);
       a.click();
@@ -233,14 +233,14 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[80vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl">
+        <DialogHeader className="p-6 pb-2 border-b">
           <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             Export Performance Report
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4 overflow-y-auto flex-1 pr-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Employee Info */}
           {selectedEmployee && (
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
@@ -425,18 +425,18 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3 pt-4 border-t mt-auto sticky bottom-0 bg-white dark:bg-slate-950">
+        <div className="p-6 pt-4 border-t bg-slate-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row gap-3">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="flex-1"
+            className="flex-1 h-11 font-semibold"
             disabled={isExporting}
           >
             Cancel
           </Button>
           <Button
             onClick={handleExport}
-            className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
+            className="flex-1 h-11 font-semibold bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-200 dark:shadow-blue-900/20"
             disabled={isExporting}
           >
             {isExporting ? (
