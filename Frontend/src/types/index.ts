@@ -161,6 +161,7 @@ export interface Chat {
   isActive: boolean;
   groupAvatar?: string;
   description?: string;
+  memberCount?: number;
 }
 
 export interface ChatParticipant {

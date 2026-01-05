@@ -50,6 +50,7 @@ import {
   CalendarDays,
   UserPlus,
   MessageCircle,
+  ChevronRight,
 } from 'lucide-react';
 import { UserRole } from '@/types';
 import { Language } from '@/i18n/translations';
@@ -64,7 +65,7 @@ const MainLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  
+
   // Enable navigation guard to handle back/forward button
   useNavigationGuard();
 
@@ -148,14 +149,14 @@ const MainLayout: React.FC = () => {
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
-          
+
           <Button
             variant="ghost"
             size="icon"
-            className="hidden lg:flex"
+            className="hidden lg:flex h-10 w-10 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800 hover:shadow-md hover:scale-105 transition-all duration-300"
             onClick={() => setSidebarOpen(!sidebarOpen)}
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-5 w-5 text-slate-600 dark:text-slate-400" />
           </Button>
 
           {/* Logo */}
@@ -163,16 +164,16 @@ const MainLayout: React.FC = () => {
             <div className="relative">
               {/* Animated glow background */}
               <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 blur-md opacity-75 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
-              
+
               {/* Logo container */}
               <div className="relative h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-700 flex items-center justify-center shadow-lg group-hover:shadow-2xl group-hover:scale-110 transition-all duration-300 border border-white/20">
                 <span className="text-white font-bold text-xl tracking-tight drop-shadow-md">S</span>
               </div>
-              
+
               {/* Corner accent */}
               <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 shadow-md group-hover:scale-125 transition-transform duration-300"></div>
             </div>
-            
+
             <div className="hidden sm:flex flex-col">
               <span className="font-bold text-lg bg-gradient-to-r from-blue-600 to-indigo-700 dark:from-blue-400 dark:to-indigo-500 bg-clip-text text-transparent leading-tight">
                 Shekru labs India
@@ -271,72 +272,85 @@ const MainLayout: React.FC = () => {
       <div className="flex h-[calc(100vh-4rem)]">
         {/* Sidebar */}
         <aside
-          className={`${
-            sidebarOpen ? 'w-64' : 'w-24'
-          } hidden lg:flex flex-col border-r bg-white dark:bg-slate-950 transition-all duration-300 shadow-sm overflow-hidden`}
+          className={`${sidebarOpen ? 'w-72' : 'w-20'
+            } hidden lg:flex flex-col border-r bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl transition-all duration-500 shadow-[20px_0_30px_-15px_rgba(0,0,0,0.05)] overflow-hidden relative z-40`}
         >
-          <nav className="flex-1 space-y-1 p-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-            {navigationItems.map((item, index) => {
-              const isActive = isNavItemActive(item.path);
-              return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                end={!item.path.includes('/chat')} // Don't use end for chat routes
-                title={!sidebarOpen ? item.label : ''}
-                className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 overflow-hidden ${
-                  isActive 
-                    ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-medium shadow-sm' 
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-900 hover:text-gray-900 dark:hover:text-gray-200'
-                }`}
-              >
-                {/* Active indicator line */}
-                <div className={`absolute left-0 top-0 bottom-0 w-1 bg-blue-500 transition-all duration-200 ${
-                  isActive ? 'opacity-100' : 'opacity-0'
-                }`} />
-                
-                {/* Icon */}
-                <div className={`relative flex items-center justify-center h-8 w-8 rounded-md flex-shrink-0 transition-all duration-200 ${
-                  isActive 
-                    ? 'bg-blue-100 dark:bg-blue-900/50' 
-                    : 'group-hover:bg-gray-100 dark:group-hover:bg-slate-800'
-                }`}>
-                  <item.icon className={`h-5 w-5 relative z-10 transition-colors duration-200 ${
-                    isActive 
-                      ? 'text-blue-600 dark:text-blue-400' 
-                      : 'text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-200'
-                  }`} />
-                  {item.path.includes('/chat') && <ChatNotificationBadge />}
-                </div>
-                
-                {/* Label with animation */}
-                {sidebarOpen && (
-                  <span className="font-medium text-sm transition-all duration-200 truncate">
-                    {item.label}
-                  </span>
-                )}
-              </NavLink>
-            )
-            })}
-          </nav>
-          
-          {/* Sidebar Footer */}
-          <div className="flex-shrink-0 p-3 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/50">
-            <div className={`rounded-lg p-2.5 ${!sidebarOpen ? 'flex justify-center' : ''}`}>
-              <div className={`flex items-center gap-2.5 ${!sidebarOpen ? 'justify-center' : ''}`}>
-                <Avatar className="h-8 w-8 border border-gray-200 dark:border-slate-700 shadow-sm flex-shrink-0">
+          <div className="flex-1 space-y-2 p-4 pt-6 overflow-y-auto scrollbar-none hover:scrollbar-thin transition-all">
+            <nav className="space-y-1.5 focus:outline-none">
+              {navigationItems.map((item, index) => {
+                const isActive = isNavItemActive(item.path);
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    end={!item.path.includes('/chat')}
+                    title={!sidebarOpen ? item.label : ''}
+                    className={`group relative flex items-center gap-3.5 rounded-2xl px-3.5 py-3 transition-all duration-300 ${isActive
+                      ? 'bg-blue-600 dark:bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-blue-900/40 font-bold scale-[1.02]'
+                      : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-100 hover:translate-x-1'
+                      }`}
+                  >
+                    {/* Active Glow */}
+                    {isActive && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl -z-10" />
+                    )}
+
+                    {/* Icon Container */}
+                    <div className={`relative flex items-center justify-center h-9 w-9 rounded-xl flex-shrink-0 transition-all duration-300 ${isActive
+                      ? 'bg-white/20 shadow-inner'
+                      : 'bg-slate-50 dark:bg-slate-900 group-hover:bg-white dark:group-hover:bg-slate-800 shadow-sm group-hover:shadow-md border border-slate-100 dark:border-slate-800'
+                      }`}>
+                      <item.icon className={`h-5 w-5 relative z-10 transition-all duration-300 ${isActive
+                        ? 'text-white scale-110'
+                        : 'text-slate-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400'
+                        }`} />
+                      {item.path.includes('/chat') && <ChatNotificationBadge />}
+                    </div>
+
+                    {/* Label */}
+                    {sidebarOpen && (
+                      <div className="flex flex-col flex-1 overflow-hidden">
+                        <span className="font-bold text-sm tracking-tight truncate">
+                          {item.label}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Arrow for non-active items */}
+                    {sidebarOpen && !isActive && (
+                      <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-40 transition-all -translate-x-2 group-hover:translate-x-0" />
+                    )}
+                  </NavLink>
+                )
+              })}
+            </nav>
+          </div>
+
+          <div className="flex-shrink-0 p-4 pt-2 mb-2 border-t border-slate-100 dark:border-slate-800">
+            <div
+              onClick={() => navigate(`/${user.role}/profile`)}
+              className={`group flex items-center gap-3.5 p-3 rounded-[1.25rem] bg-slate-50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 hover:shadow-xl hover:shadow-slate-200/40 transition-all duration-300 cursor-pointer ${!sidebarOpen ? 'justify-center' : ''}`}
+            >
+              <div className="relative">
+                <Avatar className="h-10 w-10 border-2 border-white dark:border-slate-700 shadow-md flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
                   <AvatarImage src={user.profilePhoto} alt={user.name} className="object-cover" />
-                  <AvatarFallback className="bg-blue-500 text-white font-bold text-xs">
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-black text-xs">
                     {user.name.split(' ').map(n => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
-                {sidebarOpen && (
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">{user.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{t.roles[user.role]}</p>
-                  </div>
-                )}
+                <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 shadow-sm"></div>
               </div>
+
+              {sidebarOpen && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-black text-slate-900 dark:text-slate-100 truncate uppercase tracking-tight leading-none group-hover:text-blue-600 transition-colors">{user.name}</p>
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <Badge className="bg-blue-100 hover:bg-blue-100 text-blue-700 text-[9px] px-1.5 h-4 border-0 font-black uppercase tracking-widest">
+                      {t.roles[user.role]}
+                    </Badge>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </aside>
@@ -345,60 +359,69 @@ const MainLayout: React.FC = () => {
         {mobileMenuOpen && (
           <div className="fixed inset-0 z-40 lg:hidden">
             <div className="fixed inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
-            <aside className="fixed left-0 top-16 bottom-0 w-64 border-r bg-white dark:bg-slate-950 shadow-lg flex flex-col overflow-hidden animate-slide-in">
-              <nav className="flex-1 space-y-1 p-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-                {navigationItems.map((item) => {
-                  const isActive = isNavItemActive(item.path);
-                  return (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    end={!item.path.includes('/chat')} // Don't use end for chat routes
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 overflow-hidden ${
-                      isActive 
-                        ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-medium shadow-sm' 
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-900 hover:text-gray-900 dark:hover:text-gray-200'
-                    }`}
-                  >
-                    {/* Active indicator line */}
-                    <div className={`absolute left-0 top-0 bottom-0 w-1 bg-blue-500 transition-all duration-200 ${
-                      isActive ? 'opacity-100' : 'opacity-0'
-                    }`} />
-                    
-                    {/* Icon */}
-                    <div className={`relative flex items-center justify-center h-8 w-8 rounded-md flex-shrink-0 transition-all duration-200 ${
-                      isActive 
-                        ? 'bg-blue-100 dark:bg-blue-900/50' 
-                        : 'group-hover:bg-gray-100 dark:group-hover:bg-slate-800'
-                    }`}>
-                      <item.icon className={`h-5 w-5 relative z-10 transition-colors duration-200 ${
-                        isActive 
-                          ? 'text-blue-600 dark:text-blue-400' 
-                          : 'text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-200'
-                      }`} />
-                      {item.path.includes('/chat') && <ChatNotificationBadge />}
-                    </div>
-                    
-                    <span className="font-medium text-sm transition-all duration-200 truncate">{item.label}</span>
-                  </NavLink>
-                )
-                })}
-              </nav>
-              
-              {/* Mobile Sidebar Footer */}
-              <div className="flex-shrink-0 p-3 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/50">
-                <div className="rounded-lg p-2.5">
-                  <div className="flex items-center gap-2.5">
-                    <Avatar className="h-8 w-8 border border-gray-200 dark:border-slate-700 shadow-sm flex-shrink-0">
+            <aside className="fixed left-0 top-16 bottom-0 w-72 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-r shadow-2xl flex flex-col overflow-hidden animate-slide-in">
+              <div className="flex-1 space-y-2 p-4 pt-4 overflow-y-auto scrollbar-none">
+                <nav className="space-y-1.5 focus:outline-none">
+                  {navigationItems.map((item) => {
+                    const isActive = isNavItemActive(item.path);
+                    return (
+                      <NavLink
+                        key={item.path}
+                        to={item.path}
+                        end={!item.path.includes('/chat')}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`group relative flex items-center gap-3.5 rounded-2xl px-3.5 py-3 transition-all duration-300 ${isActive
+                          ? 'bg-blue-600 dark:bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-blue-900/40 font-bold'
+                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-100'
+                          }`}
+                      >
+                        {/* Active Glow */}
+                        {isActive && (
+                          <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl -z-10" />
+                        )}
+
+                        {/* Icon Container */}
+                        <div className={`relative flex items-center justify-center h-9 w-9 rounded-xl flex-shrink-0 transition-all duration-300 ${isActive
+                          ? 'bg-white/20 shadow-inner'
+                          : 'bg-slate-50 dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-800'
+                          }`}>
+                          <item.icon className={`h-5 w-5 relative z-10 transition-all duration-300 ${isActive
+                            ? 'text-white scale-110'
+                            : 'text-slate-400 dark:text-slate-500'
+                            }`} />
+                          {item.path.includes('/chat') && <ChatNotificationBadge />}
+                        </div>
+
+                        <span className="font-bold text-sm tracking-tight truncate">{item.label}</span>
+                      </NavLink>
+                    )
+                  })}
+                </nav>
+              </div>
+
+              <div className="flex-shrink-0 p-4 pt-2 mb-4 border-t border-slate-100 dark:border-slate-800">
+                <div
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate(`/${user.role}/profile`);
+                  }}
+                  className="flex items-center gap-3.5 p-3 rounded-[1.25rem] bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800"
+                >
+                  <div className="relative">
+                    <Avatar className="h-10 w-10 border-2 border-white dark:border-slate-700 shadow-md flex-shrink-0">
                       <AvatarImage src={user.profilePhoto} alt={user.name} className="object-cover" />
-                      <AvatarFallback className="bg-blue-500 text-white font-bold text-xs">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-black text-xs">
                         {user.name.split(' ').map(n => n[0]).join('')}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">{user.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{t.roles[user.role]}</p>
+                    <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 shadow-sm"></div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-black text-slate-900 dark:text-slate-100 truncate uppercase tracking-tight leading-none">{user.name}</p>
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <Badge className="bg-blue-100 text-blue-700 text-[9px] px-1.5 h-4 border-0 font-black uppercase tracking-widest">
+                        {t.roles[user.role]}
+                      </Badge>
                     </div>
                   </div>
                 </div>

@@ -263,25 +263,6 @@ const formatDuplicateErrorMessage = (message: string, employeeId?: string, email
   return message || 'Failed to create employee';
 };
 
-const getRoleColor = (role?: string) => {
-  const normalizedRole = (role || '').toLowerCase().trim();
-  switch (normalizedRole) {
-    case 'admin':
-      return 'text-red-600 font-bold';
-    case 'hr':
-      return 'text-purple-600 font-bold';
-    case 'manager':
-      return 'text-orange-600 font-bold';
-    case 'team_lead':
-    case 'team lead':
-    case 'teamlead':
-      return 'text-blue-600 font-bold';
-    case 'employee':
-      return 'text-emerald-600 font-bold';
-    default:
-      return 'text-gray-600 font-bold';
-  }
-};
 
 export default function EmployeeManagement() {
   const { t } = useLanguage();
@@ -2541,15 +2522,15 @@ export default function EmployeeManagement() {
                         )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <span className={getRoleColor(employee.role)}>
+                        <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-0 shadow-sm rounded-full px-3 py-0.5 font-medium transition-all">
                           {employee.role ? employee.role.charAt(0).toUpperCase() + employee.role.slice(1).replace('_', ' ') : '-'}
-                        </span>
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge className={`${employee.status === 'active'
-                          ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-md'
-                          : 'bg-gradient-to-r from-gray-400 to-slate-500 text-white border-0 shadow-md'
-                          }`}>
+                          ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-0 shadow-sm rounded-full px-3 py-0.5'
+                          : 'bg-gray-400 hover:bg-gray-500 text-white border-0 shadow-sm rounded-full px-3 py-0.5'
+                          } font-medium transition-all`}>
                           {employee.status ? employee.status.charAt(0).toUpperCase() + employee.status.slice(1) : '-'}
                         </Badge>
                       </TableCell>
@@ -3152,10 +3133,15 @@ export default function EmployeeManagement() {
                 <div className="text-center">
                   <h3 className="text-lg font-semibold">{viewEmployee.name}</h3>
                   <p className="text-sm text-muted-foreground mt-1">{viewEmployee.designation || '-'}</p>
-                  <p className={`text-sm ${getRoleColor(viewEmployee.role)} mt-1`}>
-                    {viewEmployee.role ? viewEmployee.role.charAt(0).toUpperCase() + viewEmployee.role.slice(1).replace('_', ' ') : '-'}
-                  </p>
-                  <Badge variant={viewEmployee.status === 'active' ? 'default' : 'secondary'} className="mt-2">
+                  <div className="mt-2">
+                    <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-0 shadow-sm rounded-full px-4 py-1 font-medium transition-all">
+                      {viewEmployee.role ? viewEmployee.role.charAt(0).toUpperCase() + viewEmployee.role.slice(1).replace('_', ' ') : '-'}
+                    </Badge>
+                  </div>
+                  <Badge className={`${viewEmployee.status === 'active'
+                    ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                    : 'bg-gray-400 hover:bg-gray-500 text-white'
+                    } border-0 shadow-sm rounded-full px-4 py-1 font-medium transition-all mt-2`}>
                     {viewEmployee.status ? viewEmployee.status.charAt(0).toUpperCase() + viewEmployee.status.slice(1) : '-'}
                   </Badge>
                 </div>

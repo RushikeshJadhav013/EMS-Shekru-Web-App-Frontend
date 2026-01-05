@@ -1,35 +1,17 @@
 # Dependencies
 node_modules/
+.npm
+/dist
+/build
+/out
+
+# Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
-# Build outputs
-build/
-dist/
-out/
-
-# Vite cache
-.vite/
-vite.config.js.timestamp-*
-vite.config.ts.timestamp-*
-
-# React/TypeScript cache
-.tsbuildinfo
-*.tsbuildinfo
-
-# Environment files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Log files
-*.log
-logs/
 
 # Runtime data
 pids/
@@ -37,71 +19,52 @@ pids/
 *.seed
 *.pid.lock
 
-# Coverage directory used by tools like istanbul
+# Coverage directory
 coverage/
 *.lcov
-
-# nyc test coverage
 .nyc_output
 
-# ESLint cache
+# Cache
+.vite/
 .eslintcache
-
-# Prettier cache
 .prettiercache
-
-# Stylelint cache
 .stylelintcache
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Microbundle cache
+.cache/
+.parcel-cache
+.tsbuildinfo
+*.tsbuildinfo
 .rpt2_cache/
 .rts2_cache_cjs/
 .rts2_cache_es/
 .rts2_cache_umd/
 
-# Optional REPL history
-.node_repl_history
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.auth
 
-# Output of 'npm pack'
-*.tgz
+# Agent / AI Tooling
+.agent/
+.gemini/
+.antigravity/
 
-# Yarn Integrity file
-.yarn-integrity
-
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
-
-# Next.js build output
+# Frameworks build outputs
 .next
-
-# Nuxt.js build / generate output
 .nuxt
+public/fallback.js
+public/sw.js
+public/workbox-*.js
 
-# Gatsby files
-.cache/
-public
-
-# Storybook build outputs
-.out
-.storybook-out
-
-# Temporary folders
-tmp/
-temp/
-
-# Editor directories and files
+# Editor and IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.vscode-test
 
 # OS generated files
 .DS_Store
@@ -112,33 +75,23 @@ temp/
 ehthumbs.db
 Thumbs.db
 
-# Netlify
+# Netlify / Vercel
 .netlify/
-
-# Local Netlify folder
-.netlify
-
-# Vercel
-.vercel
-
-# Serverless directories
+.vercel/
 .serverless/
 
-# FuseBox cache
-.fusebox/
+# Packages
+*.tgz
 
-# DynamoDB Local files
-.dynamodb/
+# Yarn legacy/Integrity
+.yarn-integrity
+.node_repl_history
 
-# TernJS port file
-.tern-port
-
-# Stores VSCode versions used for testing VSCode extensions
-.vscode-test
-
-# yarn v2
+# Yarn v2/v3/v4 (+)
 .yarn/cache
 .yarn/unplugged
 .yarn/build-state.yml
 .yarn/install-state.gz
-.pnp.*package-lock.json
+.pnp.*
+! .pnp.cjs
+! .pnp.loader.mjs

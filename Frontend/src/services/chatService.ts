@@ -1,8 +1,7 @@
 import { Chat, ChatMessage, CreateChatRequest, User, UserRole } from '@/types';
-import { mockChats, mockMessages, mockUsers } from './mockChatData';
 import CHAT_CONFIG from '@/config/chat';
 
-const { API_BASE_URL, DEVELOPMENT_MODE, MOCK_API_DELAY } = CHAT_CONFIG;
+const { API_BASE_URL } = CHAT_CONFIG;
 
 class ChatService {
   private getAuthHeaders() {
@@ -13,308 +12,302 @@ class ChatService {
     };
   }
 
-  private async handleApiCall<T>(
-    apiCall: () => Promise<Response>,
-    fallbackData: T,
-    errorMessage: string
-  ): Promise<T> {
-    if (DEVELOPMENT_MODE) {
-      // In development mode, use mock data directly to avoid 404 errors
-      return fallbackData;
+  // Helper to convert Unix timestamp (seconds) to ISO string
+  private formatTimestamp(timestamp: number | string | null): string {
+    if (!timestamp) return new Date().toISOString();
+
+    // If it's a number (likely seconds like 1766360581), convert to ms
+    if (typeof timestamp === 'number') {
+      if (timestamp < 10000000000) {
+        return new Date(timestamp * 1000).toISOString();
+      }
+      return new Date(timestamp).toISOString();
     }
 
-    try {
-      const response = await apiCall();
-      
-      if (!response.ok) {
-        throw new Error(`${errorMessage}: ${response.status}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.warn(`${errorMessage}, using mock data:`, error);
-      return fallbackData;
+    if (typeof timestamp === 'string' && !isNaN(Number(timestamp))) {
+      const num = Number(timestamp);
+      if (num < 10000000000) return new Date(num * 1000).toISOString();
+      return new Date(num).toISOString();
     }
+
+    return new Date(timestamp).toISOString();
   }
 
-  // Get all chats for the current user
+  // Get all chat sessions
   async getChats(): Promise<Chat[]> {
-    return this.handleApiCall(
-      () => fetch(`${API_BASE_URL}/chat/chats`, {
+    try {
+      const response = await fetch(`${API_BASE_URL}/chats/sessions`, {
         headers: this.getAuthHeaders(),
-      }),
-      mockChats,
-      'Failed to fetch chats'
-    );
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch chats');
+
+      const data = await response.json();
+
+      return data.map((session: any) => ({
+        id: session.chat_id?.toString(),
+        name: session.name || '',
+        type: session.chat_type === 'private' ? 'individual' : 'group',
+        participants: (session.members || []).map((m: any) => ({
+          userId: m.user_id?.toString(),
+          userName: m.name || '',
+          userRole: m.role as UserRole,
+          joinedAt: this.formatTimestamp(m.joined_at),
+          isOnline: false,
+        })),
+        createdBy: session.created_by_id?.toString(),
+        createdAt: this.formatTimestamp(session.created_at),
+        updatedAt: this.formatTimestamp(session.last_message_at || session.created_at),
+        unreadCount: 0,
+        isActive: true,
+        memberCount: session.member_count,
+        lastMessage: session.last_message_at ? {
+          id: '',
+          chatId: session.chat_id?.toString(),
+          timestamp: this.formatTimestamp(session.last_message_at),
+          content: 'Active recently',
+          senderId: '',
+          senderName: '',
+          senderRole: 'employee',
+          messageType: 'text',
+          isRead: true
+        } : undefined
+      }));
+    } catch (error) {
+      console.error('Error fetching chats:', error);
+      return [];
+    }
   }
 
   // Get messages for a specific chat
-  async getChatMessages(chatId: string, page: number = 1, limit: number = 50): Promise<ChatMessage[]> {
-    return this.handleApiCall(
-      () => fetch(
-        `${API_BASE_URL}/chat/chats/${chatId}/messages?page=${page}&limit=${limit}`,
-        {
-          headers: this.getAuthHeaders(),
-        }
-      ),
-      mockMessages.filter(msg => msg.chatId === chatId),
-      'Failed to fetch messages'
-    );
+  async getChatMessages(chatId: string, chatType: 'individual' | 'group', page: number = 1, limit: number = 50): Promise<ChatMessage[]> {
+    const typePath = chatType === 'individual' ? 'private' : 'group';
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/chats/${typePath}/${chatId}/messages?limit=${limit}`,
+        { headers: this.getAuthHeaders() }
+      );
+
+      if (!response.ok) throw new Error('Failed to fetch messages');
+
+      const data = await response.json();
+
+      return data.map((msg: any) => ({
+        id: msg.id?.toString(),
+        chatId: chatId,
+        senderId: msg.sender_id?.toString(),
+        senderName: '',
+        senderRole: 'employee',
+        content: msg.content,
+        messageType: 'text',
+        timestamp: this.formatTimestamp(msg.timestamp),
+        isRead: (msg.read_by || []).length > 1,
+        replyTo: undefined
+      }));
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      return [];
+    }
   }
 
   // Send a message
-  async sendMessage(chatId: string, content: string, messageType: 'text' | 'emoji' = 'text', replyTo?: string): Promise<ChatMessage> {
-    if (DEVELOPMENT_MODE) {
-      // Get current user from localStorage
-      const userStr = localStorage.getItem('user');
-      const currentUser = userStr ? JSON.parse(userStr) : null;
-      
-      // Create a mock message for development
-      const mockMessage: ChatMessage = {
-        id: `msg-${Date.now()}`,
-        chatId,
-        senderId: currentUser?.id || '1', // Use actual current user ID
-        senderName: currentUser?.name || 'You',
-        senderRole: currentUser?.role || 'admin',
-        content,
-        messageType,
-        timestamp: new Date().toISOString(),
-        isRead: true,
-        replyTo,
-      };
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
-      return mockMessage;
-    }
-
+  async sendMessage(chatId: string, chatType: 'individual' | 'group', content: string, messageType: 'text' | 'emoji' = 'text', replyTo?: string): Promise<ChatMessage> {
+    const typePath = chatType === 'individual' ? 'private' : 'group';
     try {
-      const response = await fetch(`${API_BASE_URL}/chat/chats/${chatId}/messages`, {
+      const response = await fetch(`${API_BASE_URL}/chats/${typePath}/${chatId}/messages`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({
+          chat_type: typePath,
+          chat_id: chatId,
           content,
-          messageType,
-          replyTo,
         }),
       });
-      
-      if (!response.ok) {
-        throw new Error('Failed to send message');
-      }
-      
-      return await response.json();
+
+      if (!response.ok) throw new Error('Failed to send message');
+
+      const data = await response.json();
+
+      return {
+        id: data.id?.toString(),
+        chatId: chatId,
+        senderId: data.sender_id?.toString(),
+        senderName: 'Me',
+        senderRole: 'employee',
+        content: data.content,
+        messageType: 'text',
+        timestamp: this.formatTimestamp(data.timestamp),
+        isRead: false,
+      };
     } catch (error) {
       console.error('Error sending message:', error);
       throw error;
     }
   }
 
-  // Create a new chat (individual or group)
+  // Create a new chat
   async createChat(chatData: CreateChatRequest): Promise<Chat> {
-    if (DEVELOPMENT_MODE) {
-      // Create a mock chat for development
-      const mockChat: Chat = {
-        id: `chat-${Date.now()}`,
-        name: chatData.name || 'New Chat',
+    try {
+      let url = '';
+      let body: any = {};
+
+      if (chatData.type === 'individual') {
+        const userId = chatData.participantIds[0];
+        url = `${API_BASE_URL}/chats/private/${userId}`;
+        body = { user_id: parseInt(userId) };
+      } else {
+        url = `${API_BASE_URL}/chats/group`;
+        body = {
+          name: chatData.name,
+          member_ids: chatData.participantIds.map(id => parseInt(id))
+        };
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) throw new Error('Failed to create chat');
+      const data = await response.json();
+
+      const newId = (data.chat_id || data.group_id)?.toString();
+
+      // Attempt to populate participants so name resolution works immediately
+      const participants = chatData.participantIds.map(id => ({
+        userId: id.toString(),
+        userName: '',
+        userRole: 'employee' as UserRole,
+        joinedAt: new Date().toISOString(),
+        isOnline: false
+      }));
+
+      return {
+        id: newId,
+        name: chatData.name || '',
         type: chatData.type,
-        participants: chatData.participantIds.map(id => {
-          const user = mockUsers.find(u => u.id === id);
-          return {
-            userId: id,
-            userName: user?.name || 'Unknown User',
-            userRole: user?.role || 'employee',
-            department: user?.department || 'Unknown',
-            joinedAt: new Date().toISOString(),
-            isOnline: Math.random() > 0.5,
-          };
-        }),
-        createdBy: '1', // Current user ID (mock)
+        participants: participants,
+        createdBy: '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         unreadCount: 0,
         isActive: true,
-        description: chatData.description,
-      };
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY));
-      return mockChat;
-    }
+        memberCount: chatData.participantIds.length + 1,
+      } as Chat;
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/chat/chats`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(chatData),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to create chat');
-      }
-      
-      return await response.json();
     } catch (error) {
       console.error('Error creating chat:', error);
       throw error;
     }
   }
 
-  // Get users that the current user can chat with based on role permissions
+  // Get available users
   async getAvailableUsers(): Promise<User[]> {
-    return this.handleApiCall(
-      () => fetch(`${API_BASE_URL}/chat/available-users`, {
+    try {
+      const response = await fetch(`${API_BASE_URL}/chats/users`, {
         headers: this.getAuthHeaders(),
-      }),
-      mockUsers,
-      'Failed to fetch available users'
-    );
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch users');
+      const data = await response.json();
+
+      return data.map((u: any) => ({
+        id: u.user_id?.toString(),
+        name: u.name,
+        email: u.email,
+        role: (u.role?.toLowerCase().replace(' ', '') || 'employee') as UserRole,
+        department: 'N/A',
+        designation: u.role || 'N/A',
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }));
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      return [];
+    }
   }
 
-  // Mark messages as read
-  async markMessagesAsRead(chatId: string): Promise<void> {
-    if (DEVELOPMENT_MODE) {
-      // In development mode, just return without error
-      return Promise.resolve();
-    }
-
+  // Mark message as read
+  async markMessageAsRead(chatId: string, chatType: 'individual' | 'group', messageId: string): Promise<void> {
+    const typePath = chatType === 'individual' ? 'private' : 'group';
     try {
-      const response = await fetch(`${API_BASE_URL}/chat/chats/${chatId}/mark-read`, {
+      await fetch(`${API_BASE_URL}/chats/${typePath}/${chatId}/messages/${messageId}/read`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
+        body: JSON.stringify({
+          chat_type: typePath,
+          chat_id: chatId,
+          msg_id: messageId
+        })
       });
-      
-      if (!response.ok) {
-        throw new Error('Failed to mark messages as read');
-      }
     } catch (error) {
-      console.error('Error marking messages as read:', error);
-      // Don't throw error for mark as read - it's not critical
+      console.error('Error marking read:', error);
     }
   }
 
-  // Delete a message
-  async deleteMessage(chatId: string, messageId: string): Promise<void> {
-    if (DEVELOPMENT_MODE) {
-      // In development mode, just return success
-      return Promise.resolve();
-    }
-
+  // Send typing status
+  async sendTypingStatus(chatId: string, chatType: 'individual' | 'group'): Promise<void> {
+    const typePath = chatType === 'individual' ? 'private' : 'group';
     try {
-      const response = await fetch(`${API_BASE_URL}/chat/chats/${chatId}/messages/${messageId}`, {
-        method: 'DELETE',
+      await fetch(`${API_BASE_URL}/chats/${typePath}/${chatId}/typing`, {
+        method: 'POST',
         headers: this.getAuthHeaders(),
+        body: JSON.stringify({
+          chat_type: typePath,
+          chat_id: chatId,
+          is_typing: true
+        })
       });
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete message');
-      }
     } catch (error) {
-      console.error('Error deleting message:', error);
-      throw error;
+      console.error('Error sending typing:', error);
     }
   }
 
-  // Edit a message
-  async editMessage(chatId: string, messageId: string, newContent: string): Promise<ChatMessage> {
-    if (DEVELOPMENT_MODE) {
-      // Create a mock edited message for development
-      const originalMessage = mockMessages.find(m => m.id === messageId);
-      if (originalMessage) {
-        return {
-          ...originalMessage,
-          content: newContent,
-          editedAt: new Date().toISOString(),
-        };
-      }
-      throw new Error('Message not found');
-    }
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/chat/chats/${chatId}/messages/${messageId}`, {
-        method: 'PUT',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({ content: newContent }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to edit message');
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Error editing message:', error);
-      throw error;
-    }
-  }
-
-  // Add participants to group chat
   async addParticipants(chatId: string, userIds: string[]): Promise<void> {
     try {
-      const response = await fetch(`${API_BASE_URL}/chat/chats/${chatId}/participants`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({ userIds }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to add participants');
+      for (const uid of userIds) {
+        await fetch(`${API_BASE_URL}/chats/group/${chatId}/members/add`, {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ user_id: parseInt(uid) })
+        });
       }
     } catch (error) {
-      console.error('Error adding participants:', error);
+      console.error('Error adding participant:', error);
       throw error;
     }
   }
 
-  // Remove participant from group chat
   async removeParticipant(chatId: string, userId: string): Promise<void> {
     try {
-      const response = await fetch(`${API_BASE_URL}/chat/chats/${chatId}/participants/${userId}`, {
-        method: 'DELETE',
+      await fetch(`${API_BASE_URL}/chats/group/${chatId}/members/remove`, {
+        method: 'POST',
         headers: this.getAuthHeaders(),
+        body: JSON.stringify({ user_id: parseInt(userId) })
       });
-      
-      if (!response.ok) {
-        throw new Error('Failed to remove participant');
-      }
     } catch (error) {
       console.error('Error removing participant:', error);
       throw error;
     }
   }
 
-  // Get chat permissions for current user
   getChatPermissions(userRole: UserRole) {
-    const permissions = {
-      canCreateGroups: ['admin', 'hr', 'manager', 'team_lead'].includes(userRole),
-      canChatWith: [] as UserRole[],
-      canViewUsers: [] as UserRole[],
+    const canCreateGroup = ['admin', 'hr', 'manager'].includes(userRole);
+    return {
+      canCreateGroups: canCreateGroup,
+      canChatWith: ['admin', 'hr', 'manager', 'team_lead', 'employee'] as UserRole[],
+      canViewUsers: ['admin', 'hr', 'manager', 'team_lead', 'employee'] as UserRole[],
     };
+  }
 
-    switch (userRole) {
-      case 'admin':
-        permissions.canChatWith = ['admin', 'hr', 'manager', 'team_lead', 'employee'];
-        permissions.canViewUsers = ['admin', 'hr', 'manager', 'team_lead', 'employee'];
-        break;
-      case 'hr':
-        permissions.canChatWith = ['admin', 'hr', 'manager', 'team_lead', 'employee'];
-        permissions.canViewUsers = ['admin', 'hr', 'manager', 'team_lead', 'employee'];
-        break;
-      case 'manager':
-        permissions.canChatWith = ['admin', 'hr', 'manager', 'team_lead', 'employee'];
-        permissions.canViewUsers = ['admin', 'hr', 'manager', 'team_lead', 'employee'];
-        break;
-      case 'team_lead':
-        permissions.canChatWith = ['admin', 'hr', 'manager', 'team_lead', 'employee'];
-        permissions.canViewUsers = ['admin', 'hr', 'manager', 'team_lead', 'employee'];
-        break;
-      case 'employee':
-        permissions.canChatWith = ['admin', 'hr', 'manager', 'team_lead', 'employee'];
-        permissions.canViewUsers = ['admin', 'hr', 'manager', 'team_lead', 'employee'];
-        break;
-    }
+  async deleteMessage(chatId: string, messageId: string): Promise<void> {
+    console.warn('Delete message not supported by current API');
+  }
 
-    return permissions;
+  async editMessage(chatId: string, messageId: string, newContent: string): Promise<ChatMessage> {
+    throw new Error('Edit not supported');
   }
 }
 

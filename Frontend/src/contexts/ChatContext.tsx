@@ -17,9 +17,10 @@ interface ChatContextType {
   loadChats: () => Promise<void>;
   loadMessages: (chatId: string) => Promise<void>;
   loadAvailableUsers: () => Promise<void>;
-  markAsRead: (chatId: string) => Promise<void>;
+  markAsRead: (chatId: string, messageIds: string[]) => Promise<void>;
   deleteMessage: (messageId: string) => Promise<void>;
   editMessage: (messageId: string, newContent: string) => Promise<void>;
+  sendTyping: (chatId: string) => Promise<void>;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -39,7 +40,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Load chats
   const loadChats = useCallback(async () => {
     if (!user) return;
-    
+
     setIsLoading(true);
     try {
       const fetchedChats = await chatService.getChats();
@@ -60,7 +61,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadMessages = useCallback(async (chatId: string) => {
     setIsLoading(true);
     try {
-      const fetchedMessages = await chatService.getChatMessages(chatId);
+      const chat = chats.find(c => c.id === chatId);
+      // Default to individual if not found, though it should be found
+      const chatType = chat?.type || 'individual';
+      const fetchedMessages = await chatService.getChatMessages(chatId, chatType);
       setMessages(fetchedMessages);
     } catch (error) {
       console.error('Failed to load messages:', error);
@@ -72,12 +76,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [chats, toast]);
 
   // Load available users
   const loadAvailableUsers = useCallback(async () => {
     if (!user) return;
-    
+
     try {
       const users = await chatService.getAvailableUsers();
       setAvailableUsers(users);
@@ -96,12 +100,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!activeChat || !user) return;
 
     try {
-      const newMessage = await chatService.sendMessage(activeChat.id, content, messageType, replyTo);
+      const newMessage = await chatService.sendMessage(activeChat.id, activeChat.type, content, messageType, replyTo);
       setMessages(prev => [...prev, newMessage]);
-      
+
       // Update the chat's last message
-      setChats(prev => prev.map(chat => 
-        chat.id === activeChat.id 
+      setChats(prev => prev.map(chat =>
+        chat.id === activeChat.id
           ? { ...chat, lastMessage: newMessage, updatedAt: newMessage.timestamp }
           : chat
       ));
@@ -117,9 +121,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Create new chat
   const createChat = useCallback(async (
-    type: 'individual' | 'group', 
-    participantIds: string[], 
-    name?: string, 
+    type: 'individual' | 'group',
+    participantIds: string[],
+    name?: string,
     description?: string
   ): Promise<Chat> => {
     try {
@@ -129,13 +133,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description,
         participantIds,
       });
-      
+
       setChats(prev => [newChat, ...prev]);
       toast({
         title: 'Success',
         description: `${type === 'group' ? 'Group' : 'Chat'} created successfully`,
       });
-      
+
       return newChat;
     } catch (error) {
       console.error('Failed to create chat:', error);
@@ -149,22 +153,40 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [toast]);
 
   // Mark messages as read
-  const markAsRead = useCallback(async (chatId: string) => {
+  // Now takes messageIds to mark specific messages
+  const markAsRead = useCallback(async (chatId: string, messageIds: string[]) => {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat || messageIds.length === 0) return;
+
     try {
-      await chatService.markMessagesAsRead(chatId);
-      
+      // Parallelize requests if there are multiple. 
+      // Note: In a real app with many messages, this might be loop-heavy, 
+      // but API only supports single message read receipt.
+      await Promise.all(messageIds.map(msgId => chatService.markMessageAsRead(chatId, chat.type, msgId)));
+
       // Update local state
-      setChats(prev => prev.map(chat => 
-        chat.id === chatId ? { ...chat, unreadCount: 0 } : chat
+      setChats(prev => prev.map(c =>
+        c.id === chatId ? { ...c, unreadCount: Math.max(0, c.unreadCount - messageIds.length) } : c
       ));
-      
-      setMessages(prev => prev.map(message => 
-        message.chatId === chatId ? { ...message, isRead: true } : message
+
+      setMessages(prev => prev.map(message =>
+        messageIds.includes(message.id) ? { ...message, isRead: true } : message
       ));
     } catch (error) {
       console.error('Failed to mark messages as read:', error);
     }
-  }, []);
+  }, [chats]);
+
+  // Send typing status
+  const sendTyping = useCallback(async (chatId: string) => {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return;
+    try {
+      await chatService.sendTypingStatus(chatId, chat.type);
+    } catch (error) {
+      console.error('Failed to send typing status:', error);
+    }
+  }, [chats]);
 
   // Delete message
   const deleteMessage = useCallback(async (messageId: string) => {
@@ -173,7 +195,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await chatService.deleteMessage(activeChat.id, messageId);
       setMessages(prev => prev.filter(message => message.id !== messageId));
-      
+
       toast({
         title: 'Success',
         description: 'Message deleted',
@@ -194,10 +216,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const updatedMessage = await chatService.editMessage(activeChat.id, messageId, newContent);
-      setMessages(prev => prev.map(message => 
+      setMessages(prev => prev.map(message =>
         message.id === messageId ? updatedMessage : message
       ));
-      
+
       toast({
         title: 'Success',
         description: 'Message updated',
@@ -217,13 +239,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setActiveChat(chat);
     if (chat) {
       loadMessages(chat.id);
-      markAsRead(chat.id);
     } else {
       setMessages([]);
     }
-  }, [loadMessages, markAsRead]);
+  }, [loadMessages]);
 
-  // Load initial data
   useEffect(() => {
     if (user) {
       loadChats();
@@ -247,6 +267,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     markAsRead,
     deleteMessage,
     editMessage,
+    sendTyping
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
