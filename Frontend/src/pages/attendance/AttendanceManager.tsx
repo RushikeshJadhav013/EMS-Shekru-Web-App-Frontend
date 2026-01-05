@@ -245,9 +245,24 @@ const AttendanceManager: React.FC = () => {
 
   const loadEmployees = async () => {
     try {
-      const res = await fetch('https://staffly.space/employees');
+      const token = localStorage.getItem('token');
+      const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+      const res = await fetch('https://staffly.space/employees', { headers });
+
       if (!res.ok) throw new Error(`Failed to load employees: ${res.status}`);
-      const data = await res.json();
+      let data = await res.json();
+
+      // Enforce strict visibility validation for Managers
+      // Filter employees to only show those in the same department or self
+      if (user?.role === 'manager' && user?.department) {
+        const normalizedDept = user.department.trim().toLowerCase();
+        data = data.filter((emp: any) => {
+          const empDept = (emp.department || emp.department_name || '').trim().toLowerCase();
+          // Allow if department matches OR if it's the manager themselves OR if reporting manager is the user
+          return empDept === normalizedDept || String(emp.user_id || emp.userId || emp.id) === String(user.id) || String(emp.manager_id) === String(user.id);
+        });
+      }
+
       const departmentSet = new Set<string>();
       const mapped = data.map((emp: any) => {
         const department = emp.department || emp.department_name || '';
@@ -484,17 +499,63 @@ const AttendanceManager: React.FC = () => {
     // For Admin/HR/Manager: Load today's attendance records
     (async () => {
       try {
-        const query = targetDate ? `?date=${encodeURIComponent(targetDate)}` : '';
-        const res = await fetch(`https://staffly.space/attendance/today${query}`);
+        const token = localStorage.getItem('token');
+        const headers = {
+          'Authorization': token ? `Bearer ${token}` : '',
+        };
 
-        if (!res.ok) {
-          const errorText = await res.text();
-          console.error(`Failed to load attendance: ${res.status}`, errorText);
-          throw new Error(`Failed to load attendance: ${res.status} - ${errorText}`);
+        let query = targetDate ? `?date=${encodeURIComponent(targetDate)}` : '';
+
+        // Enforce backend-level filtering for Managers (Department Scope)
+        if (user?.role === 'manager' && user?.department) {
+          query += (query ? '&' : '?') + `department=${encodeURIComponent(user.department)}`;
         }
 
-        const data = await res.json();
+        // Fetch attendance and employees in parallel to ensure we have role data
+        const [attendanceRes, employeesRes] = await Promise.all([
+          fetch(`https://staffly.space/attendance/today${query}`, { headers }),
+          fetch('https://staffly.space/employees', { headers })
+        ]);
+
+        if (!attendanceRes.ok) {
+          const errorText = await attendanceRes.text();
+          console.error(`Failed to load attendance: ${attendanceRes.status}`, errorText);
+          throw new Error(`Failed to load attendance: ${attendanceRes.status} - ${errorText}`);
+        }
+
+        let data = await attendanceRes.json();
+        const employeesData = employeesRes.ok ? await employeesRes.json() : [];
+
+        // Create a map of userId -> role for quick lookup
+        const userRoleMap: Record<string, string> = {};
+        employeesData.forEach((emp: any) => {
+          const uId = String(emp.user_id || emp.userId || emp.id);
+          userRoleMap[uId] = (emp.role || '').toLowerCase();
+        });
+
         console.log('Attendance data received:', data);
+
+        // Enforce strict visibility validation for Managers
+        if (user?.role === 'manager' && user?.department) {
+          const normalizedDept = user.department.trim().toLowerCase();
+          data = data.filter((rec: any) => {
+            const recUserId = String(rec.user_id || rec.userId);
+
+            // 1. Always show Self
+            if (recUserId === String(user.id)) return true;
+
+            // 2. Check Department
+            const recDept = (rec.department || '').trim().toLowerCase();
+            if (recDept !== normalizedDept) return false;
+
+            // 3. Check Role (Only 'employee' and 'team_lead')
+            const recRole = userRoleMap[recUserId];
+            if (recRole === 'employee' || recRole === 'team_lead') return true;
+
+            // Explicitly exclude other roles (manager, admin, etc.) even in same department
+            return false;
+          });
+        }
 
         // Transform backend data to EmployeeAttendance format
         const transformedData: EmployeeAttendance[] = data
@@ -731,6 +792,11 @@ const AttendanceManager: React.FC = () => {
         if (selectedDepartmentFilter) {
           exportParams.department = selectedDepartmentFilter;
         }
+      }
+
+      // Enforce department scope for Manager exports
+      if (user?.role === 'manager' && user?.department) {
+        exportParams.department = user.department;
       }
 
       if (startDate) {
@@ -1472,8 +1538,8 @@ const AttendanceManager: React.FC = () => {
                   type="button"
                   onClick={() => setExportType('csv')}
                   className={`p-4 rounded-lg border-2 transition-all ${exportType === 'csv'
-                      ? 'border-green-600 bg-green-50 dark:bg-green-950'
-                      : 'border-gray-200 hover:border-green-300 dark:border-gray-700'
+                    ? 'border-green-600 bg-green-50 dark:bg-green-950'
+                    : 'border-gray-200 hover:border-green-300 dark:border-gray-700'
                     }`}
                 >
                   <div className="flex flex-col items-center gap-2">
@@ -1490,8 +1556,8 @@ const AttendanceManager: React.FC = () => {
                   type="button"
                   onClick={() => setExportType('pdf')}
                   className={`p-4 rounded-lg border-2 transition-all ${exportType === 'pdf'
-                      ? 'border-red-600 bg-red-50 dark:bg-red-950'
-                      : 'border-gray-200 hover:border-red-300 dark:border-gray-700'
+                    ? 'border-red-600 bg-red-50 dark:bg-red-950'
+                    : 'border-gray-200 hover:border-red-300 dark:border-gray-700'
                     }`}
                 >
                   <div className="flex flex-col items-center gap-2">
@@ -1662,8 +1728,8 @@ const AttendanceManager: React.FC = () => {
                               key={emp.user_id}
                               onClick={() => setSelectedEmployee(emp)}
                               className={`w-full text-left p-3 border-b last:border-b-0 transition-colors ${isSelected
-                                  ? 'bg-blue-50 dark:bg-blue-900'
-                                  : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                                ? 'bg-blue-50 dark:bg-blue-900'
+                                : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                                 }`}
                             >
                               <div className="font-medium">{emp.name}</div>
@@ -1932,8 +1998,8 @@ const AttendanceManager: React.FC = () => {
                         type="button"
                         onClick={() => handleDepartmentSelect(dept)}
                         className={`px-3 py-1.5 rounded-full text-sm transition-all ${isSelected
-                            ? 'bg-purple-600 text-white shadow-lg'
-                            : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+                          ? 'bg-purple-600 text-white shadow-lg'
+                          : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
                           }`}
                       >
                         {dept}
@@ -2190,8 +2256,8 @@ const AttendanceManager: React.FC = () => {
                                 <Badge
                                   variant="outline"
                                   className={`text-xs ${request.role === 'hr'
-                                      ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950'
-                                      : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
+                                    ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950'
+                                    : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
                                     }`}
                                 >
                                   {request.role === 'hr' ? 'HR' : 'Manager'}
@@ -2317,8 +2383,8 @@ const AttendanceManager: React.FC = () => {
                                     <Badge
                                       variant="outline"
                                       className={`text-xs ${request.role === 'hr'
-                                          ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950'
-                                          : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
+                                        ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950'
+                                        : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
                                         }`}
                                     >
                                       {request.role === 'hr' ? 'HR' : 'Manager'}
@@ -2401,8 +2467,8 @@ const AttendanceManager: React.FC = () => {
                     <Badge
                       variant="outline"
                       className={`text-xs ${selectedWfhRequest.role === 'hr'
-                          ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950'
-                          : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
+                        ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950'
+                        : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
                         }`}
                     >
                       {selectedWfhRequest.role === 'hr' ? 'HR' : 'Manager'}

@@ -61,8 +61,9 @@ interface DepartmentMetrics {
 export default function Reports() {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const [selectedMonth, setSelectedMonth] = useState(nowIST().getMonth().toString());
-  const [selectedYear, setSelectedYear] = useState(nowIST().getFullYear().toString());
+  const currentDate = nowIST();
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth().toString());
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear().toString());
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   
   // Check URL for tab parameter
@@ -98,32 +99,10 @@ export default function Reports() {
     }
   }, [employeeRatings]);
 
-  // Load departments on mount
-  useEffect(() => {
-    loadDepartments();
-  }, []);
-
   // Load report data when filters change
   useEffect(() => {
     loadReportData();
   }, [selectedMonth, selectedYear, selectedDepartment]);
-
-  const loadDepartments = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('https://staffly.space/reports/departments', {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setDepartments(data.departments || []);
-      }
-    } catch (error) {
-      console.error('Failed to load departments:', error);
-    }
-  };
 
   const loadReportData = async () => {
     setIsLoading(true);
@@ -164,7 +143,23 @@ export default function Reports() {
       // Handle employee performance response
       if (empResponse.ok) {
         const empData = await empResponse.json();
-        setEmployeePerformance(empData.employees || []);
+        const employees = empData.employees || [];
+        setEmployeePerformance(employees);
+        
+        // Update departments list to only include those with employees
+        const employeeDepts = Array.from(
+          new Set(
+            employees
+              .map((emp: EmployeePerformance) => emp.department)
+              .filter((dept: string) => dept && !dept.includes(','))
+          )
+        ).sort() as string[];
+        setDepartments(employeeDepts);
+        
+        // Reset department filter if selected department has no employees
+        if (selectedDepartment !== 'all' && !employeeDepts.includes(selectedDepartment)) {
+          setSelectedDepartment('all');
+        }
       } else {
         console.error('Employee performance error:', empResponse.status, await empResponse.text());
         setEmployeePerformance([]);
@@ -411,6 +406,7 @@ export default function Reports() {
                   <SelectValue placeholder="Year" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="2026">2026</SelectItem>
                   <SelectItem value="2025">2025</SelectItem>
                   <SelectItem value="2024">2024</SelectItem>
                   <SelectItem value="2023">2023</SelectItem>

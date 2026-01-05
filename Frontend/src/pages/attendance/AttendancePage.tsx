@@ -281,6 +281,8 @@ const AttendancePage: React.FC = () => {
         const formattedWfhRequests = wfhData.map((req: any) => ({
           id: req.wfh_id || req.id,
           wfhId: req.wfh_id || req.id,
+          // Use backend dates as-is without any client-side transformation
+          // Backend is the source of truth for dates
           startDate: req.start_date,
           endDate: req.end_date,
           reason: req.reason,
@@ -601,13 +603,42 @@ const AttendancePage: React.FC = () => {
       return;
     }
 
+    // Check for overlapping requests (not consecutive dates)
+    const newStartDate = format(wfhStartDate, 'yyyy-MM-dd');
+    const newEndDate = format(wfhEndDate, 'yyyy-MM-dd');
+    
+    const hasOverlap = wfhRequests.some(req => {
+      // Only check pending and approved requests
+      if (req.status !== 'pending' && req.status !== 'approved') {
+        return false;
+      }
+      
+      // Check for actual overlap (same date or within range)
+      // Allow consecutive dates (e.g., 04 Jan and 05 Jan are allowed)
+      const reqStart = req.startDate;
+      const reqEnd = req.endDate;
+      
+      // Overlap occurs if:
+      // new request starts before existing ends AND new request ends after existing starts
+      return newStartDate <= reqEnd && newEndDate >= reqStart;
+    });
+
+    if (hasOverlap) {
+      toast({
+        title: 'Overlapping Request',
+        description: 'You already have a WFH request for these dates. Please choose different dates.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmittingWfh(true);
     try {
       // Call API to submit WFH request
       const wfhTypeLabel = wfhType === 'full_day' ? 'Full Day' : 'Half Day';
       const response = await apiService.submitWFHRequest({
-        start_date: format(wfhStartDate, 'yyyy-MM-dd'),
-        end_date: format(wfhEndDate, 'yyyy-MM-dd'),
+        start_date: newStartDate,
+        end_date: newEndDate,
         wfh_type: wfhTypeLabel,
         reason: wfhReason.trim(),
       });
@@ -654,8 +685,24 @@ const AttendancePage: React.FC = () => {
 
   const handleEditWfh = (request: any) => {
     setEditingWfhId(request.id || request.wfhId);
-    setWfhStartDate(new Date(request.startDate));
-    setWfhEndDate(new Date(request.endDate));
+    // Parse dates from backend format (YYYY-MM-DD) without timezone conversion
+    const startDateParts = request.startDate.split('-');
+    const endDateParts = request.endDate.split('-');
+    
+    // Create dates in UTC to avoid timezone shifts
+    const startDate = new Date(Date.UTC(
+      parseInt(startDateParts[0]),
+      parseInt(startDateParts[1]) - 1,
+      parseInt(startDateParts[2])
+    ));
+    const endDate = new Date(Date.UTC(
+      parseInt(endDateParts[0]),
+      parseInt(endDateParts[1]) - 1,
+      parseInt(endDateParts[2])
+    ));
+    
+    setWfhStartDate(startDate);
+    setWfhEndDate(endDate);
     setWfhReason(request.reason);
     setWfhType(request.type === 'Full Day' || request.type === 'full_day' ? 'full_day' : 'half_day');
     setIsEditDialogOpen(true);
@@ -680,12 +727,45 @@ const AttendancePage: React.FC = () => {
       return;
     }
 
+    // Check for overlapping requests with other pending/approved requests
+    const newStartDate = format(wfhStartDate, 'yyyy-MM-dd');
+    const newEndDate = format(wfhEndDate, 'yyyy-MM-dd');
+    
+    const hasOverlap = wfhRequests.some(req => {
+      // Skip the current request being edited
+      if ((req.id || req.wfhId) === editingWfhId) {
+        return false;
+      }
+      
+      // Only check pending and approved requests
+      if (req.status !== 'pending' && req.status !== 'approved') {
+        return false;
+      }
+      
+      // Check for actual overlap (same date or within range)
+      const reqStart = req.startDate;
+      const reqEnd = req.endDate;
+      
+      // Overlap occurs if:
+      // new request starts before existing ends AND new request ends after existing starts
+      return newStartDate <= reqEnd && newEndDate >= reqStart;
+    });
+
+    if (hasOverlap) {
+      toast({
+        title: 'Overlapping Request',
+        description: 'You already have a WFH request for these dates. Please choose different dates.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmittingWfh(true);
     try {
       const wfhTypeLabel = wfhType === 'full_day' ? 'Full Day' : 'Half Day';
       const response = await apiService.updateWFHRequest(parseInt(editingWfhId), {
-        start_date: format(wfhStartDate, 'yyyy-MM-dd'),
-        end_date: format(wfhEndDate, 'yyyy-MM-dd'),
+        start_date: newStartDate,
+        end_date: newEndDate,
         wfh_type: wfhTypeLabel,
         reason: wfhReason.trim(),
       });
@@ -1200,8 +1280,17 @@ const AttendancePage: React.FC = () => {
           {/* WFH Request History */}
           <Card className="border-0 shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-              <CardTitle className="text-xl font-semibold">Your WFH Requests</CardTitle>
-              <CardDescription>Track the status of your work from home requests</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl font-semibold">Your WFH Requests</CardTitle>
+                  <CardDescription>Track the status of your work from home requests</CardDescription>
+                </div>
+                {wfhRequests.length > 0 && (
+                  <Badge variant="outline" className="text-sm px-3 py-1">
+                    {wfhRequests.length} Request{wfhRequests.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-4">
@@ -1211,10 +1300,10 @@ const AttendancePage: React.FC = () => {
                       <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
                         <div className="flex items-start justify-between gap-4">
                           <div className="space-y-2 flex-1">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <Calendar className="h-4 w-4 text-blue-600" />
                               <span className="font-medium">
-                                {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
+                                {request.startDate} - {request.endDate}
                               </span>
                               <Badge variant="outline" className="text-xs">
                                 {request.type === 'full_day' || request.type === 'Full Day' ? 'Full Day' : 'Half Day'}
@@ -1224,6 +1313,13 @@ const AttendancePage: React.FC = () => {
                             <p className="text-xs text-muted-foreground">
                               Submitted {formatRelativeTime(request.submittedAt)} ({formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')})
                             </p>
+                            {request.status === 'rejected' && request.rejectionReason && (
+                              <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
+                                <p className="text-sm text-red-800 dark:text-red-200">
+                                  <strong>Rejection Reason:</strong> {request.rejectionReason}
+                                </p>
+                              </div>
+                            )}
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge 

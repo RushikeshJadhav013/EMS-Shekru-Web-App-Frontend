@@ -169,6 +169,8 @@ const backendToFrontendStatus: Record<string, BaseTask['status']> = {
   Pending: 'todo',
   'in progress': 'in-progress',
   'In Progress': 'in-progress',
+  overdue: 'overdue',
+  Overdue: 'overdue',
   completed: 'completed',
   Completed: 'completed',
   cancelled: 'cancelled',
@@ -178,6 +180,7 @@ const backendToFrontendStatus: Record<string, BaseTask['status']> = {
 const frontendToBackendStatus: Record<BaseTask['status'], string> = {
   'todo': 'Pending',
   'in-progress': 'In Progress',
+  'overdue': 'Overdue',
   'completed': 'Completed',
   'cancelled': 'Cancelled',
 };
@@ -343,6 +346,7 @@ const TaskManagement: React.FC = () => {
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
+  const [isOverdueFilterActive, setIsOverdueFilterActive] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskWithPassMeta | null>(null);
   const [editTaskForm, setEditTaskForm] = useState({
@@ -550,10 +554,35 @@ const TaskManagement: React.FC = () => {
       const data: BackendTask[] = await response.json();
       const converted = data.map(mapBackendTaskToFrontend);
       
+      // Check and update overdue tasks
+      const tasksToUpdate: TaskWithPassMeta[] = [];
+      const updatedConverted = converted.map(task => {
+        // If task is not completed/cancelled and deadline has passed, mark as overdue
+        if (task.status !== 'completed' && task.status !== 'cancelled' && 
+            task.deadline && new Date(task.deadline) < new Date() &&
+            task.status !== 'overdue') {
+          tasksToUpdate.push(task);
+          return { ...task, status: 'overdue' as BaseTask['status'] };
+        }
+        return task;
+      });
+
+      // Update overdue tasks on the backend
+      for (const task of tasksToUpdate) {
+        try {
+          await fetch(`${API_BASE_URL}/tasks/${task.id}/status?status=Overdue`, {
+            method: 'PUT',
+            headers: authorizedHeaders,
+          });
+        } catch (error) {
+          console.error(`Failed to update task ${task.id} to overdue status`, error);
+        }
+      }
+      
       // Sort tasks by status priority first, then by deadline within each status
-      const sortedTasks = converted.sort((a, b) => {
-        // Define status priority order: todo -> in-progress -> completed -> cancelled
-        const statusOrder = { 'todo': 0, 'in-progress': 1, 'completed': 2, 'cancelled': 3 };
+      const sortedTasks = updatedConverted.sort((a, b) => {
+        // Define status priority order: todo -> in-progress -> overdue -> completed -> cancelled
+        const statusOrder = { 'todo': 0, 'in-progress': 1, 'overdue': 2, 'completed': 3, 'cancelled': 4 };
         const aStatusPriority = statusOrder[a.status] ?? 999;
         const bStatusPriority = statusOrder[b.status] ?? 999;
         
@@ -831,6 +860,30 @@ const TaskManagement: React.FC = () => {
     });
   }, [filterStatus, searchQuery, tasks, user, userId]);
 
+  // Get task counts by status (for stat cards) - without status filter
+  const taskCountsByStatus = useMemo(() => {
+    const searchFiltered = tasks.filter(task => {
+      const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            task.description.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const isVisible = userId && user ? (
+        task.assignedBy === userId ||
+        task.assignedTo.includes(userId) ||
+        user.role === 'admin'
+      ) : false;
+
+      return matchesSearch && Boolean(isVisible);
+    });
+
+    return {
+      total: searchFiltered.length,
+      inProgress: searchFiltered.filter(t => t.status === 'in-progress').length,
+      completed: searchFiltered.filter(t => t.status === 'completed').length,
+      overdue: searchFiltered.filter(t => t.status === 'overdue').length,
+      cancelled: searchFiltered.filter(t => t.status === 'cancelled').length,
+    };
+  }, [searchQuery, tasks, user, userId]);
+
   const filteredReceivedTasks = useMemo(() => {
     if (!userId) return [] as TaskWithPassMeta[];
     return filteredTasks.filter((task) => task.assignedTo.includes(userId));
@@ -865,11 +918,16 @@ const TaskManagement: React.FC = () => {
       });
     }
 
+    // Apply overdue filter if active
+    if (isOverdueFilterActive) {
+      baseTasks = baseTasks.filter(task => task.status === 'overdue');
+    }
+
     // Re-sort tasks by status priority first, then by deadline within each status
     // This ensures consistent ordering regardless of when tasks were updated
     return baseTasks.sort((a, b) => {
-      // Define status priority order: todo -> in-progress -> completed -> cancelled
-      const statusOrder = { 'todo': 0, 'in-progress': 1, 'completed': 2, 'cancelled': 3 };
+      // Define status priority order: todo -> in-progress -> overdue -> completed -> cancelled
+      const statusOrder = { 'todo': 0, 'in-progress': 1, 'overdue': 2, 'completed': 3, 'cancelled': 4 };
       const aStatusPriority = statusOrder[a.status] ?? 999;
       const bStatusPriority = statusOrder[b.status] ?? 999;
       
@@ -891,7 +949,7 @@ const TaskManagement: React.FC = () => {
         return aDeadline - bDeadline;
       }
     });
-  }, [filteredCreatedTasks, filteredReceivedTasks, filteredTasks, taskOwnershipFilter, selectedDepartmentFilter, employees]);
+  }, [filteredCreatedTasks, filteredReceivedTasks, filteredTasks, taskOwnershipFilter, selectedDepartmentFilter, employees, isOverdueFilterActive]);
 
   const selectedTaskAssignerInfo = useMemo(() => {
     if (!selectedTask) return null;
@@ -1009,17 +1067,34 @@ const TaskManagement: React.FC = () => {
       // Add new task at the beginning of the list (newest first)
       setTasks((prev) => [convertedTask, ...prev]);
 
-      if (convertedTask.assignedTo[0] && userId && convertedTask.assignedTo[0] !== userId) {
-        addNotification({
-          title: 'New Task Assigned',
-          message: `${user.name} assigned you a new task: "${convertedTask.title}"`,
-          type: 'task',
-          metadata: {
-            taskId: convertedTask.id,
-            requesterId: user.id,
-            requesterName: user.name,
-          }
-        });
+      // ✅ Trigger notification for the assigned user (will be fetched by backend polling)
+      // The backend will create the notification, and the assigned user will see it when they poll
+      if (convertedTask.assignedTo[0] && userId) {
+        if (convertedTask.assignedTo[0] !== userId) {
+          // Task assigned to someone else
+          addNotification({
+            title: 'New Task Assigned',
+            message: `${user.name} assigned you a new task: "${convertedTask.title}"`,
+            type: 'task',
+            metadata: {
+              taskId: convertedTask.id,
+              requesterId: user.id,
+              requesterName: user.name,
+            }
+          });
+        } else {
+          // Task created for self
+          addNotification({
+            title: 'Task Created',
+            message: `You created a new task: "${convertedTask.title}" - Due: ${convertedTask.deadline || 'No deadline'}`,
+            type: 'task',
+            metadata: {
+              taskId: convertedTask.id,
+              requesterId: user.id,
+              requesterName: user.name,
+            }
+          });
+        }
       }
 
       toast({
@@ -1117,6 +1192,20 @@ const TaskManagement: React.FC = () => {
       setSelectedTask((prev) => (prev && prev.id === converted.id ? converted : prev));
 
       await fetchAndStoreHistory(converted.id);
+
+      // ✅ Trigger notification for the new assignee
+      if (converted.assignedTo[0] && user && converted.assignedTo[0] !== user.id) {
+        addNotification({
+          title: 'Task Passed to You',
+          message: `${user.name} passed you the task: "${converted.title}"${passNote ? ` - Note: ${passNote}` : ''}`,
+          type: 'task',
+          metadata: {
+            taskId: converted.id,
+            requesterId: user.id,
+            requesterName: user.name,
+          }
+        });
+      }
 
       toast({
         title: 'Task passed successfully',
@@ -1683,10 +1772,15 @@ const TaskManagement: React.FC = () => {
     }
   }, [authToken, authorizedHeaders, toast]);
 
+  // Helper function to check if task is overdue
+  const isTaskOverdue = useCallback((task: TaskWithPassMeta): boolean => {
+    return task.status === 'overdue';
+  }, []);
+
   // Helper function to check if a status transition is allowed
   const isStatusTransitionAllowed = useCallback((currentStatus: BaseTask['status'], newStatus: BaseTask['status']): boolean => {
     // Define status hierarchy
-    const statusHierarchy: BaseTask['status'][] = ['todo', 'in-progress', 'completed', 'cancelled'];
+    const statusHierarchy: BaseTask['status'][] = ['todo', 'in-progress', 'overdue', 'completed', 'cancelled'];
     const currentIndex = statusHierarchy.indexOf(currentStatus);
     const newIndex = statusHierarchy.indexOf(newStatus);
     
@@ -1696,12 +1790,22 @@ const TaskManagement: React.FC = () => {
       return true;
     }
     
-    // 2. Once completed or cancelled, cannot go back to previous statuses
-    if (currentIndex >= 2 && newIndex < 2) {
+    // 2. Can move from 'overdue' to 'in-progress' (user fixing overdue task)
+    if (currentStatus === 'overdue' && newStatus === 'in-progress') {
+      return true;
+    }
+    
+    // 3. Can move from 'in-progress' to 'overdue' (automatic or manual)
+    if (currentStatus === 'in-progress' && newStatus === 'overdue') {
+      return true;
+    }
+    
+    // 4. Once completed or cancelled, cannot go back to previous statuses
+    if (currentIndex >= 4 && newIndex < 4) {
       return false;
     }
     
-    // 3. Can always move forward or stay at current status
+    // 5. Can always move forward or stay at current status
     if (newIndex >= currentIndex) {
       return true;
     }
@@ -1784,6 +1888,7 @@ const TaskManagement: React.FC = () => {
     switch (status) {
       case 'todo': return 'bg-slate-500';
       case 'in-progress': return 'bg-blue-500';
+      case 'overdue': return 'bg-orange-500';
       case 'completed': return 'bg-green-500';
       case 'cancelled': return 'bg-red-500';
       default: return 'bg-gray-500';
@@ -2303,9 +2408,19 @@ const TaskManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Clickable Filters */}
       <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
-        <Card className="border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 shadow-sm hover:shadow-md transition-all duration-300">
+        <Card 
+          onClick={() => {
+            setFilterStatus('all');
+            setIsOverdueFilterActive(false);
+          }}
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
+            filterStatus === 'all' && !isOverdueFilterActive
+              ? 'border-slate-600 dark:border-slate-400 bg-slate-100 dark:bg-slate-800' 
+              : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-600'
+          }`}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-slate-700 dark:text-slate-300">Total Tasks</CardTitle>
             <div className="h-8 w-8 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
@@ -2313,11 +2428,23 @@ const TaskManagement: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{tasks.length}</div>
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              {taskCountsByStatus.total}
+            </div>
           </CardContent>
         </Card>
         
-        <Card className="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 shadow-sm hover:shadow-md transition-all duration-300">
+        <Card 
+          onClick={() => {
+            setFilterStatus('in-progress');
+            setIsOverdueFilterActive(false);
+          }}
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
+            filterStatus === 'in-progress' && !isOverdueFilterActive
+              ? 'border-blue-600 dark:border-blue-400 bg-blue-100 dark:bg-blue-900' 
+              : 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 hover:border-blue-400 dark:hover:border-blue-600'
+          }`}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-blue-700 dark:text-blue-300">In Progress</CardTitle>
             <div className="h-8 w-8 rounded-lg bg-blue-200 dark:bg-blue-800 flex items-center justify-center">
@@ -2326,12 +2453,22 @@ const TaskManagement: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-              {tasks.filter(t => t.status === 'in-progress').length}
+              {taskCountsByStatus.inProgress}
             </div>
           </CardContent>
         </Card>
         
-        <Card className="border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 shadow-sm hover:shadow-md transition-all duration-300">
+        <Card 
+          onClick={() => {
+            setFilterStatus('completed');
+            setIsOverdueFilterActive(false);
+          }}
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
+            filterStatus === 'completed' && !isOverdueFilterActive
+              ? 'border-green-600 dark:border-green-400 bg-green-100 dark:bg-green-900' 
+              : 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 hover:border-green-400 dark:hover:border-green-600'
+          }`}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-green-700 dark:text-green-300">Completed</CardTitle>
             <div className="h-8 w-8 rounded-lg bg-green-200 dark:bg-green-800 flex items-center justify-center">
@@ -2340,12 +2477,22 @@ const TaskManagement: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-900 dark:text-green-100">
-              {tasks.filter(t => t.status === 'completed').length}
+              {taskCountsByStatus.completed}
             </div>
           </CardContent>
         </Card>
         
-        <Card className="border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950 shadow-sm hover:shadow-md transition-all duration-300">
+        <Card 
+          onClick={() => {
+            setFilterStatus('all');
+            setIsOverdueFilterActive(true);
+          }}
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
+            isOverdueFilterActive
+              ? 'border-orange-600 dark:border-orange-400 bg-orange-100 dark:bg-orange-900' 
+              : 'border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950 hover:border-orange-400 dark:hover:border-orange-600'
+          }`}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-orange-700 dark:text-orange-300">Overdue</CardTitle>
             <div className="h-8 w-8 rounded-lg bg-orange-200 dark:bg-orange-800 flex items-center justify-center">
@@ -2354,15 +2501,22 @@ const TaskManagement: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-900 dark:text-orange-100">
-              {tasks.filter(t => 
-                t.status !== 'completed' && 
-                new Date(t.deadline) < new Date()
-              ).length}
+              {taskCountsByStatus.overdue}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shadow-sm hover:shadow-md transition-all duration-300">
+        <Card 
+          onClick={() => {
+            setFilterStatus('cancelled');
+            setIsOverdueFilterActive(false);
+          }}
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
+            filterStatus === 'cancelled' && !isOverdueFilterActive
+              ? 'border-gray-600 dark:border-gray-400 bg-gray-100 dark:bg-gray-800' 
+              : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:border-gray-400 dark:hover:border-gray-600'
+          }`}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-gray-700 dark:text-gray-300">Cancelled</CardTitle>
             <div className="h-8 w-8 rounded-lg bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
@@ -2371,7 +2525,7 @@ const TaskManagement: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {tasks.filter(t => t.status === 'cancelled').length}
+              {taskCountsByStatus.cancelled}
             </div>
           </CardContent>
         </Card>
@@ -2407,6 +2561,7 @@ const TaskManagement: React.FC = () => {
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="todo">To Do</SelectItem>
                   <SelectItem value="in-progress">In Progress</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
@@ -2601,9 +2756,14 @@ const TaskManagement: React.FC = () => {
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm">
+                              <span className={`text-sm ${isTaskOverdue(task) ? 'font-bold text-orange-600 dark:text-orange-400' : ''}`}>
                                 {formatDisplayDate(task.deadline)}
                               </span>
+                              {isTaskOverdue(task) && (
+                                <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100 text-xs">
+                                  Overdue
+                                </Badge>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -2806,7 +2966,14 @@ const TaskManagement: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-2 text-sm">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>{formatDisplayDate(task.deadline)}</span>
+                        <span className={isTaskOverdue(task) ? 'font-bold text-orange-600 dark:text-orange-400' : ''}>
+                          {formatDisplayDate(task.deadline)}
+                        </span>
+                        {isTaskOverdue(task) && (
+                          <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100 text-xs">
+                            Overdue
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 text-sm">
                         <Clock className="h-4 w-4 text-muted-foreground" />

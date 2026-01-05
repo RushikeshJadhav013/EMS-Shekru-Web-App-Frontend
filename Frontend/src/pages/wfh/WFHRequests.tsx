@@ -115,12 +115,41 @@ const WFHRequests: React.FC = () => {
       return;
     }
 
+    // Check for overlapping requests (not consecutive dates)
+    const newStartDate = format(formData.startDate, 'yyyy-MM-dd');
+    const newEndDate = format(formData.endDate, 'yyyy-MM-dd');
+    
+    const hasOverlap = wfhRequests.some(req => {
+      // Only check pending and approved requests
+      if (req.status !== 'pending' && req.status !== 'approved') {
+        return false;
+      }
+      
+      // Check for actual overlap (same date or within range)
+      // Allow consecutive dates (e.g., 04 Jan and 05 Jan are allowed)
+      const reqStart = req.start_date;
+      const reqEnd = req.end_date;
+      
+      // Overlap occurs if:
+      // new request starts before existing ends AND new request ends after existing starts
+      return newStartDate <= reqEnd && newEndDate >= reqStart;
+    });
+
+    if (hasOverlap) {
+      toast({
+        title: 'Overlapping Request',
+        description: 'You already have a WFH request for these dates. Please choose different dates.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const wfhData = {
         employee_id: String(user.id),
-        start_date: format(formData.startDate, 'yyyy-MM-dd'),
-        end_date: format(formData.endDate, 'yyyy-MM-dd'),
+        start_date: newStartDate,
+        end_date: newEndDate,
         reason: formData.reason,
         wfh_type: (formData.type === 'full_day' ? 'Full Day' : 'Half Day') as 'Full Day' | 'Half Day',
       };
@@ -158,9 +187,25 @@ const WFHRequests: React.FC = () => {
 
   const handleEditRequest = (request: WFHRequest) => {
     setEditingRequest(request);
+    // Parse dates from backend format (YYYY-MM-DD) without timezone conversion
+    const startDateParts = request.start_date.split('-');
+    const endDateParts = request.end_date.split('-');
+    
+    // Create dates in UTC to avoid timezone shifts
+    const startDate = new Date(Date.UTC(
+      parseInt(startDateParts[0]),
+      parseInt(startDateParts[1]) - 1,
+      parseInt(startDateParts[2])
+    ));
+    const endDate = new Date(Date.UTC(
+      parseInt(endDateParts[0]),
+      parseInt(endDateParts[1]) - 1,
+      parseInt(endDateParts[2])
+    ));
+    
     setFormData({
-      startDate: new Date(request.start_date),
-      endDate: new Date(request.end_date),
+      startDate,
+      endDate,
       reason: request.reason,
       type: request.wfh_type,
     });
@@ -179,11 +224,44 @@ const WFHRequests: React.FC = () => {
       return;
     }
 
+    // Check for overlapping requests with other pending/approved requests
+    const newStartDate = format(formData.startDate, 'yyyy-MM-dd');
+    const newEndDate = format(formData.endDate, 'yyyy-MM-dd');
+    
+    const hasOverlap = wfhRequests.some(req => {
+      // Skip the current request being edited
+      if (req.id === editingRequest.id) {
+        return false;
+      }
+      
+      // Only check pending and approved requests
+      if (req.status !== 'pending' && req.status !== 'approved') {
+        return false;
+      }
+      
+      // Check for actual overlap (same date or within range)
+      const reqStart = req.start_date;
+      const reqEnd = req.end_date;
+      
+      // Overlap occurs if:
+      // new request starts before existing ends AND new request ends after existing starts
+      return newStartDate <= reqEnd && newEndDate >= reqStart;
+    });
+
+    if (hasOverlap) {
+      toast({
+        title: 'Overlapping Request',
+        description: 'You already have a WFH request for these dates. Please choose different dates.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const updateData = {
-        start_date: format(formData.startDate, 'yyyy-MM-dd'),
-        end_date: format(formData.endDate, 'yyyy-MM-dd'),
+        start_date: newStartDate,
+        end_date: newEndDate,
         reason: formData.reason,
         wfh_type: (formData.type === 'full_day' ? 'Full Day' : 'Half Day') as 'Full Day' | 'Half Day',
       };
@@ -321,9 +399,16 @@ const WFHRequests: React.FC = () => {
         <TabsContent value="my-requests" className="space-y-4">
           <Card className="border-0 shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl font-semibold">My WFH Requests</CardTitle>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-xl font-semibold">My WFH Requests</CardTitle>
+                    {wfhRequests.length > 0 && (
+                      <Badge variant="outline" className="text-sm">
+                        {wfhRequests.length}
+                      </Badge>
+                    )}
+                  </div>
                   <CardDescription>View and manage your work from home requests</CardDescription>
                 </div>
                 <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
@@ -360,7 +445,7 @@ const WFHRequests: React.FC = () => {
                             <div className="flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-orange-600" />
                               <span className="font-medium">
-                                {formatDateIST(new Date(request.start_date), 'dd MMM yyyy')} - {formatDateIST(new Date(request.end_date), 'dd MMM yyyy')}
+                                {request.start_date} - {request.end_date}
                               </span>
                             </div>
                             <Badge variant="outline" className="text-xs">
@@ -489,9 +574,16 @@ const WFHRequests: React.FC = () => {
         <TabsContent value="recent-decisions" className="space-y-4">
           <Card className="border-0 shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl font-semibold">Recent Decisions</CardTitle>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-xl font-semibold">Recent Decisions</CardTitle>
+                    {recentDecisions.length > 0 && (
+                      <Badge variant="outline" className="text-sm">
+                        {recentDecisions.length}
+                      </Badge>
+                    )}
+                  </div>
                   <CardDescription>View recently approved and rejected WFH requests</CardDescription>
                 </div>
                 <Select value={decisionFilter} onValueChange={(value: any) => setDecisionFilter(value)}>
@@ -535,7 +627,7 @@ const WFHRequests: React.FC = () => {
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Calendar className="h-4 w-4" />
                               <span>
-                                {formatDateIST(new Date(decision.start_date), 'dd MMM yyyy')} - {formatDateIST(new Date(decision.end_date), 'dd MMM yyyy')}
+                                {decision.start_date} - {decision.end_date}
                               </span>
                             </div>
                             <p className="text-sm text-muted-foreground">{decision.reason}</p>

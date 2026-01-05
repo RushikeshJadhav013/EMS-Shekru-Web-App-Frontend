@@ -53,9 +53,8 @@ export function Pagination({
     return rangeWithDots;
   };
 
-  if (totalPages <= 1) {
-    return null;
-  }
+  // Hide pagination entirely if all records fit within the selected Show count
+  const shouldHidePagination = totalPages <= 1;
 
   return (
     <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 ${className}`}>
@@ -84,62 +83,65 @@ export function Pagination({
         )}
       </div>
 
-      <div className="flex items-center gap-1">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(1)}
-          disabled={currentPage === 1}
-          className="h-8 w-8 p-0"
-        >
-          <ChevronsLeft className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className="h-8 w-8 p-0"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
+      {/* Hide pagination buttons when all records fit in the selected Show count */}
+      {!shouldHidePagination && (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(1)}
+            disabled={currentPage === 1}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronsLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
 
-        {getVisiblePages().map((page, index) => (
-          <React.Fragment key={index}>
-            {page === '...' ? (
-              <span className="px-2 py-1 text-sm text-muted-foreground">...</span>
-            ) : (
-              <Button
-                variant={currentPage === page ? "default" : "outline"}
-                size="sm"
-                onClick={() => onPageChange(page as number)}
-                className="h-8 w-8 p-0"
-              >
-                {page}
-              </Button>
-            )}
-          </React.Fragment>
-        ))}
+          {getVisiblePages().map((page, index) => (
+            <React.Fragment key={index}>
+              {page === '...' ? (
+                <span className="px-2 py-1 text-sm text-muted-foreground">...</span>
+              ) : (
+                <Button
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => onPageChange(page as number)}
+                  className="h-8 w-8 p-0"
+                >
+                  {page}
+                </Button>
+              )}
+            </React.Fragment>
+          ))}
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="h-8 w-8 p-0"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(totalPages)}
-          disabled={currentPage === totalPages}
-          className="h-8 w-8 p-0"
-        >
-          <ChevronsRight className="h-4 w-4" />
-        </Button>
-      </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(totalPages)}
+            disabled={currentPage === totalPages}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronsRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

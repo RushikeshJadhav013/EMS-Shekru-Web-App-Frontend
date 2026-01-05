@@ -3,8 +3,9 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { useAuth } from './AuthContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
-const FETCH_INTERVAL_MS = 60_000;
-const POLLING_IDLE_TIMEOUT_MS = 5 * 60_000;
+const FETCH_INTERVAL_MS = 30_000; // Poll every 30 seconds for more real-time feel
+const POLLING_IDLE_TIMEOUT_MS = 10 * 60_000; // 10 minutes idle timeout
+const RETRY_DELAY_MS = 5_000; // Retry after 5 seconds on failure
 
 export interface Notification {
   id: string;
@@ -30,9 +31,18 @@ export interface Notification {
   };
 }
 
+// Debug logging helper
+const debugLog = (message: string, data?: unknown) => {
+  if (import.meta.env.DEV) {
+    console.log(`[NotificationContext] ${message}`, data !== undefined ? data : '');
+  }
+};
+
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
+  isLoading: boolean;
+  error: string | null;
   addNotification: (notification: Omit<Notification, 'id' | 'userId' | 'createdAt' | 'read'>) => void;
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
@@ -86,10 +96,15 @@ const getAuthHeader = (): string | null => {
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const audioRef = useRef<{ play: () => void } | null>(null);
   const pollIntervalRef = useRef<number | null>(null);
   const pollIdleTimeoutRef = useRef<number | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const retryTimeoutRef = useRef<number | null>(null);
+  const lastFetchRef = useRef<number>(0);
+  const previousUnreadCountRef = useRef<number>(0);
   
   // Check if notifications are enabled
   const areNotificationsEnabled = () => {
@@ -158,7 +173,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
   }, []);
 
-  const playNotificationSound = () => {
+  const playNotificationSound = useCallback(() => {
     try {
       if (audioRef.current) {
         audioRef.current.play();
@@ -166,7 +181,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } catch (error) {
       console.error('Error playing notification sound:', error);
     }
-  };
+  }, []);
 
   const mapBackendTaskNotification = useCallback((notification: BackendTaskNotification, currentUserId?: string): Notification | null => {
     let parsedDetails: Record<string, unknown> | null = null;
@@ -284,18 +299,27 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       window.clearTimeout(pollIdleTimeoutRef.current);
       pollIdleTimeoutRef.current = null;
     }
+    if (retryTimeoutRef.current) {
+      window.clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
   }, []);
 
-  const fetchBackendNotifications = useCallback(async () => {
-    if (!user) return;
+  const fetchBackendNotifications = useCallback(async (isManualRefresh = false) => {
+    if (!user) {
+      debugLog('No user, skipping fetch');
+      return;
+    }
     
     // Check if notifications are enabled
     if (!areNotificationsEnabled()) {
+      debugLog('Notifications disabled, skipping fetch');
       return;
     }
     
     const authHeader = getAuthHeader();
     if (!authHeader) {
+      debugLog('No auth header, stopping polling');
       stopPolling();
       return;
     }
@@ -303,9 +327,18 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     // ✅ Validate token exists and is not empty
     const token = localStorage.getItem('token');
     if (!token || token.trim() === '') {
+      debugLog('No token, stopping polling');
       stopPolling();
       return;
     }
+
+    // Prevent too frequent fetches (minimum 2 seconds between fetches)
+    const now = Date.now();
+    if (!isManualRefresh && now - lastFetchRef.current < 2000) {
+      debugLog('Fetch throttled, skipping');
+      return;
+    }
+    lastFetchRef.current = now;
 
     // Cancel previous request if still pending
     if (abortControllerRef.current) {
@@ -313,6 +346,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
+
+    if (isManualRefresh) {
+      setIsLoading(true);
+    }
+    setError(null);
+
+    debugLog('Fetching notifications from API...');
 
     try {
       const [taskResult, leaveResult, shiftResult] = await Promise.allSettled([
@@ -391,7 +431,18 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       if (taskResult.status === 'fulfilled' && taskResult.value.ok) {
         try {
           const data = await taskResult.value.json();
-          taskData.push(...data);
+          debugLog('Task notifications API response:', data);
+          // Handle both array and object responses
+          if (Array.isArray(data)) {
+            taskData.push(...data);
+          } else if (data && typeof data === 'object') {
+            if (Array.isArray(data.notifications)) {
+              taskData.push(...data.notifications);
+            } else if (Array.isArray(data.data)) {
+              taskData.push(...data.data);
+            }
+          }
+          debugLog('Parsed task notifications:', taskData);
         } catch (error) {
           // Silently handle parse errors and aborts
           if (import.meta.env.DEV && !(error instanceof Error && error.name === 'AbortError')) {
@@ -403,13 +454,27 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (import.meta.env.DEV && taskResult.reason?.name !== 'AbortError' && !taskResult.reason?.message?.includes('fetch')) {
           console.error('Failed to fetch task notifications:', taskResult.reason);
         }
+      } else if (taskResult.status === 'fulfilled') {
+        debugLog('Task notifications API returned non-OK status:', taskResult.value.status);
       }
 
       // Handle leave notifications
       if (leaveResult.status === 'fulfilled' && leaveResult.value.ok) {
         try {
           const data = await leaveResult.value.json();
-          leaveData.push(...data);
+          debugLog('Leave notifications API response:', data);
+          // Handle both array and object responses
+          if (Array.isArray(data)) {
+            leaveData.push(...data);
+          } else if (data && typeof data === 'object') {
+            // If API returns an object with notifications array
+            if (Array.isArray(data.notifications)) {
+              leaveData.push(...data.notifications);
+            } else if (Array.isArray(data.data)) {
+              leaveData.push(...data.data);
+            }
+          }
+          debugLog('Parsed leave notifications:', leaveData);
         } catch (error) {
           // Silently handle parse errors and aborts
           if (import.meta.env.DEV && !(error instanceof Error && error.name === 'AbortError')) {
@@ -421,13 +486,26 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (import.meta.env.DEV && leaveResult.reason?.name !== 'AbortError' && !leaveResult.reason?.message?.includes('fetch')) {
           console.error('Failed to fetch leave notifications:', leaveResult.reason);
         }
+      } else if (leaveResult.status === 'fulfilled') {
+        debugLog('Leave notifications API returned non-OK status:', leaveResult.value.status);
       }
 
       // Handle shift notifications
       if (shiftResult.status === 'fulfilled' && shiftResult.value.ok) {
         try {
           const data = await shiftResult.value.json();
-          shiftData.push(...data);
+          debugLog('Shift notifications API response:', data);
+          // Handle both array and object responses
+          if (Array.isArray(data)) {
+            shiftData.push(...data);
+          } else if (data && typeof data === 'object') {
+            if (Array.isArray(data.notifications)) {
+              shiftData.push(...data.notifications);
+            } else if (Array.isArray(data.data)) {
+              shiftData.push(...data.data);
+            }
+          }
+          debugLog('Parsed shift notifications:', shiftData);
         } catch (error) {
           // Silently handle parse errors and aborts
           if (import.meta.env.DEV && !(error instanceof Error && error.name === 'AbortError')) {
@@ -439,6 +517,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (import.meta.env.DEV && shiftResult.reason?.name !== 'AbortError' && !shiftResult.reason?.message?.includes('fetch')) {
           console.error('Failed to fetch shift notifications:', shiftResult.reason);
         }
+      } else if (shiftResult.status === 'fulfilled') {
+        debugLog('Shift notifications API returned non-OK status:', shiftResult.value.status);
       }
 
       const backendNotifications = [
@@ -446,6 +526,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         ...leaveData.map(n => mapBackendLeaveNotification(n, user.id)).filter((n): n is Notification => n !== null),
         ...shiftData.map(n => mapBackendShiftNotification(n, user.role, user.id)).filter((n): n is Notification => n !== null),
       ];
+
+      debugLog('Total backend notifications mapped:', backendNotifications.length);
+      debugLog('Backend notifications:', backendNotifications);
 
       setNotifications((prev) => {
         const localOnly = prev.filter((notification) => !notification.backendId);
@@ -456,14 +539,48 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             uniqueById.set(notification.id, notification);
           }
         });
-        return Array.from(uniqueById.values()).sort(
+        const sortedNotifications = Array.from(uniqueById.values()).sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
+        
+        debugLog('Final notifications count:', sortedNotifications.length);
+        debugLog('Unread count:', sortedNotifications.filter(n => !n.read).length);
+        
+        // Check for new unread notifications and play sound
+        const newUnreadCount = sortedNotifications.filter(n => !n.read).length;
+        if (newUnreadCount > previousUnreadCountRef.current && previousUnreadCountRef.current > 0) {
+          playNotificationSound();
+        }
+        previousUnreadCountRef.current = newUnreadCount;
+        
+        return sortedNotifications;
       });
+      
+      // Clear any retry timeout on success
+      if (retryTimeoutRef.current) {
+        window.clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
     } catch (error) {
-      console.error('Failed to fetch notifications', error);
+      // Only set error for non-abort errors
+      if (error instanceof Error && error.name !== 'AbortError') {
+        console.error('Failed to fetch notifications', error);
+        setError('Failed to load notifications');
+        
+        // Schedule retry on failure
+        if (!retryTimeoutRef.current) {
+          retryTimeoutRef.current = window.setTimeout(() => {
+            retryTimeoutRef.current = null;
+            fetchBackendNotifications();
+          }, RETRY_DELAY_MS);
+        }
+      }
+    } finally {
+      if (isManualRefresh) {
+        setIsLoading(false);
+      }
     }
-  }, [mapBackendLeaveNotification, mapBackendTaskNotification, mapBackendShiftNotification, user, stopPolling]);
+  }, [mapBackendLeaveNotification, mapBackendTaskNotification, mapBackendShiftNotification, user, stopPolling, playNotificationSound]);
 
   const schedulePollingStop = useCallback(() => {
     if (pollIdleTimeoutRef.current) {
@@ -475,13 +592,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [stopPolling]);
 
   const startPolling = useCallback(() => {
+    debugLog('startPolling called', { user: user?.id, visibility: document.visibilityState });
+    
     if (!user || document.visibilityState === 'hidden') {
+      debugLog('Stopping polling - no user or hidden');
       stopPolling();
       return;
     }
     
     // Check if notifications are enabled
     if (!areNotificationsEnabled()) {
+      debugLog('Notifications disabled');
       stopPolling();
       return;
     }
@@ -489,25 +610,35 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     // Check if we have a valid token before starting
     const authHeader = getAuthHeader();
     if (!authHeader) {
+      debugLog('No auth header available');
       stopPolling();
       return;
     }
 
+    debugLog('Starting notification polling...');
+    
+    // Fetch immediately
     fetchBackendNotifications();
 
+    // Set up polling interval if not already running
     if (!pollIntervalRef.current) {
-      pollIntervalRef.current = window.setInterval(fetchBackendNotifications, FETCH_INTERVAL_MS);
+      debugLog('Setting up polling interval');
+      pollIntervalRef.current = window.setInterval(() => fetchBackendNotifications(), FETCH_INTERVAL_MS);
     }
 
     schedulePollingStop();
   }, [fetchBackendNotifications, schedulePollingStop, stopPolling, user]);
 
   useEffect(() => {
+    debugLog('User effect triggered', { userId: user?.id });
+    
     if (!user) {
+      debugLog('No user, stopping polling');
       stopPolling();
       return;
     }
 
+    debugLog('User logged in, starting polling');
     startPolling();
 
     const handleVisibilityChange = () => {
@@ -764,12 +895,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       value={{
         notifications,
         unreadCount,
+        isLoading,
+        error,
         addNotification,
         markAsRead,
         markAllAsRead,
         clearNotification,
         clearAll,
-        refreshNotifications: fetchBackendNotifications,
+        refreshNotifications: () => fetchBackendNotifications(true),
       }}
     >
       {children}

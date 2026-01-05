@@ -77,7 +77,7 @@ const AttendanceWithToggle: React.FC = () => {
   const [showWorkSummaryDialog, setShowWorkSummaryDialog] = useState(false);
   const [showLocationDialog, setShowLocationDialog] = useState(false);
   const [selectedWorkSummary, setSelectedWorkSummary] = useState<string>('');
-  const [selectedLocation, setSelectedLocation] = useState<{checkIn?: string, checkOut?: string}>({});
+  const [selectedLocation, setSelectedLocation] = useState<{ checkIn?: string, checkOut?: string }>({});
   const initialLocationRequestedRef = useRef(false);
   const lastGeocodeKeyRef = useRef<string | null>(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -93,7 +93,7 @@ const AttendanceWithToggle: React.FC = () => {
   const [selectedExportDepartment, setSelectedExportDepartment] = useState<string>('');
   const [exportDepartments, setExportDepartments] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
-  
+
   // Online/Offline status state
   const [isOnline, setIsOnline] = useState(true);
   const [hasLoadedOnlineStatus, setHasLoadedOnlineStatus] = useState(false);
@@ -101,19 +101,19 @@ const AttendanceWithToggle: React.FC = () => {
   const [onlineStatusMap, setOnlineStatusMap] = useState<Record<number, boolean>>({});
   const [allUsersOnlineStatus, setAllUsersOnlineStatus] = useState<Record<string, boolean>>({});
   const [historyDateFilter, setHistoryDateFilter] = useState<string>('');
-  
+
   // Enhanced time tracking with proper timer logic
   const [onlineWorkingHours, setOnlineWorkingHours] = useState('0 hrs - 0 mins');
   const [totalOfflineTime, setTotalOfflineTime] = useState('0 hrs - 0 mins');
   const [currentSessionOfflineTime, setCurrentSessionOfflineTime] = useState('0:00:00');
   const [lastStatusChangeTime, setLastStatusChangeTime] = useState<Date | null>(null);
-  
+
   // Timer state for proper tracking
   const [onlineStartTime, setOnlineStartTime] = useState<Date | null>(null);
   const [offlineStartTime, setOfflineStartTime] = useState<Date | null>(null);
   const [accumulatedOnlineSeconds, setAccumulatedOnlineSeconds] = useState(0);
   const [accumulatedOfflineSeconds, setAccumulatedOfflineSeconds] = useState(0);
-  
+
   // Fresh check-in flag to prevent backend sync from overriding zero values
   const [isFreshCheckIn, setIsFreshCheckIn] = useState(false);
   const [checkInTime, setCheckInTime] = useState<Date | null>(null);
@@ -142,7 +142,7 @@ const AttendanceWithToggle: React.FC = () => {
   const formatTimeDisplay = (totalSeconds: number): string => {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
-    
+
     if (hours === 0 && minutes === 0) {
       return '0 hrs - 0 mins';
     } else if (hours === 0) {
@@ -159,10 +159,10 @@ const AttendanceWithToggle: React.FC = () => {
     if (!decimalHours || decimalHours === 0) {
       return '0 hrs - 0 mins';
     }
-    
+
     const hours = Math.floor(decimalHours);
     const minutes = Math.round((decimalHours - hours) * 60);
-    
+
     if (hours === 0 && minutes === 0) {
       return '0 hrs - 0 mins';
     } else if (hours === 0) {
@@ -177,14 +177,14 @@ const AttendanceWithToggle: React.FC = () => {
   // Filter attendance history based on selected date and sort by check-in time (most recent first)
   const getFilteredAttendanceHistory = () => {
     let filtered: AttendanceRecord[];
-    
+
     if (!historyDateFilter) {
       filtered = attendanceHistory.slice(0, 10); // Show first 10 records
     } else {
       const filterDate = formatDateIST(historyDateFilter);
       filtered = attendanceHistory.filter(record => record.date === filterDate);
     }
-    
+
     // Sort by check-in time in descending order (most recent first)
     return filtered.sort((a, b) => {
       const timeA = new Date(a.checkInTime).getTime();
@@ -258,7 +258,7 @@ const AttendanceWithToggle: React.FC = () => {
   // Load all WFH requests for management view
   const loadAllWfhRequests = useCallback(async () => {
     if (!canViewEmployeeAttendance) return;
-    
+
     setIsLoadingWfhRequests(true);
     try {
       // Frontend-only implementation - in real app, this would be an API call
@@ -294,23 +294,23 @@ const AttendanceWithToggle: React.FC = () => {
     }
     if (viewMode === 'wfh_requests' && canViewEmployeeAttendance) {
       loadAllWfhRequests();
-      
+
       // Refresh sample data every 30 seconds to keep timestamps current
       const dataInterval = setInterval(() => {
         loadAllWfhRequests();
       }, 30000);
-      
+
       // Force re-render every minute to update relative timestamps
       const renderInterval = setInterval(() => {
         setAllWfhRequests(prev => [...prev]); // Trigger re-render
       }, 60000);
-      
+
       return () => {
         clearInterval(dataInterval);
         clearInterval(renderInterval);
       };
     }
-  }, [viewMode, selectedDate, loadAllWfhRequests]);
+  }, [viewMode, selectedDate, loadAllWfhRequests, timePeriodFilter]);
 
   useEffect(() => {
     if (employeeExportFilter !== 'specific') {
@@ -429,6 +429,12 @@ const AttendanceWithToggle: React.FC = () => {
       if (departmentParam) {
         params.append('department', departmentParam);
       }
+
+      // Enforce department scope for Manager exports
+      if (user?.role === 'manager' && user?.department) {
+        params.set('department', user.department);
+      }
+
       if (exportStartDate) {
         params.append('start_date', format(exportStartDate, 'yyyy-MM-dd'));
       }
@@ -457,10 +463,10 @@ const AttendanceWithToggle: React.FC = () => {
         exportStartDate && exportEndDate
           ? `${format(exportStartDate, 'yyyyMMdd')}_${format(exportEndDate, 'yyyyMMdd')}`
           : exportStartDate
-          ? `from_${format(exportStartDate, 'yyyyMMdd')}`
-          : exportEndDate
-          ? `until_${format(exportEndDate, 'yyyyMMdd')}`
-          : 'all';
+            ? `from_${format(exportStartDate, 'yyyyMMdd')}`
+            : exportEndDate
+              ? `until_${format(exportEndDate, 'yyyyMMdd')}`
+              : 'all';
 
       const empSuffix =
         employeeExportFilter === 'specific' && selectedExportEmployee
@@ -544,12 +550,12 @@ const AttendanceWithToggle: React.FC = () => {
           }))
           .reverse()
       );
-      
+
       // Load WFH requests from backend
       try {
         const wfhResponse = await apiService.getMyWFHRequests();
         let wfhData = [];
-        
+
         if (Array.isArray(wfhResponse)) {
           wfhData = wfhResponse;
         } else if (wfhResponse && typeof wfhResponse === 'object') {
@@ -563,7 +569,7 @@ const AttendanceWithToggle: React.FC = () => {
             wfhData = wfhResponse.results;
           }
         }
-        
+
         const formattedWfhRequests = wfhData.map((req: any) => ({
           id: req.wfh_id || req.id,
           wfhId: req.wfh_id || req.id,
@@ -577,13 +583,13 @@ const AttendanceWithToggle: React.FC = () => {
           rejectionReason: req.rejection_reason,
           approvedBy: req.approved_by,
         }));
-        
+
         setWfhRequests(formattedWfhRequests);
       } catch (wfhError) {
         console.error('Failed to load WFH requests:', wfhError);
         setWfhRequests([]);
       }
-      
+
       const today = todayIST();
       const todayRecord = data.find((rec: any) => {
         const recordDate = formatDateIST(rec.check_in);
@@ -615,16 +621,16 @@ const AttendanceWithToggle: React.FC = () => {
           workReport: resolveStaticUrl(todayRecord.workReport || todayRecord.work_report),
         };
         setCurrentAttendance(attendance);
-        
+
         // Initialize timer state for existing attendance
         if (!attendance.checkOutTime) {
           const attendanceCheckInTime = new Date(attendance.checkInTime);
           const now = new Date();
           const timeSinceCheckIn = (now.getTime() - attendanceCheckInTime.getTime()) / 1000; // seconds
-          
+
           // Check if this is a fresh check-in (less than 5 minutes ago)
           const isRecentCheckIn = timeSinceCheckIn < 5 * 60; // 5 minutes
-          
+
           if (isRecentCheckIn) {
             // Fresh check-in - start with zero values
             setOnlineStartTime(attendanceCheckInTime);
@@ -636,14 +642,14 @@ const AttendanceWithToggle: React.FC = () => {
             setTotalOfflineTime('0 hrs - 0 mins');
             setIsFreshCheckIn(true);
             setCheckInTime(attendanceCheckInTime);
-            
+
             // Clear fresh flag after remaining time
             const remainingTime = (5 * 60 * 1000) - (timeSinceCheckIn * 1000);
             setTimeout(() => {
               setIsFreshCheckIn(false);
               console.log('Fresh check-in period ended - backend sync enabled');
             }, remainingTime);
-            
+
             console.log(`Fresh check-in detected (${Math.floor(timeSinceCheckIn)}s ago) - starting with zero values`);
           } else {
             // Existing attendance - fetch actual work hours from backend
@@ -651,7 +657,7 @@ const AttendanceWithToggle: React.FC = () => {
             setOfflineStartTime(null);
             setIsFreshCheckIn(false);
             setCheckInTime(attendanceCheckInTime);
-            
+
             // Fetch actual work hours from backend
             try {
               const token = localStorage.getItem('token');
@@ -660,27 +666,27 @@ const AttendanceWithToggle: React.FC = () => {
                   'Authorization': token ? `Bearer ${token}` : '',
                 },
               });
-              
+
               if (workHoursResponse.ok) {
                 const workHoursData = await workHoursResponse.json();
                 const backendOnlineSeconds = workHoursData.total_seconds || 0;
                 const backendOfflineSeconds = workHoursData.total_offline_seconds || 0;
                 const isCurrentlyOnline = workHoursData.is_currently_online || false;
-                
+
                 // Set accumulated to backend values (only actual tracked time)
                 setAccumulatedOnlineSeconds(backendOnlineSeconds);
                 setAccumulatedOfflineSeconds(backendOfflineSeconds);
-                
+
                 // Update display with actual tracked time
                 const onlineDisplay = formatTimeDisplay(backendOnlineSeconds);
                 const offlineDisplay = formatTimeDisplay(backendOfflineSeconds);
                 setOnlineWorkingHours(onlineDisplay);
                 setWorkingHours(onlineDisplay);
                 setTotalOfflineTime(offlineDisplay);
-                
+
                 // Set current online status from backend
                 setIsOnline(isCurrentlyOnline);
-                
+
                 console.log(`Existing attendance - loaded from backend: Online=${backendOnlineSeconds}s, Offline=${backendOfflineSeconds}s, CurrentlyOnline=${isCurrentlyOnline}`);
               } else {
                 // If backend call fails, start with 0 hours (no tracked time)
@@ -703,7 +709,7 @@ const AttendanceWithToggle: React.FC = () => {
               console.log(`Existing attendance - fetch error, starting with 0 hours`);
             }
           }
-          
+
           setLastStatusChangeTime(attendanceCheckInTime);
         }
 
@@ -721,31 +727,71 @@ const AttendanceWithToggle: React.FC = () => {
     try {
       setIsLoading(true);
       const token = localStorage.getItem('token');
-      const res = await fetch('https://staffly.space/attendance/all', {
-        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
-      });
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error(`Failed to load employee attendance: ${res.status}`, errorText);
+      const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+
+      let url = 'https://staffly.space/attendance/all';
+      // Attempt backend enforcement by passing department scope
+      if (user?.role === 'manager' && user?.department) {
+        url += `?department=${encodeURIComponent(user.department)}`;
+      }
+
+      // Fetch attendance and employees in parallel to ensure we have role data
+      const [attendanceRes, employeesRes] = await Promise.all([
+        fetch(url, { headers }),
+        fetch('https://staffly.space/employees', { headers })
+      ]);
+
+      if (!attendanceRes.ok) {
+        const errorText = await attendanceRes.text();
+        console.error(`Failed to load employee attendance: ${attendanceRes.status}`, errorText);
         toast({
           title: 'Error',
-          description: `Failed to load attendance: ${res.status === 403 ? 'Access denied' : res.status === 400 ? 'Department not assigned' : 'Server error'}`,
+          description: `Failed to load attendance: ${attendanceRes.status === 403 ? 'Access denied' : attendanceRes.status === 400 ? 'Department not assigned' : 'Server error'}`,
           variant: 'destructive',
         });
         setEmployeeAttendanceData([]);
         return;
       }
-      
-      const data = await res.json();
-      
+
+      let data = await attendanceRes.json();
+      const employeesData = employeesRes.ok ? await employeesRes.json() : [];
+
+      // Create a map of userId -> role for quick lookup
+      const userRoleMap: Record<string, string> = {};
+      employeesData.forEach((emp: any) => {
+        const uId = String(emp.user_id || emp.userId || emp.id);
+        userRoleMap[uId] = (emp.role || '').toLowerCase();
+      });
+
+      // Enforce strict visibility rules (Client-side fail-safe)
+      if (user?.role === 'manager' && user?.department) {
+        const normalizedDept = user.department.trim().toLowerCase();
+        data = data.filter((rec: any) => {
+          const recUserId = String(rec.user_id || rec.employee_id);
+
+          // 1. Always show Self
+          if (recUserId === String(user.id)) return true;
+
+          // 2. Check Department
+          const recDept = (rec.department || '').trim().toLowerCase();
+          if (recDept !== normalizedDept) return false;
+
+          // 3. Check Role (Only 'employee' and 'team_lead')
+          const recRole = userRoleMap[recUserId];
+          if (recRole === 'employee' || recRole === 'team_lead') return true;
+
+          return false;
+        });
+      }
+
       // Calculate date range based on time period filter
       const today = new Date();
       let startDate = new Date();
-      
+
       switch (timePeriodFilter) {
         case 'today':
           startDate = new Date(today);
+          startDate.setHours(0, 0, 0, 0);
           break;
         case 'last_month':
           startDate = subMonths(today, 1);
@@ -760,7 +806,7 @@ const AttendanceWithToggle: React.FC = () => {
           startDate = subMonths(today, 12);
           break;
       }
-      
+
       const records: EmployeeAttendanceRecord[] = data
         .filter((rec: any) => rec.check_in && new Date(rec.check_in))
         .map((rec: any) => ({
@@ -907,19 +953,19 @@ const AttendanceWithToggle: React.FC = () => {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        
+
         // Calculate new dimensions while maintaining aspect ratio
         if (width > maxWidth) {
           height = (height * maxWidth) / width;
           width = maxWidth;
         }
-        
+
         canvas.width = width;
         canvas.height = height;
-        
+
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
-        
+
         // Convert to compressed base64
         const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
         resolve(compressedBase64);
@@ -967,13 +1013,13 @@ const AttendanceWithToggle: React.FC = () => {
       const endpoint = isCheckingIn
         ? 'https://staffly.space/attendance/check-in/json'
         : 'https://staffly.space/attendance/check-out/json';
-      
+
       // ✅ Get token from localStorage for authentication
       const token = localStorage.getItem('token');
-      
+
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
@@ -985,7 +1031,7 @@ const AttendanceWithToggle: React.FC = () => {
       }
       await loadFromBackend();
       toast({ title: 'Success', description: isCheckingIn ? t.attendance.checkedIn : t.attendance.checkedOut });
-      
+
       // Set user online status based on check-in/check-out
       if (isCheckingIn) {
         setIsOnline(true);
@@ -1000,17 +1046,17 @@ const AttendanceWithToggle: React.FC = () => {
         setTotalOfflineTime('0 hrs - 0 mins');
         setCurrentSessionOfflineTime('0:00:00');
         setLastStatusChangeTime(now);
-        
+
         // Set fresh check-in flag to prevent backend sync for 5 minutes
         setIsFreshCheckIn(true);
         setCheckInTime(now);
-        
+
         // Clear fresh check-in flag after 5 minutes
         setTimeout(() => {
           setIsFreshCheckIn(false);
           console.log('Fresh check-in period ended - backend sync enabled');
         }, 5 * 60 * 1000); // 5 minutes
-        
+
         console.log('User checked in - timers initialized to 0, fresh check-in flag set');
       } else {
         setIsOnline(false);
@@ -1117,7 +1163,7 @@ const AttendanceWithToggle: React.FC = () => {
       const wfhTypeLabel = wfhType === 'full_day' ? 'Full Day' : 'Half Day';
       // For half day, use start date as both start and end date
       const endDate = wfhType === 'half_day' ? wfhStartDate : wfhEndDate;
-      
+
       const response = await apiService.submitWFHRequest({
         start_date: format(wfhStartDate!, 'yyyy-MM-dd'),
         end_date: format(endDate!, 'yyyy-MM-dd'),
@@ -1144,7 +1190,7 @@ const AttendanceWithToggle: React.FC = () => {
       setWfhRequests(prev => [newRequest, ...prev]);
       // Also add to all requests for managers to see
       setAllWfhRequests(prev => [newRequest, ...prev]);
-      
+
       toast({
         title: 'WFH Request Submitted',
         description: 'Your work from home request has been submitted for approval.',
@@ -1201,7 +1247,7 @@ const AttendanceWithToggle: React.FC = () => {
       const wfhTypeLabel = wfhType === 'full_day' ? 'Full Day' : 'Half Day';
       // For half day, use start date as both start and end date
       const endDate = wfhType === 'half_day' ? wfhStartDate : wfhEndDate;
-      
+
       const response = await apiService.updateWFHRequest(parseInt(editingWfhId!), {
         start_date: format(wfhStartDate!, 'yyyy-MM-dd'),
         end_date: format(endDate!, 'yyyy-MM-dd'),
@@ -1209,15 +1255,15 @@ const AttendanceWithToggle: React.FC = () => {
         reason: wfhReason.trim(),
       });
 
-      setWfhRequests(prev => prev.map(req => 
+      setWfhRequests(prev => prev.map(req =>
         (req.id === editingWfhId || req.wfhId === parseInt(editingWfhId!))
           ? {
-              ...req,
-              startDate: response.start_date,
-              endDate: response.end_date,
-              reason: response.reason,
-              type: wfhType,
-            }
+            ...req,
+            startDate: response.start_date,
+            endDate: response.end_date,
+            reason: response.reason,
+            type: wfhType,
+          }
           : req
       ));
 
@@ -1248,9 +1294,9 @@ const AttendanceWithToggle: React.FC = () => {
     setIsDeletingWfhId(wfhId);
     try {
       await apiService.deleteWFHRequest(parseInt(wfhId));
-      
+
       setWfhRequests(prev => prev.filter(req => req.id !== wfhId && req.wfhId !== parseInt(wfhId)));
-      
+
       toast({
         title: 'WFH Request Deleted',
         description: 'Your work from home request has been deleted successfully.',
@@ -1273,31 +1319,31 @@ const AttendanceWithToggle: React.FC = () => {
     try {
       // Frontend-only implementation
       const currentTime = new Date(); // Use current time for accurate timestamp
-      setAllWfhRequests(prev => 
-        prev.map(req => 
-          req.id === requestId 
-            ? { 
-                ...req, 
-                status: action === 'approve' ? 'approved' : 'rejected',
-                processedAt: currentTime.toISOString(), // Use current time
-                processedBy: user?.name || 'Unknown',
-                rejectionReason: action === 'reject' ? reason : undefined
-              }
+      setAllWfhRequests(prev =>
+        prev.map(req =>
+          req.id === requestId
+            ? {
+              ...req,
+              status: action === 'approve' ? 'approved' : 'rejected',
+              processedAt: currentTime.toISOString(), // Use current time
+              processedBy: user?.name || 'Unknown',
+              rejectionReason: action === 'reject' ? reason : undefined
+            }
             : req
         )
       );
 
       // Also update user's own requests if it's their request
-      setWfhRequests(prev => 
-        prev.map(req => 
-          req.id === requestId 
-            ? { 
-                ...req, 
-                status: action === 'approve' ? 'approved' : 'rejected',
-                processedAt: currentTime.toISOString(), // Use current time
-                processedBy: user?.name || 'Unknown',
-                rejectionReason: action === 'reject' ? reason : undefined
-              }
+      setWfhRequests(prev =>
+        prev.map(req =>
+          req.id === requestId
+            ? {
+              ...req,
+              status: action === 'approve' ? 'approved' : 'rejected',
+              processedAt: currentTime.toISOString(), // Use current time
+              processedBy: user?.name || 'Unknown',
+              rejectionReason: action === 'reject' ? reason : undefined
+            }
             : req
         )
       );
@@ -1335,10 +1381,10 @@ const AttendanceWithToggle: React.FC = () => {
   // Check if user has approved WFH for today
   const getTodayWfhStatus = () => {
     const today = formatDateIST(new Date(), 'yyyy-MM-dd');
-    const todayWfh = [...wfhRequests, ...allWfhRequests].find(req => 
-      req.submittedById === user?.id && 
-      req.status === 'approved' && 
-      req.startDate <= today && 
+    const todayWfh = [...wfhRequests, ...allWfhRequests].find(req =>
+      req.submittedById === user?.id &&
+      req.status === 'approved' &&
+      req.startDate <= today &&
       req.endDate >= today
     );
     return todayWfh;
@@ -1349,7 +1395,7 @@ const AttendanceWithToggle: React.FC = () => {
     const now = new Date();
     const time = new Date(timestamp);
     const diffInSeconds = Math.floor((now.getTime() - time.getTime()) / 1000);
-    
+
     if (diffInSeconds < 60) {
       return `${diffInSeconds} seconds ago`;
     } else if (diffInSeconds < 3600) {
@@ -1421,7 +1467,7 @@ const AttendanceWithToggle: React.FC = () => {
     // Update state after successful API call
     setIsOnline(newStatus);
     setLastStatusChangeTime(now);
-    
+
     console.log(`Status changed successfully: ${newStatus ? 'Online' : 'Offline'} at ${now.toLocaleTimeString()}`);
   };
 
@@ -1432,7 +1478,7 @@ const AttendanceWithToggle: React.FC = () => {
     if (isFreshCheckIn && checkInTime) {
       const now = new Date();
       const timeSinceCheckIn = (now.getTime() - checkInTime.getTime()) / 1000; // seconds
-      
+
       if (timeSinceCheckIn < 5 * 60) { // Less than 5 minutes
         console.log(`Skipping backend sync - fresh check-in (${Math.floor(timeSinceCheckIn)}s since check-in)`);
         return;
@@ -1441,7 +1487,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     try {
       const data = await apiService.getWorkingHours(parseInt(currentAttendance.id));
-      
+
       if (data) {
         // Fetch correct values from backend
         // The backend should return:
@@ -1451,21 +1497,21 @@ const AttendanceWithToggle: React.FC = () => {
         const backendOnlineSeconds = data.total_online_seconds || data.total_seconds || 0;
         const backendOfflineSeconds = data.total_offline_seconds || 0;
         const backendIsOnline = data.is_currently_online !== undefined ? data.is_currently_online : isOnline;
-        
+
         if (backendOnlineSeconds < 60 && isFreshCheckIn) {
           console.log('Skipping sync - no meaningful backend activity yet');
           return;
         }
-        
+
         // For fresh check-ins, calculate elapsed time from check-in instead of using backend total
         // This ensures we start from 0 hrs - 0 mins at check-in time
         let effectiveOnlineSeconds = backendOnlineSeconds;
         let effectiveOfflineSeconds = backendOfflineSeconds;
-        
+
         if (isFreshCheckIn && checkInTime) {
           const now = new Date();
           const timeSinceCheckIn = (now.getTime() - checkInTime.getTime()) / 1000; // seconds
-          
+
           // For fresh check-in, use elapsed time since check-in as the source of truth
           if (isOnline) {
             // If currently online, use time since check-in
@@ -1478,11 +1524,11 @@ const AttendanceWithToggle: React.FC = () => {
             console.log(`Fresh check-in sync (offline): Online=${Math.floor(effectiveOnlineSeconds)}s, Offline=${backendOfflineSeconds}s`);
           }
         }
-        
+
         // Sync backend data with our local timer state
         // The backend now properly tracks pause/resume from logout/login
         const now = new Date();
-        
+
         // Update accumulated times to match backend's pause/resume calculations
         if (isOnline && onlineStartTime) {
           // Currently online - set accumulated to effective value minus current session
@@ -1490,30 +1536,30 @@ const AttendanceWithToggle: React.FC = () => {
           // Ensure we don't get negative values due to timezone or timing issues
           const calculatedAccumulated = Math.max(0, effectiveOnlineSeconds - currentSessionSeconds);
           setAccumulatedOnlineSeconds(calculatedAccumulated);
-          
+
           console.log(`Online sync: Effective=${effectiveOnlineSeconds}s, CurrentSession=${currentSessionSeconds}s, Accumulated=${calculatedAccumulated}s`);
         } else {
           // Currently offline - set accumulated to effective value
           setAccumulatedOnlineSeconds(effectiveOnlineSeconds);
           console.log(`Online sync (offline): Effective=${effectiveOnlineSeconds}s, Accumulated=${effectiveOnlineSeconds}s`);
         }
-        
+
         if (!isOnline && offlineStartTime) {
           // Currently offline - set accumulated to effective value minus current session
           const currentSessionSeconds = Math.floor((now.getTime() - offlineStartTime.getTime()) / 1000);
           // Ensure we don't get negative values due to timezone or timing issues
           const calculatedAccumulated = Math.max(0, effectiveOfflineSeconds - currentSessionSeconds);
           setAccumulatedOfflineSeconds(calculatedAccumulated);
-          
+
           console.log(`Offline sync: Effective=${effectiveOfflineSeconds}s, CurrentSession=${currentSessionSeconds}s, Accumulated=${calculatedAccumulated}s`);
         } else {
           // Currently online - set accumulated to effective value
           setAccumulatedOfflineSeconds(effectiveOfflineSeconds);
           console.log(`Offline sync (online): Effective=${effectiveOfflineSeconds}s, Accumulated=${effectiveOfflineSeconds}s`);
         }
-        
+
         console.log(`Synced with backend - Online: ${effectiveOnlineSeconds}s, Offline: ${effectiveOfflineSeconds}s (fresh check-in aware)`);
-        
+
       } else {
         console.log('Backend sync failed, using local timer state');
       }
@@ -1540,11 +1586,11 @@ const AttendanceWithToggle: React.FC = () => {
         if (data.is_checked_in && !data.checked_out) {
           const wasOnline = data.is_online;
           setIsOnline(wasOnline);
-          
+
           // Use the actual last status change time from backend, not current time
           const lastStatusChangeTime = new Date(data.last_status_change);
           const now = new Date();
-          
+
           // Debug logging for timezone issues
           console.log(`🔍 Resume Debug Info:`);
           console.log(`   Backend last_status_change: ${data.last_status_change}`);
@@ -1552,7 +1598,7 @@ const AttendanceWithToggle: React.FC = () => {
           console.log(`   Local time: ${lastStatusChangeTime.toLocaleString()}`);
           console.log(`   Current time: ${now.toISOString()}`);
           console.log(`   Time difference: ${(now.getTime() - lastStatusChangeTime.getTime()) / 1000}s`);
-          
+
           if (wasOnline) {
             // User was online when they logged back in - resume online timer from last status change
             setOnlineStartTime(lastStatusChangeTime);
@@ -1564,14 +1610,14 @@ const AttendanceWithToggle: React.FC = () => {
             setOfflineStartTime(lastStatusChangeTime);
             console.log(`User online status preserved: Offline (timer resumed from ${lastStatusChangeTime.toLocaleTimeString()})`);
           }
-          
+
           setLastStatusChangeTime(lastStatusChangeTime);
-          
+
           // Force a backend sync to get accurate accumulated times
           // Don't rely on local calculations when resuming from logout
           setAccumulatedOnlineSeconds(0);
           setAccumulatedOfflineSeconds(0);
-          
+
         } else {
           // If not checked in, set to offline
           setIsOnline(false);
@@ -1603,10 +1649,10 @@ const AttendanceWithToggle: React.FC = () => {
   // Real-time timer updates
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    
+
     interval = setInterval(() => {
       const now = new Date();
-      
+
       if (isOnline && onlineStartTime) {
         // Update online time display - current session + accumulated
         const currentOnlineSeconds = Math.floor((now.getTime() - onlineStartTime.getTime()) / 1000);
@@ -1614,12 +1660,12 @@ const AttendanceWithToggle: React.FC = () => {
         const onlineDisplay = formatTimeDisplay(totalOnlineSeconds);
         setOnlineWorkingHours(onlineDisplay);
         setWorkingHours(onlineDisplay); // Main working hours shows online time
-        
+
         // When online, show only accumulated offline time (current session is 0)
         const offlineDisplay = formatTimeDisplay(accumulatedOfflineSeconds);
         setTotalOfflineTime(offlineDisplay);
         setCurrentSessionOfflineTime('0:00:00');
-        
+
         console.log(`Timer Update (Online): Online=${onlineDisplay}, Offline=${offlineDisplay}`);
       } else if (!isOnline && offlineStartTime) {
         // Update offline time displays - current session + accumulated
@@ -1627,18 +1673,18 @@ const AttendanceWithToggle: React.FC = () => {
         const totalOfflineSeconds = accumulatedOfflineSeconds + currentOfflineSeconds;
         const offlineDisplay = formatTimeDisplay(totalOfflineSeconds);
         setTotalOfflineTime(offlineDisplay);
-        
+
         // Current session offline time in H:MM:SS format
         const hours = Math.floor(currentOfflineSeconds / 3600);
         const minutes = Math.floor((currentOfflineSeconds % 3600) / 60);
         const seconds = currentOfflineSeconds % 60;
         setCurrentSessionOfflineTime(`${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
-        
+
         // When offline, online time remains at accumulated value (no current session)
         const onlineDisplay = formatTimeDisplay(accumulatedOnlineSeconds);
         setOnlineWorkingHours(onlineDisplay);
         setWorkingHours(onlineDisplay); // Main working hours shows accumulated online time only
-        
+
         console.log(`Timer Update (Offline): Online=${onlineDisplay}, Offline=${offlineDisplay}, Current Session=${currentOfflineSeconds}s`);
       } else {
         // If neither online nor offline timer is running, maintain current values
@@ -1735,22 +1781,22 @@ const AttendanceWithToggle: React.FC = () => {
   const getStatusBadge = (status: string, checkInTime?: string, checkOutTime?: string) => {
     // Check if check-in was late
     const isCheckInLate = status === 'late' || (checkInTime && checkInTime > '09:30:00');
-    
+
     // If check-in was late, always show "Late" badge regardless of check-out time
     if (isCheckInLate) {
       return <Badge variant="destructive">Late</Badge>;
     }
-    
+
     // For check-out badge: if check-out time is provided, check if it's early
     if (checkOutTime && checkOutTime < '18:00:00') {
       return <Badge variant="outline" className="border-orange-500 text-orange-500">Early</Badge>;
     }
-    
+
     // If check-in was on time and no early check-out, show "On Time"
     if (status === 'present') {
       return <Badge variant="default" className="bg-green-500">On Time</Badge>;
     }
-    
+
     return null;
   };
 
@@ -1790,50 +1836,50 @@ const AttendanceWithToggle: React.FC = () => {
             {formatDateIST(new Date(), 'dd MMM yyyy')}
           </Badge>
         </div>
-        
+
         <div className="flex justify-center w-full">
           <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'self' | 'employee' | 'wfh' | 'wfh_requests')} className="w-full sm:w-auto">
             <TabsList className={`grid ${canViewEmployeeAttendance ? 'grid-cols-4' : 'grid-cols-2'} h-14 w-full ${canViewEmployeeAttendance ? 'sm:w-[1000px]' : 'sm:w-[500px]'} bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm`}>
-            <TabsTrigger 
-              value="self"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
-            >
-              <User className="h-4 w-4 mr-2" />
-              Self Attendance
-            </TabsTrigger>
-            {canViewEmployeeAttendance && (
-              <TabsTrigger 
-                value="employee"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-600 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+              <TabsTrigger
+                value="self"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
               >
-                <Users className="h-4 w-4 mr-2" />
-                Employee Attendance
+                <User className="h-4 w-4 mr-2" />
+                Self Attendance
               </TabsTrigger>
-            )}
-            <TabsTrigger 
-              value="wfh"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
-            >
-              <Home className="h-4 w-4 mr-2" />
-              Apply WFH
-            </TabsTrigger>
-            {canViewEmployeeAttendance && (
-              <TabsTrigger 
-                value="wfh_requests"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md relative"
+              {canViewEmployeeAttendance && (
+                <TabsTrigger
+                  value="employee"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-600 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  Employee Attendance
+                </TabsTrigger>
+              )}
+              <TabsTrigger
+                value="wfh"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
               >
-                <FileText className="h-4 w-4 mr-2" />
-                WFH Requests
-                {getPendingWfhCount() > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs font-bold bg-red-500 text-white border-2 border-white dark:border-gray-800"
-                  >
-                    {getPendingWfhCount()}
-                  </Badge>
-                )}
+                <Home className="h-4 w-4 mr-2" />
+                Apply WFH
               </TabsTrigger>
-            )}
+              {canViewEmployeeAttendance && (
+                <TabsTrigger
+                  value="wfh_requests"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md relative"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  WFH Requests
+                  {getPendingWfhCount() > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs font-bold bg-red-500 text-white border-2 border-white dark:border-gray-800"
+                    >
+                      {getPendingWfhCount()}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              )}
             </TabsList>
           </Tabs>
         </div>
@@ -1888,7 +1934,7 @@ const AttendanceWithToggle: React.FC = () => {
                     <span>Location not available</span>
                   </div>
                 )}
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {currentAttendance ? (
                     <>
@@ -1913,21 +1959,21 @@ const AttendanceWithToggle: React.FC = () => {
                           </p>
                         )}
                       </div>
-                      
+
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <LogOut className="h-4 w-4 text-red-500" />
                           <span className="text-sm font-medium">Check-out Time</span>
-                          {currentAttendance.checkOutTime && 
+                          {currentAttendance.checkOutTime &&
                             getStatusBadge(currentAttendance.status, currentAttendance.checkInTime, currentAttendance.checkOutTime)}
                         </div>
                         <p className="text-lg font-semibold">
-                          {currentAttendance.checkOutTime 
+                          {currentAttendance.checkOutTime
                             ? formatAttendanceTime(currentAttendance.date, currentAttendance.checkOutTime)
                             : '-'}
                         </p>
                       </div>
-                      
+
                       <div className="col-span-2 space-y-4">
                         <div>
                           <div className="flex items-center gap-2 mb-2">
@@ -1935,20 +1981,20 @@ const AttendanceWithToggle: React.FC = () => {
                             <span className="text-sm font-medium">Total Work Hours</span>
                           </div>
                           <p className="text-lg font-semibold">
-                            {currentAttendance.checkOutTime 
+                            {currentAttendance.checkOutTime
                               ? formatWorkHours(currentAttendance.workHours || 0)
                               : workingHours}
                           </p>
                         </div>
-                          
-                          {/* Show online status indicator when checked in */}
-                          {!currentAttendance.checkOutTime && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-                              <span className="text-green-700 dark:text-green-300">Live tracking - updates in real-time</span>
-                            </div>
-                          )}
-                        </div>
+
+                        {/* Show online status indicator when checked in */}
+                        {!currentAttendance.checkOutTime && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+                            <span className="text-green-700 dark:text-green-300">Live tracking - updates in real-time</span>
+                          </div>
+                        )}
+                      </div>
                     </>
                   ) : (
                     <div className="col-span-2 text-center py-8 text-muted-foreground">
@@ -1957,7 +2003,7 @@ const AttendanceWithToggle: React.FC = () => {
                     </div>
                   )}
                 </div>
-                
+
                 <div className="flex gap-3 pt-4">
                   {!currentAttendance ? (
                     <Button onClick={handleCheckIn} size="lg" className="flex-1">
@@ -2055,139 +2101,139 @@ const AttendanceWithToggle: React.FC = () => {
                 </div>
 
                 {attendanceHistory.length > 0 ? (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Employee ID</TableHead>
-                        <TableHead>Department</TableHead>
-                        <TableHead>Online Status</TableHead>
-                        <TableHead>Check In</TableHead>
-                        <TableHead>Check Out</TableHead>
-                        <TableHead>Hours</TableHead>
-                        <TableHead>Location</TableHead>
-                        <TableHead>Selfie</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Work Summary</TableHead>
-                        <TableHead>Work Report</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {getFilteredAttendanceHistory().map((record) => (
-                        <TableRow key={record.id}>
-                          <TableCell className="font-medium">
-                            {formatDateIST(record.date, 'dd MMM yyyy')}
-                          </TableCell>
-                          <TableCell className="font-medium">{user?.id || '-'}</TableCell>
-                          <TableCell>{user?.department || '-'}</TableCell>
-                          <TableCell>
-                            {!record.checkOutTime && record.date === todayIST() ? (
-                              <OnlineStatusIndicator 
-                                isOnline={isOnline} 
-                                size="md"
-                                showLabel={true}
-                              />
-                            ) : (
-                              <span className="text-xs text-muted-foreground">
-                                {record.checkOutTime ? 'Checked Out' : 'Past Date'}
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell>{formatAttendanceTime(record.date, record.checkInTime)}</TableCell>
-                          <TableCell>{formatAttendanceTime(record.date, record.checkOutTime)}</TableCell>
-                          <TableCell>{record.workHours ? formatWorkHours(record.workHours) : '-'}</TableCell>
-                          <TableCell>
-                            {record.checkInLocation?.address && record.checkInLocation.address !== 'N/A' ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedLocation({
-                                    checkIn: record.checkInLocation?.address,
-                                    checkOut: record.checkOutLocation?.address
-                                  });
-                                  setShowLocationDialog(true);
-                                }}
-                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-8 px-2"
-                              >
-                                <MapPin className="h-4 w-4 mr-1" />
-                                View
-                              </Button>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {record.checkInSelfie ? (
-                              <div
-                                className="h-10 w-10 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity"
-                                onClick={() => {
-                                  setSelectedRecord({
-                                    ...record,
-                                    name: user?.name,
-                                    email: user?.email,
-                                    department: user?.department
-                                  });
-                                  setShowSelfieModal(true);
-                                }}
-                              >
-                                <img
-                                  src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${record.checkInSelfie}`}
-                                  alt="Selfie"
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    (e.currentTarget as HTMLImageElement).style.display = 'none';
-                                  }}
-                                />
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
-                          </TableCell>
-                          <TableCell className="text-sm max-w-[160px]">
-                            {record.workSummary ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedWorkSummary(record.workSummary || '');
-                                  setShowWorkSummaryDialog(true);
-                                }}
-                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-8 px-2"
-                              >
-                                <FileText className="h-4 w-4 mr-1" />
-                                View
-                              </Button>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {record.workReport ? (
-                              <a
-                                href={record.workReport}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm text-blue-600 hover:underline"
-                              >
-                                View
-                              </a>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">—</span>
-                            )}
-                          </TableCell>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Employee ID</TableHead>
+                          <TableHead>Department</TableHead>
+                          <TableHead>Online Status</TableHead>
+                          <TableHead>Check In</TableHead>
+                          <TableHead>Check Out</TableHead>
+                          <TableHead>Hours</TableHead>
+                          <TableHead>Location</TableHead>
+                          <TableHead>Selfie</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Work Summary</TableHead>
+                          <TableHead>Work Report</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <p className="text-center py-8 text-muted-foreground">No attendance history</p>
-              )}
+                      </TableHeader>
+                      <TableBody>
+                        {getFilteredAttendanceHistory().map((record) => (
+                          <TableRow key={record.id}>
+                            <TableCell className="font-medium">
+                              {formatDateIST(record.date, 'dd MMM yyyy')}
+                            </TableCell>
+                            <TableCell className="font-medium">{user?.id || '-'}</TableCell>
+                            <TableCell>{user?.department || '-'}</TableCell>
+                            <TableCell>
+                              {!record.checkOutTime && record.date === todayIST() ? (
+                                <OnlineStatusIndicator
+                                  isOnline={isOnline}
+                                  size="md"
+                                  showLabel={true}
+                                />
+                              ) : (
+                                <span className="text-xs text-muted-foreground">
+                                  {record.checkOutTime ? 'Checked Out' : 'Past Date'}
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell>{formatAttendanceTime(record.date, record.checkInTime)}</TableCell>
+                            <TableCell>{formatAttendanceTime(record.date, record.checkOutTime)}</TableCell>
+                            <TableCell>{record.workHours ? formatWorkHours(record.workHours) : '-'}</TableCell>
+                            <TableCell>
+                              {record.checkInLocation?.address && record.checkInLocation.address !== 'N/A' ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedLocation({
+                                      checkIn: record.checkInLocation?.address,
+                                      checkOut: record.checkOutLocation?.address
+                                    });
+                                    setShowLocationDialog(true);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-8 px-2"
+                                >
+                                  <MapPin className="h-4 w-4 mr-1" />
+                                  View
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {record.checkInSelfie ? (
+                                <div
+                                  className="h-10 w-10 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={() => {
+                                    setSelectedRecord({
+                                      ...record,
+                                      name: user?.name,
+                                      email: user?.email,
+                                      department: user?.department
+                                    });
+                                    setShowSelfieModal(true);
+                                  }}
+                                >
+                                  <img
+                                    src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${record.checkInSelfie}`}
+                                    alt="Selfie"
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
+                            </TableCell>
+                            <TableCell className="text-sm max-w-[160px]">
+                              {record.workSummary ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedWorkSummary(record.workSummary || '');
+                                    setShowWorkSummaryDialog(true);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-8 px-2"
+                                >
+                                  <FileText className="h-4 w-4 mr-1" />
+                                  View
+                                </Button>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {record.workReport ? (
+                                <a
+                                  href={record.workReport}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-blue-600 hover:underline"
+                                >
+                                  View
+                                </a>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">—</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <p className="text-center py-8 text-muted-foreground">No attendance history</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -2210,7 +2256,6 @@ const AttendanceWithToggle: React.FC = () => {
                     <Label htmlFor="time-period-filter" className="text-sm">Time Period</Label>
                     <Select value={timePeriodFilter} onValueChange={(value: any) => {
                       setTimePeriodFilter(value);
-                      loadEmployeeAttendance();
                     }}>
                       <SelectTrigger id="time-period-filter" className="mt-1 h-9 text-sm">
                         <SelectValue />
@@ -2258,8 +2303,8 @@ const AttendanceWithToggle: React.FC = () => {
                             <TableCell>{record.department || '-'}</TableCell>
                             <TableCell>
                               {!record.checkOutTime ? (
-                                <OnlineStatusIndicator 
-                                  isOnline={onlineStatusMap[parseInt(record.userId)] ?? true} 
+                                <OnlineStatusIndicator
+                                  isOnline={onlineStatusMap[parseInt(record.userId)] ?? true}
                                   size="md"
                                   showLabel={true}
                                 />
@@ -2510,52 +2555,52 @@ const AttendanceWithToggle: React.FC = () => {
                       .filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter))
                       .sort((a, b) => new Date(b.processedAt || b.submittedAt).getTime() - new Date(a.processedAt || a.submittedAt).getTime())
                       .map((request) => (
-                      <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-2 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-blue-600" />
-                                <span className="font-medium">{request.submittedBy}</span>
-                                <Badge variant="outline" className="text-xs">
-                                  {request.role}
-                                </Badge>
+                        <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-2 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <div className="flex items-center gap-2">
+                                  <User className="h-4 w-4 text-blue-600" />
+                                  <span className="font-medium">{request.submittedBy}</span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {request.role}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="h-4 w-4 text-green-600" />
+                                  <span className="text-sm">
+                                    {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
+                                  </span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
+                                  </Badge>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4 text-green-600" />
-                                <span className="text-sm">
-                                  {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
-                                </span>
-                                <Badge variant="outline" className="text-xs">
-                                  {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
-                                </Badge>
+                              <p className="text-sm text-muted-foreground">{request.reason}</p>
+                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                <span>Submitted: {formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
+                                <span>Decision: {formatDateTimeIST(request.processedAt || request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
+                                <span>Department: {request.department}</span>
                               </div>
+                              {request.rejectionReason && (
+                                <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
+                                  <p className="text-sm text-red-800 dark:text-red-200">
+                                    <strong>Rejection Reason:</strong> {request.rejectionReason}
+                                  </p>
+                                </div>
+                              )}
                             </div>
-                            <p className="text-sm text-muted-foreground">{request.reason}</p>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span>Submitted: {formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
-                              <span>Decision: {formatDateTimeIST(request.processedAt || request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
-                              <span>Department: {request.department}</span>
+                            <div className="flex items-center gap-2 ml-4">
+                              <Badge
+                                variant={request.status === 'approved' ? 'default' : 'destructive'}
+                                className={request.status === 'approved' ? 'bg-green-500' : ''}
+                              >
+                                {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                              </Badge>
                             </div>
-                            {request.rejectionReason && (
-                              <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
-                                <p className="text-sm text-red-800 dark:text-red-200">
-                                  <strong>Rejection Reason:</strong> {request.rejectionReason}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 ml-4">
-                            <Badge 
-                              variant={request.status === 'approved' ? 'default' : 'destructive'}
-                              className={request.status === 'approved' ? 'bg-green-500' : ''}
-                            >
-                              {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                            </Badge>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
@@ -2717,7 +2762,7 @@ const AttendanceWithToggle: React.FC = () => {
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge 
+                            <Badge
                               variant={request.status === 'approved' ? 'default' : request.status === 'rejected' ? 'destructive' : 'secondary'}
                               className={request.status === 'approved' ? 'bg-green-500' : ''}
                             >
@@ -2953,11 +2998,10 @@ const AttendanceWithToggle: React.FC = () => {
                               type="button"
                               key={emp.user_id}
                               onClick={() => setSelectedExportEmployee(emp)}
-                              className={`w-full text-left p-3 border-b last:border-b-0 transition-colors ${
-                                isSelected
-                                  ? 'bg-blue-50 dark:bg-blue-900'
-                                  : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                              }`}
+                              className={`w-full text-left p-3 border-b last:border-b-0 transition-colors ${isSelected
+                                ? 'bg-blue-50 dark:bg-blue-900'
+                                : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                                }`}
                             >
                               <div className="font-medium">{emp.name}</div>
                               <div className="text-sm text-muted-foreground">
@@ -3038,7 +3082,7 @@ const AttendanceWithToggle: React.FC = () => {
               {selectedRecord?.name || 'Employee'}'s Attendance
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
             {/* Check-in Selfie */}
             <div className="space-y-4">
@@ -3048,9 +3092,9 @@ const AttendanceWithToggle: React.FC = () => {
               </div>
               <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                 {selectedRecord?.checkInSelfie ? (
-                  <img 
+                  <img
                     src={selectedRecord.checkInSelfie.startsWith('http') ? selectedRecord.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${selectedRecord.checkInSelfie}`}
-                    alt="Check-in selfie" 
+                    alt="Check-in selfie"
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -3074,9 +3118,9 @@ const AttendanceWithToggle: React.FC = () => {
               </div>
               <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                 {selectedRecord?.checkOutSelfie ? (
-                  <img 
+                  <img
                     src={selectedRecord.checkOutSelfie.startsWith('http') ? selectedRecord.checkOutSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${selectedRecord.checkOutSelfie}`}
-                    alt="Check-out selfie" 
+                    alt="Check-out selfie"
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -3116,10 +3160,10 @@ const AttendanceWithToggle: React.FC = () => {
               </div>
             )}
           </div>
-          
+
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setShowSelfieModal(false)}
               className="gap-2"
             >
@@ -3202,7 +3246,7 @@ const AttendanceWithToggle: React.FC = () => {
           </div>
 
           <DialogFooter>
-            <Button 
+            <Button
               variant="outline"
               onClick={() => setSelectedRecord(null)}
               className="gap-2"
@@ -3225,7 +3269,7 @@ const AttendanceWithToggle: React.FC = () => {
               Detailed work summary for the selected attendance record
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-4">
             <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border">
               <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300 mb-2">Work Summary</h4>
@@ -3234,7 +3278,7 @@ const AttendanceWithToggle: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => setShowWorkSummaryDialog(false)}>
               Close
@@ -3255,7 +3299,7 @@ const AttendanceWithToggle: React.FC = () => {
               Check-in and check-out location information
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             {/* Check-in Location */}
             {selectedLocation.checkIn && (
@@ -3305,7 +3349,7 @@ const AttendanceWithToggle: React.FC = () => {
               </div>
             )}
           </div>
-          
+
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => setShowLocationDialog(false)}>
               Close
@@ -3326,7 +3370,7 @@ const AttendanceWithToggle: React.FC = () => {
               Please provide a reason for rejecting this work from home request.
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedWfhRequest && (
             <div className="space-y-4 py-4">
               <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border">
@@ -3347,7 +3391,7 @@ const AttendanceWithToggle: React.FC = () => {
                   <p className="text-sm text-muted-foreground">{selectedWfhRequest.reason}</p>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="rejection-reason">Rejection Reason <span className="text-red-500">*</span></Label>
                 <Textarea
@@ -3356,16 +3400,16 @@ const AttendanceWithToggle: React.FC = () => {
                   rows={3}
                   className="resize-none"
                   onChange={(e) => {
-                    setSelectedWfhRequest(prev => prev ? {...prev, rejectionReason: e.target.value} : null);
+                    setSelectedWfhRequest(prev => prev ? { ...prev, rejectionReason: e.target.value } : null);
                   }}
                 />
               </div>
             </div>
           )}
-          
+
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setShowWfhRequestDialog(false);
                 setSelectedWfhRequest(null);
@@ -3374,7 +3418,7 @@ const AttendanceWithToggle: React.FC = () => {
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               variant="destructive"
               onClick={() => {
                 if (selectedWfhRequest?.rejectionReason?.trim()) {

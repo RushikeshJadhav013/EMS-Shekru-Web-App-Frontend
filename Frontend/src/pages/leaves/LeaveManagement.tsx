@@ -3,6 +3,7 @@ import { useSearchParams, useLocation } from 'react-router-dom';
 import { Pagination } from '@/components/ui/pagination';
 import { useLeaveBalance } from '@/contexts/LeaveBalanceContext';
 import { useHolidays } from '@/contexts/HolidayContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { calculateLeaveDays, getLeaveDeductionTypes, isLeaveTypeDisabled, getAvailableLeaveTypes, validateLeaveRequest } from '@/utils/leaveUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,11 +40,11 @@ import { format } from 'date-fns';
 import { formatIST, formatDateTimeIST, formatDateIST, todayIST, parseToIST, nowIST } from '@/utils/timezone';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
-import { 
-  CalendarDays, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
+import {
+  CalendarDays,
+  Clock,
+  CheckCircle,
+  XCircle,
   AlertCircle,
   Calendar as CalendarIcon,
   User,
@@ -71,11 +72,12 @@ interface LeaveRequest {
 export default function LeaveManagement() {
   const { user } = useAuth();
   const { holidays, addHoliday, removeHoliday, isHoliday, getHolidayName } = useHolidays();
+  const { addNotification } = useNotifications();
   const [searchParams, setSearchParams] = useSearchParams();
   const locationState = useLocation();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [displayedMonth, setDisplayedMonth] = useState<Date>(new Date());
-  
+
   // Initialize leave requests from localStorage or use default mock data
   const initializeLeaveRequests = (): LeaveRequest[] => {
     const stored = localStorage.getItem('leaveRequests');
@@ -122,13 +124,15 @@ export default function LeaveManagement() {
       }
     ];
   };
-  
+
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(initializeLeaveRequests());
   const [approvalRequests, setApprovalRequests] = useState<LeaveRequest[]>([]);
   const [approvalHistory, setApprovalHistory] = useState<LeaveRequest[]>([]);
   const [historyFilter, setHistoryFilter] = useState<string>('current_month');
   const [customHistoryStartDate, setCustomHistoryStartDate] = useState<Date | undefined>(undefined);
   const [customHistoryEndDate, setCustomHistoryEndDate] = useState<Date | undefined>(new Date());
+  const [leaveHistoryCustomStartDate, setLeaveHistoryCustomStartDate] = useState<Date | undefined>(undefined);
+  const [leaveHistoryCustomEndDate, setLeaveHistoryCustomEndDate] = useState<Date | undefined>(new Date());
 
   const [formData, setFormData] = useState({
     type: 'sick',
@@ -164,51 +168,51 @@ export default function LeaveManagement() {
   const [selectedHoliday, setSelectedHoliday] = useState<typeof holidays[0] | null>(null);
   const [isHolidayDialogOpen, setIsHolidayDialogOpen] = useState(false);
 
-  const [holidayForm, setHolidayForm] = useState<{ date: Date; name: string; description?: string }>({ 
-    date: new Date(), 
+  const [holidayForm, setHolidayForm] = useState<{ date: Date; name: string; description?: string }>({
+    date: new Date(),
     name: '',
     description: ''
   });
 
   const handleAddHoliday = async () => {
     if (!holidayForm.name) {
-      toast({ 
-        title: 'Error', 
+      toast({
+        title: 'Error',
         description: 'Please enter a holiday name.',
         variant: 'destructive'
       });
       return;
     }
-    
+
     // Check if the date is in the past
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const selectedDate = new Date(holidayForm.date);
     selectedDate.setHours(0, 0, 0, 0);
-    
+
     if (selectedDate < today) {
-      toast({ 
-        title: 'Error', 
+      toast({
+        title: 'Error',
         description: 'Cannot set holidays for past dates. Please select a current or future date.',
         variant: 'destructive'
       });
       return;
     }
-    
+
     try {
-      await addHoliday({ 
-        date: holidayForm.date, 
+      await addHoliday({
+        date: holidayForm.date,
         name: holidayForm.name,
-        description: holidayForm.description 
+        description: holidayForm.description
       });
       setHolidayForm({ date: new Date(), name: '', description: '' });
-      toast({ 
-        title: 'Holiday added', 
-        description: `${holidayForm.name} has been added to the calendar.` 
+      toast({
+        title: 'Holiday added',
+        description: `${holidayForm.name} has been added to the calendar.`
       });
     } catch (error) {
-      toast({ 
-        title: 'Error', 
+      toast({
+        title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to add holiday.',
         variant: 'destructive'
       });
@@ -217,7 +221,7 @@ export default function LeaveManagement() {
 
   const handleDayClick = (date: Date | undefined) => {
     if (!date) return;
-    
+
     const holiday = holidays.find(h => isSameDay(h.date, date));
     if (holiday) {
       // If clicking on a holiday, show the dialog but don't change selected date
@@ -234,8 +238,8 @@ export default function LeaveManagement() {
       await removeHoliday(id);
       toast({ title: 'Holiday removed', description: 'Company holiday removed from calendar.' });
     } catch (error) {
-      toast({ 
-        title: 'Error', 
+      toast({
+        title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to remove holiday.',
         variant: 'destructive'
       });
@@ -311,7 +315,7 @@ export default function LeaveManagement() {
     localStorage.setItem('departmentWeekOffs', JSON.stringify(weekOffConfig));
   }, [weekOffConfig]);
 
-  const { leaveBalance, loadLeaveBalance, updateLeaveBalance } = useLeaveBalance();
+  const { leaveBalance, loadLeaveBalance } = useLeaveBalance();
 
   // Leave Allocation Configuration (Admin only)
   const [leaveAllocationConfig, setLeaveAllocationConfig] = useState({
@@ -442,7 +446,7 @@ export default function LeaveManagement() {
     if (!user) return;
     try {
       const requests = await apiService.getLeaveRequests(period);
-      
+
       // Convert API response to our local format
       const formattedRequests: LeaveRequest[] = requests.map((req) => {
         const leaveType = (req.leave_type || 'annual').toLowerCase() as LeaveRequest['type'];
@@ -460,7 +464,7 @@ export default function LeaveManagement() {
           requestDate: new Date(req.start_date)
         };
       });
-      
+
       setLeaveRequests(formattedRequests);
     } catch (error) {
       console.error('Error fetching leave requests:', error);
@@ -491,9 +495,10 @@ export default function LeaveManagement() {
     if (!user?.id) return;
 
     // Validation
-    const total = leaveAllocationConfig.total_annual_leave;
     const sick = leaveAllocationConfig.sick_leave_allocation;
     const casual = leaveAllocationConfig.casual_leave_allocation;
+    // Enforce Total = Sick + Casual
+    const total = sick + casual;
     const other = leaveAllocationConfig.other_leave_allocation;
 
     if (total < 1) {
@@ -517,8 +522,11 @@ export default function LeaveManagement() {
     setIsSavingLeaveConfig(true);
 
     try {
-      await apiService.createLeaveAllocationConfig(leaveAllocationConfig);
-      
+      await apiService.createLeaveAllocationConfig({
+        ...leaveAllocationConfig,
+        total_annual_leave: total
+      });
+
       toast({
         title: 'Configuration Saved',
         description: 'Leave allocation has been updated successfully. All users will see the new allocations.',
@@ -614,11 +622,11 @@ export default function LeaveManagement() {
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     const leaveId = searchParams.get('leaveId');
-    
+
     if (tabParam) {
       setActiveTab(tabParam);
     }
-    
+
     // If leaveId is provided, highlight the specific request
     if (leaveId) {
       setTimeout(() => {
@@ -638,69 +646,30 @@ export default function LeaveManagement() {
   const colsClass = tabsCount === 3 ? 'grid-cols-3' : (tabsCount === 2 ? 'grid-cols-2' : 'grid-cols-1');
 
   const handleSubmitRequest = async () => {
-    if (!user?.id || !formData.reason.trim() || formData.reason.trim().length < 10) {
+    if (!user?.id) {
       toast({
         title: 'Error',
-        description: formData.reason.trim().length < 10 
-          ? 'Leave reason must be at least 10 characters long'
-          : 'Please fill in all required fields',
+        description: 'User ID not found. Please log in again.',
         variant: 'destructive'
       });
       return;
     }
 
-    // Calculate number of leave days
-    const leaveDays = Math.ceil((formData.endDate.getTime() - formData.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const validation = validateLeaveRequest(
+      formData.type,
+      formData.startDate,
+      formData.endDate,
+      leaveBalance,
+      formData.reason
+    );
 
-    // Validation 1: Sick leave minimum duration check
-    if (formData.type === 'sick' && leaveDays < 3) {
+    if (!validation.valid) {
       toast({
-        title: 'Invalid Sick Leave Duration',
-        description: 'Sick leave can only be applied for 3 or more days. For shorter periods (1-2 days), please use Casual Leave instead.',
+        title: 'Request Invalid',
+        description: validation.error,
         variant: 'destructive'
       });
       return;
-    }
-
-    // Validation 2: Advance notice requirements
-    const now = new Date();
-    const startDate = new Date(formData.startDate);
-    const timeDifference = startDate.getTime() - now.getTime();
-    const hoursDifference = timeDifference / (1000 * 60 * 60);
-
-    if (formData.type === 'sick') {
-      // Sick leave requires minimum 2 hours advance notice
-      if (hoursDifference < 2) {
-        toast({
-          title: 'Insufficient Advance Notice for Sick Leave',
-          description: 'Sick leave must be applied at least 2 hours before the start date. Please select a start date that is at least 2 hours from now.',
-          variant: 'destructive'
-        });
-        return;
-      }
-    } else {
-      // Other leaves require 24 hours advance notice
-      if (hoursDifference < 24) {
-        toast({
-          title: 'Insufficient Advance Notice',
-          description: 'Leave requests (except sick leave) must be submitted at least 24 hours in advance. Please select a start date that is at least 24 hours from now.',
-          variant: 'destructive'
-        });
-        return;
-      }
-    }
-
-    // Frontend validation: Check if user has sufficient annual leave balance
-    // For Annual, Sick, and Casual leave types, deduct from Annual Leave balance
-    if (['annual', 'sick', 'casual'].includes(formData.type)) {
-      if (leaveDays > leaveBalance.annual.remaining) {
-        toast({
-          title: 'Insufficient Leave Balance',
-          description: `You need ${leaveDays} days but only have ${leaveBalance.annual.remaining} days remaining in your Annual Leave balance. ${formData.type === 'annual' ? '' : `Note: ${formData.type.charAt(0).toUpperCase() + formData.type.slice(1)} Leave deducts from your Annual Leave balance.`}`,
-          variant: 'destructive'
-        });
-        return;
-      }
     }
 
     setIsSubmitting(true);
@@ -718,11 +687,7 @@ export default function LeaveManagement() {
       // Submit to API
       const response = await apiService.submitLeaveRequest(leaveRequestData);
 
-      // Update local leave balance immediately for better UX
-      const deductionTypes = getLeaveDeductionTypes(formData.type as any);
-      deductionTypes.forEach(type => {
-        updateLeaveBalance(type as any, leaveDays, 'deduct');
-      });
+
 
       // Create local leave request object for immediate UI update
       const newRequest: LeaveRequest = {
@@ -747,12 +712,27 @@ export default function LeaveManagement() {
         // Fallback: add to local state if refresh fails
         setLeaveRequests([...leaveRequests, newRequest]);
       }
-      
+
+      // ✅ Trigger notification for leave application
+      if (user) {
+        const leaveType = formData.type.charAt(0).toUpperCase() + formData.type.slice(1);
+        addNotification({
+          title: 'Leave Request Submitted',
+          message: `Your ${leaveType} leave request from ${formatDateIST(formData.startDate)} to ${formatDateIST(formData.endDate)} has been submitted for approval`,
+          type: 'leave',
+          metadata: {
+            leaveId: String(response.leave_id),
+            requesterId: user.id,
+            requesterName: user.name,
+          }
+        });
+      }
+
       toast({
         title: 'Success',
         description: `Leave request submitted successfully. ${formData.type === 'unpaid' ? 'Unpaid leave does not deduct from your Annual Leave balance.' : formData.type !== 'annual' ? 'This leave has been deducted from your Annual Leave balance.' : ''}`
       });
-      
+
       // Reset form
       setFormData({
         type: 'sick',
@@ -774,7 +754,7 @@ export default function LeaveManagement() {
 
   const handleApproveReject = async (id: string, status: 'approved' | 'rejected') => {
     const request = approvalRequests.find(req => req.id === id) || leaveRequests.find(req => req.id === id);
-    
+
     if (!request) {
       toast({
         title: 'Error',
@@ -795,23 +775,16 @@ export default function LeaveManagement() {
       // Call API to approve/reject
       const approved = status === 'approved';
       await apiService.approveLeaveRequest(id, approved);
-      
-      // If approved, update leave balance
-      if (status === 'approved') {
-        const leaveDays = calculateLeaveDays(request.startDate, request.endDate);
-        const deductionTypes = getLeaveDeductionTypes(request.type as any);
-        deductionTypes.forEach(type => {
-          updateLeaveBalance(type as any, leaveDays, 'deduct');
-        });
-      }
-      
+
+
+
       // Update approvals list - move approved/rejected request to the top
       const updatedRequest = { ...request, status, approvedBy: user?.name };
       const otherRequests = approvalRequests.filter(req => req.id !== id);
-      
+
       // Move the updated request to the top of the list
       setApprovalRequests([updatedRequest, ...otherRequests]);
-      
+
       // Reset pagination to show the updated request at the top
       setApprovalCurrentPage(1);
 
@@ -826,13 +799,29 @@ export default function LeaveManagement() {
       } catch (refreshError) {
         console.error('Error refreshing leave requests:', refreshError);
         // Fallback: update local state if refresh fails
-        setLeaveRequests(leaveRequests.map(req => 
-          req.id === id 
+        setLeaveRequests(leaveRequests.map(req =>
+          req.id === id
             ? { ...req, status, approvedBy: user?.name }
             : req
         ));
       }
-      
+
+      // ✅ Trigger notification to the leave requester
+      if (request.employeeId && user) {
+        const statusText = status === 'approved' ? 'approved' : 'rejected';
+        const leaveType = request.type.charAt(0).toUpperCase() + request.type.slice(1);
+        addNotification({
+          title: `Leave ${status === 'approved' ? 'Approved' : 'Rejected'}`,
+          message: `Your ${leaveType} leave request from ${formatDateIST(request.startDate)} to ${formatDateIST(request.endDate)} has been ${statusText} by ${user.name}`,
+          type: 'leave',
+          metadata: {
+            leaveId: request.id,
+            requesterId: user.id,
+            requesterName: user.name,
+          }
+        });
+      }
+
       toast({
         title: 'Success',
         description: `Leave request ${status} successfully`
@@ -895,56 +884,43 @@ export default function LeaveManagement() {
 
   const handleEditSubmit = async () => {
     if (!editingLeave) return;
-    if (!editFormData.reason.trim() || editFormData.reason.trim().length < 10) {
+    // Adjust balance to account for the days currently locked by this pending request
+    // This allows users to reschedule leave even if they have 0 remaining balance (because this request is consuming it)
+    let adjustedBalance = { ...leaveBalance };
+
+    // Deep clone the specific balance objects we might modify to avoid mutating state
+    if (editingLeave.type !== 'unpaid') {
+      const originalDays = calculateLeaveDays(editingLeave.startDate, editingLeave.endDate);
+
+      // Clone annual as it's always affected/checked
+      adjustedBalance.annual = { ...leaveBalance.annual };
+      adjustedBalance.annual.remaining += originalDays;
+
+      // Clone and update specific type if it exists
+      if (editingLeave.type === 'sick') {
+        adjustedBalance.sick = { ...leaveBalance.sick };
+        adjustedBalance.sick.remaining += originalDays;
+      } else if (editingLeave.type === 'casual') {
+        adjustedBalance.casual = { ...leaveBalance.casual };
+        adjustedBalance.casual.remaining += originalDays;
+      }
+    }
+
+    const validation = validateLeaveRequest(
+      editingLeave.type,
+      editFormData.startDate,
+      editFormData.endDate,
+      adjustedBalance,
+      editFormData.reason
+    );
+
+    if (!validation.valid) {
       toast({
-        title: 'Error',
-        description: editFormData.reason.trim().length < 10 
-          ? 'Leave reason must be at least 10 characters long'
-          : 'Reason is required',
+        title: 'Update Invalid',
+        description: validation.error,
         variant: 'destructive'
       });
       return;
-    }
-
-    // Calculate number of leave days for validation
-    const leaveDays = Math.ceil((editFormData.endDate.getTime() - editFormData.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-    // Validation 1: Sick leave minimum duration check
-    if (editingLeave.type === 'sick' && leaveDays < 3) {
-      toast({
-        title: 'Invalid Sick Leave Duration',
-        description: 'Sick leave can only be applied for 3 or more days. For shorter periods (1-2 days), please use Casual Leave instead.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    // Validation 2: Advance notice requirements
-    const now = new Date();
-    const startDate = new Date(editFormData.startDate);
-    const timeDifference = startDate.getTime() - now.getTime();
-    const hoursDifference = timeDifference / (1000 * 60 * 60);
-
-    if (editingLeave.type === 'sick') {
-      // Sick leave requires minimum 2 hours advance notice
-      if (hoursDifference < 2) {
-        toast({
-          title: 'Insufficient Advance Notice for Sick Leave',
-          description: 'Sick leave must be applied at least 2 hours before the start date. Please select a start date that is at least 2 hours from now.',
-          variant: 'destructive'
-        });
-        return;
-      }
-    } else {
-      // Other leaves require 24 hours advance notice
-      if (hoursDifference < 24) {
-        toast({
-          title: 'Insufficient Advance Notice',
-          description: 'Leave requests (except sick leave) must be submitted at least 24 hours in advance. Please select a start date that is at least 24 hours from now.',
-          variant: 'destructive'
-        });
-        return;
-      }
     }
 
     setIsUpdatingLeave(true);
@@ -976,11 +952,8 @@ export default function LeaveManagement() {
   };
 
   const handleDeleteLeave = (leave: LeaveRequest) => {
-    console.log('🗑️ Delete button clicked for leave:', leave);
-    
     // Ensure we have a valid leave request
     if (!leave || !leave.id) {
-      console.error('❌ Invalid leave request:', leave);
       toast({
         title: 'Error',
         description: 'Invalid leave request. Please refresh the page and try again.',
@@ -1000,57 +973,39 @@ export default function LeaveManagement() {
     }
 
     // Set the leave to delete and open dialog
-    console.log('🔄 Setting leave to delete and opening dialog...');
     setLeaveToDelete(leave);
     setIsDeleteDialogOpen(true);
-    console.log('✅ Delete dialog state set for leave ID:', leave.id);
-    
-    // Force a small delay to ensure state updates
-    setTimeout(() => {
-      console.log('🔍 Dialog state after timeout:', {
-        isDeleteDialogOpen: true,
-        leaveToDelete: leave.id
-      });
-    }, 100);
   };
 
   const confirmDeleteLeave = async () => {
-    console.log('🗑️ Confirming delete for leave:', leaveToDelete);
-    
     if (!leaveToDelete) {
-      console.error('❌ No leave to delete');
       return;
     }
-    
+
     setIsDeletingLeave(true);
-    
+
     try {
-      console.log('🔄 Calling API to delete leave request:', leaveToDelete.id);
       await apiService.deleteLeaveRequest(leaveToDelete.id);
-      
-      console.log('✅ Leave request deleted successfully, refreshing data...');
-      
+
       // Refresh the leave requests and balance
       await loadLeaveRequests(leaveHistoryPeriod);
       await loadLeaveBalance();
-      
+
       // Show success message
       toast({
         title: 'Leave Request Deleted',
-        description: `Your leave request from ${formatDateIST(leaveToDelete.startDate)} to ${formatDateIST(leaveToDelete.endDate)} has been successfully deleted.`,
+        description: `Your leave request from ${format(leaveToDelete.startDate, 'MMM dd, yyyy')} to ${format(leaveToDelete.endDate, 'MMM dd, yyyy')} has been successfully deleted.`,
       });
-      
+
       // Close dialog and clear state
       setIsDeleteDialogOpen(false);
       setLeaveToDelete(null);
-      
-      console.log('✅ Delete operation completed successfully');
-      
+
     } catch (error) {
-      console.error('❌ Error deleting leave request:', error);
-      
+      console.error('Error deleting leave request:', error);
+
       let errorMessage = 'Failed to delete leave request. Please try again.';
-      
+
       // Handle specific error cases
       if (error instanceof Error) {
         if (error.message.includes('404')) {
@@ -1061,7 +1016,7 @@ export default function LeaveManagement() {
           errorMessage = 'You do not have permission to delete this leave request.';
         }
       }
-      
+
       toast({
         title: 'Delete Failed',
         description: errorMessage,
@@ -1077,20 +1032,20 @@ export default function LeaveManagement() {
     // Admin can see all leave requests
     if (user?.role === 'admin') {
       return leaveRequests;
-    } 
+    }
     // HR can see all leave requests (except admin requests if any)
     else if (user?.role === 'hr') {
       return leaveRequests.filter(req => req.employeeId !== user?.id);
-    } 
+    }
     // Manager can see requests from their department or team
     else if (user?.role === 'manager') {
-      return leaveRequests.filter(req => 
+      return leaveRequests.filter(req =>
         req.employeeId !== user?.id && req.department === user?.department
       );
-    } 
+    }
     // Team lead can see requests from their team
     else if (user?.role === 'team_lead') {
-      return leaveRequests.filter(req => 
+      return leaveRequests.filter(req =>
         req.employeeId !== user?.id && req.department === user?.department
       );
     }
@@ -1158,7 +1113,7 @@ export default function LeaveManagement() {
       const timeB = new Date(b.requestDate).getTime();
       return timeB - timeA; // Descending order (most recent first)
     });
-    
+
     const startIndex = (approvalCurrentPage - 1) * approvalItemsPerPage;
     const endIndex = startIndex + approvalItemsPerPage;
     return sorted.slice(startIndex, endIndex);
@@ -1183,6 +1138,60 @@ export default function LeaveManagement() {
     setHistoryCurrentPage(1);
   }, [historyFilter, customHistoryStartDate, customHistoryEndDate]);
 
+  // Filter leave requests based on selected period
+  const getFilteredLeaveRequests = useMemo(() => {
+    const userLeaves = leaveRequests.filter(req => String(req.employeeId) === String(user?.id));
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    switch (leaveHistoryPeriod) {
+      case 'current_month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        break;
+      case 'last_3_months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        break;
+      case 'last_6_months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        break;
+      case 'last_1_year':
+        startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        break;
+      case 'custom':
+        if (!leaveHistoryCustomStartDate || !leaveHistoryCustomEndDate) {
+          return userLeaves.sort((a, b) => {
+            const timeA = new Date(a.requestDate).getTime();
+            const timeB = new Date(b.requestDate).getTime();
+            return timeB - timeA;
+          });
+        }
+        startDate = new Date(leaveHistoryCustomStartDate.getFullYear(), leaveHistoryCustomStartDate.getMonth(), leaveHistoryCustomStartDate.getDate(), 0, 0, 0);
+        endDate = new Date(leaveHistoryCustomEndDate.getFullYear(), leaveHistoryCustomEndDate.getMonth(), leaveHistoryCustomEndDate.getDate(), 23, 59, 59);
+        break;
+      default:
+        return userLeaves.sort((a, b) => {
+          const timeA = new Date(a.requestDate).getTime();
+          const timeB = new Date(b.requestDate).getTime();
+          return timeB - timeA;
+        });
+    }
+
+    const filtered = userLeaves.filter(request => {
+      const requestDate = new Date(request.startDate);
+      return requestDate >= startDate && requestDate <= endDate;
+    });
+
+    return filtered.sort((a, b) => {
+      const timeA = new Date(a.requestDate).getTime();
+      const timeB = new Date(b.requestDate).getTime();
+      return timeB - timeA;
+    });
+  }, [leaveRequests, user?.id, leaveHistoryPeriod, leaveHistoryCustomStartDate, leaveHistoryCustomEndDate]);
 
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6">
@@ -1202,22 +1211,22 @@ export default function LeaveManagement() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className={`grid w-full ${colsClass} h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm`}>
           {canApply && (
-            <TabsTrigger 
-              value="request" 
+            <TabsTrigger
+              value="request"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
             >
               Apply Leave
             </TabsTrigger>
           )}
           {(canApproveLeaves || canViewTeamLeaves) && (
-            <TabsTrigger 
+            <TabsTrigger
               value="approvals"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-600 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
             >
               {canApproveLeaves ? 'Approvals' : 'Team Leaves'}
             </TabsTrigger>
           )}
-          <TabsTrigger 
+          <TabsTrigger
             value="calendar"
             className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
           >
@@ -1227,409 +1236,430 @@ export default function LeaveManagement() {
 
         {canApply && (
           <TabsContent value="request" className="space-y-4">
-          {/* Leave Balance Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="border-0 bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-blue-50">Total Leaves</p>
-                    <p className="text-3xl font-bold mt-1">
-                      {leaveBalance.annual.remaining}/{leaveBalance.annual.allocated}
-                    </p>
-                    <p className="text-xs text-blue-100 mt-1">{leaveBalance.annual.used} used</p>
+            {/* Leave Balance Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="border-0 bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-blue-50">Total Leaves</p>
+                      <p className="text-3xl font-bold mt-1">
+                        {leaveBalance.annual.remaining}/{leaveBalance.annual.allocated}
+                      </p>
+                      <p className="text-xs text-blue-100 mt-1">{leaveBalance.annual.used} used</p>
+                    </div>
+                    <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                      <CalendarDays className="h-6 w-6 text-white" />
+                    </div>
                   </div>
-                  <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                    <CalendarDays className="h-6 w-6 text-white" />
+                </CardContent>
+              </Card>
+              <Card className="border-0 bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-red-50">Sick Leave</p>
+                      <p className="text-3xl font-bold mt-1">
+                        {leaveBalance.sick.remaining}/{leaveBalance.sick.allocated}
+                      </p>
+                      <p className="text-xs text-red-100 mt-1">{leaveBalance.sick.used} used</p>
+                    </div>
+                    <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                      <AlertCircle className="h-6 w-6 text-white" />
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-red-50">Sick Leave</p>
-                    <p className="text-3xl font-bold mt-1">
-                      {leaveBalance.sick.remaining}/{leaveBalance.sick.allocated}
-                    </p>
-                    <p className="text-xs text-red-100 mt-1">{leaveBalance.sick.used} used</p>
+                </CardContent>
+              </Card>
+              <Card className="border-0 bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-green-50">Casual Leave</p>
+                      <p className="text-3xl font-bold mt-1">
+                        {leaveBalance.casual.remaining}/{leaveBalance.casual.allocated}
+                      </p>
+                      <p className="text-xs text-green-100 mt-1">{leaveBalance.casual.used} used</p>
+                    </div>
+                    <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                      <Clock className="h-6 w-6 text-white" />
+                    </div>
                   </div>
-                  <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                    <AlertCircle className="h-6 w-6 text-white" />
+                </CardContent>
+              </Card>
+              <Card className="border-0 bg-gradient-to-br from-gray-500 to-slate-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-50">Unpaid Leave</p>
+                      <p className="text-3xl font-bold mt-1">
+                        {leaveBalance.unpaid.used}
+                      </p>
+                      <p className="text-xs text-gray-100 mt-1">days taken</p>
+                    </div>
+                    <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                      <FileText className="h-6 w-6 text-white" />
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-green-50">Casual Leave</p>
-                    <p className="text-3xl font-bold mt-1">
-                      {leaveBalance.casual.remaining}/{leaveBalance.casual.allocated}
-                    </p>
-                    <p className="text-xs text-green-100 mt-1">{leaveBalance.casual.used} used</p>
-                  </div>
-                  <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                    <Clock className="h-6 w-6 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 bg-gradient-to-br from-gray-500 to-slate-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-50">Unpaid Leave</p>
-                    <p className="text-3xl font-bold mt-1">
-                      {leaveBalance.unpaid.used}
-                    </p>
-                    <p className="text-xs text-gray-100 mt-1">days taken</p>
-                  </div>
-                  <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                    <FileText className="h-6 w-6 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                </CardContent>
+              </Card>
+            </div>
 
-          {/* Leave Request Form */}
-          <Card className="border-0 shadow-lg">
-            <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-              <CardTitle className="text-xl font-semibold">Request Leave</CardTitle>
-              <div className="mt-2 space-y-3">
-                <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    <strong>Note:</strong> Annual, Sick, and Casual leave requests will deduct from your <strong>Annual Leave</strong> balance. 
-                    Only <strong>Unpaid Leave</strong> does not affect your Annual Leave balance.
-                  </p>
+            {/* Leave Request Form */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+                <CardTitle className="text-xl font-semibold">Request Leave</CardTitle>
+                <div className="mt-2 space-y-3">
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      <strong>Note:</strong> Annual, Sick, and Casual leave requests will deduct from your <strong>Annual Leave</strong> balance.
+                      Only <strong>Unpaid Leave</strong> does not affect your Annual Leave balance.
+                    </p>
+                  </div>
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      <strong>Leave Restrictions:</strong>
+                    </p>
+                    <ul className="text-sm text-amber-700 dark:text-amber-300 mt-1 space-y-1">
+                      <li>• <strong>Sick Leave:</strong> Can only be applied for 3 or more days (use Casual Leave for 1-2 days)</li>
+                      <li>• <strong>Sick Leave:</strong> Must be applied at least 2 hours in advance</li>
+                      <li>• <strong>Other Leaves:</strong> Must be applied at least 24 hours in advance</li>
+                    </ul>
+                  </div>
                 </div>
-                <div className="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
-                  <p className="text-sm text-amber-800 dark:text-amber-200">
-                    <strong>Leave Restrictions:</strong>
-                  </p>
-                  <ul className="text-sm text-amber-700 dark:text-amber-300 mt-1 space-y-1">
-                    <li>• <strong>Sick Leave:</strong> Can only be applied for 3 or more days (use Casual Leave for 1-2 days)</li>
-                    <li>• <strong>Sick Leave:</strong> Must be applied at least 2 hours in advance</li>
-                    <li>• <strong>Other Leaves:</strong> Must be applied at least 24 hours in advance</li>
-                  </ul>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Leave Type</Label>
+                    <Select
+                      value={formData.type}
+                      onValueChange={(value) => setFormData({ ...formData, type: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Leave Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sick" disabled={isLeaveTypeDisabled('sick', leaveBalance)}>
+                          Sick Leave {leaveBalance.sick.remaining <= 0 ? '(No balance)' : `(${leaveBalance.sick.remaining} days)`}
+                        </SelectItem>
+                        <SelectItem value="casual" disabled={isLeaveTypeDisabled('casual', leaveBalance)}>
+                          Casual Leave {leaveBalance.casual.remaining <= 0 ? '(No balance)' : `(${leaveBalance.casual.remaining} days)`}
+                        </SelectItem>
+                        <SelectItem value="maternity">Maternity Leave</SelectItem>
+                        <SelectItem value="paternity">Paternity Leave</SelectItem>
+                        <SelectItem value="unpaid">Unpaid Leave</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Duration</Label>
+                    <div className="flex gap-2">
+                      <DatePicker
+                        date={formData.startDate}
+                        onDateChange={(date) => date && setFormData({ ...formData, startDate: date })}
+                        placeholder="Start date"
+                      />
+                      <DatePicker
+                        date={formData.endDate}
+                        onDateChange={(date) => date && setFormData({ ...formData, endDate: date })}
+                        placeholder="End date"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* Dynamic validation feedback */}
+                {(() => {
+                  const leaveDays = Math.ceil((formData.endDate.getTime() - formData.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                  const now = new Date();
+                  const startDate = new Date(formData.startDate);
+                  const timeDifference = startDate.getTime() - now.getTime();
+                  const hoursDifference = timeDifference / (1000 * 60 * 60);
+
+                  const validationMessages = [];
+
+                  // Check sick leave duration
+                  if (formData.type === 'sick' && leaveDays < 3) {
+                    validationMessages.push({
+                      type: 'error',
+                      message: `Sick leave requires minimum 3 days. Current selection: ${leaveDays} day${leaveDays === 1 ? '' : 's'}. Consider using Casual Leave for shorter periods.`
+                    });
+                  }
+
+                  // Check advance notice requirements
+                  if (formData.type === 'sick') {
+                    // Sick leave requires 2 hours advance notice
+                    if (hoursDifference < 2 && hoursDifference >= 0) {
+                      const hoursRemaining = Math.ceil(2 - hoursDifference);
+                      const minutesRemaining = Math.ceil((2 - hoursDifference) * 60);
+                      validationMessages.push({
+                        type: 'error',
+                        message: `Sick leave must be applied 2 hours in advance. Please select a date at least ${hoursRemaining > 0 ? `${hoursRemaining} hour${hoursRemaining === 1 ? '' : 's'}` : `${minutesRemaining} minute${minutesRemaining === 1 ? '' : 's'}`} from now.`
+                      });
+                    }
+                  } else {
+                    // Other leaves require 24 hours advance notice
+                    if (hoursDifference < 24 && hoursDifference >= 0) {
+                      const hoursRemaining = Math.ceil(24 - hoursDifference);
+                      validationMessages.push({
+                        type: 'error',
+                        message: `Leave must be applied 24 hours in advance. Please select a date at least ${hoursRemaining} hours from now.`
+                      });
+                    }
+                  }
+
+                  // Show success message when valid
+                  if (validationMessages.length === 0 && leaveDays > 0) {
+                    if (formData.type === 'sick') {
+                      validationMessages.push({
+                        type: 'success',
+                        message: `✓ Valid sick leave request for ${leaveDays} day${leaveDays === 1 ? '' : 's'} with ${Math.floor(hoursDifference)} hours advance notice.`
+                      });
+                    } else if (hoursDifference >= 24) {
+                      validationMessages.push({
+                        type: 'success',
+                        message: `✓ Valid leave request with ${Math.floor(hoursDifference)} hours advance notice.`
+                      });
+                    }
+                  }
+
+                  return validationMessages.length > 0 ? (
+                    <div className="space-y-2">
+                      {validationMessages.map((msg, index) => (
+                        <div
+                          key={index}
+                          className={`p-3 rounded-lg border text-sm ${msg.type === 'error'
+                            ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
+                            : 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200'
+                            }`}
+                        >
+                          {msg.message}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
+
                 <div className="space-y-2">
-                  <Label>Leave Type</Label>
+                  <Label>Reason *</Label>
+                  <Textarea
+                    value={formData.reason}
+                    onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                    placeholder="Please provide a reason for your leave request (minimum 10 characters)..."
+                    rows={3}
+                    className={formData.reason.trim().length > 0 && formData.reason.trim().length < 10 ? 'border-red-500' : ''}
+                  />
+                  <div className="flex justify-between text-sm">
+                    <span className={`${formData.reason.trim().length < 10 ? 'text-red-500' : 'text-green-600'}`}>
+                      {formData.reason.trim().length < 10
+                        ? `${formData.reason.trim().length}/10 characters (minimum required)`
+                        : `${formData.reason.trim().length}/500 characters`
+                      }
+                    </span>
+                    {formData.reason.trim().length < 10 && formData.reason.trim().length > 0 && (
+                      <span className="text-red-500 text-xs">Minimum 10 characters required</span>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  onClick={handleSubmitRequest}
+                  disabled={isSubmitting || formData.reason.trim().length < 10}
+                  className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md disabled:opacity-50"
+                >
+                  <CalendarIcon className="h-4 w-4" />
+                  {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* My Leave History - Premium UI */}
+            <Card className="border-0 shadow-xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 overflow-hidden">
+              <CardHeader className="border-b bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950 dark:via-purple-950 dark:to-pink-950">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+                      <CalendarDays className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
+                        My Leave History
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Track all your leave requests and their status
+                      </p>
+                    </div>
+                  </div>
                   <Select
-                    value={formData.type}
-                    onValueChange={(value) => setFormData({...formData, type: value})}
+                    value={leaveHistoryPeriod}
+                    onValueChange={(value) => setLeaveHistoryPeriod(value)}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Leave Type" />
+                    <SelectTrigger className="w-[200px] bg-white dark:bg-slate-800 border-2 shadow-md hover:shadow-lg transition-all">
+                      <SelectValue placeholder="Select period" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="sick" disabled={isLeaveTypeDisabled('sick', leaveBalance)}>
-                        Sick Leave {leaveBalance.sick.remaining <= 0 ? '(No balance)' : `(${leaveBalance.sick.remaining} days)`}
-                      </SelectItem>
-                      <SelectItem value="casual" disabled={isLeaveTypeDisabled('casual', leaveBalance)}>
-                        Casual Leave {leaveBalance.casual.remaining <= 0 ? '(No balance)' : `(${leaveBalance.casual.remaining} days)`}
-                      </SelectItem>
-                      <SelectItem value="maternity">Maternity Leave</SelectItem>
-                      <SelectItem value="paternity">Paternity Leave</SelectItem>
-                      <SelectItem value="unpaid">Unpaid Leave</SelectItem>
+                      <SelectItem value="current_month">Current Month</SelectItem>
+                      <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                      <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                      <SelectItem value="last_1_year">Last 1 Year</SelectItem>
+                      <SelectItem value="custom">Custom Range</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Duration</Label>
-                  <div className="flex gap-2">
-                    <DatePicker
-                      date={formData.startDate}
-                      onDateChange={(date) => date && setFormData({...formData, startDate: date})}
-                      placeholder="Start date"
-                    />
-                    <DatePicker
-                      date={formData.endDate}
-                      onDateChange={(date) => date && setFormData({...formData, endDate: date})}
-                      placeholder="End date"
-                    />
+              </CardHeader>
+              {leaveHistoryPeriod === 'custom' && (
+                <div className="border-b bg-slate-50 dark:bg-slate-900 p-4">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex-1 min-w-[150px]">
+                      <Label className="text-xs mb-1 block">From Date</Label>
+                      <DatePicker
+                        date={leaveHistoryCustomStartDate}
+                        onDateChange={setLeaveHistoryCustomStartDate}
+                        placeholder="Select start date"
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-[150px]">
+                      <Label className="text-xs mb-1 block">To Date</Label>
+                      <DatePicker
+                        date={leaveHistoryCustomEndDate}
+                        onDateChange={setLeaveHistoryCustomEndDate}
+                        placeholder="Select end date"
+                        className="w-full"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              {/* Dynamic validation feedback */}
-              {(() => {
-                const leaveDays = Math.ceil((formData.endDate.getTime() - formData.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                const now = new Date();
-                const startDate = new Date(formData.startDate);
-                const timeDifference = startDate.getTime() - now.getTime();
-                const hoursDifference = timeDifference / (1000 * 60 * 60);
-                
-                const validationMessages = [];
-                
-                // Check sick leave duration
-                if (formData.type === 'sick' && leaveDays < 3) {
-                  validationMessages.push({
-                    type: 'error',
-                    message: `Sick leave requires minimum 3 days. Current selection: ${leaveDays} day${leaveDays === 1 ? '' : 's'}. Consider using Casual Leave for shorter periods.`
-                  });
-                }
-                
-                // Check advance notice requirements
-                if (formData.type === 'sick') {
-                  // Sick leave requires 2 hours advance notice
-                  if (hoursDifference < 2 && hoursDifference >= 0) {
-                    const hoursRemaining = Math.ceil(2 - hoursDifference);
-                    const minutesRemaining = Math.ceil((2 - hoursDifference) * 60);
-                    validationMessages.push({
-                      type: 'error',
-                      message: `Sick leave must be applied 2 hours in advance. Please select a date at least ${hoursRemaining > 0 ? `${hoursRemaining} hour${hoursRemaining === 1 ? '' : 's'}` : `${minutesRemaining} minute${minutesRemaining === 1 ? '' : 's'}`} from now.`
-                    });
-                  }
-                } else {
-                  // Other leaves require 24 hours advance notice
-                  if (hoursDifference < 24 && hoursDifference >= 0) {
-                    const hoursRemaining = Math.ceil(24 - hoursDifference);
-                    validationMessages.push({
-                      type: 'error',
-                      message: `Leave must be applied 24 hours in advance. Please select a date at least ${hoursRemaining} hours from now.`
-                    });
-                  }
-                }
-                
-                // Show success message when valid
-                if (validationMessages.length === 0 && leaveDays > 0) {
-                  if (formData.type === 'sick') {
-                    validationMessages.push({
-                      type: 'success',
-                      message: `✓ Valid sick leave request for ${leaveDays} day${leaveDays === 1 ? '' : 's'} with ${Math.floor(hoursDifference)} hours advance notice.`
-                    });
-                  } else if (hoursDifference >= 24) {
-                    validationMessages.push({
-                      type: 'success',
-                      message: `✓ Valid leave request with ${Math.floor(hoursDifference)} hours advance notice.`
-                    });
-                  }
-                }
-                
-                return validationMessages.length > 0 ? (
-                  <div className="space-y-2">
-                    {validationMessages.map((msg, index) => (
-                      <div 
-                        key={index}
-                        className={`p-3 rounded-lg border text-sm ${
-                          msg.type === 'error' 
-                            ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
-                            : 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200'
-                        }`}
-                      >
-                        {msg.message}
-                      </div>
-                    ))}
+              )}
+              <CardContent className="p-6">
+                {getFilteredLeaveRequests.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="h-24 w-24 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 flex items-center justify-center mx-auto mb-4">
+                      <AlertCircle className="h-12 w-12 text-indigo-500 dark:text-indigo-400 opacity-50" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">No Leave History</h3>
+                    <p className="text-sm text-muted-foreground">No leave requests found for the selected period.</p>
                   </div>
-                ) : null;
-              })()}
-              
-              <div className="space-y-2">
-                <Label>Reason *</Label>
-                <Textarea
-                  value={formData.reason}
-                  onChange={(e) => setFormData({...formData, reason: e.target.value})}
-                  placeholder="Please provide a reason for your leave request (minimum 10 characters)..."
-                  rows={3}
-                  className={formData.reason.trim().length > 0 && formData.reason.trim().length < 10 ? 'border-red-500' : ''}
-                />
-                <div className="flex justify-between text-sm">
-                  <span className={`${formData.reason.trim().length < 10 ? 'text-red-500' : 'text-green-600'}`}>
-                    {formData.reason.trim().length < 10 
-                      ? `${formData.reason.trim().length}/10 characters (minimum required)`
-                      : `${formData.reason.trim().length}/500 characters`
-                    }
-                  </span>
-                  {formData.reason.trim().length < 10 && formData.reason.trim().length > 0 && (
-                    <span className="text-red-500 text-xs">Minimum 10 characters required</span>
-                  )}
-                </div>
-              </div>
-              <Button 
-                onClick={handleSubmitRequest}
-                disabled={isSubmitting || formData.reason.trim().length < 10}
-                className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md disabled:opacity-50"
-              >
-                <CalendarIcon className="h-4 w-4" />
-                {isSubmitting ? 'Submitting...' : 'Submit Request'}
-              </Button>
-            </CardContent>
-          </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {getFilteredLeaveRequests.map((request) => {
+                      const daysCount = Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                      const statusConfig = {
+                        pending: {
+                          bg: 'bg-amber-50 dark:bg-amber-950',
+                          border: 'border-amber-200 dark:border-amber-800',
+                          icon: Clock,
+                          iconColor: 'text-amber-600 dark:text-amber-400'
+                        },
+                        approved: {
+                          bg: 'bg-emerald-50 dark:bg-emerald-950',
+                          border: 'border-emerald-200 dark:border-emerald-800',
+                          icon: CheckCircle,
+                          iconColor: 'text-emerald-600 dark:text-emerald-400'
+                        },
+                        rejected: {
+                          bg: 'bg-red-50 dark:bg-red-950',
+                          border: 'border-red-200 dark:border-red-800',
+                          icon: XCircle,
+                          iconColor: 'text-red-600 dark:text-red-400'
+                        }
+                      };
+                      const config = statusConfig[request.status] || statusConfig.pending;
+                      const StatusIcon = config.icon;
 
-          {/* My Leave History - Premium UI */}
-          <Card className="border-0 shadow-xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 overflow-hidden">
-            <CardHeader className="border-b bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950 dark:via-purple-950 dark:to-pink-950">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
-                    <CalendarDays className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
-                      My Leave History
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Track all your leave requests and their status
-                    </p>
-                  </div>
-                </div>
-                <Select
-                  value={leaveHistoryPeriod}
-                  onValueChange={(value) => setLeaveHistoryPeriod(value)}
-                >
-                  <SelectTrigger className="w-[200px] bg-white dark:bg-slate-800 border-2 shadow-md hover:shadow-lg transition-all">
-                    <SelectValue placeholder="Select period" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="current_month">Current Month</SelectItem>
-                    <SelectItem value="last_3_months">Last 3 Months</SelectItem>
-                    <SelectItem value="last_6_months">Last 6 Months</SelectItem>
-                    <SelectItem value="last_1_year">Last 1 Year</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              {leaveRequests.filter(req => String(req.employeeId) === String(user?.id)).length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="h-24 w-24 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 flex items-center justify-center mx-auto mb-4">
-                    <AlertCircle className="h-12 w-12 text-indigo-500 dark:text-indigo-400 opacity-50" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">No Leave History</h3>
-                  <p className="text-sm text-muted-foreground">No leave requests found for the selected period.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {leaveRequests
-                    .filter(req => String(req.employeeId) === String(user?.id))
-                    .sort((a, b) => {
-                      // Sort by request date in descending order (most recent first)
-                      const timeA = new Date(a.requestDate).getTime();
-                      const timeB = new Date(b.requestDate).getTime();
-                      return timeB - timeA; // Descending order (most recent first)
-                    })
-                    .map((request) => {
-                    const daysCount = Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                    const statusConfig = {
-                      pending: { 
-                        bg: 'bg-amber-50 dark:bg-amber-950', 
-                        border: 'border-amber-200 dark:border-amber-800',
-                        icon: Clock,
-                        iconColor: 'text-amber-600 dark:text-amber-400'
-                      },
-                      approved: { 
-                        bg: 'bg-emerald-50 dark:bg-emerald-950', 
-                        border: 'border-emerald-200 dark:border-emerald-800',
-                        icon: CheckCircle,
-                        iconColor: 'text-emerald-600 dark:text-emerald-400'
-                      },
-                      rejected: { 
-                        bg: 'bg-red-50 dark:bg-red-950', 
-                        border: 'border-red-200 dark:border-red-800',
-                        icon: XCircle,
-                        iconColor: 'text-red-600 dark:text-red-400'
-                      }
-                    };
-                    const config = statusConfig[request.status] || statusConfig.pending;
-                    const StatusIcon = config.icon;
-                    
-                    return (
-                      <div 
-                        key={request.id} 
-                        className={`group relative overflow-hidden rounded-xl border-2 ${config.border} ${config.bg} p-5 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]`}
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 space-y-3">
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <div className={`h-10 w-10 rounded-lg ${config.bg} flex items-center justify-center shadow-md`}>
-                                <StatusIcon className={`h-5 w-5 ${config.iconColor}`} />
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3 flex-wrap">
-                                  <div className="flex items-center gap-2">
-                                    <CalendarIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                                    <span className="font-semibold text-gray-900 dark:text-gray-100">
-                                      {format(request.startDate, 'MMM dd, yyyy')}
-                                    </span>
-                                    <span className="text-gray-400">→</span>
-                                    <span className="font-semibold text-gray-900 dark:text-gray-100">
-                                      {format(request.endDate, 'MMM dd, yyyy')}
-                                    </span>
-                                  </div>
-                                  <Badge className={`${getLeaveTypeColor(request.type)} font-medium`}>
-                                    {request.type}
-                                  </Badge>
-                                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                    <Timer className="h-3.5 w-3.5" />
-                                    <span>{daysCount} {daysCount === 1 ? 'day' : 'days'}</span>
+                      return (
+                        <div
+                          key={request.id}
+                          className={`group relative overflow-hidden rounded-xl border-2 ${config.border} ${config.bg} p-5 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 space-y-3">
+                              <div className="flex items-center gap-3 flex-wrap">
+                                <div className={`h-10 w-10 rounded-lg ${config.bg} flex items-center justify-center shadow-md`}>
+                                  <StatusIcon className={`h-5 w-5 ${config.iconColor}`} />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3 flex-wrap">
+                                    <div className="flex items-center gap-2">
+                                      <CalendarIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                        {format(request.startDate, 'MMM dd, yyyy')}
+                                      </span>
+                                      <span className="text-gray-400">→</span>
+                                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                        {format(request.endDate, 'MMM dd, yyyy')}
+                                      </span>
+                                    </div>
+                                    <Badge className={`${getLeaveTypeColor(request.type)} font-medium`}>
+                                      {request.type}
+                                    </Badge>
+                                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                      <Timer className="h-3.5 w-3.5" />
+                                      <span>{daysCount} {daysCount === 1 ? 'day' : 'days'}</span>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                            
-                            <div className="pl-13">
-                              <div className="flex items-start gap-2">
-                                <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                                  {request.reason}
-                                </p>
+
+                              <div className="pl-13">
+                                <div className="flex items-start gap-2">
+                                  <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                    {request.reason}
+                                  </p>
+                                </div>
                               </div>
                             </div>
+
+                            <div className="flex flex-col items-end gap-2">
+                              {request.status === 'pending' && (
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    className="group gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-500 px-4 py-2 font-semibold text-white shadow-lg shadow-indigo-200/50 transition-all hover:from-sky-500 hover:via-indigo-500 hover:to-indigo-600 hover:shadow-indigo-300/70 dark:shadow-indigo-900/50"
+                                    onClick={() => handleEditLeave(request)}
+                                  >
+                                    <Pencil className="h-4 w-4 transition-transform group-hover:scale-110" />
+                                    <span className="hidden sm:inline">Edit</span>
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    className="group gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-red-500 to-orange-500 px-4 py-2 font-semibold text-white shadow-lg shadow-rose-200/50 transition-all hover:from-rose-600 hover:via-red-500 hover:to-red-600 hover:shadow-rose-300/70 dark:shadow-rose-900/50 pointer-events-auto z-10 relative"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleDeleteLeave(request);
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4 transition-transform group-hover:scale-110" />
+                                    <span className="hidden sm:inline">Delete</span>
+                                  </Button>
+                                </div>
+                              )}
+                              <Badge
+                                className={`px-5 py-2 text-sm font-bold capitalize transition-all duration-300 ${getStatusBadgeStyle(request.status)}`}
+                              >
+                                {request.status}
+                              </Badge>
+                              {request.approvedBy && (
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                  <User className="h-3 w-3" />
+                                  <span>by {request.approvedBy}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          
-                          <div className="flex flex-col items-end gap-2">
-                            {request.status === 'pending' && (
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  size="sm"
-                                  className="group gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-500 px-4 py-2 font-semibold text-white shadow-lg shadow-indigo-200/50 transition-all hover:from-sky-500 hover:via-indigo-500 hover:to-indigo-600 hover:shadow-indigo-300/70 dark:shadow-indigo-900/50"
-                                  onClick={() => handleEditLeave(request)}
-                                >
-                                  <Pencil className="h-4 w-4 transition-transform group-hover:scale-110" />
-                                  <span className="hidden sm:inline">Edit</span>
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  className="group gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-red-500 to-orange-500 px-4 py-2 font-semibold text-white shadow-lg shadow-rose-200/50 transition-all hover:from-rose-600 hover:via-red-500 hover:to-red-600 hover:shadow-rose-300/70 dark:shadow-rose-900/50"
-                                  onClick={() => handleDeleteLeave(request)}
-                                >
-                                  <Trash2 className="h-4 w-4 transition-transform group-hover:scale-110" />
-                                  <span className="hidden sm:inline">Delete</span>
-                                </Button>
-                              </div>
-                            )}
-                            <Badge 
-                              className={`px-5 py-2 text-sm font-bold capitalize transition-all duration-300 ${getStatusBadgeStyle(request.status)}`}
-                            >
-                              {request.status}
-                            </Badge>
-                            {request.approvedBy && (
-                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <User className="h-3 w-3" />
-                                <span>by {request.approvedBy}</span>
-                              </div>
-                            )}
-                          </div>
+
+                          {/* Decorative gradient overlay */}
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-200/20 to-purple-200/20 dark:from-indigo-800/20 dark:to-purple-800/20 rounded-full blur-2xl -z-0 pointer-events-none" />
                         </div>
-                        
-                        {/* Decorative gradient overlay */}
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-200/20 to-purple-200/20 dark:from-indigo-800/20 dark:to-purple-800/20 rounded-full blur-2xl -z-0" />
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         )}
 
         <TabsContent value="calendar">
@@ -1654,28 +1684,20 @@ export default function LeaveManagement() {
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-6">
                       <div className="space-y-2">
                         <Label className="font-semibold text-purple-700 dark:text-purple-300">
                           Total Annual Leave
                         </Label>
                         <Input
-                          type="number"
-                          min="1"
-                          max="365"
+                          disabled
                           value={leaveAllocationConfig.total_annual_leave}
-                          onChange={(e) =>
-                            setLeaveAllocationConfig((prev) => ({
-                              ...prev,
-                              total_annual_leave: parseInt(e.target.value) || 0,
-                            }))
-                          }
-                          className="border-2 border-purple-200 dark:border-purple-800 focus:border-purple-500"
-                          placeholder="e.g., 15"
+                          className="border-2 border-purple-200 dark:border-purple-800 bg-gray-100 dark:bg-gray-800 opacity-80 cursor-not-allowed font-bold"
+                          placeholder="Calculated automatically"
                         />
                         <p className="text-xs text-muted-foreground">
-                          Total days per year
+                          Total days (Sick + Casual)
                         </p>
                       </div>
 
@@ -1688,12 +1710,14 @@ export default function LeaveManagement() {
                           min="0"
                           max="365"
                           value={leaveAllocationConfig.sick_leave_allocation}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 0;
                             setLeaveAllocationConfig((prev) => ({
                               ...prev,
-                              sick_leave_allocation: parseInt(e.target.value) || 0,
-                            }))
-                          }
+                              sick_leave_allocation: val,
+                              total_annual_leave: val + prev.casual_leave_allocation,
+                            }));
+                          }}
                           className="border-2 border-red-200 dark:border-red-800 focus:border-red-500"
                           placeholder="e.g., 10"
                         />
@@ -1711,12 +1735,14 @@ export default function LeaveManagement() {
                           min="0"
                           max="365"
                           value={leaveAllocationConfig.casual_leave_allocation}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 0;
                             setLeaveAllocationConfig((prev) => ({
                               ...prev,
-                              casual_leave_allocation: parseInt(e.target.value) || 0,
-                            }))
-                          }
+                              casual_leave_allocation: val,
+                              total_annual_leave: prev.sick_leave_allocation + val,
+                            }));
+                          }}
                           className="border-2 border-green-200 dark:border-green-800 focus:border-green-500"
                           placeholder="e.g., 5"
                         />
@@ -1751,7 +1777,7 @@ export default function LeaveManagement() {
 
                     <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
                       <p className="text-sm text-blue-800 dark:text-blue-200">
-                        <strong>Note:</strong> Annual, Sick, and Casual leave requests will deduct from the <strong>Total Annual Leave</strong> balance. 
+                        <strong>Note:</strong> Annual, Sick, and Casual leave requests will deduct from the <strong>Total Annual Leave</strong> balance.
                         The individual allocations (Sick, Casual, Other) are for reference and tracking purposes.
                       </p>
                     </div>
@@ -1772,53 +1798,53 @@ export default function LeaveManagement() {
                   </div>
 
                   <div className="p-4 border rounded-lg bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950">
-                  <h3 className="font-semibold mb-3 flex items-center gap-2">
-                    <CalendarIcon className="h-5 w-5 text-amber-600" />
-                    Set Company Holidays
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex gap-2 items-start">
-                      <div className="flex-1 space-y-2">
-                        <DatePicker
-                          date={holidayForm.date}
-                          onDateChange={(date) => date && setHolidayForm({ ...holidayForm, date })}
-                          placeholder="Select holiday date"
-                          className="w-full"
-                          disablePastDates={true}
-                        />
-                        <Input
-                          type="text"
-                          placeholder="Holiday name (e.g., Diwali, New Year)"
-                          value={holidayForm.name}
-                          onChange={e => setHolidayForm({ ...holidayForm, name: e.target.value })}
-                        />
-                        <Textarea
-                          placeholder="Description (optional) - e.g., Festival of Lights celebration"
-                          value={holidayForm.description || ''}
-                          onChange={e => setHolidayForm({ ...holidayForm, description: e.target.value })}
-                          rows={2}
-                          className="resize-none"
-                        />
+                    <h3 className="font-semibold mb-3 flex items-center gap-2">
+                      <CalendarIcon className="h-5 w-5 text-amber-600" />
+                      Set Company Holidays
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex gap-2 items-start">
+                        <div className="flex-1 space-y-2">
+                          <DatePicker
+                            date={holidayForm.date}
+                            onDateChange={(date) => date && setHolidayForm({ ...holidayForm, date })}
+                            placeholder="Select holiday date"
+                            className="w-full"
+                            disablePastDates={true}
+                          />
+                          <Input
+                            type="text"
+                            placeholder="Holiday name (e.g., Diwali, New Year)"
+                            value={holidayForm.name}
+                            onChange={e => setHolidayForm({ ...holidayForm, name: e.target.value })}
+                          />
+                          <Textarea
+                            placeholder="Description (optional) - e.g., Festival of Lights celebration"
+                            value={holidayForm.description || ''}
+                            onChange={e => setHolidayForm({ ...holidayForm, description: e.target.value })}
+                            rows={2}
+                            className="resize-none"
+                          />
+                        </div>
+                        <Button
+                          onClick={handleAddHoliday}
+                          className="gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-lg mt-0"
+                        >
+                          <CalendarIcon className="h-4 w-4" />
+                          Add Holiday
+                        </Button>
                       </div>
-                      <Button 
-                        onClick={handleAddHoliday} 
-                        className="gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-lg mt-0"
-                      >
-                        <CalendarIcon className="h-4 w-4" />
-                        Add Holiday
-                      </Button>
                     </div>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-1">Current Holidays:</h4>
-                    <ul>
-                      {holidays.map(h => (
-                        <li key={h.date.toISOString()} className="flex items-center gap-2 mb-1">
-                          <span>{h.name} ({h.date.toDateString()})</span>
-                          <Button size="sm" variant="destructive" onClick={() => h.id && handleRemoveHoliday(h.id)}>Remove</Button>
-                        </li>
-                      ))}
-                    </ul>
+                    <div>
+                      <h4 className="font-medium mb-1">Current Holidays:</h4>
+                      <ul>
+                        {holidays.map(h => (
+                          <li key={h.date.toISOString()} className="flex items-center gap-2 mb-1">
+                            <span>{h.name} ({h.date.toDateString()})</span>
+                            <Button size="sm" variant="destructive" onClick={() => h.id && handleRemoveHoliday(h.id)}>Remove</Button>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
 
@@ -1891,11 +1917,10 @@ export default function LeaveManagement() {
                                     return { ...prev, days: nextDays };
                                   })
                                 }
-                                className={`rounded-full px-3 py-1 text-sm border transition ${
-                                  isSelected
-                                    ? 'border-sky-500 bg-white text-sky-600 shadow-sm'
-                                    : 'border-slate-300 text-slate-600 hover:bg-white'
-                                }`}
+                                className={`rounded-full px-3 py-1 text-sm border transition ${isSelected
+                                  ? 'border-sky-500 bg-white text-sky-600 shadow-sm'
+                                  : 'border-slate-300 text-slate-600 hover:bg-white'
+                                  }`}
                               >
                                 {day.emoji} {day.label}
                               </button>
@@ -1961,85 +1986,85 @@ export default function LeaveManagement() {
                   currentMonth={displayedMonth}
                   onMonthChange={setDisplayedMonth}
                   className="rounded-xl border-2 shadow-lg p-4 bg-white dark:bg-gray-950"
-                modifiers={{
+                  modifiers={{
                     holiday: holidays.map(h => h.date),
                     weekOff: (date) =>
                       userWeekOffDays.some(
                         (day) => weekDayIndexMap[day] === date.getDay(),
                       ),
-                }}
-                modifiersClassNames={{
+                  }}
+                  modifiersClassNames={{
                     holiday:
                       'bg-gradient-to-br from-red-500 to-rose-600 text-white font-bold hover:from-red-600 hover:to-rose-700 transition-all duration-300 shadow-lg cursor-pointer ring-2 ring-red-300 dark:ring-red-700',
                     weekOff:
                       'border border-sky-400 text-sky-600 font-semibold bg-sky-50 hover:bg-sky-100',
-                }}
-                footer={
-                  (() => {
-                    // Filter holidays for the currently displayed month
-                    const displayedYear = displayedMonth.getFullYear();
-                    const displayedMonthIndex = displayedMonth.getMonth();
-                    const monthHolidays = holidays.filter(h => 
-                      h.date.getFullYear() === displayedYear && 
-                      h.date.getMonth() === displayedMonthIndex
-                    );
-                    
-                    return (
-                      <div className="mt-4 p-4 bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 rounded-lg">
-                        <h4 className="font-semibold mb-3 flex items-center gap-2">
-                          <CalendarIcon className="h-5 w-5 text-red-600" />
-                          Holidays in {format(displayedMonth, 'MMMM yyyy')}:
-                        </h4>
-                        {monthHolidays.length === 0 ? (
-                          <p className="text-sm text-muted-foreground italic">No holidays in this month</p>
-                        ) : (
-                          <ul className="space-y-2">
-                            {monthHolidays.map(h => (
-                          <li 
-                            key={h.date.toISOString()} 
-                            className="text-sm flex items-start gap-2 p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                            onClick={() => {
-                              setSelectedHoliday(h);
-                              setIsHolidayDialogOpen(true);
-                            }}
-                          >
-                            <span className="h-3 w-3 mt-0.5 rounded-full bg-gradient-to-r from-red-500 to-rose-600 shadow-sm flex-shrink-0"></span>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-slate-800 dark:text-slate-200">{h.name}</span>
-                                <span className="text-xs text-muted-foreground">({format(h.date, 'MMM dd, yyyy')})</span>
-                              </div>
-                              {h.description && (
-                                <p className="text-xs text-muted-foreground mt-0.5">{h.description}</p>
-                              )}
+                  }}
+                  footer={
+                    (() => {
+                      // Filter holidays for the currently displayed month
+                      const displayedYear = displayedMonth.getFullYear();
+                      const displayedMonthIndex = displayedMonth.getMonth();
+                      const monthHolidays = holidays.filter(h =>
+                        h.date.getFullYear() === displayedYear &&
+                        h.date.getMonth() === displayedMonthIndex
+                      );
+
+                      return (
+                        <div className="mt-4 p-4 bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 rounded-lg">
+                          <h4 className="font-semibold mb-3 flex items-center gap-2">
+                            <CalendarIcon className="h-5 w-5 text-red-600" />
+                            Holidays in {format(displayedMonth, 'MMMM yyyy')}:
+                          </h4>
+                          {monthHolidays.length === 0 ? (
+                            <p className="text-sm text-muted-foreground italic">No holidays in this month</p>
+                          ) : (
+                            <ul className="space-y-2">
+                              {monthHolidays.map(h => (
+                                <li
+                                  key={h.date.toISOString()}
+                                  className="text-sm flex items-start gap-2 p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                                  onClick={() => {
+                                    setSelectedHoliday(h);
+                                    setIsHolidayDialogOpen(true);
+                                  }}
+                                >
+                                  <span className="h-3 w-3 mt-0.5 rounded-full bg-gradient-to-r from-red-500 to-rose-600 shadow-sm flex-shrink-0"></span>
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-semibold text-slate-800 dark:text-slate-200">{h.name}</span>
+                                      <span className="text-xs text-muted-foreground">({format(h.date, 'MMM dd, yyyy')})</span>
+                                    </div>
+                                    {h.description && (
+                                      <p className="text-xs text-muted-foreground mt-0.5">{h.description}</p>
+                                    )}
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {Object.keys(weekOffConfig).length > 0 && (
+                            <div className="mt-4">
+                              <h4 className="font-semibold mb-2 flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-sky-600" />
+                                Department Week-offs:
+                              </h4>
+                              <ul className="space-y-1">
+                                {Object.entries(weekOffConfig).map(([dept, days]) => (
+                                  <li key={`weekoff-${dept}`} className="text-sm flex items-center gap-2">
+                                    <span className="h-2 w-2 rounded-full bg-sky-400" />
+                                    <span className="font-medium">{dept}</span>
+                                    <span className="text-muted-foreground">
+                                      {days.map((day) => weekDayLabels[day] || day).join(', ')}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
                             </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    {Object.keys(weekOffConfig).length > 0 && (
-                      <div className="mt-4">
-                        <h4 className="font-semibold mb-2 flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-sky-600" />
-                          Department Week-offs:
-                        </h4>
-                        <ul className="space-y-1">
-                          {Object.entries(weekOffConfig).map(([dept, days]) => (
-                            <li key={`weekoff-${dept}`} className="text-sm flex items-center gap-2">
-                              <span className="h-2 w-2 rounded-full bg-sky-400" />
-                              <span className="font-medium">{dept}</span>
-                              <span className="text-muted-foreground">
-                                {days.map((day) => weekDayLabels[day] || day).join(', ')}
-                              </span>
-                        </li>
-                      ))}
-                    </ul>
-                      </div>
-                        )}
-                      </div>
-                    );
-                  })()
-                }
+                          )}
+                        </div>
+                      );
+                    })()
+                  }
                 />
               </div>
               {userWeekOffDays.length > 0 && (
@@ -2072,81 +2097,81 @@ export default function LeaveManagement() {
                     </div>
                   ) : (
                     paginatedApprovalRequests.map((request) => (
-                    <div 
-                      key={request.id} 
-                      id={`leave-request-${request.id}`}
-                      className="border rounded-lg p-4 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-md">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-2 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <User className="h-4 w-4" />
-                            <span className="font-medium">{request.employeeName}</span>
-                            <Badge className={getLeaveTypeColor(request.type)}>
-                              {request.type}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              ID: {request.employeeId}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-                            <div className="flex items-center gap-1">
-                              <FileText className="h-3 w-3" />
-                              <span>{request.department}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <CalendarDays className="h-3 w-3" />
-                              <span>
-                                {format(request.startDate, 'MMM dd')} - {format(request.endDate, 'MMM dd, yyyy')}
+                      <div
+                        key={request.id}
+                        id={`leave-request-${request.id}`}
+                        className="border rounded-lg p-4 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-md">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-2 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <User className="h-4 w-4" />
+                              <span className="font-medium">{request.employeeName}</span>
+                              <Badge className={getLeaveTypeColor(request.type)}>
+                                {request.type}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                ID: {request.employeeId}
                               </span>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              <span>
-                                {Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1} days
-                              </span>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                              <div className="flex items-center gap-1">
+                                <FileText className="h-3 w-3" />
+                                <span>{request.department}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <CalendarDays className="h-3 w-3" />
+                                <span>
+                                  {format(request.startDate, 'MMM dd')} - {format(request.endDate, 'MMM dd, yyyy')}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                <span>
+                                  {Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1} days
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-sm">
+                              <span className="font-medium">Reason:</span> {request.reason}
                             </div>
                           </div>
-                          <div className="text-sm">
-                            <span className="font-medium">Reason:</span> {request.reason}
+                          <div className="flex items-center gap-2">
+                            {request.status === 'pending' && canApproveLeaves ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="gap-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                                  onClick={() => handleApproveReject(request.id, 'approved')}
+                                  disabled={approvingLeaveId === request.id}
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                  {approvingLeaveId === request.id ? 'Processing...' : 'Approve'}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="gap-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700"
+                                  onClick={() => handleApproveReject(request.id, 'rejected')}
+                                  disabled={approvingLeaveId === request.id}
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                  {approvingLeaveId === request.id ? 'Processing...' : 'Reject'}
+                                </Button>
+                              </>
+                            ) : (
+                              <Badge className={`px-4 py-1.5 text-sm font-bold capitalize transition-all duration-300 ${getStatusBadgeStyle(request.status)}`}>
+                                {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                              </Badge>
+                            )}
+                            {request.status !== 'pending' && request.approvedBy && (
+                              <span className="text-xs text-muted-foreground">
+                                by {request.approvedBy}
+                              </span>
+                            )}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {request.status === 'pending' && canApproveLeaves ? (
-                            <>
-                              <Button
-                                size="sm"
-                                className="gap-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                                onClick={() => handleApproveReject(request.id, 'approved')}
-                                disabled={approvingLeaveId === request.id}
-                              >
-                                <CheckCircle className="h-4 w-4" />
-                                {approvingLeaveId === request.id ? 'Processing...' : 'Approve'}
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="gap-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700"
-                                onClick={() => handleApproveReject(request.id, 'rejected')}
-                                disabled={approvingLeaveId === request.id}
-                              >
-                                <XCircle className="h-4 w-4" />
-                                {approvingLeaveId === request.id ? 'Processing...' : 'Reject'}
-                              </Button>
-                            </>
-                          ) : (
-                            <Badge className={`px-4 py-1.5 text-sm font-bold capitalize transition-all duration-300 ${getStatusBadgeStyle(request.status)}`}>
-                              {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                            </Badge>
-                          )}
-                          {request.status !== 'pending' && request.approvedBy && (
-                            <span className="text-xs text-muted-foreground">
-                              by {request.approvedBy}
-                            </span>
-                          )}
                         </div>
                       </div>
-                    </div>
-                  )))}
-                  
+                    )))}
+
                   {/* Pagination for Approval Requests */}
                   {approvalRequests.length > 0 && (
                     <div className="mt-6 px-2">
@@ -2161,7 +2186,7 @@ export default function LeaveManagement() {
                       />
                     </div>
                   )}
-                  
+
                   <div className="pt-6 border-t mt-6">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-semibold">Recent Decisions</h3>
@@ -2179,7 +2204,7 @@ export default function LeaveManagement() {
                         </Select>
                       </div>
                     </div>
-                    
+
                     {historyFilter === 'custom' && (
                       <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border">
                         <div className="flex items-center gap-3 flex-wrap">
@@ -2204,7 +2229,7 @@ export default function LeaveManagement() {
                         </div>
                       </div>
                     )}
-                    
+
                     {getFilteredApprovalHistory.length === 0 ? (
                       <div className="text-center py-6 text-muted-foreground bg-slate-50 dark:bg-slate-900 rounded-lg">
                         <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -2234,7 +2259,7 @@ export default function LeaveManagement() {
                             </div>
                           ))}
                         </div>
-                        
+
                         {/* Pagination for Approval History */}
                         {getFilteredApprovalHistory.length > 0 && (
                           <div className="mt-6 px-2">
@@ -2304,7 +2329,7 @@ export default function LeaveManagement() {
               />
               <div className="flex justify-between text-sm mt-1">
                 <span className={`${editFormData.reason.trim().length < 10 ? 'text-red-500' : 'text-green-600'}`}>
-                  {editFormData.reason.trim().length < 10 
+                  {editFormData.reason.trim().length < 10
                     ? `${editFormData.reason.trim().length}/10 characters (minimum required)`
                     : `${editFormData.reason.trim().length}/500 characters`
                   }
@@ -2330,11 +2355,11 @@ export default function LeaveManagement() {
       <AlertDialog
         open={isDeleteDialogOpen}
         onOpenChange={(open) => {
-          console.log('🔄 Delete dialog onOpenChange:', open);
-          setIsDeleteDialogOpen(open);
-          if (!open) {
-            setLeaveToDelete(null);
-            console.log('🔄 Dialog closed, cleared leaveToDelete');
+          if (!isDeletingLeave) {
+            setIsDeleteDialogOpen(open);
+            if (!open) {
+              setLeaveToDelete(null);
+            }
           }
         }}
       >
@@ -2344,49 +2369,58 @@ export default function LeaveManagement() {
               <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg">
                 <Trash2 className="h-5 w-5 text-white" />
               </div>
-              Confirm Delete Leave Request
+              Delete Leave Request
             </AlertDialogTitle>
             <AlertDialogDescription className="text-base">
-              Are you sure you want to delete this leave request? This action cannot be undone and will permanently remove your leave request from the system.
+              Are you sure you want to delete this leave request? This action cannot be undone.
               {leaveToDelete && (
-                <div className="mt-3 p-3 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-800">
-                  <p className="font-medium text-red-800 dark:text-red-200">
-                    Leave Details:
-                  </p>
-                  <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                    {formatDateIST(leaveToDelete.startDate)} to {formatDateIST(leaveToDelete.endDate)}
-                  </p>
-                  <p className="text-sm text-red-700 dark:text-red-300">
-                    Type: {leaveToDelete.type.charAt(0).toUpperCase() + leaveToDelete.type.slice(1)}
-                  </p>
+                <div className="mt-4 p-4 bg-red-50 dark:bg-red-950 rounded-lg border-2 border-red-200 dark:border-red-800 space-y-2">
+                  <div>
+                    <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide">Leave Details</p>
+                    <p className="text-sm font-medium text-red-800 dark:text-red-200 mt-1">
+                      {format(leaveToDelete.startDate, 'MMM dd, yyyy')} to {format(leaveToDelete.endDate, 'MMM dd, yyyy')}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide">Type</p>
+                    <p className="text-sm font-medium text-red-800 dark:text-red-200 mt-1">
+                      {leaveToDelete.type.charAt(0).toUpperCase() + leaveToDelete.type.slice(1)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide">Reason</p>
+                    <p className="text-sm text-red-700 dark:text-red-300 mt-1 line-clamp-2">
+                      {leaveToDelete.reason}
+                    </p>
+                  </div>
                 </div>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel 
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel
               disabled={isDeletingLeave}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-800"
+              className="bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100"
             >
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-semibold"
+            <Button
               onClick={confirmDeleteLeave}
               disabled={isDeletingLeave}
+              className="bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed gap-2"
             >
               {isDeletingLeave ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                   Deleting...
                 </>
               ) : (
                 <>
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Trash2 className="h-4 w-4" />
                   Delete Request
                 </>
               )}
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -2429,7 +2463,7 @@ export default function LeaveManagement() {
             </div>
           )}
           <DialogFooter>
-            <Button 
+            <Button
               onClick={() => setIsHolidayDialogOpen(false)}
               className="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700"
             >

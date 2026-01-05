@@ -38,8 +38,8 @@ const AdminDashboard: React.FC = () => {
     completedTasks: 0,
     departments: 0,
   });
-  const [departmentPerformance, setDepartmentPerformance] = useState<{name: string; employees: number; performance: number;}[]>([]);
-  const [recentActivities, setRecentActivities] = useState<{id: number; type: string; user: string; time: string; status: string;}[]>([]);
+  const [departmentPerformance, setDepartmentPerformance] = useState<{ name: string; employees: number; performance: number; }[]>([]);
+  const [recentActivities, setRecentActivities] = useState<{ id: number; type: string; user: string; time: string; status: string; }[]>([]);
   const [activitiesPage, setActivitiesPage] = useState(1);
   const ACTIVITIES_PER_PAGE = 15;
 
@@ -47,17 +47,17 @@ const AdminDashboard: React.FC = () => {
     const loadDashboard = async () => {
       try {
         const data = await apiService.getAdminDashboard();
-        
+
         // If activeTasks is 0, try to get actual count from tasks API
         let activeTasks = data.activeTasks || 0;
         let pendingLeaves = data.pendingLeaves || 0;
-        
+
         if (activeTasks === 0) {
           try {
             const tasks = await apiService.getMyTasks();
             // Count tasks that are not completed
-            activeTasks = tasks.filter((task: any) => 
-              task.status !== 'Completed' && 
+            activeTasks = tasks.filter((task: any) =>
+              task.status !== 'Completed' &&
               task.status !== 'completed' &&
               task.status !== 'Cancelled' &&
               task.status !== 'cancelled'
@@ -66,7 +66,7 @@ const AdminDashboard: React.FC = () => {
             console.log('Could not fetch tasks for count');
           }
         }
-        
+
         setStats({
           ...data,
           activeTasks,
@@ -78,7 +78,7 @@ const AdminDashboard: React.FC = () => {
         console.error('Failed to load dashboard:', error);
       }
     };
-    
+
     loadDashboard();
   }, []);
 
@@ -157,11 +157,11 @@ const AdminDashboard: React.FC = () => {
               <Users className="h-5 w-5 text-white" />
             </div>
           </CardHeader>
-          <CardContent>   
+          <CardContent>
             <div className="text-3xl font-bold">{stats.totalEmployees}</div>
-            <Button 
-              variant="link" 
-              className="p-0 h-auto mt-2 text-white hover:text-blue-100" 
+            <Button
+              variant="link"
+              className="p-0 h-auto mt-2 text-white hover:text-blue-100"
               onClick={(e) => {
                 e.stopPropagation();
                 navigate('/admin/employees');
@@ -184,9 +184,9 @@ const AdminDashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{stats.presentToday}</div>
-            <Button 
-              variant="link" 
-              className="p-0 h-auto mt-2 text-white hover:text-green-100" 
+            <Button
+              variant="link"
+              className="p-0 h-auto mt-2 text-white hover:text-green-100"
               onClick={(e) => {
                 e.stopPropagation();
                 navigate('/admin/attendance');
@@ -219,7 +219,7 @@ const AdminDashboard: React.FC = () => {
         <Card className="card-hover border-0 bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => navigate('/admin/tasks')}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-purple-50">
-              Active Tasks
+              {t.dashboard.activeTasks}
             </CardTitle>
             <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
               <ClipboardList className="h-5 w-5 text-white" />
@@ -227,9 +227,9 @@ const AdminDashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{stats.activeTasks}</div>
-            <Button 
-              variant="link" 
-              className="p-0 h-auto mt-2 text-white hover:text-purple-100" 
+            <Button
+              variant="link"
+              className="p-0 h-auto mt-2 text-white hover:text-purple-100"
               onClick={(e) => {
                 e.stopPropagation();
                 navigate('/admin/tasks');
@@ -253,13 +253,13 @@ const AdminDashboard: React.FC = () => {
                   <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                     <Building className="h-5 w-5 text-white" />
                   </div>
-                  Department Performance
+                  {t.dashboard.departmentPerformance}
                 </CardTitle>
-                <CardDescription className="text-base">Performance metrics by department</CardDescription>
+                <CardDescription className="text-base">{t.dashboard.performanceMetricsByDepartment}</CardDescription>
               </div>
-              <Button 
-                variant="link" 
-                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300" 
+              <Button
+                variant="link"
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                 onClick={() => navigate('/admin/reports?tab=department')}
               >
                 <span className="text-sm font-medium">View all</span>
@@ -269,8 +269,8 @@ const AdminDashboard: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {departmentPerformance.map((dept) => (
-              <div 
-                key={dept.name} 
+              <div
+                key={dept.name}
                 className="space-y-2 p-3 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 transition-all cursor-pointer"
                 onClick={() => navigate('/admin/reports?tab=department')}
               >
@@ -286,18 +286,18 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-xl">{dept.performance}%</p>
-                    <Badge 
+                    <Badge
                       variant={
-                        dept.performance >= 80 ? 'default' : 
-                        dept.performance >= 60 ? 'secondary' : 
-                        'destructive'
-                      } 
+                        dept.performance >= 80 ? 'default' :
+                          dept.performance >= 60 ? 'secondary' :
+                            'destructive'
+                      }
                       className="text-xs mt-1"
                     >
-                      {dept.performance >= 80 ? 'Excellent' : 
-                       dept.performance >= 60 ? 'Good' : 
-                       dept.performance >= 40 ? 'Average' : 
-                       'Poor'}
+                      {dept.performance >= 80 ? 'Excellent' :
+                        dept.performance >= 60 ? 'Good' :
+                          dept.performance >= 40 ? 'Average' :
+                            'Poor'}
                     </Badge>
                   </div>
                 </div>
@@ -316,7 +316,7 @@ const AdminDashboard: React.FC = () => {
               </div>
               {t.dashboard.recentActivities}
             </CardTitle>
-            <CardDescription className="text-base">Latest employee activities</CardDescription>
+            <CardDescription className="text-base">{t.dashboard.latestEmployeeActivities}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {recentActivities.length > 0 ? (
@@ -325,11 +325,10 @@ const AdminDashboard: React.FC = () => {
                   .slice((activitiesPage - 1) * ACTIVITIES_PER_PAGE, activitiesPage * ACTIVITIES_PER_PAGE)
                   .map((activity) => (
                     <div key={activity.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors">
-                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${
-                        activity.type === 'check-in' ? 'bg-gradient-to-br from-green-400 to-emerald-500' :
-                        activity.type === 'leave' ? 'bg-gradient-to-br from-amber-400 to-orange-500' :
-                        'bg-gradient-to-br from-blue-400 to-indigo-500'
-                      }`}>
+                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${activity.type === 'check-in' ? 'bg-gradient-to-br from-green-400 to-emerald-500' :
+                          activity.type === 'leave' ? 'bg-gradient-to-br from-amber-400 to-orange-500' :
+                            'bg-gradient-to-br from-blue-400 to-indigo-500'
+                        }`}>
                         {activity.type === 'check-in' && <Clock className="h-5 w-5 text-white" />}
                         {activity.type === 'leave' && <CalendarDays className="h-5 w-5 text-white" />}
                         {activity.type === 'task' && <ClipboardList className="h-5 w-5 text-white" />}
@@ -347,56 +346,54 @@ const AdminDashboard: React.FC = () => {
                           {formatActivityTime(activity.time)}
                         </p>
                         {activity.type === 'check-in' && (
-                          <Badge 
+                          <Badge
                             variant={
                               getCorrectAttendanceStatus(activity) === 'on-time' || getCorrectAttendanceStatus(activity) === 'on_time' ? 'default' :
-                              getCorrectAttendanceStatus(activity) === 'late' ? 'destructive' :
-                              getCorrectAttendanceStatus(activity) === 'early' ? 'secondary' :
-                              'default'
+                                getCorrectAttendanceStatus(activity) === 'late' ? 'destructive' :
+                                  getCorrectAttendanceStatus(activity) === 'early' ? 'secondary' :
+                                    'default'
                             }
-                            className={`text-xs mt-1 ${
-                              getCorrectAttendanceStatus(activity) === 'on-time' || getCorrectAttendanceStatus(activity) === 'on_time' ? 'bg-green-500' :
-                              getCorrectAttendanceStatus(activity) === 'late' ? 'bg-red-500' :
-                              getCorrectAttendanceStatus(activity) === 'early' ? 'bg-orange-500' :
-                              'bg-green-500'
-                            }`}
+                            className={`text-xs mt-1 ${getCorrectAttendanceStatus(activity) === 'on-time' || getCorrectAttendanceStatus(activity) === 'on_time' ? 'bg-green-500' :
+                                getCorrectAttendanceStatus(activity) === 'late' ? 'bg-red-500' :
+                                  getCorrectAttendanceStatus(activity) === 'early' ? 'bg-orange-500' :
+                                    'bg-green-500'
+                              }`}
                           >
                             {getCorrectAttendanceStatus(activity) === 'on-time' || getCorrectAttendanceStatus(activity) === 'on_time' ? 'On Time' :
-                             getCorrectAttendanceStatus(activity) === 'late' ? 'Late' :
-                             getCorrectAttendanceStatus(activity) === 'early' ? 'Early' :
-                             getCorrectAttendanceStatus(activity)}
+                              getCorrectAttendanceStatus(activity) === 'late' ? 'Late' :
+                                getCorrectAttendanceStatus(activity) === 'early' ? 'Early' :
+                                  getCorrectAttendanceStatus(activity)}
                           </Badge>
                         )}
                         {activity.type === 'leave' && (
-                          <Badge 
+                          <Badge
                             variant={
                               activity.status === 'approved' ? 'default' :
-                              activity.status === 'pending' ? 'secondary' :
-                              activity.status === 'rejected' ? 'destructive' :
-                              'secondary'
+                                activity.status === 'pending' ? 'secondary' :
+                                  activity.status === 'rejected' ? 'destructive' :
+                                    'secondary'
                             }
                             className="text-xs mt-1"
                           >
                             {activity.status === 'approved' ? 'Approved' :
-                             activity.status === 'pending' ? 'Pending' :
-                             activity.status === 'rejected' ? 'Rejected' :
-                             activity.status}
+                              activity.status === 'pending' ? 'Pending' :
+                                activity.status === 'rejected' ? 'Rejected' :
+                                  activity.status}
                           </Badge>
                         )}
                         {activity.type === 'task' && (
-                          <Badge 
+                          <Badge
                             variant={
                               activity.status === 'completed' ? 'default' :
-                              activity.status === 'in-progress' ? 'secondary' :
-                              'default'
+                                activity.status === 'in-progress' ? 'secondary' :
+                                  'default'
                             }
-                            className={`text-xs mt-1 ${
-                              activity.status === 'completed' ? 'bg-green-500' : ''
-                            }`}
+                            className={`text-xs mt-1 ${activity.status === 'completed' ? 'bg-green-500' : ''
+                              }`}
                           >
                             {activity.status === 'completed' ? 'Completed' :
-                             activity.status === 'in-progress' ? 'In Progress' :
-                             activity.status}
+                              activity.status === 'in-progress' ? 'In Progress' :
+                                activity.status}
                           </Badge>
                         )}
                       </div>
@@ -437,7 +434,7 @@ const AdminDashboard: React.FC = () => {
                 )}
               </>
             ) : (
-              <p className="text-sm text-muted-foreground">No recent activities</p>
+              <p className="text-sm text-muted-foreground">{t.dashboard.noRecentActivities}</p>
             )}
           </CardContent>
         </Card>

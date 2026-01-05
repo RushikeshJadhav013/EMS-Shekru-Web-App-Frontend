@@ -131,12 +131,29 @@ export const validateLeaveRequest = (
     }
   }
 
-  // Check balance for non-unpaid leaves
-  if (leaveType !== 'unpaid') {
+  // Check balance for specific leave types
+  if (leaveType === 'sick') {
+    if (leaveDays > leaveBalance.sick.remaining) {
+      return {
+        valid: false,
+        error: `You need ${leaveDays} days but only have ${leaveBalance.sick.remaining} days remaining in your Sick Leave balance.`,
+      };
+    }
+  } else if (leaveType === 'casual') {
+    if (leaveDays > leaveBalance.casual.remaining) {
+      return {
+        valid: false,
+        error: `You need ${leaveDays} days but only have ${leaveBalance.casual.remaining} days remaining in your Casual Leave balance.`,
+      };
+    }
+  } else if (leaveType !== 'unpaid') {
+    // For other types like Annual (if applicable) or fallbacks, check annual balance
+    // Note: In this system, 'annual' is the aggregate of sick + casual, but if a distinct 'annual' type exists, check it here.
+    // If 'annual' type is used as a generic bucket, checking annual.remaining is safe.
     if (leaveDays > leaveBalance.annual.remaining) {
       return {
         valid: false,
-        error: `You need ${leaveDays} days but only have ${leaveBalance.annual.remaining} days remaining in your Annual Leave balance.`,
+        error: `You need ${leaveDays} days but only have ${leaveBalance.annual.remaining} days remaining in your Total Annual Leave balance.`,
       };
     }
   }
