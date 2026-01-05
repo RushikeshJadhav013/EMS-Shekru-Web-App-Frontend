@@ -233,210 +233,211 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[550px] max-h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl">
-        <DialogHeader className="p-6 pb-2 border-b">
+      <DialogContent className="sm:max-w-[500px] gap-0 p-0 overflow-hidden">
+        <DialogHeader className="p-6 pb-2">
           <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             Export Performance Report
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Employee Info */}
-          {selectedEmployee && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-              <p className="text-sm font-medium text-muted-foreground mb-1">Exporting for:</p>
-              <p className="text-lg font-bold text-slate-800 dark:text-white">{selectedEmployee.name}</p>
-              <p className="text-xs text-muted-foreground">Employee ID: {selectedEmployee.id}</p>
-            </div>
-          )}
+        <div className="p-6 pt-2 overflow-y-auto max-h-[60vh] scrollbar-thin">
+          <div className="space-y-6">
+            {/* Employee Info */}
+            {selectedEmployee && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                <p className="text-sm font-medium text-muted-foreground mb-1">Exporting for:</p>
+                <p className="text-lg font-bold text-slate-800 dark:text-white">{selectedEmployee.name}</p>
+                <p className="text-xs text-muted-foreground">Employee ID: {selectedEmployee.id}</p>
+              </div>
+            )}
 
-          {!selectedEmployee && (
-            <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
-              <p className="text-sm font-medium text-purple-900 dark:text-purple-200">
-                Exporting data for all employees
-              </p>
-            </div>
-          )}
+            {!selectedEmployee && (
+              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
+                <p className="text-sm font-medium text-purple-900 dark:text-purple-200">
+                  Exporting data for all employees
+                </p>
+              </div>
+            )}
 
-          {/* Export Format */}
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">Export Format</Label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setExportFormat('csv')}
-                className={cn(
-                  'flex items-center gap-3 p-4 rounded-lg border-2 transition-all',
-                  exportFormat === 'csv'
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
-                )}
-              >
-                <FileSpreadsheet className={cn(
-                  'h-6 w-6',
-                  exportFormat === 'csv' ? 'text-blue-600' : 'text-slate-400'
-                )} />
-                <div className="text-left">
-                  <p className="font-semibold text-sm">CSV</p>
-                  <p className="text-xs text-muted-foreground">Spreadsheet</p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setExportFormat('pdf')}
-                className={cn(
-                  'flex items-center gap-3 p-4 rounded-lg border-2 transition-all',
-                  exportFormat === 'pdf'
-                    ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
-                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
-                )}
-              >
-                <FileText className={cn(
-                  'h-6 w-6',
-                  exportFormat === 'pdf' ? 'text-red-600' : 'text-slate-400'
-                )} />
-                <div className="text-left">
-                  <p className="font-semibold text-sm">PDF</p>
-                  <p className="text-xs text-muted-foreground">Document</p>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Time Range */}
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">Time Range</Label>
-            <Select value={timeRange} onValueChange={(value) => setTimeRange(value as TimeRange)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="monthly">Last Month</SelectItem>
-                <SelectItem value="last3months">Last 3 Months</SelectItem>
-                <SelectItem value="last6months">Last 6 Months</SelectItem>
-                <SelectItem value="yearly">Last Year</SelectItem>
-                <SelectItem value="custom">Custom Date Range</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Department Selection */}
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">Select Department</Label>
-            <Select value={selectedDepartment} onValueChange={setSelectedDepartment} disabled={isLoadingDepts}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Departments</SelectItem>
-                {departments.map(dept => (
-                  <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* User Selection */}
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">Select User</Label>
-            <Select value={selectedUser} onValueChange={setSelectedUser} disabled={isLoadingEmps}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Users</SelectItem>
-                {employees.map(emp => (
-                  <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Custom Date Range */}
-          {timeRange === 'custom' && (
-            <div className="space-y-3">
+            {/* Export Format */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Export Format</Label>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium">Start Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          'w-full justify-start text-left font-normal',
-                          !customStartDate && 'text-muted-foreground'
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {customStartDate ? format(customStartDate, 'PPP') : 'Pick date'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={customStartDate}
-                        onSelect={setCustomStartDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                <button
+                  onClick={() => setExportFormat('csv')}
+                  className={cn(
+                    'flex items-center gap-3 p-4 rounded-lg border-2 transition-all',
+                    exportFormat === 'csv'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                  )}
+                >
+                  <FileSpreadsheet className={cn(
+                    'h-6 w-6',
+                    exportFormat === 'csv' ? 'text-blue-600' : 'text-slate-400'
+                  )} />
+                  <div className="text-left">
+                    <p className="font-semibold text-sm">CSV</p>
+                    <p className="text-xs text-muted-foreground">Spreadsheet</p>
+                  </div>
+                </button>
 
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium">End Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          'w-full justify-start text-left font-normal',
-                          !customEndDate && 'text-muted-foreground'
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {customEndDate ? format(customEndDate, 'PPP') : 'Pick date'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={customEndDate}
-                        onSelect={setCustomEndDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                <button
+                  onClick={() => setExportFormat('pdf')}
+                  className={cn(
+                    'flex items-center gap-3 p-4 rounded-lg border-2 transition-all',
+                    exportFormat === 'pdf'
+                      ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                  )}
+                >
+                  <FileText className={cn(
+                    'h-6 w-6',
+                    exportFormat === 'pdf' ? 'text-red-600' : 'text-slate-400'
+                  )} />
+                  <div className="text-left">
+                    <p className="font-semibold text-sm">PDF</p>
+                    <p className="text-xs text-muted-foreground">Document</p>
+                  </div>
+                </button>
               </div>
             </div>
-          )}
 
-          {/* Export Info */}
-          <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">Export will include:</p>
-            <ul className="text-xs text-muted-foreground space-y-1">
-              <li>• Employee performance records</li>
-              <li>• Attendance report</li>
-              <li>• Task completion report</li>
-              <li>• Leave summary</li>
-              <li>• Leave type breakdown</li>
-              <li>• Performance metrics</li>
-            </ul>
+            {/* Time Range */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Time Range</Label>
+              <Select value={timeRange} onValueChange={(value) => setTimeRange(value as TimeRange)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Last Month</SelectItem>
+                  <SelectItem value="last3months">Last 3 Months</SelectItem>
+                  <SelectItem value="last6months">Last 6 Months</SelectItem>
+                  <SelectItem value="yearly">Last Year</SelectItem>
+                  <SelectItem value="custom">Custom Date Range</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Department Selection */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Select Department</Label>
+              <Select value={selectedDepartment} onValueChange={setSelectedDepartment} disabled={isLoadingDepts}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {departments.map(dept => (
+                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* User Selection */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Select User</Label>
+              <Select value={selectedUser} onValueChange={setSelectedUser} disabled={isLoadingEmps}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Users</SelectItem>
+                  {employees.map(emp => (
+                    <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Custom Date Range */}
+            {timeRange === 'custom' && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium">Start Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            'w-full justify-start text-left font-normal',
+                            !customStartDate && 'text-muted-foreground'
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {customStartDate ? format(customStartDate, 'PPP') : 'Pick date'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={customStartDate}
+                          onSelect={setCustomStartDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium">End Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            'w-full justify-start text-left font-normal',
+                            !customEndDate && 'text-muted-foreground'
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {customEndDate ? format(customEndDate, 'PPP') : 'Pick date'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={customEndDate}
+                          onSelect={setCustomEndDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Export Info */}
+            <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">Export will include:</p>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>• Employee performance records</li>
+                <li>• Attendance report</li>
+                <li>• Task completion report</li>
+                <li>• Leave summary</li>
+                <li>• Leave type breakdown</li>
+                <li>• Performance metrics</li>
+              </ul>
+            </div>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="p-6 pt-4 border-t bg-slate-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row gap-3">
+        <div className="p-6 border-t bg-slate-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row gap-3">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="flex-1 h-11 font-semibold"
+            className="flex-1 order-2 sm:order-1"
             disabled={isExporting}
           >
             Cancel
           </Button>
           <Button
             onClick={handleExport}
-            className="flex-1 h-11 font-semibold bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-200 dark:shadow-blue-900/20"
+            className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 order-1 sm:order-2"
             disabled={isExporting}
           >
             {isExporting ? (
