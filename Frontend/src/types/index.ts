@@ -187,3 +187,96 @@ export interface ChatPermissions {
   canChatWith: UserRole[];
   canViewUsers: UserRole[];
 }
+
+// Salary Management Types
+export interface SalaryComponent {
+  name: string;
+  amount: number;
+  type: 'earning' | 'deduction';
+  isTaxable: boolean;
+}
+
+export interface SalaryStructure {
+  id: string;
+  userId: string;
+  annualCtc: number;
+  monthlyBasic: number;
+  hra: number;
+  specialAllowance: number;
+  medicalAllowance: number;
+  conveyanceAllowance: number;
+  otherAllowance: number;
+  professionalTax: number;
+  pfEmployer: number;
+  pfEmployee: number;
+  variablePayType: 'none' | 'percentage' | 'fixed';
+  variablePayValue: number;
+  monthlyGross: number; // Added
+  monthlyDeductions: number; // Added
+  monthlyInHand: number;
+  workingDays: number;
+  paymentMode: 'bank_transfer' | 'cash' | 'cheque';
+  bankName: string;
+  accountNumber: string;
+  ifscCode: string;
+  panNumber: string;
+  uanNumber: string;
+  effectiveDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SalaryPreview {
+  monthlyBasic: number;
+  annualBasic: number;
+  hra: number;
+  specialAllowance: number;
+  medicalAllowance: number;
+  conveyanceAllowance: number;
+  otherAllowance: number;
+  professionalTax: number;
+  pfEmployee: number;
+  pfEmployer: number;
+  variablePay: number;
+  monthlyGross: number;
+  monthlyDeductions: number;
+  monthlyInHand: number;
+  annualCtc: number;
+}
+
+export interface SalarySlip {
+  id: string;
+  userId: string;
+  month: number;
+  year: number;
+  slipUrl: string;
+  generatedAt: string;
+  netPay: number;
+}
+
+export interface Increment {
+  id: string;
+  userId: string;
+  previousCtc: number;
+  newCtc: number;
+  incrementAmount: number;
+  incrementPercentage: number;
+  effectiveDate: string;
+  reason: string;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface SalaryCreateData {
+  userId: string;
+  annualCtc: number;
+  variablePayType: 'none' | 'percentage' | 'fixed';
+  variablePayValue: number;
+  panNumber: string;
+  uanNumber: string;
+  bankName: string;
+  accountNumber: string;
+  ifscCode: string;
+  workingDays: number;
+  paymentMode: 'bank_transfer' | 'cash' | 'cheque';
+}

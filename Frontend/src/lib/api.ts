@@ -20,6 +20,8 @@ interface EmployeeData {
   is_verified?: boolean;
   created_at?: string;
   user_id?: number;
+  is_active?: boolean;
+  status?: string;
 }
 
 interface Employee {
@@ -381,7 +383,8 @@ class ApiService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      const detail = typeof errorData.detail === 'object' ? JSON.stringify(errorData.detail) : errorData.detail;
+      throw new Error(detail || `HTTP error! status: ${response.status}`);
     }
 
     return await response.json();
@@ -401,7 +404,8 @@ class ApiService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      const detail = typeof errorData.detail === 'object' ? JSON.stringify(errorData.detail) : errorData.detail;
+      throw new Error(detail || `HTTP error! status: ${response.status}`);
     }
   }
 
@@ -435,8 +439,11 @@ class ApiService {
   }
 
   // Get all leave requests with optional period filter
-  async getLeaveRequests(period: string = 'current_month'): Promise<LeaveRequestResponse[]> {
-    return this.request(`/leave/?period=${period}`);
+  async getLeaveRequests(period: string = 'current_month', startDate?: string, endDate?: string): Promise<LeaveRequestResponse[]> {
+    let url = `/leave/?period=${period}`;
+    if (startDate) url += `&start_date=${startDate}`;
+    if (endDate) url += `&end_date=${endDate}`;
+    return this.request(url);
   }
 
   async getLeaveBalance(): Promise<LeaveBalanceResponse> {
@@ -535,9 +542,23 @@ class ApiService {
   }
 
   // Export employees as CSV
-  async exportEmployeesCSV(): Promise<Blob> {
+  async exportEmployeesCSV(filters?: {
+    status?: string;
+    designation?: string;
+    department?: string;
+    role?: string;
+  }): Promise<Blob> {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/employees/export/csv`, {
+    const params = new URLSearchParams();
+    if (filters) {
+      if (filters.status && filters.status !== 'all') params.append('status', filters.status);
+      if (filters.designation && filters.designation !== 'all') params.append('designation', filters.designation);
+      if (filters.department && filters.department !== 'all') params.append('department', filters.department);
+      if (filters.role && filters.role !== 'all') params.append('role', filters.role);
+    }
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+
+    const response = await fetch(`${this.baseURL}/employees/export/csv${queryString}`, {
       method: 'GET',
       headers: {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -553,9 +574,23 @@ class ApiService {
   }
 
   // Export employees as PDF
-  async exportEmployeesPDF(): Promise<Blob> {
+  async exportEmployeesPDF(filters?: {
+    status?: string;
+    designation?: string;
+    department?: string;
+    role?: string;
+  }): Promise<Blob> {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/employees/export/pdf`, {
+    const params = new URLSearchParams();
+    if (filters) {
+      if (filters.status && filters.status !== 'all') params.append('status', filters.status);
+      if (filters.designation) params.append('designation', filters.designation);
+      if (filters.department && filters.department !== 'all') params.append('department', filters.department);
+      if (filters.role && filters.role !== 'all') params.append('role', filters.role);
+    }
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+
+    const response = await fetch(`${this.baseURL}/employees/export/pdf${queryString}`, {
       method: 'GET',
       headers: {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -1027,11 +1062,11 @@ class ApiService {
 
   // Holiday Management APIs
   async getHolidays(): Promise<Array<{ id: number; date: string; name: string; description?: string; created_at: string; updated_at: string }>> {
-    return this.request('/holidays');
+    return this.request('/calendar/holidays');
   }
 
   async createHoliday(data: { date: string; name: string; description?: string }): Promise<{ id: number; date: string; name: string; description?: string; created_at: string; updated_at: string }> {
-    return this.request('/holidays', {
+    return this.request('/calendar/holidays', {
       method: 'POST',
       body: JSON.stringify(data),
       headers: {
@@ -1041,7 +1076,7 @@ class ApiService {
   }
 
   async updateHoliday(id: number, data: { date?: string; name?: string; description?: string }): Promise<{ id: number; date: string; name: string; description?: string; created_at: string; updated_at: string }> {
-    return this.request(`/holidays/${id}`, {
+    return this.request(`/calendar/holidays/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
       headers: {
@@ -1051,9 +1086,151 @@ class ApiService {
   }
 
   async deleteHoliday(id: number): Promise<void> {
-    await this.request(`/holidays/${id}`, {
+    await this.request(`/calendar/holidays/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  // Salary Management APIs
+  // 1. Create Salary
+  async createSalary(data: any): Promise<any> {
+    // Map camelCase to snake_case if needed, or assume caller sends correct format. 
+    // Spec: user_id, annual_ctc, etc.
+    return this.request('/salary/employee/from-ctc', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // 2. Salary Preview
+  async calculateSalaryPreview(annualCtc: number, variablePayType: string, variablePayValue: number): Promise<any> {
+    const params = new URLSearchParams();
+    params.append('annual_ctc', annualCtc.toString());
+    params.append('variable_pay_type', variablePayType);
+    params.append('variable_pay_value', variablePayValue.toString());
+
+    return this.request(`/salary/calculate-preview?${params.toString()}`);
+  }
+
+  // 3. View Salary Details
+  async getSalaryDetails(userId: string): Promise<any> {
+    return this.request(`/salary/employee/${userId}`);
+  }
+
+  // 4. Update Salary CTC
+  async updateSalaryCtc(userId: string, data: { annualCtc: number; variablePayType: string; variablePayValue: number }): Promise<any> {
+    return this.request(`/salary/employee/${userId}/update-ctc`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        annual_ctc: data.annualCtc,
+        variable_pay_type: data.variablePayType,
+        variable_pay_value: data.variablePayValue,
+      }),
+    });
+  }
+
+  // Update Non-CTC Fields
+  async updateSalaryDetails(userId: string, data: any): Promise<any> {
+    return this.request(`/salary/employee/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // 5. Delete Salary
+  async deleteSalary(userId: string): Promise<any> {
+    return this.request(`/salary/employee/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // 6. Salary Slips
+  async downloadSalarySlip(userId: string, month: number, year: number): Promise<Blob> {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${this.baseURL}/salary/slip/download/${userId}?month=${month}&year=${year}`, {
+      method: 'GET',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+    return await response.blob();
+  }
+
+  async sendSalarySlip(userId: string, month: number, year: number): Promise<any> {
+    return this.request(`/salary/slip/send/${userId}`, {
+      method: 'POST',
+      body: JSON.stringify({ month, year }),
+    });
+  }
+
+  // 7. Annexure & Offer Letter
+  async downloadAnnexure(userId: string): Promise<Blob> {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${this.baseURL}/salary/annexure/download/${userId}`, {
+      method: 'GET',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+    });
+    if (!response.ok) throw new Error('Failed to download annexure');
+    return await response.blob();
+  }
+
+  async sendAnnexureEmail(userId: string): Promise<any> {
+    return this.request(`/salary/annexure/send/${userId}`, { method: 'POST' });
+  }
+
+  async downloadOfferLetter(userId: string): Promise<Blob> {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${this.baseURL}/salary/offer-letter/download/${userId}`, {
+      method: 'GET',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+    });
+    if (!response.ok) throw new Error('Failed to download offer letter');
+    return await response.blob();
+  }
+
+  // 8. Increment
+  async createIncrement(data: { userId: string; incrementAmount: number; incrementPercentage: number; effectiveDate: string; reason: string; newSalary: number; previousSalary: number }): Promise<any> {
+    return this.request('/salary/increment', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: data.userId,
+        previous_salary: data.previousSalary,
+        increment_amount: data.incrementAmount,
+        increment_percentage: data.incrementPercentage,
+        new_salary: data.newSalary,
+        effective_date: data.effectiveDate,
+        reason: data.reason
+      }),
+    });
+  }
+
+  async getIncrements(userId: string): Promise<any[]> {
+    return this.request(`/salary/increment/history/${userId}`);
+  }
+
+  async downloadIncrementLetter(incrementId: string): Promise<Blob> {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${this.baseURL}/salary/increment/letter/download/${incrementId}`, {
+      method: 'GET',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+    });
+    if (!response.ok) throw new Error('Failed to download increment letter');
+    return await response.blob();
+  }
+
+  async sendIncrementLetter(incrementId: string): Promise<any> {
+    return this.request(`/salary/increment/letter/send/${incrementId}`, { method: 'POST' });
   }
 }
 

@@ -101,10 +101,10 @@ const HRDashboard: React.FC = () => {
       try {
         // Fetch all WFH requests using the new API method
         const response = await apiService.getAllWFHRequests();
-        
+
         // Handle response - it's always an array
         let requests = Array.isArray(response) ? response : [];
-        
+
         // Transform API response to match our UI format
         // The API returns requests with fields like: wfh_id, user_id, start_date, end_date, wfh_type, reason, status, employee_id, name, department, role, approver_name
         const formattedRequests = requests.map((req: any) => ({
@@ -153,16 +153,16 @@ const HRDashboard: React.FC = () => {
 
       // Update local state optimistically
       const currentTime = new Date();
-      setWfhRequests(prev => 
-        prev.map(req => 
-          req.id === requestId 
-            ? { 
-                ...req, 
-                status: action === 'approve' ? 'approved' : 'rejected',
-                updated_at: currentTime.toISOString(),
-                approved_by: user?.name || 'HR',
-                rejection_reason: action === 'reject' ? reason : undefined
-              }
+      setWfhRequests(prev =>
+        prev.map(req =>
+          req.id === requestId
+            ? {
+              ...req,
+              status: action === 'approve' ? 'approved' : 'rejected',
+              updated_at: currentTime.toISOString(),
+              approved_by: user?.name || 'HR',
+              rejection_reason: action === 'reject' ? reason : undefined
+            }
             : req
         )
       );
@@ -381,125 +381,120 @@ const HRDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 rounded-2xl bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-800 text-white shadow-xl">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <Users className="h-7 w-7 text-white" />
-            </div>
-            {t.common.welcome}, HR!
-          </h1>
-          <p className="text-purple-100 mt-2 ml-15">
-            {formatIST(new Date(), 'EEEE, MMMM dd, yyyy')}
-          </p>
+      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border shadow-sm mt-1">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-purple-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
+
+        <div className="relative flex items-center gap-5">
+          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-200 dark:shadow-none">
+            <Users className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
+              {t.common.welcome}, <span className="text-purple-600">HR!</span>
+            </h1>
+            <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
+              <CalendarDays className="h-4 w-4 text-purple-500" />
+              {formatIST(new Date(), 'EEEE, MMMM dd, yyyy')}
+            </p>
+          </div>
         </div>
-        <Button onClick={() => navigate('/hr/employees/new')} className="gap-2 bg-white text-purple-700 hover:bg-purple-50">
-          <UserPlus className="h-4 w-4" />
-          {t.employee.addEmployee}
-        </Button>
+
+        <div className="relative flex gap-3">
+          <Button
+            onClick={() => navigate('/hr/employees/new')}
+            size="lg"
+            className="rounded-xl px-6 h-12 bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-200 dark:shadow-none transition-all active:scale-95 gap-2"
+          >
+            <UserPlus className="h-4 w-4" />
+            {t.employee.addEmployee}
+          </Button>
+        </div>
       </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="card-hover border-0 bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => navigate('/hr/employees')}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-blue-50">
-              {t.dashboard.totalEmployees}
-            </CardTitle>
-            <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <Users className="h-5 w-5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.totalEmployees}</div>
-            <Button 
-              variant="link" 
-              className="p-0 h-auto mt-2 text-white hover:text-blue-100" 
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate('/hr/employees');
-              }}
-            >
-              <span className="text-sm">View all</span>
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          </CardContent>
-        </Card>
+        {[
+          {
+            label: t.dashboard.totalEmployees,
+            value: stats.totalEmployees,
+            sub: 'View All Employees',
+            icon: Users,
+            color: 'blue',
+            bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
+            cardBg: 'bg-blue-50/40 dark:bg-blue-950/10',
+            borderColor: 'border-blue-300/80 dark:border-blue-700/50',
+            hoverBorder: 'group-hover:border-blue-500 dark:group-hover:border-blue-400',
+            path: '/hr/employees'
+          },
+          {
+            label: t.dashboard.presentToday,
+            value: stats.presentToday,
+            sub: 'View Attendance',
+            icon: UserCheck,
+            color: 'emerald',
+            bg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
+            cardBg: 'bg-emerald-50/40 dark:bg-emerald-950/10',
+            borderColor: 'border-emerald-300/80 dark:border-emerald-700/50',
+            hoverBorder: 'group-hover:border-emerald-500 dark:group-hover:border-emerald-400',
+            path: '/hr/attendance',
+            pathState: { viewMode: 'employee' }
+          },
+          {
+            label: t.dashboard.pendingApprovals,
+            value: stats.pendingLeaves,
+            sub: 'Review Requests',
+            icon: AlertCircle,
+            color: 'amber',
+            bg: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
+            cardBg: 'bg-amber-50/40 dark:bg-amber-950/10',
+            borderColor: 'border-amber-300/80 dark:border-amber-700/50',
+            hoverBorder: 'group-hover:border-amber-500 dark:group-hover:border-amber-400',
+            path: '/hr/leaves',
+            pathState: { viewMode: 'approvals' }
+          },
+          {
+            label: 'Active Tasks',
+            value: stats.activeTasks,
+            sub: `${stats.completedTasks} Completed Today`,
+            icon: ClipboardList,
+            color: 'purple',
+            bg: 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400',
+            cardBg: 'bg-purple-50/40 dark:bg-purple-950/10',
+            borderColor: 'border-purple-300/80 dark:border-purple-700/50',
+            hoverBorder: 'group-hover:border-purple-500 dark:group-hover:border-purple-400',
+            path: '/hr/tasks'
+          }
+        ].map((item, i) => (
+          <Card
+            key={i}
+            className={`border-2 ${item.borderColor} ${item.hoverBorder} shadow-sm ${item.cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative cursor-pointer`}
+            onClick={() => navigate(item.path, { state: item.pathState })}
+          >
+            {/* Background Accent */}
+            <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-5 group-hover:opacity-10 transition-opacity ${item.bg.split(' ')[0]}`} />
 
-        <Card className="card-hover border-0 bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => navigate('/hr/attendance', { state: { viewMode: 'employee' } })}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-green-50">
-              {t.dashboard.presentToday}
-            </CardTitle>
-            <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <UserCheck className="h-5 w-5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.presentToday}</div>
-            <Button 
-              variant="link" 
-              className="p-0 h-auto mt-2 text-white hover:text-green-100" 
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate('/hr/attendance', { state: { viewMode: 'employee' } });
-              }}
-            >
-              <span className="text-sm">View all</span>
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="card-hover border-0 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => navigate('/hr/leaves', { state: { viewMode: 'approvals' } })}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-amber-50">
-              {t.dashboard.pendingApprovals}
-            </CardTitle>
-            <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <AlertCircle className="h-5 w-5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.pendingLeaves}</div>
-            <Button variant="link" className="p-0 h-auto mt-2 text-white hover:text-amber-100" onClick={(e) => {
-              e.stopPropagation();
-              navigate('/hr/leaves', { state: { viewMode: 'approvals' } });
-            }}>
-              <span className="text-sm">Review requests</span>
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="card-hover border-0 bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onClick={() => navigate('/hr/tasks')}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-purple-50">
-              Active Tasks
-            </CardTitle>
-            <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <ClipboardList className="h-5 w-5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.activeTasks}</div>
-            <div className="flex items-center gap-1 mt-2">
-              <span className="text-sm text-purple-100">{stats.completedTasks} completed</span>
-            </div>
-            <Button 
-              variant="link" 
-              className="p-0 h-auto mt-1 text-white hover:text-purple-100" 
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate('/hr/tasks');
-              }}
-            >
-              <span className="text-sm">View all</span>
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          </CardContent>
-        </Card>
+            <CardContent className="p-4 relative">
+              <div className="flex justify-between items-start mb-2">
+                <div className={`p-2.5 rounded-xl ${item.bg} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+                  <item.icon className="h-5 w-5" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">{item.label}</h3>
+                <div className="text-xl font-black text-gray-900 dark:text-gray-100 tracking-tight">{item.value}</div>
+                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
+                  <div className={`h-1.5 w-1.5 rounded-full ${item.color === 'blue' ? 'bg-blue-500' :
+                    item.color === 'emerald' ? 'bg-emerald-500' :
+                      item.color === 'amber' ? 'bg-amber-500' :
+                        'bg-purple-500'
+                    }`} />
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase">{item.sub}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Main Content Grid */}
@@ -584,8 +579,8 @@ const HRDashboard: React.FC = () => {
                 <CardDescription className="text-base">Your work from home requests</CardDescription>
               </div>
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => navigate('/hr/wfh')}
               className="gap-2"
@@ -605,8 +600,8 @@ const HRDashboard: React.FC = () => {
             <div className="text-center py-8">
               <Home className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <p className="text-muted-foreground">No WFH requests yet</p>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => navigate('/hr/wfh')}
                 className="mt-4 gap-2"
@@ -626,11 +621,11 @@ const HRDashboard: React.FC = () => {
                         <Badge variant="outline" className="text-xs">
                           {request.user_role}
                         </Badge>
-                        <Badge 
+                        <Badge
                           variant={
                             request.status === 'approved' ? 'default' :
-                            request.status === 'rejected' ? 'destructive' :
-                            'secondary'
+                              request.status === 'rejected' ? 'destructive' :
+                                'secondary'
                           }
                           className={request.status === 'approved' ? 'bg-green-500' : ''}
                         >
@@ -672,8 +667,8 @@ const HRDashboard: React.FC = () => {
                 </div>
               ))}
               {wfhRequests.length > 3 && (
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full"
                   onClick={() => navigate('/hr/wfh')}
                 >

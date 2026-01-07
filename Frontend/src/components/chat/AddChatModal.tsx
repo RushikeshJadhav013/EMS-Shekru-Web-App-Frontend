@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Users, MessageCircle, Search } from 'lucide-react';
+import { X, Users, MessageCircle, Search, Hash, Plus } from 'lucide-react';
 import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -22,12 +22,15 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
   const { availableUsers, createChat, loadAvailableUsers } = useChat();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { themeMode } = useTheme();
   const [activeTab, setActiveTab] = useState('individual');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [groupName, setGroupName] = useState('');
   const [groupDescription, setGroupDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+
+  const isDark = themeMode === 'dark' || (themeMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   useEffect(() => {
     if (isOpen) {
@@ -39,36 +42,24 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
     }
   }, [isOpen, loadAvailableUsers]);
 
-  // Filter users based on role permissions and search term
   const filteredUsers = availableUsers.filter(u => {
-    if (u.id === user?.id) return false; // Don't show current user
-    
+    if (u.id === user?.id) return false;
     const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         u.department.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.department.toLowerCase().includes(searchTerm.toLowerCase());
     const hasPermission = permissions?.canChatWith.includes(u.role) || false;
-    
     return matchesSearch && hasPermission;
   });
 
   const handleUserToggle = (userId: string) => {
-    setSelectedUsers(prev => 
-      prev.includes(userId) 
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId]
-    );
+    setSelectedUsers(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
   };
 
   const handleCreateIndividualChat = async (userId: string) => {
     setIsCreating(true);
     try {
-      const chat = await createChat('individual', [userId]);
+      await createChat('individual', [userId]);
       onClose();
-      toast({
-        title: 'Success',
-        description: 'Chat created successfully',
-      });
     } catch (error) {
       console.error('Failed to create individual chat:', error);
     } finally {
@@ -77,24 +68,7 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
   };
 
   const handleCreateGroupChat = async () => {
-    if (selectedUsers.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'Please select at least one user',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!groupName.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter a group name',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+    if (selectedUsers.length === 0 || !groupName.trim()) return;
     setIsCreating(true);
     try {
       await createChat('group', selectedUsers, groupName, groupDescription);
@@ -109,107 +83,113 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-lg mx-auto shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
+      <div className={cn(
+        "rounded-[32px] w-full max-w-xl mx-auto shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] border overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[85vh]",
+        isDark ? "bg-[#0f172a] border-slate-800" : "bg-white border-slate-100"
+      )}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white flex-shrink-0">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-green-500/20 rounded-xl border border-green-500/30">
-              <MessageCircle className="h-5 w-5 text-green-600" />
+        <div className={cn(
+          "flex items-center justify-between p-8 border-b transition-colors",
+          isDark ? "border-slate-800 bg-slate-900/50" : "border-slate-100 bg-gray-50/50"
+        )}>
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-green-500 shadow-lg shadow-green-500/20 rounded-2xl">
+              <Plus className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Start New Chat</h2>
-              <p className="text-sm text-gray-600">Connect with your colleagues</p>
+              <h2 className={cn("text-2xl font-black tracking-tight", isDark ? "text-white" : "text-slate-900")}>New Message</h2>
+              <p className={cn("text-sm font-medium", isDark ? "text-slate-400" : "text-slate-500")}>Start a conversation with your team</p>
             </div>
           </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={onClose}
-            className="h-10 w-10 rounded-full hover:bg-gray-100 transition-colors"
+          <Button
+            variant="ghost" size="icon" onClick={onClose}
+            className="h-11 w-11 rounded-full hover:bg-red-500/10 hover:text-red-500 transition-all active:scale-95"
           >
-            <X className="h-5 w-5 text-gray-600" />
+            <X className="h-5 w-5" />
           </Button>
         </div>
 
-        {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 overflow-hidden">
-          <div className="px-6 pt-4 flex-shrink-0">
-            <TabsList className="grid w-full grid-cols-2 bg-gray-100 p-1 rounded-xl">
-              <TabsTrigger 
-                value="individual" 
-                className="flex items-center space-x-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-gray-700 data-[state=active]:text-gray-900"
+          <div className="px-8 pt-6">
+            <TabsList className={cn(
+              "grid w-full grid-cols-2 p-1.5 rounded-2xl h-auto",
+              isDark ? "bg-slate-800/50" : "bg-slate-100"
+            )}>
+              <TabsTrigger
+                value="individual"
+                className="flex items-center justify-center gap-2.5 py-2.5 rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-lg transition-all font-bold text-sm"
               >
                 <MessageCircle className="h-4 w-4" />
-                <span className="font-medium">Individual</span>
+                Individual
               </TabsTrigger>
-              <TabsTrigger 
-                value="group" 
+              <TabsTrigger
+                value="group"
                 disabled={!permissions?.canCreateGroups}
-                className="flex items-center space-x-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-gray-700 data-[state=active]:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2.5 py-2.5 rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-lg transition-all font-bold text-sm"
               >
                 <Users className="h-4 w-4" />
-                <span className="font-medium">Group</span>
+                Group Chat
               </TabsTrigger>
             </TabsList>
           </div>
 
-          {/* Search */}
-          <div className="px-6 py-4 flex-shrink-0">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <div className="px-8 py-6">
+            <div className="relative group">
+              <Search className={cn(
+                "absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors",
+                searchTerm ? "text-green-500" : "text-slate-400"
+              )} />
               <Input
-                placeholder="Search by name, email, or department..."
+                placeholder="Search by name, role or department..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-12 pr-4 py-3 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all text-gray-900 placeholder:text-gray-500"
+                className={cn(
+                  "pl-12 pr-4 py-6 border-0 rounded-2xl font-medium focus-visible:ring-2 focus-visible:ring-green-500/30 transition-all shadow-inner",
+                  isDark ? "bg-slate-800/40 text-white placeholder:text-slate-500" : "bg-gray-100 text-slate-900 placeholder:text-slate-400"
+                )}
               />
             </div>
           </div>
 
           <TabsContent value="individual" className="mt-0 flex-1 overflow-hidden">
-            <div className="px-6 h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            <div className="px-8 h-full overflow-y-auto custom-scrollbar pb-8">
               {filteredUsers.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                  <div className="p-4 bg-gray-100 rounded-full mb-4">
-                    <Users className="h-8 w-8 text-gray-400" />
+                <div className="flex flex-col items-center justify-center py-12 opacity-50">
+                  <div className="p-6 rounded-3xl bg-slate-100 dark:bg-slate-800 mb-4">
+                    <Users className="h-10 w-10" />
                   </div>
-                  <p className="text-lg font-medium">No users found</p>
-                  <p className="text-sm text-center">Try adjusting your search or check your permissions</p>
+                  <p className="font-bold">No teammates found</p>
                 </div>
               ) : (
-                <div className="space-y-1 pb-4">
-                  {filteredUsers.map((user, index) => (
+                <div className="space-y-2">
+                  {filteredUsers.map((u, i) => (
                     <div
-                      key={user.id}
-                      onClick={() => handleCreateIndividualChat(user.id)}
-                      className="flex items-center p-4 rounded-xl hover:bg-gray-50 cursor-pointer transition-all duration-200 hover:shadow-sm group"
-                      style={{ animationDelay: `${index * 50}ms` }}
+                      key={u.id}
+                      onClick={() => handleCreateIndividualChat(u.id)}
+                      className={cn(
+                        "flex items-center p-4 rounded-3xl cursor-pointer transition-all duration-300 border border-transparent hover:shadow-xl hover:shadow-black/5 active:scale-[0.98]",
+                        isDark ? "hover:bg-slate-800/80 hover:border-slate-700" : "hover:bg-white hover:border-slate-100"
+                      )}
+                      style={{ animationDelay: `${i * 30}ms` }}
                     >
                       <div className="relative">
-                        <Avatar className="h-12 w-12 border-2 border-white shadow-md">
-                          <AvatarImage src={user.profilePhoto} />
-                          <AvatarFallback className="bg-gradient-to-br from-green-500 to-emerald-600 text-white font-semibold">
-                            {user.name.charAt(0).toUpperCase()}
+                        <Avatar className="h-12 w-12 border-2 border-white dark:border-slate-800 shadow-md">
+                          <AvatarImage src={u.profilePhoto} />
+                          <AvatarFallback className="bg-gradient-to-br from-green-500 to-green-600 text-white font-black text-sm">
+                            {u.name.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-500 border-2 border-white rounded-full"></div>
+                        <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 bg-green-500 border-2 border-white dark:border-slate-800 rounded-full" />
                       </div>
                       <div className="ml-4 flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 truncate group-hover:text-green-600 transition-colors">
-                          {user.name}
-                        </p>
-                        <p className="text-sm text-gray-600 truncate">
-                          {user.designation}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">
-                          {user.department}
+                        <p className={cn("font-bold truncate text-sm", isDark ? "text-white" : "text-slate-900")}>{u.name}</p>
+                        <p className={cn("text-xs font-medium opacity-60", isDark ? "text-slate-400" : "text-slate-500")}>
+                          {u.designation} • {u.department}
                         </p>
                       </div>
-                      <div className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="p-2 bg-green-100 rounded-full">
-                          <MessageCircle className="h-4 w-4 text-green-600" />
-                        </div>
+                      <div className="h-9 w-9 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <MessageCircle className="h-4 w-4" />
                       </div>
                     </div>
                   ))}
@@ -219,126 +199,84 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
           </TabsContent>
 
           <TabsContent value="group" className="mt-0 flex-1 overflow-hidden flex flex-col">
-            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-              {/* Group Details */}
-              <div className="px-6 pt-4 pb-4">
-                <div className="space-y-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Group Name *</label>
-                    <Input
-                      placeholder="Enter group name..."
-                      value={groupName}
-                      onChange={(e) => setGroupName(e.target.value)}
-                      className="border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 placeholder:text-gray-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
-                    <Input
-                      placeholder="What's this group about?"
-                      value={groupDescription}
-                      onChange={(e) => setGroupDescription(e.target.value)}
-                      className="border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 placeholder:text-gray-500"
-                    />
-                  </div>
+            <div className="px-8 pb-4 flex-shrink-0">
+              <div className={cn(
+                "p-5 rounded-3xl space-y-4 border shadow-sm",
+                isDark ? "bg-slate-800/30 border-slate-700" : "bg-gray-50 border-slate-100"
+              )}>
+                <div className="relative">
+                  <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
+                  <Input
+                    placeholder="Team Group Name"
+                    value={groupName}
+                    onChange={(e) => setGroupName(e.target.value)}
+                    className={cn(
+                      "pl-10 h-12 border-0 rounded-xl focus-visible:ring-1 focus-visible:ring-green-500/50 shadow-sm",
+                      isDark ? "bg-slate-800" : "bg-white"
+                    )}
+                  />
                 </div>
-              </div>
-
-              {/* Selected Users Preview */}
-              {selectedUsers.length > 0 && (
-                <div className="px-6 pb-4">
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                    <p className="text-sm font-medium text-green-800 mb-2">
-                      Selected Members ({selectedUsers.length})
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedUsers.slice(0, 5).map(userId => {
-                        const selectedUser = filteredUsers.find(u => u.id === userId);
-                        return selectedUser ? (
-                          <div key={userId} className="flex items-center bg-white rounded-full px-3 py-1 text-sm border border-green-200">
-                            <Avatar className="h-6 w-6 mr-2">
-                              <AvatarFallback className="bg-green-100 text-green-600 text-xs font-semibold">
-                                {selectedUser.name.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-gray-700">{selectedUser.name}</span>
-                          </div>
-                        ) : null;
-                      })}
-                      {selectedUsers.length > 5 && (
-                        <div className="flex items-center bg-white rounded-full px-3 py-1 text-sm text-gray-600 border border-gray-200">
-                          +{selectedUsers.length - 5} more
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* User Selection */}
-              <div className="px-6 pb-4">
-                <p className="text-sm font-medium text-gray-700 mb-3">Select Members</p>
-                {filteredUsers.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                    <div className="p-4 bg-gray-100 rounded-full mb-4">
-                      <Users className="h-8 w-8 text-gray-400" />
-                    </div>
-                    <p className="text-lg font-medium">No users found</p>
-                    <p className="text-sm text-center">Try adjusting your search or check your permissions</p>
-                  </div>
-                ) : (
-                  <div className="space-y-1 border border-gray-200 rounded-lg p-2 bg-white max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                    {filteredUsers.map((user, index) => (
-                      <div 
-                        key={user.id} 
-                        className="flex items-center p-3 rounded-lg hover:bg-gray-50 transition-all duration-200 group cursor-pointer"
-                        onClick={() => handleUserToggle(user.id)}
-                        style={{ animationDelay: `${index * 30}ms` }}
-                      >
-                        <Checkbox
-                          checked={selectedUsers.includes(user.id)}
-                          onCheckedChange={() => handleUserToggle(user.id)}
-                          className="mr-4 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
-                        />
-                        <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
-                          <AvatarImage src={user.profilePhoto} />
-                          <AvatarFallback className="bg-gradient-to-br from-green-500 to-emerald-600 text-white font-semibold text-sm">
-                            {user.name.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="ml-3 flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 truncate group-hover:text-green-600 transition-colors">
-                            {user.name}
-                          </p>
-                          <p className="text-sm text-gray-600 truncate">
-                            {user.designation} • {user.department}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <Input
+                  placeholder="What is this group for?"
+                  value={groupDescription}
+                  onChange={(e) => setGroupDescription(e.target.value)}
+                  className={cn(
+                    "h-12 border-0 rounded-xl focus-visible:ring-1 focus-visible:ring-green-500/50 shadow-sm",
+                    isDark ? "bg-slate-800" : "bg-white"
+                  )}
+                />
               </div>
             </div>
 
-            {/* Create Group Button */}
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+            <div className="px-8 flex-1 overflow-y-auto custom-scrollbar pb-6">
+              <p className={cn("text-[10px] font-black uppercase tracking-widest mb-3 opacity-60", isDark ? "text-slate-400" : "text-slate-500")}>
+                Select Team Members ({selectedUsers.length})
+              </p>
+              <div className="grid grid-cols-1 gap-2">
+                {filteredUsers.map((u) => (
+                  <div
+                    key={u.id}
+                    onClick={() => handleUserToggle(u.id)}
+                    className={cn(
+                      "flex items-center p-3 rounded-2xl cursor-pointer transition-all duration-200 border group",
+                      selectedUsers.includes(u.id)
+                        ? "bg-green-500/10 border-green-500/20"
+                        : isDark ? "hover:bg-slate-800/50 border-transparent" : "hover:bg-gray-50 border-transparent"
+                    )}
+                  >
+                    <Checkbox
+                      checked={selectedUsers.includes(u.id)}
+                      onCheckedChange={() => handleUserToggle(u.id)}
+                      className="mr-4 data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 rounded-md"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <Avatar className="h-9 w-9 border-2 border-white dark:border-slate-800 shadow-sm">
+                      <AvatarImage src={u.profilePhoto} />
+                      <AvatarFallback className="bg-slate-200 dark:bg-slate-700 text-[10px] font-bold">
+                        {u.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="ml-3">
+                      <p className={cn("text-sm font-bold truncate", isDark ? "text-white" : "text-white")}>{u.name}</p>
+                      <p className={cn("text-[10px] opacity-60 font-medium", isDark ? "text-slate-400" : "text-slate-500")}>
+                        {u.designation}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className={cn(
+              "p-8 border-t bg-gradient-to-b",
+              isDark ? "from-slate-900 to-[#0f172a] border-slate-800" : "from-white to-gray-50 border-slate-100"
+            )}>
               <Button
                 onClick={handleCreateGroupChat}
                 disabled={selectedUsers.length === 0 || !groupName.trim() || isCreating}
-                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full h-14 bg-green-500 hover:bg-green-600 text-white font-black rounded-2xl shadow-xl shadow-green-500/20 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
               >
-                {isCreating ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    <span>Creating Group...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-4 w-4" />
-                    <span>Create Group ({selectedUsers.length} members)</span>
-                  </div>
-                )}
+                {isCreating ? "Initializing..." : `Create Group Chat`}
               </Button>
             </div>
           </TabsContent>

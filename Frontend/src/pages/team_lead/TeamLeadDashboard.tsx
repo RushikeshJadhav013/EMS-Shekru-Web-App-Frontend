@@ -16,6 +16,7 @@ import {
   Activity,
   CheckCircle2,
   TrendingUp,
+  Plus,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatIST } from '@/utils/timezone';
@@ -42,9 +43,10 @@ const TeamLeadDashboard: React.FC = () => {
     completedToday: 0,
     pendingReviews: 0,
     teamEfficiency: 0,
+    employeeCount: 0,
   });
 
-  const [recentActivities, setRecentActivities] = useState<{id: number; type: string; user: string; time: string; status: string;}[]>([]);
+  const [recentActivities, setRecentActivities] = useState<{ id: number; type: string; user: string; time: string; status: string; }[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMemberStatus[]>([]);
   const [isLoadingTeamMembers, setIsLoadingTeamMembers] = useState(false);
 
@@ -54,41 +56,45 @@ const TeamLeadDashboard: React.FC = () => {
         setStats(data);
         setRecentActivities(data.recentActivities || []);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
     const fetchTeamMembersWithStatus = async () => {
       if (!user?.department) return;
-      
+
       setIsLoadingTeamMembers(true);
       try {
         // Fetch all employees
         const employees = await apiService.getEmployees();
-        
-        // Filter by department and exclude managers/admins
-        const departmentEmployees = employees.filter((emp: any) => 
-          emp.department === user.department && 
-          emp.role?.toLowerCase() !== 'manager' && 
-          emp.role?.toLowerCase() !== 'admin' &&
-          emp.is_active !== false
+
+        // Filter by department: include only 'Employee' role from fetched list
+        let departmentEmployees = employees.filter((emp: any) =>
+          emp.department === user.department &&
+          emp.role?.toLowerCase() === 'employee' &&
+          emp.is_active !== false &&
+          emp.id !== user.id // Avoid duplicates if TL is also in employee list
         );
+
+        // Explicitly add the Team Lead (self) to the list for dashboard tracking
+        const selfAsMember = {
+          id: user.id,
+          name: user.name,
+          department: user.department,
+          role: user.role || 'TeamLead',
+          is_active: true
+        };
+
+        const allTrackedMembers = [selfAsMember, ...departmentEmployees];
 
         // Fetch all tasks
         const tasks = await apiService.getMyTasks();
-        
-        // Get today's date for attendance check
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const todayEnd = new Date(today);
-        todayEnd.setHours(23, 59, 59, 999);
 
-        // Fetch today's attendance (we'll need to check if there's an endpoint for this)
-        // For now, we'll use the tasks to determine status
+        // Fetch today's metrics for all tracked members
         const teamMembersData: TeamMemberStatus[] = await Promise.all(
-          departmentEmployees.map(async (emp: any) => {
+          allTrackedMembers.map(async (emp: any) => {
             const userId = String(emp.id || emp.user_id || '');
-            
+
             // Get tasks assigned to this employee
             const employeeTasks = tasks.filter((task: any) => {
               const assignedTo = Array.isArray(task.assignedTo) ? task.assignedTo : [task.assignedTo];
@@ -96,31 +102,29 @@ const TeamLeadDashboard: React.FC = () => {
             });
 
             // Get active tasks (not completed)
-            const activeTasks = employeeTasks.filter((task: any) => 
+            const activeTasks = employeeTasks.filter((task: any) =>
               task.status !== 'completed' && task.status !== 'cancelled'
             );
 
-            // Calculate progress based on completed vs total tasks
+            // Calculate progress
             const totalTasks = employeeTasks.length;
             const completedTasks = employeeTasks.filter((task: any) => task.status === 'completed').length;
             const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-            // Get the most recent active task title
-            const currentTask = activeTasks.length > 0 
+            const currentTask = activeTasks.length > 0
               ? activeTasks[0].title || 'No active task'
-              : completedTasks > 0 
+              : completedTasks > 0
                 ? 'All tasks completed'
                 : 'No tasks assigned';
 
-            // Determine status (simplified - we'll assume present if they have tasks, on-leave if no tasks)
-            // In a real scenario, you'd check attendance records
             let status: 'present' | 'on-leave' | 'absent' = 'present';
-            if (activeTasks.length === 0 && completedTasks === 0) {
+            // Simple status logic: if no tasks and not self, assume absent for demo
+            if (activeTasks.length === 0 && completedTasks === 0 && emp.id !== user.id) {
               status = 'absent';
             }
 
             return {
-              name: emp.name || 'Unknown',
+              name: emp.id === user.id ? `${emp.name} (You)` : (emp.name || 'Unknown'),
               status,
               task: currentTask,
               progress,
@@ -129,7 +133,41 @@ const TeamLeadDashboard: React.FC = () => {
           })
         );
 
-        setTeamMembers(teamMembersData);
+        // Sort teamMembers: Put 'You' at the top
+        const sortedMembers = [...teamMembersData].sort((a, b) => {
+          if (a.userId === String(user.id)) return -1;
+          if (b.userId === String(user.id)) return 1;
+          return a.name.localeCompare(b.name);
+        });
+
+        setTeamMembers(sortedMembers);
+
+        // Update stats based on filtered data
+        setStats(prev => ({
+          ...prev,
+          teamSize: allTrackedMembers.length,
+          employeeCount: departmentEmployees.length,
+          presentToday: teamMembersData.filter(m => m.status === 'present').length
+        }));
+
+        // Inject TL activity if not present
+        setRecentActivities(prev => {
+          const hasTLActivity = prev.some(a => a.user.includes('You'));
+          if (!hasTLActivity) {
+            return [
+              {
+                id: Date.now(),
+                type: 'info',
+                user: `${user.name} (You)`,
+                time: 'Just now',
+                status: 'Dashboard accessed & team status reviewed'
+              },
+              ...prev
+            ].slice(0, 6); // Keep latest 6
+          }
+          return prev;
+        });
+
       } catch (error) {
         console.error('Failed to fetch team members:', error);
       } finally {
@@ -143,189 +181,272 @@ const TeamLeadDashboard: React.FC = () => {
   // recentActivities now comes from API via state above
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-green-700 to-teal-800 text-white shadow-xl">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <Users className="h-7 w-7 text-white" />
+    <div className="space-y-8 animate-in fade-in duration-700">
+      {/* Header Section */}
+      <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border shadow-sm p-8">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-emerald-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-teal-500/5 rounded-full blur-3xl" />
+
+        <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="flex items-center gap-5">
+            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-200 dark:shadow-none">
+              <Users className="h-8 w-8 text-white" />
             </div>
-            {t.common.welcome}, Team Lead!
-          </h1>
-          <p className="text-emerald-100 mt-2 ml-15">
-            {formatIST(new Date(), 'EEEE, MMMM dd, yyyy')}
-          </p>
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
+                {t.common.welcome}, <span className="text-emerald-600">TeamLead</span>!
+              </h1>
+              <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
+                <CalendarDays className="h-4 w-4 text-emerald-500" />
+                {formatIST(new Date(), 'EEEE, MMMM dd, yyyy')}
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => navigate('/team_lead/tasks')}
+            className="rounded-xl px-6 h-12 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 dark:shadow-none transition-all hover:scale-105 active:scale-95"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Assign New Task
+          </Button>
         </div>
-        <Button onClick={() => navigate('/team_lead/tasks')} className="gap-2 bg-white text-emerald-700 hover:bg-emerald-50">
-          <ClipboardList className="h-4 w-4" />
-          Assign Task
-        </Button>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="card-hover border-0 bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-indigo-50">
-              {t.navigation.teamSize}
-            </CardTitle>
-            <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <Users className="h-5 w-5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.teamSize}</div>
-            <div className="flex items-center gap-1 mt-2">
-              <CheckCircle2 className="h-4 w-4 text-indigo-100" />
-              <span className="text-sm text-indigo-100">{stats.presentToday} present</span>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Quick Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          {
+            label: t.navigation.teamSize,
+            value: stats.teamSize,
+            sub: `${stats.employeeCount} Employees + 1 TeamLead`,
+            icon: Users,
+            color: 'blue',
+            bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
+            cardBg: 'bg-blue-50/40 dark:bg-blue-950/10',
+            borderColor: 'border-blue-300/80 dark:border-blue-700/50',
+            hoverBorder: 'group-hover:border-blue-500 dark:group-hover:border-blue-400'
+          },
+          {
+            label: t.navigation.teamEfficiency,
+            value: `${stats.teamEfficiency}%`,
+            sub: 'Overall Performance',
+            icon: TrendingUp,
+            color: 'emerald',
+            bg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
+            cardBg: 'bg-emerald-50/40 dark:bg-emerald-950/10',
+            borderColor: 'border-emerald-300/80 dark:border-emerald-700/50',
+            hoverBorder: 'group-hover:border-emerald-500 dark:group-hover:border-emerald-400',
+            progress: stats.teamEfficiency
+          },
+          {
+            label: 'Active Tasks',
+            value: stats.tasksInProgress,
+            sub: `${stats.completedToday} Done Today`,
+            icon: ClipboardList,
+            color: 'indigo',
+            bg: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
+            cardBg: 'bg-indigo-50/40 dark:bg-indigo-950/10',
+            borderColor: 'border-indigo-300/80 dark:border-indigo-700/50',
+            hoverBorder: 'group-hover:border-indigo-500 dark:group-hover:border-indigo-400'
+          },
+          {
+            label: 'Pending Reviews',
+            value: stats.pendingReviews,
+            sub: 'Requires Attention',
+            icon: AlertCircle,
+            color: 'amber',
+            bg: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
+            cardBg: 'bg-amber-50/40 dark:bg-amber-950/10',
+            borderColor: 'border-amber-300/80 dark:border-amber-700/50',
+            hoverBorder: 'group-hover:border-amber-500 dark:group-hover:border-amber-400',
+            action: true
+          },
+        ].map((stat, i) => (
+          <Card key={i} className={`border-2 ${stat.borderColor} ${stat.hoverBorder} shadow-sm ${stat.cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative`}>
+            {/* Background Accent */}
+            <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-5 group-hover:opacity-10 transition-opacity ${stat.bg.split(' ')[0]}`} />
 
-        <Card className="card-hover border-0 bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-emerald-50">
-              {t.navigation.teamEfficiency}
-            </CardTitle>
-            <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.teamEfficiency}%</div>
-            <Progress value={stats.teamEfficiency} className="mt-2 h-2 bg-white/30" />
-          </CardContent>
-        </Card>
-
-        <Card className="card-hover border-0 bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-cyan-50">
-              Tasks In Progress
-            </CardTitle>
-            <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <ClipboardList className="h-5 w-5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.tasksInProgress}</div>
-            <div className="flex items-center gap-1 mt-2">
-              <span className="text-sm text-cyan-100">{stats.completedToday} completed today</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="card-hover border-0 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-amber-50">
-              Pending Reviews
-            </CardTitle>
-            <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <AlertCircle className="h-5 w-5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.pendingReviews}</div>
-            <Button variant="link" className="p-0 h-auto mt-2 text-white hover:text-amber-100" onClick={() => navigate('/team_lead/tasks')}>
-              <span className="text-sm">Review now</span>
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Team Member Status */}
-        <Card className="lg:col-span-2 border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                <Users className="h-5 w-5 text-white" />
-              </div>
-              {t.navigation.teamMembers}
-            </CardTitle>
-            <CardDescription className="text-base">Current status and task progress</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {isLoadingTeamMembers ? (
-              <p className="text-sm text-muted-foreground text-center py-4">{t.common.loadingTeamMembers}</p>
-            ) : teamMembers.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">{t.common.noTeamMembers}</p>
-            ) : (
-              teamMembers.map((member) => (
-                <div key={member.userId} className="p-3 rounded-lg border space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-2 w-2 rounded-full ${
-                        member.status === 'present' ? 'bg-green-500' : 
-                        member.status === 'on-leave' ? 'bg-amber-500' : 
-                        'bg-gray-400'
-                    }`} />
-                    <div>
-                      <p className="font-medium text-sm">{member.name}</p>
-                      <p className="text-xs text-muted-foreground">{member.task}</p>
-                    </div>
-                  </div>
-                    <Badge variant={
-                      member.status === 'present' ? 'default' : 
-                      member.status === 'on-leave' ? 'secondary' : 
-                      'outline'
-                    }>
-                      {member.status === 'present' ? 'Active' : 
-                       member.status === 'on-leave' ? 'On Leave' : 
-                       'Absent'}
-                  </Badge>
+            <CardContent className="p-6 relative">
+              <div className="flex justify-between items-start mb-4">
+                <div className={`p-3 rounded-2xl ${stat.bg} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+                  <stat.icon className="h-6 w-6" />
                 </div>
-                {member.status === 'present' && (
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span className="font-medium">{member.progress}%</span>
+                {stat.action && (
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full hover:bg-white/50 dark:hover:bg-black/20" onClick={() => navigate('/team_lead/tasks')}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{stat.label}</h3>
+                <div className="flex items-baseline gap-1">
+                  <div className="text-3xl font-black text-gray-900 dark:text-gray-100">{stat.value}</div>
+                </div>
+                {stat.progress !== undefined ? (
+                  <div className="pt-2">
+                    <div className="flex justify-between text-[10px] font-bold text-muted-foreground mb-1">
+                      <span>PROGRESS</span>
+                      <span>{stat.progress}%</span>
                     </div>
-                    <Progress value={member.progress} className="h-1" />
+                    <Progress value={stat.progress} className="h-1.5" />
+                  </div>
+                ) : (
+                  <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5`}>
+                    <CheckCircle2 className={`h-3 w-3 ${stat.color === 'blue' ? 'text-blue-500' :
+                      stat.color === 'indigo' ? 'text-indigo-500' :
+                        'text-amber-500'
+                      }`} />
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{stat.sub}</span>
                   </div>
                 )}
               </div>
-              ))
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Team Members Tracker */}
+        <Card className="lg:col-span-8 border-none shadow-sm bg-white dark:bg-gray-800/50 overflow-hidden">
+          <CardHeader className="border-b bg-gray-50/50 dark:bg-gray-900/50 px-6 py-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-xl font-bold flex items-center gap-2">
+                  <Users className="h-5 w-5 text-emerald-600" />
+                  {t.navigation.teamMembers}
+                </CardTitle>
+                <CardDescription className="text-sm">Real-time status and task monitoring</CardDescription>
+              </div>
+              <Badge variant="outline" className="rounded-full px-4 h-7 border-emerald-200 text-emerald-700 bg-emerald-50">
+                {teamMembers.length} Total
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {isLoadingTeamMembers ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <div className="animate-spin h-10 w-10 border-4 border-emerald-500 border-t-transparent rounded-full mb-4"></div>
+                <p className="text-sm text-muted-foreground font-medium">{t.common.loadingTeamMembers}</p>
+              </div>
+            ) : teamMembers.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="h-16 w-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                  <Users className="h-8 w-8 text-gray-300" />
+                </div>
+                <p className="text-muted-foreground font-medium">{t.common.noTeamMembers}</p>
+              </div>
+            ) : (
+              <div className="divide-y">
+                {teamMembers.map((member) => (
+                  <div key={member.userId} className="group hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10 transition-colors p-5">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <div className="h-12 w-12 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center border-2 border-white shadow-sm font-bold text-gray-600 dark:text-gray-300">
+                            {member.name.charAt(0)}
+                          </div>
+                          <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white dark:border-gray-800 ${member.status === 'present' ? 'bg-green-500' :
+                            member.status === 'on-leave' ? 'bg-amber-500' :
+                              'bg-gray-400'
+                            }`} />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-900 dark:text-white group-hover:text-emerald-600 transition-colors">{member.name}</h4>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-muted-foreground uppercase font-bold tracking-tight">Active Task</span>
+                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 truncate max-w-[200px]">{member.task}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-6">
+                        {member.status === 'present' && (
+                          <div className="hidden sm:block w-32">
+                            <div className="flex justify-between text-[10px] font-black uppercase text-muted-foreground mb-1">
+                              <span>Progress</span>
+                              <span className="text-emerald-600">{member.progress}%</span>
+                            </div>
+                            <Progress value={member.progress} className="h-1.5" />
+                          </div>
+                        )}
+                        <Badge className={`rounded-full px-3 py-0.5 text-[10px] font-bold uppercase border-none ${member.status === 'present' ? 'bg-green-100 text-green-700' :
+                          member.status === 'on-leave' ? 'bg-amber-100 text-amber-700' :
+                            'bg-gray-100 text-gray-600'
+                          }`}>
+                          {member.status === 'present' ? 'Active Now' :
+                            member.status === 'on-leave' ? 'On Leave' :
+                              'Offline'}
+                        </Badge>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full" onClick={() => navigate(`/employees/profile/${member.userId}`)}>
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Recent Activities */}
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                <Activity className="h-5 w-5 text-white" />
-              </div>
-              Recent Activity
-            </CardTitle>
-            <CardDescription className="text-base">Latest team updates</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {recentActivities.map((activity) => (
-              <div key={activity.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors">
-                <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${
-                  activity.type === 'success' ? 'bg-gradient-to-br from-green-400 to-emerald-500' :
-                  activity.type === 'warning' ? 'bg-gradient-to-br from-amber-400 to-orange-500' :
-                  'bg-gradient-to-br from-blue-400 to-indigo-500'
-                }`}>
-                  {activity.type === 'success' && <CheckCircle2 className="h-5 w-5 text-white" />}
-                  {activity.type === 'warning' && <AlertCircle className="h-5 w-5 text-white" />}
-                  {activity.type === 'info' && <Activity className="h-5 w-5 text-white" />}
+        {/* Activity Sidebar */}
+        <div className="lg:col-span-4 space-y-6">
+          <Card className="border-none shadow-sm bg-white dark:bg-gray-800/50">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-bold flex items-center gap-2">
+                <Activity className="h-5 w-5 text-indigo-500" />
+                Team Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {recentActivities.map((activity, i) => (
+                <div key={activity.id} className="relative pl-8 pb-4 last:pb-0">
+                  {i !== recentActivities.length - 1 && (
+                    <div className="absolute left-[15px] top-8 bottom-0 w-px bg-gray-100 dark:bg-gray-700" />
+                  )}
+                  <div className={`absolute left-0 top-1 h-8 w-8 rounded-full flex items-center justify-center shadow-sm z-10 ${activity.type === 'success' ? 'bg-emerald-50 text-emerald-600' :
+                    activity.type === 'warning' ? 'bg-amber-50 text-amber-600' :
+                      'bg-blue-50 text-blue-600'
+                    }`}>
+                    {activity.type === 'success' && <CheckCircle2 className="h-4 w-4" />}
+                    {activity.type === 'warning' && <AlertCircle className="h-4 w-4" />}
+                    {activity.type === 'info' && <Clock className="h-4 w-4" />}
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{activity.user}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{activity.status}</p>
+                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tight pt-1">
+                      {activity.time}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium">{activity.user}</p>
-                  <p className="text-xs text-muted-foreground">{activity.status}</p>
-                  <p className="text-xs text-muted-foreground">{activity.time}</p>
+              ))}
+              {recentActivities.length === 0 && (
+                <div className="text-center py-6">
+                  <p className="text-sm text-muted-foreground font-medium">No recent updates</p>
                 </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+              )}
+            </CardContent>
+          </Card>
 
+          {/* Productivity Tip or Quick Links */}
+          <Card className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white border-none shadow-lg">
+            <CardContent className="p-6">
+              <div className="h-10 w-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-4">
+                <ClipboardList className="h-6 w-6" />
+              </div>
+              <h4 className="font-extrabold text-lg mb-2">Manager's Insight</h4>
+              <p className="text-emerald-50 text-xs leading-relaxed opacity-90">
+                Regular check-ins with your team can boost productivity by 15%. Consider reviewing current tasks to ensure alignment.
+              </p>
+              <Button variant="secondary" size="sm" className="w-full mt-6 bg-white text-emerald-700 hover:bg-emerald-50 font-bold rounded-xl" onClick={() => navigate('/team_lead/tasks')}>
+                Review All Tasks
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 };

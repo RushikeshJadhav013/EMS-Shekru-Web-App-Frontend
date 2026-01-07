@@ -71,7 +71,7 @@ const AttendanceWithToggle: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(todayIST());
   const [filterRole, setFilterRole] = useState<'all' | UserRole>('all');
-  const [timePeriodFilter, setTimePeriodFilter] = useState<'today' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_12_months'>('today');
+  const [timePeriodFilter, setTimePeriodFilter] = useState<'today' | 'current_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_12_months'>('today');
   const [selectedRecord, setSelectedRecord] = useState<EmployeeAttendanceRecord | null>(null);
   const [showSelfieModal, setShowSelfieModal] = useState(false);
   const [showWorkSummaryDialog, setShowWorkSummaryDialog] = useState(false);
@@ -792,6 +792,9 @@ const AttendanceWithToggle: React.FC = () => {
         case 'today':
           startDate = new Date(today);
           startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'current_month':
+          startDate = new Date(today.getFullYear(), today.getMonth(), 1);
           break;
         case 'last_month':
           startDate = subMonths(today, 1);
@@ -2262,6 +2265,7 @@ const AttendanceWithToggle: React.FC = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="current_month">Current Month</SelectItem>
                         <SelectItem value="last_month">Last Month</SelectItem>
                         <SelectItem value="last_3_months">Last 3 Months</SelectItem>
                         <SelectItem value="last_6_months">Last 6 Months</SelectItem>

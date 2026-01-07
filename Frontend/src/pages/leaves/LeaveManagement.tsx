@@ -128,7 +128,7 @@ export default function LeaveManagement() {
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(initializeLeaveRequests());
   const [approvalRequests, setApprovalRequests] = useState<LeaveRequest[]>([]);
   const [approvalHistory, setApprovalHistory] = useState<LeaveRequest[]>([]);
-  const [historyFilter, setHistoryFilter] = useState<string>('current_month');
+  const [historyFilter, setHistoryFilter] = useState<string>('all');
   const [customHistoryStartDate, setCustomHistoryStartDate] = useState<Date | undefined>(undefined);
   const [customHistoryEndDate, setCustomHistoryEndDate] = useState<Date | undefined>(new Date());
   const [leaveHistoryCustomStartDate, setLeaveHistoryCustomStartDate] = useState<Date | undefined>(undefined);
@@ -143,7 +143,7 @@ export default function LeaveManagement() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [approvingLeaveId, setApprovingLeaveId] = useState<string | null>(null);
-  const [leaveHistoryPeriod, setLeaveHistoryPeriod] = useState<string>('current_month');
+  const [leaveHistoryPeriod, setLeaveHistoryPeriod] = useState<string>('all');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingLeave, setEditingLeave] = useState<LeaveRequest | null>(null);
   const [editFormData, setEditFormData] = useState({
@@ -442,10 +442,12 @@ export default function LeaveManagement() {
     loadDepartments();
   }, [user?.department]);
 
-  const loadLeaveRequests = useCallback(async (period: string = leaveHistoryPeriod) => {
+  const loadLeaveRequests = useCallback(async (period: string = leaveHistoryPeriod, startDate?: Date, endDate?: Date) => {
     if (!user) return;
     try {
-      const requests = await apiService.getLeaveRequests(period);
+      const startStr = startDate ? format(startDate, 'yyyy-MM-dd') : undefined;
+      const endStr = endDate ? format(endDate, 'yyyy-MM-dd') : undefined;
+      const requests = await apiService.getLeaveRequests(period, startStr, endStr);
 
       // Convert API response to our local format
       const formattedRequests: LeaveRequest[] = requests.map((req) => {
@@ -468,9 +470,9 @@ export default function LeaveManagement() {
       setLeaveRequests(formattedRequests);
     } catch (error) {
       console.error('Error fetching leave requests:', error);
-      // If API fails, use localStorage data
+      // If API fails, keep existing data or use localStorage
     }
-  }, [leaveHistoryPeriod, user]);
+  }, [user]);
 
 
 
@@ -548,75 +550,78 @@ export default function LeaveManagement() {
 
   // Load leave requests from API on component mount and when period changes
   useEffect(() => {
-    const fetchLeaveRequests = async () => {
-      await loadLeaveRequests(leaveHistoryPeriod);
-    };
-
-    const fetchApprovals = async () => {
-      try {
-        if (!(canApproveLeaves || canViewTeamLeaves)) return;
-        const approvals = await apiService.getLeaveApprovals();
-        const formatted: LeaveRequest[] = approvals.map((req) => ({
-          id: String(req.leave_id),
-          employeeId: String(req.user_id),
-          employeeName: req.name || req.employee_id,
-          department: req.department || '',
-          type: (req.leave_type || 'annual').toLowerCase() as LeaveRequest['type'],
-          startDate: new Date(req.start_date),
-          endDate: new Date(req.end_date),
-          reason: req.reason,
-          status: (String(req.status || 'pending').toLowerCase() as LeaveRequest['status']),
-          requestDate: new Date(req.start_date)
-        }));
-        setApprovalRequests(formatted);
-      } catch (error) {
-        console.error('Error fetching approvals:', error);
-      }
-    };
-
-    const fetchApprovalHistory = async () => {
-      try {
-        if (!canApproveLeaves) return;
-        const history = await apiService.getLeaveApprovalsHistory();
-        const formatted: LeaveRequest[] = history.map((req) => ({
-          id: String(req.leave_id),
-          employeeId: String(req.user_id),
-          employeeName: req.name || req.employee_id,
-          department: req.department || '',
-          type: (req.leave_type || 'annual').toLowerCase() as LeaveRequest['type'],
-          startDate: new Date(req.start_date),
-          endDate: new Date(req.end_date),
-          reason: req.reason,
-          status: (String(req.status || 'approved').toLowerCase() as LeaveRequest['status']),
-          requestDate: new Date(req.start_date)
-        }));
-        // Merge with existing history to preserve locally added decisions (both approved and rejected)
-        setApprovalHistory(prev => {
-          const existingIds = new Set(formatted.map(r => r.id));
-          // Keep locally added decisions that aren't in the API response
-          const localDecisions = prev.filter(r => !existingIds.has(r.id) && r.status !== 'pending');
-          // Combine API data with local decisions, removing duplicates
-          const combined = [...localDecisions, ...formatted];
-          // Sort by request date descending (most recent first)
-          return combined.sort((a, b) => {
-            const timeA = new Date(a.requestDate).getTime();
-            const timeB = new Date(b.requestDate).getTime();
-            return timeB - timeA;
-          });
-        });
-      } catch (error) {
-        console.error('Error fetching approvals history:', error);
-      }
-    };
-
     if (user) {
+      const fetchLeaveRequests = async () => {
+        if (leaveHistoryPeriod === 'custom') {
+          if (leaveHistoryCustomStartDate && leaveHistoryCustomEndDate) {
+            await loadLeaveRequests('custom', leaveHistoryCustomStartDate, leaveHistoryCustomEndDate);
+          }
+        } else {
+          await loadLeaveRequests(leaveHistoryPeriod);
+        }
+      };
+
+      const fetchApprovals = async () => {
+        try {
+          if (!(canApproveLeaves || canViewTeamLeaves)) return;
+          const approvals = await apiService.getLeaveApprovals();
+          const formatted: LeaveRequest[] = approvals.map((req) => ({
+            id: String(req.leave_id),
+            employeeId: String(req.user_id),
+            employeeName: req.name || req.employee_id,
+            department: req.department || '',
+            type: (req.leave_type || 'annual').toLowerCase() as LeaveRequest['type'],
+            startDate: new Date(req.start_date),
+            endDate: new Date(req.end_date),
+            reason: req.reason,
+            status: (String(req.status || 'pending').toLowerCase() as LeaveRequest['status']),
+            requestDate: new Date(req.start_date)
+          }));
+          setApprovalRequests(formatted);
+        } catch (error) {
+          console.error('Error fetching approvals:', error);
+        }
+      };
+
+      const fetchApprovalHistory = async () => {
+        try {
+          if (!canApproveLeaves) return;
+          const history = await apiService.getLeaveApprovalsHistory();
+          const formatted: LeaveRequest[] = history.map((req) => ({
+            id: String(req.leave_id),
+            employeeId: String(req.user_id),
+            employeeName: req.name || req.employee_id,
+            department: req.department || '',
+            type: (req.leave_type || 'annual').toLowerCase() as LeaveRequest['type'],
+            startDate: new Date(req.start_date),
+            endDate: new Date(req.end_date),
+            reason: req.reason,
+            status: (String(req.status || 'approved').toLowerCase() as LeaveRequest['status']),
+            requestDate: new Date(req.start_date)
+          }));
+          // Merge with existing history
+          setApprovalHistory(prev => {
+            const existingIds = new Set(formatted.map(r => r.id));
+            const localDecisions = prev.filter(r => !existingIds.has(r.id) && r.status !== 'pending');
+            const combined = [...localDecisions, ...formatted];
+            return combined.sort((a, b) => {
+              const timeA = new Date(a.requestDate).getTime();
+              const timeB = new Date(b.requestDate).getTime();
+              return timeB - timeA;
+            });
+          });
+        } catch (error) {
+          console.error('Error fetching approvals history:', error);
+        }
+      };
+
       fetchLeaveRequests();
       fetchApprovals();
       fetchApprovalHistory();
       loadLeaveBalance();
       loadLeaveAllocationConfig();
     }
-  }, [user, leaveHistoryPeriod, loadLeaveRequests, loadLeaveBalance, loadLeaveAllocationConfig]);
+  }, [user, leaveHistoryPeriod, leaveHistoryCustomStartDate, leaveHistoryCustomEndDate, loadLeaveRequests, loadLeaveBalance, loadLeaveAllocationConfig, canApproveLeaves, canViewTeamLeaves]);
 
   // Handle URL parameters for tab navigation and leave highlighting
   useEffect(() => {
@@ -1059,36 +1064,40 @@ export default function LeaveManagement() {
 
     const now = new Date();
     let startDate: Date;
-    let endDate: Date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    let endDate: Date = new Date(now.getFullYear() + 2, 11, 31, 23, 59, 59); // 2 years in future
 
     switch (historyFilter) {
+      case 'all':
+        startDate = new Date(2020, 0, 1);
+        break;
       case 'current_month':
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
         break;
       case 'last_3_months':
         startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59); // End of previous month
         break;
       case 'last_6_months':
         startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59); // End of previous month
         break;
       case 'custom':
         if (!customHistoryStartDate || !customHistoryEndDate) {
-          // Sort by request date in descending order (most recent first)
           return [...approvalHistory].sort((a, b) => {
             const timeA = new Date(a.requestDate).getTime();
             const timeB = new Date(b.requestDate).getTime();
-            return timeB - timeA; // Descending order (most recent first)
+            return timeB - timeA;
           });
         }
         startDate = new Date(customHistoryStartDate.getFullYear(), customHistoryStartDate.getMonth(), customHistoryStartDate.getDate(), 0, 0, 0);
         endDate = new Date(customHistoryEndDate.getFullYear(), customHistoryEndDate.getMonth(), customHistoryEndDate.getDate(), 23, 59, 59);
         break;
       default:
-        // Sort by request date in descending order (most recent first)
         return [...approvalHistory].sort((a, b) => {
           const timeA = new Date(a.requestDate).getTime();
           const timeB = new Date(b.requestDate).getTime();
-          return timeB - timeA; // Descending order (most recent first)
+          return timeB - timeA;
         });
     }
 
@@ -1097,11 +1106,10 @@ export default function LeaveManagement() {
       return requestDate >= startDate && requestDate <= endDate;
     });
 
-    // Sort by request date in descending order (most recent first)
     return filtered.sort((a, b) => {
       const timeA = new Date(a.requestDate).getTime();
       const timeB = new Date(b.requestDate).getTime();
-      return timeB - timeA; // Descending order (most recent first)
+      return timeB - timeA;
     });
   }, [approvalHistory, historyFilter, customHistoryStartDate, customHistoryEndDate]);
 
@@ -1143,24 +1151,24 @@ export default function LeaveManagement() {
     const userLeaves = leaveRequests.filter(req => String(req.employeeId) === String(user?.id));
     const now = new Date();
     let startDate: Date;
-    let endDate: Date = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    let endDate: Date = new Date(now.getFullYear() + 2, 11, 31, 23, 59, 59); // 2 years in future
 
     switch (leaveHistoryPeriod) {
+      case 'all':
+        startDate = new Date(2020, 0, 1);
+        break;
       case 'current_month':
         startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
         endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
         break;
       case 'last_3_months':
         startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1, 0, 0, 0);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
         break;
       case 'last_6_months':
         startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1, 0, 0, 0);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
         break;
       case 'last_1_year':
         startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1, 0, 0, 0);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
         break;
       case 'custom':
         if (!leaveHistoryCustomStartDate || !leaveHistoryCustomEndDate) {
@@ -1196,14 +1204,22 @@ export default function LeaveManagement() {
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6">
       {/* Modern Header */}
-      <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800 rounded-2xl p-6 shadow-sm border">
-        <div className="flex items-center gap-4">
-          <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg">
-            <CalendarDays className="h-7 w-7 text-white" />
+      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border shadow-sm mt-1">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-purple-500/5 rounded-full blur-3xl" />
+
+        <div className="relative flex items-center gap-5">
+          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none">
+            <CalendarDays className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Leave Management</h1>
-            <p className="text-sm text-muted-foreground mt-1">Manage leave requests and view calendar</p>
+            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
+              Leave <span className="text-indigo-600">Management</span>
+            </h1>
+            <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
+              <Clock className="h-4 w-4 text-indigo-500" />
+              Manage leave requests and view calendar
+            </p>
           </div>
         </div>
       </div>
@@ -1237,71 +1253,81 @@ export default function LeaveManagement() {
         {canApply && (
           <TabsContent value="request" className="space-y-4">
             {/* Leave Balance Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="border-0 bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-blue-50">Total Leaves</p>
-                      <p className="text-3xl font-bold mt-1">
-                        {leaveBalance.annual.remaining}/{leaveBalance.annual.allocated}
-                      </p>
-                      <p className="text-xs text-blue-100 mt-1">{leaveBalance.annual.used} used</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                {
+                  label: 'Total Leaves',
+                  value: `${leaveBalance.annual.remaining}/${leaveBalance.annual.allocated}`,
+                  sub: `${leaveBalance.annual.used} used`,
+                  icon: CalendarDays,
+                  color: 'blue',
+                  bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
+                  cardBg: 'bg-blue-50/40 dark:bg-blue-950/10',
+                  borderColor: 'border-blue-300/80 dark:border-blue-700/50',
+                  hoverBorder: 'group-hover:border-blue-500 dark:group-hover:border-blue-400',
+                },
+                {
+                  label: 'Sick Leave',
+                  value: `${leaveBalance.sick.remaining}/${leaveBalance.sick.allocated}`,
+                  sub: `${leaveBalance.sick.used} used`,
+                  icon: AlertCircle,
+                  color: 'rose',
+                  bg: 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400',
+                  cardBg: 'bg-rose-50/40 dark:bg-rose-950/10',
+                  borderColor: 'border-rose-300/80 dark:border-rose-700/50',
+                  hoverBorder: 'group-hover:border-rose-500 dark:group-hover:border-rose-400',
+                },
+                {
+                  label: 'Casual Leave',
+                  value: `${leaveBalance.casual.remaining}/${leaveBalance.casual.allocated}`,
+                  sub: `${leaveBalance.casual.used} used`,
+                  icon: Clock,
+                  color: 'emerald',
+                  bg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
+                  cardBg: 'bg-emerald-50/40 dark:bg-emerald-950/10',
+                  borderColor: 'border-emerald-300/80 dark:border-emerald-700/50',
+                  hoverBorder: 'group-hover:border-emerald-500 dark:group-hover:border-emerald-400',
+                },
+                {
+                  label: 'Unpaid Leave',
+                  value: leaveBalance.unpaid.used,
+                  sub: 'days taken',
+                  icon: FileText,
+                  color: 'slate',
+                  bg: 'bg-slate-100 text-slate-600 dark:bg-slate-900/40 dark:text-slate-400',
+                  cardBg: 'bg-slate-50/40 dark:bg-slate-950/10',
+                  borderColor: 'border-slate-300/80 dark:border-slate-700/50',
+                  hoverBorder: 'group-hover:border-slate-500 dark:group-hover:border-slate-400',
+                }
+              ].map((item, i) => (
+                <Card
+                  key={i}
+                  className={`border-2 ${item.borderColor} ${item.hoverBorder} shadow-sm ${item.cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative cursor-pointer`}
+                >
+                  {/* Background Accent */}
+                  <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-5 group-hover:opacity-10 transition-opacity ${item.bg.split(' ')[0]}`} />
+
+                  <CardContent className="p-4 relative">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className={`p-2.5 rounded-xl ${item.bg} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+                        <item.icon className="h-5 w-5" />
+                      </div>
                     </div>
-                    <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                      <CalendarDays className="h-6 w-6 text-white" />
+                    <div className="space-y-1">
+                      <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">{item.label}</h3>
+                      <div className="text-xl font-black text-gray-900 dark:text-gray-100 tracking-tight">{item.value}</div>
+                      <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
+                        <div className={`h-1.5 w-1.5 rounded-full ${item.color === 'blue' ? 'bg-blue-500' :
+                          item.color === 'rose' ? 'bg-rose-500' :
+                            item.color === 'emerald' ? 'bg-emerald-500' :
+                              'bg-slate-500'
+                          }`} />
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase">{item.sub}</span>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="border-0 bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-red-50">Sick Leave</p>
-                      <p className="text-3xl font-bold mt-1">
-                        {leaveBalance.sick.remaining}/{leaveBalance.sick.allocated}
-                      </p>
-                      <p className="text-xs text-red-100 mt-1">{leaveBalance.sick.used} used</p>
-                    </div>
-                    <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                      <AlertCircle className="h-6 w-6 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="border-0 bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-green-50">Casual Leave</p>
-                      <p className="text-3xl font-bold mt-1">
-                        {leaveBalance.casual.remaining}/{leaveBalance.casual.allocated}
-                      </p>
-                      <p className="text-xs text-green-100 mt-1">{leaveBalance.casual.used} used</p>
-                    </div>
-                    <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                      <Clock className="h-6 w-6 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="border-0 bg-gradient-to-br from-gray-500 to-slate-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-50">Unpaid Leave</p>
-                      <p className="text-3xl font-bold mt-1">
-                        {leaveBalance.unpaid.used}
-                      </p>
-                      <p className="text-xs text-gray-100 mt-1">days taken</p>
-                    </div>
-                    <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                      <FileText className="h-6 w-6 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
 
             {/* Leave Request Form */}
@@ -1497,6 +1523,7 @@ export default function LeaveManagement() {
                       <SelectValue placeholder="Select period" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="all">All History</SelectItem>
                       <SelectItem value="current_month">Current Month</SelectItem>
                       <SelectItem value="last_3_months">Last 3 Months</SelectItem>
                       <SelectItem value="last_6_months">Last 6 Months</SelectItem>
@@ -2009,6 +2036,12 @@ export default function LeaveManagement() {
                         h.date.getMonth() === displayedMonthIndex
                       );
 
+                      // Filter week-offs based on role: Admin/HR see all, others see only their own department
+                      const visibleWeekOffs = Object.entries(weekOffConfig).filter(([dept]) => {
+                        if (['admin', 'hr'].includes(user?.role || '')) return true;
+                        return dept === user?.department;
+                      });
+
                       return (
                         <div className="mt-4 p-4 bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 rounded-lg">
                           <h4 className="font-semibold mb-3 flex items-center gap-2">
@@ -2042,14 +2075,14 @@ export default function LeaveManagement() {
                               ))}
                             </ul>
                           )}
-                          {Object.keys(weekOffConfig).length > 0 && (
+                          {visibleWeekOffs.length > 0 && (
                             <div className="mt-4">
                               <h4 className="font-semibold mb-2 flex items-center gap-2">
                                 <Clock className="h-4 w-4 text-sky-600" />
                                 Department Week-offs:
                               </h4>
                               <ul className="space-y-1">
-                                {Object.entries(weekOffConfig).map(([dept, days]) => (
+                                {visibleWeekOffs.map(([dept, days]) => (
                                   <li key={`weekoff-${dept}`} className="text-sm flex items-center gap-2">
                                     <span className="h-2 w-2 rounded-full bg-sky-400" />
                                     <span className="font-medium">{dept}</span>
@@ -2182,7 +2215,8 @@ export default function LeaveManagement() {
                         itemsPerPage={approvalItemsPerPage}
                         onPageChange={setApprovalCurrentPage}
                         onItemsPerPageChange={setApprovalItemsPerPage}
-                        showItemsPerPage={true}
+                        showItemsPerPage={false}
+                        showEntriesInfo={false}
                       />
                     </div>
                   )}
@@ -2196,6 +2230,7 @@ export default function LeaveManagement() {
                             <SelectValue placeholder="Select period" />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="all">All History</SelectItem>
                             <SelectItem value="current_month">Current Month</SelectItem>
                             <SelectItem value="last_3_months">Last 3 Months</SelectItem>
                             <SelectItem value="last_6_months">Last 6 Months</SelectItem>

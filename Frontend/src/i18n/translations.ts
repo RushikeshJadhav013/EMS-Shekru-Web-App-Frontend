@@ -86,6 +86,7 @@ export const translations = {
       teamEfficiency: 'Team Efficiency',
       teamActivities: 'Team Activities',
       teamPerformance: 'Team Performance',
+      salary: 'Salary',
     },
     attendance: {
       checkIn: 'Check In',
@@ -472,6 +473,7 @@ export const translations = {
       teamEfficiency: 'टीम दक्षता',
       teamActivities: 'टीम गतिविधियां',
       teamPerformance: 'टीम प्रदर्शन',
+      salary: 'वेतन',
     },
     attendance: {
       checkIn: 'चेक इन',
@@ -798,6 +800,7 @@ export const translations = {
       attendance: 'उपस्थिती',
       leaves: 'रजा',
       tasks: 'कार्ये',
+      salary: 'पगार',
       chat: 'चॅट',
       employees: 'कर्मचारी',
       departments: 'विभाग',

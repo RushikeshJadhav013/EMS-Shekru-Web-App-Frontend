@@ -1062,71 +1062,119 @@ const AttendanceManager: React.FC = () => {
 
   const attendanceContent = (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800 rounded-2xl p-6 shadow-sm border">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-              <Clock className="h-7 w-7 text-white" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold">{t.attendance.employeeAttendance}</h2>
-              <p className="text-sm text-muted-foreground mt-1">{t.attendance.monitorTeamAttendance}</p>
-            </div>
+      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border shadow-sm mt-1">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-blue-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
+
+        <div className="relative flex items-center gap-5">
+          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-200 dark:shadow-none">
+            <Clock className="h-8 w-8 text-white" />
           </div>
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
+              {t.attendance.employeeAttendance}
+            </h1>
+            <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
+              <Users className="h-4 w-4 text-blue-500" />
+              {t.attendance.monitorTeamAttendance}
+            </p>
+          </div>
+        </div>
+
+        <div className="relative flex gap-3">
           <Button
             onClick={() => setExportModalOpen(true)}
-            variant="outline"
-            className="gap-2 bg-white dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950 border-2 border-blue-600 hover:border-blue-700 font-medium shadow-md hover:shadow-lg transition-all"
+            size="lg"
+            className="rounded-xl px-6 h-12 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 dark:shadow-none transition-all active:scale-95 gap-2"
             disabled={isExporting}
-            style={{ color: '#2563eb' }}
           >
-            <Download className="h-4 w-4" style={{ color: '#2563eb' }} />
-            <span className="font-semibold" style={{ color: '#2563eb' }}>
-              {isExporting ? t.attendance.exporting : 'Export'}
-            </span>
+            <Download className="h-4 w-4" />
+            {isExporting ? t.attendance.exporting : 'Export'}
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-0 bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-blue-50">{t.attendance.totalEmployees}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{todayStats.total}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-green-50">{t.attendance.presentToday}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{todayStats.present}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-orange-50">{t.attendance.lateArrivals}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{todayStats.late}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 bg-gradient-to-br from-yellow-500 to-amber-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-yellow-50">{t.attendance.earlyDepartures}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{todayStats.early}</div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {[
+          {
+            title: t.attendance.totalEmployees,
+            value: todayStats.total,
+            sub: 'Active Workforce',
+            icon: Users,
+            color: 'blue',
+            bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
+            cardBg: 'bg-blue-50/40 dark:bg-blue-950/10',
+            borderColor: 'border-blue-300/80 dark:border-blue-700/50',
+            hoverBorder: 'group-hover:border-blue-500 dark:group-hover:border-blue-400',
+          },
+          {
+            title: t.attendance.presentToday,
+            value: todayStats.present,
+            sub: 'Currently Active',
+            icon: CheckCircle2,
+            color: 'emerald',
+            bg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
+            cardBg: 'bg-emerald-50/40 dark:bg-emerald-950/10',
+            borderColor: 'border-emerald-300/80 dark:border-emerald-700/50',
+            hoverBorder: 'group-hover:border-emerald-500 dark:group-hover:border-emerald-400',
+          },
+          {
+            title: t.attendance.lateArrivals,
+            value: todayStats.late,
+            sub: 'Beyond Grace Period',
+            icon: Timer,
+            color: 'orange',
+            bg: 'bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400',
+            cardBg: 'bg-orange-50/40 dark:bg-orange-950/10',
+            borderColor: 'border-orange-300/80 dark:border-orange-700/50',
+            hoverBorder: 'group-hover:border-orange-500 dark:group-hover:border-orange-400',
+          },
+          {
+            title: t.attendance.earlyDepartures,
+            value: todayStats.early,
+            sub: 'Before Working Hours',
+            icon: LogOut,
+            color: 'amber',
+            bg: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
+            cardBg: 'bg-amber-50/40 dark:bg-amber-950/10',
+            borderColor: 'border-amber-300/80 dark:border-amber-700/50',
+            hoverBorder: 'group-hover:border-amber-500 dark:group-hover:border-amber-400',
+          },
+        ].map((item, i) => (
+          <Card
+            key={i}
+            className={`border-2 ${item.borderColor} ${item.hoverBorder} shadow-sm ${item.cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative cursor-pointer`}
+          >
+            {/* Background Accent */}
+            <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-5 group-hover:opacity-10 transition-opacity ${item.bg.split(' ')[0]}`} />
+
+            <CardContent className="p-5 relative">
+              <div className="flex justify-between items-start mb-3">
+                <div className={`p-2.5 rounded-xl ${item.bg} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+                  <item.icon className="h-5 w-5" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">{item.title}</h3>
+                <div className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">{item.value}</div>
+                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
+                  <div className={`h-1.5 w-1.5 rounded-full ${item.color === 'blue' ? 'bg-blue-500' :
+                    item.color === 'emerald' ? 'bg-emerald-500' :
+                      item.color === 'orange' ? 'bg-orange-500' :
+                        'bg-amber-500'
+                    }`} />
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase">{item.sub}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-          <CardTitle className="text-xl font-semibold">{t.attendance.attendanceRecords}</CardTitle>
-          <CardDescription>{t.attendance.viewAndManage}</CardDescription>
+      <Card className="border-slate-200/60 border shadow-sm bg-white rounded-xl overflow-hidden">
+        <CardHeader className="border-b border-slate-100 bg-slate-50/30 px-5 py-4">
+          <CardTitle className="text-sm font-bold text-slate-900">{t.attendance.attendanceRecords}</CardTitle>
+          <CardDescription className="text-[11px] font-medium">{t.attendance.viewAndManage}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row gap-3 mb-6">
@@ -1801,40 +1849,55 @@ const AttendanceManager: React.FC = () => {
 
   const officeHoursContent = (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-3xl p-6 shadow-xl">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="h-16 w-16 rounded-2xl bg-white/15 flex items-center justify-center shadow-lg">
-              <Clock className="h-8 w-8" />
-            </div>
-            <div>
-              <p className="text-sm uppercase tracking-widest text-white/70">Scheduling Hub</p>
-              <h2 className="text-3xl font-bold">Office Hours Control Center</h2>
-              <p className="text-white/80 mt-1">
-                Define global timings, override specific departments, and keep every team aligned.
-              </p>
-            </div>
+      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-5 rounded-2xl bg-gradient-to-br from-white to-purple-50/30 border border-purple-100/50 shadow-sm mt-1">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-purple-100/20 rounded-full blur-3xl -z-10" />
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-purple-100/50 flex items-center justify-center border border-purple-200/50 shadow-sm group transition-all duration-300 hover:scale-110">
+            <Clock className="h-6 w-6 text-purple-600" />
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-              {configuredDepartmentCount} Department Override{configuredDepartmentCount === 1 ? '' : 's'}
-            </Badge>
-            <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-              {officeTimings.length} Total Rule{officeTimings.length === 1 ? '' : 's'}
-            </Badge>
+          <div>
+            <h2 className="text-xl font-black tracking-tight text-slate-900 leading-tight">
+              Office Hours Control Center
+            </h2>
+            <p className="text-slate-500 font-bold text-[13px] mt-0.5">Define global timings, override specific departments, and keep every team aligned.</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
-          {officeQuickStats.map((stat) => (
-            <div
+        <div className="flex flex-wrap gap-2">
+          <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-0 font-bold px-3 h-8 flex items-center rounded-lg">
+            {configuredDepartmentCount} Overrides
+          </Badge>
+          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-0 font-bold px-3 h-8 flex items-center rounded-lg">
+            {officeTimings.length} Rules
+          </Badge>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {officeQuickStats.map((stat, index) => {
+          const colors = ['blue', 'emerald', 'orange', 'purple'];
+          const color = colors[index % colors.length];
+          const icons = [Clock, Timer, Timer, Settings];
+          const Icon = icons[index % icons.length];
+
+          return (
+            <Card
               key={stat.label}
-              className={`rounded-2xl bg-gradient-to-br ${stat.accent} p-4 shadow-lg`}
+              className={`group relative overflow-hidden bg-${color}-50/30 border-${color}-100/50 border hover:shadow-xl hover:shadow-${color}-100/20 transition-all duration-500 cursor-pointer rounded-xl`}
             >
-              <p className="text-sm text-white/70">{stat.label}</p>
-              <p className="text-2xl font-semibold mt-1">{stat.value}</p>
-            </div>
-          ))}
-        </div>
+              <CardHeader className="flex flex-row items-center justify-between pb-2 p-4">
+                <CardTitle className={`text-[11px] font-black text-${color}-900/60 uppercase tracking-widest leading-none`}>
+                  {stat.label}
+                </CardTitle>
+                <div className={`h-8 w-8 rounded-lg bg-${color}-50/50 flex items-center justify-center border border-${color}-200/50 group-hover:scale-110 transition-transform duration-500`}>
+                  <Icon className={`h-4 w-4 text-${color}-600`} />
+                </div>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <div className={`text-2xl font-black text-${color}-950 tracking-tight leading-none`}>{stat.value}</div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -2224,18 +2287,18 @@ const AttendanceManager: React.FC = () => {
           </TabsContent>
           <TabsContent value="wfh-requests" className="space-y-6">
             {/* Pending WFH Requests Section */}
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950">
-                <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-purple-600" />
-                  Pending WFH Requests from HR & Managers
+            <Card className="border-slate-200/60 border shadow-sm bg-white rounded-xl overflow-hidden">
+              <CardHeader className="border-b border-slate-100 bg-slate-50/30 px-5 py-4">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <FileText className="h-4.5 w-4.5 text-blue-600" />
+                  WFH Pending Requests
                   {getAdminPendingWfhCount() > 0 && (
-                    <Badge variant="destructive" className="ml-2">
+                    <Badge className="bg-rose-50 text-rose-600 hover:bg-rose-100 border-0 h-4.5 px-1.5 text-[10px] font-black">
                       {getAdminPendingWfhCount()}
                     </Badge>
                   )}
                 </CardTitle>
-                <CardDescription>Review and approve/reject pending work from home requests from HR and Manager roles</CardDescription>
+                <CardDescription className="text-[11px] font-medium">Review and process recent work from home requests.</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
                 {isLoadingWfhRequests ? (
@@ -2322,16 +2385,16 @@ const AttendanceManager: React.FC = () => {
             </Card>
 
             {/* Recent Decisions Section */}
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-800">
+            <Card className="border-slate-200/60 border shadow-sm bg-white rounded-xl overflow-hidden">
+              <CardHeader className="border-b border-slate-100 bg-slate-50/30 px-5 py-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                      <History className="h-5 w-5 text-white" />
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shadow-sm">
+                      <History className="h-4.5 w-4.5 text-blue-600" />
                     </div>
                     <div>
-                      <CardTitle className="text-xl font-semibold">Recent Decisions</CardTitle>
-                      <CardDescription>Approved and rejected WFH requests from HR & Managers</CardDescription>
+                      <CardTitle className="text-sm font-bold">Recent Decisions</CardTitle>
+                      <CardDescription className="text-[11px] font-medium">History of processed WFH requests.</CardDescription>
                     </div>
                   </div>
                 </div>

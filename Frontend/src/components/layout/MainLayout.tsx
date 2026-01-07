@@ -51,6 +51,7 @@ import {
   UserPlus,
   MessageCircle,
   ChevronRight,
+  Banknote
 } from 'lucide-react';
 import { UserRole } from '@/types';
 import { Language } from '@/i18n/translations';
@@ -86,6 +87,7 @@ const MainLayout: React.FC = () => {
       { icon: Clock, label: t.navigation.attendance, path: `/${user.role}/attendance` },
       { icon: CalendarDays, label: t.navigation.leaves, path: `/${user.role}/leaves` },
       { icon: ClipboardList, label: t.navigation.tasks, path: `/${user.role}/tasks` },
+      { icon: Banknote, label: t.navigation.salary, path: '/salary' },
       { icon: MessageCircle, label: t.navigation.chat, path: `/${user.role}/chat` },
     ];
 
@@ -272,11 +274,11 @@ const MainLayout: React.FC = () => {
       <div className="flex h-[calc(100vh-4rem)]">
         {/* Sidebar */}
         <aside
-          className={`${sidebarOpen ? 'w-72' : 'w-20'
+          className={`${sidebarOpen ? 'w-64' : 'w-20'
             } hidden lg:flex flex-col border-r bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl transition-all duration-500 shadow-[20px_0_30px_-15px_rgba(0,0,0,0.05)] overflow-hidden relative z-40`}
         >
-          <div className="flex-1 space-y-2 p-4 pt-6 overflow-y-auto scrollbar-none hover:scrollbar-thin transition-all">
-            <nav className="space-y-1.5 focus:outline-none">
+          <div className="flex-1 space-y-2 p-3 pt-4 overflow-y-auto scrollbar-none hover:scrollbar-thin transition-all">
+            <nav className="space-y-1 focus:outline-none">
               {navigationItems.map((item, index) => {
                 const isActive = isNavItemActive(item.path);
                 return (
@@ -285,22 +287,22 @@ const MainLayout: React.FC = () => {
                     to={item.path}
                     end={!item.path.includes('/chat')}
                     title={!sidebarOpen ? item.label : ''}
-                    className={`group relative flex items-center gap-3.5 rounded-2xl px-3.5 py-3 transition-all duration-300 ${isActive
+                    className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-300 ${isActive
                       ? 'bg-blue-600 dark:bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-blue-900/40 font-bold scale-[1.02]'
                       : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-100 hover:translate-x-1'
                       }`}
                   >
                     {/* Active Glow */}
                     {isActive && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl -z-10" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl -z-10" />
                     )}
 
                     {/* Icon Container */}
-                    <div className={`relative flex items-center justify-center h-9 w-9 rounded-xl flex-shrink-0 transition-all duration-300 ${isActive
+                    <div className={`relative flex items-center justify-center h-8 w-8 rounded-lg flex-shrink-0 transition-all duration-300 ${isActive
                       ? 'bg-white/20 shadow-inner'
                       : 'bg-slate-50 dark:bg-slate-900 group-hover:bg-white dark:group-hover:bg-slate-800 shadow-sm group-hover:shadow-md border border-slate-100 dark:border-slate-800'
                       }`}>
-                      <item.icon className={`h-5 w-5 relative z-10 transition-all duration-300 ${isActive
+                      <item.icon className={`h-4.5 w-4.5 relative z-10 transition-all duration-300 ${isActive
                         ? 'text-white scale-110'
                         : 'text-slate-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400'
                         }`} />
@@ -310,7 +312,7 @@ const MainLayout: React.FC = () => {
                     {/* Label */}
                     {sidebarOpen && (
                       <div className="flex flex-col flex-1 overflow-hidden">
-                        <span className="font-bold text-sm tracking-tight truncate">
+                        <span className="font-bold text-[13px] tracking-tight truncate">
                           {item.label}
                         </span>
                       </div>
@@ -326,13 +328,13 @@ const MainLayout: React.FC = () => {
             </nav>
           </div>
 
-          <div className="flex-shrink-0 p-4 pt-2 mb-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex-shrink-0 p-3 mb-2 border-t border-slate-100 dark:border-slate-800">
             <div
               onClick={() => navigate(`/${user.role}/profile`)}
-              className={`group flex items-center gap-3.5 p-3 rounded-[1.25rem] bg-slate-50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 hover:shadow-xl hover:shadow-slate-200/40 transition-all duration-300 cursor-pointer ${!sidebarOpen ? 'justify-center' : ''}`}
+              className={`group flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 hover:shadow-xl hover:shadow-slate-200/40 transition-all duration-300 cursor-pointer ${!sidebarOpen ? 'justify-center' : ''}`}
             >
               <div className="relative">
-                <Avatar className="h-10 w-10 border-2 border-white dark:border-slate-700 shadow-md flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+                <Avatar className="h-9 w-9 border-2 border-white dark:border-slate-700 shadow-md flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
                   <AvatarImage src={user.profilePhoto} alt={user.name} className="object-cover" />
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-black text-xs">
                     {user.name.split(' ').map(n => n[0]).join('')}
@@ -344,7 +346,7 @@ const MainLayout: React.FC = () => {
               {sidebarOpen && (
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-black text-slate-900 dark:text-slate-100 truncate uppercase tracking-tight leading-none group-hover:text-blue-600 transition-colors">{user.name}</p>
-                  <div className="flex items-center gap-1.5 mt-1.5">
+                  <div className="flex items-center gap-1.5 mt-1">
                     <Badge className="bg-blue-100 hover:bg-blue-100 text-blue-700 text-[9px] px-1.5 h-4 border-0 font-black uppercase tracking-widest">
                       {t.roles[user.role]}
                     </Badge>

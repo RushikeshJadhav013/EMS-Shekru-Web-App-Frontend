@@ -102,7 +102,7 @@ class ChatService {
         messageType: 'text',
         timestamp: this.formatTimestamp(msg.timestamp),
         isRead: (msg.read_by || []).length > 1,
-        replyTo: undefined
+        replyTo: msg.reply_to?.toString()
       }));
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -121,6 +121,7 @@ class ChatService {
           chat_type: typePath,
           chat_id: chatId,
           content,
+          reply_to: replyTo
         }),
       });
 
@@ -138,6 +139,7 @@ class ChatService {
         messageType: 'text',
         timestamp: this.formatTimestamp(data.timestamp),
         isRead: false,
+        replyTo: data.reply_to?.toString()
       };
     } catch (error) {
       console.error('Error sending message:', error);

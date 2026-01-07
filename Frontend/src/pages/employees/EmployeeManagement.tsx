@@ -199,9 +199,23 @@ const normalizeRole = (input: string) => {
       return 'Manager';
     case 'teamlead':
     case 'teamleader':
-      return 'Team Lead';
+      return 'TeamLead';
     default:
       return input.charAt(0).toUpperCase() + input.slice(1).toLowerCase();
+  }
+};
+
+const getInternalRole = (input: string): UserRole => {
+  if (!input) return 'employee';
+  const key = input.replace(/[\s_]+/g, '').toLowerCase();
+  switch (key) {
+    case 'admin': return 'admin';
+    case 'hr': return 'hr';
+    case 'manager': return 'manager';
+    case 'teamlead':
+    case 'teamleader':
+    case 'team_lead': return 'team_lead';
+    default: return 'employee';
   }
 };
 
@@ -328,6 +342,12 @@ export default function EmployeeManagement() {
   const [aadharCardError, setAadharCardError] = useState<string>('');
   const [panCardDuplicateError, setPanCardDuplicateError] = useState<string>('');
   const [aadharCardDuplicateError, setAadharCardDuplicateError] = useState<string>('');
+
+  // Export filters
+  const [exportFilters, setExportFilters] = useState({
+    department: 'all',
+    role: 'all'
+  });
 
   // API states
   const [isLoading, setIsLoading] = useState(false);
@@ -767,21 +787,20 @@ export default function EmployeeManagement() {
     } catch (error) {
       console.error('Failed to create employee:', error);
       const rawMessage = error instanceof Error ? error.message : 'Failed to create employee. Please try again.';
+      const detail = typeof rawMessage === 'object' ? JSON.stringify(rawMessage) : String(rawMessage);
 
       // Try to handle specific validation errors first
-      const isSpecificError = handleApiValidationError(rawMessage);
+      const isSpecificError = handleApiValidationError(detail);
 
       if (isSpecificError) {
-        // Show a toast notification as well for better visibility
         toast({
           title: 'Validation Error',
           description: 'Please check the form for errors and correct them.',
           variant: 'destructive'
         });
       } else {
-        // If not a specific validation error, show general error message
         const friendlyMessage = formatDuplicateErrorMessage(
-          rawMessage,
+          detail,
           formData.employeeId,
           formData.email
         );
@@ -927,7 +946,9 @@ export default function EmployeeManagement() {
         employee_type: formData.employeeType,
         profile_photo: imageFile || formData.profilePhoto || undefined, // Pass the file if available
         is_verified: true,
-        created_at: formData.createdAt || new Date().toISOString()
+        created_at: formData.createdAt || new Date().toISOString(),
+        is_active: formData.status?.toLowerCase().trim() === 'active',
+        status: formData.status?.toLowerCase().trim()
       };
 
       // Call API with user_id instead of employee_id
@@ -956,9 +977,10 @@ export default function EmployeeManagement() {
     } catch (error) {
       console.error('Failed to update employee:', error);
       const rawMessage = error instanceof Error ? error.message : 'Failed to update employee. Please try again.';
+      const detail = typeof rawMessage === 'object' ? JSON.stringify(rawMessage) : String(rawMessage);
 
       // Try to handle specific validation errors first
-      const isSpecificError = handleApiValidationError(rawMessage);
+      const isSpecificError = handleApiValidationError(detail);
 
       if (isSpecificError) {
         // Show a toast notification as well for better visibility
@@ -971,7 +993,7 @@ export default function EmployeeManagement() {
         // If not a specific validation error, show general error message
         toast({
           title: 'Error',
-          description: rawMessage,
+          description: detail,
           variant: 'destructive'
         });
       }
@@ -1277,8 +1299,8 @@ export default function EmployeeManagement() {
 
     try {
       const blob = exportType === 'csv'
-        ? await apiService.exportEmployeesCSV()
-        : await apiService.exportEmployeesPDF();
+        ? await apiService.exportEmployeesCSV(exportFilters)
+        : await apiService.exportEmployeesPDF(exportFilters);
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1439,130 +1461,141 @@ export default function EmployeeManagement() {
     setIsCreateDialogOpen(true);
   };
 
-  const openEditDialog = (employee: EmployeeRecord) => {
+  const openEditDialog = async (employee: EmployeeRecord) => {
     console.log('=== OPEN EDIT DIALOG ===');
-    console.log('Employee data:', employee);
+    console.log('Original employee data:', employee);
 
-    // Normalize employee object keys to the formData shape (support snake_case or camelCase)
-    setSelectedEmployee(employee);
-    const emp = employee as unknown as Record<string, unknown>;
+    // Identify user_id for fetching
+    const empForId = employee as unknown as Record<string, unknown>;
+    const userIdToFetch = String(empForId['id'] ?? empForId['user_id'] ?? empForId['userId'] ?? '');
 
-    // Try multiple field names to find user_id
-    const id = String(emp['id'] ?? emp['user_id'] ?? emp['userId'] ?? '');
-    const employeeId = String(emp['employeeId'] ?? emp['employee_id'] ?? '');
+    const populateForm = (emp: any) => {
+      setSelectedEmployee(emp);
+      const data = emp as unknown as Record<string, unknown>;
 
-    console.log('Extracted id (user_id):', id);
-    console.log('Extracted employeeId:', employeeId);
+      const id = String(data['id'] ?? data['user_id'] ?? data['userId'] ?? '');
+      const employeeId = String(data['employeeId'] ?? data['employee_id'] ?? '');
+      const name = String(data['name'] ?? '');
+      const email = String(data['email'] ?? '');
+      const department = String(data['department'] ?? '');
+      const role = getInternalRole(String(data['role'] ?? ''));
+      const designation = String(data['designation'] ?? '');
+      const address = String(data['address'] ?? '');
 
-    // Extract all fields with fallbacks for snake_case/camelCase
-    const name = String(emp['name'] ?? '');
-    const email = String(emp['email'] ?? '');
-    const department = String(emp['department'] ?? '');
-    const role = String(emp['role'] ?? '');
-    const designation = String(emp['designation'] ?? '');
-    const address = String(emp['address'] ?? '');
-
-    // Prefer explicit joining_date if provided by API, otherwise fall back to created_at if available
-    const rawJoining = emp['joiningDate'] ?? emp['joining_date'] ?? emp['createdAt'] ?? emp['created_at'] ?? '';
-    let joiningDate = '';
-    if (rawJoining) {
-      try {
-        joiningDate = new Date(String(rawJoining)).toISOString().split('T')[0];
-      } catch (e) {
-        joiningDate = String(rawJoining);
+      const rawJoining = data['joiningDate'] ?? data['joining_date'] ?? data['createdAt'] ?? data['created_at'] ?? '';
+      let joiningDate = '';
+      if (rawJoining) {
+        try {
+          joiningDate = new Date(String(rawJoining)).toISOString().split('T')[0];
+        } catch (e) {
+          joiningDate = String(rawJoining);
+        }
       }
-    }
 
-    const status = String(emp['status'] ?? 'active');
-    const resignationDate = emp['resignationDate'] ?? emp['resignation_date'] ?? '';
+      let status = 'active';
+      if (data['status']) {
+        status = String(data['status']).trim().toLowerCase();
+      } else if (data['isActive'] !== undefined) {
+        status = data['isActive'] ? 'active' : 'inactive';
+      } else if (data['is_active'] !== undefined) {
+        // @ts-ignore
+        status = data['is_active'] ? 'active' : 'inactive';
+      }
+      const resignationDate = data['resignationDate'] ?? data['resignation_date'] ?? '';
+      const gender = String(data['gender'] ?? '');
+      const employeeType = String(data['employeeType'] ?? data['employee_type'] ?? '');
+      const panCard = String(data['panCard'] ?? data['pan_card'] ?? '');
+      const aadharCard = String(data['aadharCard'] ?? data['aadhar_card'] ?? '');
+      const shift = String(data['shift'] ?? data['shiftType'] ?? data['shift_type'] ?? '');
 
-    // ✅ Extract gender, employeeType, shift with proper fallbacks
-    const gender = String(emp['gender'] ?? '');
-    const employeeType = String(emp['employeeType'] ?? emp['employee_type'] ?? '');
-    const panCard = String(emp['panCard'] ?? emp['pan_card'] ?? '');
-    const aadharCard = String(emp['aadharCard'] ?? emp['aadhar_card'] ?? '');
-    const shift = String(emp['shift'] ?? emp['shiftType'] ?? emp['shift_type'] ?? emp['shifttype'] ?? emp['Shift'] ?? '');
+      let photoUrl = String(data['photoUrl'] ?? data['photo_url'] ?? data['profilePhoto'] ?? data['profile_photo'] ?? '');
+      if (photoUrl && !photoUrl.startsWith('http')) {
+        photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}/${photoUrl}`;
+      }
 
-    // ✅ Fix: Map profile_photo from backend to photoUrl for frontend
-    let photoUrl = String(emp['photoUrl'] ?? emp['photo_url'] ?? emp['profilePhoto'] ?? emp['profile_photo'] ?? '');
+      const rawPhone = String(data['phone'] ?? '');
+      let countryCode = String(data['countryCode'] ?? '+91');
+      let phone = '';
 
-    // ✅ If photo path exists and doesn't start with http, prepend backend URL
-    if (photoUrl && !photoUrl.startsWith('http')) {
-      photoUrl = `https://staffly.space/${photoUrl}`;
-    }
-
-    console.log('Extracted photo URL:', photoUrl);
-    console.log('Extracted gender:', gender);
-    console.log('Extracted employeeType:', employeeType);
-    console.log('Extracted shift:', shift);
-    console.log('=======================');
-
-    const rawPhone = String(emp['phone'] ?? '');
-    let countryCode = String(emp['countryCode'] ?? '+91');
-    let phone = '';
-
-    if (rawPhone.includes('-')) {
-      const parts = rawPhone.split('-');
-      countryCode = parts[0] || countryCode;
-      phone = parts.slice(1).join('-');
-    } else if (rawPhone.startsWith('+')) {
-      // try to split leading +country and rest
-      const m = rawPhone.match(/^(\+\d{1,3})(?:[\s-]?)(.*)$/);
-      if (m) {
-        countryCode = m[1];
-        phone = m[2] || '';
+      if (rawPhone.includes('-')) {
+        const parts = rawPhone.split('-');
+        countryCode = parts[0] || countryCode;
+        phone = parts.slice(1).join('-');
+      } else if (rawPhone.startsWith('+')) {
+        const m = rawPhone.match(/^(\+\d{1,3})(?:[\s-]?)(.*)$/);
+        if (m) {
+          countryCode = m[1];
+          phone = m[2] || '';
+        } else {
+          phone = rawPhone;
+        }
       } else {
         phone = rawPhone;
       }
-    } else {
-      phone = rawPhone;
-    }
 
-    // Handle multiple departments for HR and Manager roles
-    const isHROrManager = role === 'hr' || role === 'manager';
-    const departmentList = isHROrManager && department ? department.split(',').map(d => d.trim()) : [];
+      const isHROrManager = role.toLowerCase() === 'hr' || role.toLowerCase() === 'manager';
+      const departmentList = isHROrManager && department ? department.split(',').map(d => d.trim()) : [];
+      const addressParts = address.split(',').map(part => part.trim());
+      const parsedAddress = {
+        houseNo: addressParts[0] || '',
+        street: addressParts[1] || '',
+        area: addressParts[2] || '',
+        city: addressParts[3] || '',
+        pincode: addressParts[4] || '',
+        state: addressParts[5] || ''
+      };
 
-    // Parse address into individual fields
-    const addressParts = address.split(',').map(part => part.trim());
-    const parsedAddress = {
-      houseNo: addressParts[0] || '',
-      street: addressParts[1] || '',
-      area: addressParts[2] || '',
-      city: addressParts[3] || '',
-      pincode: addressParts[4] || '',
-      state: addressParts[5] || ''
+      setFormData({
+        id,
+        employeeId,
+        name,
+        email,
+        department: isHROrManager ? '' : department,
+        role,
+        designation,
+        address,
+        joiningDate,
+        status: status as any,
+        resignationDate: resignationDate as any,
+        gender: gender as any,
+        employeeType: employeeType as any,
+        panCard,
+        aadharCard,
+        shift: shift as any,
+        countryCode,
+        phone: formatPhoneNumber(phone.replace(/[^0-9]/g, ''), countryCode),
+        photoUrl
+      });
+
+      setSelectedDepartments(departmentList);
+      setAddressFields(parsedAddress);
+      setImagePreview(photoUrl);
+      setIsEditDialogOpen(true);
     };
 
-    setFormData({
-      id, // ✅ Include user_id
-      employeeId,
-      name,
-      email,
-      department: isHROrManager ? '' : department, // Clear department for HR/Manager
-      role,
-      designation,
-      address,
-      joiningDate,
-      status,
-      resignationDate,
-      gender: gender as 'male' | 'female' | 'other' | undefined,
-      employeeType: employeeType as 'contract' | 'permanent' | undefined,
-      panCard,
-      aadharCard,
-      shift: shift as ShiftType | undefined,
-      countryCode,
-      phone: formatPhoneNumber(phone.replace(/[^0-9]/g, ''), countryCode),
-      photoUrl
-    } as Partial<EmployeeRecord>);
+    if (!userIdToFetch) {
+      populateForm(employee);
+      return;
+    }
 
-    // Set selected departments for HR/Manager roles
-    setSelectedDepartments(departmentList);
+    try {
+      toast({
+        title: 'Loading details',
+        description: 'Fetching latest employee information...',
+      });
 
-    // Set address fields
-    setAddressFields(parsedAddress);
-
-    setImagePreview(photoUrl);
-    setIsEditDialogOpen(true);
+      const rawData = await apiService.getEmployeeById(userIdToFetch);
+      const fullData = toCamelCase(rawData);
+      populateForm(fullData);
+    } catch (error) {
+      console.error('Fetch failed:', error);
+      toast({
+        title: 'Limited Data',
+        description: 'Could not fetch latest details. Using existing information.',
+        variant: 'destructive'
+      });
+      populateForm(employee);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -1595,7 +1628,14 @@ export default function EmployeeManagement() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
-              onClick={() => setIsExportDialogOpen(true)}
+              onClick={() => {
+                setExportFilters(prev => ({
+                  ...prev,
+                  department: selectedDepartment,
+                  role: selectedRole
+                }));
+                setIsExportDialogOpen(true);
+              }}
               variant="outline"
               className="group gap-2 border-blue-200 text-slate-700 bg-white/70 hover:bg-gradient-to-r hover:from-blue-500 hover:to-indigo-500 hover:text-white hover:border-transparent shadow-sm hover:shadow-lg transition-all dark:text-slate-100 dark:bg-slate-900/60 dark:border-slate-700"
             >
@@ -1933,29 +1973,27 @@ export default function EmployeeManagement() {
                     <Select
                       value={formData.role || 'employee'}
                       onValueChange={(value) => {
-                        // Auto-set designation based on role
-                        let designation = '';
-                        if (value === 'HR') {
-                          designation = 'HR';
-                        } else if (value === 'Manager') {
-                          designation = 'Manager';
+                        const roleValue = value as UserRole;
+                        // Auto-set designation based on role if designation is currently empty
+                        let newDesignation = formData.designation || '';
+                        if (!newDesignation) {
+                          if (roleValue === 'hr') {
+                            newDesignation = 'HR';
+                          } else if (roleValue === 'manager') {
+                            newDesignation = 'Manager';
+                          }
                         }
 
-                        // Convert to proper format for UserRole type
-                        let roleValue: UserRole = 'employee';
-                        if (value === 'Admin') roleValue = 'admin';
-                        else if (value === 'HR') roleValue = 'hr';
-                        else if (value === 'Manager') roleValue = 'manager';
-                        else if (value === 'TeamLead') roleValue = 'team_lead';
-                        else if (value === 'Employee') roleValue = 'employee';
+                        // If switching TO hr/manager, migrate single department TO multi-select list
+                        if ((roleValue === 'hr' || roleValue === 'manager') && formData.department && selectedDepartments.length === 0) {
+                          setSelectedDepartments([formData.department]);
+                        }
 
-                        setFormData((prev) => ({ ...prev, role: roleValue, designation }));
-                        // Reset department selections when role changes
-                        if (value === 'HR' || value === 'Manager') {
-                          setSelectedDepartments([]);
+                        // If switching FROM hr/manager, migrate first selected department TO single select
+                        if (roleValue !== 'hr' && roleValue !== 'manager' && selectedDepartments.length > 0) {
+                          setFormData(prev => ({ ...prev, role: roleValue, designation: newDesignation, department: selectedDepartments[0] }));
                         } else {
-                          setSelectedDepartments([]);
-                          setFormData((prev) => ({ ...prev, department: '' }));
+                          setFormData((prev) => ({ ...prev, role: roleValue, designation: newDesignation }));
                         }
                       }}
                     >
@@ -1965,7 +2003,7 @@ export default function EmployeeManagement() {
                             {formData.role === 'admin' && 'Admin'}
                             {formData.role === 'hr' && 'HR'}
                             {formData.role === 'manager' && 'Manager'}
-                            {formData.role === 'team_lead' && 'Team Lead'}
+                            {formData.role === 'team_lead' && 'TeamLead'}
                             {formData.role === 'employee' && 'Employee'}
                           </span>
                         ) : (
@@ -1973,31 +2011,31 @@ export default function EmployeeManagement() {
                         )}
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Admin">
+                        <SelectItem value="admin">
                           <div className="flex items-center gap-2">
                             {formData.role === 'admin' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-red-500 to-rose-600"></div>}
                             Admin
                           </div>
                         </SelectItem>
-                        <SelectItem value="HR">
+                        <SelectItem value="hr">
                           <div className="flex items-center gap-2">
                             {formData.role === 'hr' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-600"></div>}
                             HR
                           </div>
                         </SelectItem>
-                        <SelectItem value="Manager">
+                        <SelectItem value="manager">
                           <div className="flex items-center gap-2">
                             {formData.role === 'manager' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-600"></div>}
                             Manager
                           </div>
                         </SelectItem>
-                        <SelectItem value="TeamLead">
+                        <SelectItem value="team_lead">
                           <div className="flex items-center gap-2">
                             {formData.role === 'team_lead' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600"></div>}
-                            Team Lead
+                            TeamLead
                           </div>
                         </SelectItem>
-                        <SelectItem value="Employee">
+                        <SelectItem value="employee">
                           <div className="flex items-center gap-2">
                             {formData.role === 'employee' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-600"></div>}
                             Employee
@@ -2099,18 +2137,16 @@ export default function EmployeeManagement() {
                     </div>
                   )}
 
-                  {/* Designation Field - Hide for HR and Manager roles */}
-                  {formData.role !== 'hr' && formData.role !== 'manager' && (
-                    <div>
-                      <Label htmlFor="create-designation">Designation</Label>
-                      <Input
-                        id="create-designation"
-                        value={formData.designation || ''}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, designation: e.target.value }))}
-                        className="mt-1"
-                      />
-                    </div>
-                  )}
+                  {/* Designation Field - Always show now */}
+                  <div>
+                    <Label htmlFor="create-designation">Designation</Label>
+                    <Input
+                      id="create-designation"
+                      value={formData.designation || ''}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, designation: e.target.value }))}
+                      className="mt-1"
+                    />
+                  </div>
 
 
                   <div>
@@ -2452,7 +2488,7 @@ export default function EmployeeManagement() {
                 </SelectItem>
                 <SelectItem value="TeamLead" className="cursor-pointer hover:bg-cyan-50 dark:hover:bg-cyan-950 transition-colors">
                   <div className="flex items-center gap-2">
-                    Team Lead
+                    TeamLead
                   </div>
                 </SelectItem>
                 <SelectItem value="Employee" className="cursor-pointer hover:bg-green-50 dark:hover:bg-green-950 transition-colors">
@@ -2704,23 +2740,27 @@ export default function EmployeeManagement() {
               <Select
                 value={formData.role || 'employee'}
                 onValueChange={(value) => {
-                  // Auto-set designation based on role
-                  let designation = '';
-                  if (value === 'hr') {
-                    designation = 'HR';
-                  } else if (value === 'manager') {
-                    designation = 'Manager';
+                  const roleValue = value as UserRole;
+                  // Auto-set designation based on role if currently empty
+                  let newDesignation = formData.designation || '';
+                  if (!newDesignation) {
+                    if (roleValue === 'hr') {
+                      newDesignation = 'HR';
+                    } else if (roleValue === 'manager') {
+                      newDesignation = 'Manager';
+                    }
                   }
 
-                  // Value is already lowercase from SelectItem
-                  const roleValue = value as UserRole;
-                  setFormData((prev) => ({ ...prev, role: roleValue, designation }));
-                  // Reset department selections when role changes
-                  if (value === 'hr' || value === 'manager') {
-                    setSelectedDepartments([]);
+                  // If switching TO hr/manager, migrate single department TO multi-select list
+                  if ((roleValue === 'hr' || roleValue === 'manager') && formData.department && selectedDepartments.length === 0) {
+                    setSelectedDepartments([formData.department]);
+                  }
+
+                  // If switching FROM hr/manager, migrate first selected department TO single select
+                  if (roleValue !== 'hr' && roleValue !== 'manager' && selectedDepartments.length > 0) {
+                    setFormData(prev => ({ ...prev, role: roleValue, designation: newDesignation, department: selectedDepartments[0] }));
                   } else {
-                    setSelectedDepartments([]);
-                    setFormData((prev) => ({ ...prev, department: '' }));
+                    setFormData((prev) => ({ ...prev, role: roleValue, designation: newDesignation }));
                   }
                 }}
               >
@@ -2741,7 +2781,7 @@ export default function EmployeeManagement() {
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="hr">HR</SelectItem>
                   <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="team_lead">Team Lead</SelectItem>
+                  <SelectItem value="team_lead">TeamLead</SelectItem>
                   <SelectItem value="employee">Employee</SelectItem>
                 </SelectContent>
               </Select>
@@ -2834,18 +2874,43 @@ export default function EmployeeManagement() {
               </div>
             )}
 
-            {/* Designation Field - Hide for HR and Manager roles */}
-            {formData.role !== 'hr' && formData.role !== 'manager' && (
-              <div>
-                <Label htmlFor="edit-designation">Designation</Label>
-                <Input
-                  id="edit-designation"
-                  value={formData.designation || ''}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, designation: e.target.value }))}
-                  className="mt-1"
-                />
-              </div>
-            )}
+            {/* Status Field - Added for visibility and control */}
+            <div>
+              <Label htmlFor="edit-status">Status *</Label>
+              <Select
+                value={formData.status || 'active'}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, status: value as 'active' | 'inactive' }))}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                      Active
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="inactive">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-gray-400"></span>
+                      Inactive
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Designation Field - Always show now */}
+            <div>
+              <Label htmlFor="edit-designation">Designation</Label>
+              <Input
+                id="edit-designation"
+                value={formData.designation || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, designation: e.target.value }))}
+                className="mt-1"
+              />
+            </div>
 
 
             <div>
@@ -3253,6 +3318,49 @@ export default function EmployeeManagement() {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {/* Export Filters */}
+            <div className="grid grid-cols-1 gap-4 mb-4">
+              <div>
+                <Label htmlFor="export-department">Department</Label>
+                <Select
+                  value={exportFilters.department}
+                  onValueChange={(value) => setExportFilters(prev => ({ ...prev, department: value }))}
+                >
+                  <SelectTrigger id="export-department" className="mt-1">
+                    <SelectValue placeholder="Select Department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="export-role">Role</Label>
+                <Select
+                  value={exportFilters.role}
+                  onValueChange={(value) => setExportFilters(prev => ({ ...prev, role: value }))}
+                >
+                  <SelectTrigger id="export-role" className="mt-1">
+                    <SelectValue placeholder="Select Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="hr">HR</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="team_lead">Team Lead</SelectItem>
+                    <SelectItem value="employee">Employee</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             {/* Export Format Selection */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Export Format</Label>

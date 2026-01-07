@@ -7,10 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  FileText, 
-  Download, 
-  TrendingUp, 
+import {
+  FileText,
+  Download,
+  TrendingUp,
   TrendingDown,
   Users,
   Clock,
@@ -65,7 +65,7 @@ export default function Reports() {
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth().toString());
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear().toString());
   const [selectedDepartment, setSelectedDepartment] = useState('all');
-  
+
   // Check URL for tab parameter
   const urlParams = new URLSearchParams(window.location.search);
   const tabParam = urlParams.get('tab');
@@ -76,7 +76,7 @@ export default function Reports() {
   const [expandedDepartments, setExpandedDepartments] = useState<Set<string>>(new Set());
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportEmployee, setExportEmployee] = useState<{ id: string; name: string } | null>(null);
-  
+
   // State for API data
   const [employeePerformance, setEmployeePerformance] = useState<EmployeePerformance[]>([]);
   const [departmentMetrics, setDepartmentMetrics] = useState<DepartmentMetrics[]>([]);
@@ -145,7 +145,7 @@ export default function Reports() {
         const empData = await empResponse.json();
         const employees = empData.employees || [];
         setEmployeePerformance(employees);
-        
+
         // Update departments list to only include those with employees
         const employeeDepts = Array.from(
           new Set(
@@ -155,7 +155,7 @@ export default function Reports() {
           )
         ).sort() as string[];
         setDepartments(employeeDepts);
-        
+
         // Reset department filter if selected department has no employees
         if (selectedDepartment !== 'all' && !employeeDepts.includes(selectedDepartment)) {
           setSelectedDepartment('all');
@@ -237,10 +237,10 @@ export default function Reports() {
   const calculateOverallRating = (employee: EmployeePerformance) => {
     const productivity = calculateProductivity(employee.employeeId);
     const qualityScore = calculateQualityScore(employee.employeeId);
-    
+
     // If no manual ratings exist, return 0
     if (productivity === 0 || qualityScore === 0) return 0;
-    
+
     // Calculate average of all 4 metrics
     return Math.round(
       (employee.attendanceScore + employee.taskCompletionRate + productivity + qualityScore) / 4
@@ -306,7 +306,7 @@ export default function Reports() {
       // Generate full report with current filters
       const startDate = new Date(parseInt(selectedYear), parseInt(selectedMonth), 1);
       const endDate = new Date(parseInt(selectedYear), parseInt(selectedMonth) + 1, 0);
-      
+
       const params = new URLSearchParams({
         format: format,
         start_date: `${selectedYear}-${String(parseInt(selectedMonth) + 1).padStart(2, '0')}-01`,
@@ -336,10 +336,10 @@ export default function Reports() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      
+
       const monthName = formatIST(new Date(parseInt(selectedYear), parseInt(selectedMonth)), 'MMMM');
       const filename = `performance_report_${monthName}_${selectedYear}.${format}`;
-      
+
       a.download = filename;
       document.body.appendChild(a);
       a.click();
@@ -363,120 +363,103 @@ export default function Reports() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 relative">
       {(user?.role === 'manager' || user?.role === 'team_lead') && <V2Overlay fallbackPath={user?.role === 'manager' ? '/manager' : '/team_lead'} />}
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6">
+      <div className="container mx-auto px-4 py-6 space-y-6 max-w-7xl">
         {/* Header Section */}
-        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-4 sm:p-6 lg:p-8">
-          <div className="flex flex-col gap-4 lg:gap-0 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
-                <FileText className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  Performance Reports
-                </h1>
-                <p className="text-sm text-muted-foreground mt-1">Track and analyze team performance</p>
-              </div>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm p-4 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-tr from-blue-500/10 to-indigo-500/10 dark:from-blue-500/20 dark:to-indigo-500/20 rounded-lg border border-blue-100 dark:border-blue-800">
+              <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
-            
-            {/* Filters - Responsive Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 lg:flex lg:gap-2">
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-full sm:w-auto lg:w-[140px] h-10 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 shadow-sm">
-                  <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="Month" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">January</SelectItem>
-                  <SelectItem value="1">February</SelectItem>
-                  <SelectItem value="2">March</SelectItem>
-                  <SelectItem value="3">April</SelectItem>
-                  <SelectItem value="4">May</SelectItem>
-                  <SelectItem value="5">June</SelectItem>
-                  <SelectItem value="6">July</SelectItem>
-                  <SelectItem value="7">August</SelectItem>
-                  <SelectItem value="8">September</SelectItem>
-                  <SelectItem value="9">October</SelectItem>
-                  <SelectItem value="10">November</SelectItem>
-                  <SelectItem value="11">December</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-full sm:w-auto lg:w-[110px] h-10 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 shadow-sm">
-                  <SelectValue placeholder="Year" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2026">2026</SelectItem>
-                  <SelectItem value="2025">2025</SelectItem>
-                  <SelectItem value="2024">2024</SelectItem>
-                  <SelectItem value="2023">2023</SelectItem>
-                  <SelectItem value="2022">2022</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                <SelectTrigger className="w-full sm:w-auto lg:w-[200px] h-10 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 shadow-sm">
-                  <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="Department" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                  {departments.map(dept => (
-                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+                Performance Reports
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Track and analyze team performance</p>
             </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-[120px] h-9 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                <Calendar className="h-3.5 w-3.5 mr-1.5 text-slate-400" />
+                <SelectValue placeholder="Month" />
+              </SelectTrigger>
+              <SelectContent>
+                {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((month, i) => (
+                  <SelectItem key={i} value={i.toString()} className="text-xs">{month}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger className="w-[90px] h-9 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                {["2026", "2025", "2024", "2023", "2022"].map(year => (
+                  <SelectItem key={year} value={year} className="text-xs">{year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+              <SelectTrigger className="w-[160px] h-9 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-left">
+                <Filter className="h-3.5 w-3.5 mr-1.5 text-slate-400" />
+                <SelectValue placeholder="Department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">All Departments</SelectItem>
+                {departments.map(dept => (
+                  <SelectItem key={dept} value={dept} className="text-xs">{dept}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        {/* Tabs Navigation */}
-        <Tabs value={selectedReportType} onValueChange={setSelectedReportType} className="space-y-4 sm:space-y-6">
-          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg rounded-2xl shadow-lg border border-white/20 p-2">
-            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 gap-2 bg-transparent h-auto">
-              <TabsTrigger 
-                value="performance" 
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-200 rounded-xl py-2 px-4 text-sm sm:text-base flex items-center justify-center"
-              >
-                <Users className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Employee Performance</span>
-                <span className="sm:hidden">Employees</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="department" 
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-200 rounded-xl py-2 px-4 text-sm sm:text-base flex items-center justify-center"
-              >
-                <PieChart className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Department Metrics</span>
-                <span className="sm:hidden">Departments</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="summary" 
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-200 rounded-xl py-2 px-4 text-sm sm:text-base flex items-center justify-center"
-              >
-                <BarChart3 className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Executive Summary</span>
-                <span className="sm:hidden">Summary</span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
 
-          <TabsContent value="performance" className="space-y-4">
-            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 overflow-hidden">
-              <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white">Individual Performance Metrics</h2>
-                    <p className="text-sm text-muted-foreground mt-1">Detailed employee performance analysis</p>
-                  </div>
-                  <Button 
-                    onClick={() => openExportDialog()} 
-                    className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
-                  </Button>
+        {/* Tabs Navigation */}
+        <Tabs value={selectedReportType} onValueChange={setSelectedReportType} className="space-y-4">
+          <TabsList className="flex items-center gap-1 bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-lg w-fit border border-slate-200/50 dark:border-slate-700/50">
+            <TabsTrigger
+              value="performance"
+              className="h-8 text-xs font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all"
+            >
+              <Users className="h-3.5 w-3.5 mr-1.5" />
+              Employee Performance
+            </TabsTrigger>
+            <TabsTrigger
+              value="department"
+              className="h-8 text-xs font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 data-[state=active]:shadow-sm transition-all"
+            >
+              <PieChart className="h-3.5 w-3.5 mr-1.5" />
+              Department Metrics
+            </TabsTrigger>
+            <TabsTrigger
+              value="summary"
+              className="h-8 text-xs font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-sm transition-all"
+            >
+              <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
+              Executive Summary
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="performance" className="mt-0 outline-none">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Individual Performance</h2>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Detailed analytics per employee</p>
                 </div>
+                <Button
+                  onClick={() => openExportDialog()}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs font-medium gap-1.5"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Export
+                </Button>
               </div>
+
               <div className="p-4 sm:p-6">
                 {isLoading ? (
                   <div className="text-center py-12">
@@ -494,365 +477,335 @@ export default function Reports() {
                 ) : (
                   <div className="space-y-6">
                     {/* Expand/Collapse All Buttons */}
-                    <div className="flex justify-end gap-2">
-                      <Button 
-                        variant="outline" 
+                    <div className="flex justify-end gap-1.5 mb-4">
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={expandAllDepartments}
-                        className="text-xs"
+                        className="h-7 text-[10px] font-medium uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                       >
                         Expand All
                       </Button>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={collapseAllDepartments}
-                        className="text-xs"
+                        className="h-7 text-[10px] font-medium uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                       >
                         Collapse All
                       </Button>
                     </div>
 
                     {/* Department Groups */}
-                    {Object.entries(employeesByDepartment).map(([department, employees]) => {
-                      const isExpanded = expandedDepartments.has(department);
-                      const deptAvgScore = Math.round(
-                        employees.reduce((sum, emp) => sum + calculateOverallRating(emp), 0) / employees.length
-                      );
-                      
-                      return (
-                        <div key={department} className="border-2 border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-                          {/* Department Header - Clickable */}
-                          <button
-                            onClick={() => toggleDepartment(department)}
-                            className="w-full p-4 sm:p-6 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 hover:from-slate-200 hover:to-gray-200 dark:hover:from-slate-700 dark:hover:to-gray-700 transition-all duration-200"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-4">
-                                <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
-                                  <Users className="h-6 w-6 text-white" />
+                    <div className="space-y-3">
+                      {Object.entries(employeesByDepartment).map(([department, employees]) => {
+                        const isExpanded = expandedDepartments.has(department);
+                        const deptAvgScore = Math.round(
+                          employees.reduce((sum, emp) => sum + calculateOverallRating(emp), 0) / employees.length
+                        );
+
+                        return (
+                          <div key={department} className="border border-slate-100 dark:border-slate-800 rounded-lg overflow-hidden transition-all">
+                            {/* Department Header - Clickable */}
+                            <button
+                              onClick={() => toggleDepartment(department)}
+                              className="w-full flex items-center justify-between px-4 py-3 bg-slate-50/50 dark:bg-slate-800/30 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-md">
+                                  <Users className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                                 </div>
                                 <div className="text-left">
-                                  <h3 className="text-xl font-bold text-slate-800 dark:text-white">{department}</h3>
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    {employees.length} {employees.length === 1 ? 'Employee' : 'Employees'} • Avg Score: {deptAvgScore}%
+                                  <h3 className="text-xs font-bold text-slate-800 dark:text-white">{department}</h3>
+                                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                                    {employees.length} {employees.length === 1 ? 'member' : 'members'} • Avg {deptAvgScore}%
                                   </p>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-3">
-                                <Badge className={`px-4 py-2 text-sm font-bold ${getPerformanceBadge(deptAvgScore).variant === 'default' ? 'bg-green-500' : getPerformanceBadge(deptAvgScore).variant === 'secondary' ? 'bg-yellow-500' : 'bg-red-500'} text-white`}>
+                              <div className="flex items-center gap-2">
+                                <Badge className={`h-5 text-[10px] uppercase font-bold tracking-tighter ${getPerformanceBadge(deptAvgScore).variant === 'default' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : getPerformanceBadge(deptAvgScore).variant === 'secondary' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'} border`}>
                                   {getPerformanceBadge(deptAvgScore).text}
                                 </Badge>
-                                <div className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
-                                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                                  <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                   </svg>
                                 </div>
                               </div>
-                            </div>
-                          </button>
+                            </button>
 
-                          {/* Employee List - Collapsible */}
-                          {isExpanded && (
-                            <div className="p-4 sm:p-6 space-y-4 bg-white dark:bg-slate-900">
-                              {employees.map((employee) => {
-                    const productivity = calculateProductivity(employee.employeeId);
-                    const qualityScore = calculateQualityScore(employee.employeeId);
-                    const overallRating = calculateOverallRating(employee);
-                    const badge = getPerformanceBadge(overallRating);
-                    const rating = getEmployeeRating(employee.employeeId);
-                    const hasRating = !!rating;
-                    
-                    return (
-                      <div 
-                        key={employee.id} 
-                        className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 hover:scale-[1.01]"
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                              {employee.name.charAt(0)}
-                            </div>
-                            <div>
-                              <h3 className="font-bold text-lg text-slate-800 dark:text-white">{employee.name}</h3>
-                              <p className="text-xs sm:text-sm text-muted-foreground">
-                                {employee.employeeId} • {employee.department} • {employee.role}
-                              </p>
-                            </div>
+                            {/* Employee List - Collapsible */}
+                            {isExpanded && (
+                              <div className="p-3 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                                {employees.map((employee) => {
+                                  const productivity = calculateProductivity(employee.employeeId);
+                                  const qualityScore = calculateQualityScore(employee.employeeId);
+                                  const overallRating = calculateOverallRating(employee);
+                                  const badge = getPerformanceBadge(overallRating);
+                                  const rating = getEmployeeRating(employee.employeeId);
+                                  const hasRating = !!rating;
+
+                                  return (
+                                    <div
+                                      key={employee.id}
+                                      className="group bg-white dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-800 p-3 sm:p-4 hover:border-blue-200 dark:hover:border-blue-800 transition-all hover:shadow-sm"
+                                    >
+                                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                        <div className="flex items-center gap-2.5">
+                                          <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 font-bold text-xs ring-2 ring-white dark:ring-slate-800 shadow-sm">
+                                            {employee.name.charAt(0)}
+                                          </div>
+                                          <div>
+                                            <h3 className="font-bold text-sm text-slate-800 dark:text-white leading-tight">{employee.name}</h3>
+                                            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                                              {employee.employeeId} • {employee.role}
+                                            </p>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                                          <Badge
+                                            variant={badge.variant}
+                                            className={`h-5 text-[10px] uppercase font-bold tracking-tighter ${badge.variant === 'default' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : badge.variant === 'secondary' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'} border shadow-none`}
+                                          >
+                                            {badge.text}
+                                          </Badge>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => openRatingDialog(employee)}
+                                            className="h-7 px-2 text-[10px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                          >
+                                            <Edit className="h-3 w-3 mr-1" />
+                                            {hasRating ? 'Update' : 'Rate'}
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => openExportDialog({ id: employee.employeeId, name: employee.name })}
+                                            className="h-7 px-2 text-[10px] font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                          >
+                                            <Download className="h-3 w-3 mr-1" />
+                                            Export
+                                          </Button>
+                                        </div>
+                                      </div>
+                                      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                        <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
+                                          <div className="flex items-center gap-1.5 mb-1.5">
+                                            <Clock className="h-3 w-3 text-blue-500" />
+                                            <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Attendance</p>
+                                          </div>
+                                          <div className="flex items-baseline gap-1">
+                                            <span className={`text-base font-bold ${getPerformanceColor(employee.attendanceScore)}`}>
+                                              {employee.attendanceScore}
+                                            </span>
+                                            <span className="text-[10px] text-slate-400">%</span>
+                                          </div>
+                                          <Progress value={employee.attendanceScore} className="h-1 mt-1.5 bg-slate-200 dark:bg-slate-700" />
+                                        </div>
+
+                                        <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
+                                          <div className="flex items-center gap-1.5 mb-1.5">
+                                            <Target className="h-3 w-3 text-emerald-500" />
+                                            <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tasks</p>
+                                          </div>
+                                          <div className="flex items-baseline gap-1">
+                                            <span className={`text-base font-bold ${getPerformanceColor(employee.taskCompletionRate)}`}>
+                                              {employee.taskCompletionRate}
+                                            </span>
+                                            <span className="text-[10px] text-slate-400">%</span>
+                                          </div>
+                                          <Progress value={employee.taskCompletionRate} className="h-1 mt-1.5 bg-slate-200 dark:bg-slate-700" />
+                                        </div>
+
+                                        <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
+                                          <div className="flex items-center gap-1.5 mb-1.5">
+                                            <Activity className="h-3 w-3 text-purple-500" />
+                                            <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Productivity</p>
+                                          </div>
+                                          {hasRating ? (
+                                            <>
+                                              <div className="flex items-baseline gap-1">
+                                                <span className={`text-base font-bold ${getPerformanceColor(productivity)}`}>
+                                                  {Math.round(productivity)}
+                                                </span>
+                                                <span className="text-[10px] text-slate-400">%</span>
+                                              </div>
+                                              <div className="flex gap-0.5 mt-1">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                  <Star
+                                                    key={star}
+                                                    className={`h-2.5 w-2.5 ${star <= rating.productivityRating
+                                                      ? 'fill-amber-400 text-amber-400'
+                                                      : 'text-slate-200 dark:text-slate-700'
+                                                      }`}
+                                                  />
+                                                ))}
+                                              </div>
+                                            </>
+                                          ) : (
+                                            <p className="text-[10px] text-slate-400 py-1">N/A</p>
+                                          )}
+                                        </div>
+
+                                        <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
+                                          <div className="flex items-center gap-1.5 mb-1.5">
+                                            <Award className="h-3 w-3 text-pink-500" />
+                                            <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Quality</p>
+                                          </div>
+                                          {hasRating ? (
+                                            <>
+                                              <div className="flex items-baseline gap-1">
+                                                <span className={`text-base font-bold ${getPerformanceColor(qualityScore)}`}>
+                                                  {Math.round(qualityScore)}
+                                                </span>
+                                                <span className="text-[10px] text-slate-400">%</span>
+                                              </div>
+                                              <div className="flex gap-0.5 mt-1">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                  <Star
+                                                    key={star}
+                                                    className={`h-2.5 w-2.5 ${star <= rating.qualityRating
+                                                      ? 'fill-amber-400 text-amber-400'
+                                                      : 'text-slate-200 dark:text-slate-700'
+                                                      }`}
+                                                  />
+                                                ))}
+                                              </div>
+                                            </>
+                                          ) : (
+                                            <p className="text-[10px] text-slate-400 py-1">N/A</p>
+                                          )}
+                                        </div>
+
+                                        <div className="bg-blue-600 rounded-lg p-2.5 shadow-sm col-span-2 md:col-span-1">
+                                          <div className="flex items-center gap-1.5 mb-1.5">
+                                            <BarChart3 className="h-3 w-3 text-white/80" />
+                                            <p className="text-[10px] font-bold text-white/80 uppercase tracking-wider">Overall</p>
+                                          </div>
+                                          <div className="flex items-baseline gap-1">
+                                            <span className="text-lg font-bold text-white">
+                                              {overallRating > 0 ? overallRating : '-'}
+                                            </span>
+                                            <span className="text-[10px] text-white/60 font-medium">%</span>
+                                          </div>
+                                          <Progress value={overallRating} className="h-1 mt-1.5 bg-white/20" />
+                                        </div>
+                                      </div>
+                                      {hasRating && (
+                                        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                          <div className="bg-indigo-50/30 dark:bg-indigo-900/10 rounded-md p-2 border border-indigo-100/50 dark:border-indigo-900/30">
+                                            <p className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                                              <Activity className="h-2.5 w-2.5" />
+                                              Productivity
+                                            </p>
+                                            <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2">{rating.productivityDescription}</p>
+                                          </div>
+                                          <div className="bg-amber-50/30 dark:bg-amber-900/10 rounded-md p-2 border border-amber-100/50 dark:border-amber-900/30">
+                                            <p className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                                              <Award className="h-2.5 w-2.5" />
+                                              Quality
+                                            </p>
+                                            <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2">{rating.qualityDescription}</p>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge 
-                              variant={badge.variant} 
-                              className="text-xs sm:text-sm px-3 py-1 shadow-md"
-                            >
-                              {badge.text}
-                            </Badge>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => openRatingDialog(employee)}
-                              className="text-xs sm:text-sm shadow-sm hover:shadow-md transition-shadow"
-                            >
-                              <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                              {hasRating ? 'Update' : 'Rate'}
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => openExportDialog({ id: employee.employeeId, name: employee.name })}
-                              className="text-xs sm:text-sm shadow-sm hover:shadow-md transition-shadow"
-                            >
-                              <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                              Export
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                            <div className="bg-white dark:bg-slate-800 rounded-lg p-3 sm:p-4 shadow-sm border border-slate-100 dark:border-slate-700">
-                              <div className="flex items-center gap-2 mb-2">
-                                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                                  <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                </div>
-                                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Attendance</p>
-                              </div>
-                              <div className="flex items-baseline gap-2 mb-2">
-                                <span className={`text-2xl sm:text-3xl font-bold ${getPerformanceColor(employee.attendanceScore)}`}>
-                                  {employee.attendanceScore}
-                                </span>
-                                <span className="text-sm text-muted-foreground">%</span>
-                              </div>
-                              <Progress value={employee.attendanceScore} className="h-2 mb-2" />
-                              <p className="text-xs text-muted-foreground">Auto-calculated</p>
-                            </div>
-                            <div className="bg-white dark:bg-slate-800 rounded-lg p-3 sm:p-4 shadow-sm border border-slate-100 dark:border-slate-700">
-                              <div className="flex items-center gap-2 mb-2">
-                                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                                  <Target className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                </div>
-                                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Tasks</p>
-                              </div>
-                              <div className="flex items-baseline gap-2 mb-2">
-                                <span className={`text-2xl sm:text-3xl font-bold ${getPerformanceColor(employee.taskCompletionRate)}`}>
-                                  {employee.taskCompletionRate}
-                                </span>
-                                <span className="text-sm text-muted-foreground">%</span>
-                              </div>
-                              <Progress value={employee.taskCompletionRate} className="h-2 mb-2" />
-                              <p className="text-xs text-muted-foreground">Auto-calculated</p>
-                            </div>
-                            <div className="bg-white dark:bg-slate-800 rounded-lg p-3 sm:p-4 shadow-sm border border-slate-100 dark:border-slate-700">
-                              <div className="flex items-center gap-2 mb-2">
-                                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                                  <Activity className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                                </div>
-                                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Productivity</p>
-                              </div>
-                              {hasRating ? (
-                                <>
-                                  <div className="flex items-baseline gap-2 mb-2">
-                                    <span className={`text-2xl sm:text-3xl font-bold ${getPerformanceColor(productivity)}`}>
-                                      {Math.round(productivity)}
-                                    </span>
-                                    <span className="text-sm text-muted-foreground">%</span>
-                                  </div>
-                                  <div className="flex gap-1 mb-2">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                      <Star
-                                        key={star}
-                                        className={`h-3 w-3 sm:h-4 sm:w-4 ${
-                                          star <= rating.productivityRating
-                                            ? 'fill-yellow-400 text-yellow-400'
-                                            : 'text-gray-300'
-                                        }`}
-                                      />
-                                    ))}
-                                  </div>
-                                  <Progress value={productivity} className="h-2 mb-2" />
-                                </>
-                              ) : (
-                                <div className="py-4">
-                                  <span className="text-sm text-muted-foreground">Not rated yet</span>
-                                </div>
-                              )}
-                              <p className="text-xs text-muted-foreground">Manual rating</p>
-                            </div>
-                            <div className="bg-white dark:bg-slate-800 rounded-lg p-3 sm:p-4 shadow-sm border border-slate-100 dark:border-slate-700">
-                              <div className="flex items-center gap-2 mb-2">
-                                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                                  <Award className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                                </div>
-                                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Quality</p>
-                              </div>
-                              {hasRating ? (
-                                <>
-                                  <div className="flex items-baseline gap-2 mb-2">
-                                    <span className={`text-2xl sm:text-3xl font-bold ${getPerformanceColor(qualityScore)}`}>
-                                      {Math.round(qualityScore)}
-                                    </span>
-                                    <span className="text-sm text-muted-foreground">%</span>
-                                  </div>
-                                  <div className="flex gap-1 mb-2">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                      <Star
-                                        key={star}
-                                        className={`h-3 w-3 sm:h-4 sm:w-4 ${
-                                          star <= rating.qualityRating
-                                            ? 'fill-yellow-400 text-yellow-400'
-                                            : 'text-gray-300'
-                                        }`}
-                                      />
-                                    ))}
-                                  </div>
-                                  <Progress value={qualityScore} className="h-2 mb-2" />
-                                </>
-                              ) : (
-                                <div className="py-4">
-                                  <span className="text-sm text-muted-foreground">Not rated yet</span>
-                                </div>
-                              )}
-                              <p className="text-xs text-muted-foreground">Manual rating</p>
-                            </div>
-                            <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 rounded-lg p-3 sm:p-4 shadow-md border-2 border-indigo-200 dark:border-indigo-700">
-                              <div className="flex items-center gap-2 mb-2">
-                                <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg">
-                                  <BarChart3 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                                </div>
-                                <p className="text-xs sm:text-sm font-medium text-indigo-900 dark:text-indigo-200">Overall</p>
-                              </div>
-                              {overallRating > 0 ? (
-                                <>
-                                  <div className="flex items-baseline gap-2 mb-2">
-                                    <span className={`text-3xl sm:text-4xl font-bold ${getPerformanceColor(overallRating)}`}>
-                                      {overallRating}
-                                    </span>
-                                    <span className="text-sm text-muted-foreground">%</span>
-                                  </div>
-                                  <Progress value={overallRating} className="h-2 mb-2" />
-                                </>
-                              ) : (
-                                <div className="py-4">
-                                  <span className="text-sm text-muted-foreground">Pending ratings</span>
-                                </div>
-                              )}
-                              <p className="text-xs text-muted-foreground">Average score</p>
-                            </div>
-                          </div>
-                          {hasRating && (
-                            <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-                              <h4 className="text-sm font-semibold mb-3 text-slate-700 dark:text-slate-300">Performance Comments</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
-                                  <p className="text-xs font-semibold text-purple-900 dark:text-purple-200 mb-1 flex items-center gap-1">
-                                    <Activity className="h-3 w-3" />
-                                    Productivity
-                                  </p>
-                                  <p className="text-sm text-slate-700 dark:text-slate-300">{rating.productivityDescription}</p>
-                                </div>
-                                <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
-                                  <p className="text-xs font-semibold text-amber-900 dark:text-amber-200 mb-1 flex items-center gap-1">
-                                    <Award className="h-3 w-3" />
-                                    Quality
-                                  </p>
-                                  <p className="text-sm text-slate-700 dark:text-slate-300">{rating.qualityDescription}</p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                                </div>
-                              );
-                            })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="department" className="space-y-4">
-            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 overflow-hidden">
-              <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-slate-800 dark:to-slate-700">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white">Department Performance Overview</h2>
-                    <p className="text-sm text-muted-foreground mt-1">Compare department metrics and performance</p>
-                  </div>
-                  <Button 
-                    onClick={() => openExportDialog()} 
-                    className="w-full sm:w-auto bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 shadow-lg"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
-                  </Button>
+          <TabsContent value="department" className="mt-0 outline-none">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Department Overview</h2>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Average metrics by department</p>
                 </div>
+                <Button
+                  onClick={() => openExportDialog()}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs font-medium gap-1.5"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Export
+                </Button>
               </div>
-              <div className="p-4 sm:p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+              <div className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {departmentMetrics.map((dept) => {
                     const badge = getPerformanceBadge(dept.performanceScore);
                     return (
-                      <div 
+                      <div
                         key={dept.department}
-                        className="bg-gradient-to-br from-white to-purple-50 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
+                        className="bg-slate-50/50 dark:bg-slate-800/30 rounded-lg border border-slate-100 dark:border-slate-800/50 p-4 hover:border-blue-200 dark:hover:border-blue-800 transition-all"
                       >
-                        <div className="flex items-center justify-between mb-6">
-                          <div className="flex items-center gap-3">
-                            <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
-                              <Users className="h-5 w-5 text-white" />
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 bg-purple-50 dark:bg-purple-900/30 rounded-md">
+                              <Users className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
                             </div>
-                            <h3 className="font-bold text-lg text-slate-800 dark:text-white">{dept.department}</h3>
+                            <h3 className="text-xs font-bold text-slate-800 dark:text-white truncate max-w-[120px]">{dept.department}</h3>
                           </div>
-                          <Badge variant={badge.variant} className="shadow-md">
+                          <Badge variant={badge.variant} className="h-5 text-[10px] shadow-none uppercase font-bold tracking-tighter">
                             {badge.text}
                           </Badge>
                         </div>
-                        
-                        <div className="space-y-4">
-                          <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                            <span className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                              <Users className="h-4 w-4" />
-                              Employees
+
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center px-2 py-1.5 bg-white dark:bg-slate-900 rounded-md border border-slate-100/50 dark:border-slate-800/50">
+                            <span className="text-[10px] font-medium text-slate-500 flex items-center gap-1.5">
+                              <Users className="h-3 w-3" />
+                              Members
                             </span>
-                            <span className="font-bold text-lg">{dept.totalEmployees}</span>
+                            <span className="text-xs font-bold">{dept.totalEmployees}</span>
                           </div>
-                          
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                              <p className="text-xs text-muted-foreground mb-1">Productivity</p>
-                              <p className={`text-xl font-bold ${getPerformanceColor(dept.avgProductivity)}`}>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="p-2 bg-purple-50/50 dark:bg-purple-900/10 rounded-md">
+                              <p className="text-[9px] text-slate-500 uppercase font-bold tracking-tight mb-0.5">Prod.</p>
+                              <p className={`text-sm font-bold ${getPerformanceColor(dept.avgProductivity)}`}>
                                 {dept.avgProductivity}%
                               </p>
                             </div>
-                            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                              <p className="text-xs text-muted-foreground mb-1">Attendance</p>
-                              <p className={`text-xl font-bold ${getPerformanceColor(dept.avgAttendance)}`}>
+                            <div className="p-2 bg-blue-50/50 dark:bg-blue-900/10 rounded-md">
+                              <p className="text-[9px] text-slate-500 uppercase font-bold tracking-tight mb-0.5">Atten.</p>
+                              <p className={`text-sm font-bold ${getPerformanceColor(dept.avgAttendance)}`}>
                                 {dept.avgAttendance}%
                               </p>
                             </div>
                           </div>
-                          
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                              <p className="text-xs text-muted-foreground mb-1">Completed</p>
-                              <p className="text-xl font-bold text-green-600">{dept.tasksCompleted}</p>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="p-2 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-md">
+                              <p className="text-[9px] text-slate-500 uppercase font-bold tracking-tight mb-0.5">Done</p>
+                              <p className="text-sm font-bold text-emerald-600">{dept.tasksCompleted}</p>
                             </div>
-                            <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                              <p className="text-xs text-muted-foreground mb-1">Pending</p>
-                              <p className="text-xl font-bold text-yellow-600">{dept.tasksPending}</p>
+                            <div className="p-2 bg-amber-50/50 dark:bg-amber-900/10 rounded-md">
+                              <p className="text-[9px] text-slate-500 uppercase font-bold tracking-tight mb-0.5">Wait</p>
+                              <p className="text-sm font-bold text-amber-600">{dept.tasksPending}</p>
                             </div>
                           </div>
-                          
-                          <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Performance Score</span>
-                              <span className={`font-bold text-2xl ${getPerformanceColor(dept.performanceScore)}`}>
+
+                          <div className="pt-2">
+                            <div className="flex justify-between items-center mb-1.5">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Score</span>
+                              <span className={`text-sm font-bold ${getPerformanceColor(dept.performanceScore)}`}>
                                 {dept.performanceScore}%
                               </span>
                             </div>
-                            <Progress value={dept.performanceScore} className="h-3" />
+                            <Progress value={dept.performanceScore} className="h-1 bg-slate-100 dark:bg-slate-800" />
                           </div>
                         </div>
                       </div>
@@ -863,286 +816,198 @@ export default function Reports() {
             </div>
           </TabsContent>
 
-          <TabsContent value="summary" className="space-y-4 sm:space-y-6">
+          <TabsContent value="summary" className="mt-0 outline-none">
             {isLoading ? (
               <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-500 border-t-transparent mx-auto"></div>
-                <p className="mt-4 text-muted-foreground">Loading executive summary...</p>
+                <div className="animate-spin rounded-full h-8 w-8 border-4 border-emerald-500 border-t-transparent mx-auto"></div>
+                <p className="mt-4 text-xs text-slate-500">Loading summary...</p>
               </div>
             ) : (
-              <>
-                {/* Quick Stats - Mobile Optimized */}
-                <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl sm:rounded-2xl shadow-lg border border-blue-200 dark:border-blue-800 p-4 sm:p-6 hover:shadow-xl transition-all duration-300">
-                    <div className="flex items-center justify-between mb-3 sm:mb-4">
-                      <div className="p-2 sm:p-3 bg-blue-500 rounded-lg sm:rounded-xl shadow-lg">
-                        <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+              <div className="space-y-4">
+                {/* Quick Stats */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div className="flex items-center gap-2.5 mb-3">
+                      <div className="p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-md">
+                        <Activity className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                       </div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Avg Performance</p>
                     </div>
-                    <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">Avg Performance</p>
-                    <p className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white mb-1">{executiveSummary?.avgPerformance || 0}%</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground">All Employees</p>
-                  </div>
-                  
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl sm:rounded-2xl shadow-lg border border-purple-200 dark:border-purple-800 p-4 sm:p-6 hover:shadow-xl transition-all duration-300">
-                    <div className="flex items-center justify-between mb-3 sm:mb-4">
-                      <div className="p-2 sm:p-3 bg-purple-500 rounded-lg sm:rounded-xl shadow-lg">
-                        <Target className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-                      </div>
-                    </div>
-                    <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">Tasks Completed</p>
-                    <p className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white mb-1">{executiveSummary?.totalTasksCompleted || 0}</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground">This month</p>
-                  </div>
-                  
-                  <div className="bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 rounded-xl sm:rounded-2xl shadow-lg border border-amber-200 dark:border-amber-800 p-4 sm:p-6 hover:shadow-xl transition-all duration-300">
-                    <div className="flex items-center justify-between mb-3 sm:mb-4">
-                      <div className="p-2 sm:p-3 bg-amber-500 rounded-lg sm:rounded-xl shadow-lg">
-                        <Award className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-                      </div>
-                    </div>
-                    <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">Best Department</p>
-                    <p className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white mb-1 truncate">{executiveSummary?.bestDepartment?.name || 'N/A'}</p>
-                    <p className="text-xs sm:text-sm font-semibold text-amber-600">{executiveSummary?.bestDepartment?.score || 0}% Score</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{executiveSummary?.avgPerformance || 0}%</p>
+                    <p className="text-[10px] text-slate-400 mt-1.5">Across all staff</p>
                   </div>
 
-                  <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl sm:rounded-2xl shadow-lg border border-emerald-200 dark:border-emerald-800 p-4 sm:p-6 hover:shadow-xl transition-all duration-300">
-                    <div className="flex items-center justify-between mb-3 sm:mb-4">
-                      <div className="p-2 sm:p-3 bg-emerald-500 rounded-lg sm:rounded-xl shadow-lg">
-                        <Users className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div className="flex items-center gap-2.5 mb-3">
+                      <div className="p-1.5 bg-purple-50 dark:bg-purple-900/30 rounded-md">
+                        <Target className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
                       </div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tasks Done</p>
                     </div>
-                    <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">Employees Analyzed</p>
-                    <p className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white mb-1">{executiveSummary?.totalEmployeesAnalyzed || 0}</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Active staff</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{executiveSummary?.totalTasksCompleted || 0}</p>
+                    <p className="text-[10px] text-slate-400 mt-1.5">This month</p>
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div className="flex items-center gap-2.5 mb-3">
+                      <div className="p-1.5 bg-amber-50 dark:bg-amber-900/30 rounded-md">
+                        <Award className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Top Dept</p>
+                    </div>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white truncate">{executiveSummary?.bestDepartment?.name || 'N/A'}</p>
+                    <p className="text-[10px] text-amber-600 font-bold mt-1.5">{executiveSummary?.bestDepartment?.score || 0}% Score</p>
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div className="flex items-center gap-2.5 mb-3">
+                      <div className="p-1.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-md">
+                        <Users className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Analyzed</p>
+                    </div>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{executiveSummary?.totalEmployeesAnalyzed || 0}</p>
+                    <p className="text-[10px] text-slate-400 mt-1.5">Active employees</p>
                   </div>
                 </div>
 
-                {/* Top 5 Performers Section - Mobile Optimized */}
-                <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg rounded-xl sm:rounded-2xl shadow-xl border border-white/20 overflow-hidden">
-                  <div className="p-3 sm:p-4 md:p-6 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="p-2 sm:p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg sm:rounded-xl shadow-lg">
-                        <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                {/* Top 5 Performers */}
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                  <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-md">
+                        <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-800 dark:text-white">Top 5 Performers</h2>
-                        <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1 truncate">Based on comprehensive performance metrics</p>
-                      </div>
+                      <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Top 5 Performers</h2>
                     </div>
+                    <Badge variant="outline" className="h-5 text-[10px] borer-emerald-200 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tighter">Verified Metrics</Badge>
                   </div>
-                  <div className="p-3 sm:p-4 md:p-6">
+                  <div className="p-4 space-y-3">
                     {executiveSummary?.topPerformers && executiveSummary.topPerformers.length > 0 ? (
-                      <div className="space-y-3 sm:space-y-4">
-                        {executiveSummary.topPerformers.map((performer: any, index: number) => {
-                          const rankColors = [
-                            'from-yellow-400 to-amber-500',
-                            'from-gray-300 to-gray-400',
-                            'from-orange-400 to-amber-600',
-                            'from-blue-400 to-indigo-500',
-                            'from-purple-400 to-pink-500'
-                          ];
-                          const rankIcons = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
-                          
-                          return (
-                            <div 
-                              key={performer.employeeId}
-                              className="bg-gradient-to-br from-white to-green-50 dark:from-slate-800 dark:to-slate-900 rounded-lg sm:rounded-xl shadow-lg border-2 border-green-200 dark:border-green-800 p-3 sm:p-4 md:p-6 hover:shadow-2xl transition-all duration-300 hover:scale-[1.01]"
-                            >
-                              <div className="flex flex-col gap-4">
-                                {/* Top: Rank & Employee Info + Overall Score */}
-                                <div className="flex flex-col xs:flex-row items-start xs:items-center justify-between gap-3">
-                                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                                    <div className={`w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-br ${rankColors[index]} flex items-center justify-center text-2xl sm:text-3xl shadow-lg flex-shrink-0`}>
-                                      {rankIcons[index]}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <h3 className="font-bold text-base sm:text-lg text-slate-800 dark:text-white truncate">{performer.name}</h3>
-                                      <p className="text-xs sm:text-sm text-muted-foreground truncate">ID: {performer.employeeId}</p>
-                                      <p className="text-xs sm:text-sm text-muted-foreground truncate">{performer.department} • {performer.role}</p>
-                                    </div>
-                                  </div>
+                      executiveSummary.topPerformers.map((performer: any, index: number) => {
+                        const rankColors = ['bg-amber-400', 'bg-slate-300', 'bg-orange-400', 'bg-blue-400', 'bg-purple-400'];
+                        const rankIcons = ['🥇', '🥈', '🥉', '4', '5'];
 
-                                  {/* Overall Score - Mobile Optimized */}
-                                  <div className="w-full xs:w-auto flex xs:flex-col items-center justify-between xs:justify-center gap-2 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-xl p-3 sm:p-4 border-2 border-green-300 dark:border-green-700">
-                                    <div className="text-center">
-                                      <p className="text-xs font-semibold text-muted-foreground mb-1">Overall Score</p>
-                                      <p className="text-3xl sm:text-4xl font-bold text-green-600">{performer.score}</p>
-                                      <p className="text-xs text-muted-foreground hidden xs:block">out of 100</p>
-                                    </div>
-                                    <div className="w-24 xs:w-full">
-                                      <Progress value={performer.score} className="h-2" />
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Performance Metrics - Fully Responsive Grid */}
-                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
-                                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 sm:p-3 border border-blue-200 dark:border-blue-800">
-                                    <p className="text-xs text-muted-foreground mb-1 truncate">On-time Check-in</p>
-                                    <p className="text-base sm:text-lg font-bold text-blue-600">{performer.earlyCheckinScore}%</p>
-                                    <Progress value={performer.earlyCheckinScore} className="h-1.5 mt-1" />
-                                  </div>
-                                  <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-2 sm:p-3 border border-green-200 dark:border-green-800">
-                                    <p className="text-xs text-muted-foreground mb-1 truncate">Task Completion</p>
-                                    <p className="text-base sm:text-lg font-bold text-green-600">{performer.taskCompletionScore}%</p>
-                                    <Progress value={performer.taskCompletionScore} className="h-1.5 mt-1" />
-                                  </div>
-                                  <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2 sm:p-3 border border-purple-200 dark:border-purple-800">
-                                    <p className="text-xs text-muted-foreground mb-1 truncate">Attendance</p>
-                                    <p className="text-base sm:text-lg font-bold text-purple-600">{performer.attendanceScore}%</p>
-                                    <Progress value={performer.attendanceScore} className="h-1.5 mt-1" />
-                                  </div>
-                                  <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-2 sm:p-3 border border-pink-200 dark:border-pink-800">
-                                    <p className="text-xs text-muted-foreground mb-1 truncate">Leave Score</p>
-                                    <p className="text-base sm:text-lg font-bold text-pink-600">{performer.leaveScore}%</p>
-                                    <Progress value={performer.leaveScore} className="h-1.5 mt-1" />
-                                  </div>
-                                  <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-2 sm:p-3 border border-slate-200 dark:border-slate-600">
-                                    <p className="text-xs text-muted-foreground mb-1 truncate">Task Efficiency</p>
-                                    <p className="text-base sm:text-lg font-bold text-slate-600 dark:text-slate-300">{performer.taskEfficiency}</p>
-                                    <p className="text-xs text-muted-foreground">tasks/day</p>
-                                  </div>
-                                </div>
-
-                                {/* Bottom: Additional Stats - Responsive Grid */}
-                                <div className="pt-3 border-t border-slate-200 dark:border-slate-700 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                                  <div className="text-center bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2">
-                                    <p className="text-xs text-muted-foreground mb-1">Tasks Completed</p>
-                                    <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-white">{performer.completedTasks}/{performer.totalTasks}</p>
-                                  </div>
-                                  <div className="text-center bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2">
-                                    <p className="text-xs text-muted-foreground mb-1">Attendance Days</p>
-                                    <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-white">{performer.attendanceDays}/{performer.workingDays}</p>
-                                  </div>
-                                  <div className="text-center bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2">
-                                    <p className="text-xs text-muted-foreground mb-1">On-time Check-in</p>
-                                    <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-white">{performer.earlyCheckins}</p>
-                                  </div>
-                                  <div className="text-center bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2">
-                                    <p className="text-xs text-muted-foreground mb-1">Leave Days</p>
-                                    <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-white">{performer.totalLeaveDays}</p>
-                                  </div>
-                                </div>
+                        return (
+                          <div
+                            key={performer.employeeId}
+                            className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-900/50 transition-all bg-slate-50/30 dark:bg-slate-900/50"
+                          >
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className={`w-8 h-8 rounded-full ${rankColors[index]} flex items-center justify-center text-[10px] font-bold shadow-sm flex-shrink-0`}>
+                                {rankIcons[index]}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-bold text-xs text-slate-800 dark:text-white truncate">{performer.name}</h3>
+                                <p className="text-[10px] text-slate-500 truncate">{performer.department} • {performer.role}</p>
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
+
+                            <div className="flex items-center gap-6 mt-3 md:mt-0 w-full md:w-auto">
+                              <div className="grid grid-cols-2 xs:grid-cols-4 gap-4 flex-1">
+                                <div className="text-center">
+                                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Tasks</p>
+                                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{performer.taskCompletionScore}%</p>
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Attend.</p>
+                                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{performer.attendanceScore}%</p>
+                                </div>
+                                <div className="hidden xs:block text-center border-l border-slate-200 dark:border-slate-800 pl-4">
+                                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Done</p>
+                                  <p className="text-xs font-bold text-emerald-600">{performer.completedTasks}</p>
+                                </div>
+                                <div className="hidden xs:block text-center border-l border-slate-200 dark:border-slate-800 pl-4">
+                                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Eff.</p>
+                                  <p className="text-xs font-bold text-blue-600">{performer.taskEfficiency}</p>
+                                </div>
+                              </div>
+                              <div className="pl-6 border-l border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center min-w-[70px]">
+                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mb-0.5">Overall</p>
+                                <p className="text-lg font-black text-blue-600 leading-none">{performer.score}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
                     ) : (
-                      <div className="text-center py-12">
-                        <div className="mx-auto w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
-                          <TrendingUp className="h-8 w-8 text-slate-400" />
-                        </div>
-                        <p className="text-lg font-medium text-slate-700 dark:text-slate-300">No performance data available</p>
-                        <p className="text-sm text-muted-foreground mt-2">Performance data will appear once employees have attendance and task records.</p>
+                      <div className="text-center py-8">
+                        <TrendingUp className="h-8 w-8 text-slate-200 mx-auto mb-2" />
+                        <p className="text-xs text-slate-400">No performer data available</p>
                       </div>
                     )}
                   </div>
                 </div>
-              </>
-            )}
 
-            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg rounded-xl sm:rounded-2xl shadow-xl border border-white/20 overflow-hidden">
-              <div className="p-3 sm:p-4 md:p-6 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-slate-800 dark:to-slate-700">
-                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-800 dark:text-white">Executive Summary</h2>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Insights and recommendations</p>
-              </div>
-              <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-                {isLoading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-4 border-emerald-500 border-t-transparent mx-auto"></div>
-                    <p className="mt-4 text-muted-foreground">Loading summary...</p>
-                  </div>
-                ) : executiveSummary ? (
-                  <div className="space-y-4 sm:space-y-6">
-                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 border border-blue-200 dark:border-blue-800">
-                      <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                        <div className="p-1.5 sm:p-2 bg-blue-500 rounded-lg">
-                          <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                {/* Insights & Actions */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {executiveSummary && (
+                    <>
+                      <div className="bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30">
+                        <div className="flex items-center gap-2 mb-3">
+                          <BarChart3 className="h-3.5 w-3.5 text-blue-600" />
+                          <h3 className="text-xs font-bold text-slate-800 dark:text-white">Key Findings</h3>
                         </div>
-                        <h3 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">Key Findings</h3>
+                        <ul className="space-y-2">
+                          {executiveSummary.keyFindings?.slice(0, 3).map((finding: string, i: number) => (
+                            <li key={i} className="flex gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                              <span className="text-blue-500 shrink-0">•</span>
+                              <span>{finding}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                      <ul className="space-y-2">
-                        {executiveSummary.keyFindings?.map((finding: string, index: number) => (
-                          <li key={index} className="flex items-start gap-2 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
-                            <span className="text-blue-500 mt-1 flex-shrink-0">•</span>
-                            <span className="flex-1">{finding}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
 
-                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 border border-purple-200 dark:border-purple-800">
-                      <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                        <div className="p-1.5 sm:p-2 bg-purple-500 rounded-lg">
-                          <Target className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                      <div className="bg-purple-50/50 dark:bg-purple-900/10 p-4 rounded-xl border border-purple-100 dark:border-purple-900/30">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Target className="h-3.5 w-3.5 text-purple-600" />
+                          <h3 className="text-xs font-bold text-slate-800 dark:text-white">Recommendations</h3>
                         </div>
-                        <h3 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">Recommendations</h3>
+                        <ul className="space-y-2">
+                          {executiveSummary.recommendations?.slice(0, 3).map((rec: string, i: number) => (
+                            <li key={i} className="flex gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                              <span className="text-purple-500 shrink-0">•</span>
+                              <span>{rec}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                      <ul className="space-y-2">
-                        {executiveSummary.recommendations?.map((rec: string, index: number) => (
-                          <li key={index} className="flex items-start gap-2 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
-                            <span className="text-purple-500 mt-1 flex-shrink-0">•</span>
-                            <span className="flex-1">{rec}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
 
-                    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 border border-emerald-200 dark:border-emerald-800">
-                      <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                        <div className="p-1.5 sm:p-2 bg-emerald-500 rounded-lg">
-                          <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                      <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
+                        <div className="flex items-center gap-2 mb-3">
+                          <FileText className="h-3.5 w-3.5 text-emerald-600" />
+                          <h3 className="text-xs font-bold text-slate-800 dark:text-white">Action Items</h3>
                         </div>
-                        <h3 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">Action Items</h3>
+                        <ul className="space-y-2">
+                          {executiveSummary.actionItems?.slice(0, 3).map((item: string, i: number) => (
+                            <li key={i} className="flex gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                              <span className="text-emerald-500 shrink-0">•</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                      <ul className="space-y-2">
-                        {executiveSummary.actionItems?.map((item: string, index: number) => (
-                          <li key={index} className="flex items-start gap-2 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
-                            <span className="text-emerald-500 mt-1 flex-shrink-0">•</span>
-                            <span className="flex-1">{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <div className="mx-auto w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
-                      <FileText className="h-8 w-8 text-slate-400" />
-                    </div>
-                    <p className="text-lg font-medium text-slate-700 dark:text-slate-300">No summary data available</p>
-                  </div>
-                )}
+                    </>
+                  )}
+                </div>
 
-                <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-slate-200 dark:border-slate-700">
-                  <Button 
-                    variant="outline" 
-                    className="w-full sm:w-auto shadow-sm text-xs sm:text-sm"
-                    onClick={() => handleQuickExport('csv')}
-                  >
-                    <FileSpreadsheet className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                    <span className="truncate">Generate Full Report (CSV)</span>
+                {/* Export Actions */}
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button variant="ghost" size="sm" onClick={() => handleQuickExport('csv')} className="h-8 text-[10px] font-bold text-slate-500 hover:text-slate-900">
+                    <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
+                    CSV REPORT
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full sm:w-auto shadow-sm text-xs sm:text-sm"
-                    onClick={() => handleQuickExport('pdf')}
-                  >
-                    <FileText className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                    <span className="truncate">Generate Full Report (PDF)</span>
+                  <Button variant="ghost" size="sm" onClick={() => handleQuickExport('pdf')} className="h-8 text-[10px] font-bold text-slate-500 hover:text-slate-900">
+                    <FileText className="h-3.5 w-3.5 mr-1.5" />
+                    PDF REPORT
                   </Button>
-                  <Button 
-                    className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-lg text-xs sm:text-sm"
-                    onClick={() => openExportDialog()}
-                  >
-                    <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                    <span className="truncate">Custom Export</span>
+                  <Button onClick={() => openExportDialog()} className="h-8 text-[10px] font-bold bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800">
+                    <Download className="h-3.5 w-3.5 mr-1.5" />
+                    CUSTOM EXPORT
                   </Button>
                 </div>
               </div>
-            </div>
+            )}
           </TabsContent>
         </Tabs>
 

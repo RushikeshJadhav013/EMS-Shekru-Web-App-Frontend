@@ -11,6 +11,7 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
   onItemsPerPageChange?: (itemsPerPage: number) => void;
   showItemsPerPage?: boolean;
+  showEntriesInfo?: boolean;
   className?: string;
 }
 
@@ -22,6 +23,7 @@ export function Pagination({
   onPageChange,
   onItemsPerPageChange,
   showItemsPerPage = true,
+  showEntriesInfo = true,
   className = ''
 }: PaginationProps) {
   const startItem = (currentPage - 1) * itemsPerPage + 1;
@@ -59,9 +61,11 @@ export function Pagination({
   return (
     <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 ${className}`}>
       <div className="flex items-center gap-4 text-sm text-muted-foreground">
-        <span>
-          Showing {startItem} to {endItem} of {totalItems} entries
-        </span>
+        {showEntriesInfo && (
+          <span>
+            Showing {startItem} to {endItem} of {totalItems} entries
+          </span>
+        )}
         {showItemsPerPage && onItemsPerPageChange && (
           <div className="flex items-center gap-2">
             <span>Show:</span>

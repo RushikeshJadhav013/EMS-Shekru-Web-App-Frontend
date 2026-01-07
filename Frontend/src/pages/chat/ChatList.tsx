@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Users, MessageCircle } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Plus, Search, Users, MessageCircle, Settings2 } from 'lucide-react';
 import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -15,6 +15,7 @@ import AddChatModal from '../../components/chat/AddChatModal';
 
 const ChatList: React.FC = () => {
   const navigate = useNavigate();
+  const { chatId: activeChatId } = useParams();
   const { chats, isLoading, setActiveChat, availableUsers } = useChat();
   const { user } = useAuth();
   const { themeMode } = useTheme();
@@ -25,50 +26,33 @@ const ChatList: React.FC = () => {
   const isDark = themeMode === 'dark' || (themeMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const themeClasses = {
-    background: isDark ? 'bg-[#0f172a]' : 'bg-gray-50',
-    headerBg: isDark ? 'bg-[#1e293b]' : 'bg-white',
-    inputBg: isDark ? 'bg-gray-800' : 'bg-white',
-    text: isDark ? 'text-white' : 'text-gray-900',
-    textSecondary: isDark ? 'text-gray-400' : 'text-gray-600',
-    border: isDark ? 'border-gray-700' : 'border-gray-200',
-    cardBg: isDark ? 'bg-gray-800/50' : 'bg-white/80',
-    hoverBg: isDark ? 'hover:bg-gray-800/50' : 'hover:bg-gray-100/80',
+    background: isDark ? 'bg-[#0a1628]' : 'bg-white',
+    headerBg: isDark ? 'bg-[#0f172a]' : 'bg-gray-50/50',
+    inputBg: isDark ? 'bg-gray-800/50' : 'bg-gray-100/50',
+    text: isDark ? 'text-slate-100' : 'text-slate-900',
+    textSecondary: isDark ? 'text-slate-400' : 'text-slate-500',
+    border: isDark ? 'border-slate-800' : 'border-slate-100',
+    activeBg: isDark ? 'bg-green-500/10' : 'bg-green-50',
+    activeBorder: 'border-green-500/50',
   };
 
   const getChatName = (chat: any) => {
-    // Priority 1: explicitly provided name (groups or special chats)
-    // Avoid showing literal "string" or "null" returned by API
-    if (chat.name && chat.name !== 'string' && chat.name !== 'null') {
-      return chat.name;
-    }
-
-    // Priority 2: Find other participant and look up in availableUsers
+    if (chat.name && chat.name !== 'string' && chat.name !== 'null') return chat.name;
     if (chat.type === 'individual' || !chat.name) {
       const currentUserId = user?.id?.toString();
-      const otherParticipant = chat.participants?.find((p: any) =>
-        p.userId?.toString() !== currentUserId
-      );
-
+      const otherParticipant = chat.participants?.find((p: any) => p.userId?.toString() !== currentUserId);
       if (otherParticipant) {
-        const userIdToFind = otherParticipant.userId?.toString();
-        const userDetails = availableUsers?.find(u => u.id?.toString() === userIdToFind);
-
-        if (userDetails?.name) return userDetails.name;
-        if (otherParticipant.userName) return otherParticipant.userName;
+        const userDetails = availableUsers?.find(u => u.id?.toString() === otherParticipant.userId?.toString());
+        return userDetails?.name || otherParticipant.userName || 'Chat User';
       }
     }
-
     return chat.type === 'group' ? (chat.name || 'Group Chat') : 'Chat User';
   };
 
   const getChatAvatar = (chat: any) => {
     if (chat.type === 'group') return chat.groupAvatar || '';
-
     const currentUserId = user?.id?.toString();
-    const otherParticipant = chat.participants?.find((p: any) =>
-      p.userId?.toString() !== currentUserId
-    );
-
+    const otherParticipant = chat.participants?.find((p: any) => p.userId?.toString() !== currentUserId);
     if (otherParticipant && availableUsers) {
       const userData = availableUsers.find(u => u.id?.toString() === otherParticipant.userId?.toString());
       return userData?.profilePhoto || '';
@@ -90,118 +74,162 @@ const ChatList: React.FC = () => {
 
   const getLastMessagePreview = (chat: any) => {
     if (!chat.lastMessage) return 'No messages yet';
+
+    let senderName = '';
+    if (chat.type === 'group') {
+      const isOwn = chat.lastMessage.senderId?.toString() === user?.id?.toString();
+      if (isOwn) {
+        senderName = 'You: ';
+      } else {
+        const senderId = chat.lastMessage.senderId?.toString();
+        const userDetails = availableUsers?.find(u => u.id?.toString() === senderId);
+        const participantDetails = chat.participants?.find((p: any) => p.userId?.toString() === senderId);
+        senderName = `${userDetails?.name || participantDetails?.userName || 'Member'}: `;
+      }
+    }
+
     const content = chat.lastMessage.content;
-    return content.length > 50 ? `${content.substring(0, 50)}...` : content;
+    const fullPreview = `${senderName}${content}`;
+    return fullPreview.length > 40 ? `${fullPreview.substring(0, 40)}...` : fullPreview;
   };
 
-  if (isLoading) {
+  if (isLoading && chats.length === 0) {
     return (
-      <div className={cn("flex items-center justify-center h-full", themeClasses.background)}>
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-green-500 border-t-transparent"></div>
-          <p className={cn("font-medium", themeClasses.textSecondary)}>Connecting...</p>
+      <div className="flex flex-col h-full bg-inherit">
+        <div className="p-6 space-y-4">
+          <div className="flex justify-between items-center mb-6">
+            <div className="h-8 w-24 bg-slate-200 dark:bg-slate-800 animate-pulse rounded-lg" />
+            <div className="h-8 w-8 bg-slate-200 dark:bg-slate-800 animate-pulse rounded-full" />
+          </div>
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="flex items-center space-x-3">
+              <div className="h-12 w-12 bg-slate-200 dark:bg-slate-800 animate-pulse rounded-full" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-1/2 bg-slate-200 dark:bg-slate-800 animate-pulse rounded" />
+                <div className="h-3 w-3/4 bg-slate-200 dark:bg-slate-800 animate-pulse rounded" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div className={cn("flex flex-col h-[calc(100vh-4rem)]", themeClasses.background)}>
-      <div className={cn("flex items-center justify-between p-6 border-b shadow-lg", themeClasses.headerBg, themeClasses.border)}>
-        <div className="flex items-center space-x-3">
-          <div className="p-3 bg-green-500/20 rounded-xl border border-green-500/30">
-            <MessageCircle className="h-6 w-6 text-green-400" />
+    <div className={cn("flex flex-col h-full overflow-hidden", themeClasses.background)}>
+      {/* Header Area */}
+      <div className={cn("p-4 lg:p-5 border-b", themeClasses.headerBg, themeClasses.border)}>
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center h-9 w-9 rounded-xl bg-green-500 shadow-lg shadow-green-500/20">
+              <MessageCircle className="h-4.5 w-4.5 text-white" />
+            </div>
+            <h1 className={cn("text-lg font-black tracking-tight", themeClasses.text)}>Messages</h1>
           </div>
-          <div>
-            <h1 className={cn("text-2xl font-bold", themeClasses.text)}>Chats</h1>
-            <p className={cn("text-sm", themeClasses.textSecondary)}>Real-time secure communication</p>
-          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowAddChatModal(true)}
+            className="h-9 w-9 rounded-full hover:bg-green-500/10 hover:text-green-500 transition-colors"
+          >
+            <Plus className="h-4.5 w-4.5" />
+          </Button>
         </div>
-        <Button
-          onClick={() => setShowAddChatModal(true)}
-          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl px-4 py-2 hover:scale-105"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          New Chat
-        </Button>
-      </div>
 
-      <div className="p-4">
-        <div className="relative">
-          <Search className={cn("absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4", themeClasses.textSecondary)} />
+        <div className="relative group">
+          <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 transition-colors",
+            searchTerm ? "text-green-500" : themeClasses.textSecondary)} />
           <Input
-            placeholder="Search conversations..."
+            placeholder="Search team..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className={cn("pl-12 pr-4 py-3 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all shadow-inner border-0",
+            className={cn(
+              "pl-9 pr-3 py-4.5 rounded-xl border-0 shadow-inner text-xs font-semibold focus-visible:ring-1 focus-visible:ring-green-500/30 transition-all",
               themeClasses.inputBg,
-              themeClasses.text,
-              isDark ? "placeholder:text-gray-400" : "placeholder:text-gray-500")}
+              themeClasses.text
+            )}
           />
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent px-2">
+      {/* Conversations List */}
+      <div className="flex-1 overflow-y-auto px-4 py-2 space-y-1 custom-scrollbar">
         {filteredChats.length === 0 ? (
-          <div className={cn("flex flex-col items-center justify-center h-64 mx-4", themeClasses.textSecondary)}>
-            <div className={cn("p-6 rounded-full mb-4 backdrop-blur-sm", themeClasses.cardBg)}>
-              <MessageCircle className="h-16 w-16 text-gray-400" />
+          <div className="flex flex-col items-center justify-center h-64 text-center px-4">
+            <div className="p-5 rounded-2xl bg-slate-100 dark:bg-slate-800/50 mb-4">
+              <Users className="h-10 w-10 text-slate-400" />
             </div>
-            <p className={cn("text-lg font-semibold mb-2", themeClasses.text)}>No conversations</p>
-            <p className="text-sm mb-6">Start a new chat to connect with your team</p>
-            <Button
-              onClick={() => setShowAddChatModal(true)}
-              className="bg-green-600 hover:bg-green-700 text-white rounded-xl"
-            >
-              Start Chatting
-            </Button>
+            <p className={cn("text-sm font-semibold mb-1", themeClasses.text)}>No conversations</p>
+            <p className={cn("text-xs leading-relaxed", themeClasses.textSecondary)}>
+              Connect with your colleagues to start collaborating.
+            </p>
           </div>
         ) : (
-          <div className="space-y-1 pb-4">
-            {filteredChats.map((chat) => (
+          filteredChats.map((chat) => {
+            const isActive = activeChatId === chat.id?.toString();
+            return (
               <div
                 key={chat.id}
                 onClick={() => handleChatClick(chat)}
-                className={cn("flex items-center p-4 mx-2 rounded-xl cursor-pointer transition-all duration-200 group backdrop-blur-sm border border-transparent",
-                  themeClasses.hoverBg,
-                  isDark ? "hover:border-gray-700" : "hover:border-gray-200")}
+                className={cn(
+                  "flex items-center p-3 rounded-xl cursor-pointer transition-all duration-300 group relative border-transparent border",
+                  isActive
+                    ? cn(themeClasses.activeBg, themeClasses.activeBorder, "shadow-sm shadow-green-500/5")
+                    : "hover:bg-slate-100 dark:hover:bg-slate-800/40"
+                )}
               >
-                <div className="relative">
-                  <Avatar className="h-12 w-12 border-2 border-gray-600 shadow-md group-hover:scale-105 transition-transform">
+                {isActive && (
+                  <div className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-green-500 rounded-r-full" />
+                )}
+
+                <div className="relative flex-shrink-0">
+                  <Avatar className={cn(
+                    "h-10 w-10 border transition-transform duration-300 group-hover:scale-105",
+                    isActive ? "border-green-500/40" : "border-slate-100 dark:border-slate-800"
+                  )}>
                     <AvatarImage src={getChatAvatar(chat)} />
-                    <AvatarFallback className="bg-gradient-to-br from-green-500 to-emerald-600 text-white font-semibold">
+                    <AvatarFallback className="bg-gradient-to-br from-green-500 to-green-600 text-white font-black text-xs">
                       {getChatName(chat).charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div className={cn("absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 border-2 border-gray-800 rounded-full", chat.type === 'group' ? "bg-blue-500" : "bg-green-400 animate-pulse")}>
-                    {chat.type === 'group' && <Users className="h-2 w-2 text-white absolute inset-0 m-auto" />}
+                  <div className={cn(
+                    "absolute -bottom-0.5 -right-0.5 h-3 w-3 border rounded-full",
+                    isDark ? "border-[#0a1628]" : "border-white",
+                    chat.type === 'group' ? "bg-indigo-500" : "bg-green-400"
+                  )}>
+                    {chat.type === 'group' && <Users className="h-1.5 w-1.5 text-white absolute inset-0 m-auto" />}
                   </div>
                 </div>
 
-                <div className="flex-1 ml-4 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className={cn("font-semibold truncate group-hover:text-green-400 transition-colors text-base", themeClasses.text)}>
+                <div className="flex-1 ml-3 min-w-0">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <h3 className={cn(
+                      "font-bold truncate text-[13px] tracking-tight transition-colors",
+                      isActive ? "text-green-500" : themeClasses.text
+                    )}>
                       {getChatName(chat)}
                     </h3>
                     {chat.lastMessage && (
-                      <span className={cn("text-xs font-medium opacity-60", themeClasses.text)}>
-                        {formatDistanceToNow(new Date(chat.lastMessage.timestamp), { addSuffix: true })}
+                      <span className={cn("text-[10px] font-medium opacity-50", themeClasses.textSecondary)}>
+                        {formatDistanceToNow(new Date(chat.lastMessage.timestamp), { addSuffix: false })}
                       </span>
                     )}
                   </div>
-                  <p className={cn("text-sm truncate opacity-70 leading-relaxed", themeClasses.text)}>
-                    {getLastMessagePreview(chat)}
-                  </p>
-                  {chat.type === 'group' && (
-                    <div className="flex items-center mt-1 opacity-50">
-                      <Users className="h-3 w-3 mr-1" />
-                      <span className="text-xs">{chat.memberCount || chat.participants?.length || 0} members</span>
-                    </div>
-                  )}
+                  <div className="flex items-center justify-between">
+                    <p className={cn("text-[11px] truncate font-medium max-w-[120px]",
+                      isActive ? "text-slate-500" : themeClasses.textSecondary)}>
+                      {getLastMessagePreview(chat)}
+                    </p>
+                    {chat.unreadCount > 0 && (
+                      <Badge className="h-4 min-w-[16px] px-1 bg-green-500 hover:bg-green-600 text-[9px] font-black pointer-events-none">
+                        {chat.unreadCount}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })
         )}
       </div>
 
