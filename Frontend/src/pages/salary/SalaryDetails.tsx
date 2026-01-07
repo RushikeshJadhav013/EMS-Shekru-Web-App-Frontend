@@ -66,7 +66,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
     const userRole = user?.role?.toLowerCase();
     const isAdminOrHr = userRole === 'admin' || userRole === 'hr';
     const isOwner = user?.id === targetUserId;
-    const canViewAll = isAdminOrHr || isOwner;
+    const canViewAll = isAdminOrHr;
 
     const [showSensitive, setShowSensitive] = useState(false);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());

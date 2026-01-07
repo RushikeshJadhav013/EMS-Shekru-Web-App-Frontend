@@ -34,11 +34,11 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Plus, 
-  Clock, 
-  CheckCircle2, 
-  AlertCircle, 
+import {
+  Plus,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
   Pause,
   PlayCircle,
   Calendar,
@@ -261,32 +261,32 @@ const formatRoleLabel = (role?: UserRole) => {
 // WhatsApp-style time formatting for comments
 const getCommentTimeDisplay = (createdAt?: string): string => {
   if (!createdAt) return '';
-  
+
   const commentDate = parseToIST(createdAt);
   if (!commentDate) return '';
-  
+
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   const commentDateOnly = new Date(commentDate.getFullYear(), commentDate.getMonth(), commentDate.getDate());
-  
+
   // If today, show time only
   if (commentDateOnly.getTime() === today.getTime()) {
     return formatDateTimeIST(commentDate, 'hh:mm a');
   }
-  
+
   // If yesterday, show "Yesterday"
   if (commentDateOnly.getTime() === yesterday.getTime()) {
     return 'Yesterday';
   }
-  
+
   // If within last 7 days, show day name
   const daysDiff = Math.floor((today.getTime() - commentDateOnly.getTime()) / (1000 * 60 * 60 * 24));
   if (daysDiff < 7) {
     return formatDateTimeIST(commentDate, 'EEEE');
   }
-  
+
   // Otherwise show date
   return formatDateTimeIST(commentDate, 'MMM dd, yyyy');
 };
@@ -294,26 +294,26 @@ const getCommentTimeDisplay = (createdAt?: string): string => {
 // Get date separator for WhatsApp-style grouping
 const getDateSeparator = (createdAt?: string): string | null => {
   if (!createdAt) return null;
-  
+
   const commentDate = parseToIST(createdAt);
   if (!commentDate) return null;
-  
+
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   const commentDateOnly = new Date(commentDate.getFullYear(), commentDate.getMonth(), commentDate.getDate());
-  
+
   // If today
   if (commentDateOnly.getTime() === today.getTime()) {
     return 'Today';
   }
-  
+
   // If yesterday
   if (commentDateOnly.getTime() === yesterday.getTime()) {
     return 'Yesterday';
   }
-  
+
   // Otherwise show date
   return formatDateTimeIST(commentDate, 'MMM dd, yyyy');
 };
@@ -364,11 +364,11 @@ const TaskManagement: React.FC = () => {
   const [isPassingTask, setIsPassingTask] = useState(false);
   const [taskHistory, setTaskHistory] = useState<Record<string, TaskHistoryEntry[]>>({});
   const [isFetchingHistory, setIsFetchingHistory] = useState<string | null>(null);
-  
+
   // Pass History Dialog State
   const [isPassHistoryDialogOpen, setIsPassHistoryDialogOpen] = useState(false);
   const [passHistoryTask, setPassHistoryTask] = useState<TaskWithPassMeta | null>(null);
-  
+
   // Reassign Dialog State
   const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
   const [reassignTask, setReassignTask] = useState<TaskWithPassMeta | null>(null);
@@ -380,7 +380,7 @@ const TaskManagement: React.FC = () => {
     priority: 'medium' as BaseTask['priority'],
   });
   const [isReassigning, setIsReassigning] = useState(false);
-  
+
   // Task Comments State
   const [taskComments, setTaskComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -553,14 +553,14 @@ const TaskManagement: React.FC = () => {
       }
       const data: BackendTask[] = await response.json();
       const converted = data.map(mapBackendTaskToFrontend);
-      
+
       // Check and update overdue tasks
       const tasksToUpdate: TaskWithPassMeta[] = [];
       const updatedConverted = converted.map(task => {
         // If task is not completed/cancelled and deadline has passed, mark as overdue
-        if (task.status !== 'completed' && task.status !== 'cancelled' && 
-            task.deadline && new Date(task.deadline) < new Date() &&
-            task.status !== 'overdue') {
+        if (task.status !== 'completed' && task.status !== 'cancelled' &&
+          task.deadline && new Date(task.deadline) < new Date() &&
+          task.status !== 'overdue') {
           tasksToUpdate.push(task);
           return { ...task, status: 'overdue' as BaseTask['status'] };
         }
@@ -578,24 +578,24 @@ const TaskManagement: React.FC = () => {
           console.error(`Failed to update task ${task.id} to overdue status`, error);
         }
       }
-      
+
       // Sort tasks by status priority first, then by deadline within each status
       const sortedTasks = updatedConverted.sort((a, b) => {
         // Define status priority order: todo -> in-progress -> overdue -> completed -> cancelled
         const statusOrder = { 'todo': 0, 'in-progress': 1, 'overdue': 2, 'completed': 3, 'cancelled': 4 };
         const aStatusPriority = statusOrder[a.status] ?? 999;
         const bStatusPriority = statusOrder[b.status] ?? 999;
-        
+
         // First sort by status priority
         if (aStatusPriority !== bStatusPriority) {
           return aStatusPriority - bStatusPriority;
         }
-        
+
         // Within same status, sort by deadline (earliest first)
         // Tasks without deadline go to the end
         const aDeadline = a.deadline ? new Date(a.deadline).getTime() : Number.MAX_SAFE_INTEGER;
         const bDeadline = b.deadline ? new Date(b.deadline).getTime() : Number.MAX_SAFE_INTEGER;
-        
+
         return aDeadline - bDeadline;
       });
       setTasks(sortedTasks);
@@ -672,13 +672,13 @@ const TaskManagement: React.FC = () => {
     return extendedEmployees.filter((emp) => {
       // Filter out current user (self)
       if (emp.userId === userId || String(emp.userId) === String(userId)) return false;
-      
+
       const targetIndex = ROLE_ORDER.indexOf(emp.role);
       if (targetIndex === -1) return false;
-      
+
       // Can only pass to lower hierarchy (higher index in ROLE_ORDER)
       if (targetIndex <= currentIndex) return false;
-      
+
       // Non-admin users can only pass within their department
       if (user.role !== 'admin' && user.department && emp.department && emp.department !== user.department) {
         return false;
@@ -690,7 +690,7 @@ const TaskManagement: React.FC = () => {
   // Group pass eligible employees by department with role hierarchy
   const passEligibleByDepartment = useMemo(() => {
     const grouped = new Map<string, EmployeeSummary[]>();
-    
+
     passEligibleEmployees.forEach((emp) => {
       const dept = emp.department || 'No Department';
       if (!grouped.has(dept)) {
@@ -698,7 +698,7 @@ const TaskManagement: React.FC = () => {
       }
       grouped.get(dept)!.push(emp);
     });
-    
+
     // Sort employees within each department by role hierarchy
     // Include 'admin' in the role order for proper sorting
     const roleOrder: UserRole[] = ['admin', 'hr', 'manager', 'team_lead', 'employee'];
@@ -709,7 +709,7 @@ const TaskManagement: React.FC = () => {
         // Handle roles not in the list (put them at the end)
         const aPos = aIndex === -1 ? roleOrder.length : aIndex;
         const bPos = bIndex === -1 ? roleOrder.length : bIndex;
-        
+
         if (aPos !== bPos) {
           return aPos - bPos;
         }
@@ -717,7 +717,7 @@ const TaskManagement: React.FC = () => {
         return a.name.localeCompare(b.name);
       });
     });
-    
+
     // Sort departments alphabetically
     return new Map([...grouped.entries()].sort((a, b) => a[0].localeCompare(b[0])));
   }, [passEligibleEmployees]);
@@ -847,7 +847,7 @@ const TaskManagement: React.FC = () => {
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
       const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            task.description.toLowerCase().includes(searchQuery.toLowerCase());
+        task.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = filterStatus === 'all' || task.status === filterStatus;
 
       const isVisible = userId && user ? (
@@ -864,7 +864,7 @@ const TaskManagement: React.FC = () => {
   const taskCountsByStatus = useMemo(() => {
     const searchFiltered = tasks.filter(task => {
       const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            task.description.toLowerCase().includes(searchQuery.toLowerCase());
+        task.description.toLowerCase().includes(searchQuery.toLowerCase());
 
       const isVisible = userId && user ? (
         task.assignedBy === userId ||
@@ -896,7 +896,7 @@ const TaskManagement: React.FC = () => {
 
   const visibleTasks = useMemo(() => {
     let baseTasks: TaskWithPassMeta[] = [];
-    
+
     if (taskOwnershipFilter === 'all') {
       baseTasks = filteredTasks;
     } else if (taskOwnershipFilter === 'created') {
@@ -911,10 +911,10 @@ const TaskManagement: React.FC = () => {
         // Get task creator and assignee info
         const creator = employees.find(emp => emp.userId === task.assignedBy);
         const assignees = task.assignedTo.map(id => employees.find(emp => emp.userId === id));
-        
+
         // Check if task belongs to selected department
-        return creator?.department === selectedDepartmentFilter || 
-               assignees.some(assignee => assignee?.department === selectedDepartmentFilter);
+        return creator?.department === selectedDepartmentFilter ||
+          assignees.some(assignee => assignee?.department === selectedDepartmentFilter);
       });
     }
 
@@ -930,12 +930,12 @@ const TaskManagement: React.FC = () => {
       const statusOrder = { 'todo': 0, 'in-progress': 1, 'overdue': 2, 'completed': 3, 'cancelled': 4 };
       const aStatusPriority = statusOrder[a.status] ?? 999;
       const bStatusPriority = statusOrder[b.status] ?? 999;
-      
+
       // First sort by status priority
       if (aStatusPriority !== bStatusPriority) {
         return aStatusPriority - bStatusPriority;
       }
-      
+
       // Within same status, sort by creation date (newest first for "created" view, oldest first for others)
       if (taskOwnershipFilter === 'created') {
         // For created tasks, show newest first
@@ -1007,7 +1007,7 @@ const TaskManagement: React.FC = () => {
     const selectedDate = new Date(newTask.deadline);
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
-    
+
     if (selectedDate < today) {
       toast({
         title: 'Invalid deadline',
@@ -1247,17 +1247,17 @@ const TaskManagement: React.FC = () => {
     try {
       const data = await apiService.getTaskComments(taskId);
       if (!data) return;
-      
+
       // Only update if there are new comments (compare by ID)
       setTaskComments(prevComments => {
         const existingIds = new Set(prevComments.map(c => c.id));
         const newComments = data.filter(c => !existingIds.has(c.id));
-        
+
         // If there are new comments, add them without replacing the entire list
         if (newComments.length > 0) {
           return [...prevComments, ...newComments];
         }
-        
+
         // If no new comments, return the same reference to prevent re-renders
         return prevComments;
       });
@@ -1269,7 +1269,7 @@ const TaskManagement: React.FC = () => {
 
   const handlePostComment = useCallback(async () => {
     if ((!newComment.trim() && attachedFiles.length === 0) || !selectedTask) return;
-    
+
     setIsPostingComment(true);
     try {
       // If there are files, send them one by one with the comment
@@ -1290,14 +1290,14 @@ const TaskManagement: React.FC = () => {
           newComment.trim()
         );
       }
-      
+
       setNewComment('');
       setAttachedFiles([]);
       setShowEmojiPicker(false);
-      
+
       // Sync comments immediately after posting (only adds new comments, no blinking)
       await syncTaskComments(Number(selectedTask.id));
-      
+
       toast({
         title: 'Success',
         description: 'Comment posted successfully',
@@ -1350,7 +1350,7 @@ const TaskManagement: React.FC = () => {
 
   const handleDeleteComment = useCallback(async (commentId: number) => {
     if (!selectedTask) return;
-    
+
     try {
       await apiService.deleteTaskComment(Number(selectedTask.id), commentId);
       setTaskComments(prev => prev.filter(c => c.id !== commentId));
@@ -1372,13 +1372,13 @@ const TaskManagement: React.FC = () => {
   useEffect(() => {
     if (selectedTask) {
       loadTaskComments(Number(selectedTask.id));
-      
+
       // Set up polling to sync new comments every 1 second for instant real-time updates
       // Uses syncTaskComments instead of loadTaskComments to avoid blinking
       const commentPollInterval = setInterval(() => {
         syncTaskComments(Number(selectedTask.id));
       }, 1000);
-      
+
       return () => clearInterval(commentPollInterval);
     } else {
       setTaskComments([]);
@@ -1425,7 +1425,7 @@ const TaskManagement: React.FC = () => {
     const todayString = today.toISOString().split('T')[0];
     const existingDeadline = formatDateForInput(task.deadline);
     const defaultDeadline = existingDeadline && new Date(existingDeadline) >= today ? existingDeadline : todayString;
-    
+
     setReassignForm({
       title: task.title,
       description: task.description,
@@ -1465,7 +1465,7 @@ const TaskManagement: React.FC = () => {
       const selectedDate = new Date(reassignForm.deadline);
       const today = new Date();
       today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
-      
+
       if (selectedDate < today) {
         toast({
           title: 'Invalid deadline',
@@ -1538,10 +1538,10 @@ const TaskManagement: React.FC = () => {
 
       const updatedTask: BackendTask = await response.json();
       let converted = mapBackendTaskToFrontend(updatedTask);
-      
+
       // Reset status to 'todo' (Pending) when reassigning, regardless of previous status
       converted = { ...converted, status: 'todo' };
-      
+
       setTasks((prev) => prev.map((task) => (task.id === converted.id ? converted : task)));
       setSelectedTask((prev) => (prev && prev.id === converted.id ? converted : prev));
 
@@ -1605,7 +1605,7 @@ const TaskManagement: React.FC = () => {
     const selectedDate = new Date(editTaskForm.deadline);
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
-    
+
     if (selectedDate < today) {
       toast({
         title: 'Invalid deadline',
@@ -1783,33 +1783,33 @@ const TaskManagement: React.FC = () => {
     const statusHierarchy: BaseTask['status'][] = ['todo', 'in-progress', 'overdue', 'completed', 'cancelled'];
     const currentIndex = statusHierarchy.indexOf(currentStatus);
     const newIndex = statusHierarchy.indexOf(newStatus);
-    
+
     // Special rules:
     // 1. Can move from 'todo' to 'in-progress' and back
     if (currentStatus === 'todo' || (currentStatus === 'in-progress' && newStatus === 'todo')) {
       return true;
     }
-    
+
     // 2. Can move from 'overdue' to 'in-progress' (user fixing overdue task)
     if (currentStatus === 'overdue' && newStatus === 'in-progress') {
       return true;
     }
-    
+
     // 3. Can move from 'in-progress' to 'overdue' (automatic or manual)
     if (currentStatus === 'in-progress' && newStatus === 'overdue') {
       return true;
     }
-    
+
     // 4. Once completed or cancelled, cannot go back to previous statuses
     if (currentIndex >= 4 && newIndex < 4) {
       return false;
     }
-    
+
     // 5. Can always move forward or stay at current status
     if (newIndex >= currentIndex) {
       return true;
     }
-    
+
     return false;
   }, []);
 
@@ -1818,11 +1818,11 @@ const TaskManagement: React.FC = () => {
   // Once assignee changes status to 'in-progress' or beyond, creator cannot delete
   const canDeleteTask = useCallback((task: TaskWithPassMeta): boolean => {
     if (!userId) return false;
-    
+
     // Only the creator can delete
     const isCreator = task.assignedBy === userId;
     if (!isCreator) return false;
-    
+
     // Can only delete if task is still in 'todo' status (not started)
     return task.status === 'todo';
   }, [userId]);
@@ -1831,11 +1831,11 @@ const TaskManagement: React.FC = () => {
   // Task can be reassigned by creator if status is 'completed' or 'cancelled'
   const canReassignTask = useCallback((task: TaskWithPassMeta): boolean => {
     if (!userId) return false;
-    
+
     // Only the creator can reassign
     const isCreator = task.assignedBy === userId;
     if (!isCreator) return false;
-    
+
     // Can only reassign if task is completed or cancelled
     return task.status === 'completed' || task.status === 'cancelled';
   }, [userId]);
@@ -1860,7 +1860,7 @@ const TaskManagement: React.FC = () => {
 
       // Update tasks list immediately
       setTasks((prev) => prev.map((task) => (task.id === taskId ? convertedTask : task)));
-      
+
       // Update selected task if it's the one being updated
       setSelectedTask((prev) => (prev && prev.id === taskId ? convertedTask : prev));
 
@@ -1914,12 +1914,12 @@ const TaskManagement: React.FC = () => {
   // Export functions
   const getFilteredTasksForExport = useCallback(() => {
     let filteredTasks = [...tasks];
-    
+
     // Apply date range filter
     if (exportDateRange !== 'all') {
       const now = new Date();
       let startDate: Date;
-      
+
       switch (exportDateRange) {
         case '1month':
           startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
@@ -1940,14 +1940,14 @@ const TaskManagement: React.FC = () => {
         default:
           startDate = new Date(now.getFullYear(), 0, 1);
       }
-      
+
       const endDate = exportEndDate ? new Date(exportEndDate) : new Date();
       filteredTasks = filteredTasks.filter(task => {
         const taskDate = new Date(task.createdAt);
         return taskDate >= startDate && taskDate <= endDate;
       });
     }
-    
+
     // Apply department filter
     if (exportDepartmentFilter !== 'all') {
       filteredTasks = filteredTasks.filter(task => {
@@ -1956,15 +1956,15 @@ const TaskManagement: React.FC = () => {
         return (assignee?.department === exportDepartmentFilter) || (assigner?.department === exportDepartmentFilter);
       });
     }
-    
+
     // Apply user filter
     if (exportUserFilter !== 'all') {
-      filteredTasks = filteredTasks.filter(task => 
-        task.assignedTo.includes(exportUserFilter) || 
+      filteredTasks = filteredTasks.filter(task =>
+        task.assignedTo.includes(exportUserFilter) ||
         task.assignedBy === exportUserFilter
       );
     }
-    
+
     // Apply department filter for non-admin users
     if (user?.role !== 'admin' && user?.department) {
       filteredTasks = filteredTasks.filter(task => {
@@ -1973,13 +1973,13 @@ const TaskManagement: React.FC = () => {
         return (assignee?.department === user.department) || (assigner?.department === user.department);
       });
     }
-    
+
     return filteredTasks;
   }, [tasks, exportDateRange, exportStartDate, exportEndDate, exportDepartmentFilter, exportUserFilter, user, employeesById]);
 
   const exportToCSV = useCallback(() => {
     const filteredTasks = getFilteredTasksForExport();
-    
+
     const headers = [
       'Task ID',
       'Title',
@@ -1996,13 +1996,13 @@ const TaskManagement: React.FC = () => {
       'Last Passed To',
       'Last Pass Note'
     ];
-    
+
     const csvData = filteredTasks.map(task => {
       const assignee = employeesById.get(task.assignedTo[0] || '');
       const assigner = employeesById.get(task.assignedBy);
       const lastPassedBy = task.lastPassedBy ? employeesById.get(task.lastPassedBy) : null;
       const lastPassedTo = task.lastPassedTo ? employeesById.get(task.lastPassedTo) : null;
-      
+
       return [
         task.id,
         `"${task.title.replace(/"/g, '""')}"`,
@@ -2020,17 +2020,17 @@ const TaskManagement: React.FC = () => {
         `"${(task.lastPassNote || '').replace(/"/g, '""')}"`
       ];
     });
-    
+
     const csvContent = [headers, ...csvData].map(row => row.join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
-    
-    const dateRange = exportDateRange === 'custom' 
+
+    const dateRange = exportDateRange === 'custom'
       ? `${exportStartDate || 'start'}_${exportEndDate || 'end'}`
       : exportDateRange;
     const userFilter = exportUserFilter !== 'all' ? `_user_${exportUserFilter}` : '';
-    
+
     link.setAttribute('href', url);
     link.setAttribute('download', `task_report_${dateRange}${userFilter}_${formatDateIST(new Date(), 'yyyy-MM-dd')}.csv`);
     link.style.visibility = 'hidden';
@@ -2041,7 +2041,7 @@ const TaskManagement: React.FC = () => {
 
   const exportToPDF = useCallback(async () => {
     const filteredTasks = getFilteredTasksForExport();
-    
+
     // Simple PDF export using window.print() styled for printing
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -2052,20 +2052,20 @@ const TaskManagement: React.FC = () => {
       });
       return;
     }
-    
-    const dateRange = exportDateRange === 'custom' 
+
+    const dateRange = exportDateRange === 'custom'
       ? `${exportStartDate || 'start'} - ${exportEndDate || 'end'}`
       : exportDateRange === 'all' ? 'All Time' : exportDateRange;
-    const userFilter = exportUserFilter !== 'all' 
+    const userFilter = exportUserFilter !== 'all'
       ? employeesById.get(exportUserFilter)?.name || 'Unknown User'
       : 'All Users';
-    
+
     const tableRows = filteredTasks.map(task => {
       const assignee = employeesById.get(task.assignedTo[0] || '');
       const assigner = employeesById.get(task.assignedBy);
       const lastPassedBy = task.lastPassedBy ? employeesById.get(task.lastPassedBy) : null;
       const lastPassedTo = task.lastPassedTo ? employeesById.get(task.lastPassedTo) : null;
-      
+
       return `
         <tr>
           <td>${task.id}</td>
@@ -2085,7 +2085,7 @@ const TaskManagement: React.FC = () => {
         </tr>
       `;
     }).join('');
-    
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -2143,10 +2143,10 @@ const TaskManagement: React.FC = () => {
         </body>
       </html>
     `);
-    
+
     printWindow.document.close();
     printWindow.focus();
-    
+
     // Wait for the content to load before printing
     setTimeout(() => {
       printWindow.print();
@@ -2156,19 +2156,19 @@ const TaskManagement: React.FC = () => {
 
   const handleExport = useCallback(async () => {
     setIsExporting(true);
-    
+
     try {
       if (exportFormat === 'csv') {
         exportToCSV();
       } else {
         await exportToPDF();
       }
-      
+
       toast({
         title: 'Export Successful',
         description: `Task report exported as ${exportFormat.toUpperCase()}`,
       });
-      
+
       setIsExportDialogOpen(false);
     } catch (error) {
       console.error('Export failed:', error);
@@ -2192,13 +2192,13 @@ const TaskManagement: React.FC = () => {
               <ListTodo className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{t.navigation.tasks}</h1>
+              <h1 className="text-2xl font-bold">Task Management</h1>
               <p className="text-sm text-muted-foreground mt-1">
                 Manage and track all tasks across your organization
               </p>
             </div>
           </div>
-        
+
           {canAssignTasks() && (
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
@@ -2221,187 +2221,187 @@ const TaskManagement: React.FC = () => {
                     </div>
                   </div>
                 </DialogHeader>
-              
-              <div className="space-y-5 mt-6">
-                <div className="space-y-2">
-                  <Label htmlFor="title" className="text-sm font-semibold flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-600"></div>
-                    Task Title <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="title"
-                    value={newTask.title}
-                    onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                    placeholder="Enter task title"
-                    className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="description" className="text-sm font-semibold flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-600"></div>
-                    Description <span className="text-red-500">*</span>
-                  </Label>
-                  <Textarea
-                    id="description"
-                    value={newTask.description}
-                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                    placeholder="Enter task description"
-                    rows={4}
-                    className="resize-none border-2 focus:ring-2 focus:ring-violet-500 transition-all"
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                <div className="space-y-5 mt-6">
                   <div className="space-y-2">
-                    <Label htmlFor="priority" className="text-sm font-semibold flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 text-violet-600" />
-                      Priority
-                    </Label>
-                    <Select
-                      value={newTask.priority}
-                      onValueChange={(value: BaseTask['priority']) => 
-                        setNewTask({ ...newTask, priority: value })
-                      }
-                    >
-                      <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="border-2 shadow-xl">
-                        <SelectItem value="low" className="cursor-pointer">
-                          <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                            Low
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="medium" className="cursor-pointer">
-                          <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
-                            Medium
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="high" className="cursor-pointer">
-                          <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-orange-500"></div>
-                            High
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="urgent" className="cursor-pointer">
-                          <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-red-500"></div>
-                            Urgent
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="deadline" className="text-sm font-semibold flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-violet-600" />
-                      Deadline <span className="text-red-500">*</span>
+                    <Label htmlFor="title" className="text-sm font-semibold flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-600"></div>
+                      Task Title <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="deadline"
-                      type="date"
-                      min={new Date().toISOString().split('T')[0]}
-                      value={newTask.deadline}
-                      onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
+                      id="title"
+                      value={newTask.title}
+                      onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                      placeholder="Enter task title"
                       className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all"
                     />
                   </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="assignTo" className="text-sm font-semibold flex items-center gap-2">
-                    <User className="h-4 w-4 text-violet-600" />
-                    Assign To
-                  </Label>
-                  <Select
-                    value={newTask.assignedTo[0] || ''}
-                    onValueChange={(value) =>
-                      setNewTask({ ...newTask, assignedTo: value ? [value] : [] })
-                    }
-                  >
-                    <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                      <SelectValue placeholder="Select assignee" />
-                    </SelectTrigger>
-                    <SelectContent className="border-2 shadow-xl">
-                      {userId && user && (
-                        <SelectItem value={userId} className="cursor-pointer">
-                          {user.name} (Self)
-                        </SelectItem>
-                      )}
-                      {canAssignToSelection
-                        .filter((emp) => emp.userId !== userId)
-                        .map((emp) => (
-                          <SelectItem key={emp.userId} value={emp.userId} className="cursor-pointer">
-                            {emp.name}
-                            {emp.department ? ` • ${emp.department}` : ''}
-                            {emp.employeeId ? ` (${emp.employeeId})` : ''}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
                   <div className="space-y-2">
-                    <Label htmlFor="department" className="text-sm font-semibold flex items-center gap-2">
-                      <Filter className="h-4 w-4 text-violet-600" />
-                      Department
+                    <Label htmlFor="description" className="text-sm font-semibold flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-600"></div>
+                      Description <span className="text-red-500">*</span>
+                    </Label>
+                    <Textarea
+                      id="description"
+                      value={newTask.description}
+                      onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                      placeholder="Enter task description"
+                      rows={4}
+                      className="resize-none border-2 focus:ring-2 focus:ring-violet-500 transition-all"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="priority" className="text-sm font-semibold flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-violet-600" />
+                        Priority
+                      </Label>
+                      <Select
+                        value={newTask.priority}
+                        onValueChange={(value: BaseTask['priority']) =>
+                          setNewTask({ ...newTask, priority: value })
+                        }
+                      >
+                        <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="border-2 shadow-xl">
+                          <SelectItem value="low" className="cursor-pointer">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                              Low
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="medium" className="cursor-pointer">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
+                              Medium
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="high" className="cursor-pointer">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-orange-500"></div>
+                              High
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="urgent" className="cursor-pointer">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                              Urgent
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="deadline" className="text-sm font-semibold flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-violet-600" />
+                        Deadline <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="deadline"
+                        type="date"
+                        min={new Date().toISOString().split('T')[0]}
+                        value={newTask.deadline}
+                        onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
+                        className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="assignTo" className="text-sm font-semibold flex items-center gap-2">
+                      <User className="h-4 w-4 text-violet-600" />
+                      Assign To
                     </Label>
                     <Select
-                      value={newTask.department}
-                      onValueChange={(value) => setNewTask({ ...newTask, department: value })}
-                      disabled={!departmentOptions.length}
+                      value={newTask.assignedTo[0] || ''}
+                      onValueChange={(value) =>
+                        setNewTask({ ...newTask, assignedTo: value ? [value] : [] })
+                      }
                     >
                       <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                        <SelectValue placeholder={departmentOptions.length ? 'Select department' : 'No department available'} />
+                        <SelectValue placeholder="Select assignee" />
                       </SelectTrigger>
                       <SelectContent className="border-2 shadow-xl">
-                        {departmentOptions.map((dept) => (
-                          <SelectItem key={dept} value={dept} className="cursor-pointer">
-                            {dept}
+                        {userId && user && (
+                          <SelectItem value={userId} className="cursor-pointer">
+                            {user.name} (Self)
                           </SelectItem>
-                        ))}
+                        )}
+                        {canAssignToSelection
+                          .filter((emp) => emp.userId !== userId)
+                          .map((emp) => (
+                            <SelectItem key={emp.userId} value={emp.userId} className="cursor-pointer">
+                              {emp.name}
+                              {emp.department ? ` • ${emp.department}` : ''}
+                              {emp.employeeId ? ` (${emp.employeeId})` : ''}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="employeeId" className="text-sm font-semibold flex items-center gap-2">
-                      <User className="h-4 w-4 text-violet-600" />
-                      Employee ID
-                    </Label>
-                    <Input
-                      id="employeeId"
-                      value={newTask.employeeId}
-                      readOnly
-                      placeholder="Auto populated"
-                      className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all bg-muted"
-                    />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="department" className="text-sm font-semibold flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-violet-600" />
+                        Department
+                      </Label>
+                      <Select
+                        value={newTask.department}
+                        onValueChange={(value) => setNewTask({ ...newTask, department: value })}
+                        disabled={!departmentOptions.length}
+                      >
+                        <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                          <SelectValue placeholder={departmentOptions.length ? 'Select department' : 'No department available'} />
+                        </SelectTrigger>
+                        <SelectContent className="border-2 shadow-xl">
+                          {departmentOptions.map((dept) => (
+                            <SelectItem key={dept} value={dept} className="cursor-pointer">
+                              {dept}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="employeeId" className="text-sm font-semibold flex items-center gap-2">
+                        <User className="h-4 w-4 text-violet-600" />
+                        Employee ID
+                      </Label>
+                      <Input
+                        id="employeeId"
+                        value={newTask.employeeId}
+                        readOnly
+                        placeholder="Auto populated"
+                        className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all bg-muted"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-6 border-t mt-6">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsCreateDialogOpen(false)}
+                      className="h-11 px-6 border-2 hover:shadow-lg hover:border-slate-400 dark:hover:border-slate-600 transition-all"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleCreateTask}
+                      disabled={isCreateDisabled}
+                      className="h-11 px-6 gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="h-5 w-5" />
+                      {isSubmitting ? 'Creating...' : 'Create Task'}
+                    </Button>
                   </div>
                 </div>
-                
-                <div className="flex justify-end gap-3 pt-6 border-t mt-6">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setIsCreateDialogOpen(false)}
-                    className="h-11 px-6 border-2 hover:shadow-lg hover:border-slate-400 dark:hover:border-slate-600 transition-all"
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleCreateTask}
-                    disabled={isCreateDisabled}
-                    className="h-11 px-6 gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Plus className="h-5 w-5" />
-                    {isSubmitting ? 'Creating...' : 'Create Task'}
-                  </Button>
-                </div>
-              </div>
               </DialogContent>
             </Dialog>
           )}
@@ -2410,16 +2410,15 @@ const TaskManagement: React.FC = () => {
 
       {/* Stats Cards - Clickable Filters */}
       <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
-        <Card 
+        <Card
           onClick={() => {
             setFilterStatus('all');
             setIsOverdueFilterActive(false);
           }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-            filterStatus === 'all' && !isOverdueFilterActive
-              ? 'border-slate-600 dark:border-slate-400 bg-slate-100 dark:bg-slate-800' 
-              : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-600'
-          }`}
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === 'all' && !isOverdueFilterActive
+            ? 'border-slate-600 dark:border-slate-400 bg-slate-100 dark:bg-slate-800'
+            : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-600'
+            }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-slate-700 dark:text-slate-300">Total Tasks</CardTitle>
@@ -2433,17 +2432,16 @@ const TaskManagement: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-        
-        <Card 
+
+        <Card
           onClick={() => {
             setFilterStatus('in-progress');
             setIsOverdueFilterActive(false);
           }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-            filterStatus === 'in-progress' && !isOverdueFilterActive
-              ? 'border-blue-600 dark:border-blue-400 bg-blue-100 dark:bg-blue-900' 
-              : 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 hover:border-blue-400 dark:hover:border-blue-600'
-          }`}
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === 'in-progress' && !isOverdueFilterActive
+            ? 'border-blue-600 dark:border-blue-400 bg-blue-100 dark:bg-blue-900'
+            : 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 hover:border-blue-400 dark:hover:border-blue-600'
+            }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-blue-700 dark:text-blue-300">In Progress</CardTitle>
@@ -2457,17 +2455,16 @@ const TaskManagement: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-        
-        <Card 
+
+        <Card
           onClick={() => {
             setFilterStatus('completed');
             setIsOverdueFilterActive(false);
           }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-            filterStatus === 'completed' && !isOverdueFilterActive
-              ? 'border-green-600 dark:border-green-400 bg-green-100 dark:bg-green-900' 
-              : 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 hover:border-green-400 dark:hover:border-green-600'
-          }`}
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === 'completed' && !isOverdueFilterActive
+            ? 'border-green-600 dark:border-green-400 bg-green-100 dark:bg-green-900'
+            : 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 hover:border-green-400 dark:hover:border-green-600'
+            }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-green-700 dark:text-green-300">Completed</CardTitle>
@@ -2481,17 +2478,16 @@ const TaskManagement: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-        
-        <Card 
+
+        <Card
           onClick={() => {
             setFilterStatus('all');
             setIsOverdueFilterActive(true);
           }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-            isOverdueFilterActive
-              ? 'border-orange-600 dark:border-orange-400 bg-orange-100 dark:bg-orange-900' 
-              : 'border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950 hover:border-orange-400 dark:hover:border-orange-600'
-          }`}
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${isOverdueFilterActive
+            ? 'border-orange-600 dark:border-orange-400 bg-orange-100 dark:bg-orange-900'
+            : 'border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950 hover:border-orange-400 dark:hover:border-orange-600'
+            }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-orange-700 dark:text-orange-300">Overdue</CardTitle>
@@ -2506,16 +2502,15 @@ const TaskManagement: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card 
+        <Card
           onClick={() => {
             setFilterStatus('cancelled');
             setIsOverdueFilterActive(false);
           }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-            filterStatus === 'cancelled' && !isOverdueFilterActive
-              ? 'border-gray-600 dark:border-gray-400 bg-gray-100 dark:bg-gray-800' 
-              : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:border-gray-400 dark:hover:border-gray-600'
-          }`}
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === 'cancelled' && !isOverdueFilterActive
+            ? 'border-gray-600 dark:border-gray-400 bg-gray-100 dark:bg-gray-800'
+            : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:border-gray-400 dark:hover:border-gray-600'
+            }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-gray-700 dark:text-gray-300">Cancelled</CardTitle>
@@ -2541,7 +2536,7 @@ const TaskManagement: React.FC = () => {
               </div>
               <CardTitle className="text-xl font-semibold">Task Management</CardTitle>
             </div>
-            
+
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -2552,7 +2547,7 @@ const TaskManagement: React.FC = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              
+
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950">
                   <SelectValue />
@@ -2616,8 +2611,8 @@ const TaskManagement: React.FC = () => {
 
               {/* Department Filter - Show when viewing All Tasks for Admin only */}
               {taskOwnershipFilter === 'all' && user?.role === 'admin' && (
-                <Select 
-                  value={selectedDepartmentFilter} 
+                <Select
+                  value={selectedDepartmentFilter}
                   onValueChange={setSelectedDepartmentFilter}
                 >
                   <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white dark:bg-gray-950">
@@ -2654,7 +2649,7 @@ const TaskManagement: React.FC = () => {
                   <Grid3x3 className="h-4 w-4" />
                 </Button>
               </div>
-              
+
               {/* Export Buttons */}
               {canAssignTasks() && (
                 <div className="flex items-center gap-2 border-l border-gray-200 dark:border-gray-800 pl-2">
@@ -2672,7 +2667,7 @@ const TaskManagement: React.FC = () => {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent className="pt-6">
           {viewMode === 'list' ? (
             <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
@@ -2702,7 +2697,7 @@ const TaskManagement: React.FC = () => {
                         {taskOwnershipFilter === 'all'
                           ? 'No tasks found in the system'
                           : taskOwnershipFilter === 'created'
-                            ? user?.role === 'admin' 
+                            ? user?.role === 'admin'
                               ? 'No tasks created yet. Create your first task to get started.'
                               : 'No tasks created by you yet'
                             : 'No tasks assigned to you yet'}
@@ -3129,9 +3124,9 @@ const TaskManagement: React.FC = () => {
                         {department}
                       </div>
                       {employees.map((emp) => (
-                        <SelectItem 
-                          key={emp.userId} 
-                          value={emp.userId} 
+                        <SelectItem
+                          key={emp.userId}
+                          value={emp.userId}
                           className="cursor-pointer pl-6"
                         >
                           <div className="flex items-center justify-between w-full gap-2">
@@ -3721,58 +3716,58 @@ const TaskManagement: React.FC = () => {
 
                 {/* Comments List with Scrolling - WhatsApp Style */}
                 <div className="flex-1 overflow-y-auto space-y-3 p-4 bg-[#efeae2] dark:bg-slate-900 rounded-lg my-3" style={{ scrollbarWidth: 'thin', scrollbarColor: '#a78bfa #e2e8f0', backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'100\' height=\'100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M0 0h100v100H0z\' fill=\'%23efeae2\' fill-opacity=\'0.4\'/%3E%3Cpath d=\'M50 0L0 50M100 0L50 50M100 50L50 100M50 50L0 100\' stroke=\'%23d1ccc0\' stroke-width=\'0.5\' opacity=\'0.3\'/%3E%3C/svg%3E")' }}>
-                    {isLoadingComments ? (
-                      <div className="text-center py-12">
-                        <Loader2 className="h-10 w-10 animate-spin mx-auto text-violet-600" />
-                        <p className="text-base text-muted-foreground mt-3">Loading comments...</p>
+                  {isLoadingComments ? (
+                    <div className="text-center py-12">
+                      <Loader2 className="h-10 w-10 animate-spin mx-auto text-violet-600" />
+                      <p className="text-base text-muted-foreground mt-3">Loading comments...</p>
+                    </div>
+                  ) : taskComments.length === 0 ? (
+                    <div className="text-center py-16">
+                      <div className="h-20 w-20 rounded-full bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900 dark:to-purple-900 flex items-center justify-center mx-auto mb-4">
+                        <MessageSquare className="h-10 w-10 text-violet-600 dark:text-violet-400" />
                       </div>
-                    ) : taskComments.length === 0 ? (
-                      <div className="text-center py-16">
-                        <div className="h-20 w-20 rounded-full bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900 dark:to-purple-900 flex items-center justify-center mx-auto mb-4">
-                          <MessageSquare className="h-10 w-10 text-violet-600 dark:text-violet-400" />
-                        </div>
-                        <p className="text-base text-muted-foreground font-medium">No comments yet</p>
-                        <p className="text-sm text-muted-foreground mt-2">Start the conversation!</p>
-                      </div>
-                    ) : (
-                      <>
-                        {taskComments.map((comment, index) => {
-                          const isOwnComment = comment.user_id === user?.id;
-                          const commentUser = employeesById.get(String(comment.user_id));
-                          const userPhotoUrl = commentUser?.photo_url;
-                          const userInitials = comment.user_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
-                          
-                          // Use WhatsApp-style time formatting
-                          const formattedTime = getCommentTimeDisplay(comment.created_at);
-                          const dateSeparator = getDateSeparator(comment.created_at);
-                          
-                          // Check if we need to show date separator (different from previous comment's date)
-                          const previousComment = index > 0 ? taskComments[index - 1] : null;
-                          const previousDateSeparator = previousComment ? getDateSeparator(previousComment.created_at) : null;
-                          const showDateSeparator = dateSeparator && dateSeparator !== previousDateSeparator;
-                          
-                          return (
-                            <div key={comment.id}>
-                              {/* Date Separator */}
-                              {showDateSeparator && (
-                                <div className="flex items-center gap-3 my-4">
-                                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
-                                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
-                                    {dateSeparator}
-                                  </span>
-                                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
-                                </div>
-                              )}
-                              
-                              {/* Comment */}
-                              <div
-                                className={`flex gap-2 ${isOwnComment ? 'flex-row-reverse' : 'flex-row'} animate-in slide-in-from-bottom-2`}
-                              >
+                      <p className="text-base text-muted-foreground font-medium">No comments yet</p>
+                      <p className="text-sm text-muted-foreground mt-2">Start the conversation!</p>
+                    </div>
+                  ) : (
+                    <>
+                      {taskComments.map((comment, index) => {
+                        const isOwnComment = comment.user_id === user?.id;
+                        const commentUser = employeesById.get(String(comment.user_id));
+                        const userPhotoUrl = commentUser?.photo_url;
+                        const userInitials = comment.user_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+
+                        // Use WhatsApp-style time formatting
+                        const formattedTime = getCommentTimeDisplay(comment.created_at);
+                        const dateSeparator = getDateSeparator(comment.created_at);
+
+                        // Check if we need to show date separator (different from previous comment's date)
+                        const previousComment = index > 0 ? taskComments[index - 1] : null;
+                        const previousDateSeparator = previousComment ? getDateSeparator(previousComment.created_at) : null;
+                        const showDateSeparator = dateSeparator && dateSeparator !== previousDateSeparator;
+
+                        return (
+                          <div key={comment.id}>
+                            {/* Date Separator */}
+                            {showDateSeparator && (
+                              <div className="flex items-center gap-3 my-4">
+                                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
+                                  {dateSeparator}
+                                </span>
+                                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                              </div>
+                            )}
+
+                            {/* Comment */}
+                            <div
+                              className={`flex gap-2 ${isOwnComment ? 'flex-row-reverse' : 'flex-row'} animate-in slide-in-from-bottom-2`}
+                            >
                               {/* Profile Photo */}
                               <div className="flex-shrink-0">
                                 {userPhotoUrl ? (
-                                  <img 
-                                    src={userPhotoUrl} 
+                                  <img
+                                    src={userPhotoUrl}
                                     alt={comment.user_name}
                                     className="w-8 h-8 rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-sm"
                                   />
@@ -3796,14 +3791,13 @@ const TaskManagement: React.FC = () => {
                                     </span>
                                   </div>
                                 )}
-                                
+
                                 {/* Message Content */}
                                 <div
-                                  className={`rounded-lg px-3 py-2 shadow-sm ${
-                                    isOwnComment
-                                      ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-tr-none'
-                                      : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-tl-none'
-                                  }`}
+                                  className={`rounded-lg px-3 py-2 shadow-sm ${isOwnComment
+                                    ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-tr-none'
+                                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-tl-none'
+                                    }`}
                                 >
                                   {/* Role badge for own messages (inside bubble) */}
                                   {isOwnComment && (
@@ -3814,7 +3808,7 @@ const TaskManagement: React.FC = () => {
                                       </span>
                                     </div>
                                   )}
-                                  
+
                                   {/* File Attachment */}
                                   {comment.file_url && (
                                     <a
@@ -3822,16 +3816,15 @@ const TaskManagement: React.FC = () => {
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       download={comment.file_name}
-                                      className={`flex items-center gap-2 p-2 rounded-lg mb-2 transition-colors ${
-                                        isOwnComment 
-                                          ? 'bg-white/10 hover:bg-white/20' 
-                                          : 'bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600'
-                                      }`}
+                                      className={`flex items-center gap-2 p-2 rounded-lg mb-2 transition-colors ${isOwnComment
+                                        ? 'bg-white/10 hover:bg-white/20'
+                                        : 'bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600'
+                                        }`}
                                     >
                                       {comment.file_type?.startsWith('image/') ? (
                                         <div className="flex flex-col gap-1">
-                                          <img 
-                                            src={`${API_BASE_URL}${comment.file_url}`} 
+                                          <img
+                                            src={`${API_BASE_URL}${comment.file_url}`}
                                             alt={comment.file_name || 'Attachment'}
                                             className="max-w-[200px] max-h-[200px] rounded-lg object-cover"
                                           />
@@ -3865,7 +3858,7 @@ const TaskManagement: React.FC = () => {
                                       )}
                                     </a>
                                   )}
-                                  
+
                                   {/* Text Comment */}
                                   {comment.comment && (
                                     <p className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${isOwnComment ? 'text-white' : 'text-slate-800 dark:text-slate-200'}`}>
@@ -3887,14 +3880,14 @@ const TaskManagement: React.FC = () => {
                                   </div>
                                 </div>
                               </div>
-                              </div>
                             </div>
-                          );
-                        })}
-                        <div ref={commentsEndRef} />
-                      </>
-                    )}
-                  </div>
+                          </div>
+                        );
+                      })}
+                      <div ref={commentsEndRef} />
+                    </>
+                  )}
+                </div>
 
                 {/* WhatsApp-style Comment Input */}
                 <div className="p-2 bg-slate-50 dark:bg-slate-900 flex-shrink-0">
@@ -3928,7 +3921,7 @@ const TaskManagement: React.FC = () => {
                       >
                         <span className="text-xl">😊</span>
                       </button>
-                      
+
                       {/* Emoji Picker Popup */}
                       {showEmojiPicker && (
                         <div className="absolute bottom-full left-0 mb-2 p-3 bg-white dark:bg-slate-900 border-2 rounded-2xl shadow-2xl z-50 w-80 max-h-64 overflow-y-auto">
@@ -4143,16 +4136,16 @@ const TaskManagement: React.FC = () => {
               <div className="text-sm text-muted-foreground space-y-1">
                 <p>• Format: <span className="font-medium text-foreground">{exportFormat.toUpperCase()}</span></p>
                 <p>• Date Range: <span className="font-medium text-foreground">
-                  {exportDateRange === 'all' ? 'All Time' : 
-                   exportDateRange === 'custom' ? `${exportStartDate || 'Not set'} - ${exportEndDate || 'Not set'}` :
-                   `Last ${exportDateRange.replace('months', ' Months').replace('1month', '1 Month')}`}
+                  {exportDateRange === 'all' ? 'All Time' :
+                    exportDateRange === 'custom' ? `${exportStartDate || 'Not set'} - ${exportEndDate || 'Not set'}` :
+                      `Last ${exportDateRange.replace('months', ' Months').replace('1month', '1 Month')}`}
                 </span></p>
                 <p>• Department Filter: <span className="font-medium text-foreground">
                   {exportDepartmentFilter === 'all' ? 'All Departments' : exportDepartmentFilter}
                 </span></p>
                 <p>• User Filter: <span className="font-medium text-foreground">
-                  {exportUserFilter === 'all' ? 'All Users' : 
-                   employeesById.get(exportUserFilter)?.name || 'Unknown User'}
+                  {exportUserFilter === 'all' ? 'All Users' :
+                    employeesById.get(exportUserFilter)?.name || 'Unknown User'}
                 </span></p>
                 <p>• Total Tasks: <span className="font-medium text-foreground">{getFilteredTasksForExport().length}</span></p>
               </div>
@@ -4214,7 +4207,7 @@ const TaskManagement: React.FC = () => {
           <div className="mt-6 max-h-[calc(85vh-180px)] overflow-y-auto pr-2">
             {passHistoryTask && (() => {
               const passEntries = getPassHistoryEntries(passHistoryTask.id);
-              
+
               if (passEntries.length === 0) {
                 return (
                   <div className="text-center py-12">
@@ -4240,8 +4233,8 @@ const TaskManagement: React.FC = () => {
                     const timestamp = formatDateTimeIST(entry.created_at, 'MMM dd, yyyy HH:mm');
 
                     return (
-                      <div 
-                        key={entry.id} 
+                      <div
+                        key={entry.id}
                         className="p-4 rounded-lg border-2 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/40 dark:to-purple-950/40 hover:shadow-md transition-shadow"
                       >
                         <div className="flex items-start justify-between gap-4 mb-3">
