@@ -14,64 +14,64 @@ export default function SettingsPage() {
   const { colorTheme, setColorTheme, themeMode, setThemeMode } = useTheme();
   const { t, language, setLanguage } = useLanguage();
   const { toast } = useToast();
-  
+
   // Notification settings state
   const [emailNotifications, setEmailNotifications] = useState(() => {
     const saved = localStorage.getItem('emailNotifications');
     return saved ? JSON.parse(saved) : true;
   });
-  
+
   const [pushNotifications, setPushNotifications] = useState(() => {
     const saved = localStorage.getItem('pushNotifications');
     return saved ? JSON.parse(saved) : true;
   });
-  
+
   // 2FA state
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(() => {
     const saved = localStorage.getItem('twoFactorAuth');
     return saved ? JSON.parse(saved) : false;
   });
-  
+
   // Save notification settings
   useEffect(() => {
     localStorage.setItem('emailNotifications', JSON.stringify(emailNotifications));
   }, [emailNotifications]);
-  
+
   useEffect(() => {
     localStorage.setItem('pushNotifications', JSON.stringify(pushNotifications));
   }, [pushNotifications]);
-  
+
   useEffect(() => {
     localStorage.setItem('twoFactorAuth', JSON.stringify(twoFactorEnabled));
   }, [twoFactorEnabled]);
-  
+
   // Handle notification toggle
   const handleEmailNotificationToggle = (checked: boolean) => {
     setEmailNotifications(checked);
     toast({
       title: checked ? 'Email Notifications Enabled' : 'Email Notifications Disabled',
-      description: checked 
+      description: checked
         ? 'You will receive email notifications for important updates'
         : 'You will not receive email notifications',
     });
   };
-  
+
   const handlePushNotificationToggle = (checked: boolean) => {
     setPushNotifications(checked);
     toast({
       title: checked ? 'Push Notifications Enabled' : 'Push Notifications Disabled',
-      description: checked 
+      description: checked
         ? 'You will receive push notifications on this device'
         : 'You will not receive push notifications',
     });
   };
-  
+
   // Handle 2FA toggle
   const handleTwoFactorToggle = (checked: boolean) => {
     setTwoFactorEnabled(checked);
     toast({
       title: checked ? 'Two-Factor Authentication Enabled' : 'Two-Factor Authentication Disabled',
-      description: checked 
+      description: checked
         ? 'Your account now has an extra layer of security'
         : 'Two-factor authentication has been disabled',
       variant: checked ? 'default' : 'destructive',
@@ -83,7 +83,7 @@ export default function SettingsPage() {
     { value: "hi", label: "हिंदी" },
     { value: "mr", label: "मराठी" },
   ];
-  
+
   const themeModes = [
     { value: "light", label: "Light", icon: Sun, description: "Light theme for bright environments" },
     { value: "dark", label: "Dark", icon: Moon, description: "Dark theme for low-light environments" },
@@ -109,7 +109,7 @@ export default function SettingsPage() {
               <Sparkles className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold tracking-tight">Settings</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Settings</h1>
               <p className="text-muted-foreground">
                 Customize your workspace and preferences
               </p>
@@ -144,18 +144,16 @@ export default function SettingsPage() {
                           description: `${mode.label} mode applied successfully!`,
                         });
                       }}
-                      className={`group relative p-6 rounded-2xl border-2 transition-all duration-300 hover:scale-105 hover:shadow-lg ${
-                        themeMode === mode.value
+                      className={`group relative p-6 rounded-2xl border-2 transition-all duration-300 hover:scale-105 hover:shadow-lg ${themeMode === mode.value
                           ? 'border-primary shadow-xl ring-2 ring-primary/20 bg-primary/5'
                           : 'border-gray-200 dark:border-gray-700 hover:border-primary/50 bg-card'
-                      }`}
+                        }`}
                     >
                       <div className="flex flex-col items-center gap-3">
-                        <div className={`h-16 w-16 rounded-2xl flex items-center justify-center transition-all ${
-                          themeMode === mode.value
+                        <div className={`h-16 w-16 rounded-2xl flex items-center justify-center transition-all ${themeMode === mode.value
                             ? 'bg-gradient-to-br from-primary to-primary/60 text-white'
                             : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'
-                        }`}>
+                          }`}>
                           <Icon className="h-8 w-8" />
                         </div>
                         <div className="text-center">
@@ -199,11 +197,10 @@ export default function SettingsPage() {
                         description: `${themeOption.label} theme applied successfully!`,
                       });
                     }}
-                    className={`group relative p-4 rounded-2xl border-2 transition-all duration-300 hover:scale-105 hover:shadow-lg ${
-                      colorTheme === themeOption.name
+                    className={`group relative p-4 rounded-2xl border-2 transition-all duration-300 hover:scale-105 hover:shadow-lg ${colorTheme === themeOption.name
                         ? 'border-primary shadow-xl ring-2 ring-primary/20'
                         : 'border-gray-200 dark:border-gray-800 hover:border-primary/50'
-                    }`}
+                      }`}
                   >
                     <div className={`h-16 w-full rounded-xl bg-gradient-to-r ${themeOption.color} shadow-md group-hover:shadow-lg transition-shadow`}></div>
                     <p className="text-sm font-semibold mt-3 text-center">{themeOption.label}</p>
@@ -280,8 +277,8 @@ export default function SettingsPage() {
                     Status: {emailNotifications ? 'Enabled ✓' : 'Disabled ✗'}
                   </p>
                 </div>
-                <Switch 
-                  id="email-notifications" 
+                <Switch
+                  id="email-notifications"
                   checked={emailNotifications}
                   onCheckedChange={handleEmailNotificationToggle}
                 />
@@ -298,8 +295,8 @@ export default function SettingsPage() {
                     Status: {pushNotifications ? 'Enabled ✓' : 'Disabled ✗'}
                   </p>
                 </div>
-                <Switch 
-                  id="push-notifications" 
+                <Switch
+                  id="push-notifications"
                   checked={pushNotifications}
                   onCheckedChange={handlePushNotificationToggle}
                 />
@@ -331,18 +328,16 @@ export default function SettingsPage() {
                     Add an extra layer of security to your account
                   </p>
                   <div className="flex items-center gap-2 mt-2">
-                    <div className={`h-2 w-2 rounded-full ${
-                      twoFactorEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
-                    }`}></div>
-                    <p className={`text-xs font-semibold ${
-                      twoFactorEnabled ? 'text-green-600 dark:text-green-400' : 'text-gray-500'
-                    }`}>
+                    <div className={`h-2 w-2 rounded-full ${twoFactorEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
+                      }`}></div>
+                    <p className={`text-xs font-semibold ${twoFactorEnabled ? 'text-green-600 dark:text-green-400' : 'text-gray-500'
+                      }`}>
                       {twoFactorEnabled ? 'Active & Protected' : 'Not Active'}
                     </p>
                   </div>
                 </div>
-                <Switch 
-                  id="2fa" 
+                <Switch
+                  id="2fa"
                   checked={twoFactorEnabled}
                   onCheckedChange={handleTwoFactorToggle}
                 />

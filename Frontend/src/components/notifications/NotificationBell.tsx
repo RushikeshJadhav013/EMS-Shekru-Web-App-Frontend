@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Check, X, Clock, AlertCircle, CheckCircle, FileText, Calendar, Loader2, RefreshCw } from 'lucide-react';
+import { Bell, Check, X, Clock, AlertCircle, CheckCircle, FileText, Calendar, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -17,30 +17,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 export const NotificationBell: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { notifications, unreadCount, isLoading, error, markAsRead, markAllAsRead, clearNotification, refreshNotifications } = useNotifications();
+  const { notifications, unreadCount, isLoading, error, markAsRead, markAllAsRead, clearNotification } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   
-  // Fetch notifications immediately on mount (app load)
-  useEffect(() => {
-    // Fetch on initial mount
-    refreshNotifications();
-  }, []); // Empty dependency - only run once on mount
+  // ✅ REMOVED: No more API calls from UI component
+  // Notifications are fetched ONLY from NotificationContext on:
+  // 1. App initialization (user login)
+  // 2. Page visibility change (when tab becomes visible)
   
-  // Refresh notifications when dropdown opens
-  useEffect(() => {
-    if (isOpen) {
-      refreshNotifications();
-    }
-  }, [isOpen, refreshNotifications]);
-  
-  // Debug: Log notifications state
+  // Debug: Log notifications state (only in dev)
   useEffect(() => {
     if (import.meta.env.DEV) {
-      console.log('[NotificationBell] Notifications:', notifications);
+      console.log('[NotificationBell] Notifications count:', notifications.length);
       console.log('[NotificationBell] Unread count:', unreadCount);
     }
-  }, [notifications, unreadCount]);
+  }, [notifications.length, unreadCount]);
   
   // Check if notifications are enabled
   const areNotificationsEnabled = () => {
@@ -65,7 +57,7 @@ export const NotificationBell: React.FC = () => {
   const otherNotifications = allNotifications.filter(n => !['leave', 'task', 'shift'].includes(n.type));
 
   const handleNotificationClick = async (notification: any) => {
-    // Mark as read and wait for it to complete
+    // Mark as read first
     await markAsRead(notification.id);
     
     const userRole = user?.role || 'employee';
@@ -212,16 +204,6 @@ export const NotificationBell: React.FC = () => {
             )}
           </div>
           <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => refreshNotifications()}
-              disabled={isLoading}
-              className="h-8 w-8 p-0 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
-              title="Refresh notifications"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
             {unreadCount > 0 && (
               <Button
                 variant="ghost"
@@ -242,17 +224,7 @@ export const NotificationBell: React.FC = () => {
               <AlertCircle className="h-10 w-10 text-red-400 dark:text-red-600" />
             </div>
             <p className="text-sm font-medium text-red-600 dark:text-red-400">Unable to load notifications</p>
-            <p className="text-xs text-muted-foreground mt-1">Please try again</p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refreshNotifications()}
-              className="mt-4"
-              disabled={isLoading}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Retry
-            </Button>
+            <p className="text-xs text-muted-foreground mt-1">Please try again later</p>
           </div>
         ) : allNotifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">

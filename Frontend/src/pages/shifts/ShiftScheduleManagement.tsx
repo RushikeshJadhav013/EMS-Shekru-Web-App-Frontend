@@ -81,7 +81,7 @@ export default function ShiftScheduleManagement() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [isWeeklyLoading, setIsWeeklyLoading] = useState(false);
-  
+
   // Dialogs
   const [isShiftDialogOpen, setIsShiftDialogOpen] = useState(false);
   const [isEditShiftDialogOpen, setIsEditShiftDialogOpen] = useState(false);
@@ -90,7 +90,7 @@ export default function ShiftScheduleManagement() {
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [selectedAssignment, setSelectedAssignment] = useState<ShiftAssignment | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
-  
+
   // Form data
   const [shiftFormData, setShiftFormData] = useState({
     name: '',
@@ -99,7 +99,7 @@ export default function ShiftScheduleManagement() {
     description: '',
     is_active: true,
   });
-  
+
   const [assignFormData, setAssignFormData] = useState({
     shift_id: 0,
     assignment_date: selectedDate,
@@ -254,15 +254,15 @@ export default function ShiftScheduleManagement() {
     try {
       setIsCreating(true);
       console.log('Creating shift with data:', shiftFormData);
-      
+
       // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Request timeout: Backend server may not be responding')), 10000)
       );
-      
+
       const createPromise = apiService.createShift(shiftFormData);
       const result = await Promise.race([createPromise, timeoutPromise]);
-      
+
       console.log('Shift created successfully:', result);
       toast({
         title: 'Success',
@@ -290,14 +290,14 @@ export default function ShiftScheduleManagement() {
     try {
       setIsUpdating(true);
       console.log('Updating shift:', selectedShift.shift_id, shiftFormData);
-      
-      const timeoutPromise = new Promise((_, reject) => 
+
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Request timeout: Backend server may not be responding')), 10000)
       );
-      
+
       const updatePromise = apiService.updateShift(selectedShift.shift_id, shiftFormData);
       const result = await Promise.race([updatePromise, timeoutPromise]);
-      
+
       console.log('Shift updated successfully:', result);
       toast({
         title: 'Success',
@@ -475,7 +475,7 @@ export default function ShiftScheduleManagement() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl flex items-center gap-3">
             <Clock className="h-8 w-8 text-blue-600" />
             Shift Schedule Management
           </h1>
@@ -682,195 +682,195 @@ export default function ShiftScheduleManagement() {
           {/* Schedule View */}
           {schedule && (
             <Tabs defaultValue="schedule" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="schedule">Shift Schedule</TabsTrigger>
-            <TabsTrigger value="leaves">On Leave</TabsTrigger>
-            <TabsTrigger value="unassigned">Unassigned Users</TabsTrigger>
-          </TabsList>
+              <TabsList>
+                <TabsTrigger value="schedule">Shift Schedule</TabsTrigger>
+                <TabsTrigger value="leaves">On Leave</TabsTrigger>
+                <TabsTrigger value="unassigned">Unassigned Users</TabsTrigger>
+              </TabsList>
 
-          <TabsContent value="schedule" className="space-y-4">
-            {schedule.shifts.map((shiftData) => (
-              <Card key={shiftData.shift.shift_id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Clock className="h-5 w-5" />
-                        {shiftData.shift.name}
-                      </CardTitle>
-                      <CardDescription>
-                        {shiftData.shift.start_time} - {shiftData.shift.end_time}
-                        {shiftData.shift.description && ` • ${shiftData.shift.description}`}
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">
-                        {shiftData.total_assigned} assigned
-                      </Badge>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openAssignDialog(shiftData.shift.shift_id)}
-                      >
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Assign Users
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {shiftData.assignments.length > 0 ? (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Employee</TableHead>
-                          <TableHead>Employee ID</TableHead>
-                          <TableHead>Designation</TableHead>
-                          <TableHead>Notes</TableHead>
-                          <TableHead>Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {shiftData.assignments.map((assignment) => (
-                          <TableRow key={assignment.assignment_id}>
-                            <TableCell className="font-medium">
-                              {assignment.user?.name || 'Unknown'}
-                            </TableCell>
-                            <TableCell>{assignment.user?.employee_id || 'N/A'}</TableCell>
-                            <TableCell>{assignment.user?.designation || 'N/A'}</TableCell>
-                            <TableCell>{assignment.notes || '-'}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
+              <TabsContent value="schedule" className="space-y-4">
+                {schedule.shifts.map((shiftData) => (
+                  <Card key={shiftData.shift.shift_id}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            <Clock className="h-5 w-5" />
+                            {shiftData.shift.name}
+                          </CardTitle>
+                          <CardDescription>
+                            {shiftData.shift.start_time} - {shiftData.shift.end_time}
+                            {shiftData.shift.description && ` • ${shiftData.shift.description}`}
+                          </CardDescription>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">
+                            {shiftData.total_assigned} assigned
+                          </Badge>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openAssignDialog(shiftData.shift.shift_id)}
+                          >
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Assign Users
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {shiftData.assignments.length > 0 ? (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Employee</TableHead>
+                              <TableHead>Employee ID</TableHead>
+                              <TableHead>Designation</TableHead>
+                              <TableHead>Notes</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {shiftData.assignments.map((assignment) => (
+                              <TableRow key={assignment.assignment_id}>
+                                <TableCell className="font-medium">
+                                  {assignment.user?.name || 'Unknown'}
+                                </TableCell>
+                                <TableCell>{assignment.user?.employee_id || 'N/A'}</TableCell>
+                                <TableCell>{assignment.user?.designation || 'N/A'}</TableCell>
+                                <TableCell>{assignment.notes || '-'}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => openReassignDialog(assignment)}
+                                    >
+                                      <ArrowRight className="h-3 w-3 mr-1" />
+                                      Reassign
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => handleDeleteAssignment(assignment.assignment_id)}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No assignments for this shift
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </TabsContent>
+
+              <TabsContent value="leaves">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <AlertCircle className="h-5 w-5 text-orange-500" />
+                      Users on Leave
+                    </CardTitle>
+                    <CardDescription>
+                      Users who are on approved leave for {formatDateIST(selectedDate, 'MMM dd, yyyy')}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {schedule.users_on_leave.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Employee ID</TableHead>
+                            <TableHead>Designation</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {schedule.users_on_leave.map((user) => (
+                            <TableRow key={user.user_id}>
+                              <TableCell className="font-medium">{user.name}</TableCell>
+                              <TableCell>{user.employee_id || 'N/A'}</TableCell>
+                              <TableCell>{user.designation || 'N/A'}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="text-orange-600">
+                                  On Leave
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No users on leave for this date
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="unassigned">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-blue-500" />
+                      Unassigned Users
+                    </CardTitle>
+                    <CardDescription>
+                      Users who are not assigned to any shift for {formatDateIST(selectedDate, 'MMM dd, yyyy')}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {schedule.unassigned_users.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Employee ID</TableHead>
+                            <TableHead>Designation</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {schedule.unassigned_users.map((user) => (
+                            <TableRow key={user.user_id}>
+                              <TableCell className="font-medium">{user.name}</TableCell>
+                              <TableCell>{user.employee_id || 'N/A'}</TableCell>
+                              <TableCell>{user.designation || 'N/A'}</TableCell>
+                              <TableCell>
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => openReassignDialog(assignment)}
+                                  onClick={() => {
+                                    setSelectedUsers([user.user_id]);
+                                    setIsAssignDialogOpen(true);
+                                  }}
                                 >
-                                  <ArrowRight className="h-3 w-3 mr-1" />
-                                  Reassign
+                                  <UserPlus className="h-3 w-3 mr-1" />
+                                  Assign
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => handleDeleteAssignment(assignment.assignment_id)}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No assignments for this shift
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </TabsContent>
-
-          <TabsContent value="leaves">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-orange-500" />
-                  Users on Leave
-                </CardTitle>
-                <CardDescription>
-                  Users who are on approved leave for {formatDateIST(selectedDate, 'MMM dd, yyyy')}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {schedule.users_on_leave.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Employee ID</TableHead>
-                        <TableHead>Designation</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {schedule.users_on_leave.map((user) => (
-                        <TableRow key={user.user_id}>
-                          <TableCell className="font-medium">{user.name}</TableCell>
-                          <TableCell>{user.employee_id || 'N/A'}</TableCell>
-                          <TableCell>{user.designation || 'N/A'}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-orange-600">
-                              On Leave
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No users on leave for this date
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="unassigned">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-blue-500" />
-                  Unassigned Users
-                </CardTitle>
-                <CardDescription>
-                  Users who are not assigned to any shift for {formatDateIST(selectedDate, 'MMM dd, yyyy')}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {schedule.unassigned_users.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Employee ID</TableHead>
-                        <TableHead>Designation</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {schedule.unassigned_users.map((user) => (
-                        <TableRow key={user.user_id}>
-                          <TableCell className="font-medium">{user.name}</TableCell>
-                          <TableCell>{user.employee_id || 'N/A'}</TableCell>
-                          <TableCell>{user.designation || 'N/A'}</TableCell>
-                          <TableCell>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedUsers([user.user_id]);
-                                setIsAssignDialogOpen(true);
-                              }}
-                            >
-                              <UserPlus className="h-3 w-3 mr-1" />
-                              Assign
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    All users are assigned to shifts
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        All users are assigned to shifts
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
             </Tabs>
           )}
         </TabsContent>
@@ -1114,9 +1114,9 @@ export default function ShiftScheduleManagement() {
                   <p className="text-sm text-yellow-800 dark:text-yellow-200">
                     No shifts available. Please create a shift first.
                   </p>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={loadShifts}
                     className="mt-2"
                   >

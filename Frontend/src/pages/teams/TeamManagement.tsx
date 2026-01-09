@@ -13,11 +13,11 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatTimeIST, formatDateIST } from '@/utils/timezone';
 import V2Overlay from '@/components/ui/V2Overlay';
-import { 
-  Users, 
-  Plus, 
-  MessageSquare, 
-  UserPlus, 
+import {
+  Users,
+  Plus,
+  MessageSquare,
+  UserPlus,
   UserMinus,
   Send,
   FileText,
@@ -64,7 +64,7 @@ export default function TeamManagement() {
   const [isCreateTeamOpen, setIsCreateTeamOpen] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [messageInput, setMessageInput] = useState('');
-  
+
   const [teams, setTeams] = useState<Team[]>([
     {
       id: '1',
@@ -180,8 +180,8 @@ export default function TeamManagement() {
       status: 'active'
     };
 
-    setTeams(teams.map(team => 
-      team.id === teamId 
+    setTeams(teams.map(team =>
+      team.id === teamId
         ? { ...team, members: [...team.members, newMember] }
         : team
     ));
@@ -193,8 +193,8 @@ export default function TeamManagement() {
   };
 
   const handleRemoveMember = (teamId: string, memberId: string) => {
-    setTeams(teams.map(team => 
-      team.id === teamId 
+    setTeams(teams.map(team =>
+      team.id === teamId
         ? { ...team, members: team.members.filter(m => m.id !== memberId) }
         : team
     ));
@@ -251,304 +251,305 @@ export default function TeamManagement() {
   return (
     <div className="relative min-h-screen">
       {user?.role === 'manager' && <V2Overlay fallbackPath="/manager" />}
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Team Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Teams</p>
-                <p className="text-2xl font-bold">{teams.length}</p>
-              </div>
-              <Users className="h-8 w-8 text-primary opacity-50" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Members</p>
-                <p className="text-2xl font-bold">
-                  {teams.reduce((acc, team) => acc + team.members.length, 0)}
-                </p>
-              </div>
-              <UserPlus className="h-8 w-8 text-green-500 opacity-50" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active Projects</p>
-                <p className="text-2xl font-bold">5</p>
-              </div>
-              <Target className="h-8 w-8 text-blue-500 opacity-50" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Team Performance</p>
-                <p className="text-2xl font-bold">92%</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-purple-500 opacity-50" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="teams" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="teams">My Teams</TabsTrigger>
-          <TabsTrigger value="chat">Team Chat</TabsTrigger>
-          <TabsTrigger value="updates">Work Updates</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="teams" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Team Management</h2>
-            <Dialog open={isCreateTeamOpen} onOpenChange={setIsCreateTeamOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Team
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Team</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label>Team Name</Label>
-                    <Input
-                      value={newTeamData.name}
-                      onChange={(e) => setNewTeamData({...newTeamData, name: e.target.value})}
-                      placeholder="Enter team name"
-                    />
-                  </div>
-                  <div>
-                    <Label>Department</Label>
-                    <Input
-                      value={newTeamData.department}
-                      onChange={(e) => setNewTeamData({...newTeamData, department: e.target.value})}
-                      placeholder="Enter department"
-                    />
-                  </div>
-                  <div>
-                    <Label>Description</Label>
-                    <Textarea
-                      value={newTeamData.description}
-                      onChange={(e) => setNewTeamData({...newTeamData, description: e.target.value})}
-                      placeholder="Enter team description"
-                      rows={3}
-                    />
-                  </div>
+      <div className="container mx-auto p-6 space-y-6">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Team Management</h1>
+        {/* Team Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Teams</p>
+                  <p className="text-2xl font-bold">{teams.length}</p>
                 </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsCreateTeamOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleCreateTeam}>Create Team</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+                <Users className="h-8 w-8 text-primary opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Members</p>
+                  <p className="text-2xl font-bold">
+                    {teams.reduce((acc, team) => acc + team.members.length, 0)}
+                  </p>
+                </div>
+                <UserPlus className="h-8 w-8 text-green-500 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Active Projects</p>
+                  <p className="text-2xl font-bold">5</p>
+                </div>
+                <Target className="h-8 w-8 text-blue-500 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Team Performance</p>
+                  <p className="text-2xl font-bold">92%</p>
+                </div>
+                <TrendingUp className="h-8 w-8 text-purple-500 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {teams.map((team) => (
-              <Card key={team.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{team.name}</CardTitle>
-                    <Badge>{team.department}</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{team.description}</p>
-                </CardHeader>
-                <CardContent>
+        <Tabs defaultValue="teams" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="teams">My Teams</TabsTrigger>
+            <TabsTrigger value="chat">Team Chat</TabsTrigger>
+            <TabsTrigger value="updates">Work Updates</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="teams" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Team Management</h2>
+              <Dialog open={isCreateTeamOpen} onOpenChange={setIsCreateTeamOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Team
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create New Team</DialogTitle>
+                  </DialogHeader>
                   <div className="space-y-4">
+                    <div>
+                      <Label>Team Name</Label>
+                      <Input
+                        value={newTeamData.name}
+                        onChange={(e) => setNewTeamData({ ...newTeamData, name: e.target.value })}
+                        placeholder="Enter team name"
+                      />
+                    </div>
+                    <div>
+                      <Label>Department</Label>
+                      <Input
+                        value={newTeamData.department}
+                        onChange={(e) => setNewTeamData({ ...newTeamData, department: e.target.value })}
+                        placeholder="Enter department"
+                      />
+                    </div>
+                    <div>
+                      <Label>Description</Label>
+                      <Textarea
+                        value={newTeamData.description}
+                        onChange={(e) => setNewTeamData({ ...newTeamData, description: e.target.value })}
+                        placeholder="Enter team description"
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsCreateTeamOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleCreateTeam}>Create Team</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {teams.map((team) => (
+                <Card key={team.id}>
+                  <CardHeader>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Team Members ({team.members.length})</span>
-                      <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
-                        <DialogTrigger asChild>
-                          <Button size="sm" variant="outline">
-                            <UserPlus className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Add Team Member</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            {availableEmployees
-                              .filter(emp => !team.members.find(m => m.id === emp.id))
-                              .map((employee) => (
-                                <div key={employee.id} className="flex items-center justify-between p-2 border rounded">
-                                  <div>
-                                    <p className="font-medium">{employee.name}</p>
-                                    <p className="text-sm text-muted-foreground">{employee.role}</p>
+                      <CardTitle className="text-lg">{team.name}</CardTitle>
+                      <Badge>{team.department}</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{team.description}</p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Team Members ({team.members.length})</span>
+                        <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="outline">
+                              <UserPlus className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Add Team Member</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              {availableEmployees
+                                .filter(emp => !team.members.find(m => m.id === emp.id))
+                                .map((employee) => (
+                                  <div key={employee.id} className="flex items-center justify-between p-2 border rounded">
+                                    <div>
+                                      <p className="font-medium">{employee.name}</p>
+                                      <p className="text-sm text-muted-foreground">{employee.role}</p>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => {
+                                        handleAddMember(team.id, employee.id);
+                                        setIsAddMemberOpen(false);
+                                      }}
+                                    >
+                                      Add
+                                    </Button>
                                   </div>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => {
-                                      handleAddMember(team.id, employee.id);
-                                      setIsAddMemberOpen(false);
-                                    }}
-                                  >
-                                    Add
-                                  </Button>
-                                </div>
-                              ))}
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      {team.members.map((member) => (
-                        <div key={member.id} className="flex items-center justify-between p-2 border rounded">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage src={member.avatar} />
-                              <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-sm font-medium">{member.name}</p>
-                              <p className="text-xs text-muted-foreground">{member.role}</p>
+                                ))}
                             </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+
+                      <div className="space-y-2">
+                        {team.members.map((member) => (
+                          <div key={member.id} className="flex items-center justify-between p-2 border rounded">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={member.avatar} />
+                                <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="text-sm font-medium">{member.name}</p>
+                                <p className="text-xs text-muted-foreground">{member.role}</p>
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleRemoveMember(team.id, member.id)}
+                            >
+                              <UserMinus className="h-4 w-4" />
+                            </Button>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleRemoveMember(team.id, member.id)}
-                          >
-                            <UserMinus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
+
+                      <Button
+                        className="w-full"
+                        variant="outline"
+                        onClick={() => setSelectedTeam(team)}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Open Team Chat
+                      </Button>
                     </div>
-                    
-                    <Button
-                      className="w-full"
-                      variant="outline"
-                      onClick={() => setSelectedTeam(team)}
-                    >
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Open Team Chat
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="chat">
+            {selectedTeam ? (
+              <Card className="h-[600px] flex flex-col">
+                <CardHeader>
+                  <CardTitle>{selectedTeam.name} - Team Chat</CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col">
+                  <ScrollArea className="flex-1 pr-4 mb-4">
+                    <div className="space-y-4">
+                      {teamMessages
+                        .filter(msg => msg.teamId === selectedTeam.id)
+                        .map((message) => (
+                          <div
+                            key={message.id}
+                            className={`p-3 rounded-lg border ${getMessageTypeStyle(message.type)}`}
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-medium text-sm">{message.senderName}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {formatTimeIST(message.timestamp, 'HH:mm')}
+                              </span>
+                            </div>
+                            <p className="text-sm">{message.message}</p>
+                            {message.type !== 'message' && (
+                              <Badge className="mt-2" variant="outline">
+                                {message.type}
+                              </Badge>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  </ScrollArea>
+
+                  <div className="flex gap-2">
+                    <Input
+                      value={messageInput}
+                      onChange={(e) => setMessageInput(e.target.value)}
+                      placeholder="Type your message..."
+                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    />
+                    <Button onClick={handleSendMessage}>
+                      <Send className="h-4 w-4" />
                     </Button>
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        </TabsContent>
+            ) : (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <p className="text-muted-foreground">Select a team to view chat</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
 
-        <TabsContent value="chat">
-          {selectedTeam ? (
-            <Card className="h-[600px] flex flex-col">
+          <TabsContent value="updates">
+            <Card>
               <CardHeader>
-                <CardTitle>{selectedTeam.name} - Team Chat</CardTitle>
+                <CardTitle>Post Work Update</CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 flex flex-col">
-                <ScrollArea className="flex-1 pr-4 mb-4">
-                  <div className="space-y-4">
-                    {teamMessages
-                      .filter(msg => msg.teamId === selectedTeam.id)
-                      .map((message) => (
-                        <div
-                          key={message.id}
-                          className={`p-3 rounded-lg border ${getMessageTypeStyle(message.type)}`}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-medium text-sm">{message.senderName}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {formatTimeIST(message.timestamp, 'HH:mm')}
-                            </span>
-                          </div>
-                          <p className="text-sm">{message.message}</p>
-                          {message.type !== 'message' && (
-                            <Badge className="mt-2" variant="outline">
-                              {message.type}
-                            </Badge>
-                          )}
-                        </div>
-                      ))}
-                  </div>
-                </ScrollArea>
-                
-                <div className="flex gap-2">
-                  <Input
-                    value={messageInput}
-                    onChange={(e) => setMessageInput(e.target.value)}
-                    placeholder="Type your message..."
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              <CardContent>
+                <div className="space-y-4">
+                  <Textarea
+                    placeholder="Share your work update with the team..."
+                    rows={4}
                   />
-                  <Button onClick={handleSendMessage}>
-                    <Send className="h-4 w-4" />
+                  <Button>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Post Update
                   </Button>
+                </div>
+
+                <div className="mt-6 space-y-4">
+                  <h3 className="font-semibold">Recent Updates</h3>
+                  {teamMessages
+                    .filter(msg => msg.type === 'update')
+                    .map((update) => (
+                      <div key={update.id} className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback>{update.senderName.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium text-sm">{update.senderName}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatDateIST(update.timestamp, 'MMM dd, yyyy')}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge variant="outline">Update</Badge>
+                        </div>
+                        <p className="text-sm">{update.message}</p>
+                      </div>
+                    ))}
                 </div>
               </CardContent>
             </Card>
-          ) : (
-            <Card>
-              <CardContent className="p-6 text-center">
-                <p className="text-muted-foreground">Select a team to view chat</p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="updates">
-          <Card>
-            <CardHeader>
-              <CardTitle>Post Work Update</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <Textarea
-                  placeholder="Share your work update with the team..."
-                  rows={4}
-                />
-                <Button>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Post Update
-                </Button>
-              </div>
-              
-              <div className="mt-6 space-y-4">
-                <h3 className="font-semibold">Recent Updates</h3>
-                {teamMessages
-                  .filter(msg => msg.type === 'update')
-                  .map((update) => (
-                    <div key={update.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback>{update.senderName.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium text-sm">{update.senderName}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {formatDateIST(update.timestamp, 'MMM dd, yyyy')}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge variant="outline">Update</Badge>
-                      </div>
-                      <p className="text-sm">{update.message}</p>
-                    </div>
-                  ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

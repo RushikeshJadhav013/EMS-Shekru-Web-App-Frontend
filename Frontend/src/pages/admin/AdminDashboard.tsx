@@ -1,6 +1,7 @@
 import React from 'react';
 import { useEffect, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,7 @@ import { apiService } from '@/lib/api';
 
 const AdminDashboard: React.FC = () => {
   const { t, language } = useLanguage();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [stats, setStats] = useState({
@@ -135,8 +137,8 @@ const AdminDashboard: React.FC = () => {
             <Award className="h-6 w-6 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-xl font-black tracking-tight text-slate-900 leading-tight">
-              {t.common.welcome}, <span className="text-blue-600">Admin</span>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+              {t.common.welcome}, <span className="text-blue-600">{user?.name}</span>
             </h1>
             <p className="text-slate-500 font-bold text-[13px] mt-0.5 flex items-center gap-1.5">
               <CalendarDays className="h-3.5 w-3.5 text-blue-400" />

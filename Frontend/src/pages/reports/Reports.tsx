@@ -23,8 +23,13 @@ import {
   Filter,
   FileSpreadsheet,
   Star,
-  Edit
+  Edit,
+  Check,
+  ChevronsUpDown
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { nowIST, formatIST } from '@/utils/timezone';
@@ -45,7 +50,6 @@ interface EmployeePerformance {
   qualityScore: number;
   overallRating: number;
   month: string;
-  year: number;
 }
 
 interface DepartmentMetrics {
@@ -65,6 +69,7 @@ export default function Reports() {
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth().toString());
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear().toString());
   const [selectedDepartment, setSelectedDepartment] = useState('all');
+  const [yearOpen, setYearOpen] = useState(false);
 
   // Check URL for tab parameter
   const urlParams = new URLSearchParams(window.location.search);
@@ -304,6 +309,7 @@ export default function Reports() {
   const handleQuickExport = async (format: 'csv' | 'pdf' = 'csv') => {
     try {
       // Generate full report with current filters
+      // Generate full report with current filters
       const startDate = new Date(parseInt(selectedYear), parseInt(selectedMonth), 1);
       const endDate = new Date(parseInt(selectedYear), parseInt(selectedMonth) + 1, 0);
 
@@ -371,10 +377,10 @@ export default function Reports() {
               <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
                 Performance Reports
               </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Track and analyze team performance</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Track and analyze team performance</p>
             </div>
           </div>
 
@@ -390,16 +396,45 @@ export default function Reports() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="w-[90px] h-9 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
-                <SelectValue placeholder="Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {["2026", "2025", "2024", "2023", "2022"].map(year => (
-                  <SelectItem key={year} value={year} className="text-xs">{year}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={yearOpen} onOpenChange={setYearOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" aria-expanded={yearOpen} className="w-[120px] justify-between h-9 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                  {selectedYear}
+                  <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[120px] p-0">
+                <Command>
+                  <CommandInput placeholder="Search..." className="h-9" />
+                  <CommandList>
+                    <CommandEmpty>No year found.</CommandEmpty>
+                    <CommandGroup>
+                      {/* Fixed height for scrollable dropdown */}
+                      <div className="max-h-[200px] overflow-y-auto custom-scrollbar">
+                        {Array.from({ length: 2040 - 2016 + 1 }, (_, i) => (2040 - i).toString()).map((year) => (
+                          <CommandItem
+                            key={year}
+                            value={year}
+                            onSelect={(currentValue) => {
+                              setSelectedYear(currentValue);
+                              setYearOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedYear === year ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {year}
+                          </CommandItem>
+                        ))}
+                      </div>
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
               <SelectTrigger className="w-[160px] h-9 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-left">
                 <Filter className="h-3.5 w-3.5 mr-1.5 text-slate-400" />
@@ -472,7 +507,7 @@ export default function Reports() {
                       <Users className="h-8 w-8 text-slate-400" />
                     </div>
                     <p className="text-lg font-medium text-slate-700 dark:text-slate-300">No employee data available</p>
-                    <p className="text-sm text-muted-foreground mt-2">Try selecting a different month, year, or department.</p>
+                    <p className="text-sm text-muted-foreground mt-2">Try selecting a different month, year range, or department.</p>
                   </div>
                 ) : (
                   <div className="space-y-6">

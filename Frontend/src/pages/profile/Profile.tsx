@@ -52,20 +52,34 @@ const Profile: React.FC = () => {
   useEffect(() => {
     const fetchEmployeeData = async () => {
       if (!user?.email) return;
-      
+
       try {
         setIsLoading(true);
-        const employees = await apiService.getEmployees();
-        const currentEmployee = employees.find((emp: any) => 
-          emp.email === user.email || emp.employee_id === user.id
-        );
-        
+
+        let currentEmployee = null;
+
+        // If user is admin or HR, they can fetch all or specific. 
+        // But for regular employees, apiService.getEmployees() will 403.
+        // Better to always try fetching the specific employee record by ID first.
+        try {
+          currentEmployee = await apiService.getEmployeeById(user.id);
+        } catch (err) {
+          console.warn('Failed to fetch specific employee data, trying fallback:', err);
+          // Fallback only for privileged roles
+          if (['admin', 'hr', 'manager', 'team_lead'].includes(user.role)) {
+            const employees = await apiService.getEmployees().catch(() => []);
+            currentEmployee = employees.find((emp: any) =>
+              emp.email === user.email || String(emp.employee_id) === String(user.id) || String(emp.id) === String(user.id)
+            );
+          }
+        }
+
         if (currentEmployee) {
           setEmployeeData(currentEmployee);
           // Update editedUser with database data
           const joiningDateRaw = currentEmployee.joining_date || currentEmployee.created_at || user.joiningDate;
           const formattedJoiningDate = joiningDateRaw ? new Date(joiningDateRaw).toISOString().split('T')[0] : '';
-          
+
           setEditedUser({
             ...user,
             id: currentEmployee.employee_id || currentEmployee.id || user.id,
@@ -97,14 +111,14 @@ const Profile: React.FC = () => {
     localStorage.setItem('notificationsEnabled', enabled.toString());
     toast({
       title: enabled ? 'Notifications Enabled' : 'Notifications Disabled',
-      description: enabled 
-        ? 'You will now receive notifications.' 
+      description: enabled
+        ? 'You will now receive notifications.'
         : 'You will no longer receive notifications.',
     });
   };
 
   if (!user || !editedUser) return null;
-  
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -187,10 +201,10 @@ const Profile: React.FC = () => {
                   />
                 </label>
               </div>
-              
+
               <div className="flex-1 text-center md:text-left space-y-2">
                 <div className="flex flex-col md:flex-row items-center gap-3">
-                  <h1 className="text-3xl font-bold">{user.name}</h1>
+                  <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">{user.name}</h1>
                   <Badge className={`${getRoleBadgeColor(user.role)} px-3 py-1`}>
                     <Shield className="h-3 w-3 mr-1" />
                     {t.roles[user.role]}
@@ -395,7 +409,7 @@ const Profile: React.FC = () => {
                       <p className="text-sm text-muted-foreground mb-4">
                         Visit the Settings page to personalize your dashboard with color themes, language preferences, and more.
                       </p>
-                      <Button 
+                      <Button
                         onClick={() => window.location.href = `/${user.role}/settings`}
                         className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                       >

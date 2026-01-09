@@ -436,8 +436,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                         <FileText className="h-8 w-8 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
-                            Salary <span className="text-emerald-600">Details</span>
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+                            Salary Details
                         </h1>
                         <div className="flex flex-col sm:flex-row sm:items-center gap-x-3 gap-y-1 text-xs font-bold text-muted-foreground mt-1 uppercase tracking-tight">
                             <span className="flex items-center gap-1">

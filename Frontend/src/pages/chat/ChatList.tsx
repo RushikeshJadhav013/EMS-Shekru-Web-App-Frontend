@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import AddChatModal from '../../components/chat/AddChatModal';
+import ChatTypeSelectorModal from '../../components/chat/ChatTypeSelectorModal';
 
 const ChatList: React.FC = () => {
   const navigate = useNavigate();
@@ -21,6 +22,9 @@ const ChatList: React.FC = () => {
   const { themeMode } = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddChatModal, setShowAddChatModal] = useState(false);
+  const [showTypeSelector, setShowTypeSelector] = useState(false);
+  const [selectedType, setSelectedType] = useState<'individual' | 'group'>('individual');
+  const [filter, setFilter] = useState<'all' | 'individual' | 'group'>('all');
 
   const permissions = user ? chatService.getChatPermissions(user.role) : null;
   const isDark = themeMode === 'dark' || (themeMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -61,11 +65,25 @@ const ChatList: React.FC = () => {
   };
 
   const filteredChats = useMemo(() => {
+    const seenIndividualParticipants = new Set();
+
     return chats.filter(chat => {
+      // Type filter
+      if (filter !== 'all' && chat.type !== filter) return false;
+
+      // De-duplicate individual chats
+      if (chat.type === 'individual') {
+        const otherParticipant = chat.participants.find(p => p.userId !== user?.id);
+        if (otherParticipant) {
+          if (seenIndividualParticipants.has(otherParticipant.userId)) return false;
+          seenIndividualParticipants.add(otherParticipant.userId);
+        }
+      }
+
       const name = getChatName(chat).toLowerCase();
       return name.includes(searchTerm.toLowerCase());
     });
-  }, [chats, searchTerm, availableUsers, user]);
+  }, [chats, searchTerm, availableUsers, user, filter]);
 
   const handleChatClick = (chat: any) => {
     setActiveChat(chat);
@@ -90,7 +108,7 @@ const ChatList: React.FC = () => {
 
     const content = chat.lastMessage.content;
     const fullPreview = `${senderName}${content}`;
-    return fullPreview.length > 40 ? `${fullPreview.substring(0, 40)}...` : fullPreview;
+    return fullPreview.length > 65 ? `${fullPreview.substring(0, 65)}...` : fullPreview;
   };
 
   if (isLoading && chats.length === 0) {
@@ -129,7 +147,7 @@ const ChatList: React.FC = () => {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setShowAddChatModal(true)}
+            onClick={() => setShowTypeSelector(true)}
             className="h-9 w-9 rounded-full hover:bg-green-500/10 hover:text-green-500 transition-colors"
           >
             <Plus className="h-4.5 w-4.5" />
@@ -149,6 +167,42 @@ const ChatList: React.FC = () => {
               themeClasses.text
             )}
           />
+        </div>
+
+        <div className="flex gap-2 mt-4 overflow-x-auto pb-1 custom-scrollbar-hide no-scrollbar">
+          {[
+            { id: 'all', label: 'All', icon: MessageCircle, count: chats.length },
+            { id: 'individual', label: 'Direct', icon: MessageCircle, count: chats.filter(c => c.type === 'individual').length },
+            { id: 'group', label: 'Groups', icon: Users, count: chats.filter(c => c.type === 'group').length },
+          ].map((type) => {
+            const Icon = type.icon;
+            const isSelected = filter === type.id;
+            return (
+              <button
+                key={type.id}
+                onClick={() => setFilter(type.id as any)}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 border flex-shrink-0 animate-in fade-in slide-in-from-left-2",
+                  isSelected
+                    ? "bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/20"
+                    : isDark
+                      ? "bg-slate-800/40 border-slate-700/50 text-slate-400 hover:border-slate-600 hover:bg-slate-800/60"
+                      : "bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-gray-50"
+                )}
+              >
+                <Icon className={cn("h-3 w-3", isSelected ? "text-white" : "text-green-500")} />
+                <span>{type.label}</span>
+                {type.count > 0 && (
+                  <span className={cn(
+                    "ml-1 px-1.5 py-0.5 rounded-md text-[9px] font-black",
+                    isSelected ? "bg-white/20 text-white" : "bg-green-500/10 text-green-500"
+                  )}>
+                    {type.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -216,7 +270,7 @@ const ChatList: React.FC = () => {
                     )}
                   </div>
                   <div className="flex items-center justify-between">
-                    <p className={cn("text-[11px] truncate font-medium max-w-[120px]",
+                    <p className={cn("text-[11px] truncate font-medium max-w-[200px] lg:max-w-[280px]",
                       isActive ? "text-slate-500" : themeClasses.textSecondary)}>
                       {getLastMessagePreview(chat)}
                     </p>
@@ -233,10 +287,22 @@ const ChatList: React.FC = () => {
         )}
       </div>
 
+      <ChatTypeSelectorModal
+        isOpen={showTypeSelector}
+        onClose={() => setShowTypeSelector(false)}
+        onSelect={(type) => {
+          setSelectedType(type);
+          setShowTypeSelector(false);
+          setShowAddChatModal(true);
+        }}
+        canCreateGroups={permissions?.canCreateGroups || false}
+      />
+
       <AddChatModal
         isOpen={showAddChatModal}
         onClose={() => setShowAddChatModal(false)}
         permissions={permissions}
+        initialTab={selectedType}
       />
     </div>
   );

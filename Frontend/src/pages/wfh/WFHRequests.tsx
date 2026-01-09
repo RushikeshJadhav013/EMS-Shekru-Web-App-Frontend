@@ -118,18 +118,18 @@ const WFHRequests: React.FC = () => {
     // Check for overlapping requests (not consecutive dates)
     const newStartDate = format(formData.startDate, 'yyyy-MM-dd');
     const newEndDate = format(formData.endDate, 'yyyy-MM-dd');
-    
+
     const hasOverlap = wfhRequests.some(req => {
       // Only check pending and approved requests
       if (req.status !== 'pending' && req.status !== 'approved') {
         return false;
       }
-      
+
       // Check for actual overlap (same date or within range)
       // Allow consecutive dates (e.g., 04 Jan and 05 Jan are allowed)
       const reqStart = req.start_date;
       const reqEnd = req.end_date;
-      
+
       // Overlap occurs if:
       // new request starts before existing ends AND new request ends after existing starts
       return newStartDate <= reqEnd && newEndDate >= reqStart;
@@ -171,7 +171,7 @@ const WFHRequests: React.FC = () => {
 
       // Reload requests from context
       await refreshWFHRequests();
-      
+
       setActiveTab('my-requests');
     } catch (error) {
       console.error('Error submitting WFH request:', error);
@@ -190,7 +190,7 @@ const WFHRequests: React.FC = () => {
     // Parse dates from backend format (YYYY-MM-DD) without timezone conversion
     const startDateParts = request.start_date.split('-');
     const endDateParts = request.end_date.split('-');
-    
+
     // Create dates in UTC to avoid timezone shifts
     const startDate = new Date(Date.UTC(
       parseInt(startDateParts[0]),
@@ -202,7 +202,7 @@ const WFHRequests: React.FC = () => {
       parseInt(endDateParts[1]) - 1,
       parseInt(endDateParts[2])
     ));
-    
+
     setFormData({
       startDate,
       endDate,
@@ -227,22 +227,22 @@ const WFHRequests: React.FC = () => {
     // Check for overlapping requests with other pending/approved requests
     const newStartDate = format(formData.startDate, 'yyyy-MM-dd');
     const newEndDate = format(formData.endDate, 'yyyy-MM-dd');
-    
+
     const hasOverlap = wfhRequests.some(req => {
       // Skip the current request being edited
       if (req.id === editingRequest.id) {
         return false;
       }
-      
+
       // Only check pending and approved requests
       if (req.status !== 'pending' && req.status !== 'approved') {
         return false;
       }
-      
+
       // Check for actual overlap (same date or within range)
       const reqStart = req.start_date;
       const reqEnd = req.end_date;
-      
+
       // Overlap occurs if:
       // new request starts before existing ends AND new request ends after existing starts
       return newStartDate <= reqEnd && newEndDate >= reqStart;
@@ -275,7 +275,7 @@ const WFHRequests: React.FC = () => {
 
       setIsEditDialogOpen(false);
       setEditingRequest(null);
-      
+
       // Reload requests from context
       await refreshWFHRequests();
     } catch (error) {
@@ -309,7 +309,7 @@ const WFHRequests: React.FC = () => {
 
       setIsDeleteDialogOpen(false);
       setRequestToDelete(null);
-      
+
       // Reload requests from context
       await refreshWFHRequests();
     } catch (error) {
@@ -360,7 +360,7 @@ const WFHRequests: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 rounded-2xl bg-gradient-to-r from-orange-600 via-red-700 to-pink-800 text-white shadow-xl">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl flex items-center gap-3">
             <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
               <Home className="h-7 w-7 text-white" />
             </div>

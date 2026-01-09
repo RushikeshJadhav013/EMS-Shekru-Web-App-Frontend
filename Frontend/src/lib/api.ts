@@ -225,8 +225,8 @@ class ApiService {
         throw networkError;
       }
 
-      // Log other errors normally
-      if (import.meta.env.DEV) {
+      // Log other errors normally if not an expected 403/401
+      if (import.meta.env.DEV && error.message !== 'Access denied' && !error.message.includes('403')) {
         console.error('API request failed:', error);
       }
 

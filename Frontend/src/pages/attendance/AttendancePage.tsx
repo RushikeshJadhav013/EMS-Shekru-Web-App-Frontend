@@ -64,9 +64,9 @@ const AttendancePage: React.FC = () => {
   // Check if user has approved WFH for today
   const getTodayWfhStatus = () => {
     const today = formatDateIST(new Date(), 'yyyy-MM-dd');
-    const todayWfh = wfhRequests.find(req => 
-      req.status === 'approved' && 
-      req.startDate <= today && 
+    const todayWfh = wfhRequests.find(req =>
+      req.status === 'approved' &&
+      req.startDate <= today &&
       req.endDate >= today
     );
     return todayWfh;
@@ -77,7 +77,7 @@ const AttendancePage: React.FC = () => {
     const now = new Date();
     const time = new Date(timestamp);
     const diffInSeconds = Math.floor((now.getTime() - time.getTime()) / 1000);
-    
+
     if (diffInSeconds < 60) {
       return `${diffInSeconds} seconds ago`;
     } else if (diffInSeconds < 3600) {
@@ -99,20 +99,20 @@ const AttendancePage: React.FC = () => {
       const res = await fetch(`https://staffly.space/attendance/my-attendance/${user.id}`);
       if (!res.ok) throw new Error('Failed to fetch attendance');
       const data = await res.json();
-      
+
       // Parse backend response and find today's record
       const today = formatDateIST(new Date(), 'yyyy-MM-dd');
       const todayRecord = data.find((rec: any) => {
         const recordDate = formatDateIST(rec.check_in, 'yyyy-MM-dd');
         return recordDate === today;
       });
-      
+
       if (todayRecord) {
         // Convert backend format to frontend format
         // Use ISO datetime strings for proper timezone handling
         const checkInDate = new Date(todayRecord.check_in);
         const checkOutDate = todayRecord.check_out ? new Date(todayRecord.check_out) : null;
-        
+
         const attendance: AttendanceRecord = {
           id: todayRecord.attendance_id.toString(),
           userId: todayRecord.user_id.toString(),
@@ -125,7 +125,7 @@ const AttendancePage: React.FC = () => {
           workHours: todayRecord.total_hours
         };
         setCurrentAttendance(attendance);
-        
+
         // Store all history
         const history = data
           .map((rec: any) => ({
@@ -191,7 +191,7 @@ const AttendancePage: React.FC = () => {
     }
 
     setIsImprovingAccuracy(true);
-    
+
     try {
       const watcher = getCurrentLocationWithContinuousImprovement(
         (improvedLocation) => {
@@ -203,7 +203,7 @@ const AttendancePage: React.FC = () => {
             updatedAt: Date.now(),
           };
           setLocation(refreshed);
-          
+
           // Stop improving if we get very accurate location (< 10 meters)
           if (improvedLocation.accuracy && improvedLocation.accuracy < 10) {
             setIsImprovingAccuracy(false);
@@ -211,9 +211,9 @@ const AttendancePage: React.FC = () => {
         },
         10 // Target 10 meters accuracy
       );
-      
+
       setLocationWatcher(watcher);
-      
+
       // Auto-stop after 30 seconds
       setTimeout(() => {
         watcher.stop();
@@ -256,14 +256,14 @@ const AttendancePage: React.FC = () => {
 
   useEffect(() => {
     fetchTodayAttendance();
-    
+
     // Load WFH requests from backend
     const loadWFHRequests = async () => {
       if (!user?.id) return;
       try {
         const wfhResponse = await apiService.getMyWFHRequests();
         let wfhData = [];
-        
+
         if (Array.isArray(wfhResponse)) {
           wfhData = wfhResponse;
         } else if (wfhResponse && typeof wfhResponse === 'object') {
@@ -277,7 +277,7 @@ const AttendancePage: React.FC = () => {
             wfhData = wfhResponse.results;
           }
         }
-        
+
         const formattedWfhRequests = wfhData.map((req: any) => ({
           id: req.wfh_id || req.id,
           wfhId: req.wfh_id || req.id,
@@ -293,22 +293,22 @@ const AttendancePage: React.FC = () => {
           rejectionReason: req.rejection_reason,
           approvedBy: req.approved_by,
         }));
-        
+
         setWfhRequests(formattedWfhRequests);
       } catch (wfhError) {
         console.error('Failed to load WFH requests:', wfhError);
         setWfhRequests([]);
       }
     };
-    
+
     loadWFHRequests();
-    
+
     // Get location immediately when page loads
     const initLocation = async () => {
       try {
         setIsGettingFastLocation(true);
         setLocationError(null);
-        
+
         // Get fast location immediately
         const fastLocation = await getCurrentLocationFast();
         const refreshed: GeoLocation = {
@@ -320,7 +320,7 @@ const AttendancePage: React.FC = () => {
         };
         setLocation(refreshed);
         setIsGettingFastLocation(false);
-        
+
         // After initial fast location, start continuous improvement
         try {
           const watcher = getCurrentLocationWithContinuousImprovement(
@@ -333,7 +333,7 @@ const AttendancePage: React.FC = () => {
                 updatedAt: Date.now(),
               };
               setLocation(improved);
-              
+
               // Stop improving if we get very accurate location (< 10 meters)
               if (improvedLocation.accuracy && improvedLocation.accuracy < 10) {
                 setIsImprovingAccuracy(false);
@@ -341,10 +341,10 @@ const AttendancePage: React.FC = () => {
             },
             10 // Target 10 meters accuracy
           );
-          
+
           setLocationWatcher(watcher);
           setIsImprovingAccuracy(true);
-          
+
           // Auto-stop after 30 seconds
           setTimeout(() => {
             watcher.stop();
@@ -361,9 +361,9 @@ const AttendancePage: React.FC = () => {
         setIsGettingFastLocation(false);
       }
     };
-    
+
     initLocation();
-    
+
     // Auto-refresh at midnight to reset for new day
     const checkMidnight = setInterval(() => {
       const now = new Date();
@@ -372,14 +372,14 @@ const AttendancePage: React.FC = () => {
         fetchTodayAttendance();
       }
     }, 60000); // Check every minute
-    
+
     return () => {
       clearInterval(checkMidnight);
       if (locationWatcher) {
         locationWatcher.stop();
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]); // Only depend on user?.id to avoid re-running unnecessarily
 
   // Add effect to update WFH request timestamps in real-time
@@ -389,7 +389,7 @@ const AttendancePage: React.FC = () => {
       const renderInterval = setInterval(() => {
         setWfhRequests(prev => [...prev]); // Trigger re-render
       }, 60000);
-      
+
       return () => clearInterval(renderInterval);
     }
   }, [viewMode, wfhRequests.length]);
@@ -399,15 +399,15 @@ const AttendancePage: React.FC = () => {
       await refreshLocation();
     } catch (error: any) {
       toast({
-          title: 'Location Required',
+        title: 'Location Required',
         description: error?.message || 'Please enable location services and try again.',
-          variant: 'destructive',
-        });
-        return;
+        variant: 'destructive',
+      });
+      return;
     }
 
     setIsLoading(true);
-    
+
     try {
       // First, take a selfie if camera is available
       setShowCamera(true);
@@ -442,7 +442,7 @@ const AttendancePage: React.FC = () => {
     try {
       const activeLocation = await refreshLocation().catch(() => location);
       if (!activeLocation || !user?.id) throw new Error('Location or user missing');
-      
+
       const formData = new FormData();
       formData.append('user_id', String(user.id));
 
@@ -457,44 +457,44 @@ const AttendancePage: React.FC = () => {
       formData.append('gps_location', locationJson);
       formData.append('location_data', locationJson);
       formData.append('work_summary', workSummary.trim());
-      
+
       if (deadlineReason) {
         formData.append('task_deadline_reason', deadlineReason.trim());
       }
-      
+
       if (workPdf) {
         formData.append('work_report', workPdf, workPdf.name);
       }
 
       // For now, we'll skip the selfie requirement for checkout
       // In a real implementation, you might want to add selfie capture here
-      const response = await fetch('https://staffly.space/attendance/check-out', { 
-        method: 'POST', 
-        body: formData 
+      const response = await fetch('https://staffly.space/attendance/check-out', {
+        method: 'POST',
+        body: formData
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
         throw new Error(errorData.detail || 'Checkout failed');
       }
-      
+
       // Fetch updated attendance
       await fetchTodayAttendance();
-      
-      toast({ 
-        title: 'Success', 
+
+      toast({
+        title: 'Success',
         description: 'Successfully checked out!',
         variant: 'default'
       });
-      
+
       setTodaysWork('');
       setWorkPdf(null);
     } catch (error) {
       console.error('Checkout error:', error);
-      toast({ 
-        title: 'Checkout Failed', 
-        description: error instanceof Error ? error.message : 'Failed to check out', 
-        variant: 'destructive' 
+      toast({
+        title: 'Checkout Failed',
+        description: error instanceof Error ? error.message : 'Failed to check out',
+        variant: 'destructive'
       });
       throw error; // Re-throw to prevent dialog from closing
     } finally {
@@ -507,7 +507,7 @@ const AttendancePage: React.FC = () => {
     try {
       const activeLocation = await refreshLocation().catch(() => location);
       if (!activeLocation || !user?.id) throw new Error('Location or user missing');
-      
+
       const formData = new FormData();
       formData.append('user_id', String(user.id));
 
@@ -532,18 +532,18 @@ const AttendancePage: React.FC = () => {
         }
       }
 
-      
+
       // Convert base64 image to blob and append
       const selfieBlob = await fetch(imageData).then(r => r.blob());
       formData.append('selfie', selfieBlob, 'selfie.jpg');
-      
+
       let apiUrl = '';
       if (isCheckingIn) apiUrl = 'https://staffly.space/attendance/check-in';
       else apiUrl = 'https://staffly.space/attendance/check-out';
-      
+
       const token = localStorage.getItem('token');
-      const response = await fetch(apiUrl, { 
-        method: 'POST', 
+      const response = await fetch(apiUrl, {
+        method: 'POST',
         body: formData,
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
@@ -551,12 +551,12 @@ const AttendancePage: React.FC = () => {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
         throw new Error(errorData.detail || 'Attendance API error');
       }
-      
+
       // Fetch updated attendance
       await fetchTodayAttendance();
-      
-      toast({ 
-        title: 'Success', 
+
+      toast({
+        title: 'Success',
         description: isCheckingIn ? 'Successfully checked in!' : 'Successfully checked out!',
         variant: 'default'
       });
@@ -566,10 +566,10 @@ const AttendancePage: React.FC = () => {
       }
     } catch (error) {
       console.error('Attendance error:', error);
-      toast({ 
-        title: 'Error', 
-        description: error instanceof Error ? error.message : 'Failed to record attendance', 
-        variant: 'destructive' 
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to record attendance',
+        variant: 'destructive'
       });
     } finally {
       setShowCamera(false);
@@ -606,18 +606,18 @@ const AttendancePage: React.FC = () => {
     // Check for overlapping requests (not consecutive dates)
     const newStartDate = format(wfhStartDate, 'yyyy-MM-dd');
     const newEndDate = format(wfhEndDate, 'yyyy-MM-dd');
-    
+
     const hasOverlap = wfhRequests.some(req => {
       // Only check pending and approved requests
       if (req.status !== 'pending' && req.status !== 'approved') {
         return false;
       }
-      
+
       // Check for actual overlap (same date or within range)
       // Allow consecutive dates (e.g., 04 Jan and 05 Jan are allowed)
       const reqStart = req.startDate;
       const reqEnd = req.endDate;
-      
+
       // Overlap occurs if:
       // new request starts before existing ends AND new request ends after existing starts
       return newStartDate <= reqEnd && newEndDate >= reqStart;
@@ -660,7 +660,7 @@ const AttendancePage: React.FC = () => {
       };
 
       setWfhRequests(prev => [newRequest, ...prev]);
-      
+
       toast({
         title: 'WFH Request Submitted',
         description: 'Your work from home request has been submitted for approval.',
@@ -688,7 +688,7 @@ const AttendancePage: React.FC = () => {
     // Parse dates from backend format (YYYY-MM-DD) without timezone conversion
     const startDateParts = request.startDate.split('-');
     const endDateParts = request.endDate.split('-');
-    
+
     // Create dates in UTC to avoid timezone shifts
     const startDate = new Date(Date.UTC(
       parseInt(startDateParts[0]),
@@ -700,7 +700,7 @@ const AttendancePage: React.FC = () => {
       parseInt(endDateParts[1]) - 1,
       parseInt(endDateParts[2])
     ));
-    
+
     setWfhStartDate(startDate);
     setWfhEndDate(endDate);
     setWfhReason(request.reason);
@@ -730,22 +730,22 @@ const AttendancePage: React.FC = () => {
     // Check for overlapping requests with other pending/approved requests
     const newStartDate = format(wfhStartDate, 'yyyy-MM-dd');
     const newEndDate = format(wfhEndDate, 'yyyy-MM-dd');
-    
+
     const hasOverlap = wfhRequests.some(req => {
       // Skip the current request being edited
       if ((req.id || req.wfhId) === editingWfhId) {
         return false;
       }
-      
+
       // Only check pending and approved requests
       if (req.status !== 'pending' && req.status !== 'approved') {
         return false;
       }
-      
+
       // Check for actual overlap (same date or within range)
       const reqStart = req.startDate;
       const reqEnd = req.endDate;
-      
+
       // Overlap occurs if:
       // new request starts before existing ends AND new request ends after existing starts
       return newStartDate <= reqEnd && newEndDate >= reqStart;
@@ -770,15 +770,15 @@ const AttendancePage: React.FC = () => {
         reason: wfhReason.trim(),
       });
 
-      setWfhRequests(prev => prev.map(req => 
+      setWfhRequests(prev => prev.map(req =>
         (req.id === editingWfhId || req.wfhId === parseInt(editingWfhId))
           ? {
-              ...req,
-              startDate: response.start_date,
-              endDate: response.end_date,
-              reason: response.reason,
-              type: wfhType,
-            }
+            ...req,
+            startDate: response.start_date,
+            endDate: response.end_date,
+            reason: response.reason,
+            type: wfhType,
+          }
           : req
       ));
 
@@ -809,9 +809,9 @@ const AttendancePage: React.FC = () => {
     setIsDeletingWfhId(wfhId);
     try {
       await apiService.deleteWFHRequest(parseInt(wfhId));
-      
+
       setWfhRequests(prev => prev.filter(req => req.id !== wfhId && req.wfhId !== parseInt(wfhId)));
-      
+
       toast({
         title: 'WFH Request Deleted',
         description: 'Your work from home request has been deleted successfully.',
@@ -877,7 +877,7 @@ const AttendancePage: React.FC = () => {
               <Clock className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold">{t.navigation.attendance}</h2>
+              <h2 className="text-2xl font-bold">Attendance Management</h2>
               <p className="text-sm text-muted-foreground mt-1">Mark your daily attendance and apply for WFH</p>
             </div>
           </div>
@@ -892,14 +892,14 @@ const AttendancePage: React.FC = () => {
       <div className="flex justify-center w-full">
         <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'self' | 'wfh')} className="w-full sm:w-auto">
           <TabsList className="grid grid-cols-2 h-14 w-full sm:w-[500px] bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm">
-            <TabsTrigger 
+            <TabsTrigger
               value="self"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
             >
               <User className="h-4 w-4 mr-2" />
               Self Attendance
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="wfh"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
             >
@@ -915,263 +915,262 @@ const AttendancePage: React.FC = () => {
           {/* Self Attendance View */}
           {/* Location Status Card - Prominent Display */}
           <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
-        <CardHeader className="border-b bg-white/50 dark:bg-gray-900/50">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-blue-600" />
-                Current Location
-              </CardTitle>
-              <CardDescription>Your real-time GPS location</CardDescription>
-            </div>
-            <div className="flex gap-2">
-              {!isImprovingAccuracy && location && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    startContinuousLocationImprovement();
-                    toast({
-                      title: 'Improving Accuracy',
-                      description: 'Getting more precise location...',
-                    });
-                  }}
-                  disabled={isRefreshingLocation || isGettingFastLocation}
-                >
-                  Improve Accuracy
-                </Button>
-              )}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={async () => {
-                  setIsRefreshingLocation(true);
-                  stopContinuousLocationImprovement();
-                  try {
-                    await refreshLocationFast();
-                    startContinuousLocationImprovement();
-                    toast({
-                      title: 'Location Updated',
-                      description: 'Your location has been refreshed successfully',
-                    });
-                  } catch (error: any) {
-                    // Error already handled in refreshLocationFast
-                  } finally {
-                    setIsRefreshingLocation(false);
-                  }
-                }}
-                disabled={isRefreshingLocation || isGettingFastLocation}
-              >
-                {isRefreshingLocation ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Refreshing...
-                  </>
-                ) : (
-                  'Refresh'
-                )}
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6">
-          {isGettingFastLocation ? (
-            <div className="flex flex-col items-center justify-center py-8 space-y-3">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-              <p className="text-sm font-medium">Detecting your location...</p>
-              <p className="text-xs text-muted-foreground">This should take just a moment</p>
-            </div>
-          ) : locationError ? (
-            <div className="flex flex-col items-center justify-center py-8 space-y-3">
-              <AlertCircle className="h-8 w-8 text-red-500" />
-              <p className="text-sm font-medium text-red-600">{locationError}</p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => refreshLocationFast()}
-              >
-                Try Again
-              </Button>
-            </div>
-          ) : location ? (
-            <div className="space-y-4">
-              <div className="bg-white dark:bg-gray-900 rounded-lg p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <MapPin className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1 space-y-1">
-                    <p className="font-medium text-sm">Address</p>
-                    <p className="text-sm text-muted-foreground">{location.address}</p>
-                  </div>
+            <CardHeader className="border-b bg-white/50 dark:bg-gray-900/50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-blue-600" />
+                    Current Location
+                  </CardTitle>
+                  <CardDescription>Your real-time GPS location</CardDescription>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4 pt-2 border-t">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Latitude</p>
-                    <p className="font-mono text-sm font-semibold">{location.latitude.toFixed(6)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Longitude</p>
-                    <p className="font-mono text-sm font-semibold">{location.longitude.toFixed(6)}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between pt-2 border-t text-xs text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1">
-                      <span className="font-medium">Accuracy:</span>
-                      <span className={`font-semibold ${
-                        location.accuracy && location.accuracy < 10 ? 'text-green-600' :
-                        location.accuracy && location.accuracy < 50 ? 'text-yellow-600' :
-                        'text-orange-600'
-                      }`}>
-                        {location.accuracy ? `±${Math.round(location.accuracy)}m` : 'Unknown'}
-                      </span>
-                    </span>
-                    {isImprovingAccuracy && (
-                      <Badge variant="outline" className="text-xs py-0 px-2 border-blue-500 text-blue-600">
-                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        Improving...
-                      </Badge>
+                <div className="flex gap-2">
+                  {!isImprovingAccuracy && location && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        startContinuousLocationImprovement();
+                        toast({
+                          title: 'Improving Accuracy',
+                          description: 'Getting more precise location...',
+                        });
+                      }}
+                      disabled={isRefreshingLocation || isGettingFastLocation}
+                    >
+                      Improve Accuracy
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      setIsRefreshingLocation(true);
+                      stopContinuousLocationImprovement();
+                      try {
+                        await refreshLocationFast();
+                        startContinuousLocationImprovement();
+                        toast({
+                          title: 'Location Updated',
+                          description: 'Your location has been refreshed successfully',
+                        });
+                      } catch (error: any) {
+                        // Error already handled in refreshLocationFast
+                      } finally {
+                        setIsRefreshingLocation(false);
+                      }
+                    }}
+                    disabled={isRefreshingLocation || isGettingFastLocation}
+                  >
+                    {isRefreshingLocation ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Refreshing...
+                      </>
+                    ) : (
+                      'Refresh'
                     )}
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {isGettingFastLocation ? (
+                <div className="flex flex-col items-center justify-center py-8 space-y-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                  <p className="text-sm font-medium">Detecting your location...</p>
+                  <p className="text-xs text-muted-foreground">This should take just a moment</p>
+                </div>
+              ) : locationError ? (
+                <div className="flex flex-col items-center justify-center py-8 space-y-3">
+                  <AlertCircle className="h-8 w-8 text-red-500" />
+                  <p className="text-sm font-medium text-red-600">{locationError}</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => refreshLocationFast()}
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              ) : location ? (
+                <div className="space-y-4">
+                  <div className="bg-white dark:bg-gray-900 rounded-lg p-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 space-y-1">
+                        <p className="font-medium text-sm">Address</p>
+                        <p className="text-sm text-muted-foreground">{location.address}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Latitude</p>
+                        <p className="font-mono text-sm font-semibold">{location.latitude.toFixed(6)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Longitude</p>
+                        <p className="font-mono text-sm font-semibold">{location.longitude.toFixed(6)}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1">
+                          <span className="font-medium">Accuracy:</span>
+                          <span className={`font-semibold ${location.accuracy && location.accuracy < 10 ? 'text-green-600' :
+                              location.accuracy && location.accuracy < 50 ? 'text-yellow-600' :
+                                'text-orange-600'
+                            }`}>
+                            {location.accuracy ? `±${Math.round(location.accuracy)}m` : 'Unknown'}
+                          </span>
+                        </span>
+                        {isImprovingAccuracy && (
+                          <Badge variant="outline" className="text-xs py-0 px-2 border-blue-500 text-blue-600">
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            Improving...
+                          </Badge>
+                        )}
+                      </div>
+                      {location.updatedAt && (
+                        <span>
+                          {formatTimeIST(location.updatedAt, 'HH:mm:ss')}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  {location.updatedAt && (
-                    <span>
-                      {formatTimeIST(location.updatedAt, 'HH:mm:ss')}
-                    </span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 space-y-3">
+                  <AlertCircle className="h-8 w-8 text-orange-500" />
+                  <p className="text-sm font-medium">Location not available</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => refreshLocationFast()}
+                  >
+                    Get Location
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Current Status Card */}
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+              <CardTitle className="text-xl font-semibold">{t.attendance.todayStatus}</CardTitle>
+              <CardDescription>Your attendance status for today</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {currentAttendance ? (
+                    <>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <LogIn className="h-4 w-4 text-green-500" />
+                          <span className="text-sm font-medium">Check-in Time</span>
+                          {getStatusBadge(currentAttendance.status, currentAttendance.checkInTime)}
+                        </div>
+                        <p className="text-lg font-semibold">
+                          {formatAttendanceTime(currentAttendance.date, currentAttendance.checkInTime)}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <LogOut className="h-4 w-4 text-red-500" />
+                          <span className="text-sm font-medium">Check-out Time</span>
+                          {currentAttendance.checkOutTime &&
+                            getStatusBadge(currentAttendance.status, undefined, currentAttendance.checkOutTime)}
+                        </div>
+                        <p className="text-lg font-semibold">
+                          {currentAttendance.checkOutTime
+                            ? formatAttendanceTime(currentAttendance.date, currentAttendance.checkOutTime)
+                            : '-'}
+                        </p>
+                      </div>
+
+                      {currentAttendance.workHours && (
+                        <div className="col-span-2">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Clock className="h-4 w-4 text-blue-500" />
+                            <span className="text-sm font-medium">Total Work Hours</span>
+                          </div>
+                          <p className="text-lg font-semibold">{currentAttendance.workHours} Hrs</p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="col-span-2 text-center py-8 text-muted-foreground">
+                      <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Not checked in yet</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  {!currentAttendance ? (
+                    <Button onClick={handleCheckIn} size="lg" className="flex-1 gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-md">
+                      <LogIn className="h-5 w-5" />
+                      {t.attendance.checkIn}
+                    </Button>
+                  ) : !currentAttendance.checkOutTime ? (
+                    <Button onClick={handleCheckOut} size="lg" className="flex-1 gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-md">
+                      <LogOut className="h-5 w-5" />
+                      {t.attendance.checkOut}
+                    </Button>
+                  ) : (
+                    <div className="flex-1 text-center">
+                      <Badge className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Attendance Completed for Today
+                      </Badge>
+                    </div>
                   )}
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8 space-y-3">
-              <AlertCircle className="h-8 w-8 text-orange-500" />
-              <p className="text-sm font-medium">Location not available</p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => refreshLocationFast()}
-              >
-                Get Location
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
 
-      {/* Current Status Card */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-          <CardTitle className="text-xl font-semibold">{t.attendance.todayStatus}</CardTitle>
-          <CardDescription>Your attendance status for today</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {currentAttendance ? (
-                <>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <LogIn className="h-4 w-4 text-green-500" />
-                      <span className="text-sm font-medium">Check-in Time</span>
-                      {getStatusBadge(currentAttendance.status, currentAttendance.checkInTime)}
-                    </div>
-                    <p className="text-lg font-semibold">
-                      {formatAttendanceTime(currentAttendance.date, currentAttendance.checkInTime)}
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <LogOut className="h-4 w-4 text-red-500" />
-                      <span className="text-sm font-medium">Check-out Time</span>
-                      {currentAttendance.checkOutTime && 
-                        getStatusBadge(currentAttendance.status, undefined, currentAttendance.checkOutTime)}
-                    </div>
-                    <p className="text-lg font-semibold">
-                      {currentAttendance.checkOutTime 
-                        ? formatAttendanceTime(currentAttendance.date, currentAttendance.checkOutTime)
-                        : '-'}
-                    </p>
-                  </div>
-                  
-                  {currentAttendance.workHours && (
-                    <div className="col-span-2">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Clock className="h-4 w-4 text-blue-500" />
-                        <span className="text-sm font-medium">Total Work Hours</span>
+          {/* Attendance History */}
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+              <CardTitle className="text-xl font-semibold">{t.attendance.history}</CardTitle>
+              <CardDescription>Your recent attendance records</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {attendanceHistory.length > 0 ? (
+                  attendanceHistory.slice(-10).reverse().map((record) => (
+                    <div key={record.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+                          <Calendar className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{formatDateIST(record.date, 'dd MMM yyyy')}</p>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span>In: {formatAttendanceTime(record.date, record.checkInTime)}</span>
+                            <span>Out: {formatAttendanceTime(record.date, record.checkOutTime)}</span>
+                            {record.workHours && <span>{record.workHours} Hrs</span>}
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-lg font-semibold">{currentAttendance.workHours} Hrs</p>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="col-span-2 text-center py-8 text-muted-foreground">
-                  <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Not checked in yet</p>
-                </div>
-              )}
-            </div>
-            
-            <div className="flex gap-3 pt-4">
-              {!currentAttendance ? (
-                <Button onClick={handleCheckIn} size="lg" className="flex-1 gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-md">
-                  <LogIn className="h-5 w-5" />
-                  {t.attendance.checkIn}
-                </Button>
-              ) : !currentAttendance.checkOutTime ? (
-                <Button onClick={handleCheckOut} size="lg" className="flex-1 gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-md">
-                  <LogOut className="h-5 w-5" />
-                  {t.attendance.checkOut}
-                </Button>
-              ) : (
-                <div className="flex-1 text-center">
-                  <Badge className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Attendance Completed for Today
-                  </Badge>
-                </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Attendance History */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-          <CardTitle className="text-xl font-semibold">{t.attendance.history}</CardTitle>
-          <CardDescription>Your recent attendance records</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {attendanceHistory.length > 0 ? (
-              attendanceHistory.slice(-10).reverse().map((record) => (
-                <div key={record.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
-                      <Calendar className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{formatDateIST(record.date, 'dd MMM yyyy')}</p>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>In: {formatAttendanceTime(record.date, record.checkInTime)}</span>
-                        <span>Out: {formatAttendanceTime(record.date, record.checkOutTime)}</span>
-                        {record.workHours && <span>{record.workHours} Hrs</span>}
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-center py-8 text-muted-foreground">No attendance history</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                  ))
+                ) : (
+                  <p className="text-center py-8 text-muted-foreground">No attendance history</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Work Summary Dialog with Deadline Reason */}
           <WorkSummaryDialog
@@ -1322,7 +1321,7 @@ const AttendancePage: React.FC = () => {
                             )}
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge 
+                            <Badge
                               variant={request.status === 'approved' ? 'default' : request.status === 'rejected' ? 'destructive' : 'secondary'}
                               className={request.status === 'approved' ? 'bg-green-500' : ''}
                             >

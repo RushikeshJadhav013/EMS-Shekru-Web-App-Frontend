@@ -434,7 +434,7 @@ const MainLayout: React.FC = () => {
 
         {/* Main Content */}
         <main className={`flex-1 ${location.pathname.includes('/chat') ? 'overflow-hidden' : 'overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent'}`}>
-          <div className={`h-full animate-fade-in ${location.pathname.includes('/chat') ? '' : 'container mx-auto p-6'}`}>
+          <div className={`h-full animate-fade-in ${location.pathname.includes('/chat') || location.pathname.includes('/tasks') ? '' : 'container mx-auto p-6'}`}>
             <Outlet />
           </div>
         </main>

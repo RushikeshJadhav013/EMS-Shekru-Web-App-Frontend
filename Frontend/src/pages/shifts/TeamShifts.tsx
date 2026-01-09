@@ -78,7 +78,7 @@ export default function TeamShifts() {
 
   const loadSchedule = async () => {
     if (!startDate || !endDate) return;
-    
+
     try {
       setIsLoading(true);
       const data = await apiService.getMyShiftSchedule(startDate, endDate);
@@ -127,7 +127,7 @@ export default function TeamShifts() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     assignmentDate.setHours(0, 0, 0, 0);
-    
+
     if (assignmentDate < today) {
       return <Badge variant="outline" className="bg-gray-100">Past</Badge>;
     } else if (assignmentDate.getTime() === today.getTime()) {
@@ -142,7 +142,7 @@ export default function TeamShifts() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl flex items-center gap-3">
             <CalendarDays className="h-8 w-8 text-blue-600" />
             My Shift Schedule
           </h1>
@@ -245,9 +245,8 @@ export default function TeamShifts() {
                       return (
                         <div
                           key={day.toISOString()}
-                          className={`border rounded-lg p-3 min-h-[120px] ${
-                            isToday ? 'bg-blue-50 dark:bg-blue-950 border-blue-300' : ''
-                          }`}
+                          className={`border rounded-lg p-3 min-h-[120px] ${isToday ? 'bg-blue-50 dark:bg-blue-950 border-blue-300' : ''
+                            }`}
                         >
                           <div className="text-sm font-medium mb-2">
                             {format(day, 'EEE')}
@@ -287,9 +286,8 @@ export default function TeamShifts() {
                       return (
                         <div
                           key={day.toISOString()}
-                          className={`border rounded-lg p-2 min-h-[80px] ${
-                            isToday ? 'bg-blue-50 dark:bg-blue-950 border-blue-300' : ''
-                          }`}
+                          className={`border rounded-lg p-2 min-h-[80px] ${isToday ? 'bg-blue-50 dark:bg-blue-950 border-blue-300' : ''
+                            }`}
                         >
                           <div className="text-xs font-medium mb-1">
                             {format(day, 'd')}

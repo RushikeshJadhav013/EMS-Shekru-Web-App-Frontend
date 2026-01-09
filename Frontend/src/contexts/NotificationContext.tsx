@@ -1,11 +1,13 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
-const FETCH_INTERVAL_MS = 30_000; // Poll every 30 seconds for more real-time feel
+// Polling disabled - only fetch on app init/auth
+const FETCH_INTERVAL_MS = 0; // Disabled
 const POLLING_IDLE_TIMEOUT_MS = 10 * 60_000; // 10 minutes idle timeout
-const RETRY_DELAY_MS = 5_000; // Retry after 5 seconds on failure
+const RETRY_DELAY_MS = 10_000; // Retry after 10 seconds on failure
+const MIN_FETCH_INTERVAL_MS = 30_000; // Minimum 30 seconds between fetches (except manual refresh)
 
 export interface Notification {
   id: string;
@@ -33,7 +35,8 @@ export interface Notification {
 
 // Debug logging helper
 const debugLog = (message: string, data?: unknown) => {
-  if (import.meta.env.DEV) {
+  // Disabled to keep console clean. Enable only for debugging notifications.
+  if (import.meta.env.DEV && false) {
     console.log(`[NotificationContext] ${message}`, data !== undefined ? data : '');
   }
 };
@@ -105,14 +108,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const retryTimeoutRef = useRef<number | null>(null);
   const lastFetchRef = useRef<number>(0);
   const previousUnreadCountRef = useRef<number>(0);
-  
+  const isFetchingRef = useRef<boolean>(false); // Prevent concurrent fetches
+  const initialFetchDoneRef = useRef<boolean>(false); // Track if initial fetch is done
+
   // Check if notifications are enabled
   const areNotificationsEnabled = () => {
     const stored = localStorage.getItem('notificationsEnabled');
     return stored === null ? true : stored === 'true';
   };
 
-  // Load notifications from localStorage
+  // Load notifications from localStorage on mount
   useEffect(() => {
     if (!user) {
       setNotifications([]);
@@ -123,6 +128,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (stored) {
       try {
         const parsed: Notification[] = JSON.parse(stored);
+        debugLog('Loaded notifications from localStorage:', parsed.length);
         setNotifications(parsed);
       } catch (error) {
         console.error('Failed to parse stored notifications', error);
@@ -130,9 +136,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setNotifications([]);
       }
     } else {
+      debugLog('No stored notifications found');
       setNotifications([]);
     }
-  }, [user]);
+  }, [user?.id]);
 
   // Save notifications to localStorage
   useEffect(() => {
@@ -154,16 +161,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
-      
+
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
-      
+
       oscillator.frequency.value = 800;
       oscillator.type = 'sine';
-      
+
       gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-      
+
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 0.5);
     };
@@ -206,13 +213,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const notificationUserId = String(notification.user_id);
     if (currentUserId && notificationUserId !== currentUserId) {
       // This notification is not for the current user, filter it out
+      debugLog('Filtering out task notification - not for current user', { notificationUserId, currentUserId });
       return null;
     }
 
     // ✅ Prevent self-notifications: if sender and recipient are the same, don't show
     if (fromValue !== undefined && String(fromValue) === notificationUserId) {
+      debugLog('Filtering out task notification - self notification', { fromValue, notificationUserId });
       return null;
     }
+
+    debugLog('Mapping task notification', { id: notification.notification_id, title: notification.title, is_read: notification.is_read });
 
     return {
       id: `backend-task-${notification.notification_id}`,
@@ -240,8 +251,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const notificationUserId = String(notification.user_id);
     if (currentUserId && notificationUserId !== currentUserId) {
       // This notification is not for the current user, filter it out
+      debugLog('Filtering out leave notification - not for current user', { notificationUserId, currentUserId });
       return null;
     }
+
+    debugLog('Mapping leave notification', { id: notification.notification_id, title: notification.title, is_read: notification.is_read });
 
     return {
       id: `backend-leave-${notification.notification_id}`,
@@ -263,6 +277,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const notificationUserId = String(notification.user_id);
     if (currentUserId && notificationUserId !== currentUserId) {
       // This notification is not for the current user, filter it out
+      debugLog('Filtering out shift notification - not for current user', { notificationUserId, currentUserId });
       return null;
     }
 
@@ -273,6 +288,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } else if (userRole === 'employee') {
       teamRoute = '/employee/team';
     }
+
+    debugLog('Mapping shift notification', { id: notification.notification_id, title: notification.title, is_read: notification.is_read });
 
     return {
       id: `backend-shift-${notification.notification_id}`,
@@ -310,13 +327,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       debugLog('No user, skipping fetch');
       return;
     }
-    
+
     // Check if notifications are enabled
     if (!areNotificationsEnabled()) {
       debugLog('Notifications disabled, skipping fetch');
       return;
     }
-    
+
     const authHeader = getAuthHeader();
     if (!authHeader) {
       debugLog('No auth header, stopping polling');
@@ -332,15 +349,25 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return;
     }
 
-    // Prevent too frequent fetches (minimum 2 seconds between fetches)
-    const now = Date.now();
-    if (!isManualRefresh && now - lastFetchRef.current < 2000) {
-      debugLog('Fetch throttled, skipping');
+    // ✅ CRITICAL: Prevent concurrent fetches - only one request at a time
+    if (isFetchingRef.current) {
+      debugLog('Fetch already in progress, skipping');
       return;
     }
+
+    // Prevent too frequent fetches (minimum 30 seconds between fetches, except for manual refresh)
+    const now = Date.now();
+    const timeSinceLastFetch = now - lastFetchRef.current;
+    if (!isManualRefresh && timeSinceLastFetch < MIN_FETCH_INTERVAL_MS) {
+      debugLog(`Fetch throttled, ${Math.round((MIN_FETCH_INTERVAL_MS - timeSinceLastFetch) / 1000)}s remaining`);
+      return;
+    }
+
+    // Mark as fetching
+    isFetchingRef.current = true;
     lastFetchRef.current = now;
 
-    // Cancel previous request if still pending
+    // Cancel previous request if still pending (shouldn't happen with isFetchingRef check)
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -529,6 +556,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       debugLog('Total backend notifications mapped:', backendNotifications.length);
       debugLog('Backend notifications:', backendNotifications);
+      const taskMapped = taskData.map(n => mapBackendTaskNotification(n, user.id)).filter((n): n is Notification => n !== null);
+      const leaveMapped = leaveData.map(n => mapBackendLeaveNotification(n, user.id)).filter((n): n is Notification => n !== null);
+      const shiftMapped = shiftData.map(n => mapBackendShiftNotification(n, user.role, user.id)).filter((n): n is Notification => n !== null);
+      debugLog('Task notifications:', { raw: taskData.length, mapped: taskMapped.length });
+      debugLog('Leave notifications:', { raw: leaveData.length, mapped: leaveMapped.length });
+      debugLog('Shift notifications:', { raw: shiftData.length, mapped: shiftMapped.length });
 
       setNotifications((prev) => {
         const localOnly = prev.filter((notification) => !notification.backendId);
@@ -542,20 +575,20 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const sortedNotifications = Array.from(uniqueById.values()).sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
-        
+
         debugLog('Final notifications count:', sortedNotifications.length);
         debugLog('Unread count:', sortedNotifications.filter(n => !n.read).length);
-        
+
         // Check for new unread notifications and play sound
         const newUnreadCount = sortedNotifications.filter(n => !n.read).length;
         if (newUnreadCount > previousUnreadCountRef.current && previousUnreadCountRef.current > 0) {
           playNotificationSound();
         }
         previousUnreadCountRef.current = newUnreadCount;
-        
+
         return sortedNotifications;
       });
-      
+
       // Clear any retry timeout on success
       if (retryTimeoutRef.current) {
         window.clearTimeout(retryTimeoutRef.current);
@@ -566,7 +599,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       if (error instanceof Error && error.name !== 'AbortError') {
         console.error('Failed to fetch notifications', error);
         setError('Failed to load notifications');
-        
+
         // Schedule retry on failure
         if (!retryTimeoutRef.current) {
           retryTimeoutRef.current = window.setTimeout(() => {
@@ -576,6 +609,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
       }
     } finally {
+      // ✅ CRITICAL: Always reset fetching flag
+      isFetchingRef.current = false;
       if (isManualRefresh) {
         setIsLoading(false);
       }
@@ -593,13 +628,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const startPolling = useCallback(() => {
     debugLog('startPolling called', { user: user?.id, visibility: document.visibilityState });
-    
+
     if (!user || document.visibilityState === 'hidden') {
       debugLog('Stopping polling - no user or hidden');
       stopPolling();
       return;
     }
-    
+
     // Check if notifications are enabled
     if (!areNotificationsEnabled()) {
       debugLog('Notifications disabled');
@@ -616,14 +651,20 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
 
     debugLog('Starting notification polling...');
-    
-    // Fetch immediately
-    fetchBackendNotifications();
 
-    // Set up polling interval if not already running
-    if (!pollIntervalRef.current) {
+    // Fetch immediately on start
+    debugLog('Fetching notifications immediately on polling start');
+    fetchBackendNotifications(true);
+
+    // Set up polling interval only if FETCH_INTERVAL_MS > 0
+    if (FETCH_INTERVAL_MS > 0 && !pollIntervalRef.current) {
       debugLog('Setting up polling interval');
-      pollIntervalRef.current = window.setInterval(() => fetchBackendNotifications(), FETCH_INTERVAL_MS);
+      pollIntervalRef.current = window.setInterval(() => {
+        debugLog('Polling interval triggered');
+        fetchBackendNotifications();
+      }, FETCH_INTERVAL_MS);
+    } else if (FETCH_INTERVAL_MS === 0) {
+      debugLog('Polling disabled - only fetching on demand');
     }
 
     schedulePollingStop();
@@ -631,51 +672,51 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   useEffect(() => {
     debugLog('User effect triggered', { userId: user?.id });
-    
+
     if (!user) {
-      debugLog('No user, stopping polling');
+      debugLog('No user, stopping polling and resetting state');
       stopPolling();
+      initialFetchDoneRef.current = false; // Reset on logout
+      isFetchingRef.current = false;
       return;
     }
 
-    debugLog('User logged in, starting polling');
-    startPolling();
+    // ✅ CRITICAL: Only fetch once on initial login/mount
+    if (!initialFetchDoneRef.current) {
+      debugLog('User logged in, fetching notifications once (initial fetch)');
+      initialFetchDoneRef.current = true;
+      fetchBackendNotifications(true);
+    } else {
+      debugLog('Initial fetch already done, skipping');
+    }
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        startPolling();
+        debugLog('Page became visible, fetching notifications');
+        // Use throttled fetch - will be skipped if called too recently
+        fetchBackendNotifications(false);
       } else {
+        debugLog('Page became hidden');
         stopPolling();
       }
     };
 
-    const handleUserActivity = () => {
-      if (document.visibilityState === 'visible') {
-        startPolling();
-      }
-    };
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleUserActivity);
-    window.addEventListener('click', handleUserActivity);
-    window.addEventListener('keydown', handleUserActivity);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleUserActivity);
-      window.removeEventListener('click', handleUserActivity);
-      window.removeEventListener('keydown', handleUserActivity);
       stopPolling();
       // Abort any pending fetch requests
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
+        isFetchingRef.current = false;
       }
     };
-  }, [startPolling, stopPolling, user]);
+  }, [fetchBackendNotifications, stopPolling, user]);
 
   const addNotification = (notification: Omit<Notification, 'id' | 'userId' | 'createdAt' | 'read'>) => {
     if (!user) return;
-    
+
     // Check if notifications are enabled
     if (!areNotificationsEnabled()) {
       return;
@@ -723,13 +764,25 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const markAsRead = useCallback(async (notificationId: string) => {
     let backendId: number | undefined;
     let backendType: Notification['type'] | undefined;
-    
-    // First, mark as read in local state
+
+    // Find the notification first
+    let targetNotification: Notification | undefined;
+    setNotifications((prev) => {
+      targetNotification = prev.find(n => n.id === notificationId);
+      return prev;
+    });
+
+    if (!targetNotification) {
+      return;
+    }
+
+    backendId = targetNotification.backendId;
+    backendType = targetNotification.type;
+
+    // Mark as read in local state
     setNotifications((prev) =>
       prev.map((notif) => {
         if (notif.id === notificationId) {
-          backendId = notif.backendId;
-          backendType = notif.type;
           return { ...notif, read: true };
         }
         return notif;
@@ -740,7 +793,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!user || !backendId || !backendType) {
       return;
     }
-    
+
     const authHeader = getAuthHeader();
     if (!authHeader) {
       return;
@@ -758,6 +811,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return;
       }
 
+      debugLog('Marking notification as read:', { endpoint, notificationId });
+
       const response = await fetch(endpoint, {
         method: 'PUT',
         headers: {
@@ -768,12 +823,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       if (!response.ok) {
         throw new Error(`Failed to mark notification as read (${response.status})`);
       }
-      
-      // After successfully marking as read on backend, remove it from the list after a short delay
-      setTimeout(() => {
-        setNotifications((prev) => prev.filter((notif) => notif.id !== notificationId));
-      }, 500); // 500ms delay to allow smooth UI transition
-      
+
+      debugLog('Successfully marked notification as read:', notificationId);
+
+      // Keep notification in list but marked as read (don't remove it)
+      // This allows the UI to update properly without flickering
+
     } catch (error) {
       console.error('Failed to mark notification as read', error);
       // Revert the read status if backend call failed
@@ -785,16 +840,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           return notif;
         })
       );
-      fetchBackendNotifications();
     }
-  }, [fetchBackendNotifications, user]);
+  }, [user]);
 
   const markAllAsRead = useCallback(async () => {
     const taskIds: number[] = [];
     const leaveIds: number[] = [];
     const shiftIds: number[] = [];
     const notificationIdsToRemove: string[] = [];
-    
+
     setNotifications((prev) =>
       prev.map((notif) => {
         if (!notif.read) {
@@ -821,7 +875,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }, 500);
       return;
     }
-    
+
     const authHeader = getAuthHeader();
     if (!authHeader) {
       return;
@@ -854,12 +908,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           })
         ),
       ]);
-      
+
       // After successfully marking all as read, remove them from the list
       setTimeout(() => {
         setNotifications((prev) => prev.filter((notif) => !notificationIdsToRemove.includes(notif.id)));
       }, 500);
-      
+
     } catch (error) {
       console.error('Failed to mark all notifications as read', error);
       // Revert the read status if backend call failed
@@ -876,9 +930,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [fetchBackendNotifications, user]);
 
   const clearNotification = useCallback(async (notificationId: string) => {
-    // First mark as read, then remove
+    // Mark as read first
     await markAsRead(notificationId);
-    // The markAsRead function will handle the removal after marking as read
+    // Then remove it from the list
+    setTimeout(() => {
+      setNotifications((prev) => prev.filter((notif) => notif.id !== notificationId));
+    }, 300);
   }, [markAsRead]);
 
   const clearAll = () => {
@@ -890,21 +947,27 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  // ✅ CRITICAL: Memoize refreshNotifications to prevent re-renders from creating new function references
+  const refreshNotifications = useCallback(() => {
+    return fetchBackendNotifications(true);
+  }, [fetchBackendNotifications]);
+
+  // ✅ Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    notifications,
+    unreadCount,
+    isLoading,
+    error,
+    addNotification,
+    markAsRead,
+    markAllAsRead,
+    clearNotification,
+    clearAll,
+    refreshNotifications,
+  }), [notifications, unreadCount, isLoading, error, markAsRead, markAllAsRead, clearNotification, refreshNotifications]);
+
   return (
-    <NotificationContext.Provider
-      value={{
-        notifications,
-        unreadCount,
-        isLoading,
-        error,
-        addNotification,
-        markAsRead,
-        markAllAsRead,
-        clearNotification,
-        clearAll,
-        refreshNotifications: () => fetchBackendNotifications(true),
-      }}
-    >
+    <NotificationContext.Provider value={contextValue}>
       {children}
     </NotificationContext.Provider>
   );

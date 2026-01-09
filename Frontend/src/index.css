@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -11,86 +13,86 @@ All colors MUST be HSL.
     /* Light Theme - Professional & Clean */
     --background: 0 0% 98%;
     --foreground: 220 20% 20%;
-    
+
     /* Card System */
     --card: 0 0% 100%;
     --card-foreground: 220 20% 20%;
     --card-hover: 220 15% 98%;
-    
+
     /* Popover & Dialogs */
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 20%;
-    
+
     /* Primary - Soft Blue */
     --primary: 221 83% 53%;
     --primary-foreground: 0 0% 100%;
     --primary-hover: 221 83% 48%;
     --primary-soft: 221 83% 95%;
-    
+
     /* Secondary - Warm Gray */
     --secondary: 220 14% 96%;
     --secondary-foreground: 220 20% 20%;
     --secondary-hover: 220 14% 92%;
-    
+
     /* Muted States */
     --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
-    
+
     /* Accent - Coral */
     --accent: 12 76% 61%;
     --accent-foreground: 0 0% 100%;
     --accent-soft: 12 76% 95%;
-    
+
     /* Success - Green */
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     --success-soft: 142 71% 95%;
-    
+
     /* Warning - Amber */
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
     --warning-soft: 38 92% 95%;
-    
+
     /* Destructive - Red */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --destructive-soft: 0 84% 95%;
-    
+
     /* Info - Blue */
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
     --info-soft: 199 89% 95%;
-    
+
     /* Borders & Input */
     --border: 220 13% 91%;
     --input: 220 13% 91%;
     --ring: 221 83% 53%;
     --focus: 221 83% 53%;
-    
+
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
     --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
-    
+
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(221 83% 53%), hsl(199 89% 48%));
     --gradient-success: linear-gradient(135deg, hsl(142 71% 45%), hsl(142 71% 55%));
     --gradient-soft: linear-gradient(180deg, hsl(0 0% 100%), hsl(220 14% 98%));
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(220 14% 99%));
-    
+
     /* Radius */
     --radius: 0.75rem;
     --radius-sm: 0.5rem;
     --radius-lg: 1rem;
     --radius-full: 9999px;
-    
+
     /* Transitions */
     --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-    
+
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 220 20% 20%;
@@ -181,120 +183,185 @@ All colors MUST be HSL.
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
-  
-  /* Prevent text cursor on non-editable elements */
-  h1, h2, h3, h4, h5, h6,
-  p, span, div, label, section, article,
-  button:not([contenteditable]),
-  .heading, .title, .label, .description,
-  [role="heading"], [role="status"], [role="alert"] {
+
+  /* Prevent text cursor on non-editable headings and labels */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  label,
+  .heading,
+  .title,
+  .label,
+  .description,
+  [role="heading"],
+  [role="status"],
+  [role="alert"] {
     @apply select-none cursor-default;
-    user-select: none;
   }
-  
+
   /* Allow selection and cursor on editable elements */
-  input, textarea, [contenteditable="true"],
-  input[type="text"], input[type="email"], input[type="password"],
-  input[type="search"], input[type="number"], input[type="tel"],
-  input[type="url"], input[type="date"], input[type="time"],
-  input[type="datetime-local"], input[type="month"], input[type="week"],
-  select, [role="textbox"], [role="searchbox"] {
+  input,
+  textarea,
+  [contenteditable="true"],
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="month"],
+  input[type="week"],
+  select,
+  [role="textbox"],
+  [role="searchbox"] {
     @apply select-text cursor-text;
     user-select: text;
   }
-  
+
   /* Allow selection on links */
   a {
     @apply select-none cursor-pointer;
     user-select: none;
   }
-  
+
   /* Allow selection on interactive elements */
-  button, [role="button"], [role="menuitem"], [role="tab"] {
+  button,
+  [role="button"],
+  [role="menuitem"],
+  [role="tab"] {
     @apply select-none cursor-pointer;
     user-select: none;
   }
-  
+
   /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
-  
+
   ::-webkit-scrollbar-track {
     @apply bg-muted;
   }
-  
+
   ::-webkit-scrollbar-thumb {
     @apply bg-primary/20 rounded-full;
   }
-  
+
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-primary/30;
+  }
+
+  /* Global Typography Standard */
+  h1 {
+    @apply text-2xl font-bold tracking-tight text-foreground sm:text-3xl;
+  }
+
+  h2 {
+    @apply text-xl font-semibold tracking-tight text-foreground;
+  }
+
+  h3 {
+    @apply text-lg font-semibold tracking-tight text-foreground;
+  }
+
+  h4 {
+    @apply text-base font-semibold tracking-tight text-foreground;
+  }
+
+  p {
+    @apply text-sm leading-7 text-muted-foreground;
+  }
+
+  /* Form Labels */
+  label {
+    @apply text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70;
+  }
+
+  /* Table Headers */
+  th {
+    @apply text-xs font-semibold uppercase tracking-wider text-muted-foreground;
   }
 }
 
 @layer components {
+
   /* Glass morphism effect */
   .glass {
-    @apply backdrop-blur-md bg-card/80 border border-border/50;
+    @apply backdrop-blur-md border;
+    background-color: hsl(var(--card) / 0.8);
+    border-color: hsl(var(--border) / 0.5);
   }
-  
+
   /* Card hover effect */
   .card-hover {
     @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5;
   }
-  
+
   /* Gradient text */
   .gradient-text {
     @apply bg-gradient-to-r from-primary to-info bg-clip-text text-transparent;
   }
-  
+
   /* Status badges */
   .badge-success {
-    @apply bg-success/10 text-success border-success/20;
+    @apply text-success;
+    background-color: hsl(var(--success) / 0.1);
+    border-color: hsl(var(--success) / 0.2);
   }
-  
+
   .badge-warning {
-    @apply bg-warning/10 text-warning border-warning/20;
+    @apply text-warning;
+    background-color: hsl(var(--warning) / 0.1);
+    border-color: hsl(var(--warning) / 0.2);
   }
-  
+
   .badge-danger {
-    @apply bg-destructive/10 text-destructive border-destructive/20;
+    @apply text-destructive;
+    background-color: hsl(var(--destructive) / 0.1);
+    border-color: hsl(var(--destructive) / 0.2);
   }
-  
+
   .badge-info {
-    @apply bg-info/10 text-info border-info/20;
+    @apply text-info;
+    background-color: hsl(var(--info) / 0.1);
+    border-color: hsl(var(--info) / 0.2);
   }
-  
+
   /* Chat-specific scrollbar styles */
   .scrollbar-thin {
     scrollbar-width: thin;
   }
-  
+
   .scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
     @apply bg-gray-300 rounded-full;
   }
-  
+
   .scrollbar-track-transparent::-webkit-scrollbar-track {
     @apply bg-transparent;
   }
-  
+
   .scrollbar-track-gray-100::-webkit-scrollbar-track {
     @apply bg-gray-100 rounded-full;
   }
-  
+
   /* Text cursor control utilities */
   .text-no-select {
     @apply select-none cursor-default;
     user-select: none;
   }
-  
+
   .text-selectable {
     @apply select-text cursor-text;
     user-select: text;
   }
-  
+
   .cursor-pointer-no-select {
     @apply select-none cursor-pointer;
     user-select: none;
@@ -306,50 +373,104 @@ All colors MUST be HSL.
       opacity: 0;
       transform: translateY(10px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
     }
   }
-  
+
   .animate-fade-in {
     animation: fadeIn 0.3s ease-out;
   }
-  
+
   @keyframes slideIn {
     from {
       transform: translateX(-100%);
     }
+
     to {
       transform: translateX(0);
     }
   }
-  
+
   .animate-slide-in {
     animation: slideIn 0.3s ease-out;
   }
-  
+
   @keyframes pulse {
-    0%, 100% {
+
+    0%,
+    100% {
       opacity: 1;
     }
+
     50% {
       opacity: 0.5;
     }
   }
-  
+
   .animate-pulse-slow {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
-  
+
   /* Shake animation for notifications */
   @keyframes shake {
-    0%, 100% { transform: rotate(0deg); }
-    10%, 30%, 50%, 70%, 90% { transform: rotate(-10deg); }
-    20%, 40%, 60%, 80% { transform: rotate(10deg); }
+
+    0%,
+    100% {
+      transform: rotate(0deg);
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+      transform: rotate(-10deg);
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+      transform: rotate(10deg);
+    }
   }
-  
+
   .animate-shake {
     animation: shake 0.5s ease-in-out;
+  }
+
+  /* Custom Scrollbar Utility - "Proper & Persistent" */
+  .custom-scrollbar {
+    scrollbar-width: auto;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.6) hsl(var(--muted-foreground) / 0.1);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: hsl(var(--muted-foreground) / 0.1);
+    border-radius: 12px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.6);
+    border-radius: 12px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    transition: background 0.2s ease;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.8);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:active {
+    background: hsl(var(--muted-foreground) / 1.0);
   }
 }

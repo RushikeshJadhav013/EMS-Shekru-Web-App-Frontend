@@ -130,8 +130,8 @@ const SalaryDashboard = () => {
                         <DollarSign className="h-8 w-8 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
-                            Salary <span className="text-blue-600">Management</span>
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+                            Salary Management
                         </h1>
                         <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
                             <Building2 className="h-4 w-4 text-blue-500" />

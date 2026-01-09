@@ -8,11 +8,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  Inbox as InboxIcon, 
-  Send, 
-  Archive, 
-  Trash2, 
+import {
+  Inbox as InboxIcon,
+  Send,
+  Archive,
+  Trash2,
   Star,
   Reply,
   Forward,
@@ -49,7 +49,7 @@ export default function Inbox() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState('all');
-  
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -120,13 +120,13 @@ export default function Inbox() {
   ]);
 
   const handleMarkAsRead = (id: string) => {
-    setMessages(messages.map(msg => 
+    setMessages(messages.map(msg =>
       msg.id === id ? { ...msg, read: true } : msg
     ));
   };
 
   const handleToggleStar = (id: string) => {
-    setMessages(messages.map(msg => 
+    setMessages(messages.map(msg =>
       msg.id === id ? { ...msg, starred: !msg.starred } : msg
     ));
   };
@@ -179,9 +179,9 @@ export default function Inbox() {
 
   const filteredMessages = messages.filter(msg => {
     const matchesSearch = msg.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         msg.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         msg.from.toLowerCase().includes(searchQuery.toLowerCase());
-    
+      msg.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      msg.from.toLowerCase().includes(searchQuery.toLowerCase());
+
     if (filter === 'all') return matchesSearch;
     if (filter === 'unread') return matchesSearch && !msg.read;
     if (filter === 'starred') return matchesSearch && msg.starred;
@@ -213,7 +213,7 @@ export default function Inbox() {
     <div className="container mx-auto p-6">
       <div className="flex items-center gap-2 mb-6">
         <InboxIcon className="h-8 w-8 text-primary" />
-        <h1 className="text-3xl font-bold">Inbox</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Inbox</h1>
         {unreadCount > 0 && (
           <Badge variant="destructive" className="ml-2">
             {unreadCount} new
@@ -251,11 +251,10 @@ export default function Inbox() {
                 {filteredMessages.map((message) => (
                   <div
                     key={message.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                      selectedMessage?.id === message.id 
-                        ? 'bg-accent border-primary' 
+                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedMessage?.id === message.id
+                        ? 'bg-accent border-primary'
                         : 'hover:bg-accent/50'
-                    } ${!message.read ? 'font-semibold' : ''}`}
+                      } ${!message.read ? 'font-semibold' : ''}`}
                     onClick={() => {
                       setSelectedMessage(message);
                       handleMarkAsRead(message.id);
@@ -300,7 +299,7 @@ export default function Inbox() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
-                    <h2 className="text-xl font-semibold">{selectedMessage.subject}</h2>
+                    <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">{selectedMessage.subject}</h2>
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8">
@@ -325,15 +324,15 @@ export default function Inbox() {
                     <Button size="sm" variant="outline">
                       <Forward className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
                       onClick={() => handleArchiveMessage(selectedMessage.id)}
                     >
                       <Archive className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="destructive"
                       onClick={() => handleDeleteMessage(selectedMessage.id)}
                     >
@@ -347,7 +346,7 @@ export default function Inbox() {
                   <div className="prose max-w-none">
                     <p className="whitespace-pre-wrap">{selectedMessage.content}</p>
                   </div>
-                  
+
                   {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (
                     <div className="border-t pt-4">
                       <p className="text-sm font-medium mb-2">Attachments</p>

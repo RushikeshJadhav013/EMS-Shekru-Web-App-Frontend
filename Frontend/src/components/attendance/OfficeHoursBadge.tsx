@@ -18,9 +18,9 @@ interface OfficeHoursBadgeProps {
   variant?: 'default' | 'secondary' | 'outline';
 }
 
-const OfficeHoursBadge: React.FC<OfficeHoursBadgeProps> = ({ 
-  className = '', 
-  variant = 'outline' 
+const OfficeHoursBadge: React.FC<OfficeHoursBadgeProps> = ({
+  className = '',
+  variant = 'outline'
 }) => {
   const [globalOfficeHours, setGlobalOfficeHours] = useState<OfficeTiming | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,7 +35,7 @@ const OfficeHoursBadge: React.FC<OfficeHoursBadgeProps> = ({
       if (response.ok) {
         const officeTimings: OfficeTiming[] = await response.json();
         // Find global office hours (department is null or empty)
-        const globalTiming = officeTimings.find(timing => 
+        const globalTiming = officeTimings.find(timing =>
           timing.is_active && (!timing.department || timing.department === '')
         );
         setGlobalOfficeHours(globalTiming || null);
@@ -82,16 +82,16 @@ const OfficeHoursBadge: React.FC<OfficeHoursBadgeProps> = ({
   const graceMinutes = globalOfficeHours.check_in_grace_minutes;
 
   return (
-    <Badge 
-      variant={variant} 
-      className={`${className} flex items-center gap-1 px-3 py-1 text-sm font-medium`}
+    <Badge
+      variant={variant}
+      className={`${className} flex items-center gap-1 px-3 py-1`}
       title={`Office Hours: ${startTime} - ${endTime}${graceMinutes > 0 ? ` (${graceMinutes} min grace)` : ''}`}
     >
       <Clock className="h-3 w-3" />
       <span className="hidden sm:inline">Office Hours:</span>
-      <span className="font-semibold">{startTime} - {endTime}</span>
+      <span>{startTime} - {endTime}</span>
       {graceMinutes > 0 && (
-        <span className="text-xs opacity-75 hidden md:inline">
+        <span className="opacity-75 hidden md:inline">
           (+{graceMinutes}m grace)
         </span>
       )}

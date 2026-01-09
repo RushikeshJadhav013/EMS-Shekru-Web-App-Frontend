@@ -486,6 +486,13 @@ const TaskManagement: React.FC = () => {
     }
 
     try {
+      // Only fetch all employees if user has a management role
+      if (user?.role === 'employee') {
+        console.log('Skipping employee list fetch - current user is an employee');
+        setEmployees([]);
+        return;
+      }
+
       const response = await fetch(`${API_BASE_URL}/employees`, {
         headers: authorizedHeaders,
       });
@@ -1790,9 +1797,10 @@ const TaskManagement: React.FC = () => {
       return true;
     }
 
-    // 2. Can move from 'overdue' to 'in-progress' (user fixing overdue task)
-    if (currentStatus === 'overdue' && newStatus === 'in-progress') {
-      return true;
+    // 2. Overdue tasks are locked - status cannot be changed directly
+    // Users must reassign the task to reset the status/deadline
+    if (currentStatus === 'overdue') {
+      return false;
     }
 
     // 3. Can move from 'in-progress' to 'overdue' (automatic or manual)
@@ -1836,8 +1844,8 @@ const TaskManagement: React.FC = () => {
     const isCreator = task.assignedBy === userId;
     if (!isCreator) return false;
 
-    // Can only reassign if task is completed or cancelled
-    return task.status === 'completed' || task.status === 'cancelled';
+    // Can only reassign if task is completed, cancelled, or overdue
+    return task.status === 'completed' || task.status === 'cancelled' || task.status === 'overdue';
   }, [userId]);
 
   // Update task status
@@ -2192,7 +2200,7 @@ const TaskManagement: React.FC = () => {
               <ListTodo className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Task Management</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Task Management</h1>
               <p className="text-sm text-muted-foreground mt-1">
                 Manage and track all tasks across your organization
               </p>
@@ -2709,8 +2717,8 @@ const TaskManagement: React.FC = () => {
                       // In "All Tasks" view, admin can only manage tasks they created
                       const canManageTask = Boolean(userId && task.assignedBy === userId);
                       const isReceivedTask = Boolean(userId && task.assignedTo.includes(userId));
-                      // Don't allow passing completed or cancelled tasks
-                      const canPassTask = isReceivedTask && task.assignedTo[0] === userId && passEligibleEmployees.length > 0 && task.status !== 'completed' && task.status !== 'cancelled';
+                      // Don't allow passing completed, cancelled, or overdue tasks
+                      const canPassTask = isReceivedTask && task.assignedTo[0] === userId && passEligibleEmployees.length > 0 && task.status !== 'completed' && task.status !== 'cancelled' && task.status !== 'overdue';
                       const lastPassByLabel = task.lastPassedBy ? getAssigneeLabel(task.lastPassedBy) : null;
                       const lastPassToLabel = task.lastPassedTo ? getAssigneeLabel(task.lastPassedTo) : null;
                       const lastPassTimestamp = task.lastPassedAt ? formatDateTimeIST(task.lastPassedAt, 'MMM dd, yyyy HH:mm') : null;
@@ -2762,12 +2770,20 @@ const TaskManagement: React.FC = () => {
                             </div>
                           </TableCell>
                           <TableCell>
-                            {(task.status as string) === 'completed' || (task.status as string) === 'cancelled' ? (
-                              <div className="w-[170px] h-10 bg-white dark:bg-gray-950 border-2 border-violet-200 dark:border-violet-800 rounded-md flex items-center px-3 gap-2">
-                                <div className={`h-3 w-3 rounded-full ${(task.status as string) === 'cancelled' ? 'bg-gradient-to-br from-red-400 to-rose-600' : 'bg-gradient-to-br from-green-400 to-emerald-600'} shadow-md flex-shrink-0`} />
-                                <span className="font-medium text-sm">{(task.status as string) === 'cancelled' ? 'Cancelled' : 'Completed'}</span>
+                            {(task.status as string) === 'completed' || (task.status as string) === 'cancelled' || (task.status as string) === 'overdue' ? (
+                              <div className={`w-[170px] h-10 bg-white dark:bg-gray-950 border-2 rounded-md flex items-center px-3 gap-2 ${(task.status as string) === 'overdue' ? 'border-orange-200 dark:border-orange-800' : 'border-violet-200 dark:border-violet-800'
+                                }`}>
+                                <div className={`h-3 w-3 rounded-full ${(task.status as string) === 'cancelled' ? 'bg-gradient-to-br from-red-400 to-rose-600' :
+                                  (task.status as string) === 'overdue' ? 'bg-gradient-to-br from-orange-400 to-orange-600' :
+                                    'bg-gradient-to-br from-green-400 to-emerald-600'
+                                  } shadow-md flex-shrink-0`} />
+                                <span className="font-medium text-sm">
+                                  {(task.status as string) === 'cancelled' ? 'Cancelled' :
+                                    (task.status as string) === 'overdue' ? 'Overdue' : 'Completed'}
+                                </span>
                                 {(task.status as string) === 'completed' && <CheckCircle2 className="h-3.5 w-3.5 text-green-600 flex-shrink-0 ml-auto" />}
                                 {(task.status as string) === 'cancelled' && <XCircle className="h-3.5 w-3.5 text-red-600 flex-shrink-0 ml-auto" />}
+                                {(task.status as string) === 'overdue' && <AlertCircle className="h-3.5 w-3.5 text-orange-600 flex-shrink-0 ml-auto" />}
                               </div>
                             ) : (
                               <Select
@@ -2874,15 +2890,17 @@ const TaskManagement: React.FC = () => {
                               )}
                               {task.status !== 'completed' && (task.status as string) !== 'cancelled' && canManageTask && (
                                 <>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleEditClick(task)}
-                                    className="hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950 p-2 h-auto"
-                                    title="Edit task"
-                                  >
-                                    ✏️
-                                  </Button>
+                                  {(task.status as string) !== 'overdue' && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleEditClick(task)}
+                                      className="hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950 p-2 h-auto"
+                                      title="Edit task"
+                                    >
+                                      ✏️
+                                    </Button>
+                                  )}
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -2922,151 +2940,172 @@ const TaskManagement: React.FC = () => {
                 // In "All Tasks" view, admin can only manage tasks they created
                 const canManageTask = Boolean(userId && task.assignedBy === userId);
                 const isReceivedTask = Boolean(userId && task.assignedTo.includes(userId));
-                // Don't allow passing completed or cancelled tasks
-                const canPassTask = isReceivedTask && task.assignedTo[0] === userId && passEligibleEmployees.length > 0 && task.status !== 'completed' && task.status !== 'cancelled';
+                // Don't allow passing completed, cancelled, or overdue tasks
+                const canPassTask = isReceivedTask && task.assignedTo[0] === userId && passEligibleEmployees.length > 0 && task.status !== 'completed' && task.status !== 'cancelled' && task.status !== 'overdue';
                 const lastPassByLabel = task.lastPassedBy ? getAssigneeLabel(task.lastPassedBy) : null;
                 const lastPassToLabel = task.lastPassedTo ? getAssigneeLabel(task.lastPassedTo) : null;
                 return (
                   <Card
                     key={task.id}
-                    className="border-0 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105 bg-gradient-to-br from-white to-slate-50 dark:from-gray-900 dark:to-slate-900"
+                    className={`border transition-all duration-300 cursor-pointer transform hover:scale-[1.02] shadow-sm hover:shadow-xl group relative overflow-hidden ${isTaskOverdue(task)
+                      ? 'border-orange-200 bg-orange-50/30 dark:border-orange-900/50 dark:bg-orange-900/10'
+                      : 'border-slate-200 bg-white dark:border-gray-800 dark:bg-gray-950/50'
+                      }`}
                     onClick={() => setSelectedTask(task)}
                   >
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div className="space-y-1">
-                          <CardTitle className="text-lg">{task.title}</CardTitle>
-                          <CardDescription className="line-clamp-2">
-                            {task.description}
-                          </CardDescription>
+                    {/* Status Indicator Strip */}
+                    <div className={`absolute top-0 left-0 w-1 h-full ${task.status === 'completed' ? 'bg-green-500' :
+                      task.status === 'cancelled' ? 'bg-red-500' :
+                        task.status === 'overdue' ? 'bg-orange-500' :
+                          task.status === 'in-progress' ? 'bg-blue-500' :
+                            'bg-slate-400'
+                      }`} />
+
+                    <CardHeader className="p-4 pb-0">
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="space-y-1.5 flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className={`${getPriorityColor(task.priority)} text-[10px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider`}>
+                              {task.priority}
+                            </Badge>
+                            {isTaskOverdue(task) && (
+                              <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 text-[10px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider">
+                                Overdue
+                              </Badge>
+                            )}
+                          </div>
+                          <CardTitle className="text-base font-bold leading-tight truncate pr-1" title={task.title}>
+                            {task.title}
+                          </CardTitle>
                         </div>
-                        <Badge className={getPriorityColor(task.priority)}>
-                          {capitalizePriority(task.priority)}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <UserCheck className="h-4 w-4 text-muted-foreground" />
-                        <div className="flex flex-col">
-                          <span>{assignedByInfo.name}</span>
-                          {assignedByInfo.roleLabel && (
-                            <span className="text-xs text-muted-foreground">{assignedByInfo.roleLabel}</span>
+                        {/* Progress Ring or Simple Status Icon */}
+                        <div className={`h-8 w-8 rounded-full flex items-center justify-center border-2 ${task.status === 'completed' ? 'border-green-100 bg-green-50 text-green-600 dark:border-green-900/30 dark:bg-green-900/20' :
+                          task.status === 'in-progress' ? 'border-blue-100 bg-blue-50 text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20' :
+                            'border-slate-100 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900'
+                          }`}>
+                          {typeof task.progress === 'number' && task.progress > 0 ? (
+                            <span className="text-[10px] font-bold">{task.progress}%</span>
+                          ) : (
+                            <div className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)}`} />
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span>{getAssigneeLabel(task.assignedTo[0] || '')}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className={isTaskOverdue(task) ? 'font-bold text-orange-600 dark:text-orange-400' : ''}>
-                          {formatDisplayDate(task.deadline)}
-                        </span>
-                        {isTaskOverdue(task) && (
-                          <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100 text-xs">
-                            Overdue
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>Assigned: {task.createdAt ? formatDateIST(parseToIST(task.createdAt) || new Date(), 'MMM dd, yyyy') : 'N/A'}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className={`h-2 w-2 rounded-full ${getStatusColor(task.status)}`} />
-                          <span className="text-sm capitalize">{task.status.replace('-', ' ')}</span>
-                        </div>
-                        {typeof task.progress === 'number' && (
-                          <span className="text-sm text-muted-foreground">{task.progress}%</span>
-                        )}
-                      </div>
-                      <div className="mt-4">
-                        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          Pass History
-                        </div>
-                        {task.lastPassedBy && task.lastPassedTo ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openPassHistoryDialog(task);
-                            }}
-                            className="mt-2 h-8 px-3 gap-2 text-xs border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-950 hover:border-violet-300 dark:hover:border-violet-700 transition-all"
-                          >
-                            <Share2 className="h-4 w-4 text-violet-600" />
-                            View History
-                          </Button>
-                        ) : (
-                          <div className="mt-2 text-xs text-muted-foreground">
-                            No pass actions recorded yet.
+                    </CardHeader>
+
+                    <CardContent className="p-4 pt-3 space-y-4">
+                      <p className="text-xs text-muted-foreground line-clamp-2 h-8 leading-relaxed">
+                        {task.description || "No description provided."}
+                      </p>
+
+                      {/* Compact Metadata Grid */}
+                      <div className="grid grid-cols-1 gap-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-800/50">
+                        {/* Assignee Row */}
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                            <User className="h-3.5 w-3.5" />
+                            <span>To:</span>
                           </div>
-                        )}
+                          <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]" title={getAssigneeLabel(task.assignedTo[0] || '')}>
+                            {getAssigneeLabel(task.assignedTo[0] || '')}
+                          </span>
+                        </div>
+
+                        {/* Assigner Row */}
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                            <UserCheck className="h-3.5 w-3.5" />
+                            <span>By:</span>
+                          </div>
+                          <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]">
+                            {assignedByInfo.name}
+                          </span>
+                        </div>
+
+                        {/* Deadline Row */}
+                        <div className="flex items-center justify-between text-xs border-t border-slate-200 dark:border-slate-700/50 pt-2 mt-0.5">
+                          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                            <Calendar className="h-3.5 w-3.5" />
+                            <span>Due:</span>
+                          </div>
+                          <span className={`font-medium ${isTaskOverdue(task) ? 'text-orange-600 dark:text-orange-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                            {formatDisplayDate(task.deadline)}
+                          </span>
+                        </div>
                       </div>
-                      {task.status !== 'completed' && (task.status as string) !== 'cancelled' && canManageTask && (
-                        <div className="flex items-center gap-2 pt-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleEditClick(task);
-                            }}
-                            className="hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950 p-2 h-auto"
-                            title="Edit task"
-                          >
-                            ✏️
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleDeleteTask(task.id);
-                            }}
-                            disabled={deletingTaskId === task.id || !canDeleteTask(task)}
-                            className="hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 p-2 h-auto disabled:opacity-50"
-                            title={!canDeleteTask(task) ? 'Cannot delete task once work has started' : 'Delete task'}
-                          >
-                            {deletingTaskId === task.id ? <Loader2 className="h-4 w-4 animate-spin" /> : '🗑'}
-                          </Button>
+
+                      {/* Footer Actions */}
+                      <div className="flex items-center justify-between pt-1">
+                        {/* Left Side: Pass History Info (Subtle) */}
+                        <div className="flex items-center">
+                          {task.lastPassedBy ? (
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-violet-50 text-violet-700 dark:bg-violet-900/20 dark:text-violet-300 border border-violet-100 dark:border-violet-900/30 cursor-pointer hover:bg-violet-100 transition-colors"
+                              onClick={(e) => { e.stopPropagation(); openPassHistoryDialog(task); }}>
+                              <Share2 className="h-3 w-3" />
+                              <span className="text-[10px] font-medium">History</span>
+                            </div>
+                          ) : (
+                            <div className="text-[10px] text-muted-foreground px-1 italic opacity-50">
+                              No history
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {canReassignTask(task) && (
-                        <div className="flex items-center gap-2 pt-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleReassignClick(task);
-                            }}
-                            className="flex items-center gap-1 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300"
-                          >
-                            <RefreshCcw className="h-4 w-4" />
-                            Reassign
-                          </Button>
+
+                        {/* Right Side: Action Buttons */}
+                        <div className="flex items-center gap-1">
+                          {/* Reassign Button */}
+                          {canReassignTask(task) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); handleReassignClick(task); }}
+                              className="h-7 w-7 p-0 rounded-full hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/30 dark:hover:text-green-400 text-slate-400"
+                              title="Reassign Task"
+                            >
+                              <RefreshCcw className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+
+                          {/* Pass Button */}
+                          {task.status !== 'completed' && canPassTask && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); openPassDialog(task); }}
+                              className="h-7 w-7 p-0 rounded-full hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/30 dark:hover:text-violet-400 text-slate-400"
+                              title="Pass Task"
+                            >
+                              <Share2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+
+                          {/* Edit Button */}
+                          {task.status !== 'completed' && (task.status as string) !== 'cancelled' && canManageTask && (task.status as string) !== 'overdue' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); handleEditClick(task); }}
+                              className="h-7 w-7 p-0 rounded-full hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-900/30 dark:hover:text-amber-400 text-slate-400"
+                              title="Edit Task"
+                            >
+                              <div className="h-3.5 w-3.5">✏️</div>
+                            </Button>
+                          )}
+
+                          {/* Delete Button */}
+                          {task.status !== 'completed' && (task.status as string) !== 'cancelled' && canManageTask && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
+                              disabled={deletingTaskId === task.id || !canDeleteTask(task)}
+                              className="h-7 w-7 p-0 rounded-full hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 text-slate-400 disabled:opacity-30"
+                              title={!canDeleteTask(task) ? 'Cannot delete started task' : 'Delete Task'}
+                            >
+                              {deletingTaskId === task.id ? <Loader2 className="h-3 w-3 animate-spin" /> : '🗑'}
+                            </Button>
+                          )}
                         </div>
-                      )}
-                      {task.status !== 'completed' && canPassTask && (
-                        <div className="flex items-center gap-2 pt-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openPassDialog(task);
-                            }}
-                            className="flex items-center gap-1"
-                          >
-                            <Share2 className="h-4 w-4" />
-                            Pass Task
-                          </Button>
-                        </div>
-                      )}
+                      </div>
                     </CardContent>
                   </Card>
                 );

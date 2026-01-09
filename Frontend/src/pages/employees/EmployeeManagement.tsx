@@ -1622,7 +1622,7 @@ export default function EmployeeManagement() {
               <Users className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Employee Management</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Employee Management</h1>
               <p className="text-sm text-muted-foreground mt-1">Manage your team members efficiently</p>
             </div>
           </div>
@@ -1963,6 +1963,7 @@ export default function EmployeeManagement() {
                       }}
                       required
                       className={`mt-1 ${emailError ? 'border-red-500' : ''}`}
+                      placeholder='e.g., xyz@gmail.com'
                     />
                     {emailError && (
                       <p className="text-red-500 text-sm mt-1">{emailError}</p>
@@ -2011,36 +2012,11 @@ export default function EmployeeManagement() {
                         )}
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="admin">
-                          <div className="flex items-center gap-2">
-                            {formData.role === 'admin' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-red-500 to-rose-600"></div>}
-                            Admin
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="hr">
-                          <div className="flex items-center gap-2">
-                            {formData.role === 'hr' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-600"></div>}
-                            HR
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="manager">
-                          <div className="flex items-center gap-2">
-                            {formData.role === 'manager' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-600"></div>}
-                            Manager
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="team_lead">
-                          <div className="flex items-center gap-2">
-                            {formData.role === 'team_lead' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600"></div>}
-                            TeamLead
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="employee">
-                          <div className="flex items-center gap-2">
-                            {formData.role === 'employee' && <div className="h-2 w-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-600"></div>}
-                            Employee
-                          </div>
-                        </SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="hr">HR</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="team_lead">TeamLead</SelectItem>
+                        <SelectItem value="employee">Employee</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -2145,6 +2121,7 @@ export default function EmployeeManagement() {
                       value={formData.designation || ''}
                       onChange={(e) => setFormData((prev) => ({ ...prev, designation: e.target.value }))}
                       className="mt-1"
+                      placeholder='e.g.,Software Engineer'
                     />
                   </div>
 
@@ -2201,7 +2178,7 @@ export default function EmployeeManagement() {
                     <Label>Address <span className="text-red-500">*</span></Label>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <Label htmlFor="create-houseNo" className="text-xs">House No</Label>
+                        <Label htmlFor="create-houseNo" className="text-xs">House No. / Flat No.</Label>
                         <Input
                           id="create-houseNo"
                           value={addressFields.houseNo || ''}
@@ -2211,13 +2188,13 @@ export default function EmployeeManagement() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="create-street" className="text-xs">Street/Landmark</Label>
+                        <Label htmlFor="create-street" className="text-xs">House Name / Building Name</Label>
                         <Input
                           id="create-street"
                           value={addressFields.street || ''}
                           onChange={(e) => setAddressFields((prev) => ({ ...prev, street: e.target.value }))}
                           className="mt-1 text-sm"
-                          placeholder="e.g., Main St"
+                          placeholder="e.g., Galaxy Tower"
                         />
                       </div>
                       <div>
@@ -2965,7 +2942,7 @@ export default function EmployeeManagement() {
               <Label>Address <span className="text-red-500">*</span></Label>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <Label htmlFor="edit-houseNo" className="text-xs">House No</Label>
+                  <Label htmlFor="edit-houseNo" className="text-xs">House No. / Flat No.</Label>
                   <Input
                     id="edit-houseNo"
                     value={addressFields.houseNo || ''}
@@ -2975,7 +2952,7 @@ export default function EmployeeManagement() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-street" className="text-xs">Street/Landmark</Label>
+                  <Label htmlFor="edit-street" className="text-xs">House Name / Building Name</Label>
                   <Input
                     id="edit-street"
                     value={addressFields.street || ''}

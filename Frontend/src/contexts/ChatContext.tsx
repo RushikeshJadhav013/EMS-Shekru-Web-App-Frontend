@@ -15,7 +15,7 @@ interface ChatContextType {
   sendMessage: (content: string, messageType?: 'text' | 'emoji', replyTo?: string) => Promise<void>;
   createChat: (type: 'individual' | 'group', participantIds: string[], name?: string, description?: string) => Promise<Chat>;
   loadChats: () => Promise<void>;
-  loadMessages: (chatId: string) => Promise<void>;
+  loadMessages: (chatId: string, type?: 'individual' | 'group') => Promise<void>;
   loadAvailableUsers: () => Promise<void>;
   markAsRead: (chatId: string, messageIds: string[]) => Promise<void>;
   deleteMessage: (messageId: string) => Promise<void>;
@@ -34,6 +34,46 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { user } = useAuth();
   const { toast } = useToast();
 
+  // RBAC Filtering logic
+  const isUserVisible = useCallback((targetUser: { role: string; department: string; id: string }) => {
+    if (!user) return false;
+    if (user.id === targetUser.id) return true;
+
+    const cr = user.role;
+    const cd = user.department;
+    const tr = targetUser.role;
+    const td = targetUser.department;
+
+    // Admin & HR: Can chat with everyone
+    if (cr === 'admin' || cr === 'hr') return true;
+
+    // Manager Visibility
+    if (cr === 'manager') {
+      // Admin, HR, All Managers
+      if (['admin', 'hr', 'manager'].includes(tr)) return true;
+      // Own department (TL, Employee)
+      return td === cd;
+    }
+
+    // Team Lead Visibility
+    if (cr === 'team_lead') {
+      // Admin, HR
+      if (['admin', 'hr'].includes(tr)) return true;
+      // Own department (Manager, TL, Emp)
+      return td === cd;
+    }
+
+    // Employee Visibility
+    if (cr === 'employee') {
+      // Admin, HR
+      if (['admin', 'hr'].includes(tr)) return true;
+      // Own department (Manager, TL, Emp)
+      return td === cd;
+    }
+
+    return false;
+  }, [user]);
+
   // Calculate total unread count
   const unreadCount = chats.reduce((total, chat) => total + chat.unreadCount, 0);
 
@@ -44,7 +84,23 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const fetchedChats = await chatService.getChats();
-      setChats(fetchedChats);
+
+      // Filter chats based on RBAC rules
+      const filteredChats = fetchedChats.filter(chat => {
+        if (chat.type === 'group') return true; // Groups are visible if you are a member
+
+        // For individual chats, check the target user
+        const otherParticipant = chat.participants.find(p => p.userId !== user.id);
+        if (!otherParticipant) return true;
+
+        return isUserVisible({
+          id: otherParticipant.userId,
+          role: otherParticipant.userRole,
+          department: otherParticipant.department
+        });
+      });
+
+      setChats(filteredChats);
     } catch (error) {
       console.error('Failed to load chats:', error);
       toast({
@@ -58,12 +114,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, toast]);
 
   // Load messages for a specific chat
-  const loadMessages = useCallback(async (chatId: string) => {
+  const loadMessages = useCallback(async (chatId: string, type?: 'individual' | 'group') => {
     setIsLoading(true);
     try {
       const chat = chats.find(c => c.id === chatId);
-      // Default to individual if not found, though it should be found
-      const chatType = chat?.type || 'individual';
+      const chatType = type || chat?.type || 'individual';
       const fetchedMessages = await chatService.getChatMessages(chatId, chatType);
       setMessages(fetchedMessages);
     } catch (error) {
@@ -84,7 +139,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const users = await chatService.getAvailableUsers();
-      setAvailableUsers(users);
+      // Filter available users based on RBAC rules
+      const filteredUsers = users.filter(u => isUserVisible(u));
+      setAvailableUsers(filteredUsers);
     } catch (error) {
       console.error('Failed to load available users:', error);
       toast({
@@ -126,6 +183,40 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     name?: string,
     description?: string
   ): Promise<Chat> => {
+    // Check if 1-to-1 chat already exists
+    if (type === 'individual') {
+      const targetUserId = participantIds[0];
+      const existingChat = chats.find(c =>
+        c.type === 'individual' &&
+        c.participants.some(p => p.userId === targetUserId)
+      );
+
+      if (existingChat) {
+        return existingChat;
+      }
+    }
+
+
+    // Check if group with same name already exists
+    if (type === 'group' && name) {
+      // Normalize: remove all spaces and convert to lowercase for comparison
+      const normalizedInput = name.toLowerCase().replace(/\s+/g, '');
+
+      const existingGroup = chats.find(c =>
+        c.type === 'group' &&
+        c.name?.toLowerCase().replace(/\s+/g, '') === normalizedInput
+      );
+
+      if (existingGroup) {
+        toast({
+          title: 'Group Already Exists',
+          description: `A group named "${existingGroup.name}" already exists. Please choose a different name.`,
+          variant: 'destructive',
+        });
+        throw new Error('Duplicate group name');
+      }
+    }
+
     try {
       const newChat = await chatService.createChat({
         type,
@@ -143,6 +234,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return newChat;
     } catch (error) {
       console.error('Failed to create chat:', error);
+
+      // Don't show duplicate error toast again if we already showed it
+      if (error instanceof Error && error.message === 'Duplicate group name') {
+        throw error;
+      }
+
       toast({
         title: 'Error',
         description: 'Failed to create chat',
@@ -150,7 +247,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       throw error;
     }
-  }, [toast]);
+  }, [chats, toast]);
 
   // Mark messages as read
   // Now takes messageIds to mark specific messages
@@ -238,7 +335,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const handleSetActiveChat = useCallback((chat: Chat | null) => {
     setActiveChat(chat);
     if (chat) {
-      loadMessages(chat.id);
+      loadMessages(chat.id, chat.type);
     } else {
       setMessages([]);
     }

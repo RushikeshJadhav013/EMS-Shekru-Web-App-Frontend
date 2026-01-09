@@ -1071,7 +1071,7 @@ const AttendanceManager: React.FC = () => {
             <Clock className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
               {t.attendance.employeeAttendance}
             </h1>
             <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
@@ -1155,7 +1155,7 @@ const AttendanceManager: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">{item.title}</h3>
+                <h3 className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest leading-none">{item.title}</h3>
                 <div className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">{item.value}</div>
                 <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
                   <div className={`h-1.5 w-1.5 rounded-full ${item.color === 'blue' ? 'bg-blue-500' :
@@ -1856,17 +1856,17 @@ const AttendanceManager: React.FC = () => {
             <Clock className="h-6 w-6 text-purple-600" />
           </div>
           <div>
-            <h2 className="text-xl font-black tracking-tight text-slate-900 leading-tight">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
               Office Hours Control Center
             </h2>
-            <p className="text-slate-500 font-bold text-[13px] mt-0.5">Define global timings, override specific departments, and keep every team aligned.</p>
+            <p className="text-muted-foreground mt-0.5">Define global timings, override specific departments, and keep every team aligned.</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-0 font-bold px-3 h-8 flex items-center rounded-lg">
+          <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-0 font-semibold px-3 h-8 flex items-center rounded-lg">
             {configuredDepartmentCount} Overrides
           </Badge>
-          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-0 font-bold px-3 h-8 flex items-center rounded-lg">
+          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-0 font-semibold px-3 h-8 flex items-center rounded-lg">
             {officeTimings.length} Rules
           </Badge>
         </div>
@@ -1879,21 +1879,36 @@ const AttendanceManager: React.FC = () => {
           const icons = [Clock, Timer, Timer, Settings];
           const Icon = icons[index % icons.length];
 
+          const subs = ['Office Opens', 'Office Closes', 'Late Threshold', 'Specific Rules'];
+          const sub = subs[index % subs.length];
+
+          // Replicating exact styles from Attendance Stats in lines 1097+
+          const borderColor = `border-${color}-300/80 dark:border-${color}-700/50`;
+          const hoverBorder = `group-hover:border-${color}-500 dark:group-hover:border-${color}-400`;
+          const cardBg = `bg-${color}-50/40 dark:bg-${color}-950/10`;
+          const iconBg = `bg-${color}-50 text-${color}-600 dark:bg-${color}-900/20 dark:text-${color}-400`;
+
           return (
             <Card
               key={stat.label}
-              className={`group relative overflow-hidden bg-${color}-50/30 border-${color}-100/50 border hover:shadow-xl hover:shadow-${color}-100/20 transition-all duration-500 cursor-pointer rounded-xl`}
+              className={`border-2 ${borderColor} ${hoverBorder} shadow-sm ${cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative cursor-pointer`}
             >
-              <CardHeader className="flex flex-row items-center justify-between pb-2 p-4">
-                <CardTitle className={`text-[11px] font-black text-${color}-900/60 uppercase tracking-widest leading-none`}>
-                  {stat.label}
-                </CardTitle>
-                <div className={`h-8 w-8 rounded-lg bg-${color}-50/50 flex items-center justify-center border border-${color}-200/50 group-hover:scale-110 transition-transform duration-500`}>
-                  <Icon className={`h-4 w-4 text-${color}-600`} />
+              <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-5 group-hover:opacity-10 transition-opacity bg-${color}-500`} />
+
+              <CardContent className="p-5 relative">
+                <div className="flex justify-between items-start mb-3">
+                  <div className={`p-2.5 rounded-xl ${iconBg} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent className="px-4 pb-4">
-                <div className={`text-2xl font-black text-${color}-950 tracking-tight leading-none`}>{stat.value}</div>
+                <div className="space-y-1.5">
+                  <h3 className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest leading-none">{stat.label}</h3>
+                  <div className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">{stat.value}</div>
+                  <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
+                    <div className={`h-1.5 w-1.5 rounded-full bg-${color}-500`} />
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{sub}</span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           );
@@ -1911,7 +1926,7 @@ const AttendanceManager: React.FC = () => {
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="global-start" className="text-sm font-medium text-blue-600">
+                <Label htmlFor="global-start">
                   Start Time
                 </Label>
                 <Input
@@ -1921,11 +1936,11 @@ const AttendanceManager: React.FC = () => {
                   onChange={(e) =>
                     setGlobalTimingForm((prev) => ({ ...prev, startTime: e.target.value }))
                   }
-                  className="h-12 border-2 border-blue-100 focus:border-blue-400"
+                  className="h-10 border-blue-100 focus:border-blue-400"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="global-end" className="text-sm font-medium text-blue-600">
+                <Label htmlFor="global-end">
                   End Time
                 </Label>
                 <Input
@@ -1935,11 +1950,11 @@ const AttendanceManager: React.FC = () => {
                   onChange={(e) =>
                     setGlobalTimingForm((prev) => ({ ...prev, endTime: e.target.value }))
                   }
-                  className="h-12 border-2 border-blue-100 focus:border-blue-400"
+                  className="h-10 border-blue-100 focus:border-blue-400"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="global-grace-in" className="text-sm font-medium text-blue-600">
+                <Label htmlFor="global-grace-in">
                   Check-in Grace (minutes)
                 </Label>
                 <Input
@@ -1954,11 +1969,11 @@ const AttendanceManager: React.FC = () => {
                       checkInGrace: e.target.value === '' ? '' : Number(e.target.value),
                     }))
                   }
-                  className="h-12 border-2 border-blue-100 focus:border-blue-400"
+                  className="h-10 border-blue-100 focus:border-blue-400"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="global-grace-out" className="text-sm font-medium text-blue-600">
+                <Label htmlFor="global-grace-out">
                   Check-out Grace (minutes)
                 </Label>
                 <Input
@@ -1973,7 +1988,7 @@ const AttendanceManager: React.FC = () => {
                       checkOutGrace: e.target.value === '' ? '' : Number(e.target.value),
                     }))
                   }
-                  className="h-12 border-2 border-blue-100 focus:border-blue-400"
+                  className="h-10 border-blue-100 focus:border-blue-400"
                 />
               </div>
             </div>
@@ -2006,7 +2021,7 @@ const AttendanceManager: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-purple-600">Department</Label>
+              <Label>Department</Label>
               {departments.length > 0 && (
                 <Select
                   value={
@@ -2024,7 +2039,7 @@ const AttendanceManager: React.FC = () => {
                     handleDepartmentSelect(value);
                   }}
                 >
-                  <SelectTrigger className="h-12 border-2 border-purple-100 focus:border-purple-400">
+                  <SelectTrigger className="h-10 border-purple-100 focus:border-purple-400">
                     <SelectValue placeholder="Select department to edit" />
                   </SelectTrigger>
                   <SelectContent>
@@ -2047,7 +2062,7 @@ const AttendanceManager: React.FC = () => {
                 onChange={(e) =>
                   setDepartmentTimingForm((prev) => ({ ...prev, department: e.target.value }))
                 }
-                className="h-12 border-2 border-purple-100 focus:border-purple-400"
+                className="h-10 border-purple-100 focus:border-purple-400"
               />
               {departments.length > 0 && (
                 <div className="flex flex-wrap gap-2 pt-1">
@@ -2075,7 +2090,7 @@ const AttendanceManager: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="dept-start" className="text-sm font-medium text-purple-600">
+                <Label htmlFor="dept-start">
                   Start Time
                 </Label>
                 <Input
@@ -2085,11 +2100,11 @@ const AttendanceManager: React.FC = () => {
                   onChange={(e) =>
                     setDepartmentTimingForm((prev) => ({ ...prev, startTime: e.target.value }))
                   }
-                  className="h-12 border-2 border-purple-100 focus:border-purple-400"
+                  className="h-10 border-purple-100 focus:border-purple-400"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="dept-end" className="text-sm font-medium text-purple-600">
+                <Label htmlFor="dept-end">
                   End Time
                 </Label>
                 <Input
@@ -2099,11 +2114,11 @@ const AttendanceManager: React.FC = () => {
                   onChange={(e) =>
                     setDepartmentTimingForm((prev) => ({ ...prev, endTime: e.target.value }))
                   }
-                  className="h-12 border-2 border-purple-100 focus:border-purple-400"
+                  className="h-10 border-purple-100 focus:border-purple-400"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="dept-grace-in" className="text-sm font-medium text-purple-600">
+                <Label htmlFor="dept-grace-in">
                   Check-in Grace (minutes)
                 </Label>
                 <Input
@@ -2118,11 +2133,11 @@ const AttendanceManager: React.FC = () => {
                       checkInGrace: e.target.value === '' ? '' : Number(e.target.value),
                     }))
                   }
-                  className="h-12 border-2 border-purple-100 focus:border-purple-400"
+                  className="h-10 border-purple-100 focus:border-purple-400"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="dept-grace-out" className="text-sm font-medium text-purple-600">
+                <Label htmlFor="dept-grace-out">
                   Check-out Grace (minutes)
                 </Label>
                 <Input
@@ -2137,7 +2152,7 @@ const AttendanceManager: React.FC = () => {
                       checkOutGrace: e.target.value === '' ? '' : Number(e.target.value),
                     }))
                   }
-                  className="h-12 border-2 border-purple-100 focus:border-purple-400"
+                  className="h-10 border-purple-100 focus:border-purple-400"
                 />
               </div>
             </div>
@@ -2189,7 +2204,7 @@ const AttendanceManager: React.FC = () => {
                     className="group border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-gradient-to-r from-white to-slate-50 dark:from-slate-900 dark:to-slate-950 shadow-sm hover:shadow-lg transition-shadow"
                   >
                     <div>
-                      <p className="text-sm uppercase tracking-wider text-slate-500">
+                      <p className="text-sm font-medium text-muted-foreground">
                         {isGlobalTiming ? 'Global Schedule' : 'Department'}
                       </p>
                       <h3 className="text-xl font-semibold">

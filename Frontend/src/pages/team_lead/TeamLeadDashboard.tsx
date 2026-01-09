@@ -194,7 +194,7 @@ const TeamLeadDashboard: React.FC = () => {
             </div>
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
-                {t.common.welcome}, <span className="text-emerald-600">TeamLead</span>!
+                {t.common.welcome}, <span className="text-emerald-600">{user?.name}</span>
               </h1>
               <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
                 <CalendarDays className="h-4 w-4 text-emerald-500" />

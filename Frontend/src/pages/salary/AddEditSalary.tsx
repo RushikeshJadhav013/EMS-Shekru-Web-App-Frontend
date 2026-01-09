@@ -467,7 +467,7 @@ const AddEditSalary = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex items-center gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold">{existingSalary ? 'Update Salary Structure' : 'Create Salary Structure'}</h1>
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">{existingSalary ? 'Update Salary Structure' : 'Create Salary Structure'}</h1>
                         <p className="text-muted-foreground text-sm">Define compensation, benefits, and statutory details.</p>
                     </div>
                 </div>

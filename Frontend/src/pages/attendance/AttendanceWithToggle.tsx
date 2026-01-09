@@ -1832,12 +1832,24 @@ const AttendanceWithToggle: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">{t.navigation.attendance}</h2>
-          <Badge variant="outline" className="text-lg px-3 py-1">
-            <Calendar className="h-4 w-4 mr-2" />
-            {formatDateIST(new Date(), 'dd MMM yyyy')}
-          </Badge>
+        <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border shadow-sm mt-1">
+          <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-purple-500/5 rounded-full blur-3xl" />
+
+          <div className="relative flex items-center gap-5">
+            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none">
+              <Clock className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
+                Attendance <span className="text-indigo-600">Management</span>
+              </h1>
+              <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
+                <Calendar className="h-4 w-4 text-indigo-500" />
+                {formatDateIST(new Date(), 'EEEE, dd MMM yyyy')}
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="flex justify-center w-full">

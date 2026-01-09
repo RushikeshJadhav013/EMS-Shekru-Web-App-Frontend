@@ -200,8 +200,13 @@ export default function LeaveManagement() {
     }
 
     try {
+      // Use local date handling to avoid timezone shifts
+      const dateStr = format(holidayForm.date, 'yyyy-MM-dd');
+      // Create date at noon to avoid boundary issues
+      const normalizedDate = new Date(dateStr + 'T12:00:00');
+
       await addHoliday({
-        date: holidayForm.date,
+        date: normalizedDate,
         name: holidayForm.name,
         description: holidayForm.description
       });
@@ -1213,8 +1218,8 @@ export default function LeaveManagement() {
             <CalendarDays className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
-              Leave <span className="text-indigo-600">Management</span>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+              Leave Management
             </h1>
             <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
               <Clock className="h-4 w-4 text-indigo-500" />
@@ -1985,7 +1990,7 @@ export default function LeaveManagement() {
                                   {dept}
                                 </p>
                                 <p className="text-muted-foreground text-xs">
-                                  Weekly off: {days.map((day) => weekDayLabels[day] || day).join(', ')}
+                                  Weekly off: {days.map((day) => weekDayLabels[day.toLowerCase()] || day).join(', ')}
                                 </p>
                               </div>
                               <Button
@@ -2017,7 +2022,7 @@ export default function LeaveManagement() {
                     holiday: holidays.map(h => h.date),
                     weekOff: (date) =>
                       userWeekOffDays.some(
-                        (day) => weekDayIndexMap[day] === date.getDay(),
+                        (day) => weekDayIndexMap[day.toLowerCase()] === date.getDay(),
                       ),
                   }}
                   modifiersClassNames={{
@@ -2104,7 +2109,7 @@ export default function LeaveManagement() {
                 <p className="mt-4 text-sm text-muted-foreground text-center">
                   Your department ({user?.department || 'N/A'}) enjoys weekly off on{' '}
                   <span className="font-medium text-sky-600">
-                    {userWeekOffDays.map((day) => weekDayLabels[day] || day).join(', ')}
+                    {userWeekOffDays.map((day) => weekDayLabels[day.toLowerCase()] || day).join(', ')}
                   </span>
                   .
                 </p>

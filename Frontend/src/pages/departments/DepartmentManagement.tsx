@@ -9,10 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
+import {
+  Plus,
+  Edit,
+  Trash2,
   Building2,
   Users,
   Search,
@@ -67,7 +67,7 @@ export default function DepartmentManagement() {
     location: ''
   });
   const [allEmployees, setAllEmployees] = useState<any[]>([]);
-  
+
   const managerName = (managerId?: string) => {
     if (!managerId) return undefined;
     const found = managers.find((mgr) => mgr.id === String(managerId));
@@ -183,30 +183,30 @@ export default function DepartmentManagement() {
           prev.map((dept) =>
             dept.id === selectedDepartment.id
               ? {
-                  ...dept,
-                  name: updated.name,
-                  code: updated.code,
-                  managerId: updated.manager_id?.toString() ?? '',
-                  description: updated.description ?? '',
-                  status: updated.status as 'active' | 'inactive',
-                  employeeCount: updated.employee_count ?? dept.employeeCount,
-                  location: updated.location ?? '',
-                  updatedAt: updated.updated_at,
-                }
+                ...dept,
+                name: updated.name,
+                code: updated.code,
+                managerId: updated.manager_id?.toString() ?? '',
+                description: updated.description ?? '',
+                status: updated.status as 'active' | 'inactive',
+                employeeCount: updated.employee_count ?? dept.employeeCount,
+                location: updated.location ?? '',
+                updatedAt: updated.updated_at,
+              }
               : dept,
           ),
         );
         setIsEditDialogOpen(false);
         resetForm();
-        
+
         // Reload managers to reflect any role changes
         loadManagers();
-        
+
         let successMessage = 'Department updated successfully';
         if (managerChanged) {
           const newManager = managers.find(m => m.id === newManagerId);
           const oldManager = managers.find(m => m.id === oldManagerId);
-          
+
           if (newManager && oldManager) {
             successMessage += `. Manager changed from ${oldManager.name} to ${newManager.name}. User roles have been updated automatically.`;
           } else if (newManager) {
@@ -215,7 +215,7 @@ export default function DepartmentManagement() {
             successMessage += `. ${oldManager.name} has been removed as manager. Their role may have been updated.`;
           }
         }
-        
+
         toast({
           title: 'Success',
           description: successMessage,
@@ -374,10 +374,10 @@ export default function DepartmentManagement() {
     setIsLoading(true);
     try {
       const result = await apiService.syncDepartmentsFromUsers();
-      
+
       // Reload departments after sync
       await loadDepartments();
-      
+
       toast({
         variant: 'success',
         title: 'Sync Completed',
@@ -407,7 +407,7 @@ export default function DepartmentManagement() {
       }
       await loadDepartments();
     };
-    
+
     initializeDepartments();
   }, [loadDepartments]);
 
@@ -425,67 +425,67 @@ export default function DepartmentManagement() {
   }, []);
 
   const loadManagers = useCallback(async () => {
-      setIsManagersLoading(true);
+    setIsManagersLoading(true);
+    try {
+      setManagerLoadError(null);
+
+      let managerSource: any[] | null = null;
+
       try {
-        setManagerLoadError(null);
-
-        let managerSource: any[] | null = null;
-
-        try {
-          managerSource = await apiService.getDepartmentManagers();
-        } catch (fallbackError) {
-          if (import.meta.env.DEV) {
-            console.warn('Falling back to employees endpoint for managers:', fallbackError);
-          }
+        managerSource = await apiService.getDepartmentManagers();
+      } catch (fallbackError) {
+        if (import.meta.env.DEV) {
+          console.warn('Falling back to employees endpoint for managers:', fallbackError);
         }
-
-        if (!Array.isArray(managerSource) || managerSource.length === 0) {
-          managerSource = await apiService.getEmployees();
-        }
-
-        const normalizedManagers: ManagerOption[] = (managerSource || [])
-          .filter((entry: any) => {
-            const role = (entry.role || '').toString().toLowerCase();
-            return role === 'manager' || role === 'teamlead' || role === 'team_lead';
-          })
-          .map((entry: any) => {
-            const idCandidate =
-              entry.id ??
-              entry.user_id ??
-              entry.userId ??
-              entry.employee_id ??
-              entry.employeeId;
-
-            return {
-              id: idCandidate ? String(idCandidate) : '',
-              name: entry.name || entry.full_name || '',
-              email: entry.email || entry.work_email,
-              department: entry.department ?? null,
-              role: entry.role,
-            };
-          })
-          .filter((mgr: ManagerOption) => mgr.id && mgr.name)
-          .sort((a, b) => a.name.localeCompare(b.name));
-
-        if (normalizedManagers.length === 0) {
-          setManagerLoadError('No active managers available. Please add a manager first.');
-        }
-
-        setManagers(normalizedManagers);
-      } catch (error) {
-        console.error('Failed to load managers:', error);
-        const message =
-          error instanceof Error ? error.message : 'Failed to load managers list';
-        setManagerLoadError(message);
-        toast({
-          title: 'Error',
-          description: message,
-          variant: 'destructive',
-        });
-      } finally {
-        setIsManagersLoading(false);
       }
-    }, []);
+
+      if (!Array.isArray(managerSource) || managerSource.length === 0) {
+        managerSource = await apiService.getEmployees();
+      }
+
+      const normalizedManagers: ManagerOption[] = (managerSource || [])
+        .filter((entry: any) => {
+          const role = (entry.role || '').toString().toLowerCase();
+          return role === 'manager' || role === 'teamlead' || role === 'team_lead';
+        })
+        .map((entry: any) => {
+          const idCandidate =
+            entry.id ??
+            entry.user_id ??
+            entry.userId ??
+            entry.employee_id ??
+            entry.employeeId;
+
+          return {
+            id: idCandidate ? String(idCandidate) : '',
+            name: entry.name || entry.full_name || '',
+            email: entry.email || entry.work_email,
+            department: entry.department ?? null,
+            role: entry.role,
+          };
+        })
+        .filter((mgr: ManagerOption) => mgr.id && mgr.name)
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      if (normalizedManagers.length === 0) {
+        setManagerLoadError('No active managers available. Please add a manager first.');
+      }
+
+      setManagers(normalizedManagers);
+    } catch (error) {
+      console.error('Failed to load managers:', error);
+      const message =
+        error instanceof Error ? error.message : 'Failed to load managers list';
+      setManagerLoadError(message);
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsManagersLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadManagers();
@@ -499,7 +499,7 @@ export default function DepartmentManagement() {
         const formDept = (formData.name || '').toLowerCase().trim();
         return empDept === formDept;
       }).length;
-      
+
       // Only update if different to avoid infinite loops
       if (count !== formData.employeeCount) {
         setFormData(prev => ({ ...prev, employeeCount: count }));
@@ -518,7 +518,7 @@ export default function DepartmentManagement() {
               <Building2 className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Department Management</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Department Management</h1>
               <p className="text-sm text-muted-foreground mt-1">
                 Organize teams, assign managers, and keep your org structure clean.
               </p>
@@ -957,7 +957,7 @@ export default function DepartmentManagement() {
             <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
               Close
             </Button>
-            <Button 
+            <Button
               onClick={() => {
                 setIsViewDialogOpen(false);
                 if (viewDepartment) {
@@ -1007,7 +1007,6 @@ function DepartmentForm({
   onManagerChange,
   onStatusChange,
   onEmployeeCountChange,
-  onBudgetChange,
   onLocationChange,
   onDescriptionChange,
   onCancel,
@@ -1021,68 +1020,68 @@ function DepartmentForm({
     }
   };
 
-    return (
+  return (
     <form className="space-y-6" onSubmit={handleSubmit}>
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40 p-4 space-y-4">
-          <div>
-            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-              General Details
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Give this department a distinctive name and code.
-            </p>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Department Name *</Label>
-              <Input
-                id="name"
-                value={formData.name}
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40 p-4 space-y-4">
+        <div>
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+            General Details
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Give this department a distinctive name and code.
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Department Name *</Label>
+            <Input
+              id="name"
+              value={formData.name}
               onChange={onNameChange}
-                placeholder="e.g., Engineering"
-                className="h-11"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="code">Department Code *</Label>
-              <Input
-                id="code"
-                value={formData.code}
+              placeholder="e.g., Engineering"
+              className="h-11"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="code">Department Code *</Label>
+            <Input
+              id="code"
+              value={formData.code}
               onChange={onCodeChange}
-                placeholder="ENG"
-                maxLength={5}
-                className="uppercase tracking-wide h-11"
-              />
-            </div>
+              placeholder="ENG"
+              maxLength={5}
+              className="uppercase tracking-wide h-11"
+            />
           </div>
         </div>
+      </div>
 
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                Leadership & Status
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Assign a manager and define the operational status.
-              </p>
-            </div>
-            {!isCreateMode && selectedDepartment?.updatedAt && (
-              <p className="text-[11px] text-muted-foreground">
-                Updated {formatDateIST(selectedDepartment.updatedAt, 'MMM dd, yyyy')}
-              </p>
-            )}
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+              Leadership & Status
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Assign a manager and define the operational status.
+            </p>
           </div>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="manager">Department Manager (Optional)</Label>
-              <Select
-                value={formData.managerId}
+          {!isCreateMode && selectedDepartment?.updatedAt && (
+            <p className="text-[11px] text-muted-foreground">
+              Updated {formatDateIST(selectedDepartment.updatedAt, 'MMM dd, yyyy')}
+            </p>
+          )}
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="manager">Department Manager (Optional)</Label>
+            <Select
+              value={formData.managerId}
               onValueChange={onManagerChange}
               disabled={isManagersLoading || managers.length === 0}
-              >
-                <SelectTrigger className="h-11">
-                  <SelectValue
+            >
+              <SelectTrigger className="h-11">
+                <SelectValue
                   placeholder={
                     isManagersLoading
                       ? 'Loading managers...'
@@ -1090,139 +1089,139 @@ function DepartmentForm({
                         ? managerLoadError ?? 'No eligible managers'
                         : 'Select manager'
                   }
-                  />
-                </SelectTrigger>
-                <SelectContent>
+                />
+              </SelectTrigger>
+              <SelectContent>
                 {isManagersLoading && (
                   <SelectItem value="loading" disabled>
                     Loading...
                   </SelectItem>
                 )}
                 {!isManagersLoading && managers.length === 0 && (
-                    <SelectItem value="none" disabled>
+                  <SelectItem value="none" disabled>
                     {managerLoadError ?? 'No eligible managers'}
-                    </SelectItem>
+                  </SelectItem>
                 )}
                 {!isManagersLoading &&
                   managers.length > 0 &&
-                    managers.map((manager) => (
+                  managers.map((manager) => (
                     <SelectItem key={manager.id} value={manager.id}>
-                        <div className="flex flex-col">
-                          <span>{manager.name}</span>
+                      <div className="flex flex-col">
+                        <span>{manager.name}</span>
                         {manager.email && (
                           <span className="text-xs text-muted-foreground">{manager.email}</span>
                         )}
-                        </div>
-                      </SelectItem>
+                      </div>
+                    </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
+              </SelectContent>
+            </Select>
             {managerLoadError && !isManagersLoading && (
               <p className="text-xs text-amber-600">{managerLoadError}</p>
             )}
             <p className="text-xs text-muted-foreground">
               💡 When you assign a manager, their role will be automatically updated to "Manager" in the Employee Management system.
             </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-            <Select value={formData.status} onValueChange={onStatusChange}>
-                <SelectTrigger className="h-11">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 p-4 space-y-4">
-          <div>
-          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Department Size</p>
-            <p className="text-xs text-muted-foreground">
-              Track headcount for this department.
-            </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="employeeCount" className="flex items-center gap-2">
-              Number of Employees
-              <Badge variant="secondary" className="text-xs">Auto-calculated</Badge>
-            </Label>
-            <Input
-              id="employeeCount"
-              type="number"
-              min="0"
+            <Label htmlFor="status">Status</Label>
+            <Select value={formData.status} onValueChange={onStatusChange}>
+              <SelectTrigger className="h-11">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 p-4 space-y-4">
+        <div>
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Department Size</p>
+          <p className="text-xs text-muted-foreground">
+            Track headcount for this department.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="employeeCount" className="flex items-center gap-2">
+            Number of Employees
+            <Badge variant="secondary" className="text-xs">Auto-calculated</Badge>
+          </Label>
+          <Input
+            id="employeeCount"
+            type="number"
+            min="0"
             value={formData.employeeCount ?? 0}
             onChange={onEmployeeCountChange}
-              className="h-11 bg-slate-50 dark:bg-slate-900"
-              readOnly
-              disabled
-            />
-            <p className="text-xs text-muted-foreground">
-              Automatically counted from employees in this department
-            </p>
-          </div>
+            className="h-11 bg-slate-50 dark:bg-slate-900"
+            readOnly
+            disabled
+          />
+          <p className="text-xs text-muted-foreground">
+            Automatically counted from employees in this department
+          </p>
         </div>
+      </div>
 
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 space-y-4">
-          <div>
-            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-              Location & Description
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Help employees know where this department operates from.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
-            <Input
-              id="location"
-              value={formData.location}
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 space-y-4">
+        <div>
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+            Location & Description
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Help employees know where this department operates from.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="location">Location</Label>
+          <Input
+            id="location"
+            value={formData.location}
             onChange={onLocationChange}
-              placeholder="Building A, Floor 3"
-              className="h-11"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-            onChange={onDescriptionChange}
-              placeholder="Brief description of the department's responsibilities..."
-              rows={4}
-              className="resize-none"
-            />
-          </div>
+            placeholder="Building A, Floor 3"
+            className="h-11"
+          />
         </div>
+        <div className="space-y-2">
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            value={formData.description}
+            onChange={onDescriptionChange}
+            placeholder="Brief description of the department's responsibilities..."
+            rows={4}
+            className="resize-none"
+          />
+        </div>
+      </div>
 
-        <DialogFooter className="gap-2">
-          <Button
+      <DialogFooter className="gap-2">
+        <Button
           type="button"
-            variant="outline"
+          variant="outline"
           onClick={onCancel}
-            className="w-full sm:w-auto"
-          >
-            Cancel
-          </Button>
-          <Button
+          className="w-full sm:w-auto"
+        >
+          Cancel
+        </Button>
+        <Button
           type="submit"
-            disabled={isSaving}
-            className="w-full sm:w-auto bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white gap-2"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
+          disabled={isSaving}
+          className="w-full sm:w-auto bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white gap-2"
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
             <>{isCreateMode ? 'Create Department' : 'Save Changes'}</>
-            )}
-          </Button>
-        </DialogFooter>
+          )}
+        </Button>
+      </DialogFooter>
     </form>
-    );
+  );
 }

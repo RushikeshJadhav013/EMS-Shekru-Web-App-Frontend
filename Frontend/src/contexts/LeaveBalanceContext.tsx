@@ -48,21 +48,28 @@ export const LeaveBalanceProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!user) return;
     setIsLoading(true);
     try {
-      // Fetch balance and try multiple allocation endpoints in parallel to maximize chance of success for all roles
-      const [balanceResponse, currentConfig, genericConfig] = await Promise.all([
-        apiService.getLeaveBalance(),
-        apiService.getCurrentLeaveAllocation().catch((err) => {
-          // console.log('Could not fetch current allocation config:', err);
-          return null;
-        }),
-        apiService.getLeaveAllocationConfig().catch((err) => {
-          // console.log('Could not fetch generic allocation config:', err);
-          return null;
-        })
-      ]);
+      // Fetch balance and try multiple allocation endpoints in parallel
+      // We attempt to fetch for all roles because some managers/leads might have permission,
+      // and we catch errors silently to avoid UI disruption.
+      let currentConfig = null;
+      let genericConfig = null;
 
-      // Use whichever config is available
-      const allocationConfig = currentConfig || genericConfig;
+      const balanceResponse = await apiService.getLeaveBalance();
+
+      try {
+        [currentConfig, genericConfig] = await Promise.all([
+          apiService.getCurrentLeaveAllocation().catch(() => null),
+          apiService.getLeaveAllocationConfig().catch(() => null)
+        ]);
+      } catch (e) {
+        // Silently skip if endpoints are restricted
+      }
+
+      // Use whichever config is available - handle both object and array responses
+      let allocationConfig = currentConfig || genericConfig;
+      if (Array.isArray(allocationConfig)) {
+        allocationConfig = allocationConfig[0];
+      }
 
       const defaults = {
         annual: { allocated: 0, used: 0, remaining: 0 },
@@ -106,6 +113,7 @@ export const LeaveBalanceProvider: React.FC<{ children: React.ReactNode }> = ({ 
         // Handle potential snake_case or camelCase
         const sickAlloc = allocationConfig.sick_leave_allocation ?? allocationConfig.sickLeaveAllocation;
         const casualAlloc = allocationConfig.casual_leave_allocation ?? allocationConfig.casualLeaveAllocation;
+        const totalAlloc = allocationConfig.total_annual_leave ?? allocationConfig.totalAnnualLeave;
 
         if (sickAlloc != null) {
           defaults.sick.allocated = Number(sickAlloc) || 0;
@@ -116,14 +124,22 @@ export const LeaveBalanceProvider: React.FC<{ children: React.ReactNode }> = ({ 
           defaults.casual.allocated = Number(casualAlloc) || 0;
           defaults.casual.remaining = defaults.casual.allocated - defaults.casual.used;
         }
+
+        if (totalAlloc != null) {
+          defaults.annual.allocated = Number(totalAlloc) || 0;
+          defaults.annual.remaining = defaults.annual.allocated - defaults.annual.used;
+        }
       }
 
-      // Enforce Total Leave (annual) = Sick Leave + Casual Leave
-      defaults.annual = {
-        allocated: defaults.sick.allocated + defaults.casual.allocated,
-        used: defaults.sick.used + defaults.casual.used,
-        remaining: defaults.sick.remaining + defaults.casual.remaining,
-      };
+      // Enforce Total Leave (annual) = Sick Leave + Casual Leave 
+      // Only recalculate if annual is still 0 but we have component leaves
+      if (defaults.annual.allocated === 0 && (defaults.sick.allocated > 0 || defaults.casual.allocated > 0)) {
+        defaults.annual = {
+          allocated: defaults.sick.allocated + defaults.casual.allocated,
+          used: defaults.sick.used + defaults.casual.used,
+          remaining: (defaults.sick.allocated + defaults.casual.allocated) - (defaults.sick.used + defaults.casual.used),
+        };
+      }
 
       setLeaveBalance(defaults);
       localStorage.setItem('leaveBalance', JSON.stringify(defaults));

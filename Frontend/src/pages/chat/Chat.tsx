@@ -66,7 +66,7 @@ const Chat: React.FC = () => {
       )}>
         {/* Sidebar for Conversations - Hidden on mobile when chat is selected */}
         <div className={cn(
-          "w-full sm:w-72 lg:w-80 flex-shrink-0 border-r flex flex-col transition-all duration-300",
+          "w-full sm:w-80 lg:w-[420px] flex-shrink-0 border-r flex flex-col transition-all duration-300",
           isDark ? "border-slate-800" : "border-slate-100",
           isChatSelected && "hidden sm:flex"
         )}>

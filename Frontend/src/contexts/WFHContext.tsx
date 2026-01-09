@@ -57,12 +57,12 @@ export const WFHProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsLoading(true);
     try {
       const response = await apiService.getMyWFHRequests();
-      
+
       console.log('WFH Requests Raw Response:', response);
-      
+
       // Handle response - ensure it's an array
       let requests = [];
-      
+
       if (Array.isArray(response)) {
         requests = response;
       } else if (response && typeof response === 'object') {
@@ -77,7 +77,7 @@ export const WFHProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           requests = response.results;
         }
       }
-      
+
       const formattedRequests = requests.map((req: any) => ({
         id: req.wfh_id || req.id,
         user_id: req.user_id,
@@ -91,7 +91,7 @@ export const WFHProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         rejection_reason: req.rejection_reason,
         approved_by: req.approved_by,
       }));
-      
+
       console.log('Formatted WFH Requests:', formattedRequests);
       setWfhRequests(formattedRequests);
     } catch (error) {
@@ -104,15 +104,25 @@ export const WFHProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const loadRecentDecisions = useCallback(async () => {
     if (!user?.id) return;
+
+    // Only fetch approvals/decisions for management roles (Manager, HR, Admin, TeamLead)
+    // Employees don't have access to the global /wfh/requests endpoint
+    const privilegedRoles = ['admin', 'hr', 'manager', 'team_lead'];
+    if (!privilegedRoles.includes(user.role || '')) {
+      console.log('Skipping WFH decisions fetch - current user is not a privileged role');
+      setRecentDecisions([]);
+      return;
+    }
+
     setIsLoadingDecisions(true);
     try {
       const response = await apiService.getWFHApprovals();
-      
+
       console.log('WFH Approvals Raw Response:', response);
-      
+
       // Handle response - ensure it's an array
       let requests = [];
-      
+
       if (Array.isArray(response)) {
         requests = response;
       } else if (response && typeof response === 'object') {
@@ -127,7 +137,7 @@ export const WFHProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           requests = response.results;
         }
       }
-      
+
       // Filter for approved and rejected requests only
       const decisions = requests
         .filter((req: any) => {
@@ -153,7 +163,7 @@ export const WFHProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           // Sort by updated_at (decision date) in descending order
           return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
         });
-      
+
       console.log('Formatted WFH Decisions:', decisions);
       setRecentDecisions(decisions);
     } catch (error) {
@@ -179,10 +189,10 @@ export const WFHProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setRecentDecisions([]);
       return;
     }
-    
+
     loadWFHRequests();
     loadRecentDecisions();
-    
+
     // Also reload when the page becomes visible (tab focus)
     const handleVisibilityChange = () => {
       if (!document.hidden) {
@@ -190,7 +200,7 @@ export const WFHProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         loadRecentDecisions();
       }
     };
-    
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [user?.id]);
