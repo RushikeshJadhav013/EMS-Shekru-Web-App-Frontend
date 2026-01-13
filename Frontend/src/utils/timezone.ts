@@ -77,8 +77,38 @@ export function formatDateIST(date: string | Date | number, formatStr: string = 
  * @returns Relative time string
  */
 export function formatDistanceToNowIST(date: string | Date | number): string {
+  const dateObj = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
+  return dateFnsFormatDistanceToNow(dateObj, { addSuffix: true });
+}
+
+/**
+ * Format a timestamp specifically for chat UI in IST
+ * Today: "10:40 AM"
+ * Yesterday: "Yesterday"
+ * Older: "Jan 15"
+ */
+export function formatChatTimestampIST(date: string | Date | number): string {
   const istDate = toIST(date);
-  return dateFnsFormatDistanceToNow(istDate, { addSuffix: true });
+  const now = nowIST();
+
+  const isToday = formatDateIST(istDate) === formatDateIST(now);
+  if (isToday) {
+    return dateFnsFormat(istDate, 'h:mm a');
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday = formatDateIST(istDate) === formatDateIST(yesterday);
+  if (isYesterday) {
+    return 'Yesterday';
+  }
+
+  const isThisYear = istDate.getFullYear() === now.getFullYear();
+  if (isThisYear) {
+    return dateFnsFormat(istDate, 'MMM d');
+  }
+
+  return dateFnsFormat(istDate, 'MM/dd/yy');
 }
 
 /**
@@ -106,7 +136,7 @@ export function todayIST(formatStr: string = 'yyyy-MM-dd'): string {
  */
 export function parseToIST(dateStr: string | null | undefined): Date | null {
   if (!dateStr) return null;
-  
+
   try {
     // If the string doesn't have timezone info, assume it's UTC
     let date: Date;
@@ -115,11 +145,11 @@ export function parseToIST(dateStr: string | null | undefined): Date | null {
     } else {
       date = new Date(dateStr);
     }
-    
+
     if (isNaN(date.getTime())) {
       return null;
     }
-    
+
     return toIST(date);
   } catch (error) {
     console.error('Error parsing date:', error);
@@ -157,15 +187,15 @@ export function formatDateTimeComponentsIST(
   formatStr: string = 'HH:mm:ss'
 ): string {
   if (!timeStr) return 'N/A';
-  
+
   try {
     let date: Date;
-    
+
     // Check if timeStr is a full ISO datetime (contains T or space with time)
     if (timeStr.includes('T') || (timeStr.includes(' ') && timeStr.includes(':'))) {
       // It's a full ISO datetime string from backend
       // Backend sends times in IST without timezone indicator
-      
+
       // Check if it has explicit timezone info
       if (timeStr.includes('Z') || timeStr.includes('+') || /\-\d{2}:\d{2}$/.test(timeStr)) {
         // Has timezone info - parse as UTC and convert to IST
@@ -202,11 +232,11 @@ export function formatDateTimeComponentsIST(
       const combinedStr = `${dateStr}T${timeStr}`;
       date = new Date(combinedStr);
     }
-    
+
     if (isNaN(date.getTime())) {
       return 'Invalid time';
     }
-    
+
     // Format the date directly (already in IST)
     return dateFnsFormat(date, formatStr);
   } catch (error) {

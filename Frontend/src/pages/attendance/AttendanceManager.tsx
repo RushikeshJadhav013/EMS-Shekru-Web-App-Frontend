@@ -94,7 +94,8 @@ const AttendanceManager: React.FC = () => {
 
   // Export modal states
   const [exportModalOpen, setExportModalOpen] = useState(false);
-  const [exportType, setExportType] = useState<'csv' | 'pdf' | null>(null);
+  const [exportType, setExportType] = useState<'csv' | 'pdf' | null>('csv');
+  const [reportLayout, setReportLayout] = useState<'basic' | 'grid'>('basic');
   const [quickFilter, setQuickFilter] = useState<string>('custom');
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
@@ -808,9 +809,28 @@ const AttendanceManager: React.FC = () => {
       }
 
       // Use apiService for export with proper authentication
-      const blob = exportType === 'csv'
-        ? await apiService.exportAttendanceCSV(exportParams)
-        : await apiService.exportAttendancePDF(exportParams);
+      let blob: Blob;
+      if (reportLayout === 'grid') {
+        // Grid export needs month and year
+        const exportMonth = startDate ? (startDate.getMonth() + 1).toString() : (new Date().getMonth() + 1).toString();
+        const exportYear = startDate ? startDate.getFullYear().toString() : new Date().getFullYear().toString();
+
+        blob = exportType === 'csv'
+          ? await apiService.exportMonthlyGridCSV({
+            month: exportMonth,
+            year: exportYear,
+            department: exportParams.department
+          })
+          : await apiService.exportMonthlyGridPDF({
+            month: exportMonth,
+            year: exportYear,
+            department: exportParams.department
+          });
+      } else {
+        blob = exportType === 'csv'
+          ? await apiService.exportAttendanceCSV(exportParams)
+          : await apiService.exportAttendancePDF(exportParams);
+      }
 
       // Create download link
       const url = window.URL.createObjectURL(blob);
@@ -829,7 +849,7 @@ const AttendanceManager: React.FC = () => {
         ? `_${selectedEmployee.employee_id || selectedEmployee.user_id}`
         : '';
 
-      a.download = `attendance_report${empStr}_${dateStr}.${exportType}`;
+      a.download = `${reportLayout}_attendance_report${empStr}_${dateStr}.${exportType}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1071,7 +1091,7 @@ const AttendanceManager: React.FC = () => {
             <Clock className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+            <h1 className="text-2xl font-bold tracking-tight text-black sm:text-3xl">
               {t.attendance.employeeAttendance}
             </h1>
             <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
@@ -1261,10 +1281,19 @@ const AttendanceManager: React.FC = () => {
                               <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse"></div>
                               <span className="text-xs font-medium text-orange-700 dark:text-orange-300">Work from Home</span>
                             </div>
+                          ) : record.workLocation && record.workLocation !== 'work_from_home' ? (
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                              <div className="h-2 w-2 rounded-sm bg-blue-500"></div>
+                              <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                                Work from {record.workLocation}
+                              </span>
+                            </div>
                           ) : (
                             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                              <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                              <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Work from Office</span>
+                              <div className="h-2 w-2 rounded-sm bg-blue-500"></div>
+                              <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                                Work from Office
+                              </span>
                             </div>
                           )}
                         </td>
@@ -1578,6 +1607,53 @@ const AttendanceManager: React.FC = () => {
           </DialogHeader>
 
           <div className="space-y-6 py-4 flex-1 overflow-y-auto overflow-x-visible pr-1">
+            {/* Report Layout Selection */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Report Layout</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setReportLayout('basic')}
+                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === 'basic'
+                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-950'
+                    : 'border-gray-200 hover:border-blue-300 dark:border-gray-700'
+                    }`}
+                >
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${reportLayout === 'basic' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
+                      <FileText className="h-4.5 w-4.5" />
+                    </div>
+                    <span className={`text-xs font-bold ${reportLayout === 'basic' ? 'text-blue-600' : 'text-gray-600'}`}>
+                      Basic
+                    </span>
+                    <span className="text-[9px] text-muted-foreground text-center line-clamp-1">
+                      Standard list
+                    </span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportLayout('grid')}
+                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === 'grid'
+                    ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950'
+                    : 'border-gray-200 hover:border-indigo-300 dark:border-gray-700'
+                    }`}
+                >
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${reportLayout === 'grid' ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400'}`}>
+                      <Users className="h-4.5 w-4.5" />
+                    </div>
+                    <span className={`text-xs font-bold ${reportLayout === 'grid' ? 'text-indigo-600' : 'text-gray-600'}`}>
+                      Grid
+                    </span>
+                    <span className="text-[9px] text-muted-foreground text-center line-clamp-1">
+                      Monthly view
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
             {/* Export Format Selection */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Export Format</Label>
@@ -1585,36 +1661,36 @@ const AttendanceManager: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setExportType('csv')}
-                  className={`p-4 rounded-lg border-2 transition-all ${exportType === 'csv'
+                  className={`p-2.5 rounded-lg border transition-all ${exportType === 'csv'
                     ? 'border-green-600 bg-green-50 dark:bg-green-950'
                     : 'border-gray-200 hover:border-green-300 dark:border-gray-700'
                     }`}
                 >
-                  <div className="flex flex-col items-center gap-2">
-                    <FileSpreadsheet className={`h-8 w-8 ${exportType === 'csv' ? 'text-green-600' : 'text-gray-400'}`} />
-                    <span className={`font-semibold ${exportType === 'csv' ? 'text-green-600' : 'text-gray-600'}`}>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <FileSpreadsheet className={`h-6 w-6 ${exportType === 'csv' ? 'text-green-600' : 'text-gray-400'}`} />
+                    <span className={`text-xs font-bold ${exportType === 'csv' ? 'text-green-600' : 'text-gray-600'}`}>
                       CSV
                     </span>
-                    <span className="text-xs text-muted-foreground text-center">
-                      Excel compatible
+                    <span className="text-[9px] text-muted-foreground text-center">
+                      Excel file
                     </span>
                   </div>
                 </button>
                 <button
                   type="button"
                   onClick={() => setExportType('pdf')}
-                  className={`p-4 rounded-lg border-2 transition-all ${exportType === 'pdf'
+                  className={`p-2.5 rounded-lg border transition-all ${exportType === 'pdf'
                     ? 'border-red-600 bg-red-50 dark:bg-red-950'
                     : 'border-gray-200 hover:border-red-300 dark:border-gray-700'
                     }`}
                 >
-                  <div className="flex flex-col items-center gap-2">
-                    <FileText className={`h-8 w-8 ${exportType === 'pdf' ? 'text-red-600' : 'text-gray-400'}`} />
-                    <span className={`font-semibold ${exportType === 'pdf' ? 'text-red-600' : 'text-gray-600'}`}>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <FileText className={`h-6 w-6 ${exportType === 'pdf' ? 'text-red-600' : 'text-gray-400'}`} />
+                    <span className={`text-xs font-bold ${exportType === 'pdf' ? 'text-red-600' : 'text-gray-600'}`}>
                       PDF
                     </span>
-                    <span className="text-xs text-muted-foreground text-center">
-                      Print ready
+                    <span className="text-[9px] text-muted-foreground text-center">
+                      Print file
                     </span>
                   </div>
                 </button>

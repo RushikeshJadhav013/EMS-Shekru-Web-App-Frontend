@@ -55,6 +55,7 @@ const AttendanceWithToggle: React.FC = () => {
     name?: string;
     email?: string;
     department?: string;
+    workLocation?: string;
   }
   const [viewMode, setViewMode] = useState<'self' | 'employee' | 'wfh' | 'wfh_requests'>('self');
   const [showCamera, setShowCamera] = useState(false);
@@ -1841,8 +1842,8 @@ const AttendanceWithToggle: React.FC = () => {
               <Clock className="h-8 w-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
-                Attendance <span className="text-indigo-600">Management</span>
+              <h1 className="text-3xl font-extrabold tracking-tight text-black">
+                Attendance <span className="text-black">Management</span>
               </h1>
               <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
                 <Calendar className="h-4 w-4 text-indigo-500" />
@@ -2123,6 +2124,7 @@ const AttendanceWithToggle: React.FC = () => {
                           <TableHead>Date</TableHead>
                           <TableHead>Employee ID</TableHead>
                           <TableHead>Department</TableHead>
+                          <TableHead>Work Location</TableHead>
                           <TableHead>Online Status</TableHead>
                           <TableHead>Check In</TableHead>
                           <TableHead>Check Out</TableHead>
@@ -2142,6 +2144,28 @@ const AttendanceWithToggle: React.FC = () => {
                             </TableCell>
                             <TableCell className="font-medium">{user?.id || '-'}</TableCell>
                             <TableCell>{user?.department || '-'}</TableCell>
+                            <TableCell>
+                              {record.workLocation === 'work_from_home' ? (
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                                  <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse"></div>
+                                  <span className="text-xs font-medium text-orange-700 dark:text-orange-300">Work from Home</span>
+                                </div>
+                              ) : record.workLocation && record.workLocation !== 'work_from_home' ? (
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                                  <div className="h-2 w-2 rounded-sm bg-blue-500"></div>
+                                  <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                                    Work from {record.workLocation}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                                  <div className="h-2 w-2 rounded-sm bg-blue-500"></div>
+                                  <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                                    Work from Office
+                                  </span>
+                                </div>
+                              )}
+                            </TableCell>
                             <TableCell>
                               {!record.checkOutTime && record.date === todayIST() ? (
                                 <OnlineStatusIndicator
@@ -2294,6 +2318,7 @@ const AttendanceWithToggle: React.FC = () => {
                         <TableHead>Employee ID</TableHead>
                         <TableHead>Employee (Name & Email)</TableHead>
                         <TableHead>Department</TableHead>
+                        <TableHead>Work Location</TableHead>
                         <TableHead>Online Status</TableHead>
                         <TableHead>Check In</TableHead>
                         <TableHead>Check Out</TableHead>
@@ -2317,6 +2342,28 @@ const AttendanceWithToggle: React.FC = () => {
                               </div>
                             </TableCell>
                             <TableCell>{record.department || '-'}</TableCell>
+                            <TableCell>
+                              {record.workLocation === 'work_from_home' ? (
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                                  <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse"></div>
+                                  <span className="text-xs font-medium text-orange-700 dark:text-orange-300">Work from Home</span>
+                                </div>
+                              ) : record.workLocation && record.workLocation !== 'work_from_home' ? (
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                                  <div className="h-2 w-2 rounded-sm bg-blue-500"></div>
+                                  <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                                    Work from {record.workLocation}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                                  <div className="h-2 w-2 rounded-sm bg-blue-500"></div>
+                                  <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                                    Work from Office
+                                  </span>
+                                </div>
+                              )}
+                            </TableCell>
                             <TableCell>
                               {!record.checkOutTime ? (
                                 <OnlineStatusIndicator

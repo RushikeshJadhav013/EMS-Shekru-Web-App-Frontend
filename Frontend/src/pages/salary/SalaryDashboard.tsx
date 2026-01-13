@@ -40,32 +40,52 @@ const SalaryDashboard = () => {
     const userRole = user?.role?.toLowerCase();
     const isAdminOrHr = userRole === 'admin' || userRole === 'hr';
 
+    const [items, setItems] = useState<(Employee & { salary?: any })[]>([]);
+
     useEffect(() => {
         if (isAdminOrHr) {
-            loadEmployees();
+            loadDashboardData();
         }
     }, [user]);
 
-    // Mock Data for UI Demo
-    const mockEmployees: Employee[] = [
-        { id: '1', name: 'Rohan Sharma', employee_id: 'EMP001', department: 'Unreal Engine', role: 'employee', email: 'rohan@example.com', status: 'active', created_at: '2023-01-01', updated_at: '2023-01-01' },
-        { id: '2', name: 'Priya Patel', employee_id: 'EMP002', department: 'React Development', role: 'manager', email: 'priya@example.com', status: 'active', created_at: '2023-02-15', updated_at: '2023-02-15' },
-        { id: '3', name: 'Amit Singh', employee_id: 'EMP003', department: '3D Art', role: 'team_lead', email: 'amit@example.com', status: 'active', created_at: '2023-03-10', updated_at: '2023-03-10' },
-        { id: '4', name: 'Sneha Gupta', employee_id: 'EMP004', department: 'HR', role: 'hr', email: 'sneha@example.com', status: 'active', created_at: '2023-04-01', updated_at: '2023-04-01' },
-        { id: '5', name: 'Vikram Malhotra', employee_id: 'EMP005', department: 'Management', role: 'admin', email: 'vikram@example.com', status: 'active', created_at: '2022-11-20', updated_at: '2022-11-20' },
-    ];
-
-    const loadEmployees = async () => {
+    const loadDashboardData = async () => {
         try {
             setLoading(true);
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 800));
-            setEmployees(mockEmployees);
+            const [employeesData, salariesData] = await Promise.all([
+                apiService.getEmployees(),
+                apiService.getAllEmployeeSalaries()
+            ]);
+
+            const merged = (employeesData || []).map((emp: any) => {
+                const id = emp.id || emp.user_id;
+                let salary = (salariesData || []).find((s: any) => String(s.user_id) === String(id));
+
+                if (salary) {
+                    // Ensure core fields are present for analytics and table display
+                    const annual_ctc = salary.annual_ctc || salary.ctc_annual || 0;
+
+                    // Improved calculation for dashboard consistency
+                    const monthly_ctc = salary.monthly_ctc || (annual_ctc > 0 ? annual_ctc / 12 : 0);
+
+                    // Calculate in-hand from earnings/deductions if direct field is 0 or missing
+                    let monthly_in_hand = salary.monthly_in_hand || salary.net_salary || 0;
+                    if (monthly_in_hand <= 0 && salary.total_earnings_annual) {
+                        monthly_in_hand = (salary.total_earnings_annual - (salary.total_deductions_annual || 0)) / 12;
+                    }
+
+                    salary = { ...salary, annual_ctc, monthly_ctc, monthly_in_hand };
+                }
+
+                return { ...emp, id, salary };
+            });
+
+            setItems(merged);
+            setEmployees(employeesData || []);
         } catch (error) {
-            console.error('Failed to load employees', error);
+            console.error('Failed to load dashboard data', error);
             toast({
                 title: 'Error',
-                description: 'Failed to load employees list',
+                description: 'Failed to load salary dashboard data',
                 variant: 'destructive',
             });
         } finally {
@@ -73,42 +93,64 @@ const SalaryDashboard = () => {
         }
     };
 
+    const loadEmployees = loadDashboardData;
+
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchQuery(e.target.value);
     };
 
-    const filteredEmployees = employees.filter(emp => {
-        const matchesSearch = emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            emp.employee_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (emp.department && emp.department.toLowerCase().includes(searchQuery.toLowerCase()));
-        const matchesDept = deptFilter === 'all' || emp.department === deptFilter;
-        const matchesRole = roleFilter === 'all' || emp.role === roleFilter;
+    const filteredItems = items.filter(item => {
+        const itemRole = item.role?.toLowerCase() || '';
 
-        return matchesSearch && matchesDept && matchesRole;
+        // Visibility Logic by Role
+        let isRoleVisible = false;
+        if (userRole === 'admin') {
+            // Admin sees everyone except other admins
+            isRoleVisible = itemRole !== 'admin';
+        } else if (userRole === 'hr') {
+            // HR sees Manager, Team Lead, Employee, and other HRs (including themselves)
+            isRoleVisible = ['manager', 'team_lead', 'team lead', 'employee', 'hr'].includes(itemRole);
+        } else if (userRole === 'manager') {
+            // Manager sees Team Lead and Employee (excludes other managers, admins, and HRs)
+            isRoleVisible = ['team_lead', 'team lead', 'employee'].includes(itemRole);
+        } else if (userRole === 'team_lead' || userRole === 'team lead') {
+            // Team Lead sees only employees (excludes other team leads, managers, admins, and HRs)
+            isRoleVisible = itemRole === 'employee';
+        }
+
+        const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.employee_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (item.department && item.department.toLowerCase().includes(searchQuery.toLowerCase()));
+        const matchesDept = deptFilter === 'all' || item.department === deptFilter;
+        const matchesRole = roleFilter === 'all' || item.role === roleFilter;
+
+        return isRoleVisible && matchesSearch && matchesDept && matchesRole;
     });
 
-    const uniqueDepts = Array.from(new Set(employees.map(e => e.department).filter(Boolean)));
-    const uniqueRoles = Array.from(new Set(employees.map(e => e.role)));
+    const uniqueDepts = Array.from(new Set(items.map(e => e.department).filter(Boolean)));
+    const uniqueRoles = Array.from(new Set(items.map(e => e.role).filter(role => role?.toLowerCase() !== 'admin')));
 
     const handleDeleteSalary = async (userId: string) => {
         if (!confirm('Are you sure you want to delete the salary record for this employee? This action cannot be undone.')) return;
 
         try {
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            setLoading(true);
+            await apiService.deleteSalary(userId);
 
             toast({
                 title: 'Success',
-                description: 'Salary record deleted successfully (Mock)',
+                description: 'Salary record deleted successfully',
                 variant: 'success',
             });
-            // In a real app we'd refresh the list or status here
+            loadDashboardData();
         } catch (error) {
             toast({
                 title: 'Error',
                 description: 'Failed to delete salary record',
                 variant: 'destructive',
             });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -141,6 +183,17 @@ const SalaryDashboard = () => {
                 </div>
 
                 <div className="relative flex gap-3">
+                    {userRole === 'hr' && (
+                        <Button
+                            variant="outline"
+                            size="lg"
+                            onClick={() => navigate(`/salary/employee/${user?.id}`)}
+                            className="rounded-xl px-6 h-12 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all active:scale-95"
+                        >
+                            <DollarSign className="h-4 w-4 mr-2" />
+                            My Salary
+                        </Button>
+                    )}
                     <Button
                         variant="outline"
                         size="lg"
@@ -159,9 +212,9 @@ const SalaryDashboard = () => {
                 {[
                     ...(userRole === 'admin' ? [
                         {
-                            label: 'Net Payroll (Cumulative)',
-                            value: '₹ 1.48 Cr',
-                            sub: 'Total All-Time Disbursement',
+                            label: 'Annual Payroll (Projected)',
+                            value: `₹ ${(items.reduce((acc, item) => acc + (item.salary?.annual_ctc || 0), 0) / 10000000).toFixed(2)} Cr`,
+                            sub: 'Total Annual Cost to Company',
                             icon: DollarSign,
                             color: 'blue',
                             bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
@@ -171,8 +224,8 @@ const SalaryDashboard = () => {
                         },
                         {
                             label: 'Monthly Disbursement',
-                            value: '₹ 12,45,000',
-                            sub: 'Current Month Employee Payout',
+                            value: `₹ ${items.reduce((acc, item) => acc + (item.salary?.monthly_ctc || 0), 0).toLocaleString('en-IN')}`,
+                            sub: 'Current Month Total CTC',
                             icon: TrendingUp,
                             color: 'emerald',
                             bg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
@@ -194,7 +247,7 @@ const SalaryDashboard = () => {
                         },
                         {
                             label: 'Active Pay Structures',
-                            value: employees.length,
+                            value: items.filter(i => i.salary).length,
                             sub: 'Verified Salary Records',
                             icon: FileText,
                             color: 'emerald',
@@ -205,9 +258,11 @@ const SalaryDashboard = () => {
                         }
                     ]),
                     {
-                        label: 'Increments Given',
-                        value: '12',
-                        sub: 'This Academic Year',
+                        label: 'Average Annual Salary',
+                        value: `₹ ${(items.filter(i => i.salary).length > 0
+                            ? Math.round(items.reduce((acc, item) => acc + (item.salary?.annual_ctc || 0), 0) / items.filter(i => i.salary).length)
+                            : 0).toLocaleString('en-IN')}`,
+                        sub: 'Per Active Employee',
                         icon: AlertCircle,
                         color: 'indigo',
                         bg: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
@@ -317,8 +372,9 @@ const SalaryDashboard = () => {
                                 <TableRow>
                                     <TableHead className="w-[100px]">Emp ID</TableHead>
                                     <TableHead>Employee</TableHead>
-                                    <TableHead>Role</TableHead>
-                                    <TableHead>Department</TableHead>
+                                    <TableHead>Role / Dept</TableHead>
+                                    <TableHead className="text-right">Monthly CTC</TableHead>
+                                    <TableHead className="text-right">In-Hand Pay</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -329,56 +385,79 @@ const SalaryDashboard = () => {
                                             <TableCell><div className="h-4 w-12 bg-gray-200 rounded animate-pulse"></div></TableCell>
                                             <TableCell><div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div></TableCell>
                                             <TableCell><div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div></TableCell>
-                                            <TableCell><div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div></TableCell>
+                                            <TableCell><div className="h-4 w-20 bg-gray-200 rounded animate-pulse ml-auto"></div></TableCell>
+                                            <TableCell><div className="h-4 w-20 bg-gray-200 rounded animate-pulse ml-auto"></div></TableCell>
                                             <TableCell><div className="h-8 w-24 bg-gray-200 rounded animate-pulse ml-auto"></div></TableCell>
                                         </TableRow>
                                     ))
-                                ) : filteredEmployees.length === 0 ? (
+                                ) : filteredItems.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                                             No employees found.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredEmployees.map((employee) => (
-                                        <TableRow key={employee.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                            <TableCell className="font-medium text-gray-900 dark:text-gray-100">{employee.employee_id}</TableCell>
+                                    filteredItems.map((item) => (
+                                        <TableRow key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors pointer-events-none sm:pointer-events-auto">
+                                            <TableCell className="font-bold text-slate-700 dark:text-slate-300">{item.employee_id}</TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col">
-                                                    <span className="font-medium">{employee.name}</span>
-                                                    <span className="text-xs text-muted-foreground">{employee.email}</span>
+                                                    <span className="font-bold text-gray-900 dark:text-gray-100">{item.name}</span>
+                                                    <span className="text-[10px] text-muted-foreground uppercase font-medium">{item.email}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="capitalize">{employee.role.replace('_', ' ')}</TableCell>
-                                            <TableCell>{employee.department || '-'}</TableCell>
-                                            <TableCell className="text-right">
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    <span className="capitalize text-xs font-semibold">{item.role?.replace('_', ' ')}</span>
+                                                    <span className="text-[10px] text-muted-foreground">{item.department || '-'}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400">
+                                                {item.salary ? `₹${Math.round(item.salary.monthly_ctc).toLocaleString()}` : '-'}
+                                            </TableCell>
+                                            <TableCell className="text-right font-bold text-emerald-600 dark:text-emerald-400">
+                                                {item.salary ? `₹${Math.round(item.salary.monthly_in_hand).toLocaleString()}` : '-'}
+                                            </TableCell>
+                                            <TableCell className="text-right pointer-events-auto">
                                                 <div className="flex justify-end gap-2">
-                                                    <Link
-                                                        to={`/salary/employee/${employee.id}`}
-                                                        className={`h-8 w-8 p-0 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-blue-900 dark:text-blue-400 dark:hover:bg-blue-900/20 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground`}
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-blue-900 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                                                        disabled={!item.id}
+                                                        onClick={() => {
+                                                            if (item.id) {
+                                                                navigate(`/salary/employee/${item.id}`);
+                                                            }
+                                                        }}
                                                         title="View Salary Details"
                                                     >
                                                         <Eye className="h-4 w-4" />
-                                                    </Link>
+                                                    </Button>
 
                                                     {isAdminOrHr && (
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
                                                             className="h-8 w-8 p-0 text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700 dark:border-green-900 dark:text-green-400 dark:hover:bg-green-900/20"
-                                                            onClick={() => navigate(`/salary/add?userId=${employee.id}&name=${encodeURIComponent(employee.name)}`)}
-                                                            title="Create Salary"
+                                                            disabled={!item.id}
+                                                            onClick={() => {
+                                                                if (item.id) {
+                                                                    navigate(`/salary/add?userId=${item.id}&name=${encodeURIComponent(item.name)}`);
+                                                                }
+                                                            }}
+                                                            title={item.salary ? "Update Salary" : "Create Salary"}
                                                         >
-                                                            <Plus className="h-4 w-4" />
+                                                            {item.salary ? <Edit className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                                                         </Button>
                                                     )}
 
-                                                    {userRole === 'admin' && (
+                                                    {userRole === 'admin' && item.salary && (
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
                                                             className="h-8 w-8 p-0 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20"
-                                                            onClick={() => handleDeleteSalary(String(employee.id))}
+                                                            onClick={() => handleDeleteSalary(String(item.id))}
                                                             title="Delete Salary Record"
                                                         >
                                                             <Trash2 className="h-4 w-4" />

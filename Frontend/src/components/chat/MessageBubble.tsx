@@ -37,7 +37,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   };
 
   const formatTime = (timestamp: string) => {
-    return formatTimeIST(timestamp, 'h:mm a');
+    return formatTimeIST(timestamp, 'h:mm a') + ' IST';
   };
 
   const getUserAvatar = () => {

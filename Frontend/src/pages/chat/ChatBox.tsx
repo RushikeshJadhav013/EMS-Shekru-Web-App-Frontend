@@ -10,11 +10,22 @@ import {
   Reply,
   MoreVertical,
   Check,
-  CheckCheck
+  CheckCheck,
+  Edit,
+  Trash2 as TrashIcon,
+  AlertTriangle,
+  Settings,
+  UserPlus,
+  UserMinus,
+  LogOut,
+  Info,
+  Plus,
+  Search
 } from 'lucide-react';
 import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -22,16 +33,75 @@ import { formatDateIST } from '@/utils/timezone';
 import { cn } from '@/lib/utils';
 import EmojiPicker from '../../components/chat/EmojiPicker';
 import MessageBubble from '../../components/chat/MessageBubble';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 
 const ChatBox: React.FC = () => {
   const { chatId } = useParams<{ chatId: string }>();
   const navigate = useNavigate();
-  const { activeChat, messages, isLoading, sendMessage, setActiveChat, chats, availableUsers, markAsRead, sendTyping } = useChat();
+  const {
+    activeChat,
+    messages,
+    isLoading,
+    sendMessage,
+    setActiveChat,
+    chats,
+    availableUsers,
+    markAsRead,
+    sendTyping,
+    deleteMessage,
+    editMessage,
+    updateGroupName,
+    deleteGroup,
+    addParticipants,
+    removeParticipants
+  } = useChat();
   const { user } = useAuth();
   const { themeMode } = useTheme();
+  const { toast } = useToast();
   const [messageText, setMessageText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [messageToDelete, setMessageToDelete] = useState<any>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [messageToEdit, setMessageToEdit] = useState<any>(null);
+  const [editText, setEditText] = useState('');
+  const [isGroupSettingsOpen, setIsGroupSettingsOpen] = useState(false);
+  const [isAddingMembers, setIsAddingMembers] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [selectedNewUsers, setSelectedNewUsers] = useState<string[]>([]);
+  const [isUpdatingGroup, setIsUpdatingGroup] = useState(false);
+  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
+  const [memberSearchTerm, setMemberSearchTerm] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
@@ -97,6 +167,116 @@ const ChatBox: React.FC = () => {
       setShowEmojiPicker(false);
     } catch (error) {
       console.error('Failed to send message:', error);
+    }
+  };
+
+  const handleEditClick = (message: any) => {
+    // Check if within 2 minutes
+    const sentTime = new Date(message.timestamp).getTime();
+    const now = new Date().getTime();
+    const diffMins = (now - sentTime) / (1000 * 60);
+
+    if (diffMins > 2) {
+      toast({
+        title: "Edit restricted",
+        description: "Messages can only be edited within 2 minutes of sending.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setMessageToEdit(message);
+    setEditText(message.content);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleConfirmEdit = async () => {
+    if (!messageToEdit || !editText.trim()) return;
+    try {
+      await editMessage(messageToEdit.id, editText);
+      setIsEditDialogOpen(false);
+      setMessageToEdit(null);
+      setEditText('');
+    } catch (error) {
+      console.error('Failed to edit message:', error);
+    }
+  };
+
+  const handleDeleteClick = (message: any) => {
+    // Check if within 5 minutes
+    const sentTime = new Date(message.timestamp).getTime();
+    const now = new Date().getTime();
+    const diffMins = (now - sentTime) / (1000 * 60);
+
+    if (diffMins > 5) {
+      toast({
+        title: "Delete restricted",
+        description: "Messages can only be deleted within 5 minutes of sending.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setMessageToDelete(message);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!messageToDelete) return;
+    try {
+      await deleteMessage(messageToDelete.id);
+      setIsDeleteDialogOpen(false);
+      setMessageToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete message:', error);
+    }
+  };
+
+  const handleUpdateGroupName = async () => {
+    if (!activeChat || !newGroupName.trim() || newGroupName === activeChat.name) return;
+    setIsUpdatingGroup(true);
+    try {
+      await updateGroupName(activeChat.id, newGroupName);
+      setIsGroupSettingsOpen(false);
+    } catch (error) {
+      console.error('Failed to update group name:', error);
+    } finally {
+      setIsUpdatingGroup(false);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!activeChat) return;
+    try {
+      await deleteGroup(activeChat.id);
+      setIsGroupSettingsOpen(false);
+      setIsDeletingGroup(false);
+      navigate(`/${user?.role}/chat`);
+    } catch (error) {
+      console.error('Failed to delete group:', error);
+    }
+  };
+
+  const handleAddMembers = async () => {
+    if (!activeChat || selectedNewUsers.length === 0) return;
+    setIsUpdatingGroup(true);
+    try {
+      await addParticipants(activeChat.id, selectedNewUsers);
+      setSelectedNewUsers([]);
+      setIsAddingMembers(false);
+    } catch (error) {
+      console.error('Failed to add members:', error);
+    } finally {
+      setIsUpdatingGroup(false);
+    }
+  };
+
+  const handleRemoveMember = async (userId: string) => {
+    if (!activeChat) return;
+    try {
+      await removeParticipants(activeChat.id, [userId]);
+    } catch (error) {
+      console.error('Failed to remove member:', error);
     }
   };
 
@@ -229,9 +409,63 @@ const ChatBox: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="rounded-full text-slate-400 hover:text-green-500 hover:bg-green-500/10 transition-colors">
-            <MoreVertical className="h-5 w-5" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full text-slate-400 hover:text-green-500 hover:bg-green-500/10 transition-colors">
+                <MoreVertical className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-2xl border-2 shadow-xl p-2">
+              <DropdownMenuLabel className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                <Info className="h-3 w-3" />
+                Chat Options
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {activeChat.type === 'group' && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setNewGroupName(activeChat.name || '');
+                      setIsGroupSettingsOpen(true);
+                    }}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <Settings className="h-4 w-4 text-slate-500" />
+                    <span className="font-bold text-sm">Group Settings</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setSelectedNewUsers([]);
+                      setIsAddingMembers(true);
+                    }}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <UserPlus className="h-4 w-4 text-slate-500" />
+                    <span className="font-bold text-sm">Add Members</span>
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuItem
+                onClick={() => navigate(`/${user?.role}/chat`)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <LogOut className="h-4 w-4 text-slate-500" />
+                <span className="font-bold text-sm">Exit Chat</span>
+              </DropdownMenuItem>
+              {activeChat.type === 'group' && activeChat.participants.find(p => p.userId === user?.id)?.isAdmin && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setIsDeletingGroup(true)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                    <span className="font-bold text-sm">Delete Group</span>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -270,6 +504,8 @@ const ChatBox: React.FC = () => {
                     message={message}
                     isOwn={message.senderId?.toString() === user?.id?.toString()}
                     onReply={() => setReplyingTo(message.id)}
+                    onEdit={() => handleEditClick(message)}
+                    onDelete={() => handleDeleteClick(message)}
                     replyMessage={message.replyTo ? enrichedMessages.find(m => m.id === message.replyTo) : undefined}
                   />
                 </div>
@@ -352,6 +588,273 @@ const ChatBox: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Custom Confirmation Dialog for Deletion */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="border-2 shadow-2xl">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <AlertDialogTitle className="text-xl font-bold">Delete Message?</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+              Are you sure you want to delete this message? This action cannot be undone and the message will be removed for everyone in the chat.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel className="font-bold border-2">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-red-600 hover:bg-red-700 text-white font-bold"
+            >
+              Delete for Everyone
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Small Edit Form Modal */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px] border-2 shadow-2xl">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+                <Edit className="h-5 w-5" />
+              </div>
+              <DialogTitle className="text-xl font-bold">Edit Message</DialogTitle>
+            </div>
+            <DialogDescription className="text-slate-600 dark:text-slate-400">
+              Update your message content. Only the content will be changed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              placeholder="Type updated message..."
+              className="min-h-[100px] border-2 focus:ring-green-500/50 resize-none font-medium text-[15px]"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+              className="font-bold border-2"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmEdit}
+              disabled={!editText.trim() || editText === messageToEdit?.content}
+              className="bg-green-600 hover:bg-green-700 text-white font-bold min-w-[80px]"
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Group Settings Dialog */}
+      <Dialog open={isGroupSettingsOpen} onOpenChange={setIsGroupSettingsOpen}>
+        <DialogContent className="sm:max-w-[500px] border-2 shadow-2xl p-0 overflow-hidden rounded-[28px]">
+          <DialogHeader className="p-6 pb-0">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="h-12 w-12 rounded-2xl bg-green-500 shadow-lg shadow-green-500/20 flex items-center justify-center text-white">
+                <Settings className="h-6 w-6" />
+              </div>
+              <div>
+                <DialogTitle className="text-2xl font-black tracking-tight">Group Settings</DialogTitle>
+                <DialogDescription className="font-medium">Manage members and group identity</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="p-6 space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Group Name</label>
+              <div className="flex gap-2">
+                <Input
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  className="rounded-xl border-2 font-bold"
+                  placeholder="Enter group name"
+                />
+                <Button
+                  onClick={handleUpdateGroupName}
+                  disabled={isUpdatingGroup || !newGroupName.trim() || newGroupName === activeChat?.name}
+                  className="bg-green-500 hover:bg-green-600 text-white font-black rounded-xl"
+                >
+                  {isUpdatingGroup ? '...' : 'Update'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Members ({activeChat?.participants.length})</label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsAddingMembers(true)}
+                  className="h-7 px-2 text-[10px] font-black text-green-600 hover:bg-green-50 rounded-lg uppercase tracking-wider"
+                >
+                  <Plus className="h-3 w-3 mr-1" /> Add New
+                </Button>
+              </div>
+
+              <ScrollArea className="h-[200px] rounded-2xl border-2 p-2">
+                <div className="space-y-1">
+                  {activeChat?.participants.map((p) => (
+                    <div key={p.userId} className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage src={availableUsers.find(u => u.id === p.userId)?.profilePhoto} />
+                          <AvatarFallback className="bg-slate-100 font-bold text-xs">{p.userName.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-bold leading-none mb-1">{p.userName} {p.userId === user?.id && <span className="text-[10px] text-green-500 font-black ml-1">(You)</span>}</p>
+                          <p className="text-[10px] font-medium text-slate-500 uppercase tracking-tighter">{p.department} • {p.userRole}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {p.isAdmin && (
+                          <Badge variant="outline" className="text-[8px] font-black uppercase bg-amber-50 text-amber-600 border-amber-200">Admin</Badge>
+                        )}
+                        {activeChat.participants.find(part => part.userId === user?.id)?.isAdmin && p.userId !== user?.id && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveMember(p.userId)}
+                            className="h-8 w-8 rounded-full text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+
+          <div className="p-6 bg-slate-50 dark:bg-slate-900 border-t mt-auto">
+            <Button
+              variant="outline"
+              className="w-full rounded-xl font-bold border-2"
+              onClick={() => setIsGroupSettingsOpen(false)}
+            >
+              Close Settings
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Members Dialog */}
+      <Dialog open={isAddingMembers} onOpenChange={setIsAddingMembers}>
+        <DialogContent className="sm:max-w-[450px] border-2 shadow-2xl p-0 overflow-hidden rounded-[28px]">
+          <DialogHeader className="p-6 pb-0">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="h-12 w-12 rounded-2xl bg-blue-500 shadow-lg shadow-blue-500/20 flex items-center justify-center text-white">
+                <UserPlus className="h-6 w-6" />
+              </div>
+              <div>
+                <DialogTitle className="text-2xl font-black tracking-tight">Add Members</DialogTitle>
+                <DialogDescription className="font-medium">Invite teammates to this group</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="p-6 space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search teammates..."
+                className="pl-9 h-11 rounded-xl border-2"
+                value={memberSearchTerm}
+                onChange={(e) => setMemberSearchTerm(e.target.value)}
+              />
+            </div>
+
+            <ScrollArea className="h-[250px] rounded-2xl border-2 p-2">
+              <div className="space-y-1">
+                {availableUsers
+                  .filter(u =>
+                    !activeChat?.participants.some(p => p.userId === u.id) &&
+                    (u.name.toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
+                      u.department.toLowerCase().includes(memberSearchTerm.toLowerCase()))
+                  )
+                  .map((u) => (
+                    <div
+                      key={u.id}
+                      className={cn(
+                        "flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all",
+                        selectedNewUsers.includes(u.id) ? "bg-blue-500/10 border border-blue-200" : "hover:bg-slate-50 dark:hover:bg-slate-800"
+                      )}
+                      onClick={() => {
+                        setSelectedNewUsers(prev => prev.includes(u.id) ? prev.filter(id => id !== u.id) : [...prev, u.id]);
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage src={u.profilePhoto} />
+                          <AvatarFallback className="bg-slate-100 font-bold text-xs">{u.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-bold leading-none mb-1">{u.name}</p>
+                          <p className="text-[10px] font-medium text-slate-500 uppercase tracking-tighter">{u.department} • {u.role}</p>
+                        </div>
+                      </div>
+                      <Checkbox checked={selectedNewUsers.includes(u.id)} onCheckedChange={() => { }} />
+                    </div>
+                  ))}
+              </div>
+            </ScrollArea>
+          </div>
+
+          <div className="p-6 flex gap-3 border-t">
+            <Button variant="outline" className="flex-1 rounded-xl font-bold border-2" onClick={() => setIsAddingMembers(false)}>Cancel</Button>
+            <Button
+              className="flex-1 rounded-xl font-black bg-blue-500 hover:bg-blue-600 text-white"
+              onClick={handleAddMembers}
+              disabled={selectedNewUsers.length === 0 || isUpdatingGroup}
+            >
+              {isUpdatingGroup ? 'Adding...' : `Add ${selectedNewUsers.length} Members`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Group Confirmation */}
+      <AlertDialog open={isDeletingGroup} onOpenChange={setIsDeletingGroup}>
+        <AlertDialogContent className="border-2 shadow-2xl rounded-[28px]">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-4 mb-2">
+              <div className="h-12 w-12 rounded-2xl bg-red-100 flex items-center justify-center text-red-600">
+                <TrashIcon className="h-6 w-6" />
+              </div>
+              <div>
+                <AlertDialogTitle className="text-2xl font-black tracking-tight text-red-600">Delete Group?</AlertDialogTitle>
+                <AlertDialogDescription className="font-medium text-slate-600">
+                  This will permanently delete the group <span className="font-black text-slate-900">"{activeChat?.name}"</span> and all its message history for everyone.
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-3 sm:gap-0 mt-4">
+            <AlertDialogCancel className="font-bold border-2 rounded-xl h-11">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteGroup}
+              className="bg-red-600 hover:bg-red-700 text-white font-black rounded-xl h-11"
+            >
+              Yes, Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

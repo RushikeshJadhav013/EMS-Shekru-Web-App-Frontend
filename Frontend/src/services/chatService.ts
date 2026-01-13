@@ -51,7 +51,8 @@ class ChatService {
         participants: (session.members || []).map((m: any) => ({
           userId: m.user_id?.toString(),
           userName: m.name || '',
-          userRole: m.role as UserRole,
+          userRole: m.role || 'employee',
+          isAdmin: m.role === 'admin',
           department: m.department || 'N/A',
           joinedAt: this.formatTimestamp(m.joined_at),
           isOnline: false,
@@ -59,20 +60,30 @@ class ChatService {
         createdBy: session.created_by_id?.toString(),
         createdAt: this.formatTimestamp(session.created_at),
         updatedAt: this.formatTimestamp(session.last_message_at || session.created_at),
-        unreadCount: 0,
+        unreadCount: session.unread_count || 0,
         isActive: true,
         memberCount: session.member_count,
-        lastMessage: session.last_message_at ? {
+        lastMessage: session.last_message ? {
+          id: session.last_message.id?.toString() || '',
+          chatId: session.chat_id?.toString(),
+          timestamp: this.formatTimestamp(session.last_message.timestamp || session.last_message_at),
+          content: session.last_message.content || '',
+          senderId: session.last_message.sender_id?.toString() || '',
+          senderName: session.last_message.sender_name || '',
+          senderRole: 'employee',
+          messageType: 'text',
+          isRead: true
+        } : (session.last_message_at ? {
           id: '',
           chatId: session.chat_id?.toString(),
           timestamp: this.formatTimestamp(session.last_message_at),
-          content: 'Active recently',
+          content: '',
           senderId: '',
           senderName: '',
           senderRole: 'employee',
           messageType: 'text',
           isRead: true
-        } : undefined
+        } : undefined)
       }));
     } catch (error) {
       console.error('Error fetching chats:', error);
@@ -178,13 +189,17 @@ class ChatService {
       const newId = (data.chat_id || data.group_id)?.toString();
 
       // Attempt to populate participants so name resolution works immediately
-      const participants = chatData.participantIds.map(id => ({
-        userId: id.toString(),
-        userName: '',
-        userRole: 'employee' as UserRole,
-        joinedAt: new Date().toISOString(),
-        isOnline: false
-      }));
+      // We include the creator (current user) and the target participants
+      const participants = [
+        ...(chatData.participantIds.map(id => ({
+          userId: id.toString(),
+          userName: '',
+          userRole: 'employee' as UserRole,
+          department: 'N/A',
+          joinedAt: new Date().toISOString(),
+          isOnline: false
+        })))
+      ];
 
       return {
         id: newId,
@@ -196,7 +211,7 @@ class ChatService {
         updatedAt: new Date().toISOString(),
         unreadCount: 0,
         isActive: true,
-        memberCount: chatData.participantIds.length + 1,
+        memberCount: participants.length + 1,
       } as Chat;
 
     } catch (error) {
@@ -270,28 +285,76 @@ class ChatService {
 
   async addParticipants(chatId: string, userIds: string[]): Promise<void> {
     try {
-      for (const uid of userIds) {
-        await fetch(`${API_BASE_URL}/chats/group/${chatId}/members/add`, {
-          method: 'POST',
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify({ user_id: parseInt(uid) })
-        });
-      }
+      await fetch(`${API_BASE_URL}/chats/group/${chatId}/members/bulk_add`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({
+          group_id: chatId,
+          user_ids: userIds.map(id => parseInt(id))
+        })
+      });
     } catch (error) {
-      console.error('Error adding participant:', error);
+      console.error('Error adding participants:', error);
       throw error;
     }
   }
 
-  async removeParticipant(chatId: string, userId: string): Promise<void> {
+  async bulkAddParticipants(chatId: string, userIds: string[]): Promise<void> {
+    return this.addParticipants(chatId, userIds);
+  }
+
+  async removeParticipant(chatId: string, userId: string | string[]): Promise<void> {
+    const userIds = Array.isArray(userId) ? userId : [userId];
     try {
-      await fetch(`${API_BASE_URL}/chats/group/${chatId}/members/remove`, {
+      await fetch(`${API_BASE_URL}/chats/group/${chatId}/members/bulk_remove`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
-        body: JSON.stringify({ user_id: parseInt(userId) })
+        body: JSON.stringify({
+          group_id: chatId,
+          user_ids: userIds.map(id => parseInt(id))
+        })
       });
     } catch (error) {
-      console.error('Error removing participant:', error);
+      console.error('Error removing participants:', error);
+      throw error;
+    }
+  }
+
+  async bulkRemoveParticipants(chatId: string, userIds: string[]): Promise<void> {
+    return this.removeParticipant(chatId, userIds);
+  }
+
+  async updateGroupName(chatId: string, newName: string): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/chats/group/${chatId}/name`, {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({
+          group_id: chatId,
+          name: newName
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to update group name');
+    } catch (error) {
+      console.error('Error updating group name:', error);
+      throw error;
+    }
+  }
+
+  async deleteGroup(chatId: string): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/chats/group/${chatId}`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({
+          group_id: chatId
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to delete group');
+    } catch (error) {
+      console.error('Error deleting group:', error);
       throw error;
     }
   }
@@ -305,12 +368,62 @@ class ChatService {
     };
   }
 
-  async deleteMessage(chatId: string, messageId: string): Promise<void> {
-    console.warn('Delete message not supported by current API');
+  async deleteMessage(chatId: string, chatType: 'individual' | 'group', messageId: string): Promise<void> {
+    const typePath = chatType === 'individual' ? 'private' : 'group';
+    try {
+      const response = await fetch(`${API_BASE_URL}/chats/${typePath}/${chatId}/messages/${messageId}/delete`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({
+          chat_type: typePath,
+          chat_id: chatId,
+          msg_id: messageId,
+          content: ""
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to delete message');
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      throw error;
+    }
   }
 
-  async editMessage(chatId: string, messageId: string, newContent: string): Promise<ChatMessage> {
-    throw new Error('Edit not supported');
+  async editMessage(chatId: string, chatType: 'individual' | 'group', messageId: string, newContent: string): Promise<ChatMessage> {
+    const typePath = chatType === 'individual' ? 'private' : 'group';
+    try {
+      const response = await fetch(`${API_BASE_URL}/chats/${typePath}/${chatId}/messages/${messageId}/edit`, {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({
+          chat_type: typePath,
+          chat_id: chatId,
+          msg_id: messageId,
+          content: newContent
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to edit message');
+      const data = await response.json();
+
+      // Construct a partial updated message since API only returns ID and status
+      // In a real scenario, you'd want the full updated message from the backend
+      return {
+        id: messageId,
+        chatId: chatId,
+        content: newContent,
+        timestamp: new Date().toISOString(),
+        editedAt: new Date().toISOString(),
+        senderId: '', // These will be merged in context if needed
+        senderName: '',
+        senderRole: 'employee',
+        messageType: 'text',
+        isRead: true
+      } as ChatMessage;
+    } catch (error) {
+      console.error('Error editing message:', error);
+      throw error;
+    }
   }
 }
 

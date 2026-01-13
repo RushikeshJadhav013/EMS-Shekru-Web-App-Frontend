@@ -75,89 +75,20 @@ const AddIncrement = () => {
         }
     }, [selectedUserId]);
 
-    // Mock Data for UI Demo (AddIncrement)
-    const mockEmployees: Employee[] = [
-        { id: '1', name: 'Rohan Sharma', employee_id: 'EMP001', department: 'Unreal Engine', role: 'employee', email: 'rohan@example.com', status: 'active', created_at: '2023-01-01', updated_at: '2023-01-01' },
-        { id: '2', name: 'Priya Patel', employee_id: 'EMP002', department: 'React Development', role: 'manager', email: 'priya@example.com', status: 'active', created_at: '2023-02-15', updated_at: '2023-02-15' },
-        { id: '3', name: 'Amit Singh', employee_id: 'EMP003', department: '3D Art', role: 'team_lead', email: 'amit@example.com', status: 'active', created_at: '2023-03-10', updated_at: '2023-03-10' },
-        { id: '4', name: 'Sneha Gupta', employee_id: 'EMP004', department: 'HR', role: 'hr', email: 'sneha@example.com', status: 'active', created_at: '2023-04-01', updated_at: '2023-04-01' },
-        { id: '5', name: 'Vikram Malhotra', employee_id: 'EMP005', department: 'Management', role: 'admin', email: 'vikram@example.com', status: 'active', created_at: '2022-11-20', updated_at: '2022-11-20' },
-    ];
 
     const loadEmployees = async () => {
-        // Simulate API
-        // const data = await apiService.getEmployees();
-        setEmployees(mockEmployees);
+        try {
+            const data = await apiService.getEmployees();
+            setEmployees(data);
+        } catch (error) {
+            console.error('Failed to load employees:', error);
+            toast({ title: "Error", description: "Failed to load employees.", variant: "destructive" });
+        }
     };
 
     const loadCurrentSalary = async (uid: string) => {
         try {
-            // 1. Check Session Storage first
-            const stored = sessionStorage.getItem(`mock_salary_${uid}`);
-            if (stored) {
-                const data = JSON.parse(stored) as SalaryStructure;
-                setCurrentSalary(data);
-                form.setValue('previousCtc', data.annualCtc);
-                form.setValue('newCtc', data.annualCtc);
-                return;
-            }
-
-            // 2. Fallback to Hardcoded Mocks (for fresh demo state)
-            // Mock API Delay
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            let data: SalaryStructure | null = null;
-
-            // FULL Mock Data Construction to prevent crashes
-            const baseMock = {
-                variablePayType: 'none',
-                variablePayValue: 0,
-                paymentMode: 'bank_transfer',
-                bankName: 'HDFC Bank',
-                accountNumber: '123456789012',
-                ifscCode: 'HDFC0001234',
-                panNumber: 'ABCDE1234F',
-                uanNumber: '100000000001',
-                workingDays: 26,
-                medicalAllowance: 0,
-                conveyanceAllowance: 0,
-                otherAllowance: 0,
-                professionalTax: 200,
-                pfEmployer: 1800,
-                pfEmployee: 1800,
-                effectiveDate: '2023-04-01',
-                createdAt: '2023-04-01T10:00:00Z',
-                updatedAt: '2024-01-01T10:00:00Z'
-            };
-
-            if (uid === '1') {
-                data = {
-                    ...baseMock,
-                    id: 'sal1',
-                    userId: '1',
-                    annualCtc: 1200000,
-                    monthlyBasic: 50000,
-                    hra: 25000,
-                    specialAllowance: 25000,
-                    monthlyGross: 100000,
-                    monthlyDeductions: 2000,
-                    monthlyInHand: 98000
-                } as SalaryStructure;
-            } else if (uid === '2') {
-                data = {
-                    ...baseMock,
-                    id: 'sal2',
-                    userId: '2',
-                    annualCtc: 1800000,
-                    monthlyBasic: 75000,
-                    hra: 37500,
-                    specialAllowance: 37500,
-                    monthlyGross: 150000,
-                    monthlyDeductions: 2000,
-                    monthlyInHand: 148000
-                } as SalaryStructure;
-            }
-
+            const data = await apiService.getSalaryDetails(uid);
             if (data) {
                 setCurrentSalary(data);
                 form.setValue('previousCtc', data.annualCtc);
@@ -166,8 +97,10 @@ const AddIncrement = () => {
                 toast({ title: "No Salary Found", description: "This employee has no salary structure. Create one first.", variant: "warning" });
                 setCurrentSalary(null);
             }
-        } catch (e) {
-            console.error(e);
+        } catch (error) {
+            console.error('Failed to load current salary:', error);
+            toast({ title: "Error", description: "Failed to load current salary.", variant: "destructive" });
+            setCurrentSalary(null);
         }
     };
 
@@ -221,74 +154,27 @@ const AddIncrement = () => {
         try {
             setIsLoading(true);
 
-            // Mock API Delay
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            /* 
-            await apiService.createIncrement({
-                // ... api args
-            });
-            */
-
-            // 1. Calculate New Components based on New CTC
-            // Use same fallback logic as AddEditSalary for consistency
-            const annualCtc = data.newCtc;
-            // Assume 0 variable for simplicity in increment (or keep existing ratio if we had it)
-            // Ideally we should preserve the structure type, but let's assume standard breakups for the Hike
-
-            const variablePay = 0; // Simplified
-            const fixedAnnualCtc = annualCtc - variablePay;
-            const monthlyCtc = fixedAnnualCtc / 12;
-
-            const basic = Math.round(monthlyCtc * 0.5);
-            const hra = Math.round(basic * 0.5);
-            const pfEmployee = Math.round(basic * 0.12);
-            const pfEmployer = Math.round(basic * 0.12);
-            const pt = 200;
-            const specialAllowance = Math.max(0, monthlyCtc - basic - hra - pfEmployer);
-
-            const monthlyGross = basic + hra + specialAllowance;
-            const monthlyDeductions = pfEmployee + pt;
-            const monthlyInHand = monthlyGross - monthlyDeductions;
-
-            // 2. Update Salary Object
-            const updatedSalary: SalaryStructure = {
-                ...currentSalary, // Keep existing fields like bank, ID, etc.
-                annualCtc: annualCtc,
-                monthlyBasic: basic,
-                hra: hra,
-                pfEmployee: pfEmployee,
-                pfEmployer: pfEmployer,
-                professionalTax: pt,
-                specialAllowance: specialAllowance,
-                monthlyGross: monthlyGross, // Important!
-                monthlyDeductions: monthlyDeductions, // Important!
-                monthlyInHand: monthlyInHand,
-                updatedAt: new Date().toISOString()
-            };
-
-            // 3. Save Increment History to Session Storage
-            const historyKey = `mock_increments_${data.userId}`;
-            const existingHistory = JSON.parse(sessionStorage.getItem(historyKey) || '[]');
-            const newIncrement: Increment = {
-                id: `inc_${Date.now()}`,
+            // Create increment record via API
+            const response = await apiService.createIncrement({
                 userId: data.userId,
-                previousCtc: data.previousCtc,
-                newCtc: data.newCtc,
+                previousSalary: data.previousCtc,
                 incrementAmount: data.incrementAmount,
                 incrementPercentage: data.incrementPercentage,
+                newSalary: data.newCtc,
                 effectiveDate: data.effectiveDate,
-                reason: data.reason,
-                createdAt: new Date().toISOString(),
-                createdBy: user?.name || 'Admin'
-            };
-            sessionStorage.setItem(historyKey, JSON.stringify([newIncrement, ...existingHistory]));
+                reason: data.reason
+            });
 
-            // 4. Save Updated Salary to Session Storage
-            sessionStorage.setItem(`mock_salary_${data.userId}`, JSON.stringify(updatedSalary));
-
-            // Show Success Dialog instead of immediate redirect
-            setShowSuccessDialog(true);
+            if (response) {
+                // Show success dialog
+                setShowSuccessDialog(true);
+                
+                toast({ 
+                    title: "Success", 
+                    description: "Salary increment processed successfully.", 
+                    variant: "success" 
+                });
+            }
         } catch (error: any) {
             toast({ title: "Error", description: error.message || "Failed to create increment.", variant: "destructive" });
         } finally {

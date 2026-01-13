@@ -368,7 +368,7 @@ export default function Reports() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 relative">
-      {(user?.role === 'manager' || user?.role === 'team_lead') && <V2Overlay fallbackPath={user?.role === 'manager' ? '/manager' : '/team_lead'} />}
+      {!['admin', 'hr'].includes(user?.role || '') && <V2Overlay fallbackPath="/dashboard" />}
       <div className="container mx-auto px-4 py-6 space-y-6 max-w-7xl">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm p-4 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
@@ -380,27 +380,27 @@ export default function Reports() {
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
                 Performance Reports
               </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Track and analyze team performance</p>
+              <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-1">Track and analyze team performance</p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-[120px] h-9 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
-                <Calendar className="h-3.5 w-3.5 mr-1.5 text-slate-400" />
+              <SelectTrigger className="w-[120px] h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                <Calendar className="h-4 w-4 mr-1.5 text-slate-400" />
                 <SelectValue placeholder="Month" />
               </SelectTrigger>
               <SelectContent>
                 {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((month, i) => (
-                  <SelectItem key={i} value={i.toString()} className="text-xs">{month}</SelectItem>
+                  <SelectItem key={i} value={i.toString()} className="text-sm">{month}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Popover open={yearOpen} onOpenChange={setYearOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={yearOpen} className="w-[120px] justify-between h-9 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                <Button variant="outline" role="combobox" aria-expanded={yearOpen} className="w-[120px] justify-between h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
                   {selectedYear}
-                  <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[120px] p-0">
@@ -436,14 +436,14 @@ export default function Reports() {
               </PopoverContent>
             </Popover>
             <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-              <SelectTrigger className="w-[160px] h-9 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-left">
-                <Filter className="h-3.5 w-3.5 mr-1.5 text-slate-400" />
+              <SelectTrigger className="w-[160px] h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-left">
+                <Filter className="h-4 w-4 mr-1.5 text-slate-400" />
                 <SelectValue placeholder="Department" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="text-xs">All Departments</SelectItem>
+                <SelectItem value="all" className="text-sm">All Departments</SelectItem>
                 {departments.map(dept => (
-                  <SelectItem key={dept} value={dept} className="text-xs">{dept}</SelectItem>
+                  <SelectItem key={dept} value={dept} className="text-sm">{dept}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -456,23 +456,23 @@ export default function Reports() {
           <TabsList className="flex items-center gap-1 bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-lg w-fit border border-slate-200/50 dark:border-slate-700/50">
             <TabsTrigger
               value="performance"
-              className="h-8 text-xs font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all"
+              className="h-9 text-sm font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all"
             >
-              <Users className="h-3.5 w-3.5 mr-1.5" />
+              <Users className="h-4 w-4 mr-1.5" />
               Employee Performance
             </TabsTrigger>
             <TabsTrigger
               value="department"
-              className="h-8 text-xs font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 data-[state=active]:shadow-sm transition-all"
+              className="h-9 text-sm font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 data-[state=active]:shadow-sm transition-all"
             >
-              <PieChart className="h-3.5 w-3.5 mr-1.5" />
+              <PieChart className="h-4 w-4 mr-1.5" />
               Department Metrics
             </TabsTrigger>
             <TabsTrigger
               value="summary"
-              className="h-8 text-xs font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-sm transition-all"
+              className="h-9 text-sm font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-sm transition-all"
             >
-              <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
+              <BarChart3 className="h-4 w-4 mr-1.5" />
               Executive Summary
             </TabsTrigger>
           </TabsList>
@@ -481,8 +481,8 @@ export default function Reports() {
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div>
-                  <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Individual Performance</h2>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Detailed analytics per employee</p>
+                  <h2 className="text-base font-semibold text-slate-900 dark:text-white">Individual Performance</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Detailed analytics per employee</p>
                 </div>
                 <Button
                   onClick={() => openExportDialog()}
@@ -517,7 +517,7 @@ export default function Reports() {
                         variant="ghost"
                         size="sm"
                         onClick={expandAllDepartments}
-                        className="h-7 text-[10px] font-medium uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                        className="h-7 text-xs font-medium uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                       >
                         Expand All
                       </Button>
@@ -525,7 +525,7 @@ export default function Reports() {
                         variant="ghost"
                         size="sm"
                         onClick={collapseAllDepartments}
-                        className="h-7 text-[10px] font-medium uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                        className="h-7 text-xs font-medium uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                       >
                         Collapse All
                       </Button>
@@ -551,14 +551,14 @@ export default function Reports() {
                                   <Users className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                                 </div>
                                 <div className="text-left">
-                                  <h3 className="text-xs font-bold text-slate-800 dark:text-white">{department}</h3>
-                                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                                  <h3 className="text-sm font-bold text-slate-800 dark:text-white">{department}</h3>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400">
                                     {employees.length} {employees.length === 1 ? 'member' : 'members'} • Avg {deptAvgScore}%
                                   </p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Badge className={`h-5 text-[10px] uppercase font-bold tracking-tighter ${getPerformanceBadge(deptAvgScore).variant === 'default' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : getPerformanceBadge(deptAvgScore).variant === 'secondary' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'} border`}>
+                                <Badge className={`h-6 text-xs uppercase font-bold tracking-tighter ${getPerformanceBadge(deptAvgScore).variant === 'default' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : getPerformanceBadge(deptAvgScore).variant === 'secondary' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'} border`}>
                                   {getPerformanceBadge(deptAvgScore).text}
                                 </Badge>
                                 <div className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
@@ -591,8 +591,8 @@ export default function Reports() {
                                             {employee.name.charAt(0)}
                                           </div>
                                           <div>
-                                            <h3 className="font-bold text-sm text-slate-800 dark:text-white leading-tight">{employee.name}</h3>
-                                            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                                            <h3 className="font-bold text-base text-slate-800 dark:text-white leading-tight">{employee.name}</h3>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400">
                                               {employee.employeeId} • {employee.role}
                                             </p>
                                           </div>
@@ -600,7 +600,7 @@ export default function Reports() {
                                         <div className="flex items-center gap-1.5 self-end sm:self-auto">
                                           <Badge
                                             variant={badge.variant}
-                                            className={`h-5 text-[10px] uppercase font-bold tracking-tighter ${badge.variant === 'default' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : badge.variant === 'secondary' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'} border shadow-none`}
+                                            className={`h-6 text-xs uppercase font-bold tracking-tighter ${badge.variant === 'default' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : badge.variant === 'secondary' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'} border shadow-none`}
                                           >
                                             {badge.text}
                                           </Badge>
@@ -608,18 +608,18 @@ export default function Reports() {
                                             size="sm"
                                             variant="ghost"
                                             onClick={() => openRatingDialog(employee)}
-                                            className="h-7 px-2 text-[10px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                            className="h-8 px-3 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                                           >
-                                            <Edit className="h-3 w-3 mr-1" />
+                                            <Edit className="h-4 w-4 mr-1.5" />
                                             {hasRating ? 'Update' : 'Rate'}
                                           </Button>
                                           <Button
                                             size="sm"
                                             variant="ghost"
                                             onClick={() => openExportDialog({ id: employee.employeeId, name: employee.name })}
-                                            className="h-7 px-2 text-[10px] font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                            className="h-8 px-3 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
                                           >
-                                            <Download className="h-3 w-3 mr-1" />
+                                            <Download className="h-4 w-4 mr-1.5" />
                                             Export
                                           </Button>
                                         </div>
@@ -627,44 +627,44 @@ export default function Reports() {
                                       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
                                           <div className="flex items-center gap-1.5 mb-1.5">
-                                            <Clock className="h-3 w-3 text-blue-500" />
-                                            <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Attendance</p>
+                                            <Clock className="h-3.5 w-3.5 text-blue-500" />
+                                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Attendance</p>
                                           </div>
                                           <div className="flex items-baseline gap-1">
-                                            <span className={`text-base font-bold ${getPerformanceColor(employee.attendanceScore)}`}>
+                                            <span className={`text-lg font-bold ${getPerformanceColor(employee.attendanceScore)}`}>
                                               {employee.attendanceScore}
                                             </span>
-                                            <span className="text-[10px] text-slate-400">%</span>
+                                            <span className="text-xs text-slate-400 font-medium">%</span>
                                           </div>
                                           <Progress value={employee.attendanceScore} className="h-1 mt-1.5 bg-slate-200 dark:bg-slate-700" />
                                         </div>
 
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
                                           <div className="flex items-center gap-1.5 mb-1.5">
-                                            <Target className="h-3 w-3 text-emerald-500" />
-                                            <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tasks</p>
+                                            <Target className="h-3.5 w-3.5 text-emerald-500" />
+                                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tasks</p>
                                           </div>
                                           <div className="flex items-baseline gap-1">
-                                            <span className={`text-base font-bold ${getPerformanceColor(employee.taskCompletionRate)}`}>
+                                            <span className={`text-lg font-bold ${getPerformanceColor(employee.taskCompletionRate)}`}>
                                               {employee.taskCompletionRate}
                                             </span>
-                                            <span className="text-[10px] text-slate-400">%</span>
+                                            <span className="text-xs text-slate-400 font-medium">%</span>
                                           </div>
                                           <Progress value={employee.taskCompletionRate} className="h-1 mt-1.5 bg-slate-200 dark:bg-slate-700" />
                                         </div>
 
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
                                           <div className="flex items-center gap-1.5 mb-1.5">
-                                            <Activity className="h-3 w-3 text-purple-500" />
-                                            <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Productivity</p>
+                                            <Activity className="h-3.5 w-3.5 text-purple-500" />
+                                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Productivity</p>
                                           </div>
                                           {hasRating ? (
                                             <>
                                               <div className="flex items-baseline gap-1">
-                                                <span className={`text-base font-bold ${getPerformanceColor(productivity)}`}>
+                                                <span className={`text-lg font-bold ${getPerformanceColor(productivity)}`}>
                                                   {Math.round(productivity)}
                                                 </span>
-                                                <span className="text-[10px] text-slate-400">%</span>
+                                                <span className="text-xs text-slate-400 font-medium">%</span>
                                               </div>
                                               <div className="flex gap-0.5 mt-1">
                                                 {[1, 2, 3, 4, 5].map((star) => (
@@ -679,22 +679,22 @@ export default function Reports() {
                                               </div>
                                             </>
                                           ) : (
-                                            <p className="text-[10px] text-slate-400 py-1">N/A</p>
+                                            <p className="text-xs text-slate-400 py-1">N/A</p>
                                           )}
                                         </div>
 
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
                                           <div className="flex items-center gap-1.5 mb-1.5">
-                                            <Award className="h-3 w-3 text-pink-500" />
-                                            <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Quality</p>
+                                            <Award className="h-3.5 w-3.5 text-pink-500" />
+                                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Quality</p>
                                           </div>
                                           {hasRating ? (
                                             <>
                                               <div className="flex items-baseline gap-1">
-                                                <span className={`text-base font-bold ${getPerformanceColor(qualityScore)}`}>
+                                                <span className={`text-lg font-bold ${getPerformanceColor(qualityScore)}`}>
                                                   {Math.round(qualityScore)}
                                                 </span>
-                                                <span className="text-[10px] text-slate-400">%</span>
+                                                <span className="text-xs text-slate-400 font-medium">%</span>
                                               </div>
                                               <div className="flex gap-0.5 mt-1">
                                                 {[1, 2, 3, 4, 5].map((star) => (
@@ -709,39 +709,39 @@ export default function Reports() {
                                               </div>
                                             </>
                                           ) : (
-                                            <p className="text-[10px] text-slate-400 py-1">N/A</p>
+                                            <p className="text-xs text-slate-400 py-1">N/A</p>
                                           )}
                                         </div>
 
                                         <div className="bg-blue-600 rounded-lg p-2.5 shadow-sm col-span-2 md:col-span-1">
                                           <div className="flex items-center gap-1.5 mb-1.5">
-                                            <BarChart3 className="h-3 w-3 text-white/80" />
-                                            <p className="text-[10px] font-bold text-white/80 uppercase tracking-wider">Overall</p>
+                                            <BarChart3 className="h-3.5 w-3.5 text-white/80" />
+                                            <p className="text-xs font-bold text-white/80 uppercase tracking-wider">Overall</p>
                                           </div>
                                           <div className="flex items-baseline gap-1">
-                                            <span className="text-lg font-bold text-white">
+                                            <span className="text-xl font-bold text-white">
                                               {overallRating > 0 ? overallRating : '-'}
                                             </span>
-                                            <span className="text-[10px] text-white/60 font-medium">%</span>
+                                            <span className="text-xs text-white/70 font-semibold">%</span>
                                           </div>
                                           <Progress value={overallRating} className="h-1 mt-1.5 bg-white/20" />
                                         </div>
                                       </div>
                                       {hasRating && (
                                         <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-3">
-                                          <div className="bg-indigo-50/30 dark:bg-indigo-900/10 rounded-md p-2 border border-indigo-100/50 dark:border-indigo-900/30">
-                                            <p className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                                          <div className="bg-indigo-50/30 dark:bg-indigo-900/10 rounded-md p-2.5 border border-indigo-100/50 dark:border-indigo-900/30">
+                                            <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1 flex items-center gap-1">
                                               <Activity className="h-2.5 w-2.5" />
                                               Productivity
                                             </p>
-                                            <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2">{rating.productivityDescription}</p>
+                                            <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">{rating.productivityDescription}</p>
                                           </div>
-                                          <div className="bg-amber-50/30 dark:bg-amber-900/10 rounded-md p-2 border border-amber-100/50 dark:border-amber-900/30">
-                                            <p className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                                          <div className="bg-amber-50/30 dark:bg-amber-900/10 rounded-md p-2.5 border border-amber-100/50 dark:border-amber-900/30">
+                                            <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-1 flex items-center gap-1">
                                               <Award className="h-2.5 w-2.5" />
                                               Quality
                                             </p>
-                                            <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2">{rating.qualityDescription}</p>
+                                            <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">{rating.qualityDescription}</p>
                                           </div>
                                         </div>
                                       )}
@@ -764,8 +764,8 @@ export default function Reports() {
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div>
-                  <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Department Overview</h2>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Average metrics by department</p>
+                  <h2 className="text-base font-semibold text-slate-900 dark:text-white">Department Overview</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Average metrics by department</p>
                 </div>
                 <Button
                   onClick={() => openExportDialog()}
@@ -789,54 +789,54 @@ export default function Reports() {
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
                             <div className="p-1.5 bg-purple-50 dark:bg-purple-900/30 rounded-md">
-                              <Users className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                              <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                             </div>
-                            <h3 className="text-xs font-bold text-slate-800 dark:text-white truncate max-w-[120px]">{dept.department}</h3>
+                            <h3 className="text-sm font-bold text-slate-800 dark:text-white truncate max-w-[150px]">{dept.department}</h3>
                           </div>
-                          <Badge variant={badge.variant} className="h-5 text-[10px] shadow-none uppercase font-bold tracking-tighter">
+                          <Badge variant={badge.variant} className="h-6 text-xs shadow-none uppercase font-bold tracking-tighter">
                             {badge.text}
                           </Badge>
                         </div>
 
                         <div className="space-y-3">
-                          <div className="flex justify-between items-center px-2 py-1.5 bg-white dark:bg-slate-900 rounded-md border border-slate-100/50 dark:border-slate-800/50">
-                            <span className="text-[10px] font-medium text-slate-500 flex items-center gap-1.5">
-                              <Users className="h-3 w-3" />
+                          <div className="flex justify-between items-center px-2 py-2 bg-white dark:bg-slate-900 rounded-md border border-slate-100/50 dark:border-slate-800/50">
+                            <span className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+                              <Users className="h-3.5 w-3.5" />
                               Members
                             </span>
-                            <span className="text-xs font-bold">{dept.totalEmployees}</span>
+                            <span className="text-sm font-bold">{dept.totalEmployees}</span>
                           </div>
 
                           <div className="grid grid-cols-2 gap-2">
-                            <div className="p-2 bg-purple-50/50 dark:bg-purple-900/10 rounded-md">
-                              <p className="text-[9px] text-slate-500 uppercase font-bold tracking-tight mb-0.5">Prod.</p>
-                              <p className={`text-sm font-bold ${getPerformanceColor(dept.avgProductivity)}`}>
+                            <div className="p-2.5 bg-purple-50/50 dark:bg-purple-900/10 rounded-md">
+                              <p className="text-xs text-slate-500 uppercase font-bold tracking-tight mb-1">Prod.</p>
+                              <p className={`text-base font-bold ${getPerformanceColor(dept.avgProductivity)}`}>
                                 {dept.avgProductivity}%
                               </p>
                             </div>
-                            <div className="p-2 bg-blue-50/50 dark:bg-blue-900/10 rounded-md">
-                              <p className="text-[9px] text-slate-500 uppercase font-bold tracking-tight mb-0.5">Atten.</p>
-                              <p className={`text-sm font-bold ${getPerformanceColor(dept.avgAttendance)}`}>
+                            <div className="p-2.5 bg-blue-50/50 dark:bg-blue-900/10 rounded-md">
+                              <p className="text-xs text-slate-500 uppercase font-bold tracking-tight mb-1">Atten.</p>
+                              <p className={`text-base font-bold ${getPerformanceColor(dept.avgAttendance)}`}>
                                 {dept.avgAttendance}%
                               </p>
                             </div>
                           </div>
 
                           <div className="grid grid-cols-2 gap-2">
-                            <div className="p-2 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-md">
-                              <p className="text-[9px] text-slate-500 uppercase font-bold tracking-tight mb-0.5">Done</p>
-                              <p className="text-sm font-bold text-emerald-600">{dept.tasksCompleted}</p>
+                            <div className="p-2.5 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-md">
+                              <p className="text-xs text-slate-500 uppercase font-bold tracking-tight mb-1">Done</p>
+                              <p className="text-base font-bold text-emerald-600">{dept.tasksCompleted}</p>
                             </div>
-                            <div className="p-2 bg-amber-50/50 dark:bg-amber-900/10 rounded-md">
-                              <p className="text-[9px] text-slate-500 uppercase font-bold tracking-tight mb-0.5">Wait</p>
-                              <p className="text-sm font-bold text-amber-600">{dept.tasksPending}</p>
+                            <div className="p-2.5 bg-amber-50/50 dark:bg-amber-900/10 rounded-md">
+                              <p className="text-xs text-slate-500 uppercase font-bold tracking-tight mb-1">Wait</p>
+                              <p className="text-base font-bold text-amber-600">{dept.tasksPending}</p>
                             </div>
                           </div>
 
                           <div className="pt-2">
                             <div className="flex justify-between items-center mb-1.5">
-                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Score</span>
-                              <span className={`text-sm font-bold ${getPerformanceColor(dept.performanceScore)}`}>
+                              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Score</span>
+                              <span className={`text-base font-bold ${getPerformanceColor(dept.performanceScore)}`}>
                                 {dept.performanceScore}%
                               </span>
                             </div>
@@ -864,45 +864,45 @@ export default function Reports() {
                   <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center gap-2.5 mb-3">
                       <div className="p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-md">
-                        <Activity className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                        <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       </div>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Avg Performance</p>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Avg Performance</p>
                     </div>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{executiveSummary?.avgPerformance || 0}%</p>
-                    <p className="text-[10px] text-slate-400 mt-1.5">Across all staff</p>
+                    <p className="text-3xl font-bold text-slate-900 dark:text-white">{executiveSummary?.avgPerformance || 0}%</p>
+                    <p className="text-xs text-slate-400 mt-1.5">Across all staff</p>
                   </div>
 
                   <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center gap-2.5 mb-3">
                       <div className="p-1.5 bg-purple-50 dark:bg-purple-900/30 rounded-md">
-                        <Target className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                        <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                       </div>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tasks Done</p>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tasks Done</p>
                     </div>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{executiveSummary?.totalTasksCompleted || 0}</p>
-                    <p className="text-[10px] text-slate-400 mt-1.5">This month</p>
+                    <p className="text-3xl font-bold text-slate-900 dark:text-white">{executiveSummary?.totalTasksCompleted || 0}</p>
+                    <p className="text-xs text-slate-400 mt-1.5">This month</p>
                   </div>
 
                   <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center gap-2.5 mb-3">
                       <div className="p-1.5 bg-amber-50 dark:bg-amber-900/30 rounded-md">
-                        <Award className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                        <Award className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                       </div>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Top Dept</p>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Top Dept</p>
                     </div>
                     <p className="text-2xl font-bold text-slate-900 dark:text-white truncate">{executiveSummary?.bestDepartment?.name || 'N/A'}</p>
-                    <p className="text-[10px] text-amber-600 font-bold mt-1.5">{executiveSummary?.bestDepartment?.score || 0}% Score</p>
+                    <p className="text-xs text-amber-600 font-bold mt-1.5">{executiveSummary?.bestDepartment?.score || 0}% Score</p>
                   </div>
 
                   <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center gap-2.5 mb-3">
                       <div className="p-1.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-md">
-                        <Users className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                       </div>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Analyzed</p>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Analyzed</p>
                     </div>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{executiveSummary?.totalEmployeesAnalyzed || 0}</p>
-                    <p className="text-[10px] text-slate-400 mt-1.5">Active employees</p>
+                    <p className="text-3xl font-bold text-slate-900 dark:text-white">{executiveSummary?.totalEmployeesAnalyzed || 0}</p>
+                    <p className="text-xs text-slate-400 mt-1.5">Active employees</p>
                   </div>
                 </div>
 
@@ -911,11 +911,11 @@ export default function Reports() {
                   <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="p-1.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-md">
-                        <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                       </div>
-                      <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Top 5 Performers</h2>
+                      <h2 className="text-base font-semibold text-slate-900 dark:text-white">Top 5 Performers</h2>
                     </div>
-                    <Badge variant="outline" className="h-5 text-[10px] borer-emerald-200 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tighter">Verified Metrics</Badge>
+                    <Badge variant="outline" className="h-6 text-xs border-emerald-200 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tighter">Verified Metrics</Badge>
                   </div>
                   <div className="p-4 space-y-3">
                     {executiveSummary?.topPerformers && executiveSummary.topPerformers.length > 0 ? (
@@ -929,37 +929,37 @@ export default function Reports() {
                             className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-900/50 transition-all bg-slate-50/30 dark:bg-slate-900/50"
                           >
                             <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <div className={`w-8 h-8 rounded-full ${rankColors[index]} flex items-center justify-center text-[10px] font-bold shadow-sm flex-shrink-0`}>
+                              <div className={`w-8 h-8 rounded-full ${rankColors[index]} flex items-center justify-center text-xs font-bold shadow-sm flex-shrink-0`}>
                                 {rankIcons[index]}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-xs text-slate-800 dark:text-white truncate">{performer.name}</h3>
-                                <p className="text-[10px] text-slate-500 truncate">{performer.department} • {performer.role}</p>
+                                <h3 className="font-bold text-sm text-slate-800 dark:text-white truncate">{performer.name}</h3>
+                                <p className="text-xs text-slate-500 truncate">{performer.department} • {performer.role}</p>
                               </div>
                             </div>
 
                             <div className="flex items-center gap-6 mt-3 md:mt-0 w-full md:w-auto">
                               <div className="grid grid-cols-2 xs:grid-cols-4 gap-4 flex-1">
                                 <div className="text-center">
-                                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Tasks</p>
-                                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{performer.taskCompletionScore}%</p>
+                                  <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Tasks</p>
+                                  <p className="text-base font-bold text-slate-700 dark:text-slate-300">{performer.taskCompletionScore}%</p>
                                 </div>
                                 <div className="text-center">
-                                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Attend.</p>
-                                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{performer.attendanceScore}%</p>
+                                  <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Attend.</p>
+                                  <p className="text-base font-bold text-slate-700 dark:text-slate-300">{performer.attendanceScore}%</p>
                                 </div>
                                 <div className="hidden xs:block text-center border-l border-slate-200 dark:border-slate-800 pl-4">
-                                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Done</p>
-                                  <p className="text-xs font-bold text-emerald-600">{performer.completedTasks}</p>
+                                  <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Done</p>
+                                  <p className="text-base font-bold text-emerald-600">{performer.completedTasks}</p>
                                 </div>
                                 <div className="hidden xs:block text-center border-l border-slate-200 dark:border-slate-800 pl-4">
-                                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Eff.</p>
-                                  <p className="text-xs font-bold text-blue-600">{performer.taskEfficiency}</p>
+                                  <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Eff.</p>
+                                  <p className="text-base font-bold text-blue-600">{performer.taskEfficiency}</p>
                                 </div>
                               </div>
                               <div className="pl-6 border-l border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center min-w-[70px]">
-                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mb-0.5">Overall</p>
-                                <p className="text-lg font-black text-blue-600 leading-none">{performer.score}</p>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter mb-0.5">Overall</p>
+                                <p className="text-xl font-black text-blue-600 leading-none">{performer.score}</p>
                               </div>
                             </div>
                           </div>
@@ -980,12 +980,12 @@ export default function Reports() {
                     <>
                       <div className="bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30">
                         <div className="flex items-center gap-2 mb-3">
-                          <BarChart3 className="h-3.5 w-3.5 text-blue-600" />
-                          <h3 className="text-xs font-bold text-slate-800 dark:text-white">Key Findings</h3>
+                          <BarChart3 className="h-4 w-4 text-blue-600" />
+                          <h3 className="text-sm font-bold text-slate-800 dark:text-white">Key Findings</h3>
                         </div>
                         <ul className="space-y-2">
                           {executiveSummary.keyFindings?.slice(0, 3).map((finding: string, i: number) => (
-                            <li key={i} className="flex gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                            <li key={i} className="flex gap-2 text-xs text-slate-600 dark:text-slate-400">
                               <span className="text-blue-500 shrink-0">•</span>
                               <span>{finding}</span>
                             </li>
@@ -995,12 +995,12 @@ export default function Reports() {
 
                       <div className="bg-purple-50/50 dark:bg-purple-900/10 p-4 rounded-xl border border-purple-100 dark:border-purple-900/30">
                         <div className="flex items-center gap-2 mb-3">
-                          <Target className="h-3.5 w-3.5 text-purple-600" />
-                          <h3 className="text-xs font-bold text-slate-800 dark:text-white">Recommendations</h3>
+                          <Target className="h-4 w-4 text-purple-600" />
+                          <h3 className="text-sm font-bold text-slate-800 dark:text-white">Recommendations</h3>
                         </div>
                         <ul className="space-y-2">
                           {executiveSummary.recommendations?.slice(0, 3).map((rec: string, i: number) => (
-                            <li key={i} className="flex gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                            <li key={i} className="flex gap-2 text-xs text-slate-600 dark:text-slate-400">
                               <span className="text-purple-500 shrink-0">•</span>
                               <span>{rec}</span>
                             </li>
@@ -1010,12 +1010,12 @@ export default function Reports() {
 
                       <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
                         <div className="flex items-center gap-2 mb-3">
-                          <FileText className="h-3.5 w-3.5 text-emerald-600" />
-                          <h3 className="text-xs font-bold text-slate-800 dark:text-white">Action Items</h3>
+                          <FileText className="h-4 w-4 text-emerald-600" />
+                          <h3 className="text-sm font-bold text-slate-800 dark:text-white">Action Items</h3>
                         </div>
                         <ul className="space-y-2">
                           {executiveSummary.actionItems?.slice(0, 3).map((item: string, i: number) => (
-                            <li key={i} className="flex gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                            <li key={i} className="flex gap-2 text-xs text-slate-600 dark:text-slate-400">
                               <span className="text-emerald-500 shrink-0">•</span>
                               <span>{item}</span>
                             </li>
@@ -1027,17 +1027,17 @@ export default function Reports() {
                 </div>
 
                 {/* Export Actions */}
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <Button variant="ghost" size="sm" onClick={() => handleQuickExport('csv')} className="h-8 text-[10px] font-bold text-slate-500 hover:text-slate-900">
-                    <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
+                <div className="flex items-center justify-end gap-3 pt-4">
+                  <Button variant="ghost" size="sm" onClick={() => handleQuickExport('csv')} className="h-9 text-xs font-bold text-slate-500 hover:text-slate-900">
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
                     CSV REPORT
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleQuickExport('pdf')} className="h-8 text-[10px] font-bold text-slate-500 hover:text-slate-900">
-                    <FileText className="h-3.5 w-3.5 mr-1.5" />
+                  <Button variant="ghost" size="sm" onClick={() => handleQuickExport('pdf')} className="h-9 text-xs font-bold text-slate-500 hover:text-slate-900">
+                    <FileText className="h-4 w-4 mr-2" />
                     PDF REPORT
                   </Button>
-                  <Button onClick={() => openExportDialog()} className="h-8 text-[10px] font-bold bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800">
-                    <Download className="h-3.5 w-3.5 mr-1.5" />
+                  <Button onClick={() => openExportDialog()} className="h-9 text-xs font-bold bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800">
+                    <Download className="h-4 w-4 mr-2" />
                     CUSTOM EXPORT
                   </Button>
                 </div>

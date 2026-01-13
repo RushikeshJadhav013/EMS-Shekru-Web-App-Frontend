@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { formatDistanceToNow } from 'date-fns';
+import { formatChatTimestampIST } from '@/utils/timezone';
 import { cn } from '@/lib/utils';
 import AddChatModal from '../../components/chat/AddChatModal';
 import ChatTypeSelectorModal from '../../components/chat/ChatTypeSelectorModal';
@@ -46,8 +46,15 @@ const ChatList: React.FC = () => {
       const currentUserId = user?.id?.toString();
       const otherParticipant = chat.participants?.find((p: any) => p.userId?.toString() !== currentUserId);
       if (otherParticipant) {
+        // Try to find in availableUsers
         const userDetails = availableUsers?.find(u => u.id?.toString() === otherParticipant.userId?.toString());
-        return userDetails?.name || otherParticipant.userName || 'Chat User';
+        if (userDetails?.name) return userDetails.name;
+
+        // Fallback to participant userName if it exists
+        if (otherParticipant.userName && otherParticipant.userName !== 'string') return otherParticipant.userName;
+
+        // Final fallback: Use part of ID or "User {id}" to be more specific than "Chat User"
+        return `User ${otherParticipant.userId}`;
       }
     }
     return chat.type === 'group' ? (chat.name || 'Group Chat') : 'Chat User';
@@ -64,26 +71,44 @@ const ChatList: React.FC = () => {
     return '';
   };
 
+  // Show all chats from API without de-duplication - sorted by most recent
   const filteredChats = useMemo(() => {
-    const seenIndividualParticipants = new Set();
+    // Sort chats by updatedAt (most recent first)
+    const sortedChats = [...chats].sort((a, b) => {
+      const dateA = new Date(a.updatedAt || a.createdAt).getTime();
+      const dateB = new Date(b.updatedAt || b.createdAt).getTime();
+      return dateB - dateA;
+    });
 
-    return chats.filter(chat => {
+    return sortedChats.filter(chat => {
       // Type filter
       if (filter !== 'all' && chat.type !== filter) return false;
 
-      // De-duplicate individual chats
-      if (chat.type === 'individual') {
-        const otherParticipant = chat.participants.find(p => p.userId !== user?.id);
-        if (otherParticipant) {
-          if (seenIndividualParticipants.has(otherParticipant.userId)) return false;
-          seenIndividualParticipants.add(otherParticipant.userId);
-        }
-      }
-
+      // Search filter
       const name = getChatName(chat).toLowerCase();
       return name.includes(searchTerm.toLowerCase());
     });
   }, [chats, searchTerm, availableUsers, user, filter]);
+
+  // Calculate counts directly from API response - no de-duplication
+  const chatCounts = useMemo(() => {
+    let individualCount = 0;
+    let groupCount = 0;
+
+    chats.forEach(chat => {
+      if (chat.type === 'individual') {
+        individualCount++;
+      } else if (chat.type === 'group') {
+        groupCount++;
+      }
+    });
+
+    return {
+      all: chats.length,
+      individual: individualCount,
+      group: groupCount
+    };
+  }, [chats]);
 
   const handleChatClick = (chat: any) => {
     setActiveChat(chat);
@@ -92,6 +117,10 @@ const ChatList: React.FC = () => {
 
   const getLastMessagePreview = (chat: any) => {
     if (!chat.lastMessage) return 'No messages yet';
+    
+    // If content is empty, show a placeholder
+    const content = chat.lastMessage.content;
+    if (!content || content.trim() === '') return 'No messages yet';
 
     let senderName = '';
     if (chat.type === 'group') {
@@ -106,7 +135,6 @@ const ChatList: React.FC = () => {
       }
     }
 
-    const content = chat.lastMessage.content;
     const fullPreview = `${senderName}${content}`;
     return fullPreview.length > 65 ? `${fullPreview.substring(0, 65)}...` : fullPreview;
   };
@@ -171,9 +199,9 @@ const ChatList: React.FC = () => {
 
         <div className="flex gap-2 mt-4 overflow-x-auto pb-1 custom-scrollbar-hide no-scrollbar">
           {[
-            { id: 'all', label: 'All', icon: MessageCircle, count: chats.length },
-            { id: 'individual', label: 'Direct', icon: MessageCircle, count: chats.filter(c => c.type === 'individual').length },
-            { id: 'group', label: 'Groups', icon: Users, count: chats.filter(c => c.type === 'group').length },
+            { id: 'all', label: 'All', icon: MessageCircle, count: chatCounts.all },
+            { id: 'individual', label: 'Direct', icon: MessageCircle, count: chatCounts.individual },
+            { id: 'group', label: 'Groups', icon: Users, count: chatCounts.group },
           ].map((type) => {
             const Icon = type.icon;
             const isSelected = filter === type.id;
@@ -265,7 +293,7 @@ const ChatList: React.FC = () => {
                     </h3>
                     {chat.lastMessage && (
                       <span className={cn("text-[10px] font-medium opacity-50", themeClasses.textSecondary)}>
-                        {formatDistanceToNow(new Date(chat.lastMessage.timestamp), { addSuffix: false })}
+                        {formatChatTimestampIST(chat.lastMessage.timestamp)}
                       </span>
                     )}
                   </div>

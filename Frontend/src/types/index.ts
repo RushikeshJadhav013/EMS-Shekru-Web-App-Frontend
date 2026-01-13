@@ -44,6 +44,7 @@ export interface AttendanceRecord {
   workHours?: number;
   workSummary?: string;
   workReport?: string;
+  workLocation?: string;
   status: 'present' | 'absent' | 'late' | 'half-day' | 'holiday' | 'weekend';
   overtime?: number;
   remarks?: string;
@@ -211,8 +212,10 @@ export interface SalaryStructure {
   pfEmployee: number;
   variablePayType: 'none' | 'percentage' | 'fixed';
   variablePayValue: number;
-  monthlyGross: number; // Added
-  monthlyDeductions: number; // Added
+  variablePay?: number; // Annual variable pay from API
+  monthlyGross: number;
+  monthlyDeductions: number;
+  otherDeduction: number;
   monthlyInHand: number;
   workingDays: number;
   paymentMode: 'bank_transfer' | 'cash' | 'cheque';
@@ -224,6 +227,21 @@ export interface SalaryStructure {
   effectiveDate: string;
   createdAt: string;
   updatedAt: string;
+  // New fields from API response
+  basic_annual?: number;
+  hra_annual?: number;
+  special_allowance_annual?: number;
+  conveyance_annual?: number;
+  medical_allowance_annual?: number;
+  other_allowance_annual?: number;
+  professional_tax_annual?: number;
+  other_deduction_annual?: number;
+  pf_annual?: number;
+  total_earnings_annual?: number;
+  total_deductions_annual?: number;
+  ctc_annual?: number;
+  monthly_ctc?: number;
+  is_active?: boolean;
 }
 
 export interface SalaryPreview {
@@ -240,6 +258,7 @@ export interface SalaryPreview {
   variablePay: number;
   monthlyGross: number;
   monthlyDeductions: number;
+  otherDeduction: number;
   monthlyInHand: number;
   annualCtc: number;
 }
@@ -255,16 +274,18 @@ export interface SalarySlip {
 }
 
 export interface Increment {
-  id: string;
-  userId: string;
-  previousCtc: number;
-  newCtc: number;
-  incrementAmount: number;
-  incrementPercentage: number;
-  effectiveDate: string;
+  id: number;
+  user_id: number;
+  previous_salary: number;
+  new_salary: number;
+  increment_amount: number;
+  increment_percentage: number;
+  effective_date: string;
   reason: string;
-  createdAt: string;
-  createdBy: string;
+  approved_by: number;
+  letter_sent: boolean;
+  letter_sent_at: string | null;
+  created_at: string;
 }
 
 export interface SalaryCreateData {

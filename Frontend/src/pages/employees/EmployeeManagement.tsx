@@ -947,8 +947,10 @@ export default function EmployeeManagement() {
         profile_photo: imageFile || formData.profilePhoto || undefined, // Pass the file if available
         is_verified: true,
         created_at: formData.createdAt || new Date().toISOString(),
-        is_active: formData.status?.toLowerCase().trim() === 'active',
-        status: formData.status?.toLowerCase().trim()
+        is_active: formData.status
+          ? formData.status.toLowerCase().trim() === 'active'
+          : (selectedEmployee?.status?.toLowerCase() === 'active' || (selectedEmployee as any)?.is_active === true || (selectedEmployee as any)?.isActive === true),
+        status: formData.status?.toLowerCase().trim() || selectedEmployee?.status?.toLowerCase() || 'active'
       };
 
       // Call API with user_id instead of employee_id
@@ -1493,13 +1495,17 @@ export default function EmployeeManagement() {
       }
 
       let status = 'active';
-      if (data['status']) {
-        status = String(data['status']).trim().toLowerCase();
-      } else if (data['isActive'] !== undefined) {
-        status = data['isActive'] ? 'active' : 'inactive';
-      } else if (data['is_active'] !== undefined) {
-        // @ts-ignore
-        status = data['is_active'] ? 'active' : 'inactive';
+      const rawStatus = (data['status'] ?? data['isActive'] ?? data['is_active']);
+
+      if (rawStatus !== undefined && rawStatus !== null) {
+        const s = String(rawStatus).toLowerCase().trim();
+        if (s === 'active' || s === 'true' || rawStatus === true) {
+          status = 'active';
+        } else if (s === 'inactive' || s === 'false' || rawStatus === false) {
+          status = 'inactive';
+        } else {
+          status = s; // Fallback for other potential status values
+        }
       }
       const resignationDate = data['resignationDate'] ?? data['resignation_date'] ?? '';
       const gender = String(data['gender'] ?? '');

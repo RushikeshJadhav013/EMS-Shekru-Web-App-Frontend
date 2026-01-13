@@ -21,6 +21,10 @@ interface ChatContextType {
   deleteMessage: (messageId: string) => Promise<void>;
   editMessage: (messageId: string, newContent: string) => Promise<void>;
   sendTyping: (chatId: string) => Promise<void>;
+  updateGroupName: (chatId: string, newName: string) => Promise<void>;
+  deleteGroup: (chatId: string) => Promise<void>;
+  addParticipants: (chatId: string, userIds: string[]) => Promise<void>;
+  removeParticipants: (chatId: string, userIds: string[]) => Promise<void>;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -85,22 +89,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const fetchedChats = await chatService.getChats();
 
-      // Filter chats based on RBAC rules
-      const filteredChats = fetchedChats.filter(chat => {
-        if (chat.type === 'group') return true; // Groups are visible if you are a member
-
-        // For individual chats, check the target user
-        const otherParticipant = chat.participants.find(p => p.userId !== user.id);
-        if (!otherParticipant) return true;
-
-        return isUserVisible({
-          id: otherParticipant.userId,
-          role: otherParticipant.userRole,
-          department: otherParticipant.department
-        });
-      });
-
-      setChats(filteredChats);
+      setChats(fetchedChats);
     } catch (error) {
       console.error('Failed to load chats:', error);
       toast({
@@ -117,8 +106,21 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadMessages = useCallback(async (chatId: string, type?: 'individual' | 'group') => {
     setIsLoading(true);
     try {
-      const chat = chats.find(c => c.id === chatId);
-      const chatType = type || chat?.type || 'individual';
+      // Priority 1: type argument
+      // Priority 2: from existing activeChat
+      // Priority 3: from chats list
+      // Priority 4: inference from chatId (private chats usually have _ in them)
+      let chatType = type;
+
+      if (!chatType) {
+        if (activeChat?.id === chatId) {
+          chatType = activeChat.type;
+        } else {
+          const chat = chats.find(c => c.id === chatId);
+          chatType = chat?.type || (chatId.includes('_') ? 'individual' : 'group');
+        }
+      }
+
       const fetchedMessages = await chatService.getChatMessages(chatId, chatType);
       setMessages(fetchedMessages);
     } catch (error) {
@@ -131,7 +133,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  }, [chats, toast]);
+  }, [chats, activeChat, toast]);
 
   // Load available users
   const loadAvailableUsers = useCallback(async () => {
@@ -290,7 +292,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!activeChat) return;
 
     try {
-      await chatService.deleteMessage(activeChat.id, messageId);
+      await chatService.deleteMessage(activeChat.id, activeChat.type, messageId);
       setMessages(prev => prev.filter(message => message.id !== messageId));
 
       toast({
@@ -312,9 +314,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!activeChat) return;
 
     try {
-      const updatedMessage = await chatService.editMessage(activeChat.id, messageId, newContent);
+      const updatedMessage = await chatService.editMessage(activeChat.id, activeChat.type, messageId, newContent);
       setMessages(prev => prev.map(message =>
-        message.id === messageId ? updatedMessage : message
+        message.id === messageId ? { ...message, ...updatedMessage, content: newContent, editedAt: new Date().toISOString() } : message
       ));
 
       toast({
@@ -330,6 +332,90 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     }
   }, [activeChat, toast]);
+
+  // Update group name
+  const updateGroupName = useCallback(async (chatId: string, newName: string) => {
+    try {
+      await chatService.updateGroupName(chatId, newName);
+      setChats(prev => prev.map(chat =>
+        chat.id === chatId ? { ...chat, name: newName } : chat
+      ));
+      if (activeChat?.id === chatId) {
+        setActiveChat(prev => prev ? { ...prev, name: newName } : null);
+      }
+      toast({
+        title: 'Success',
+        description: 'Group name updated',
+      });
+    } catch (error) {
+      console.error('Failed to update group name:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update group name',
+        variant: 'destructive',
+      });
+    }
+  }, [activeChat, toast]);
+
+  // Delete group
+  const deleteGroup = useCallback(async (chatId: string) => {
+    try {
+      await chatService.deleteGroup(chatId);
+      setChats(prev => prev.filter(chat => chat.id !== chatId));
+      if (activeChat?.id === chatId) {
+        setActiveChat(null);
+      }
+      toast({
+        title: 'Success',
+        description: 'Group deleted',
+      });
+    } catch (error) {
+      console.error('Failed to delete group:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete group',
+        variant: 'destructive',
+      });
+    }
+  }, [activeChat, toast]);
+
+  // Add participants
+  const addParticipants = useCallback(async (chatId: string, userIds: string[]) => {
+    try {
+      await chatService.addParticipants(chatId, userIds);
+      loadChats(); // Reload to get updated member list
+      toast({
+        title: 'Success',
+        description: `Added ${userIds.length} members`,
+      });
+    } catch (error) {
+      console.error('Failed to add participants:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add participants',
+        variant: 'destructive',
+      });
+    }
+  }, [loadChats, toast]);
+
+  // Remove participants
+  const removeParticipants = useCallback(async (chatId: string, userIds: string[]) => {
+    try {
+      await chatService.removeParticipant(chatId, userIds);
+      loadChats(); // Reload to get updated member list
+      toast({
+        title: 'Success',
+        description: `Removed ${userIds.length} members`,
+      });
+    } catch (error) {
+      console.error('Failed to remove participants:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to remove participants',
+        variant: 'destructive',
+      });
+    }
+  }, [loadChats, toast]);
 
   // Handle active chat change
   const handleSetActiveChat = useCallback((chat: Chat | null) => {
@@ -364,7 +450,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     markAsRead,
     deleteMessage,
     editMessage,
-    sendTyping
+    sendTyping,
+    updateGroupName,
+    deleteGroup,
+    addParticipants,
+    removeParticipants
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

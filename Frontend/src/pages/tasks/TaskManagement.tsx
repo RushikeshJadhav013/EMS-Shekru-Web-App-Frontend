@@ -89,6 +89,10 @@ type BackendTask = {
   last_passed_to?: number | null;
   last_pass_note?: string | null;
   last_passed_at?: string | null;
+  assigned_to_name?: string | null;
+  assigned_by_name?: string | null;
+  assigned_to_role?: string | null;
+  assigned_by_role?: string | null;
 };
 
 type TaskWithPassMeta = BaseTask & {
@@ -96,6 +100,8 @@ type TaskWithPassMeta = BaseTask & {
   lastPassedTo?: string;
   lastPassNote?: string;
   lastPassedAt?: string;
+  assignedToName?: string;
+  assignedByName?: string;
 };
 
 type BackendEmployee = {
@@ -221,6 +227,8 @@ const mapBackendTaskToFrontend = (task: BackendTask): TaskWithPassMeta => {
     lastPassedTo,
     lastPassNote: task.last_pass_note ?? undefined,
     lastPassedAt,
+    assignedToName: task.assigned_to_name ?? undefined,
+    assignedByName: task.assigned_by_name ?? undefined,
   };
 };
 
@@ -542,23 +550,57 @@ const TaskManagement: React.FC = () => {
     }
     setIsLoadingTasks(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/tasks`, {
-        headers: authorizedHeaders,
+      const data: BackendTask[] = await apiService.getMyTasks();
+
+      // Update user cache with names and roles provided in task data
+      setUserCache(prev => {
+        const next = new Map(prev);
+        let changed = false;
+        data.forEach(t => {
+          if (t.assigned_to && t.assigned_to_name) {
+            const tid = String(t.assigned_to);
+            // Get role from backend data, or look up from employees list, or default to 'employee'
+            const assignedToRole = t.assigned_to_role 
+              ? normalizeRole(t.assigned_to_role)
+              : (employees.find(emp => emp.userId === tid)?.role || 'employee');
+            
+            // Update if not exists or if we have better role info now
+            const existing = next.get(tid);
+            if (!existing || (existing.role === 'employee' && assignedToRole !== 'employee')) {
+              next.set(tid, {
+                userId: tid,
+                employeeId: existing?.employeeId || '',
+                name: t.assigned_to_name,
+                email: existing?.email || '',
+                role: assignedToRole,
+              });
+              changed = true;
+            }
+          }
+          if (t.assigned_by && t.assigned_by_name) {
+            const bid = String(t.assigned_by);
+            // Get role from backend data, or look up from employees list, or default to 'employee'
+            const assignedByRole = t.assigned_by_role 
+              ? normalizeRole(t.assigned_by_role)
+              : (employees.find(emp => emp.userId === bid)?.role || 'employee');
+            
+            // Update if not exists or if we have better role info now
+            const existing = next.get(bid);
+            if (!existing || (existing.role === 'employee' && assignedByRole !== 'employee')) {
+              next.set(bid, {
+                userId: bid,
+                employeeId: existing?.employeeId || '',
+                name: t.assigned_by_name,
+                email: existing?.email || '',
+                role: assignedByRole,
+              });
+              changed = true;
+            }
+          }
+        });
+        return changed ? next : prev;
       });
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('token');
-          setAuthToken('');
-          toast({
-            title: 'Session expired',
-            description: 'Please log in again to continue.',
-            variant: 'destructive',
-          });
-          return;
-        }
-        throw new Error(`Failed to fetch tasks: ${response.status}`);
-      }
-      const data: BackendTask[] = await response.json();
+
       const converted = data.map(mapBackendTaskToFrontend);
 
       // Check and update overdue tasks
@@ -574,10 +616,12 @@ const TaskManagement: React.FC = () => {
         return task;
       });
 
-      // Update overdue tasks on the backend
+      // Update overdue tasks on the backend using the proper endpoints
       for (const task of tasksToUpdate) {
         try {
-          await fetch(`${API_BASE_URL}/tasks/${task.id}/status?status=Overdue`, {
+          // Use formatted status for backend
+          const backendStatus = frontendToBackendStatus['overdue'];
+          await fetch(`${API_BASE_URL}/tasks/${task.id}/status?status=${encodeURIComponent(backendStatus)}`, {
             method: 'PUT',
             headers: authorizedHeaders,
           });
@@ -618,7 +662,7 @@ const TaskManagement: React.FC = () => {
     } finally {
       setIsLoadingTasks(false);
     }
-  }, [authToken, authorizedHeaders, fetchAndStoreHistory, toast, userId]);
+  }, [authToken, authorizedHeaders, employees, fetchAndStoreHistory, toast, userId]);
 
   useEffect(() => {
     fetchEmployees();
@@ -809,6 +853,41 @@ const TaskManagement: React.FC = () => {
     };
   }, [employeesById, user?.name, user?.role, userId, userCache]);
 
+  const getAssignedToInfo = useCallback((assignedToId: string) => {
+    if (!assignedToId) {
+      return { name: 'Unassigned', roleLabel: undefined };
+    }
+
+    if (userId && assignedToId === userId) {
+      return {
+        name: user?.name || 'Self',
+        roleLabel: formatRoleLabel(user?.role),
+      };
+    }
+
+    const assignee = employeesById.get(assignedToId);
+    if (assignee) {
+      return {
+        name: assignee.name,
+        roleLabel: formatRoleLabel(assignee.role),
+      };
+    }
+
+    // If not found in employees list, try to fetch from cache or return ID
+    const cachedUser = userCache.get(assignedToId);
+    if (cachedUser) {
+      return {
+        name: cachedUser.name,
+        roleLabel: formatRoleLabel(cachedUser.role),
+      };
+    }
+
+    return {
+      name: `User #${assignedToId}`,
+      roleLabel: undefined,
+    };
+  }, [employeesById, user?.name, user?.role, userId, userCache]);
+
   // Add current user to cache if they're an admin or not in employees list
   useEffect(() => {
     if (user && userId && !userCache.has(userId)) {
@@ -822,6 +901,33 @@ const TaskManagement: React.FC = () => {
       }));
     }
   }, [user, userId, userCache]);
+
+  // Update user cache with correct roles from employees list when employees are loaded
+  useEffect(() => {
+    if (employees.length === 0) return;
+    
+    setUserCache((prev) => {
+      const next = new Map(prev);
+      let changed = false;
+      
+      // Update cached users with correct roles from employees list
+      prev.forEach((cachedUser, cachedUserId) => {
+        const employee = employees.find(emp => emp.userId === cachedUserId);
+        if (employee && cachedUser.role !== employee.role) {
+          next.set(cachedUserId, {
+            ...cachedUser,
+            role: employee.role,
+            employeeId: employee.employeeId || cachedUser.employeeId,
+            email: employee.email || cachedUser.email,
+            department: employee.department || cachedUser.department,
+          });
+          changed = true;
+        }
+      });
+      
+      return changed ? next : prev;
+    });
+  }, [employees]);
 
   useEffect(() => {
     if (!user || !userId || !isCreateDialogOpen) return;
@@ -2714,6 +2820,7 @@ const TaskManagement: React.FC = () => {
                   ) : (
                     visibleTasks.map((task) => {
                       const assignedByInfo = getAssignedByInfo(task.assignedBy);
+                      const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || '');
                       // In "All Tasks" view, admin can only manage tasks they created
                       const canManageTask = Boolean(userId && task.assignedBy === userId);
                       const isReceivedTask = Boolean(userId && task.assignedTo.includes(userId));
@@ -2746,9 +2853,12 @@ const TaskManagement: React.FC = () => {
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <User className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm">
-                                {getAssigneeLabel(task.assignedTo[0] || '')}
-                              </span>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">{assignedToInfo.name}</span>
+                                {assignedToInfo.roleLabel && (
+                                  <span className="text-xs text-muted-foreground">{assignedToInfo.roleLabel}</span>
+                                )}
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -2937,6 +3047,7 @@ const TaskManagement: React.FC = () => {
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {visibleTasks.map((task) => {
                 const assignedByInfo = getAssignedByInfo(task.assignedBy);
+                const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || '');
                 // In "All Tasks" view, admin can only manage tasks they created
                 const canManageTask = Boolean(userId && task.assignedBy === userId);
                 const isReceivedTask = Boolean(userId && task.assignedTo.includes(userId));
@@ -3005,9 +3116,12 @@ const TaskManagement: React.FC = () => {
                             <User className="h-3.5 w-3.5" />
                             <span>To:</span>
                           </div>
-                          <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]" title={getAssigneeLabel(task.assignedTo[0] || '')}>
-                            {getAssigneeLabel(task.assignedTo[0] || '')}
-                          </span>
+                          <div className="flex flex-col items-end">
+                            <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]" title={assignedToInfo.name}>{assignedToInfo.name}</span>
+                            {assignedToInfo.roleLabel && (
+                              <span className="text-[10px] text-muted-foreground">{assignedToInfo.roleLabel}</span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Assigner Row */}
