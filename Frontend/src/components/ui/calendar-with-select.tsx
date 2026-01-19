@@ -37,12 +37,12 @@ export function CalendarWithSelect({
       const minMonthIndex = minDate.getMonth();
       const newYear = newMonth.getFullYear();
       const newMonthIndex = newMonth.getMonth();
-      
+
       if (newYear < minYear || (newYear === minYear && newMonthIndex < minMonthIndex)) {
         return;
       }
     }
-    
+
     setMonth(newMonth);
     onMonthChange?.(newMonth);
   };
@@ -126,25 +126,25 @@ export function CalendarWithSelect({
   return (
     <div className="w-full max-w-md mx-auto">
       {/* Modern Header with Navigation */}
-      <div className="flex items-center justify-between gap-2 mb-4 px-1">
+      <div className="flex items-center justify-between gap-3 mb-6 px-1">
         <Button
           variant="ghost"
           size="icon"
           onClick={goToPreviousMonth}
           disabled={isPreviousMonthDisabled}
-          className="h-8 w-8 flex-shrink-0 rounded-full hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/40 dark:hover:to-indigo-900/40 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="h-10 w-10 flex-shrink-0 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <ChevronLeft className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+          <ChevronLeft className="h-5 w-5 text-slate-600 dark:text-slate-300" />
         </Button>
 
-        <div className="flex items-center gap-2 flex-1 justify-center min-w-0">
+        <div className="flex items-center gap-2 flex-1 justify-center">
           <Select value={currentMonthIndex.toString()} onValueChange={handleMonthSelect}>
-            <SelectTrigger className="flex-1 h-8 text-xs font-semibold border-0 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900/50 dark:hover:to-indigo-900/50 transition-all shadow-sm min-w-0">
+            <SelectTrigger className="flex-[2] h-10 text-sm font-bold border-2 border-indigo-100 dark:border-indigo-900/50 bg-white dark:bg-slate-900 rounded-xl hover:border-indigo-300 dark:hover:border-indigo-700 transition-all shadow-sm px-4">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {months.map((monthName, index) => (
-                <SelectItem key={index} value={index.toString()}>
+                <SelectItem key={index} value={index.toString()} className="font-medium">
                   {monthName}
                 </SelectItem>
               ))}
@@ -152,12 +152,12 @@ export function CalendarWithSelect({
           </Select>
 
           <Select value={currentYear.toString()} onValueChange={handleYearChange}>
-            <SelectTrigger className="w-[65px] h-8 text-xs font-semibold border-0 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 hover:from-purple-100 hover:to-pink-100 dark:hover:from-purple-900/50 dark:hover:to-pink-900/50 transition-all shadow-sm flex-shrink-0">
+            <SelectTrigger className="w-[100px] h-10 text-sm font-bold border-2 border-purple-100 dark:border-purple-900/50 bg-white dark:bg-slate-900 rounded-xl hover:border-purple-300 dark:hover:border-purple-700 transition-all shadow-sm px-3 flex-shrink-0">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="max-h-[300px]">
               {years.map((year) => (
-                <SelectItem key={year} value={year.toString()}>
+                <SelectItem key={year} value={year.toString()} className="font-medium">
                   {year}
                 </SelectItem>
               ))}
@@ -169,19 +169,23 @@ export function CalendarWithSelect({
           variant="ghost"
           size="icon"
           onClick={goToNextMonth}
-          className="h-8 w-8 flex-shrink-0 rounded-full hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/40 dark:hover:to-indigo-900/40 transition-all duration-200"
+          className="h-10 w-10 flex-shrink-0 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 hover:shadow-md transition-all duration-200"
         >
-          <ChevronRight className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+          <ChevronRight className="h-5 w-5 text-slate-600 dark:text-slate-300" />
         </Button>
       </div>
 
       {/* Calendar */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 relative">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-indigo-100/20 dark:shadow-none border border-slate-100 dark:border-slate-800 p-2 relative overflow-hidden">
         <Calendar
           month={month}
           onMonthChange={handleMonthChange}
           firstWeekContainsDate={1}
-          classNames={enhancedClassNames}
+          classNames={{
+            ...enhancedClassNames,
+            caption: "hidden", // Hide the secondary internal header
+            nav: "hidden",     // Hide the secondary internal navigation
+          }}
           modifiers={modifiers}
           modifiersClassNames={modifiersClassNames}
           {...props}

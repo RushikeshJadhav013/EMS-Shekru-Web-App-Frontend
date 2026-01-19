@@ -5,20 +5,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import {
   Users,
   UserPlus,
   Clock,
   CalendarDays,
   ClipboardList,
-
   Building,
   AlertCircle,
   ChevronRight,
+  ChevronLeft,
   Activity,
   Target,
   Award,
+  LogOut,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatIST, formatDateTimeIST, formatTimeIST, todayIST, parseToIST, nowIST } from '@/utils/timezone';
@@ -40,9 +40,9 @@ const AdminDashboard: React.FC = () => {
     departments: 0,
   });
   const [departmentPerformance, setDepartmentPerformance] = useState<{ name: string; employees: number; performance: number; }[]>([]);
-  const [recentActivities, setRecentActivities] = useState<{ id: number; type: string; user: string; time: string; status: string; }[]>([]);
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [activitiesPage, setActivitiesPage] = useState(1);
-  const ACTIVITIES_PER_PAGE = 15;
+  const ACTIVITIES_PER_PAGE = 10;
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -56,7 +56,6 @@ const AdminDashboard: React.FC = () => {
         if (activeTasks === 0) {
           try {
             const tasks = await apiService.getMyTasks();
-            // Count tasks that are not completed
             activeTasks = tasks.filter((task: any) =>
               task.status !== 'Completed' &&
               task.status !== 'completed' &&
@@ -73,8 +72,106 @@ const AdminDashboard: React.FC = () => {
           activeTasks,
           pendingLeaves,
         });
-        setDepartmentPerformance(data.departmentPerformance || []);
-        setRecentActivities(data.recentActivities || []);
+
+        // Fetch detailed department metrics for performance
+        try {
+          const now = nowIST();
+          const metricsData = await apiService.getDepartmentMetrics({
+            month: now.getMonth(),
+            year: now.getFullYear()
+          });
+
+          if (metricsData && metricsData.departments && Array.isArray(metricsData.departments)) {
+            const formattedPerformance = metricsData.departments.map((dept: any) => ({
+              name: dept.department,
+              employees: dept.totalEmployees,
+              performance: dept.performanceScore || 0
+            }));
+
+            // Sort by performance (descending)
+            formattedPerformance.sort((a: any, b: any) => b.performance - a.performance);
+
+            setDepartmentPerformance(formattedPerformance);
+          } else {
+            // Fallback to dashboard data if metrics fail
+            setDepartmentPerformance(data.departmentPerformance || []);
+          }
+        } catch (metricsError) {
+          console.error('Failed to load department metrics:', metricsError);
+          setDepartmentPerformance(data.departmentPerformance || []);
+        }
+
+        // Enhanced Recent Activities Logic
+        // 1. Keep non-attendance activities from dashboard API, but ONLY for today
+        const today = new Date();
+        const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+        const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
+        let activities = (data.recentActivities || []).filter((a: any) => {
+          // Exclude check-ins (we fetch fresh ones)
+          if (a.type === 'check-in') return false;
+
+          // Filter for today only
+          if (!a.time) return false;
+          const t = new Date(a.time);
+          return t >= startOfDay && t <= endOfDay;
+        });
+
+        // 2. Fetch fresh attendance records for today to get accurate check-in AND check-out
+        try {
+          const attendanceData = await apiService.getAttendanceRecords({ date: todayIST() });
+
+          const attendanceActivities: any[] = [];
+
+          if (Array.isArray(attendanceData)) {
+            attendanceData.forEach((rec: any) => {
+              const userName = rec.userName || rec.user?.name || rec.name || 'Unknown User';
+              const recId = rec.id || rec.attendance_id;
+
+              const checkInTime = rec.check_in || rec.checkInTime;
+              const checkOutTime = rec.check_out || rec.checkOutTime;
+
+              // Add Check-In Activity
+              if (checkInTime) {
+                attendanceActivities.push({
+                  id: `in-${recId}`,
+                  type: 'check-in',
+                  user: userName,
+                  time: checkInTime,
+                  status: rec.status || 'present',
+                  checkInStatus: rec.checkInStatus || rec.check_in_status,
+                  originalRec: rec
+                });
+              }
+
+              // Add Check-Out Activity
+              if (checkOutTime) {
+                attendanceActivities.push({
+                  id: `out-${recId}`,
+                  type: 'check-out',
+                  user: userName,
+                  time: checkOutTime,
+                  status: 'checked_out',
+                  checkOutStatus: rec.checkOutStatus || rec.check_out_status,
+                  originalRec: rec
+                });
+              }
+            });
+          }
+
+          // Merge and Sort
+          activities = [...activities, ...attendanceActivities];
+          activities.sort((a: any, b: any) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+        } catch (attError) {
+          console.error("Failed to fetch fresh attendance for activities", attError);
+          // Fallback: If attendance fetch fails, stick with what we have (even if just check-ins from dashboard API)
+          if (!activities.length) {
+            activities = data.recentActivities || [];
+          }
+        }
+
+        setRecentActivities(activities);
       } catch (error) {
         console.error('Failed to load dashboard:', error);
       }
@@ -85,45 +182,59 @@ const AdminDashboard: React.FC = () => {
 
   const formatActivityTime = (timeString: string) => {
     if (!timeString) return '-';
-    // Parse the ISO string and convert to IST, then format time only
-    return formatTimeIST(timeString, 'hh:mm a');
+    // Parse the ISO string and convert to IST, then format date and time
+    // Using formatTimeIST but with a custom format string to include the date
+    return formatTimeIST(timeString, 'dd-MM-yyyy hh:mm a');
   };
 
-  // Calculate correct attendance status based on check-in time and grace period
-  const getCorrectAttendanceStatus = (activity: any) => {
-    if (activity.type !== 'check-in') {
-      return activity.status;
-    }
-
-    // Default scheduled check-in time is 10:00 AM
-    const SCHEDULED_CHECK_IN_HOUR = 10;
-    const SCHEDULED_CHECK_IN_MINUTE = 0;
-    const GRACE_PERIOD_MINUTES = 15;
-
-    try {
-      if (!activity.time) {
-        return activity.status;
+  // Helper: Format status and color
+  const getStatusConfig = (activity: any) => {
+    if (activity.type === 'check-in') {
+      let isLate = false;
+      if (activity.checkInStatus) {
+        isLate = activity.checkInStatus.toLowerCase() === 'late';
+      } else if (activity.time) {
+        try {
+          const d = new Date(activity.time);
+          // Default Late if after 10:15
+          isLate = (d.getHours() * 60 + d.getMinutes()) > (10 * 60 + 15);
+        } catch (e) { isLate = false; }
       }
 
-      // Parse the check-in time
-      const checkInDate = new Date(activity.time);
-      const checkInHour = checkInDate.getHours();
-      const checkInMinute = checkInDate.getMinutes();
-
-      // Calculate scheduled check-in time in minutes
-      const scheduledTimeInMinutes = SCHEDULED_CHECK_IN_HOUR * 60 + SCHEDULED_CHECK_IN_MINUTE;
-      const checkInTimeInMinutes = checkInHour * 60 + checkInMinute;
-      const gracePeriodEndInMinutes = scheduledTimeInMinutes + GRACE_PERIOD_MINUTES;
-
-      // Determine status
-      if (checkInTimeInMinutes <= gracePeriodEndInMinutes) {
-        return 'on-time';
-      } else {
-        return 'late';
+      if (isLate) {
+        return { label: 'LATE', className: 'bg-rose-50 text-rose-600 border-rose-100' };
       }
-    } catch (error) {
-      return activity.status;
+      return { label: 'ON TIME', className: 'bg-emerald-50 text-emerald-600 border-emerald-100' };
     }
+
+    if (activity.type === 'check-out') {
+      let isEarly = false;
+      if (activity.checkOutStatus) {
+        isEarly = activity.checkOutStatus.toLowerCase() === 'early';
+      } else if (activity.time) {
+        try {
+          const d = new Date(activity.time);
+          // Default Early if before 19:00 (7 PM)
+          isEarly = (d.getHours() * 60 + d.getMinutes()) < (19 * 60);
+        } catch (e) { isEarly = false; }
+      }
+
+      if (isEarly) {
+        return { label: 'EARLY', className: 'bg-amber-50 text-amber-600 border-amber-100' };
+      }
+      return { label: 'ON TIME', className: 'bg-emerald-50 text-emerald-600 border-emerald-100' };
+    }
+
+    return { label: (activity.status || '').toUpperCase(), className: 'bg-slate-100 text-slate-600 border-slate-200' };
+  };
+
+  const formatName = (name: string) => {
+    if (!name) return '';
+    return name
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
 
   return (
@@ -280,28 +391,40 @@ const AdminDashboard: React.FC = () => {
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-base text-slate-900">{dept.performance}%</p>
-                      <Badge
-                        className={`text-[8px] font-bold px-1.5 h-3.5 rounded-full border-0 ${dept.performance >= 80 ? 'bg-emerald-50 text-emerald-600' :
-                          dept.performance >= 60 ? 'bg-blue-50 text-blue-600' :
-                            dept.performance >= 40 ? 'bg-amber-50 text-amber-600' :
-                              'bg-rose-50 text-rose-600'
-                          }`}
-                      >
-                        {dept.performance >= 80 ? 'EXCELLENT' :
-                          dept.performance >= 60 ? 'GOOD' :
-                            dept.performance >= 40 ? 'AVERAGE' :
-                              'POOR'}
-                      </Badge>
+                      {(() => {
+                        const perf = Number(dept.performance);
+                        let statusColor = 'bg-rose-50 text-rose-600';
+                        let statusText = 'POOR';
+
+                        if (!isNaN(perf)) {
+                          if (perf >= 80) {
+                            statusColor = 'bg-emerald-50 text-emerald-600';
+                            statusText = 'EXCELLENT';
+                          } else if (perf >= 60) {
+                            statusColor = 'bg-blue-50 text-blue-600';
+                            statusText = 'GOOD';
+                          } else if (perf >= 40) {
+                            statusColor = 'bg-amber-50 text-amber-600';
+                            statusText = 'AVERAGE';
+                          }
+                        }
+
+                        return (
+                          <Badge className={`text-[8px] font-bold px-1.5 h-3.5 rounded-full border-0 ${statusColor}`}>
+                            {statusText}
+                          </Badge>
+                        );
+                      })()}
                     </div>
                   </div>
                   <div className="relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-1000 ${dept.performance >= 80 ? 'bg-emerald-500' :
-                        dept.performance >= 60 ? 'bg-blue-500' :
-                          dept.performance >= 40 ? 'bg-amber-500' :
+                      className={`h-full rounded-full transition-all duration-1000 ${Number(dept.performance) >= 80 ? 'bg-emerald-500' :
+                        Number(dept.performance) >= 60 ? 'bg-blue-500' :
+                          Number(dept.performance) >= 40 ? 'bg-amber-500' :
                             'bg-rose-500'
                         }`}
-                      style={{ width: `${dept.performance}%` }}
+                      style={{ width: `${Math.min(Math.max(Number(dept.performance) || 0, 0), 100)}%` }}
                     />
                   </div>
                 </div>
@@ -335,13 +458,15 @@ const AdminDashboard: React.FC = () => {
                             'bg-blue-50/80 border-blue-100/50 text-blue-600 shadow-sm'
                           }`}>
                           {activity.type === 'check-in' && <Clock className="h-4 w-4" />}
+                          {activity.type === 'check-out' && <LogOut className="h-4 w-4" />}
                           {activity.type === 'leave' && <CalendarDays className="h-4 w-4" />}
                           {activity.type === 'task' && <ClipboardList className="h-4 w-4" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[12px] font-bold text-slate-900 truncate uppercase">{activity.user}</p>
+                          <p className="text-[12px] font-bold text-slate-900 truncate">{formatName(activity.user)}</p>
                           <p className="text-[11px] text-slate-500 font-medium mt-0.5">
                             {activity.type === 'check-in' && 'Checked in'}
+                            {activity.type === 'check-out' && 'Checked out'}
                             {activity.type === 'leave' && 'Applied for leave'}
                             {activity.type === 'task' && 'Completed task'}
                           </p>
@@ -350,22 +475,9 @@ const AdminDashboard: React.FC = () => {
                           </p>
                         </div>
                         <div className="flex flex-col items-end">
-                          {activity.type === 'check-in' && (
-                            <Badge
-                              className={`text-[8px] font-bold px-1.5 h-3.5 rounded-full border-0 ${(getCorrectAttendanceStatus(activity) === 'on-time' || getCorrectAttendanceStatus(activity) === 'on_time') ? 'bg-emerald-50 text-emerald-600' :
-                                getCorrectAttendanceStatus(activity) === 'late' ? 'bg-rose-50 text-rose-600' :
-                                  'bg-amber-50 text-amber-600'
-                                }`}
-                            >
-                              {(getCorrectAttendanceStatus(activity) === 'on-time' || getCorrectAttendanceStatus(activity) === 'on_time') ? 'ON TIME' :
-                                getCorrectAttendanceStatus(activity).toUpperCase()}
-                            </Badge>
-                          )}
-                          {activity.type !== 'check-in' && (
-                            <Badge className="text-[8px] font-bold px-1.5 h-3.5 rounded-full bg-slate-100 text-slate-600 border-0">
-                              {activity.status}
-                            </Badge>
-                          )}
+                          <Badge className={`text-[9px] font-bold px-2 py-0.5 h-4 rounded-full border ${getStatusConfig(activity).className}`}>
+                            {getStatusConfig(activity).label}
+                          </Badge>
                         </div>
                       </div>
                     ))}
@@ -393,7 +505,7 @@ const AdminDashboard: React.FC = () => {
                         disabled={activitiesPage === Math.ceil(recentActivities.length / ACTIVITIES_PER_PAGE)}
                         className="h-8 w-8 rounded-lg border-slate-200 hover:bg-slate-50 transition-all active:scale-90"
                       >
-                        <ChevronRightIcon className="h-3.5 w-3.5" />
+                        <ChevronRight className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>

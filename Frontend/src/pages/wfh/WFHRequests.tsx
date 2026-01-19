@@ -36,6 +36,8 @@ import { formatDateIST, formatDateTimeIST } from '@/utils/timezone';
 interface WFHRequest {
   id: number;
   user_id: number;
+  employee_name?: string;
+  requester_role?: string;
   start_date: string;
   end_date: string;
   reason: string;
@@ -45,16 +47,31 @@ interface WFHRequest {
   updated_at: string;
   rejection_reason?: string;
   approved_by?: string;
+  manager_approval?: 'pending' | 'approved' | 'rejected';
+  hr_approval?: 'pending' | 'approved' | 'rejected';
+  admin_approval?: 'pending' | 'approved' | 'rejected';
 }
 
 const WFHRequests: React.FC = () => {
   const { user } = useAuth();
-  const { wfhRequests: contextWfhRequests, isLoading: contextIsLoading, refreshWFHRequests, recentDecisions, isLoadingDecisions, refreshRecentDecisions } = useWFH();
+  const {
+    wfhRequests: contextWfhRequests,
+    isLoading: contextIsLoading,
+    refreshWFHRequests,
+    recentDecisions,
+    isLoadingDecisions,
+    refreshRecentDecisions,
+    pendingApprovals,
+    isLoadingPending,
+    loadPendingApprovals,
+    approveRequest,
+    rejectRequest
+  } = useWFH();
 
   // State management
   const [wfhRequests, setWfhRequests] = useState<WFHRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'my-requests' | 'submit' | 'recent-decisions'>('my-requests');
+  const [activeTab, setActiveTab] = useState<'my-requests' | 'submit' | 'pending-approvals' | 'recent-decisions'>('my-requests');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [decisionFilter, setDecisionFilter] = useState<'all' | 'approved' | 'rejected'>('all');
 
@@ -85,7 +102,8 @@ const WFHRequests: React.FC = () => {
     // Ensure requests are loaded when component mounts
     refreshWFHRequests();
     refreshRecentDecisions();
-  }, [refreshWFHRequests, refreshRecentDecisions]);
+    loadPendingApprovals();
+  }, [refreshWFHRequests, refreshRecentDecisions, loadPendingApprovals]);
 
   const handleSubmitRequest = async () => {
     if (!user?.id) {
@@ -115,30 +133,21 @@ const WFHRequests: React.FC = () => {
       return;
     }
 
-    // Check for overlapping requests (not consecutive dates)
+    // Check for overlapping requests
     const newStartDate = format(formData.startDate, 'yyyy-MM-dd');
     const newEndDate = format(formData.endDate, 'yyyy-MM-dd');
 
     const hasOverlap = wfhRequests.some(req => {
-      // Only check pending and approved requests
-      if (req.status !== 'pending' && req.status !== 'approved') {
-        return false;
-      }
-
-      // Check for actual overlap (same date or within range)
-      // Allow consecutive dates (e.g., 04 Jan and 05 Jan are allowed)
+      if (req.status !== 'pending' && req.status !== 'approved') return false;
       const reqStart = req.start_date;
       const reqEnd = req.end_date;
-
-      // Overlap occurs if:
-      // new request starts before existing ends AND new request ends after existing starts
       return newStartDate <= reqEnd && newEndDate >= reqStart;
     });
 
     if (hasOverlap) {
       toast({
         title: 'Overlapping Request',
-        description: 'You already have a WFH request for these dates. Please choose different dates.',
+        description: 'You already have a WFH request for these dates.',
         variant: 'destructive',
       });
       return;
@@ -161,7 +170,6 @@ const WFHRequests: React.FC = () => {
         description: 'WFH request submitted successfully',
       });
 
-      // Reset form
       setFormData({
         startDate: new Date(),
         endDate: new Date(),
@@ -169,9 +177,7 @@ const WFHRequests: React.FC = () => {
         type: 'full_day',
       });
 
-      // Reload requests from context
       await refreshWFHRequests();
-
       setActiveTab('my-requests');
     } catch (error) {
       console.error('Error submitting WFH request:', error);
@@ -187,11 +193,9 @@ const WFHRequests: React.FC = () => {
 
   const handleEditRequest = (request: WFHRequest) => {
     setEditingRequest(request);
-    // Parse dates from backend format (YYYY-MM-DD) without timezone conversion
     const startDateParts = request.start_date.split('-');
     const endDateParts = request.end_date.split('-');
 
-    // Create dates in UTC to avoid timezone shifts
     const startDate = new Date(Date.UTC(
       parseInt(startDateParts[0]),
       parseInt(startDateParts[1]) - 1,
@@ -207,7 +211,7 @@ const WFHRequests: React.FC = () => {
       startDate,
       endDate,
       reason: request.reason,
-      type: request.wfh_type,
+      type: request.wfh_type as 'full_day' | 'half_day',
     });
     setIsEditDialogOpen(true);
   };
@@ -224,34 +228,21 @@ const WFHRequests: React.FC = () => {
       return;
     }
 
-    // Check for overlapping requests with other pending/approved requests
     const newStartDate = format(formData.startDate, 'yyyy-MM-dd');
     const newEndDate = format(formData.endDate, 'yyyy-MM-dd');
 
     const hasOverlap = wfhRequests.some(req => {
-      // Skip the current request being edited
-      if (req.id === editingRequest.id) {
-        return false;
-      }
-
-      // Only check pending and approved requests
-      if (req.status !== 'pending' && req.status !== 'approved') {
-        return false;
-      }
-
-      // Check for actual overlap (same date or within range)
+      if (req.id === editingRequest.id) return false;
+      if (req.status !== 'pending' && req.status !== 'approved') return false;
       const reqStart = req.start_date;
       const reqEnd = req.end_date;
-
-      // Overlap occurs if:
-      // new request starts before existing ends AND new request ends after existing starts
       return newStartDate <= reqEnd && newEndDate >= reqStart;
     });
 
     if (hasOverlap) {
       toast({
         title: 'Overlapping Request',
-        description: 'You already have a WFH request for these dates. Please choose different dates.',
+        description: 'You already have a WFH request for these dates.',
         variant: 'destructive',
       });
       return;
@@ -275,8 +266,6 @@ const WFHRequests: React.FC = () => {
 
       setIsEditDialogOpen(false);
       setEditingRequest(null);
-
-      // Reload requests from context
       await refreshWFHRequests();
     } catch (error) {
       console.error('Error updating WFH request:', error);
@@ -301,16 +290,12 @@ const WFHRequests: React.FC = () => {
     setIsDeletingRequest(true);
     try {
       await apiService.deleteWFHRequest(requestToDelete.id);
-
       toast({
         title: 'Success',
         description: 'WFH request deleted successfully',
       });
-
       setIsDeleteDialogOpen(false);
       setRequestToDelete(null);
-
-      // Reload requests from context
       await refreshWFHRequests();
     } catch (error) {
       console.error('Error deleting WFH request:', error);
@@ -323,6 +308,59 @@ const WFHRequests: React.FC = () => {
       setIsDeletingRequest(false);
     }
   };
+
+  const handleApproveRequest = async (id: number) => {
+    try {
+      await approveRequest(id);
+      toast({
+        title: 'Success',
+        description: 'WFH request approved successfully',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to approve WFH request',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRejectRequest = async (id: number, reason: string) => {
+    try {
+      await rejectRequest(id, reason);
+      toast({
+        title: 'Success',
+        description: 'WFH request rejected successfully',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to reject WFH request',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const visiblePendingApprovals = useMemo(() => {
+    if (!user?.role) return [];
+    const currentUserRole = user.role.toLowerCase();
+
+    return pendingApprovals.filter(req => {
+      const requesterRole = req.requester_role?.toLowerCase() || 'employee';
+
+      // Rule 1: HR/Manager requests -> Only Admin can act
+      if (requesterRole === 'hr' || requesterRole === 'manager') {
+        return currentUserRole === 'admin';
+      }
+
+      // Rule 2: TL/Employee requests -> Both Manager and HR can act
+      if (requesterRole === 'team_lead' || requesterRole === 'employee') {
+        return currentUserRole === 'manager' || currentUserRole === 'hr';
+      }
+
+      return false;
+    });
+  }, [pendingApprovals, user?.role]);
 
   const filteredRequests = useMemo(() => {
     if (statusFilter === 'all') return wfhRequests;
@@ -372,7 +410,7 @@ const WFHRequests: React.FC = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm">
+        <TabsList className="grid w-full grid-cols-4 h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm">
           <TabsTrigger
             value="my-requests"
             className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
@@ -386,6 +424,20 @@ const WFHRequests: React.FC = () => {
             <Plus className="h-4 w-4 mr-2" />
             Submit Request
           </TabsTrigger>
+          {['admin', 'hr', 'manager'].includes(user?.role || '') && (
+            <TabsTrigger
+              value="pending-approvals"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+            >
+              <ClockIcon className="h-4 w-4 mr-2" />
+              Pending Approvals
+              {visiblePendingApprovals.length > 0 && (
+                <Badge className="ml-2 bg-orange-100 text-orange-700 border-orange-200">
+                  {visiblePendingApprovals.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          )}
           <TabsTrigger
             value="recent-decisions"
             className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
@@ -460,13 +512,6 @@ const WFHRequests: React.FC = () => {
                               <span>Processed: {formatDateTimeIST(new Date(request.updated_at), 'dd MMM yyyy, hh:mm a')}</span>
                             )}
                           </div>
-                          {request.rejection_reason && (
-                            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
-                              <p className="text-sm text-red-800 dark:text-red-200">
-                                <strong>Rejection Reason:</strong> {request.rejection_reason}
-                              </p>
-                            </div>
-                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           {getStatusIcon(request.status)}
@@ -491,6 +536,95 @@ const WFHRequests: React.FC = () => {
                               </Button>
                             </div>
                           )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Pending Approvals Tab */}
+        <TabsContent value="pending-approvals" className="space-y-4">
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+              <CardTitle className="text-xl font-semibold">Pending Approvals</CardTitle>
+              <CardDescription>Review and process work from home requests</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {isLoadingPending ? (
+                <div className="flex items-center justify-center py-8">
+                  <ClockIcon className="h-8 w-8 animate-spin text-orange-600" />
+                  <span className="ml-2 text-muted-foreground">Loading pending requests...</span>
+                </div>
+              ) : visiblePendingApprovals.length === 0 ? (
+                <div className="text-center py-8">
+                  <CheckCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-muted-foreground">No pending WFH requests to display</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {visiblePendingApprovals.map((request) => (
+                    <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-lg">{request.employee_name}</span>
+                            <Badge variant="secondary" className="capitalize">
+                              {request.requester_role}
+                            </Badge>
+                            <Badge variant="outline">
+                              {request.wfh_type === 'full_day' ? 'Full Day' : 'Half Day'}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="h-4 w-4 text-orange-600" />
+                            <span className="font-medium">
+                              {request.start_date} - {request.end_date}
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">Reason: {request.reason}</p>
+
+                          <div className="flex flex-wrap gap-4 mt-2">
+                            {request.manager_approval && (
+                              <div className="flex items-center gap-1.5 text-xs">
+                                <span className="text-muted-foreground">Manager:</span>
+                                <Badge variant={request.manager_approval === 'approved' ? 'default' : 'secondary'} className="text-[10px]">
+                                  {request.manager_approval}
+                                </Badge>
+                              </div>
+                            )}
+                            {request.hr_approval && (
+                              <div className="flex items-center gap-1.5 text-xs">
+                                <span className="text-muted-foreground">HR:</span>
+                                <Badge variant={request.hr_approval === 'approved' ? 'default' : 'secondary'} className="text-[10px]">
+                                  {request.hr_approval}
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          <Button
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => handleApproveRequest(request.id)}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Approve
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={() => {
+                              const reason = prompt("Please enter rejection reason:");
+                              if (reason) handleRejectRequest(request.id, reason);
+                            }}
+                          >
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Reject
+                          </Button>
                         </div>
                       </div>
                     </div>

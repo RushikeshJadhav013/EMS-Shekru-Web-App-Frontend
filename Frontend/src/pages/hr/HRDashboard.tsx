@@ -77,8 +77,28 @@ const HRDashboard: React.FC = () => {
         const data = await apiService.getHRDashboard();
         if (!isMounted || !data) return;
         const { recentActivities: activityFeed = [], ...statSnapshot } = data;
+
         setStats((prev) => ({ ...prev, ...statSnapshot }));
-        setRecentActivities(Array.isArray(activityFeed) ? activityFeed : []);
+
+        // Filter for Today's activities only
+        const today = new Date();
+        const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+        const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
+        const todaysActivities = (Array.isArray(activityFeed) ? activityFeed : []).filter((activity: HRActivity) => {
+          if (!activity.time) return false;
+          const activityTime = new Date(activity.time);
+          return activityTime >= startOfDay && activityTime <= endOfDay;
+        });
+
+        // Sort by time (most recent first)
+        todaysActivities.sort((a, b) => {
+          const timeA = a.time ? new Date(a.time).getTime() : 0;
+          const timeB = b.time ? new Date(b.time).getTime() : 0;
+          return timeB - timeA;
+        });
+
+        setRecentActivities(todaysActivities);
       } catch (error) {
         console.error('Failed to load HR dashboard', error);
       } finally {
@@ -530,22 +550,16 @@ const HRDashboard: React.FC = () => {
                 <span className="text-muted-foreground">New Joiners</span>
                 <span className="font-medium">{stats.newJoinersThisMonth}</span>
               </div>
-              <Progress value={(stats.newJoinersThisMonth / 10) * 100} className="h-2" />
+              <Progress value={safePercentage(stats.newJoinersThisMonth, stats.totalEmployees || 10)} className="h-2" />
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Exits</span>
-                <span className="font-medium">{stats.exitingThisMonth}</span>
-              </div>
-              <Progress value={(stats.exitingThisMonth / 10) * 100} className="h-2" />
-            </div>
+
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">On Leave</span>
                 <span className="font-medium">{stats.onLeave}</span>
               </div>
               <Progress
-                value={safePercentage(stats.onLeave, stats.totalEmployees)}
+                value={safePercentage(stats.onLeave, stats.totalEmployees || 10)}
                 className="h-2"
               />
             </div>

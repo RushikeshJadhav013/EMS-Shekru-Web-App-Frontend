@@ -367,6 +367,10 @@ export default function EmployeeManagement() {
   const editFileInputRef = useRef<HTMLInputElement>(null);
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
+  const isHR = (formData.role as any) === 'hr';
+  const isManager = (formData.role as any) === 'manager';
+  const isHROrManager = isHR || isManager;
+
   const countryCodes = [
     { code: '+91', flag: '🇮🇳', name: 'India' },
     { code: '+1', flag: '🇺🇸', name: 'United States' },
@@ -944,13 +948,11 @@ export default function EmployeeManagement() {
         aadhar_card: formData.aadharCard,
         shift_type: formData.shift,
         employee_type: formData.employeeType,
-        profile_photo: imageFile || formData.profilePhoto || undefined, // Pass the file if available
+        profile_photo: imageFile || formData.profilePhoto || (imagePreview === '' ? '' : undefined), // Pass the file or removal signal
         is_verified: true,
         created_at: formData.createdAt || new Date().toISOString(),
-        is_active: formData.status
-          ? formData.status.toLowerCase().trim() === 'active'
-          : (selectedEmployee?.status?.toLowerCase() === 'active' || (selectedEmployee as any)?.is_active === true || (selectedEmployee as any)?.isActive === true),
-        status: formData.status?.toLowerCase().trim() || selectedEmployee?.status?.toLowerCase() || 'active'
+        is_active: (formData.status || 'active') === 'active',
+        status: formData.status || 'active'
       };
 
       // Call API with user_id instead of employee_id
@@ -1495,7 +1497,7 @@ export default function EmployeeManagement() {
       }
 
       let status = 'active';
-      const rawStatus = (data['status'] ?? data['isActive'] ?? data['is_active']);
+      const rawStatus = (data['isActive'] ?? data['is_active'] ?? data['status']);
 
       if (rawStatus !== undefined && rawStatus !== null) {
         const s = String(rawStatus).toLowerCase().trim();
@@ -1991,8 +1993,11 @@ export default function EmployeeManagement() {
                           }
                         }
 
-                        // If switching TO hr/manager, migrate single department TO multi-select list
-                        if ((roleValue === 'hr' || roleValue === 'manager') && formData.department && selectedDepartments.length === 0) {
+                        // If role is HR, automatically select ALL departments
+                        if (roleValue === 'hr') {
+                          setSelectedDepartments([...departments]);
+                        } else if (roleValue === 'manager' && formData.department && selectedDepartments.length === 0) {
+                          // If switching TO manager, migrate single department TO multi-select list
                           setSelectedDepartments([formData.department]);
                         }
 
@@ -2027,36 +2032,44 @@ export default function EmployeeManagement() {
                     </Select>
                   </div>
 
-                  {/* Single Department Selection for other roles */}
-                  {formData.role !== 'hr' && formData.role !== 'manager' && (
+                  {/* Single Department Selection or "All Departments" for HR */}
+                  {!isManager && (
                     <div>
                       <Label htmlFor="create-department">Department *</Label>
-                      <Select
-                        value={formData.department || ''}
-                        onValueChange={(value) => setFormData((prev) => ({ ...prev, department: value }))}
-                        disabled={departments.length === 0}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder={departments.length === 0 ? "No departments available" : "Select Department"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {departments.length === 0 ? (
-                            <SelectItem value="no-departments" disabled>
-                              No active departments found. Please create departments first.
-                            </SelectItem>
-                          ) : (
-                            departments.map((dept) => (
-                              <SelectItem key={dept} value={dept}>
-                                {dept}
+                      {isHR ? (
+                        <Input
+                          value="All Departments"
+                          readOnly
+                          className="mt-1 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 font-medium text-blue-700 dark:text-blue-300"
+                        />
+                      ) : (
+                        <Select
+                          value={formData.department || ''}
+                          onValueChange={(value) => setFormData((prev) => ({ ...prev, department: value }))}
+                          disabled={departments.length === 0}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder={departments.length === 0 ? "No departments available" : "Select Department"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {departments.length === 0 ? (
+                              <SelectItem value="no-departments" disabled>
+                                No active departments found. Please create departments first.
                               </SelectItem>
-                            ))
-                          )}
-                          {formData.department && !departments.some(d => d.toLowerCase() === formData.department?.toLowerCase()) && (
-                            <SelectItem value={formData.department}>{formData.department}</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      {departments.length === 0 && (
+                            ) : (
+                              departments.map((dept) => (
+                                <SelectItem key={dept} value={dept}>
+                                  {dept}
+                                </SelectItem>
+                              ))
+                            )}
+                            {formData.department && !departments.some(d => d.toLowerCase() === formData.department?.toLowerCase()) && (
+                              <SelectItem value={formData.department}>{formData.department}</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {!isHR && departments.length === 0 && (
                         <p className="text-sm text-amber-600 mt-1">
                           ⚠️ No departments available. Please go to Department Management to create departments first.
                         </p>
@@ -2064,8 +2077,8 @@ export default function EmployeeManagement() {
                     </div>
                   )}
 
-                  {/* Multiple Department Selection for HR and Manager */}
-                  {(formData.role === 'hr' || formData.role === 'manager') && (
+                  {/* Multiple Department Selection for Manager */}
+                  {isManager && (
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <Label>Assigned Departments *</Label>
@@ -2113,7 +2126,7 @@ export default function EmployeeManagement() {
                       </div>
                       {selectedDepartments.length > 0 && (
                         <p className="text-sm text-muted-foreground mt-1">
-                          Selected: {selectedDepartments.join(', ')}
+                          Selected: {selectedDepartments.length === departments.length ? 'All Departments' : selectedDepartments.join(', ')}
                         </p>
                       )}
                     </div>
@@ -2526,7 +2539,11 @@ export default function EmployeeManagement() {
                       <TableCell className="font-medium">{employee.name}</TableCell>
                       <TableCell className="hidden sm:table-cell text-muted-foreground">{employee.email}</TableCell>
                       <TableCell>
-                        {employee.department && employee.department.includes(',') ? (
+                        {employee.role === 'hr' ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 text-blue-700 dark:text-blue-300 text-sm font-semibold border border-blue-100/50 dark:border-blue-800/50 shadow-sm">
+                            All Departments
+                          </span>
+                        ) : employee.department && employee.department.includes(',') ? (
                           <div className="flex flex-wrap gap-1">
                             {employee.department.split(',').map((dept, index) => (
                               <span key={index} className="inline-flex items-center px-2 py-0.5 rounded-md bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 text-xs font-medium">
@@ -2649,6 +2666,7 @@ export default function EmployeeManagement() {
                         e.stopPropagation();
                         setImageFile(null);
                         setImagePreview('');
+                        setFormData(prev => ({ ...prev, profilePhoto: '' }));
                       }}
                     >
                       <X className="h-4 w-4" />
@@ -2734,8 +2752,11 @@ export default function EmployeeManagement() {
                     }
                   }
 
-                  // If switching TO hr/manager, migrate single department TO multi-select list
-                  if ((roleValue === 'hr' || roleValue === 'manager') && formData.department && selectedDepartments.length === 0) {
+                  // If role is HR, automatically select ALL departments
+                  if (roleValue === 'hr') {
+                    setSelectedDepartments([...departments]);
+                  } else if (roleValue === 'manager' && formData.department && selectedDepartments.length === 0) {
+                    // If switching TO manager, migrate single department TO multi-select list
                     setSelectedDepartments([formData.department]);
                   }
 
@@ -2770,40 +2791,48 @@ export default function EmployeeManagement() {
               </Select>
             </div>
 
-            {/* Single Department Selection for other roles in Edit */}
-            {formData.role !== 'hr' && formData.role !== 'manager' && (
+            {/* Single Department Selection or "All Departments" for HR in Edit */}
+            {!isManager && (
               <div>
                 <Label htmlFor="edit-department">Department *</Label>
-                <Select
-                  value={formData.department || ''}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, department: value }))}
-                  disabled={departments.length === 0}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select Department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.length === 0 ? (
-                      <SelectItem value="no-departments" disabled>
-                        No active departments found. Please create departments first.
-                      </SelectItem>
-                    ) : (
-                      departments.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
+                {isHR ? (
+                  <Input
+                    value="All Departments"
+                    readOnly
+                    className="mt-1 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 font-medium text-blue-700 dark:text-blue-300"
+                  />
+                ) : (
+                  <Select
+                    value={formData.department || ''}
+                    onValueChange={(value) => setFormData((prev) => ({ ...prev, department: value }))}
+                    disabled={departments.length === 0}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select Department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.length === 0 ? (
+                        <SelectItem value="no-departments" disabled>
+                          No active departments found. Please create departments first.
                         </SelectItem>
-                      ))
-                    )}
-                    {formData.department && !departments.some(d => d.toLowerCase() === formData.department?.toLowerCase()) && (
-                      <SelectItem value={formData.department}>{formData.department}</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                      ) : (
+                        departments.map((dept) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept}
+                          </SelectItem>
+                        ))
+                      )}
+                      {formData.department && !departments.some(d => d.toLowerCase() === formData.department?.toLowerCase()) && (
+                        <SelectItem value={formData.department}>{formData.department}</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             )}
 
-            {/* Multiple Department Selection for HR and Manager in Edit */}
-            {(formData.role === 'hr' || formData.role === 'manager') && (
+            {/* Multiple Department Selection for Manager in Edit */}
+            {isManager && (
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label>Assigned Departments *</Label>
@@ -2851,38 +2880,13 @@ export default function EmployeeManagement() {
                 </div>
                 {selectedDepartments.length > 0 && (
                   <p className="text-sm text-muted-foreground mt-1">
-                    Selected: {selectedDepartments.join(', ')}
+                    Selected: {selectedDepartments.length === departments.length ? 'All Departments' : selectedDepartments.join(', ')}
                   </p>
                 )}
               </div>
             )}
 
-            {/* Status Field - Added for visibility and control */}
-            <div>
-              <Label htmlFor="edit-status">Status *</Label>
-              <Select
-                value={formData.status || 'active'}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, status: value as 'active' | 'inactive' }))}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-                      Active
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="inactive">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-gray-400"></span>
-                      Inactive
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+
 
             {/* Designation Field - Always show now */}
             <div>
@@ -3205,7 +3209,11 @@ export default function EmployeeManagement() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Department</span>
                     <div className="font-medium">
-                      {viewEmployee.department && viewEmployee.department.includes(',') ? (
+                      {viewEmployee.role === 'hr' ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-sm font-semibold border border-blue-200 dark:border-blue-800">
+                          All Departments
+                        </span>
+                      ) : viewEmployee.department && viewEmployee.department.includes(',') ? (
                         <div className="flex flex-wrap gap-1">
                           {viewEmployee.department.split(',').map((dept, index) => (
                             <span key={index} className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-xs font-medium">

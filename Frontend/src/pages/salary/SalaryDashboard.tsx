@@ -101,6 +101,8 @@ const SalaryDashboard = () => {
 
     const filteredItems = items.filter(item => {
         const itemRole = item.role?.toLowerCase() || '';
+        const itemId = String(item.id || item.user_id || '');
+        const currentUserId = String(user?.id || '');
 
         // Visibility Logic by Role
         let isRoleVisible = false;
@@ -108,14 +110,19 @@ const SalaryDashboard = () => {
             // Admin sees everyone except other admins
             isRoleVisible = itemRole !== 'admin';
         } else if (userRole === 'hr') {
-            // HR sees Manager, Team Lead, Employee, and other HRs (including themselves)
-            isRoleVisible = ['manager', 'team_lead', 'team lead', 'employee', 'hr'].includes(itemRole);
+            // HR sees Manager, Team Lead, and Employee (excludes HR – including self)
+            isRoleVisible = ['manager', 'team_lead', 'team lead', 'employee'].includes(itemRole);
         } else if (userRole === 'manager') {
             // Manager sees Team Lead and Employee (excludes other managers, admins, and HRs)
             isRoleVisible = ['team_lead', 'team lead', 'employee'].includes(itemRole);
         } else if (userRole === 'team_lead' || userRole === 'team lead') {
             // Team Lead sees only employees (excludes other team leads, managers, admins, and HRs)
             isRoleVisible = itemRole === 'employee';
+        }
+
+        // Exclude HR's own record from the list
+        if (userRole === 'hr' && itemId && itemId === currentUserId) {
+            return false;
         }
 
         const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

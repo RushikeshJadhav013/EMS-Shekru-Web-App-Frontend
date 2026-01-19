@@ -5,6 +5,8 @@ import { apiService } from '@/lib/api';
 interface WFHRequest {
   id: number;
   user_id: number;
+  employee_name?: string;
+  requester_role?: string;
   start_date: string;
   end_date: string;
   reason: string;
@@ -14,6 +16,14 @@ interface WFHRequest {
   updated_at: string;
   rejection_reason?: string;
   approved_by?: string;
+  manager_approval?: 'pending' | 'approved' | 'rejected';
+  hr_approval?: 'pending' | 'approved' | 'rejected';
+  admin_approval?: 'pending' | 'approved' | 'rejected';
+  approval_log?: {
+    role: string;
+    action: 'approve' | 'reject';
+    timestamp: string;
+  }[];
 }
 
 interface WFHDecision {
@@ -34,13 +44,18 @@ interface WFHDecision {
 
 interface WFHContextType {
   wfhRequests: WFHRequest[];
+  pendingApprovals: WFHRequest[];
   recentDecisions: WFHDecision[];
   isLoading: boolean;
   isLoadingDecisions: boolean;
+  isLoadingPending: boolean;
   loadWFHRequests: () => Promise<void>;
   refreshWFHRequests: () => Promise<void>;
   loadRecentDecisions: () => Promise<void>;
   refreshRecentDecisions: () => Promise<void>;
+  loadPendingApprovals: () => Promise<void>;
+  approveRequest: (id: number) => Promise<void>;
+  rejectRequest: (id: number, reason: string) => Promise<void>;
 }
 
 const WFHContext = createContext<WFHContextType | undefined>(undefined);
@@ -49,8 +64,10 @@ export const WFHProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const { user } = useAuth();
   const [wfhRequests, setWfhRequests] = useState<WFHRequest[]>([]);
   const [recentDecisions, setRecentDecisions] = useState<WFHDecision[]>([]);
+  const [pendingApprovals, setPendingApprovals] = useState<WFHRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingDecisions, setIsLoadingDecisions] = useState(false);
+  const [isLoadingPending, setIsLoadingPending] = useState(false);
 
   const loadWFHRequests = useCallback(async () => {
     if (!user?.id) return;
@@ -105,11 +122,8 @@ export const WFHProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const loadRecentDecisions = useCallback(async () => {
     if (!user?.id) return;
 
-    // Only fetch approvals/decisions for management roles (Manager, HR, Admin, TeamLead)
-    // Employees don't have access to the global /wfh/requests endpoint
     const privilegedRoles = ['admin', 'hr', 'manager', 'team_lead'];
     if (!privilegedRoles.includes(user.role || '')) {
-      console.log('Skipping WFH decisions fetch - current user is not a privileged role');
       setRecentDecisions([]);
       return;
     }
@@ -117,28 +131,18 @@ export const WFHProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsLoadingDecisions(true);
     try {
       const response = await apiService.getWFHApprovals();
-
-      console.log('WFH Approvals Raw Response:', response);
-
-      // Handle response - ensure it's an array
       let requests = [];
 
       if (Array.isArray(response)) {
         requests = response;
       } else if (response && typeof response === 'object') {
-        // Try different possible wrapper formats
         if (response.data && Array.isArray(response.data)) {
           requests = response.data;
         } else if (response.requests && Array.isArray(response.requests)) {
           requests = response.requests;
-        } else if (response.wfh_requests && Array.isArray(response.wfh_requests)) {
-          requests = response.wfh_requests;
-        } else if (response.results && Array.isArray(response.results)) {
-          requests = response.results;
         }
       }
 
-      // Filter for approved and rejected requests only
       const decisions = requests
         .filter((req: any) => {
           const status = (req.status || 'pending').toLowerCase();
@@ -160,11 +164,9 @@ export const WFHProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           approved_at: req.updated_at,
         }))
         .sort((a: WFHDecision, b: WFHDecision) => {
-          // Sort by updated_at (decision date) in descending order
           return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
         });
 
-      console.log('Formatted WFH Decisions:', decisions);
       setRecentDecisions(decisions);
     } catch (error) {
       console.error('Failed to load WFH decisions:', error);
@@ -172,7 +174,89 @@ export const WFHProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } finally {
       setIsLoadingDecisions(false);
     }
-  }, [user?.id]);
+  }, [user?.id, user?.role]);
+
+  const loadPendingApprovals = useCallback(async () => {
+    if (!user?.id) return;
+
+    const privilegedRoles = ['admin', 'hr', 'manager', 'team_lead'];
+    if (!privilegedRoles.includes(user.role || '')) {
+      setPendingApprovals([]);
+      return;
+    }
+
+    setIsLoadingPending(true);
+    try {
+      const response = await apiService.getWFHApprovals();
+      let requests = [];
+
+      if (Array.isArray(response)) {
+        requests = response;
+      } else if (response && typeof response === 'object') {
+        if (response.data && Array.isArray(response.data)) {
+          requests = response.data;
+        } else if (response.requests && Array.isArray(response.requests)) {
+          requests = response.requests;
+        }
+      }
+
+      const formattedPending = requests
+        .filter((req: any) => (req.status || 'pending').toLowerCase() === 'pending')
+        .map((req: any) => ({
+          id: req.wfh_id || req.id,
+          user_id: req.user_id,
+          employee_name: req.employee_name || req.name || 'Unknown',
+          requester_role: req.role || req.requester_role || 'employee',
+          start_date: req.start_date,
+          end_date: req.end_date,
+          reason: req.reason,
+          wfh_type: ((req.wfh_type || 'Full Day').toLowerCase().includes('full') ? 'full_day' : 'half_day') as 'full_day' | 'half_day',
+          status: 'pending' as const,
+          created_at: req.created_at,
+          updated_at: req.updated_at,
+          rejection_reason: req.rejection_reason,
+          approved_by: req.approved_by,
+          manager_approval: req.manager_approval || 'pending',
+          hr_approval: req.hr_approval || 'pending',
+          admin_approval: req.admin_approval || 'pending',
+        }));
+
+      setPendingApprovals(formattedPending);
+    } catch (error) {
+      console.error('Failed to load pending WFH approvals:', error);
+      setPendingApprovals([]);
+    } finally {
+      setIsLoadingPending(false);
+    }
+  }, [user?.id, user?.role]);
+
+  const approveRequest = async (id: number) => {
+    try {
+      await apiService.approveWFHRequest(id, true);
+      await Promise.all([
+        loadWFHRequests(),
+        loadRecentDecisions(),
+        loadPendingApprovals()
+      ]);
+    } catch (error) {
+      console.error('Failed to approve WFH request:', error);
+      throw error;
+    }
+  };
+
+  const rejectRequest = async (id: number, reason: string) => {
+    try {
+      await apiService.approveWFHRequest(id, false, reason);
+      await Promise.all([
+        loadWFHRequests(),
+        loadRecentDecisions(),
+        loadPendingApprovals()
+      ]);
+    } catch (error) {
+      console.error('Failed to reject WFH request:', error);
+      throw error;
+    }
+  };
 
   const refreshWFHRequests = useCallback(async () => {
     await loadWFHRequests();
@@ -192,12 +276,14 @@ export const WFHProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     loadWFHRequests();
     loadRecentDecisions();
+    loadPendingApprovals();
 
     // Also reload when the page becomes visible (tab focus)
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         loadWFHRequests();
         loadRecentDecisions();
+        loadPendingApprovals();
       }
     };
 
@@ -207,13 +293,18 @@ export const WFHProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const value = {
     wfhRequests,
+    pendingApprovals,
     recentDecisions,
     isLoading,
     isLoadingDecisions,
+    isLoadingPending,
     loadWFHRequests,
     refreshWFHRequests,
     loadRecentDecisions,
     refreshRecentDecisions,
+    loadPendingApprovals,
+    approveRequest,
+    rejectRequest,
   };
 
   return <WFHContext.Provider value={value}>{children}</WFHContext.Provider>;

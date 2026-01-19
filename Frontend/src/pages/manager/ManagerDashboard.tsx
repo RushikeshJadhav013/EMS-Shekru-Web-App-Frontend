@@ -23,7 +23,7 @@ import { apiService } from '@/lib/api';
 
 interface TeamMemberStatus {
   name: string;
-  status: 'present' | 'on-leave' | 'absent';
+  status: 'present' | 'completed' | 'on-leave' | 'absent';
   task: string;
   progress: number;
   userId: string;
@@ -156,13 +156,41 @@ const ManagerDashboard: React.FC = () => {
         setTeamActivities(filteredActivities);
 
         // Filter Team Performance (Teams list)
-        // If the 'team' field matches user's department, show it.
-        const allPerformance = data.teamPerformance || [];
-        const filteredPerformance = allPerformance.filter((p: any) => {
-          const pTeam = (p.team || '').trim().toLowerCase();
-          return pTeam === userDept;
-        });
-        setTeamPerformance(filteredPerformance);
+        // If the 'team' field matches user's department, show it or calculate from employees
+        const now = nowIST();
+        let performanceData = [];
+        try {
+          // Fetch detailed metrics to ensure we have the latest scores
+          const metricsData = await apiService.getDepartmentMetrics({
+            month: now.getMonth(),
+            year: now.getFullYear()
+          });
+
+          if (metricsData && metricsData.departments) {
+            const userDeptMetrics = metricsData.departments.find((d: any) => (d.department || '').toLowerCase() === userDept);
+            if (userDeptMetrics) {
+              performanceData.push({
+                team: userDeptMetrics.department,
+                lead: user?.name || 'You',
+                members: teamMembersCount, // Use the count we calculated earlier
+                completion: userDeptMetrics.performanceScore || 0
+              });
+            }
+          }
+        } catch (metricsError) {
+          console.error('Failed to load department metrics for manager:', metricsError);
+        }
+
+        // If API data wasn't found or failed, fallback or empty
+        if (performanceData.length === 0) {
+          // Try to use dashboard data if available
+          const allPerformance = data.teamPerformance || [];
+          performanceData = allPerformance.filter((p: any) => {
+            const pTeam = (p.team || '').trim().toLowerCase();
+            return pTeam === userDept;
+          });
+        }
+        setTeamPerformance(performanceData);
 
       } catch (error) {
         console.error('Failed to load dashboard:', error);
@@ -196,8 +224,24 @@ const ManagerDashboard: React.FC = () => {
           return empDept === userDept && (role === 'employee' || role === 'team_lead');
         });
 
-        // Fetch all tasks
-        const tasks = await apiService.getMyTasks();
+        // Fetch all tasks and today's attendance in parallel
+        const [tasks, attendanceRes] = await Promise.all([
+          apiService.getMyTasks(),
+          fetch('https://staffly.space/attendance/today', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            }
+          })
+        ]);
+
+        const attendanceData = attendanceRes.ok ? await attendanceRes.json() : [];
+
+        // Create a map of attendance by user ID for quick lookup
+        const attendanceMap: Record<string, any> = {};
+        attendanceData.forEach((record: any) => {
+          const uId = String(record.user_id || record.userId);
+          attendanceMap[uId] = record;
+        });
 
         // Process team members with their status and tasks
         const teamMembersData: TeamMemberStatus[] = await Promise.all(
@@ -220,13 +264,6 @@ const ManagerDashboard: React.FC = () => {
               return status !== 'completed' && status !== 'cancelled';
             });
 
-            // Sort active tasks by creation date (newest first)
-            activeTasks.sort((a: any, b: any) => {
-              const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
-              const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
-              return dateB - dateA;
-            });
-
             // Calculate progress based on completed vs total tasks
             const totalTasks = employeeTasks.length;
             const completedTasks = employeeTasks.filter((task: any) => (task.status || '').toLowerCase() === 'completed').length;
@@ -239,11 +276,19 @@ const ManagerDashboard: React.FC = () => {
                 ? 'All tasks completed'
                 : 'No tasks assigned';
 
-            // Determine status (simplified - we'll assume present if they have tasks)
-            let status: 'present' | 'on-leave' | 'absent' = 'present';
-            // Simple logic: if in list, assume present unless specific leave status api called (which is complex here), 
-            // so we keep existing logic but apply strictly to filtered list.
-            if (activeTasks.length === 0 && completedTasks === 0) {
+            // Determine status based on actual attendance
+            const attendanceRecord = attendanceMap[uId];
+            let status: 'present' | 'completed' | 'on-leave' | 'absent' = 'absent';
+
+            if (attendanceRecord) {
+              if (attendanceRecord.check_out || attendanceRecord.checkOutTime) {
+                status = 'completed';
+              } else {
+                status = 'present';
+              }
+            } else {
+              // Check if currently on leave (simplified check: if not present and onLeave count > 0)
+              // In a real scenario, we'd check against a leaves list
               status = 'absent';
             }
 
@@ -333,7 +378,7 @@ const ManagerDashboard: React.FC = () => {
             className="rounded-xl px-6 h-12 bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-200 dark:shadow-none transition-all active:scale-95 gap-2"
           >
             <ClipboardList className="h-4 w-4" />
-            Assign Task
+            Create Task
           </Button>
         </div>
       </div>
@@ -570,25 +615,35 @@ const ManagerDashboard: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className={`h-2 w-2 rounded-full ${member.status === 'present' ? 'bg-green-500' :
-                      member.status === 'on-leave' ? 'bg-amber-500' :
-                        'bg-gray-400'
+                      member.status === 'completed' ? 'bg-blue-500' :
+                        member.status === 'on-leave' ? 'bg-amber-500' :
+                          'bg-gray-400'
                       }`} />
                     <div>
                       <p className="font-medium text-sm">{member.name}</p>
                       <p className="text-xs text-muted-foreground">{member.task}</p>
                     </div>
                   </div>
-                  <Badge variant={
-                    member.status === 'present' ? 'default' :
-                      member.status === 'on-leave' ? 'secondary' :
-                        'outline'
-                  }>
-                    {member.status === 'present' ? 'Active' :
-                      member.status === 'on-leave' ? 'On Leave' :
-                        'Absent'}
+                  <Badge
+                    variant={
+                      member.status === 'present' ? 'default' :
+                        member.status === 'completed' ? 'secondary' :
+                          member.status === 'on-leave' ? 'outline' :
+                            'outline'
+                    }
+                    className={
+                      member.status === 'present' ? 'bg-green-500 hover:bg-green-600' :
+                        member.status === 'completed' ? 'bg-blue-500 hover:bg-blue-600' :
+                          ''
+                    }
+                  >
+                    {member.status === 'present' ? 'Present' :
+                      member.status === 'completed' ? 'Completed' :
+                        member.status === 'on-leave' ? 'On Leave' :
+                          'Absent'}
                   </Badge>
                 </div>
-                {member.status === 'present' && (
+                {(member.status === 'present' || member.status === 'completed') && (
                   <div className="space-y-1">
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">Progress</span>

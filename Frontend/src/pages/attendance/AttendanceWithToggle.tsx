@@ -19,10 +19,11 @@ import OnlineStatusToggle from '@/components/attendance/OnlineStatusToggle';
 import OnlineStatusIndicator from '@/components/attendance/OnlineStatusIndicator';
 import { Clock, MapPin, Calendar, LogIn, LogOut, FileText, CheckCircle, AlertCircle, Users, Filter, User, X, Download, Search, Loader2, Home, Send, Edit, Trash2, History } from 'lucide-react';
 import { AttendanceRecord, UserRole } from '@/types';
-import { format, subMonths } from 'date-fns';
+import { format, subMonths, isAfter } from 'date-fns';
 import { formatIST, formatDateTimeIST, formatTimeIST, formatDateIST, todayIST, formatDateTimeComponentsIST, parseToIST, nowIST } from '@/utils/timezone';
 import { getCurrentLocation as fetchPreciseLocation, getCurrentLocationFast } from '@/utils/geolocation';
 import { DatePicker } from '@/components/ui/date-picker';
+import { Pagination } from '@/components/ui/pagination';
 import { apiService } from '@/lib/api';
 
 type GeoLocation = {
@@ -72,7 +73,14 @@ const AttendanceWithToggle: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(todayIST());
   const [filterRole, setFilterRole] = useState<'all' | UserRole>('all');
-  const [timePeriodFilter, setTimePeriodFilter] = useState<'today' | 'current_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_12_months'>('today');
+  const [timePeriodFilter, setTimePeriodFilter] = useState<'today' | 'current_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_12_months' | 'custom'>('current_month');
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(new Date());
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'present' | 'late' | 'early'>('all');
+  const [filteredEmployeeAttendanceData, setFilteredEmployeeAttendanceData] = useState<EmployeeAttendanceRecord[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const [selectedRecord, setSelectedRecord] = useState<EmployeeAttendanceRecord | null>(null);
   const [showSelfieModal, setShowSelfieModal] = useState(false);
   const [showWorkSummaryDialog, setShowWorkSummaryDialog] = useState(false);
@@ -177,21 +185,18 @@ const AttendanceWithToggle: React.FC = () => {
 
   // Filter attendance history based on selected date and sort by check-in time (most recent first)
   const getFilteredAttendanceHistory = () => {
-    let filtered: AttendanceRecord[];
-
-    if (!historyDateFilter) {
-      filtered = attendanceHistory.slice(0, 10); // Show first 10 records
-    } else {
-      const filterDate = formatDateIST(historyDateFilter);
-      filtered = attendanceHistory.filter(record => record.date === filterDate);
-    }
-
-    // Sort by check-in time in descending order (most recent first)
-    return filtered.sort((a, b) => {
-      const timeA = new Date(a.checkInTime).getTime();
-      const timeB = new Date(b.checkInTime).getTime();
+    const sortedAll = [...attendanceHistory].sort((a, b) => {
+      const timeA = new Date(a.checkInTime || 0).getTime();
+      const timeB = new Date(b.checkInTime || 0).getTime();
       return timeB - timeA; // Descending order (most recent first)
     });
+
+    if (!historyDateFilter) {
+      return sortedAll.slice(0, 10); // Show latest 10 records
+    }
+
+    const filterDate = formatDateIST(historyDateFilter);
+    return sortedAll.filter((record) => record.date === filterDate);
   };
 
   const resolveStaticUrl = useCallback((url?: string | null) => {
@@ -311,7 +316,12 @@ const AttendanceWithToggle: React.FC = () => {
         clearInterval(renderInterval);
       };
     }
-  }, [viewMode, selectedDate, loadAllWfhRequests, timePeriodFilter]);
+  }, [viewMode, selectedDate, loadAllWfhRequests, timePeriodFilter, customStartDate, customEndDate]);
+
+  // Reset pagination on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [timePeriodFilter, customStartDate, customEndDate]);
 
   useEffect(() => {
     if (employeeExportFilter !== 'specific') {
@@ -526,29 +536,54 @@ const AttendanceWithToggle: React.FC = () => {
       const data = await res.json();
       setAttendanceHistory(
         data
-          .map((rec: any) => ({
-            id: String(rec.attendance_id),
-            userId: String(rec.user_id),
-            date: formatDateIST(rec.check_in),
-            checkInTime: rec.check_in,
-            checkOutTime: rec.check_out || undefined,
-            checkInLocation: {
-              latitude: 0,
-              longitude: 0,
-              address: rec.checkInLocationLabel || rec.locationLabel || 'N/A',
-            },
-            checkOutLocation: {
-              latitude: 0,
-              longitude: 0,
-              address: rec.checkOutLocationLabel || rec.locationLabel || 'N/A',
-            },
-            checkInSelfie: rec.checkInSelfie || '',
-            checkOutSelfie: rec.checkOutSelfie || '',
-            status: 'present',
-            workHours: rec.total_hours,
-            workSummary: rec.workSummary || rec.work_summary || null,
-            workReport: resolveStaticUrl(rec.workReport || rec.work_report),
-          }))
+          .sort((a: any, b: any) => {
+            const timeA = new Date(a?.check_in || 0).getTime();
+            const timeB = new Date(b?.check_in || 0).getTime();
+            return timeB - timeA; // latest first
+          })
+          .map((rec: any) => {
+            // Determine work location from backend or based on WFH approval
+            let workLocation = rec.workLocation || rec.work_location;
+            
+            // If work location is not set, check for WFH approval for that date
+            if (!workLocation && rec.check_in) {
+              const recordDate = formatDateIST(rec.check_in, 'yyyy-MM-dd');
+              const wfhStatus = getWfhStatusForDate(recordDate);
+              workLocation = wfhStatus.hasApprovedWfh ? 'work_from_home' : 'office';
+            }
+            
+            // Normalize work location values to backend-accepted enums: "office" or "work_from_home"
+            if (workLocation === 'work_from_home' || workLocation === 'wfh' || workLocation === 'WFH') {
+              workLocation = 'work_from_home';
+            } else if (workLocation === 'work_from_office' || !workLocation || workLocation === 'office' || workLocation === 'Office') {
+              workLocation = 'office';
+            }
+            
+            return {
+              id: String(rec.attendance_id),
+              userId: String(rec.user_id),
+              date: formatDateIST(rec.check_in),
+              checkInTime: rec.check_in,
+              checkOutTime: rec.check_out || undefined,
+              checkInLocation: {
+                latitude: 0,
+                longitude: 0,
+                address: rec.checkInLocationLabel || rec.locationLabel || 'N/A',
+              },
+              checkOutLocation: {
+                latitude: 0,
+                longitude: 0,
+                address: rec.checkOutLocationLabel || rec.locationLabel || 'N/A',
+              },
+              checkInSelfie: rec.checkInSelfie || '',
+              checkOutSelfie: rec.checkOutSelfie || '',
+              status: 'present',
+              workHours: rec.total_hours,
+              workSummary: rec.workSummary || rec.work_summary || null,
+              workReport: resolveStaticUrl(rec.workReport || rec.work_report),
+              workLocation: workLocation,
+            };
+          })
           .reverse()
       );
 
@@ -592,12 +627,52 @@ const AttendanceWithToggle: React.FC = () => {
       }
 
       const today = todayIST();
+      const yesterday = formatDateIST(new Date(Date.now() - 24 * 60 * 60 * 1000));
+      
+      // Find today's record - check for:
+      // 1. Check-in today (normal case)
+      // 2. Check-in yesterday but checkout today (after midnight checkout)
+      // 3. Check-in yesterday but not checked out yet (still working from yesterday)
       const todayRecord = data.find((rec: any) => {
-        const recordDate = formatDateIST(rec.check_in);
-        return recordDate === today;
+        const checkInDate = formatDateIST(rec.check_in);
+        const checkOutDate = rec.check_out ? formatDateIST(rec.check_out) : null;
+        
+        // Case 1: Check-in today
+        if (checkInDate === today) {
+          return true;
+        }
+        
+        // Case 2: Check-in yesterday, checkout today (after midnight)
+        if (checkInDate === yesterday && checkOutDate === today) {
+          return true;
+        }
+        
+        // Case 3: Check-in yesterday, not checked out yet (still active)
+        if (checkInDate === yesterday && !checkOutDate) {
+          return true;
+        }
+        
+        return false;
       });
 
       if (todayRecord) {
+        // Determine work location from backend or based on WFH approval
+        let workLocation = todayRecord.workLocation || todayRecord.work_location;
+        
+        // If work location is not set, check for WFH approval for the check-in date
+        if (!workLocation) {
+          const checkInDate = formatDateIST(todayRecord.check_in, 'yyyy-MM-dd');
+          const wfhStatus = getWfhStatusForDate(checkInDate);
+          workLocation = wfhStatus.hasApprovedWfh ? 'work_from_home' : 'office';
+        }
+        
+        // Normalize work location values to backend-accepted enums: "office" or "work_from_home"
+        if (workLocation === 'work_from_home' || workLocation === 'wfh' || workLocation === 'WFH') {
+          workLocation = 'work_from_home';
+        } else if (workLocation === 'work_from_office' || !workLocation || workLocation === 'office' || workLocation === 'Office') {
+          workLocation = 'office';
+        }
+        
         const attendance: AttendanceRecord = {
           id: todayRecord.attendance_id.toString(),
           userId: todayRecord.user_id.toString(),
@@ -620,6 +695,7 @@ const AttendanceWithToggle: React.FC = () => {
           workHours: todayRecord.total_hours,
           workSummary: todayRecord.workSummary || todayRecord.work_summary || null,
           workReport: resolveStaticUrl(todayRecord.workReport || todayRecord.work_report),
+          workLocation: workLocation,
         };
         setCurrentAttendance(attendance);
 
@@ -809,7 +885,14 @@ const AttendanceWithToggle: React.FC = () => {
         case 'last_12_months':
           startDate = subMonths(today, 12);
           break;
+        case 'custom':
+          startDate = customStartDate ? new Date(customStartDate) : new Date(0);
+          break;
       }
+
+      const endDateLimit = timePeriodFilter === 'custom' && customEndDate ? new Date(customEndDate) : today;
+      // Set end date limit to end of day
+      endDateLimit.setHours(23, 59, 59, 999);
 
       const records: EmployeeAttendanceRecord[] = data
         .filter((rec: any) => rec.check_in && new Date(rec.check_in))
@@ -842,7 +925,7 @@ const AttendanceWithToggle: React.FC = () => {
         .filter((r: AttendanceRecord) => {
           // Filter by date range based on time period
           const recordDate = new Date(r.date);
-          return recordDate >= startDate && recordDate <= today;
+          return recordDate >= startDate && recordDate <= endDateLimit;
         })
         .sort((a, b) => {
           // Sort by check-in time in descending order (most recent first)
@@ -863,6 +946,50 @@ const AttendanceWithToggle: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // Filter employee attendance data based on search and status
+  useEffect(() => {
+    let filtered = [...employeeAttendanceData];
+
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(record =>
+        (record.name && record.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (record.email && record.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (record.department && record.department.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (record.userId && record.userId.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    }
+
+    // Filter by status
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(record => {
+        const statusValue = record.status?.toLowerCase() || '';
+        const checkInTime = record.checkInTime || '';
+        const checkOutTime = record.checkOutTime || '';
+        
+        // Check if check-in was late (similar to getStatusBadge logic)
+        const isCheckInLate = statusValue === 'late' || (checkInTime && checkInTime > '09:30:00');
+        
+        // Check if check-out was early
+        const isCheckOutEarly = checkOutTime && checkOutTime < '18:00:00';
+        
+        if (filterStatus === 'late') {
+          return isCheckInLate;
+        }
+        if (filterStatus === 'early') {
+          return isCheckOutEarly;
+        }
+        if (filterStatus === 'present') {
+          return statusValue === 'present' && !isCheckOutEarly;
+        }
+        return true;
+      });
+    }
+
+    setFilteredEmployeeAttendanceData(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [searchTerm, filterStatus, employeeAttendanceData]);
 
   const loadExportEmployees = useCallback(async () => {
     if (!canExportAttendance) {
@@ -990,6 +1117,21 @@ const AttendanceWithToggle: React.FC = () => {
       if (!isCheckingIn && !todaysWork.trim()) {
         throw new Error('Work summary is required to check out.');
       }
+      
+      // Check WFH approval status for check-in date
+      const checkInDate = nowIST();
+      const wfhStatus = isCheckingIn ? getWfhStatusForDate(checkInDate) : null;
+      
+      // Determine check-in type and work location
+      // If WFH is approved for the date, check-in type should be 'wfh'
+      // Otherwise, it's 'office'
+      // IMPORTANT: Work location is set at check-in time and must remain immutable after attendance is finalized
+      // Backend accepts: "office" or "work_from_home" (not "work_from_office")
+      // WFH Approval Override: If has_wfh_approval === true, force work_location = "work_from_home"
+      const checkInType = isCheckingIn && wfhStatus?.hasApprovedWfh ? 'wfh' : 'office';
+      // WFH approval override: if approved, always use work_from_home, otherwise use office
+      const workLocation = isCheckingIn && wfhStatus?.hasApprovedWfh ? 'work_from_home' : 'office';
+      
       const locationPayload = {
         latitude: location.latitude,
         longitude: location.longitude,
@@ -1013,6 +1155,13 @@ const AttendanceWithToggle: React.FC = () => {
         selfie: compressedImage, // ✅ Use compressed image
         work_summary: !isCheckingIn ? todaysWork.trim() : undefined,
         work_report: !isCheckingIn ? workReportBase64 : undefined,
+        // Include WFH approval status and check-in type for backend
+        ...(isCheckingIn && {
+          check_in_type: checkInType,
+          work_location: workLocation,
+          has_wfh_approval: wfhStatus?.hasApprovedWfh || false,
+          wfh_request_id: wfhStatus?.wfhRequest?.id || null,
+        }),
       };
       const endpoint = isCheckingIn
         ? 'https://staffly.space/attendance/check-in/json'
@@ -1029,10 +1178,26 @@ const AttendanceWithToggle: React.FC = () => {
         },
         body: JSON.stringify(payload),
       });
+      
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
         throw new Error(err.detail || 'Attendance API error');
       }
+      
+      // Parse and log the API response for debugging
+      const responseData = await response.json().catch(() => null);
+      if (responseData) {
+        console.log('Check-in API Response:', {
+          attendance_id: responseData.attendance_id,
+          user_id: responseData.user_id,
+          check_in: responseData.check_in,
+          check_out: responseData.check_out,
+          total_hours: responseData.total_hours,
+          work_location: responseData.work_location,
+          gps_location: responseData.gps_location,
+        });
+      }
+      
       await loadFromBackend();
       toast({ title: 'Success', description: isCheckingIn ? t.attendance.checkedIn : t.attendance.checkedOut });
 
@@ -1382,16 +1547,25 @@ const AttendanceWithToggle: React.FC = () => {
     return allWfhRequests.filter(req => req.status === 'pending').length;
   };
 
+  // Check if user has approved WFH for a specific date
+  const getWfhStatusForDate = (date: string | Date): { hasApprovedWfh: boolean; wfhRequest?: any } => {
+    const checkDate = typeof date === 'string' ? date : formatDateIST(date, 'yyyy-MM-dd');
+    const wfhRequest = [...wfhRequests, ...allWfhRequests].find(req =>
+      req.submittedById === user?.id &&
+      req.status === 'approved' &&
+      req.startDate <= checkDate &&
+      req.endDate >= checkDate
+    );
+    return {
+      hasApprovedWfh: !!wfhRequest,
+      wfhRequest: wfhRequest || undefined
+    };
+  };
+
   // Check if user has approved WFH for today
   const getTodayWfhStatus = () => {
     const today = formatDateIST(new Date(), 'yyyy-MM-dd');
-    const todayWfh = [...wfhRequests, ...allWfhRequests].find(req =>
-      req.submittedById === user?.id &&
-      req.status === 'approved' &&
-      req.startDate <= today &&
-      req.endDate >= today
-    );
-    return todayWfh;
+    return getWfhStatusForDate(today);
   };
 
   // Format relative time for better user experience
@@ -1804,6 +1978,49 @@ const AttendanceWithToggle: React.FC = () => {
     return null;
   };
 
+  // Helper function to get online status for display in employee attendance table
+  const getOnlineStatusForEmployeeDisplay = (record: EmployeeAttendanceRecord): { isOnline: boolean; label: string; showAbsent: boolean } => {
+    const today = todayIST();
+    const recordDate = record.date;
+    const checkInTime = record.checkInTime;
+    const checkOutTime = record.checkOutTime;
+
+    // If no check-in, show as absent
+    if (!checkInTime) {
+      return { isOnline: false, label: 'Absent', showAbsent: true };
+    }
+
+    // If record date is today
+    if (recordDate === today) {
+      if (checkOutTime) {
+        // Checked out today - show as checked out
+        return { isOnline: false, label: 'Checked Out', showAbsent: false };
+      } else {
+        // Not checked out - show online status from map
+        const isOnline = onlineStatusMap[parseInt(record.userId)] ?? true;
+        return { isOnline, label: isOnline ? 'Online' : 'Offline', showAbsent: false };
+      }
+    }
+
+    // If record date is before today (past date)
+    const recordDateObj = new Date(recordDate);
+    const todayDateObj = new Date(today);
+    
+    if (recordDateObj < todayDateObj) {
+      if (!checkOutTime) {
+        // Forgotten checkout - show as absent
+        return { isOnline: false, label: 'Absent', showAbsent: true };
+      } else {
+        // Checked out on past date - show as checked out
+        return { isOnline: false, label: 'Checked Out', showAbsent: false };
+      }
+    }
+
+    // Default: show online status
+    const isOnline = onlineStatusMap[parseInt(record.userId)] ?? false;
+    return { isOnline, label: isOnline ? 'Online' : 'Offline', showAbsent: false };
+  };
+
   const formatAttendanceTime = (dateString: string, timeString?: string) => {
     if (!timeString) return '-';
     return formatDateTimeComponentsIST(dateString, timeString, 'hh:mm a');
@@ -1955,23 +2172,45 @@ const AttendanceWithToggle: React.FC = () => {
                   {currentAttendance ? (
                     <>
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <LogIn className="h-4 w-4 text-green-500" />
                           <span className="text-sm font-medium">Check-in Time</span>
                           {getStatusBadge(currentAttendance.status, currentAttendance.checkInTime)}
-                          {getTodayWfhStatus() && (
+                          {currentAttendance.workLocation === 'work_from_home' ? (
                             <Badge variant="outline" className="bg-orange-50 border-orange-500 text-orange-700 dark:bg-orange-950 dark:text-orange-300">
                               <Home className="h-3 w-3 mr-1" />
-                              WFH
+                              Work From Home
                             </Badge>
+                          ) : currentAttendance.workLocation === 'office' ? (
+                            <Badge variant="outline" className="bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                              <MapPin className="h-3 w-3 mr-1" />
+                              Work From Office
+                            </Badge>
+                          ) : (
+                            // Fallback: check WFH status if workLocation is not set
+                            getTodayWfhStatus()?.hasApprovedWfh ? (
+                              <Badge variant="outline" className="bg-orange-50 border-orange-500 text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+                                <Home className="h-3 w-3 mr-1" />
+                                Work From Home
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                                <MapPin className="h-3 w-3 mr-1" />
+                                Work From Office
+                              </Badge>
+                            )
                           )}
                         </div>
                         <p className="text-lg font-semibold">
                           {formatAttendanceTime(currentAttendance.date, currentAttendance.checkInTime)}
                         </p>
-                        {getTodayWfhStatus() && (
+                        {currentAttendance.workLocation === 'work_from_home' || (currentAttendance.workLocation !== 'office' && getTodayWfhStatus()?.hasApprovedWfh) ? (
                           <p className="text-xs text-orange-600 dark:text-orange-400">
                             Working from home today
+                          </p>
+                        ) : (
+                          <p className="text-xs text-blue-600 dark:text-blue-400">
+                            Working from office today
                           </p>
                         )}
                       </div>
@@ -2117,158 +2356,175 @@ const AttendanceWithToggle: React.FC = () => {
                 </div>
 
                 {attendanceHistory.length > 0 ? (
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Employee ID</TableHead>
-                          <TableHead>Department</TableHead>
-                          <TableHead>Work Location</TableHead>
-                          <TableHead>Online Status</TableHead>
-                          <TableHead>Check In</TableHead>
-                          <TableHead>Check Out</TableHead>
-                          <TableHead>Hours</TableHead>
-                          <TableHead>Location</TableHead>
-                          <TableHead>Selfie</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Work Summary</TableHead>
-                          <TableHead>Work Report</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {getFilteredAttendanceHistory().map((record) => (
-                          <TableRow key={record.id}>
-                            <TableCell className="font-medium">
-                              {formatDateIST(record.date, 'dd MMM yyyy')}
-                            </TableCell>
-                            <TableCell className="font-medium">{user?.id || '-'}</TableCell>
-                            <TableCell>{user?.department || '-'}</TableCell>
-                            <TableCell>
-                              {record.workLocation === 'work_from_home' ? (
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
-                                  <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse"></div>
-                                  <span className="text-xs font-medium text-orange-700 dark:text-orange-300">Work from Home</span>
+                  <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden w-full">
+                    <div className="w-full overflow-x-auto xl:overflow-x-visible">
+                      <table className="w-full table-auto min-w-[1730px] xl:min-w-full" style={{ tableLayout: 'fixed', width: '100%' }}>
+                        <thead className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+                          <tr className="hover:bg-transparent">
+                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '150px' }}>{t.attendance.employee}</th>
+                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '110px' }}>{t.attendance.department}</th>
+                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>Work Location</th>
+                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>Online Status</th>
+                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>{t.attendance.checkInTime}</th>
+                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>{t.attendance.checkOutTime}</th>
+                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>{t.attendance.hours}</th>
+                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '90px' }}>{t.attendance.location}</th>
+                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '100px' }}>{t.common.status}</th>
+                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '280px' }}>{t.attendance.workSummary}</th>
+                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '90px' }}>{t.attendance.workReport}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {getFilteredAttendanceHistory().map((record) => (
+                            <tr key={record.id} className="border-t hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                              <td className="p-3">
+                                <div className="min-w-[120px]">
+                                  <p className="font-medium text-sm truncate" title={user?.name || '-'}>{user?.name || '-'}</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {formatDateIST(record.date, 'dd MMM yyyy')}
+                                  </p>
                                 </div>
-                              ) : record.workLocation && record.workLocation !== 'work_from_home' ? (
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                                  <div className="h-2 w-2 rounded-sm bg-blue-500"></div>
-                                  <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                                    Work from {record.workLocation}
-                                  </span>
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                <Badge variant="outline" className="text-xs">{user?.department || '-'}</Badge>
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                {record.workLocation === 'work_from_home' ? (
+                                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse"></div>
+                                    <span className="text-xs font-medium text-orange-700 dark:text-orange-300">WFH</span>
+                                  </div>
+                                ) : (
+                                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                                    <div className="h-1.5 w-1.5 rounded-sm bg-blue-500"></div>
+                                    <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Office</span>
+                                  </div>
+                                )}
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                {(() => {
+                                  if (!record.checkOutTime && record.date === todayIST()) {
+                                    return (
+                                      <OnlineStatusIndicator
+                                        isOnline={isOnline}
+                                        size="sm"
+                                        showLabel={true}
+                                      />
+                                    );
+                                  } else if (record.checkOutTime) {
+                                    return <span className="text-xs text-muted-foreground">Checked Out</span>;
+                                  } else {
+                                    return <span className="text-xs text-muted-foreground">Past Date</span>;
+                                  }
+                                })()}
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                <div className="flex items-center gap-1.5">
+                                  <Clock className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                                  <span className="text-xs font-semibold text-slate-900 dark:text-white">{formatAttendanceTime(record.date, record.checkInTime)}</span>
                                 </div>
-                              ) : (
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                                  <div className="h-2 w-2 rounded-sm bg-blue-500"></div>
-                                  <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                                    Work from Office
-                                  </span>
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                <div className="flex items-center gap-1.5">
+                                  <Clock className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+                                  <span className="text-xs font-semibold text-slate-900 dark:text-white">{formatAttendanceTime(record.date, record.checkOutTime)}</span>
                                 </div>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {!record.checkOutTime && record.date === todayIST() ? (
-                                <OnlineStatusIndicator
-                                  isOnline={isOnline}
-                                  size="md"
-                                  showLabel={true}
-                                />
-                              ) : (
-                                <span className="text-xs text-muted-foreground">
-                                  {record.checkOutTime ? 'Checked Out' : 'Past Date'}
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell>{formatAttendanceTime(record.date, record.checkInTime)}</TableCell>
-                            <TableCell>{formatAttendanceTime(record.date, record.checkOutTime)}</TableCell>
-                            <TableCell>{record.workHours ? formatWorkHours(record.workHours) : '-'}</TableCell>
-                            <TableCell>
-                              {record.checkInLocation?.address && record.checkInLocation.address !== 'N/A' ? (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedLocation({
-                                      checkIn: record.checkInLocation?.address,
-                                      checkOut: record.checkOutLocation?.address
-                                    });
-                                    setShowLocationDialog(true);
-                                  }}
-                                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-8 px-2"
-                                >
-                                  <MapPin className="h-4 w-4 mr-1" />
-                                  View
-                                </Button>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {record.checkInSelfie ? (
-                                <div
-                                  className="h-10 w-10 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity"
-                                  onClick={() => {
-                                    setSelectedRecord({
-                                      ...record,
-                                      name: user?.name,
-                                      email: user?.email,
-                                      department: user?.department
-                                    });
-                                    setShowSelfieModal(true);
-                                  }}
-                                >
-                                  <img
-                                    src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${record.checkInSelfie}`}
-                                    alt="Selfie"
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                {record.workHours ? (
+                                  <span className="text-xs font-semibold text-slate-900 dark:text-white">{formatWorkHours(record.workHours)}</span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">-</span>
+                                )}
+                              </td>
+                              <td className="p-3">
+                                {record.checkInLocation?.address && record.checkInLocation.address !== 'N/A' ? (
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <MapPin className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
+                                    <span
+                                      className="text-xs text-slate-700 dark:text-slate-200 truncate min-w-0"
+                                      title={record.checkInLocation.address}
+                                    >
+                                      {record.checkInLocation.address}
+                                    </span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedLocation({
+                                          checkIn: record.checkInLocation?.address,
+                                          checkOut: record.checkOutLocation?.address,
+                                        });
+                                        setShowLocationDialog(true);
+                                      }}
+                                      className="ml-auto text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-7 px-2 text-xs flex-shrink-0"
+                                    >
+                                      View
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">-</span>
+                                )}
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                <div className="flex justify-center">
+                                  {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
+                                </div>
+                              </td>
+                              <td className="p-3 text-xs text-muted-foreground" style={{ width: '280px', maxWidth: '280px', minWidth: '280px' }}>
+                                {record.workSummary ? (
+                                  <button
+                                    type="button"
+                                    className="text-left hover:text-blue-600 block w-full text-xs leading-relaxed"
+                                    onClick={() => {
+                                      setSelectedWorkSummary(record.workSummary || '');
+                                      setShowWorkSummaryDialog(true);
                                     }}
-                                  />
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
-                            </TableCell>
-                            <TableCell className="text-sm max-w-[160px]">
-                              {record.workSummary ? (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedWorkSummary(record.workSummary || '');
-                                    setShowWorkSummaryDialog(true);
-                                  }}
-                                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-8 px-2"
-                                >
-                                  <FileText className="h-4 w-4 mr-1" />
-                                  View
-                                </Button>
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {record.workReport ? (
-                                <a
-                                  href={record.workReport}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sm text-blue-600 hover:underline"
-                                >
-                                  View
-                                </a>
-                              ) : (
-                                <span className="text-muted-foreground text-sm">—</span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                                    title={record.workSummary}
+                                    style={{ 
+                                      wordBreak: 'break-word', 
+                                      overflowWrap: 'break-word',
+                                      display: 'block',
+                                      textAlign: 'left'
+                                    }}
+                                  >
+                                    <span style={{ 
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: 'vertical',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis'
+                                    }}>
+                                      {record.workSummary}
+                                    </span>
+                                    {record.workSummary.length > 60 && (
+                                      <span className="text-blue-600 font-medium mt-1 block">View more...</span>
+                                    )}
+                                  </button>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                {record.workReport ? (
+                                  <a
+                                    href={record.workReport}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-600 hover:underline"
+                                  >
+                                    {t.attendance.viewReport || 'View'}
+                                  </a>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 ) : (
                   <p className="text-center py-8 text-muted-foreground">No attendance history</p>
@@ -2280,195 +2536,309 @@ const AttendanceWithToggle: React.FC = () => {
       ) : viewMode === 'employee' ? (
         <>
           {/* Employee Attendance View */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Employee Attendance
-              </CardTitle>
-              <CardDescription>View and manage team attendance records</CardDescription>
+          <Card className="border-slate-200/60 border shadow-sm bg-white rounded-xl overflow-hidden w-full">
+            <CardHeader className="border-b border-slate-100 bg-slate-50/30 px-5 py-4">
+              <CardTitle className="text-sm font-bold text-slate-900">{t.attendance.employeeAttendance}</CardTitle>
+              <CardDescription className="text-[11px] font-medium">{t.attendance.viewAndManage}</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex gap-3 items-end">
-                  <div className="w-48">
-                    <Label htmlFor="time-period-filter" className="text-sm">Time Period</Label>
-                    <Select value={timePeriodFilter} onValueChange={(value: any) => {
-                      setTimePeriodFilter(value);
-                    }}>
-                      <SelectTrigger id="time-period-filter" className="mt-1 h-9 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="today">Today</SelectItem>
-                        <SelectItem value="current_month">Current Month</SelectItem>
-                        <SelectItem value="last_month">Last Month</SelectItem>
-                        <SelectItem value="last_3_months">Last 3 Months</SelectItem>
-                        <SelectItem value="last_6_months">Last 6 Months</SelectItem>
-                        <SelectItem value="last_12_months">Last 12 Months</SelectItem>
-                      </SelectContent>
-                    </Select>
+            <CardContent className="w-full">
+              <div className="flex flex-col md:flex-row gap-3 mb-6">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder={t.attendance.searchPlaceholder || "Search by name, email, or employee ID"}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 h-11 bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
                 </div>
+                <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
+                  <SelectTrigger className="w-[160px] h-11 bg-white dark:bg-gray-950 border-2">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="present">Present</SelectItem>
+                    <SelectItem value="late">Late</SelectItem>
+                    <SelectItem value="early">Early Departure</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={timePeriodFilter} onValueChange={(value: any) => {
+                  setTimePeriodFilter(value);
+                }}>
+                  <SelectTrigger className="w-[180px] h-11 bg-white dark:bg-gray-950 border-2">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Time Period" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="current_month">Current Month</SelectItem>
+                    <SelectItem value="last_month">Last Month</SelectItem>
+                    <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                    <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                    <SelectItem value="last_12_months">Last 1 Year</SelectItem>
+                    <SelectItem value="custom">Custom Range</SelectItem>
+                  </SelectContent>
+                </Select>
 
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Employee ID</TableHead>
-                        <TableHead>Employee (Name & Email)</TableHead>
-                        <TableHead>Department</TableHead>
-                        <TableHead>Work Location</TableHead>
-                        <TableHead>Online Status</TableHead>
-                        <TableHead>Check In</TableHead>
-                        <TableHead>Check Out</TableHead>
-                        <TableHead>Hours</TableHead>
-                        <TableHead>Location</TableHead>
-                        <TableHead>Selfie</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Work Summary</TableHead>
-                        <TableHead>Work Report</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {employeeAttendanceData.length > 0 ? (
-                        employeeAttendanceData.map((record) => (
-                          <TableRow key={record.id}>
-                            <TableCell className="font-medium">{record.userId}</TableCell>
-                            <TableCell className="text-sm">
-                              <div className="flex flex-col">
-                                <span className="font-medium truncate max-w-[220px]">{record.name || '-'}</span>
-                                <span className="text-muted-foreground truncate max-w-[220px]">{record.email || '-'}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>{record.department || '-'}</TableCell>
-                            <TableCell>
-                              {record.workLocation === 'work_from_home' ? (
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
-                                  <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse"></div>
-                                  <span className="text-xs font-medium text-orange-700 dark:text-orange-300">Work from Home</span>
+                {timePeriodFilter === 'custom' && (
+                  <>
+                    <DatePicker
+                      date={customStartDate}
+                      onDateChange={setCustomStartDate}
+                      toDate={new Date()}
+                      placeholder="From Date"
+                      className="w-[160px]"
+                    />
+                    <DatePicker
+                      date={customEndDate}
+                      onDateChange={setCustomEndDate}
+                      toDate={new Date()}
+                      placeholder="To Date"
+                      className="w-[160px]"
+                    />
+                  </>
+                )}
+              </div>
+
+              {timePeriodFilter === 'custom' && customStartDate && customEndDate && isAfter(customStartDate, customEndDate) && (
+                <p className="text-sm text-red-500 font-medium bg-red-50 dark:bg-red-950/30 p-2 rounded-md border border-red-200 dark:border-red-800 mb-4">
+                  "From Date" cannot be after "To Date". Please select a valid range.
+                </p>
+              )}
+
+              <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden w-full">
+                <div className="w-full overflow-x-auto xl:overflow-x-visible">
+                  <table className="w-full table-auto min-w-[1800px] xl:min-w-full" style={{ tableLayout: 'fixed', width: '100%' }}>
+                    <thead className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+                      <tr className="hover:bg-transparent">
+                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '150px' }}>{t.attendance.employee}</th>
+                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '110px' }}>{t.attendance.department}</th>
+                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>Work Location</th>
+                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>Online Status</th>
+                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>{t.attendance.checkInTime}</th>
+                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>{t.attendance.checkOutTime}</th>
+                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>{t.attendance.hours}</th>
+                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '90px' }}>{t.attendance.location}</th>
+                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '70px' }}>{t.attendance.selfiePhoto}</th>
+                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '100px' }}>{t.common.status}</th>
+                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '280px' }}>{t.attendance.workSummary}</th>
+                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '90px' }}>{t.attendance.workReport}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredEmployeeAttendanceData.length > 0 ? (
+                        filteredEmployeeAttendanceData
+                          .slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage)
+                          .map((record) => (
+                            <tr key={record.id} className="border-t hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                              <td className="p-3">
+                                <div className="min-w-[120px]">
+                                  <p className="font-medium text-sm truncate" title={record.name || '-'}>{record.name || '-'}</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {formatDateIST(record.date, 'dd MMM yyyy')}
+                                  </p>
                                 </div>
-                              ) : record.workLocation && record.workLocation !== 'work_from_home' ? (
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                                  <div className="h-2 w-2 rounded-sm bg-blue-500"></div>
-                                  <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                                    Work from {record.workLocation}
-                                  </span>
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                <Badge variant="outline" className="text-xs">{record.department || '-'}</Badge>
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                {record.workLocation === 'work_from_home' ? (
+                                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse"></div>
+                                    <span className="text-xs font-medium text-orange-700 dark:text-orange-300">WFH</span>
+                                  </div>
+                                ) : (
+                                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                                    <div className="h-1.5 w-1.5 rounded-sm bg-blue-500"></div>
+                                    <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Office</span>
+                                  </div>
+                                )}
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                {(() => {
+                                  const statusInfo = getOnlineStatusForEmployeeDisplay(record);
+                                  if (statusInfo.showAbsent) {
+                                    return (
+                                      <Badge variant="destructive" className="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-0.5">
+                                        Absent
+                                      </Badge>
+                                    );
+                                  } else if (statusInfo.label === 'Checked Out') {
+                                    return <span className="text-xs text-muted-foreground">Checked Out</span>;
+                                  } else {
+                                    return (
+                                      <OnlineStatusIndicator
+                                        isOnline={statusInfo.isOnline}
+                                        size="sm"
+                                        showLabel={true}
+                                      />
+                                    );
+                                  }
+                                })()}
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                <div className="flex items-center gap-1.5">
+                                  <Clock className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                                  <span className="text-xs font-semibold text-slate-900 dark:text-white">{formatAttendanceTime(record.date, record.checkInTime)}</span>
                                 </div>
-                              ) : (
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                                  <div className="h-2 w-2 rounded-sm bg-blue-500"></div>
-                                  <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                                    Work from Office
-                                  </span>
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                <div className="flex items-center gap-1.5">
+                                  <Clock className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+                                  <span className="text-xs font-semibold text-slate-900 dark:text-white">{formatAttendanceTime(record.date, record.checkOutTime)}</span>
                                 </div>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {!record.checkOutTime ? (
-                                <OnlineStatusIndicator
-                                  isOnline={onlineStatusMap[parseInt(record.userId)] ?? true}
-                                  size="md"
-                                  showLabel={true}
-                                />
-                              ) : (
-                                <span className="text-xs text-muted-foreground">Checked Out</span>
-                              )}
-                            </TableCell>
-                            <TableCell>{formatAttendanceTime(record.date, record.checkInTime)}</TableCell>
-                            <TableCell>{formatAttendanceTime(record.date, record.checkOutTime)}</TableCell>
-                            <TableCell>{record.workHours ? formatWorkHours(record.workHours) : '-'}</TableCell>
-                            <TableCell>
-                              {record.checkInLocation?.address && record.checkInLocation.address !== 'N/A' ? (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedLocation({
-                                      checkIn: record.checkInLocation?.address,
-                                      checkOut: record.checkOutLocation?.address
-                                    });
-                                    setShowLocationDialog(true);
-                                  }}
-                                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-8 px-2"
-                                >
-                                  <MapPin className="h-4 w-4 mr-1" />
-                                  View
-                                </Button>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {record.checkInSelfie ? (
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                {record.workHours ? (
+                                  <span className="text-xs font-semibold text-slate-900 dark:text-white">{formatWorkHours(record.workHours)}</span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">-</span>
+                                )}
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                {record.checkInLocation?.address && record.checkInLocation.address !== 'N/A' ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedLocation({
+                                        checkIn: record.checkInLocation?.address,
+                                        checkOut: record.checkOutLocation?.address
+                                      });
+                                      setShowLocationDialog(true);
+                                    }}
+                                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-7 px-2 text-xs"
+                                  >
+                                    <MapPin className="h-3 w-3 mr-1" />
+                                    View
+                                  </Button>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">-</span>
+                                )}
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
                                 <div
-                                  className="h-10 w-10 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity"
+                                  className="h-8 w-8 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity mx-auto"
                                   onClick={() => {
                                     setSelectedRecord(record);
                                     setShowSelfieModal(true);
                                   }}
                                 >
-                                  <img
-                                    src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${record.checkInSelfie}`}
-                                    alt="Selfie"
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      (e.currentTarget as HTMLImageElement).style.display = 'none';
-                                    }}
-                                  />
+                                  {record.checkInSelfie ? (
+                                    <img
+                                      src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${record.checkInSelfie}`}
+                                      alt={`${record.name || 'Employee'}'s selfie`}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        const target = e.currentTarget as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        const fallback = document.createElement('div');
+                                        fallback.className = 'w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center';
+                                        fallback.innerHTML = '<svg class="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>';
+                                        target.parentNode?.appendChild(fallback);
+                                      }}
+                                    />
+                                  ) : null}
+                                  {!record.checkInSelfie && (
+                                    <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                      <User className="h-4 w-4 text-gray-400" />
+                                    </div>
+                                  )}
                                 </div>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
-                            </TableCell>
-                            <TableCell className="text-sm max-w-[160px]">
-                              {record.workSummary ? (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedWorkSummary(record.workSummary || '');
-                                    setShowWorkSummaryDialog(true);
-                                  }}
-                                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-8 px-2"
-                                >
-                                  <FileText className="h-4 w-4 mr-1" />
-                                  View
-                                </Button>
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {record.workReport ? (
-                                <a
-                                  href={record.workReport}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sm text-blue-600 hover:underline"
-                                >
-                                  View
-                                </a>
-                              ) : (
-                                <span className="text-muted-foreground text-sm">—</span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                <div className="flex justify-center">
+                                  {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
+                                </div>
+                              </td>
+                              <td className="p-3 text-xs text-muted-foreground" style={{ width: '280px', maxWidth: '280px', minWidth: '280px' }}>
+                                {record.workSummary ? (
+                                  <button
+                                    type="button"
+                                    className="text-left hover:text-blue-600 block w-full text-xs leading-relaxed"
+                                    onClick={() => {
+                                      setSelectedWorkSummary(record.workSummary || '');
+                                      setShowWorkSummaryDialog(true);
+                                    }}
+                                    title={record.workSummary}
+                                    style={{ 
+                                      wordBreak: 'break-word', 
+                                      overflowWrap: 'break-word',
+                                      display: 'block',
+                                      textAlign: 'left'
+                                    }}
+                                  >
+                                    <span style={{ 
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: 'vertical',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis'
+                                    }}>
+                                      {record.workSummary}
+                                    </span>
+                                    {record.workSummary.length > 60 && (
+                                      <span className="text-blue-600 font-medium mt-1 block">View more...</span>
+                                    )}
+                                  </button>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                {record.workReport ? (
+                                  <a
+                                    href={record.workReport}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-600 hover:underline"
+                                  >
+                                    {t.attendance.viewReport || 'View'}
+                                  </a>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))
                       ) : (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center text-muted-foreground">
-                            No records found for selected date
-                          </TableCell>
-                        </TableRow>
+                        <tr>
+                          <td colSpan={12} className="h-64 text-center p-8">
+                            <div className="flex flex-col items-center justify-center space-y-3">
+                              <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                <Search className="h-8 w-8 text-slate-400" />
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-lg font-semibold text-slate-900 dark:text-white">No records found</p>
+                                <p className="text-sm text-muted-foreground">Try adjusting your filters or date range</p>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </TableBody>
-                  </Table>
+                    </tbody>
+                  </table>
                 </div>
               </div>
+
+              {filteredEmployeeAttendanceData.length > itemsPerPage && (
+                <div className="mt-4">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={Math.ceil(filteredEmployeeAttendanceData.length / itemsPerPage)}
+                    totalItems={filteredEmployeeAttendanceData.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                    showItemsPerPage={false}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         </>

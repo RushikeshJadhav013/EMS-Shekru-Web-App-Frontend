@@ -51,7 +51,8 @@ import {
   FileText,
   Timer,
   Pencil,
-  Trash2
+  Trash2,
+  ChevronRight
 } from 'lucide-react';
 
 interface LeaveRequest {
@@ -59,6 +60,7 @@ interface LeaveRequest {
   employeeId: string;
   employeeName: string;
   department: string;
+  role?: string;
   type: 'annual' | 'sick' | 'casual' | 'maternity' | 'paternity' | 'unpaid';
   startDate: Date;
   endDate: Date;
@@ -394,9 +396,19 @@ export default function LeaveManagement() {
   }, [weekOffForm.department, weekOffForm.days.length, weekOffConfig]);
 
   const userWeekOffDays = useMemo(() => {
+    // For management profiles, show all types of week offs from all departments
+    if (['admin', 'hr', 'manager', 'team_lead'].includes(user?.role || '')) {
+      const allDays = new Set<string>();
+      Object.values(weekOffConfig).forEach(days => {
+        days.forEach(d => allDays.add(d.toLowerCase()));
+      });
+      return Array.from(allDays);
+    }
+
+    // For regular employees, show only their department's week offs
     if (!user?.department) return [];
     return weekOffConfig[user.department] || [];
-  }, [user?.department, weekOffConfig]);
+  }, [user?.department, user?.role, weekOffConfig]);
 
   const canApproveLeaves = ['admin', 'hr', 'manager'].includes(user?.role || '');
   const canViewTeamLeaves = ['team_lead'].includes(user?.role || '');
@@ -575,6 +587,7 @@ export default function LeaveManagement() {
             employeeId: String(req.user_id),
             employeeName: req.name || req.employee_id,
             department: req.department || '',
+            role: req.role,
             type: (req.leave_type || 'annual').toLowerCase() as LeaveRequest['type'],
             startDate: new Date(req.start_date),
             endDate: new Date(req.end_date),
@@ -597,6 +610,7 @@ export default function LeaveManagement() {
             employeeId: String(req.user_id),
             employeeName: req.name || req.employee_id,
             department: req.department || '',
+            role: req.role,
             type: (req.leave_type || 'annual').toLowerCase() as LeaveRequest['type'],
             startDate: new Date(req.start_date),
             endDate: new Date(req.end_date),
@@ -2010,110 +2024,208 @@ export default function LeaveManagement() {
                 </div>
               )}
               {/* Calendar with holidays highlighted */}
-              <div className="flex justify-center">
-                <CalendarWithSelect
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDayClick}
-                  currentMonth={displayedMonth}
-                  onMonthChange={setDisplayedMonth}
-                  className="rounded-xl border-2 shadow-lg p-4 bg-white dark:bg-gray-950"
-                  modifiers={{
-                    holiday: holidays.map(h => h.date),
-                    weekOff: (date) =>
-                      userWeekOffDays.some(
-                        (day) => weekDayIndexMap[day.toLowerCase()] === date.getDay(),
-                      ),
-                  }}
-                  modifiersClassNames={{
-                    holiday:
-                      'bg-gradient-to-br from-red-500 to-rose-600 text-white font-bold hover:from-red-600 hover:to-rose-700 transition-all duration-300 shadow-lg cursor-pointer ring-2 ring-red-300 dark:ring-red-700',
-                    weekOff:
-                      'border border-sky-400 text-sky-600 font-semibold bg-sky-50 hover:bg-sky-100',
-                  }}
-                  footer={
-                    (() => {
-                      // Filter holidays for the currently displayed month
-                      const displayedYear = displayedMonth.getFullYear();
-                      const displayedMonthIndex = displayedMonth.getMonth();
-                      const monthHolidays = holidays.filter(h =>
-                        h.date.getFullYear() === displayedYear &&
-                        h.date.getMonth() === displayedMonthIndex
-                      );
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+                {/* Left Column: Calendar */}
+                <div className="xl:col-span-5 space-y-6">
+                  <div className="relative group p-4 rounded-3xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 shadow-2xl shadow-indigo-100 dark:shadow-none transition-all duration-300">
+                    {/* Decorative Background Blobs */}
+                    <div className="absolute top-0 left-0 -mt-4 -ml-4 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors" />
+                    <div className="absolute bottom-0 right-0 -mb-4 -mr-4 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-colors" />
 
-                      // Filter week-offs based on role: Admin/HR see all, others see only their own department
-                      const visibleWeekOffs = Object.entries(weekOffConfig).filter(([dept]) => {
-                        if (['admin', 'hr'].includes(user?.role || '')) return true;
-                        return dept === user?.department;
-                      });
+                    <div className="relative">
+                      <CalendarWithSelect
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={handleDayClick}
+                        currentMonth={displayedMonth}
+                        onMonthChange={setDisplayedMonth}
+                        className="rounded-2xl bg-transparent"
+                        modifiers={{
+                          holiday: holidays.map(h => h.date),
+                          weekOff: (date) =>
+                            userWeekOffDays.some(
+                              (day) => weekDayIndexMap[day.toLowerCase()] === date.getDay(),
+                            ),
+                          leave: leaveRequests
+                            .filter(r => r.status === 'approved')
+                            .reduce((acc: Date[], r) => {
+                              const start = new Date(r.startDate);
+                              const end = new Date(r.endDate);
+                              const curr = new Date(start);
+                              while (curr <= end) {
+                                acc.push(new Date(curr));
+                                curr.setDate(curr.getDate() + 1);
+                              }
+                              return acc;
+                            }, []),
+                        }}
+                        modifiersClassNames={{
+                          holiday:
+                            'bg-gradient-to-br from-rose-500 to-red-600 text-white font-bold hover:scale-110 hover:rotate-3 transition-all duration-300 shadow-md cursor-pointer ring-2 ring-red-200 dark:ring-red-900',
+                          weekOff:
+                            'border-2 border-dashed border-sky-400 text-sky-600 font-bold bg-sky-50/50 hover:bg-sky-100 dark:bg-sky-900/10 dark:text-sky-400 transition-colors',
+                          leave:
+                            'bg-indigo-100 text-indigo-700 font-semibold border-2 border-indigo-200 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800',
+                        }}
+                      />
+                    </div>
+                  </div>
 
-                      return (
-                        <div className="mt-4 p-4 bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 rounded-lg">
-                          <h4 className="font-semibold mb-3 flex items-center gap-2">
-                            <CalendarIcon className="h-5 w-5 text-red-600" />
-                            Holidays in {format(displayedMonth, 'MMMM yyyy')}:
-                          </h4>
-                          {monthHolidays.length === 0 ? (
-                            <p className="text-sm text-muted-foreground italic">No holidays in this month</p>
-                          ) : (
-                            <ul className="space-y-2">
-                              {monthHolidays.map(h => (
-                                <li
-                                  key={h.date.toISOString()}
-                                  className="text-sm flex items-start gap-2 p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                                  onClick={() => {
-                                    setSelectedHoliday(h);
-                                    setIsHolidayDialogOpen(true);
-                                  }}
-                                >
-                                  <span className="h-3 w-3 mt-0.5 rounded-full bg-gradient-to-r from-red-500 to-rose-600 shadow-sm flex-shrink-0"></span>
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="font-semibold text-slate-800 dark:text-slate-200">{h.name}</span>
-                                      <span className="text-xs text-muted-foreground">({format(h.date, 'MMM dd, yyyy')})</span>
-                                    </div>
-                                    {h.description && (
-                                      <p className="text-xs text-muted-foreground mt-0.5">{h.description}</p>
-                                    )}
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                          {visibleWeekOffs.length > 0 && (
-                            <div className="mt-4">
-                              <h4 className="font-semibold mb-2 flex items-center gap-2">
-                                <Clock className="h-4 w-4 text-sky-600" />
-                                Department Week-offs:
-                              </h4>
-                              <ul className="space-y-1">
-                                {visibleWeekOffs.map(([dept, days]) => (
-                                  <li key={`weekoff-${dept}`} className="text-sm flex items-center gap-2">
-                                    <span className="h-2 w-2 rounded-full bg-sky-400" />
-                                    <span className="font-medium">{dept}</span>
-                                    <span className="text-muted-foreground">
-                                      {days.map((day) => weekDayLabels[day] || day).join(', ')}
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
+                  {/* Enhanced Legend Card */}
+                  <Card className="rounded-2xl border-0 shadow-lg bg-white dark:bg-slate-900 overflow-hidden">
+                    <CardHeader className="pb-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/30">
+                      <CardTitle className="text-sm font-bold flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-blue-500" />
+                        Color Guide
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-4 space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-4 w-4 rounded bg-gradient-to-br from-rose-500 to-red-600 shadow-sm" />
+                        <span className="text-sm font-medium">Company Holidays</span>
+                        <div className="flex-1 border-t border-dashed border-slate-200 dark:border-slate-800 mx-2" />
+                        <span className="text-xs text-muted-foreground">Off Work</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="h-4 w-4 rounded border-2 border-dashed border-sky-400 bg-sky-50 dark:bg-sky-900/10" />
+                        <span className="text-sm font-medium">Weekly-Off Days</span>
+                        <div className="flex-1 border-t border-dashed border-slate-200 dark:border-slate-800 mx-2" />
+                        <span className="text-xs text-muted-foreground">Department</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="h-4 w-4 rounded bg-indigo-100 border border-indigo-200 dark:bg-indigo-900/30" />
+                        <span className="text-sm font-medium">Your Approved Leaves</span>
+                        <div className="flex-1 border-t border-dashed border-slate-200 dark:border-slate-800 mx-2" />
+                        <span className="text-xs text-muted-foreground">Private</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Right Column: Month Details & Statistics */}
+                <div className="xl:col-span-7 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Month Statistics Header */}
+                    <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-xl shadow-indigo-100 dark:shadow-none flex flex-col justify-between h-full">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
+                          <CalendarIcon className="h-6 w-6 text-white" />
                         </div>
-                      );
-                    })()
-                  }
-                />
+                        <Badge className="bg-white/20 hover:bg-white/30 border-0 text-white font-bold backdrop-blur-md">
+                          {format(displayedMonth, 'yyyy')}
+                        </Badge>
+                      </div>
+                      <div>
+                        <h3 className="text-3xl font-black tracking-tight">{format(displayedMonth, 'MMMM')}</h3>
+                        <p className="text-white/80 text-sm font-medium mt-1">Month overview and holidays</p>
+                      </div>
+                    </div>
+
+                    {/* Quick Stats Grid */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 rounded-3xl bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-800/50 flex flex-col justify-center items-center text-center group hover:scale-[1.05] transition-transform">
+                        <div className="text-3xl font-black text-rose-600 dark:text-rose-400 mb-1">
+                          {holidays.filter(h => h.date.getMonth() === displayedMonth.getMonth()).length}
+                        </div>
+                        <div className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Holidays</div>
+                      </div>
+                      <div className="p-4 rounded-3xl bg-sky-50 dark:bg-sky-900/10 border border-sky-100 dark:border-sky-800/50 flex flex-col justify-center items-center text-center group hover:scale-[1.05] transition-transform">
+                        <div className="text-3xl font-black text-sky-600 dark:text-sky-400 mb-1">
+                          {userWeekOffDays.length}
+                        </div>
+                        <div className="text-[10px] font-bold text-sky-500 uppercase tracking-widest">Off Days</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Detailed Holiday List */}
+                  <Card className="rounded-3xl border-0 shadow-xl bg-white dark:bg-slate-900 overflow-hidden">
+                    <CardHeader className="pb-4 border-b border-slate-50 dark:border-slate-800">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg font-bold flex items-center gap-2">
+                          <CalendarIcon className="h-5 w-5 text-red-500" />
+                          Upcoming Festivals & Holidays
+                        </CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      {(() => {
+                        const monthHolidays = holidays.filter(h =>
+                          h.date.getFullYear() === displayedMonth.getFullYear() &&
+                          h.date.getMonth() === displayedMonth.getMonth()
+                        ).sort((a, b) => a.date.getTime() - b.date.getTime());
+
+                        if (monthHolidays.length === 0) {
+                          return (
+                            <div className="flex flex-col items-center justify-center py-12 text-center">
+                              <div className="h-20 w-20 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center mb-4">
+                                <CalendarIcon className="h-10 w-10 text-slate-300 dark:text-slate-600" />
+                              </div>
+                              <p className="text-slate-500 font-medium">No company holidays scheduled for this month</p>
+                              <p className="text-xs text-slate-400 mt-1">Check back later for updates</p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="grid gap-4">
+                            {monthHolidays.map(h => (
+                              <div
+                                key={h.date.toISOString()}
+                                className="group relative flex items-center gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-red-200 dark:hover:border-red-900 hover:bg-red-50/50 dark:hover:bg-red-900/10 transition-all duration-300 cursor-pointer"
+                                onClick={() => {
+                                  setSelectedHoliday(h);
+                                  setIsHolidayDialogOpen(true);
+                                }}
+                              >
+                                <div className="flex flex-col items-center justify-center h-16 w-16 rounded-xl bg-white dark:bg-slate-800 border-2 border-red-100 dark:border-red-900 shadow-sm group-hover:scale-110 transition-transform">
+                                  <span className="text-[10px] font-bold text-red-500 uppercase">{format(h.date, 'MMM')}</span>
+                                  <span className="text-2xl font-black text-slate-800 dark:text-white leading-none">{format(h.date, 'dd')}</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-red-600 transition-colors truncate">
+                                    {h.name}
+                                  </h4>
+                                  <p className="text-xs text-muted-foreground mt-0.5 font-medium flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {format(h.date, 'EEEE')}
+                                  </p>
+                                  {h.description && (
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">{h.description}</p>
+                                  )}
+                                </div>
+                                <Button size="icon" variant="ghost" className="rounded-full h-8 w-8 hover:bg-white dark:hover:bg-slate-800">
+                                  <ChevronRight className="h-4 w-4 text-slate-400" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </CardContent>
+                  </Card>
+
+                  {/* Week-off Visibility for Management */}
+                  {userWeekOffDays.length > 0 && (
+                    <div className="p-5 rounded-3xl bg-gradient-to-r from-slate-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950 border border-indigo-100 dark:border-indigo-900 flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-2xl bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm">
+                        <Clock className="h-6 w-6 text-sky-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Weekly-Off Reminder</p>
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                          {user?.role === 'employee' ? (
+                            <>Your department ({user?.department}) enjoys off on <span className="font-bold text-sky-600">{userWeekOffDays.map(d => weekDayLabels[d.toLowerCase()] || d).join(', ')}</span></>
+                          ) : (
+                            <>Management View: Showing all active department week-offs across the center</>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              {userWeekOffDays.length > 0 && (
-                <p className="mt-4 text-sm text-muted-foreground text-center">
-                  Your department ({user?.department || 'N/A'}) enjoys weekly off on{' '}
-                  <span className="font-medium text-sky-600">
-                    {userWeekOffDays.map((day) => weekDayLabels[day.toLowerCase()] || day).join(', ')}
-                  </span>
-                  .
-                </p>
-              )}
+
             </CardContent>
           </Card>
         </TabsContent>
@@ -2144,6 +2256,11 @@ export default function LeaveManagement() {
                             <div className="flex items-center gap-2 flex-wrap">
                               <User className="h-4 w-4" />
                               <span className="font-medium">{request.employeeName}</span>
+                              {request.role && (
+                                <Badge variant="outline" className="text-[10px] uppercase font-bold text-slate-500 border-slate-300">
+                                  {request.role}
+                                </Badge>
+                              )}
                               <Badge className={getLeaveTypeColor(request.type)}>
                                 {request.type}
                               </Badge>
@@ -2283,6 +2400,11 @@ export default function LeaveManagement() {
                               <div className="text-sm flex-1">
                                 <div className="flex items-center gap-2 mb-1">
                                   <span className="font-medium">{request.employeeName}</span>
+                                  {request.role && (
+                                    <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                                      {request.role}
+                                    </span>
+                                  )}
                                   <Badge className={`${getLeaveTypeColor(request.type)} text-xs`}>
                                     {request.type}
                                   </Badge>

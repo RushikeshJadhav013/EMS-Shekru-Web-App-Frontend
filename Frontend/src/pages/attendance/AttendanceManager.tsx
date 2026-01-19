@@ -13,7 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar, Clock, MapPin, Search, Filter, Download, AlertCircle, CheckCircle, Users, X, User, Settings, LogOut, AlertTriangle, CheckCircle2, Timer, FileSpreadsheet, FileText, Home, Send, History } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AttendanceRecord } from '@/types';
-import { format, subMonths, subDays } from 'date-fns';
+import { format, subMonths, subDays, isAfter } from 'date-fns';
+import { Pagination } from '@/components/ui/pagination';
 import { formatIST, formatDateTimeIST, formatTimeIST, formatDateIST, todayIST, formatDateTimeComponentsIST, parseToIST, nowIST } from '@/utils/timezone';
 import { DatePicker } from '@/components/ui/date-picker';
 import OnlineStatusIndicator from '@/components/attendance/OnlineStatusIndicator';
@@ -89,6 +90,11 @@ const AttendanceManager: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterDate, setFilterDate] = useState(todayIST());
   const [selectedDate, setSelectedDate] = useState<Date>(nowIST());
+  const [timePeriodFilter, setTimePeriodFilter] = useState<'today' | 'current_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_12_months' | 'custom'>('current_month');
+  const [customStartDate, setCustomStartDate] = useState<Date>(subDays(nowIST(), 7));
+  const [customEndDate, setCustomEndDate] = useState<Date>(nowIST());
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [isExporting, setIsExporting] = useState(false);
   const [summary, setSummary] = useState<{ total_employees: number; present_today: number; late_arrivals: number; early_departures: number; absent_today: number }>({ total_employees: 0, present_today: 0, late_arrivals: 0, early_departures: 0, absent_today: 0 });
 
@@ -106,6 +112,7 @@ const AttendanceManager: React.FC = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<{ user_id: number; employee_id: string; name: string; department?: string | null } | null>(null);
   const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState<string>('');
   const [departments, setDepartments] = useState<string[]>([]);
+  const [coreDepartments, setCoreDepartments] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'attendance' | 'office-hours' | 'wfh-requests'>('attendance');
   const [officeTimings, setOfficeTimings] = useState<OfficeTiming[]>([]);
   const [officeFormLoading, setOfficeFormLoading] = useState(false);
@@ -134,10 +141,166 @@ const AttendanceManager: React.FC = () => {
 
   // Ref for scrolling to department form when editing
   const departmentFormRef = useRef<HTMLDivElement>(null);
+  const timePickerRefs = {
+    globalStart: useRef<HTMLDivElement>(null),
+    globalEnd: useRef<HTMLDivElement>(null),
+    deptStart: useRef<HTMLDivElement>(null),
+    deptEnd: useRef<HTMLDivElement>(null),
+  };
+  const [openTimePicker, setOpenTimePicker] = useState<'globalStart' | 'globalEnd' | 'deptStart' | 'deptEnd' | null>(null);
+  const HOURS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+  const MINUTES = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!openTimePicker) return;
+      const targets = Object.values(timePickerRefs);
+      const clickedInside = targets.some((ref) => ref.current && ref.current.contains(event.target as Node));
+      if (!clickedInside) {
+        setOpenTimePicker(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openTimePicker]);
+
+  const parseTimeValue = (value: string) => {
+    if (!value) return { hour12: '10', minute: '00', meridiem: 'AM' };
+    const [h, m] = value.split(':');
+    const hour = Math.max(0, Math.min(23, Number(h) || 0));
+    const minute = Math.max(0, Math.min(59, Number(m) || 0));
+    const meridiem = hour >= 12 ? 'PM' : 'AM';
+    let hour12 = hour % 12;
+    if (hour12 === 0) hour12 = 12;
+    return {
+      hour12: hour12.toString().padStart(2, '0'),
+      minute: minute.toString().padStart(2, '0'),
+      meridiem,
+    };
+  };
+
+  const to24Hour = (hour12: string, minute: string, meridiem: 'AM' | 'PM') => {
+    let h = Number(hour12) % 12;
+    if (meridiem === 'PM') h += 12;
+    const m = Number(minute) % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  };
+
+  const handleTimeSelect = (
+    field: 'globalStart' | 'globalEnd' | 'deptStart' | 'deptEnd',
+    hour12: string,
+    minute: string,
+    meridiem: 'AM' | 'PM',
+  ) => {
+    const value = to24Hour(hour12, minute, meridiem);
+    if (field === 'globalStart') {
+      setGlobalTimingForm((prev) => ({ ...prev, startTime: value }));
+    } else if (field === 'globalEnd') {
+      setGlobalTimingForm((prev) => ({ ...prev, endTime: value }));
+    } else if (field === 'deptStart') {
+      setDepartmentTimingForm((prev) => ({ ...prev, startTime: value }));
+    } else if (field === 'deptEnd') {
+      setDepartmentTimingForm((prev) => ({ ...prev, endTime: value }));
+    }
+    setOpenTimePicker(null);
+  };
+
+  const TimePickerDropdown = ({
+    field,
+    value,
+    accent,
+  }: {
+    field: 'globalStart' | 'globalEnd' | 'deptStart' | 'deptEnd';
+    value: string;
+    accent: 'blue' | 'purple';
+  }) => {
+    const { hour12, minute, meridiem } = parseTimeValue(value);
+    const accentBase = accent === 'blue' ? 'text-blue-600 border-blue-200 bg-blue-50' : 'text-purple-600 border-purple-200 bg-purple-50';
+    const accentHover = accent === 'blue' ? 'hover:border-blue-300 hover:bg-blue-100' : 'hover:border-purple-300 hover:bg-purple-100';
+
+    return (
+      <div
+        ref={timePickerRefs[field]}
+        className="absolute left-0 top-full z-50 mt-2 w-72 rounded-2xl border border-slate-200/90 bg-white shadow-xl ring-1 ring-black/5"
+      >
+        <div className="flex gap-3 p-4 text-sm">
+          <div className="w-20 space-y-2">
+            <p className="font-medium text-slate-600">Hour</p>
+            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
+              {HOURS.map((h) => {
+                const active = h === hour12;
+                return (
+                  <button
+                    key={`${field}-h-${h}`}
+                    type="button"
+                    onClick={() => handleTimeSelect(field, h, minute, meridiem as 'AM' | 'PM')}
+                    className={`w-full rounded-lg border px-3 py-2 text-sm transition-colors text-left ${active ? accentBase : 'border-slate-200 text-slate-700'} ${accentHover}`}
+                  >
+                    {h}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="w-20 space-y-2">
+            <p className="font-medium text-slate-600">Minute</p>
+            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
+              {MINUTES.map((m) => {
+                const active = m === minute;
+                return (
+                  <button
+                    key={`${field}-m-${m}`}
+                    type="button"
+                    onClick={() => handleTimeSelect(field, hour12, m, meridiem as 'AM' | 'PM')}
+                    className={`w-full rounded-lg border px-3 py-2 text-sm transition-colors text-left ${active ? accentBase : 'border-slate-200 text-slate-700'} ${accentHover}`}
+                  >
+                    {m}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="w-20 space-y-2">
+            <p className="font-medium text-slate-600">AM/PM</p>
+            <div className="flex flex-col gap-2">
+              {(['AM', 'PM'] as const).map((mer) => {
+                const active = mer === meridiem;
+                return (
+                  <button
+                    key={`${field}-mer-${mer}`}
+                    type="button"
+                    onClick={() => handleTimeSelect(field, hour12, minute, mer)}
+                    className={`w-full rounded-lg border px-3 py-2.5 text-sm transition-colors text-center ${active ? accentBase : 'border-slate-200 text-slate-700'} ${accentHover}`}
+                  >
+                    {mer}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
     return token ? { Authorization: token } : {};
+  };
+
+  const loadCoreDepartments = async () => {
+    try {
+      const items = await apiService.getDepartmentNames();
+      const names = items
+        .map((d) => d?.name)
+        .filter((name): name is string => Boolean(name && name.trim()))
+        .map((name) => name.trim());
+      setCoreDepartments(Array.from(new Set(names)).sort((a, b) => a.localeCompare(b)));
+    } catch (err) {
+      console.error('loadCoreDepartments error', err);
+      // Non-blocking: department timing can still be used as custom input
+      setCoreDepartments([]);
+    }
   };
 
   const fetchAllOnlineStatus = async () => {
@@ -169,10 +332,93 @@ const AttendanceManager: React.FC = () => {
     return `https://staffly.space${normalized}`;
   };
 
+  // Helper function to determine if employee should show as absent
+  const shouldShowAsAbsent = (record: EmployeeAttendance): boolean => {
+    const today = todayIST();
+    const recordDate = record.date;
+    const checkInTime = record.checkInTime;
+    const checkOutTime = record.checkOutTime;
+
+    // If no check-in time, show as absent
+    if (!checkInTime) {
+      return true;
+    }
+
+    // If record date is today
+    if (recordDate === today) {
+      // If checked out, not absent
+      if (checkOutTime) {
+        return false;
+      }
+      // If not checked out but has check-in, show online status (not absent)
+      return false;
+    }
+
+    // If record date is before today (past date)
+    const recordDateObj = new Date(recordDate);
+    const todayDateObj = new Date(today);
+    
+    if (recordDateObj < todayDateObj) {
+      // If checkout was forgotten (no checkout and it's a past date), show as absent
+      if (!checkOutTime) {
+        return true; // Forgotten checkout - show as absent
+      }
+      // If checked out on past date, not absent (already completed)
+      return false;
+    }
+
+    // Future date (shouldn't happen, but handle it)
+    return false;
+  };
+
+  // Helper function to get online status for display
+  const getOnlineStatusForDisplay = (record: EmployeeAttendance): { isOnline: boolean; label: string; showAbsent: boolean } => {
+    const today = todayIST();
+    const recordDate = record.date;
+    const checkInTime = record.checkInTime;
+    const checkOutTime = record.checkOutTime;
+
+    // If no check-in, show as absent
+    if (!checkInTime) {
+      return { isOnline: false, label: 'Absent', showAbsent: true };
+    }
+
+    // If record date is today
+    if (recordDate === today) {
+      if (checkOutTime) {
+        // Checked out today - show as checked out
+        return { isOnline: false, label: 'Checked Out', showAbsent: false };
+      } else {
+        // Not checked out - show online status from map
+        const isOnline = onlineStatusMap[parseInt(record.userId)] ?? true;
+        return { isOnline, label: isOnline ? 'Online' : 'Offline', showAbsent: false };
+      }
+    }
+
+    // If record date is before today (past date)
+    const recordDateObj = new Date(recordDate);
+    const todayDateObj = new Date(today);
+    
+    if (recordDateObj < todayDateObj) {
+      if (!checkOutTime) {
+        // Forgotten checkout - show as absent
+        return { isOnline: false, label: 'Absent', showAbsent: true };
+      } else {
+        // Checked out on past date - show as checked out
+        return { isOnline: false, label: 'Checked Out', showAbsent: false };
+      }
+    }
+
+    // Default: show online status
+    const isOnline = onlineStatusMap[parseInt(record.userId)] ?? false;
+    return { isOnline, label: isOnline ? 'Online' : 'Offline', showAbsent: false };
+  };
+
   useEffect(() => {
     loadAllAttendance();
     fetchSummary();
     loadEmployees();
+    loadCoreDepartments();
     fetchAllOnlineStatus();
 
     // Fetch online status every 15 seconds
@@ -204,6 +450,14 @@ const AttendanceManager: React.FC = () => {
         clearInterval(dataInterval);
         clearInterval(renderInterval);
       };
+    }
+  }, [activeTab, isAdmin]);
+
+  // Refresh office hours data and department list whenever the admin opens the tab.
+  useEffect(() => {
+    if (activeTab === 'office-hours' && isAdmin) {
+      loadOfficeTimings();
+      loadCoreDepartments();
     }
   }, [activeTab, isAdmin]);
 
@@ -253,14 +507,80 @@ const AttendanceManager: React.FC = () => {
       if (!res.ok) throw new Error(`Failed to load employees: ${res.status}`);
       let data = await res.json();
 
-      // Enforce strict visibility validation for Managers
-      // Filter employees to only show those in the same department or self
+      // Enforce strict visibility validation for Managers based on role hierarchy and department
       if (user?.role === 'manager' && user?.department) {
+        const managerId = String(user.id);
         const normalizedDept = user.department.trim().toLowerCase();
-        data = data.filter((emp: any) => {
+
+        // Step 1: Find all Team Leads reporting to this Manager (within same department)
+        const teamLeadIds = new Set<string>();
+        data.forEach((emp: any) => {
+          const uId = String(emp.user_id || emp.userId || emp.id);
+          const role = (emp.role || '').toLowerCase();
           const empDept = (emp.department || emp.department_name || '').trim().toLowerCase();
-          // Allow if department matches OR if it's the manager themselves OR if reporting manager is the user
-          return empDept === normalizedDept || String(emp.user_id || emp.userId || emp.id) === String(user.id) || String(emp.manager_id) === String(user.id);
+          const managerIdForEmp = emp.manager_id ? String(emp.manager_id) : null;
+          
+          // Team Lead reporting to this Manager in same department
+          if (role === 'team_lead' && empDept === normalizedDept && managerIdForEmp === managerId) {
+            teamLeadIds.add(uId);
+          }
+        });
+
+        // Step 2: Find all Employees reporting to those Team Leads (within same department)
+        const allowedEmployeeIds = new Set<string>();
+        data.forEach((emp: any) => {
+          const uId = String(emp.user_id || emp.userId || emp.id);
+          const role = (emp.role || '').toLowerCase();
+          const empDept = (emp.department || emp.department_name || '').trim().toLowerCase();
+          const teamLeadIdForEmp = emp.team_lead_id || emp.teamLeadId ? String(emp.team_lead_id || emp.teamLeadId) : null;
+          
+          // Employee reporting to a Team Lead that reports to this Manager, in same department
+          if (role === 'employee' && empDept === normalizedDept && teamLeadIdForEmp && teamLeadIds.has(teamLeadIdForEmp)) {
+            allowedEmployeeIds.add(uId);
+          }
+        });
+
+        // Step 3: Filter employees based on allowed users
+        data = data.filter((emp: any) => {
+          const uId = String(emp.user_id || emp.userId || emp.id);
+          const empDept = (emp.department || emp.department_name || '').trim().toLowerCase();
+          const role = (emp.role || '').toLowerCase();
+
+          // 1. Always allow Self (Manager)
+          if (uId === managerId) return true;
+
+          // 2. Department must match (mandatory)
+          if (empDept !== normalizedDept) return false;
+
+          // 3. Check if user is in allowed set (Team Lead or Employee in reporting chain)
+          if (teamLeadIds.has(uId)) return true; // Team Lead reporting to Manager
+          if (allowedEmployeeIds.has(uId)) return true; // Employee reporting to Team Lead
+
+          // 4. Explicitly exclude other roles
+          if (role === 'admin' || role === 'hr' || role === 'manager') {
+            return false;
+          }
+
+          // 5. Exclude Team Leads not reporting to this Manager
+          if (role === 'team_lead' && !teamLeadIds.has(uId)) {
+            return false;
+          }
+
+          // 6. Exclude Employees not reporting to allowed Team Leads
+          if (role === 'employee' && !allowedEmployeeIds.has(uId)) {
+            return false;
+          }
+
+          // Default: exclude unknown users
+          return false;
+        });
+
+        console.log('Manager employee filtering:', {
+          managerId,
+          department: normalizedDept,
+          teamLeadIds: Array.from(teamLeadIds),
+          allowedEmployeeIds: Array.from(allowedEmployeeIds),
+          filteredEmployeesCount: data.length
         });
       }
 
@@ -311,13 +631,8 @@ const AttendanceManager: React.FC = () => {
       const timingDepartments = data
         .map((entry) => entry.department)
         .filter((dept): dept is string => Boolean(dept && dept.trim()));
-      if (timingDepartments.length) {
-        setDepartments((prev) => {
-          const merged = new Set(prev);
-          timingDepartments.forEach((dept) => merged.add(dept));
-          return Array.from(merged).sort((a, b) => a.localeCompare(b));
-        });
-      }
+      // Intentionally do not merge timing departments into the main `departments` list.
+      // The "Department Timing" UI uses `coreDepartments` (from /departments/names) to avoid messy/combined strings.
     } catch (error) {
       console.error('loadOfficeTimings error', error);
       toast({
@@ -493,7 +808,11 @@ const AttendanceManager: React.FC = () => {
 
   useEffect(() => {
     filterRecords();
-  }, [searchTerm, filterStatus, filterDate, attendanceRecords]);
+  }, [searchTerm, filterStatus, timePeriodFilter, customStartDate, customEndDate, attendanceRecords]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, timePeriodFilter, customStartDate, customEndDate]);
 
   const loadAllAttendance = (targetDate?: string) => {
     // Fetch today's attendance from backend
@@ -507,14 +826,15 @@ const AttendanceManager: React.FC = () => {
 
         let query = targetDate ? `?date=${encodeURIComponent(targetDate)}` : '';
 
-        // Enforce backend-level filtering for Managers (Department Scope)
+        // Enforce backend-level filtering for Managers (Department Scope + Manager ID)
         if (user?.role === 'manager' && user?.department) {
           query += (query ? '&' : '?') + `department=${encodeURIComponent(user.department)}`;
+          query += `&manager_id=${encodeURIComponent(user.id)}`;
         }
 
         // Fetch attendance and employees in parallel to ensure we have role data
         const [attendanceRes, employeesRes] = await Promise.all([
-          fetch(`https://staffly.space/attendance/today${query}`, { headers }),
+          fetch(`https://staffly.space/attendance/all${query}`, { headers }),
           fetch('https://staffly.space/employees', { headers })
         ]);
 
@@ -527,34 +847,98 @@ const AttendanceManager: React.FC = () => {
         let data = await attendanceRes.json();
         const employeesData = employeesRes.ok ? await employeesRes.json() : [];
 
-        // Create a map of userId -> role for quick lookup
+        // Create comprehensive maps for role hierarchy validation
         const userRoleMap: Record<string, string> = {};
+        const userDepartmentMap: Record<string, string> = {};
+        const userManagerMap: Record<string, string | null> = {};
+        const userTeamLeadMap: Record<string, string | null> = {};
+        
         employeesData.forEach((emp: any) => {
           const uId = String(emp.user_id || emp.userId || emp.id);
           userRoleMap[uId] = (emp.role || '').toLowerCase();
+          userDepartmentMap[uId] = (emp.department || emp.department_name || '').trim().toLowerCase();
+          userManagerMap[uId] = emp.manager_id ? String(emp.manager_id) : null;
+          userTeamLeadMap[uId] = emp.team_lead_id || emp.teamLeadId ? String(emp.team_lead_id || emp.teamLeadId) : null;
         });
 
         console.log('Attendance data received:', data);
 
-        // Enforce strict visibility validation for Managers
+        // Enforce strict visibility validation for Managers based on role hierarchy and department
         if (user?.role === 'manager' && user?.department) {
+          const managerId = String(user.id);
           const normalizedDept = user.department.trim().toLowerCase();
+
+          // Step 1: Find all Team Leads reporting to this Manager (within same department)
+          const teamLeadIds = new Set<string>();
+          Object.keys(userRoleMap).forEach((uId) => {
+            const role = userRoleMap[uId];
+            const dept = userDepartmentMap[uId];
+            const managerIdForUser = userManagerMap[uId];
+            
+            // Team Lead reporting to this Manager in same department
+            if (role === 'team_lead' && dept === normalizedDept && managerIdForUser === managerId) {
+              teamLeadIds.add(uId);
+            }
+          });
+
+          // Step 2: Find all Employees reporting to those Team Leads (within same department)
+          const allowedEmployeeIds = new Set<string>();
+          Object.keys(userRoleMap).forEach((uId) => {
+            const role = userRoleMap[uId];
+            const dept = userDepartmentMap[uId];
+            const teamLeadIdForUser = userTeamLeadMap[uId];
+            
+            // Employee reporting to a Team Lead that reports to this Manager, in same department
+            if (role === 'employee' && dept === normalizedDept && teamLeadIdForUser && teamLeadIds.has(teamLeadIdForUser)) {
+              allowedEmployeeIds.add(uId);
+            }
+          });
+
+          // Step 3: Filter attendance records based on allowed users
           data = data.filter((rec: any) => {
             const recUserId = String(rec.user_id || rec.userId);
-
-            // 1. Always show Self
-            if (recUserId === String(user.id)) return true;
-
-            // 2. Check Department
             const recDept = (rec.department || '').trim().toLowerCase();
+
+            // 1. Always show Self (Manager)
+            if (recUserId === managerId) return true;
+
+            // 2. Department must match (mandatory)
             if (recDept !== normalizedDept) return false;
 
-            // 3. Check Role (Only 'employee' and 'team_lead')
-            const recRole = userRoleMap[recUserId];
-            if (recRole === 'employee' || recRole === 'team_lead') return true;
+            // 3. Check if user is in allowed set (Team Lead or Employee in reporting chain)
+            if (teamLeadIds.has(recUserId)) return true; // Team Lead reporting to Manager
+            if (allowedEmployeeIds.has(recUserId)) return true; // Employee reporting to Team Lead
 
-            // Explicitly exclude other roles (manager, admin, etc.) even in same department
+            // 4. Explicitly exclude:
+            //    - Other Managers (even in same department)
+            //    - Admins
+            //    - HR
+            //    - Users outside reporting chain
+            const recRole = userRoleMap[recUserId];
+            if (recRole === 'admin' || recRole === 'hr' || recRole === 'manager') {
+              return false;
+            }
+
+            // 5. If role is team_lead but not in our teamLeadIds set, exclude
+            if (recRole === 'team_lead' && !teamLeadIds.has(recUserId)) {
+              return false;
+            }
+
+            // 6. If role is employee but not in our allowedEmployeeIds set, exclude
+            if (recRole === 'employee' && !allowedEmployeeIds.has(recUserId)) {
+              return false;
+            }
+
+            // Default: exclude unknown users
             return false;
+          });
+
+          console.log('Manager attendance filtering:', {
+            managerId,
+            department: normalizedDept,
+            teamLeadIds: Array.from(teamLeadIds),
+            allowedEmployeeIds: Array.from(allowedEmployeeIds),
+            filteredRecordsCount: data.length
           });
         }
 
@@ -570,6 +954,21 @@ const AttendanceManager: React.FC = () => {
             const checkOutStatus = rec.checkOutStatus || rec.check_out_status || null;
             const scheduledStart = rec.scheduledStart || rec.scheduled_start || null;
             const scheduledEnd = rec.scheduledEnd || rec.scheduled_end || null;
+
+            // Normalize work location from backend
+            // Backend should return the correct work location based on WFH approval and check-in type
+            let workLocation = rec.workLocation || rec.work_location;
+            
+            // Normalize work location values to backend-accepted enums: "office" or "work_from_home"
+            if (workLocation === 'work_from_home' || workLocation === 'wfh' || workLocation === 'WFH' || workLocation === 'Work From Home') {
+              workLocation = 'work_from_home';
+            } else if (workLocation === 'work_from_office' || workLocation === 'office' || workLocation === 'Office' || workLocation === 'Work From Office') {
+              workLocation = 'office';
+            } else {
+              // Default to office only if work location is truly not set
+              // This should not happen if backend is correctly setting work location
+              workLocation = 'office';
+            }
 
             return {
               id: String(rec.attendance_id || rec.id || ''),
@@ -596,7 +995,7 @@ const AttendanceManager: React.FC = () => {
               scheduledEnd: scheduledEnd || undefined,
               workSummary: rec.workSummary || rec.work_summary || null,
               workReport: resolveMediaUrl(rec.workReport || rec.work_report),
-              workLocation: rec.workLocation || rec.work_location || 'office',
+              workLocation: workLocation,
             };
           })
           .reverse();
@@ -647,9 +1046,54 @@ const AttendanceManager: React.FC = () => {
       });
     }
 
-    // Filter by date
-    if (filterDate) {
-      filtered = filtered.filter(record => record.date === filterDate);
+    // Filter by date or time period
+    if (timePeriodFilter === 'today') {
+      const todayStr = todayIST();
+      filtered = filtered.filter(record => record.date === todayStr);
+    } else {
+      const today = new Date();
+      let startDateRange: Date = new Date();
+      let endDateRange: Date = new Date();
+      endDateRange.setHours(23, 59, 59, 999);
+
+      switch (timePeriodFilter) {
+        case 'current_month':
+          startDateRange = new Date(today.getFullYear(), today.getMonth(), 1);
+          startDateRange.setHours(0, 0, 0, 0);
+          break;
+        case 'last_month':
+          const lastMonth = subMonths(today, 1);
+          startDateRange = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
+          startDateRange.setHours(0, 0, 0, 0);
+          endDateRange = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+          endDateRange.setHours(23, 59, 59, 999);
+          break;
+        case 'last_3_months':
+          startDateRange = subMonths(today, 3);
+          startDateRange.setHours(0, 0, 0, 0);
+          break;
+        case 'last_6_months':
+          startDateRange = subMonths(today, 6);
+          startDateRange.setHours(0, 0, 0, 0);
+          break;
+        case 'last_12_months':
+          startDateRange = subMonths(today, 12);
+          startDateRange.setHours(0, 0, 0, 0);
+          break;
+        case 'custom':
+          if (customStartDate && customEndDate) {
+            startDateRange = new Date(customStartDate);
+            startDateRange.setHours(0, 0, 0, 0);
+            endDateRange = new Date(customEndDate);
+            endDateRange.setHours(23, 59, 59, 999);
+          }
+          break;
+      }
+
+      filtered = filtered.filter(record => {
+        const recordDate = new Date(record.date);
+        return recordDate >= startDateRange && recordDate <= endDateRange;
+      });
     }
 
     setFilteredRecords(filtered);
@@ -924,8 +1368,8 @@ const AttendanceManager: React.FC = () => {
       accent: 'from-orange-500 to-amber-500',
     },
     {
-      label: 'Overrides',
-      value: configuredDepartmentCount,
+      label: 'Check-out Grace',
+      value: `${globalTimingEntry?.check_out_grace_minutes ?? resolveGraceValue(globalTimingForm.checkOutGrace)} mins`,
       accent: 'from-purple-500 to-pink-500',
     },
   ];
@@ -1209,32 +1653,59 @@ const AttendanceManager: React.FC = () => {
                 />
               </div>
             </div>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[200px] h-11 bg-white dark:bg-gray-950">
+            <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
+              <SelectTrigger className="w-[160px] h-11 bg-white dark:bg-gray-950 border-2">
                 <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder={t.attendance.filterByStatus} />
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t.attendance.allStatus}</SelectItem>
-                <SelectItem value="present">{t.attendance.onSchedule}</SelectItem>
-                <SelectItem value="late">{t.attendance.lateArrivals}</SelectItem>
-                <SelectItem value="early">{t.attendance.earlyDepartures}</SelectItem>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="present">Present</SelectItem>
+                <SelectItem value="late">Late</SelectItem>
+                <SelectItem value="early">Early Departure</SelectItem>
               </SelectContent>
             </Select>
-            <DatePicker
-              date={selectedDate}
-              onDateChange={(date) => {
-                if (date) {
-                  setSelectedDate(date);
-                  const formatted = format(date, 'yyyy-MM-dd');
-                  setFilterDate(formatted);
-                  loadAllAttendance(formatted);
-                }
-              }}
-              placeholder={t.attendance.selectDate}
-              className="w-[200px]"
-            />
+            <Select value={timePeriodFilter} onValueChange={(value: any) => setTimePeriodFilter(value)}>
+              <SelectTrigger className="w-[180px] h-11 bg-white dark:bg-gray-950 border-2">
+                <Calendar className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Time Period" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="current_month">Current Month</SelectItem>
+                <SelectItem value="last_month">Last Month</SelectItem>
+                <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                <SelectItem value="last_12_months">Last 1 Year</SelectItem>
+                <SelectItem value="custom">Custom Range</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {timePeriodFilter === 'custom' && (
+              <>
+                <DatePicker
+                  date={customStartDate}
+                  onDateChange={setCustomStartDate}
+                  toDate={new Date()}
+                  placeholder="From Date"
+                  className="w-[160px]"
+                />
+                <DatePicker
+                  date={customEndDate}
+                  onDateChange={setCustomEndDate}
+                  toDate={new Date()}
+                  placeholder="To Date"
+                  className="w-[160px]"
+                />
+              </>
+            )}
           </div>
+
+          {timePeriodFilter === 'custom' && customStartDate && customEndDate && isAfter(customStartDate, customEndDate) && (
+            <p className="text-sm text-red-500 font-medium bg-red-50 dark:bg-red-950/30 p-2 rounded-md border border-red-200 dark:border-red-800 mb-4">
+              "From Date" cannot be after "To Date". Please select a valid range.
+            </p>
+          )}
 
           <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
             <div className="overflow-x-auto">
@@ -1258,174 +1729,189 @@ const AttendanceManager: React.FC = () => {
                 </thead>
                 <tbody>
                   {filteredRecords.length > 0 ? (
-                    filteredRecords.map((record) => (
-                      <tr key={record.id} className="border-t hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                        <td className="p-3">
-                          <div>
-                            <p className="font-medium text-sm">{record.employeeId || record.userId || 'N/A'}</p>
-                            <p className="text-xs text-muted-foreground">ID: {record.userId}</p>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div>
-                            <p className="font-medium">{record.userName}</p>
-                            <p className="text-sm text-muted-foreground">{record.userEmail}</p>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <Badge variant="outline">{record.department}</Badge>
-                        </td>
-                        <td className="p-3">
-                          {record.workLocation === 'work_from_home' ? (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
-                              <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse"></div>
-                              <span className="text-xs font-medium text-orange-700 dark:text-orange-300">Work from Home</span>
+                    filteredRecords
+                      .slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage)
+                      .map((record) => (
+                        <tr key={record.id} className="border-t hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                          <td className="p-3">
+                            <div>
+                              <p className="font-medium text-sm">{record.employeeId || record.userId || 'N/A'}</p>
+                              <p className="text-xs text-muted-foreground">ID: {record.userId}</p>
                             </div>
-                          ) : record.workLocation && record.workLocation !== 'work_from_home' ? (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                              <div className="h-2 w-2 rounded-sm bg-blue-500"></div>
-                              <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                                Work from {record.workLocation}
-                              </span>
+                          </td>
+                          <td className="p-3">
+                            <div>
+                              <p className="font-medium">{record.userName}</p>
+                              <p className="text-sm text-muted-foreground">{record.userEmail}</p>
                             </div>
-                          ) : (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                              <div className="h-2 w-2 rounded-sm bg-blue-500"></div>
-                              <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                                Work from Office
-                              </span>
-                            </div>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          {!record.checkOutTime ? (
-                            <OnlineStatusIndicator
-                              isOnline={onlineStatusMap[parseInt(record.userId)] ?? true}
-                              size="md"
-                              showLabel={true}
-                              clickable={isAdmin}
-                              attendanceId={parseInt(record.id)}
-                              userId={parseInt(record.userId)}
-                              userName={record.userName}
-                            />
-                          ) : (
-                            <span className="text-xs text-muted-foreground">Checked Out</span>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-green-500" />
-                            <span>{formatAttendanceTime(record.date, record.checkInTime)}</span>
-                          </div>
-                          {record.scheduledStart && (
-                            <div className="text-xs text-muted-foreground">
-                              {t.attendance.scheduled}: {record.scheduledStart}
-                            </div>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-red-500" />
-                            <span>{formatAttendanceTime(record.date, record.checkOutTime)}</span>
-                          </div>
-                          {record.scheduledEnd && (
-                            <div className="text-xs text-muted-foreground">
-                              {t.attendance.scheduled}: {record.scheduledEnd}
-                            </div>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          {record.workHours ? (
-                            <Badge variant="secondary" className="font-mono">{formatWorkHours(record.workHours)}</Badge>
-                          ) : '-'}
-                        </td>
-                        <td className="p-3">
-                          {record.checkInLocation?.address && record.checkInLocation.address !== '-' ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setLocationModal({ open: true, location: record })}
-                              className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-8 px-3"
-                            >
-                              <MapPin className="h-4 w-4 mr-1" />
-                              View
-                            </Button>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          <div
-                            className="h-10 w-10 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => {
-                              setSelectedRecord(record);
-                              setShowSelfieModal(true);
-                            }}
-                          >
-                            {record.checkInSelfie ? (
-                              <img
-                                src={record.checkInSelfie}
-                                alt={`${record.userName}'s selfie`}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  const target = e.currentTarget as HTMLImageElement;
-                                  target.style.display = 'none';
-                                  // Create fallback div
-                                  const fallback = document.createElement('div');
-                                  fallback.className = 'w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center';
-                                  fallback.innerHTML = '<svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>';
-                                  target.parentNode?.appendChild(fallback);
-                                }}
-                              />
-                            ) : null}
-                            {!record.checkInSelfie && (
-                              <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                                <User className="h-5 w-5 text-gray-400" />
+                          </td>
+                          <td className="p-3">
+                            <Badge variant="outline">{record.department}</Badge>
+                          </td>
+                          <td className="p-3">
+                            {record.workLocation === 'work_from_home' ? (
+                              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                                <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse"></div>
+                                <span className="text-xs font-medium text-orange-700 dark:text-orange-300">Work from Home</span>
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                                <div className="h-2 w-2 rounded-sm bg-blue-500"></div>
+                                <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                                  Work from Office
+                                </span>
                               </div>
                             )}
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex flex-wrap gap-1">
-                            {getStatusBadge(record)}
-                          </div>
-                        </td>
-                        <td className="p-3 text-sm text-muted-foreground max-w-[200px]">
-                          {record.workSummary ? (
-                            <button
-                              type="button"
-                              className="text-left truncate max-w-[180px] hover:text-blue-600"
-                              onClick={() => setSummaryModal({ open: true, summary: record.workSummary || '' })}
+                          </td>
+                          <td className="p-3">
+                            {(() => {
+                              const statusInfo = getOnlineStatusForDisplay(record);
+                              if (statusInfo.showAbsent) {
+                                return (
+                                  <Badge variant="destructive" className="bg-red-500 hover:bg-red-600 text-white text-xs">
+                                    Absent
+                                  </Badge>
+                                );
+                              } else if (statusInfo.label === 'Checked Out') {
+                                return <span className="text-xs text-muted-foreground">Checked Out</span>;
+                              } else {
+                                return (
+                                  <OnlineStatusIndicator
+                                    isOnline={statusInfo.isOnline}
+                                    size="md"
+                                    showLabel={true}
+                                    clickable={isAdmin}
+                                    attendanceId={parseInt(record.id)}
+                                    userId={parseInt(record.userId)}
+                                    userName={record.userName}
+                                  />
+                                );
+                              }
+                            })()}
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4 text-green-500" />
+                              <span className="text-sm font-semibold text-slate-900 dark:text-white">{formatAttendanceTime(record.date, record.checkInTime)}</span>
+                            </div>
+                            {record.scheduledStart && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Scheduled: {record.scheduledStart}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4 text-red-500" />
+                              <span className="text-sm font-semibold text-slate-900 dark:text-white">{formatAttendanceTime(record.date, record.checkOutTime)}</span>
+                            </div>
+                            {record.scheduledEnd && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Scheduled: {record.scheduledEnd}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-3">
+                            {record.workHours ? (
+                              <span className="text-sm font-semibold text-slate-900 dark:text-white">{formatWorkHours(record.workHours)}</span>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">-</span>
+                            )}
+                          </td>
+                          <td className="p-3">
+                            {record.checkInLocation?.address && record.checkInLocation.address !== '-' ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setLocationModal({ open: true, location: record })}
+                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-8 px-3"
+                              >
+                                <MapPin className="h-4 w-4 mr-1" />
+                                View
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </td>
+                          <td className="p-3">
+                            <div
+                              className="h-10 w-10 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => {
+                                setSelectedRecord(record);
+                                setShowSelfieModal(true);
+                              }}
                             >
-                              {record.workSummary.length > 40
-                                ? `${record.workSummary.slice(0, 40)}…`
-                                : record.workSummary}
-                            </button>
-                          ) : (
-                            '—'
-                          )}
-                        </td>
-                        <td className="p-3">
-                          {record.workReport ? (
-                            <a
-                              href={record.workReport}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-blue-600 hover:underline"
-                            >
-                              {t.attendance.viewReport}
-                            </a>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))
+                              {record.checkInSelfie ? (
+                                <img
+                                  src={record.checkInSelfie}
+                                  alt={`${record.userName}'s selfie`}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    const target = e.currentTarget as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    // Create fallback div
+                                    const fallback = document.createElement('div');
+                                    fallback.className = 'w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center';
+                                    fallback.innerHTML = '<svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>';
+                                    target.parentNode?.appendChild(fallback);
+                                  }}
+                                />
+                              ) : null}
+                              {!record.checkInSelfie && (
+                                <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                  <User className="h-5 w-5 text-gray-400" />
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex flex-wrap gap-1">
+                              {getStatusBadge(record)}
+                            </div>
+                          </td>
+                          <td className="p-3 text-sm text-muted-foreground max-w-[200px]">
+                            {record.workSummary ? (
+                              <button
+                                type="button"
+                                className="text-left truncate max-w-[180px] hover:text-blue-600"
+                                onClick={() => setSummaryModal({ open: true, summary: record.workSummary || '' })}
+                              >
+                                {record.workSummary.length > 40
+                                  ? `${record.workSummary.slice(0, 40)}…`
+                                  : record.workSummary}
+                              </button>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                          <td className="p-3">
+                            {record.workReport ? (
+                              <a
+                                href={record.workReport}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-blue-600 hover:underline"
+                              >
+                                {t.attendance.viewReport}
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
                   ) : (
                     <tr>
-                      <td colSpan={9} className="p-8 text-center text-muted-foreground">
-                        <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>{t.attendance.noRecordsFound}</p>
+                      <td colSpan={13} className="h-64 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-3">
+                          <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                            <Search className="h-8 w-8 text-slate-400" />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-lg font-semibold text-slate-900 dark:text-white">No records found</p>
+                            <p className="text-sm text-muted-foreground">Try adjusting your filters or date range</p>
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   )}
@@ -1433,6 +1919,19 @@ const AttendanceManager: React.FC = () => {
               </table>
             </div>
           </div>
+
+          {filteredRecords.length > itemsPerPage && (
+            <div className="mt-4">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={Math.ceil(filteredRecords.length / itemsPerPage)}
+                totalItems={filteredRecords.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                showItemsPerPage={false}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -1938,14 +2437,6 @@ const AttendanceManager: React.FC = () => {
             <p className="text-muted-foreground mt-0.5">Define global timings, override specific departments, and keep every team aligned.</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-0 font-semibold px-3 h-8 flex items-center rounded-lg">
-            {configuredDepartmentCount} Overrides
-          </Badge>
-          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-0 font-semibold px-3 h-8 flex items-center rounded-lg">
-            {officeTimings.length} Rules
-          </Badge>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1955,7 +2446,7 @@ const AttendanceManager: React.FC = () => {
           const icons = [Clock, Timer, Timer, Settings];
           const Icon = icons[index % icons.length];
 
-          const subs = ['Office Opens', 'Office Closes', 'Late Threshold', 'Specific Rules'];
+          const subs = ['Office Opens', 'Office Closes', 'Late Threshold', 'Early Threshold'];
           const sub = subs[index % subs.length];
 
           // Replicating exact styles from Attendance Stats in lines 1097+
@@ -2005,29 +2496,63 @@ const AttendanceManager: React.FC = () => {
                 <Label htmlFor="global-start">
                   Start Time
                 </Label>
-                <Input
-                  id="global-start"
-                  type="time"
-                  value={globalTimingForm.startTime}
-                  onChange={(e) =>
-                    setGlobalTimingForm((prev) => ({ ...prev, startTime: e.target.value }))
-                  }
-                  className="h-10 border-blue-100 focus:border-blue-400"
-                />
+                <div className="relative">
+                  <Input
+                    id="global-start"
+                    type="time"
+                    value={globalTimingForm.startTime}
+                    onChange={(e) =>
+                      setGlobalTimingForm((prev) => ({ ...prev, startTime: e.target.value }))
+                    }
+                    className="h-10 border-blue-100 focus:border-blue-400 pr-10"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    onClick={() => setOpenTimePicker((prev) => (prev === 'globalStart' ? null : 'globalStart'))}
+                    aria-label="Set start time"
+                  >
+                    <Clock className="h-4 w-4 text-blue-500" />
+                  </button>
+                  {openTimePicker === 'globalStart' && (
+                    <TimePickerDropdown
+                      field="globalStart"
+                      value={globalTimingForm.startTime}
+                      accent="blue"
+                    />
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="global-end">
                   End Time
                 </Label>
-                <Input
-                  id="global-end"
-                  type="time"
-                  value={globalTimingForm.endTime}
-                  onChange={(e) =>
-                    setGlobalTimingForm((prev) => ({ ...prev, endTime: e.target.value }))
-                  }
-                  className="h-10 border-blue-100 focus:border-blue-400"
-                />
+                <div className="relative">
+                  <Input
+                    id="global-end"
+                    type="time"
+                    value={globalTimingForm.endTime}
+                    onChange={(e) =>
+                      setGlobalTimingForm((prev) => ({ ...prev, endTime: e.target.value }))
+                    }
+                    className="h-10 border-blue-100 focus:border-blue-400 pr-10"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    onClick={() => setOpenTimePicker((prev) => (prev === 'globalEnd' ? null : 'globalEnd'))}
+                    aria-label="Set end time"
+                  >
+                    <Clock className="h-4 w-4 text-blue-500" />
+                  </button>
+                  {openTimePicker === 'globalEnd' && (
+                    <TimePickerDropdown
+                      field="globalEnd"
+                      value={globalTimingForm.endTime}
+                      accent="blue"
+                    />
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="global-grace-in">
@@ -2090,7 +2615,7 @@ const AttendanceManager: React.FC = () => {
 
         <Card ref={departmentFormRef} className="shadow-xl border border-purple-100 dark:border-slate-800 transition-all duration-300">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl font-semibold">Department Overrides</CardTitle>
+            <CardTitle className="text-xl font-semibold">Department Timing</CardTitle>
             <CardDescription>
               Override the global schedule for particular departments or create new ones.
             </CardDescription>
@@ -2098,51 +2623,52 @@ const AttendanceManager: React.FC = () => {
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <Label>Department</Label>
-              {departments.length > 0 && (
-                <Select
-                  value={
-                    departmentTimingForm.department &&
-                      departments.some(
-                        (dept) =>
-                          dept.trim().toLowerCase() ===
-                          departmentTimingForm.department?.trim().toLowerCase(),
-                      )
-                      ? departmentTimingForm.department
-                      : '__custom__'
-                  }
-                  onValueChange={(value) => {
-                    if (value === '__custom__') return;
-                    handleDepartmentSelect(value);
-                  }}
-                >
-                  <SelectTrigger className="h-10 border-purple-100 focus:border-purple-400">
-                    <SelectValue placeholder="Select department to edit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__custom__">Custom / New Department</SelectItem>
-                    {departments.map((dept) => (
-                      <SelectItem key={dept} value={dept}>
-                        {dept}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="__clear__" className="text-red-500">
-                      Clear Selection
+              <Select
+                value={departmentTimingForm.department || undefined}
+                onValueChange={handleDepartmentSelect}
+                disabled={coreDepartments.length === 0 && !departmentTimingForm.department}
+              >
+                <SelectTrigger className="h-10 border-purple-100 focus:border-purple-400">
+                  <SelectValue
+                    placeholder={
+                      coreDepartments.length ? 'Select department' : 'No departments available'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {coreDepartments.length === 0 ? (
+                    <SelectItem value="__no_departments__" disabled>
+                      {departmentTimingForm.department
+                        ? `Using existing: ${departmentTimingForm.department}`
+                        : 'No departments found'}
                     </SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-              <Input
-                id="department-name"
-                placeholder="e.g., Engineering"
-                value={departmentTimingForm.department}
-                onChange={(e) =>
-                  setDepartmentTimingForm((prev) => ({ ...prev, department: e.target.value }))
-                }
-                className="h-10 border-purple-100 focus:border-purple-400"
-              />
-              {departments.length > 0 && (
+                  ) : (
+                    <>
+                      {coreDepartments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                      {departmentTimingForm.department &&
+                        !coreDepartments.some(
+                          (dept) =>
+                            dept.trim().toLowerCase() ===
+                            departmentTimingForm.department?.trim().toLowerCase(),
+                        ) && (
+                          <SelectItem value={departmentTimingForm.department} disabled>
+                            {departmentTimingForm.department} (not in list)
+                          </SelectItem>
+                        )}
+                      <SelectItem value="__clear__" className="text-red-500">
+                        Clear Selection
+                      </SelectItem>
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+              {coreDepartments.length > 0 && (
                 <div className="flex flex-wrap gap-2 pt-1">
-                  {departments.map((dept) => {
+                  {coreDepartments.map((dept) => {
                     const isSelected =
                       dept.trim().toLowerCase() ===
                       departmentTimingForm.department?.trim().toLowerCase();
@@ -2169,29 +2695,63 @@ const AttendanceManager: React.FC = () => {
                 <Label htmlFor="dept-start">
                   Start Time
                 </Label>
-                <Input
-                  id="dept-start"
-                  type="time"
-                  value={departmentTimingForm.startTime}
-                  onChange={(e) =>
-                    setDepartmentTimingForm((prev) => ({ ...prev, startTime: e.target.value }))
-                  }
-                  className="h-10 border-purple-100 focus:border-purple-400"
-                />
+                <div className="relative">
+                  <Input
+                    id="dept-start"
+                    type="time"
+                    value={departmentTimingForm.startTime}
+                    onChange={(e) =>
+                      setDepartmentTimingForm((prev) => ({ ...prev, startTime: e.target.value }))
+                    }
+                    className="h-10 border-purple-100 focus:border-purple-400 pr-10"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                    onClick={() => setOpenTimePicker((prev) => (prev === 'deptStart' ? null : 'deptStart'))}
+                    aria-label="Set department start time"
+                  >
+                    <Clock className="h-4 w-4 text-purple-500" />
+                  </button>
+                  {openTimePicker === 'deptStart' && (
+                    <TimePickerDropdown
+                      field="deptStart"
+                      value={departmentTimingForm.startTime}
+                      accent="purple"
+                    />
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="dept-end">
                   End Time
                 </Label>
-                <Input
-                  id="dept-end"
-                  type="time"
-                  value={departmentTimingForm.endTime}
-                  onChange={(e) =>
-                    setDepartmentTimingForm((prev) => ({ ...prev, endTime: e.target.value }))
-                  }
-                  className="h-10 border-purple-100 focus:border-purple-400"
-                />
+                <div className="relative">
+                  <Input
+                    id="dept-end"
+                    type="time"
+                    value={departmentTimingForm.endTime}
+                    onChange={(e) =>
+                      setDepartmentTimingForm((prev) => ({ ...prev, endTime: e.target.value }))
+                    }
+                    className="h-10 border-purple-100 focus:border-purple-400 pr-10"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                    onClick={() => setOpenTimePicker((prev) => (prev === 'deptEnd' ? null : 'deptEnd'))}
+                    aria-label="Set department end time"
+                  >
+                    <Clock className="h-4 w-4 text-purple-500" />
+                  </button>
+                  {openTimePicker === 'deptEnd' && (
+                    <TimePickerDropdown
+                      field="deptEnd"
+                      value={departmentTimingForm.endTime}
+                      accent="purple"
+                    />
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="dept-grace-in">

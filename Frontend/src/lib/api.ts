@@ -350,8 +350,11 @@ class ApiService {
     // Add all fields to FormData
     Object.entries(employeeData).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        if (key === 'profile_photo' && value instanceof File) {
-          formData.append(key, value);
+        if (key === 'profile_photo') {
+          if (value instanceof File) {
+            formData.append(key, value);
+          }
+          // Skip string URLs or empty strings for creation
         } else {
           formData.append(key, String(value));
         }
@@ -382,10 +385,15 @@ class ApiService {
     // Add all fields to FormData
     Object.entries(employeeData).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        if (key === 'profile_photo' && value instanceof File) {
-          formData.append(key, value);
-        } else if (key !== 'profile_photo') {
-          // Skip profile_photo if it's not a File (e.g., existing URL)
+        if (key === 'profile_photo') {
+          if (value instanceof File) {
+            formData.append(key, value);
+          } else if (value === '') {
+            // Signal photo removal by sending an empty blob as a file
+            formData.append(key, new Blob([], { type: 'application/octet-stream' }), '');
+          }
+          // Skip if it's an existing photo URL string or undefined
+        } else {
           formData.append(key, String(value));
         }
       }
@@ -994,6 +1002,15 @@ class ApiService {
   }
 
   // Attendance APIs
+  async getAttendanceRecords(params?: { date?: string; department?: string; manager_id?: string | number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.date) queryParams.append('date', params.date);
+    if (params?.department) queryParams.append('department', params.department);
+    if (params?.manager_id) queryParams.append('manager_id', String(params.manager_id));
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+    return this.request(`/attendance/all${queryString}`);
+  }
+
   async getWorkingHours(attendanceId: number) {
     return this.request(`/attendance/working-hours/${attendanceId}`);
   }
