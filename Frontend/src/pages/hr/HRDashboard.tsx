@@ -4,10 +4,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import {
@@ -16,15 +14,11 @@ import {
   Clock,
   CalendarDays,
   ClipboardList,
-  TrendingUp,
   AlertCircle,
-  ChevronRight,
   Activity,
   FileText,
   UserCheck,
   Home,
-  Timer,
-  Plus,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatTimeIST, formatIST } from '@/utils/timezone';
@@ -226,6 +220,15 @@ const HRDashboard: React.FC = () => {
   const formatStatusLabel = (status?: string) =>
     status ? status.replace(/[-_]/g, ' ') : 'update';
 
+  const formatShortDate = (value?: string) => {
+    if (!value) return '—';
+    try {
+      return formatIST(new Date(value), 'MMM dd');
+    } catch {
+      return '—';
+    }
+  };
+
   // Calculate correct attendance status based on check-in time and grace period
   const getCorrectAttendanceStatus = (activity: HRActivity) => {
     if (activity.type !== 'attendance') {
@@ -399,6 +402,30 @@ const HRDashboard: React.FC = () => {
     );
   }, [isLoadingActivities, recentActivities, activitiesPage]);
 
+  const wfhSummary = useMemo(() => {
+    const total = wfhRequests.length;
+    const pending = wfhRequests.filter(r => (r.status || '').toLowerCase() === 'pending').length;
+    const approved = wfhRequests.filter(r => (r.status || '').toLowerCase() === 'approved').length;
+    const rejected = wfhRequests.filter(r => (r.status || '').toLowerCase() === 'rejected').length;
+
+    const pendingList = wfhRequests
+      .filter(r => (r.status || '').toLowerCase() === 'pending')
+      .sort((a, b) => {
+        const tA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const tB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return tB - tA;
+      })
+      .slice(0, 5);
+
+    return { total, pending, approved, rejected, pendingList };
+  }, [wfhRequests]);
+
+  const openRejectDialog = (req: any) => {
+    setSelectedWfhRequest(req);
+    setWfhRejectionReason('');
+    setShowWfhRequestDialog(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border shadow-sm mt-1">
@@ -533,52 +560,145 @@ const HRDashboard: React.FC = () => {
           <CardContent className="space-y-3">{activityFeedContent}</CardContent>
         </Card>
 
-        {/* Quick Stats Summary */}
+        {/* WFH Requests */}
         <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-xl">
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-white" />
+                <Home className="h-5 w-5 text-white" />
               </div>
-              Employee Metrics
+              WFH Requests
             </CardTitle>
-            <CardDescription className="text-base">This month's overview</CardDescription>
+            <CardDescription className="text-base">Review pending work-from-home requests</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">New Joiners</span>
-                <span className="font-medium">{stats.newJoinersThisMonth}</span>
+            <div className="grid grid-cols-4 gap-2">
+              <div className="rounded-lg border bg-white/60 dark:bg-gray-900/30 p-3">
+                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total</div>
+                <div className="text-lg font-black text-gray-900 dark:text-gray-100">{wfhSummary.total}</div>
               </div>
-              <Progress value={safePercentage(stats.newJoinersThisMonth, stats.totalEmployees || 10)} className="h-2" />
+              <div className="rounded-lg border bg-white/60 dark:bg-gray-900/30 p-3">
+                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Pending</div>
+                <div className="text-lg font-black text-gray-900 dark:text-gray-100">{wfhSummary.pending}</div>
+              </div>
+              <div className="rounded-lg border bg-white/60 dark:bg-gray-900/30 p-3">
+                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Approved</div>
+                <div className="text-lg font-black text-gray-900 dark:text-gray-100">{wfhSummary.approved}</div>
+              </div>
+              <div className="rounded-lg border bg-white/60 dark:bg-gray-900/30 p-3">
+                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Rejected</div>
+                <div className="text-lg font-black text-gray-900 dark:text-gray-100">{wfhSummary.rejected}</div>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">On Leave</span>
-                <span className="font-medium">{stats.onLeave}</span>
-              </div>
-              <Progress
-                value={safePercentage(stats.onLeave, stats.totalEmployees || 10)}
-                className="h-2"
-              />
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold">Pending (latest)</div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/hr/wfh')}
+                className="h-8"
+              >
+                View All
+                <ChevronRightIcon className="h-4 w-4 ml-1" />
+              </Button>
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Late Arrivals Today</span>
-                <span className="font-medium">{stats.lateArrivals}</span>
+
+            {isLoadingWfhRequests ? (
+              <div className="p-4 text-center text-muted-foreground text-sm">Loading WFH requests...</div>
+            ) : !wfhSummary.pendingList.length ? (
+              <div className="p-4 text-center text-muted-foreground text-sm">No pending requests.</div>
+            ) : (
+              <div className="space-y-2">
+                {wfhSummary.pendingList.map((req: any) => (
+                  <div
+                    key={req.id}
+                    className="rounded-lg border bg-white/60 dark:bg-gray-900/30 p-3 flex items-start justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-semibold truncate">{req.user_name}</div>
+                        <Badge variant="secondary" className="text-xs capitalize">
+                          {formatStatusLabel(req.status)}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {formatShortDate(req.start_date)} → {formatShortDate(req.end_date)} • {req.department}
+                      </div>
+                      {req.reason ? (
+                        <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{req.reason}</div>
+                      ) : null}
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <Button
+                        size="sm"
+                        disabled={isProcessingWfhRequest}
+                        onClick={() => handleWfhRequestAction(Number(req.id), 'approve')}
+                        className="h-8"
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={isProcessingWfhRequest}
+                        onClick={() => openRejectDialog(req)}
+                        className="h-8"
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <Progress
-                value={safePercentage(
-                  stats.lateArrivals,
-                  stats.presentToday || stats.totalEmployees || 1,
-                )}
-                className="h-2"
-              />
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={showWfhRequestDialog} onOpenChange={setShowWfhRequestDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject WFH Request</DialogTitle>
+            <DialogDescription>
+              Provide a brief reason. This will be shared with the employee.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <div className="text-sm font-medium">
+              {selectedWfhRequest?.user_name || 'Employee'}
+            </div>
+            <Textarea
+              value={wfhRejectionReason}
+              onChange={(e) => setWfhRejectionReason(e.target.value)}
+              placeholder="Reason for rejection..."
+              className="min-h-[110px]"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowWfhRequestDialog(false);
+                setSelectedWfhRequest(null);
+                setWfhRejectionReason('');
+              }}
+              disabled={isProcessingWfhRequest}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={isProcessingWfhRequest || !selectedWfhRequest?.id}
+              onClick={() =>
+                handleWfhRequestAction(Number(selectedWfhRequest.id), 'reject', wfhRejectionReason?.trim() || undefined)
+              }
+            >
+              Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
 
     </div>

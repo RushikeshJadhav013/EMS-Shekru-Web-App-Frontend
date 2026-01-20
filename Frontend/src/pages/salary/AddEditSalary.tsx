@@ -1607,6 +1607,74 @@ const AddEditSalary = () => {
                                             </Dialog>
                                         </div>
 
+                                        {/* Growth Journey – Revision & Increment Letters */}
+                                        <div className="mt-6">
+                                            <Card className="border-0 rounded-3xl shadow-none bg-gradient-to-br from-emerald-50 via-emerald-50 to-white dark:from-emerald-950 dark:via-emerald-950 dark:to-slate-950">
+                                                <CardHeader className="pb-2 flex flex-row items-center justify-between gap-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-10 w-10 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/40">
+                                                            <TrendingUp className="h-5 w-5 text-white" />
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <CardTitle className="text-base font-semibold">
+                                                                Growth Journey
+                                                            </CardTitle>
+                                                            <CardDescription className="text-xs font-medium tracking-wide uppercase">
+                                                                Revision &amp; Increment Letters
+                                                            </CardDescription>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-emerald-500">
+                                                            Total Growth
+                                                        </p>
+                                                        <p className="text-lg font-extrabold text-emerald-600">
+                                                            +10.0%
+                                                        </p>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="pt-3">
+                                                    <div className="rounded-2xl border border-emerald-200/80 dark:border-emerald-800/80 bg-emerald-50/60 dark:bg-emerald-950/40 px-4 py-3 flex items-center gap-4">
+                                                        <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-white dark:bg-slate-950 border border-emerald-200/70 dark:border-emerald-800/70 shadow-sm">
+                                                            <FileText className="h-5 w-5 text-emerald-500" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <Badge className="h-5 px-2 text-[10px] font-semibold rounded-full bg-emerald-500 text-white">
+                                                                    Active Revision
+                                                                </Badge>
+                                                                <span className="text-[11px] font-medium text-emerald-700/80 dark:text-emerald-300/80">
+                                                                    Revision: Jan 2026
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                                                                <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-300">
+                                                                    <TrendingUp className="h-3 w-3" />
+                                                                    +10%
+                                                                </span>
+                                                                <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+                                                                <span className="truncate max-w-[160px] text-[11px] font-mono">
+                                                                    GFJGFHJGHJGJHGBHGUHGBHJBHKJ
+                                                                </span>
+                                                                <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+                                                                <span className="text-[11px]">
+                                                                    Issued on 19/01/2026
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            className="ml-auto h-10 rounded-xl border-emerald-300/70 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-700/80 dark:text-emerald-200 dark:hover:bg-emerald-900/40 px-4 text-xs font-semibold flex items-center gap-2"
+                                                        >
+                                                            <FileText className="h-4 w-4" />
+                                                            Download
+                                                        </Button>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        </div>
+
                                         {/* Footer Note */}
                                         <div className="text-center">
                                             <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">

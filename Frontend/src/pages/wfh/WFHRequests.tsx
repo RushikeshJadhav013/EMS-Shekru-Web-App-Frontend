@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Calendar, Home, Plus, Trash2, Edit, CheckCircle, XCircle, Clock as ClockIcon, AlertCircle, History } from 'lucide-react';
+import { Calendar, Home, Trash2, Edit, CheckCircle, XCircle, Clock as ClockIcon, AlertCircle, History } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { apiService } from '@/lib/api';
 import { format } from 'date-fns';
@@ -71,7 +71,7 @@ const WFHRequests: React.FC = () => {
   // State management
   const [wfhRequests, setWfhRequests] = useState<WFHRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'my-requests' | 'submit' | 'pending-approvals' | 'recent-decisions'>('my-requests');
+  const [activeTab, setActiveTab] = useState<'my-requests' | 'pending-approvals' | 'recent-decisions'>('my-requests');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [decisionFilter, setDecisionFilter] = useState<'all' | 'approved' | 'rejected'>('all');
 
@@ -104,92 +104,6 @@ const WFHRequests: React.FC = () => {
     refreshRecentDecisions();
     loadPendingApprovals();
   }, [refreshWFHRequests, refreshRecentDecisions, loadPendingApprovals]);
-
-  const handleSubmitRequest = async () => {
-    if (!user?.id) {
-      toast({
-        title: 'Error',
-        description: 'User information not found',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!formData.reason.trim() || formData.reason.trim().length < 10) {
-      toast({
-        title: 'Error',
-        description: 'Reason must be at least 10 characters long',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (formData.startDate > formData.endDate) {
-      toast({
-        title: 'Error',
-        description: 'Start date must be before end date',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Check for overlapping requests
-    const newStartDate = format(formData.startDate, 'yyyy-MM-dd');
-    const newEndDate = format(formData.endDate, 'yyyy-MM-dd');
-
-    const hasOverlap = wfhRequests.some(req => {
-      if (req.status !== 'pending' && req.status !== 'approved') return false;
-      const reqStart = req.start_date;
-      const reqEnd = req.end_date;
-      return newStartDate <= reqEnd && newEndDate >= reqStart;
-    });
-
-    if (hasOverlap) {
-      toast({
-        title: 'Overlapping Request',
-        description: 'You already have a WFH request for these dates.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const wfhData = {
-        employee_id: String(user.id),
-        start_date: newStartDate,
-        end_date: newEndDate,
-        reason: formData.reason,
-        wfh_type: (formData.type === 'full_day' ? 'Full Day' : 'Half Day') as 'Full Day' | 'Half Day',
-      };
-
-      await apiService.submitWFHRequest(wfhData);
-
-      toast({
-        title: 'Success',
-        description: 'WFH request submitted successfully',
-      });
-
-      setFormData({
-        startDate: new Date(),
-        endDate: new Date(),
-        reason: '',
-        type: 'full_day',
-      });
-
-      await refreshWFHRequests();
-      setActiveTab('my-requests');
-    } catch (error) {
-      console.error('Error submitting WFH request:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to submit WFH request',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleEditRequest = (request: WFHRequest) => {
     setEditingRequest(request);
@@ -396,7 +310,7 @@ const WFHRequests: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 rounded-2xl bg-gradient-to-r from-orange-600 via-red-700 to-pink-800 text-white shadow-xl">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-xl">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl flex items-center gap-3">
             <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
@@ -404,35 +318,28 @@ const WFHRequests: React.FC = () => {
             </div>
             Work From Home Requests
           </h1>
-          <p className="text-orange-100 mt-2">Manage your WFH requests and approvals</p>
+          <p className="text-blue-100 mt-2">Manage your WFH requests and approvals</p>
         </div>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm">
+        <TabsList className="grid w-full grid-cols-3 h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm">
           <TabsTrigger
             value="my-requests"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+            className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
           >
             My Requests
-          </TabsTrigger>
-          <TabsTrigger
-            value="submit"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Submit Request
           </TabsTrigger>
           {['admin', 'hr', 'manager'].includes(user?.role || '') && (
             <TabsTrigger
               value="pending-approvals"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
             >
               <ClockIcon className="h-4 w-4 mr-2" />
               Pending Approvals
               {visiblePendingApprovals.length > 0 && (
-                <Badge className="ml-2 bg-orange-100 text-orange-700 border-orange-200">
+                <Badge className="ml-2 bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700">
                   {visiblePendingApprovals.length}
                 </Badge>
               )}
@@ -440,7 +347,7 @@ const WFHRequests: React.FC = () => {
           )}
           <TabsTrigger
             value="recent-decisions"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+            className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
           >
             <History className="h-4 w-4 mr-2" />
             Recent Decisions
@@ -479,7 +386,7 @@ const WFHRequests: React.FC = () => {
             <CardContent className="pt-6">
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
-                  <ClockIcon className="h-8 w-8 animate-spin text-orange-600" />
+                  <ClockIcon className="h-8 w-8 animate-spin text-blue-600" />
                   <span className="ml-2 text-muted-foreground">Loading requests...</span>
                 </div>
               ) : filteredRequests.length === 0 ? (
@@ -495,7 +402,7 @@ const WFHRequests: React.FC = () => {
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-3 flex-wrap">
                             <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-orange-600" />
+                              <Calendar className="h-4 w-4 text-blue-600" />
                               <span className="font-medium">
                                 {request.start_date} - {request.end_date}
                               </span>
@@ -556,7 +463,7 @@ const WFHRequests: React.FC = () => {
             <CardContent className="pt-6">
               {isLoadingPending ? (
                 <div className="flex items-center justify-center py-8">
-                  <ClockIcon className="h-8 w-8 animate-spin text-orange-600" />
+                  <ClockIcon className="h-8 w-8 animate-spin text-blue-600" />
                   <span className="ml-2 text-muted-foreground">Loading pending requests...</span>
                 </div>
               ) : visiblePendingApprovals.length === 0 ? (
@@ -580,7 +487,7 @@ const WFHRequests: React.FC = () => {
                             </Badge>
                           </div>
                           <div className="flex items-center gap-2 text-sm">
-                            <Calendar className="h-4 w-4 text-orange-600" />
+                            <Calendar className="h-4 w-4 text-blue-600" />
                             <span className="font-medium">
                               {request.start_date} - {request.end_date}
                             </span>
@@ -635,75 +542,6 @@ const WFHRequests: React.FC = () => {
           </Card>
         </TabsContent>
 
-        {/* Submit Request Tab */}
-        <TabsContent value="submit" className="space-y-4">
-          <Card className="border-0 shadow-lg">
-            <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-              <CardTitle className="text-xl font-semibold">Submit WFH Request</CardTitle>
-              <CardDescription>Request to work from home for specific dates</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Start Date</Label>
-                  <DatePicker
-                    date={formData.startDate}
-                    onDateChange={(date) => date && setFormData({ ...formData, startDate: date })}
-                    placeholder="Select start date"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>End Date</Label>
-                  <DatePicker
-                    date={formData.endDate}
-                    onDateChange={(date) => date && setFormData({ ...formData, endDate: date })}
-                    placeholder="Select end date"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>WFH Type</Label>
-                <Select value={formData.type} onValueChange={(value: any) => setFormData({ ...formData, type: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="full_day">Full Day</SelectItem>
-                    <SelectItem value="half_day">Half Day</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Reason *</Label>
-                <Textarea
-                  value={formData.reason}
-                  onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                  placeholder="Please provide a reason for your WFH request (minimum 10 characters)..."
-                  rows={4}
-                />
-                <div className="flex justify-between text-sm">
-                  <span className={formData.reason.trim().length < 10 ? 'text-red-500' : 'text-green-600'}>
-                    {formData.reason.trim().length < 10
-                      ? `${10 - formData.reason.trim().length} more characters needed`
-                      : `${formData.reason.trim().length}/500 characters`}
-                  </span>
-                </div>
-              </div>
-
-              <Button
-                onClick={handleSubmitRequest}
-                disabled={isSubmitting || formData.reason.trim().length < 10}
-                className="gap-2 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 shadow-md disabled:opacity-50"
-              >
-                <Home className="h-4 w-4" />
-                {isSubmitting ? 'Submitting...' : 'Submit Request'}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         {/* Recent Decisions Tab */}
         <TabsContent value="recent-decisions" className="space-y-4">
           <Card className="border-0 shadow-lg">
@@ -735,7 +573,7 @@ const WFHRequests: React.FC = () => {
             <CardContent className="pt-6">
               {isLoadingDecisions ? (
                 <div className="flex items-center justify-center py-8">
-                  <ClockIcon className="h-8 w-8 animate-spin text-orange-600" />
+                  <ClockIcon className="h-8 w-8 animate-spin text-blue-600" />
                   <span className="ml-2 text-muted-foreground">Loading decisions...</span>
                 </div>
               ) : recentDecisions.length === 0 ? (
@@ -849,7 +687,7 @@ const WFHRequests: React.FC = () => {
             <Button
               onClick={handleUpdateRequest}
               disabled={isSubmitting}
-              className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               {isSubmitting ? 'Updating...' : 'Update Request'}
             </Button>

@@ -1,6 +1,6 @@
 import * as React from "react";
+import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DayPicker } from "react-day-picker";
@@ -50,32 +50,6 @@ export function CalendarWithSelect({
   const currentYear = month.getFullYear();
   const currentMonthIndex = month.getMonth();
 
-  const years = React.useMemo(() => {
-    const currentYear = nowIST().getFullYear();
-    const startYear = currentYear - 10;
-    const endYear = currentYear + 10;
-    return Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
-  }, []);
-
-  const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
-
-  const handleYearChange = (year: string) => {
-    const newDate = new Date(parseInt(year), currentMonthIndex, 1);
-    // Ensure the date is set correctly in IST timezone
-    newDate.setHours(0, 0, 0, 0);
-    handleMonthChange(newDate);
-  };
-
-  const handleMonthSelect = (monthIndex: string) => {
-    const newDate = new Date(currentYear, parseInt(monthIndex), 1);
-    // Ensure the date is set correctly in IST timezone
-    newDate.setHours(0, 0, 0, 0);
-    handleMonthChange(newDate);
-  };
-
   const goToPreviousMonth = () => {
     const newDate = new Date(currentYear, currentMonthIndex - 1, 1);
     newDate.setHours(0, 0, 0, 0);
@@ -117,66 +91,73 @@ export function CalendarWithSelect({
 
   const enhancedClassNames = {
     ...classNames,
+    months: "flex flex-col",
+    month: "space-y-3 w-full",
+    table: "w-full border-collapse",
+    head_row: "grid grid-cols-7 gap-1 mb-1",
+    head_cell:
+      "h-7 flex items-center justify-center text-[11px] font-medium tracking-wide text-slate-400 uppercase",
+    row: "grid grid-cols-7 gap-1",
+    cell:
+      "relative h-9 flex items-center justify-center text-sm focus-within:z-20",
     day: cn(
-      classNames?.day,
-      "relative"
+      "h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors",
+      "text-slate-700 dark:text-slate-100",
+      "hover:bg-slate-100 dark:hover:bg-slate-800",
+      classNames?.day
     ),
-  };
+    day_selected:
+      "bg-orange-500 text-white hover:bg-orange-500 focus:bg-orange-500 font-semibold",
+    day_today:
+      "ring-1 ring-orange-400 text-orange-700 dark:text-orange-300 font-semibold",
+    day_outside: "text-slate-300 dark:text-slate-700",
+  } as typeof classNames;
+
+  // Derive the date to show in the header – prefer the currently selected day.
+  const selected =
+    props.mode === "single" && props.selected instanceof Date
+      ? props.selected
+      : Array.isArray(props.selected) && props.selected.length > 0
+      ? (props.selected[0] as Date)
+      : undefined;
+
+  const headerDate = selected ?? month;
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      {/* Modern Header with Navigation */}
-      <div className="flex items-center justify-between gap-3 mb-6 px-1">
+    <div className="w-full max-w-xs mx-auto">
+      {/* Minimal Header like the provided design */}
+      <div className="flex items-center justify-between mb-4 px-2">
         <Button
           variant="ghost"
           size="icon"
           onClick={goToPreviousMonth}
           disabled={isPreviousMonthDisabled}
-          className="h-10 w-10 flex-shrink-0 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="h-8 w-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <ChevronLeft className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+          <ChevronLeft className="h-4 w-4 text-slate-500 dark:text-slate-300" />
         </Button>
 
-        <div className="flex items-center gap-2 flex-1 justify-center">
-          <Select value={currentMonthIndex.toString()} onValueChange={handleMonthSelect}>
-            <SelectTrigger className="flex-[2] h-10 text-sm font-bold border-2 border-indigo-100 dark:border-indigo-900/50 bg-white dark:bg-slate-900 rounded-xl hover:border-indigo-300 dark:hover:border-indigo-700 transition-all shadow-sm px-4">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((monthName, index) => (
-                <SelectItem key={index} value={index.toString()} className="font-medium">
-                  {monthName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={currentYear.toString()} onValueChange={handleYearChange}>
-            <SelectTrigger className="w-[100px] h-10 text-sm font-bold border-2 border-purple-100 dark:border-purple-900/50 bg-white dark:bg-slate-900 rounded-xl hover:border-purple-300 dark:hover:border-purple-700 transition-all shadow-sm px-3 flex-shrink-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="max-h-[300px]">
-              {years.map((year) => (
-                <SelectItem key={year} value={year.toString()} className="font-medium">
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-col items-center">
+          <span className="text-xs font-medium text-slate-400">
+            {format(headerDate, "EEEE")}
+          </span>
+          <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+            {format(headerDate, "MMMM d yyyy")}
+          </span>
         </div>
 
         <Button
           variant="ghost"
           size="icon"
           onClick={goToNextMonth}
-          className="h-10 w-10 flex-shrink-0 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 hover:shadow-md transition-all duration-200"
+          className="h-8 w-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
         >
-          <ChevronRight className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+          <ChevronRight className="h-4 w-4 text-slate-500 dark:text-slate-300" />
         </Button>
       </div>
 
       {/* Calendar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-indigo-100/20 dark:shadow-none border border-slate-100 dark:border-slate-800 p-2 relative overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 p-3 relative overflow-hidden">
         <Calendar
           month={month}
           onMonthChange={handleMonthChange}

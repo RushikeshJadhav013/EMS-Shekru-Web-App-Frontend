@@ -252,6 +252,78 @@ export default function Reports() {
     );
   };
 
+  // Calculate overall score for Elite Performers (uses available metrics)
+  const calculateEliteScore = (employee: EmployeePerformance) => {
+    const productivity = calculateProductivity(employee.employeeId);
+    const qualityScore = calculateQualityScore(employee.employeeId);
+    
+    // Always use attendance and task completion as base metrics
+    const baseScore = (employee.attendanceScore || 0) + (employee.taskCompletionRate || 0);
+    
+    // If manual ratings exist, include them in the calculation
+    if (productivity > 0 && qualityScore > 0) {
+      return Math.round(
+        (baseScore + productivity + qualityScore) / 4
+      );
+    }
+    
+    // Otherwise, use attendance and task completion only (weighted average)
+    return Math.round(baseScore / 2);
+  };
+
+  // Calculate top 5 performers from employee performance data
+  const topPerformers = React.useMemo(() => {
+    // First, try to use API top performers if available and valid
+    const apiPerformers = executiveSummary?.topPerformers;
+    if (apiPerformers && Array.isArray(apiPerformers) && apiPerformers.length > 0) {
+      // Validate and use API data
+      return apiPerformers
+        .map((performer: any) => ({
+          employeeId: performer.employeeId || performer.id || '',
+          name: performer.name || '',
+          department: performer.department || '',
+          role: performer.role || '',
+          taskCompletionScore: performer.taskCompletionScore || performer.taskCompletionRate || 0,
+          attendanceScore: performer.attendanceScore || 0,
+          completedTasks: performer.completedTasks || 0,
+          taskEfficiency: performer.taskEfficiency || performer.taskCompletionRate || 0,
+          score: performer.score || performer.overallRating || 0,
+        }))
+        .filter((p: any) => p.score > 0 && p.name)
+        .sort((a: any, b: any) => b.score - a.score)
+        .slice(0, 5);
+    }
+
+    // Fallback: Calculate from employee performance data
+    if (!employeePerformance || employeePerformance.length === 0) {
+      return [];
+    }
+
+    // Calculate score for each employee and sort
+    const performers = employeePerformance
+      .map(emp => {
+        const score = calculateEliteScore(emp);
+        return {
+          employeeId: emp.employeeId,
+          name: emp.name,
+          department: emp.department,
+          role: emp.role,
+          taskCompletionScore: Math.round(emp.taskCompletionRate || 0),
+          attendanceScore: Math.round(emp.attendanceScore || 0),
+          completedTasks: 0, // Would need to come from API or task data
+          taskEfficiency: Math.round(emp.taskCompletionRate || 0), // Using task completion as efficiency proxy
+          score: score,
+          productivity: calculateProductivity(emp.employeeId),
+          qualityScore: calculateQualityScore(emp.employeeId),
+        };
+      })
+      .filter(emp => emp.score > 0 && emp.name) // Only include employees with valid scores and names
+      .sort((a, b) => b.score - a.score) // Sort by score descending
+      .slice(0, 5); // Get top 5
+
+    return performers;
+  }, [employeePerformance, employeeRatings, executiveSummary]);
+
   const filteredPerformance = employeePerformance;
 
   // Group employees by department
@@ -918,48 +990,54 @@ export default function Reports() {
                     <Badge variant="outline" className="h-6 text-xs border-emerald-200 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tighter">Verified Metrics</Badge>
                   </div>
                   <div className="p-4 space-y-3">
-                    {executiveSummary?.topPerformers && executiveSummary.topPerformers.length > 0 ? (
-                      executiveSummary.topPerformers.map((performer: any, index: number) => {
-                        const rankColors = ['bg-amber-400', 'bg-slate-300', 'bg-orange-400', 'bg-blue-400', 'bg-purple-400'];
+                    {topPerformers && topPerformers.length > 0 ? (
+                      topPerformers.map((performer: any, index: number) => {
+                        const rankColors = [
+                          'bg-amber-400 text-white',
+                          'bg-slate-300 text-white',
+                          'bg-orange-400 text-white',
+                          'bg-blue-400 text-white',
+                          'bg-purple-400 text-white'
+                        ];
                         const rankIcons = ['🥇', '🥈', '🥉', '4', '5'];
 
                         return (
                           <div
                             key={performer.employeeId}
-                            className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-900/50 transition-all bg-slate-50/30 dark:bg-slate-900/50"
+                            className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-900/50 transition-all bg-white dark:bg-slate-900/50"
                           >
                             <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <div className={`w-8 h-8 rounded-full ${rankColors[index]} flex items-center justify-center text-xs font-bold shadow-sm flex-shrink-0`}>
+                              <div className={`w-10 h-10 rounded-full ${rankColors[index]} flex items-center justify-center text-sm font-bold shadow-sm flex-shrink-0`}>
                                 {rankIcons[index]}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-base tracking-tight text-slate-800 dark:text-white truncate">{performer.name}</h3>
-                                <p className="text-sm font-medium text-slate-500 truncate">{performer.department} • {performer.role}</p>
+                                <h3 className="font-bold text-lg tracking-tight text-slate-800 dark:text-white truncate">{performer.name}</h3>
+                                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 truncate">{performer.department} • {performer.role}</p>
                               </div>
                             </div>
 
                             <div className="flex items-center gap-6 mt-3 md:mt-0 w-full md:w-auto">
-                              <div className="grid grid-cols-2 xs:grid-cols-4 gap-4 flex-1">
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
                                 <div className="text-center">
-                                  <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Tasks</p>
-                                  <p className="text-base font-bold text-slate-700 dark:text-slate-300">{performer.taskCompletionScore}%</p>
+                                  <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-tighter mb-1">TASKS</p>
+                                  <p className="text-base font-bold text-slate-700 dark:text-slate-300">{performer.taskCompletionScore || 0}%</p>
                                 </div>
                                 <div className="text-center">
-                                  <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Attend.</p>
-                                  <p className="text-base font-bold text-slate-700 dark:text-slate-300">{performer.attendanceScore}%</p>
+                                  <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-tighter mb-1">ATTEND.</p>
+                                  <p className="text-base font-bold text-slate-700 dark:text-slate-300">{performer.attendanceScore || 0}%</p>
                                 </div>
-                                <div className="hidden xs:block text-center border-l border-slate-200 dark:border-slate-800 pl-4">
-                                  <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Done</p>
-                                  <p className="text-base font-bold text-emerald-600">{performer.completedTasks}</p>
+                                <div className="text-center border-l border-slate-200 dark:border-slate-800 pl-4">
+                                  <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-tighter mb-1">DONE</p>
+                                  <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">{performer.completedTasks || 0}</p>
                                 </div>
-                                <div className="hidden xs:block text-center border-l border-slate-200 dark:border-slate-800 pl-4">
-                                  <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Eff.</p>
-                                  <p className="text-base font-bold text-blue-600">{performer.taskEfficiency}</p>
+                                <div className="text-center border-l border-slate-200 dark:border-slate-800 pl-4">
+                                  <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-tighter mb-1">EFF.</p>
+                                  <p className="text-base font-bold text-blue-600 dark:text-blue-400">{performer.taskEfficiency || 0}</p>
                                 </div>
                               </div>
-                              <div className="pl-6 border-l border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center min-w-[80px]">
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1.5">Rating</p>
-                                <p className="text-2xl font-black text-blue-600 leading-none">{performer.score}</p>
+                              <div className="pl-6 border-l border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center min-w-[90px]">
+                                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1.5">RATING</p>
+                                <p className="text-2xl font-black text-blue-600 dark:text-blue-400 leading-none">{performer.score || 0}</p>
                               </div>
                             </div>
                           </div>
@@ -967,8 +1045,9 @@ export default function Reports() {
                       })
                     ) : (
                       <div className="text-center py-8">
-                        <TrendingUp className="h-8 w-8 text-slate-200 mx-auto mb-2" />
-                        <p className="text-xs text-slate-400">No performer data available</p>
+                        <TrendingUp className="h-8 w-8 text-slate-200 dark:text-slate-700 mx-auto mb-2" />
+                        <p className="text-xs text-slate-400 dark:text-slate-500">No performer data available</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Ensure employees have performance data for the selected period</p>
                       </div>
                     )}
                   </div>
