@@ -27,6 +27,13 @@ coverage/
 *.lcov
 .nyc_output
 
+# Testing
+.jest/
+__tests__/
+test-results/
+playwright-report/
+.storybook-static/
+
 # Cache
 .vite/
 .eslintcache
@@ -61,6 +68,7 @@ coverage/
 public/fallback.js
 public/sw.js
 public/workbox-*.js
+storybook-static/
 
 # Editor and IDEs
 .vscode/
@@ -69,6 +77,8 @@ public/workbox-*.js
 *.swo
 *~
 .vscode-test
+*.sublime-workspace
+*.sublime-project
 
 # OS generated files
 .DS_Store
@@ -78,11 +88,14 @@ public/workbox-*.js
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
 
-# Netlify / Vercel
+# Netlify / Vercel / Cloud
 .netlify/
 .vercel/
 .serverless/
+.firebase/
+.amplify/
 
 # Packages
 *.tgz
@@ -99,3 +112,30 @@ Thumbs.db
 .pnp.*
 ! .pnp.cjs
 ! .pnp.loader.mjs
+
+# Optional: Uncomment if you don't want to commit lock files
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+.temp/
+tmp/
+
+# Debug and profiling
+*.cpuprofile
+*.heapsnapshot
+.trace/
+
+# TypeScript
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Build artifacts
+*.map
+*.min.js
+*.min.css
