@@ -131,7 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       'Employee': 'employee',
       'EMPLOYEE': 'employee',
     };
-    
+
     const normalizedRole = backendRole?.trim();
     const mappedRole = roleMap[normalizedRole] || 'employee';
     console.log('Role mapping:', { backendRole, normalizedRole, mappedRole });
@@ -155,7 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         department: userData.department || '',
         designation: userData.designation || '',
         joiningDate: userData.joining_date || new Date().toISOString(),
-        profilePhoto: userData.profile_photo ? `https://staffly.space/${userData.profile_photo}` : undefined,
+        profilePhoto: userData.profile_photo ? `https://testing.staffly.space/${userData.profile_photo}` : undefined,
         status: 'active',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -199,7 +199,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Call login resume endpoint to handle pause/resume functionality
       try {
-        await fetch('https://staffly.space/attendance/login-resume', {
+        await fetch('https://testing.staffly.space/attendance/login-resume', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -229,7 +229,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: 'destructive',
       });
     }
-    
+
     setIsLoading(false);
     setOtpSent(false);
   };
@@ -240,7 +240,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const token = localStorage.getItem('token');
       if (token && user?.id) {
         // Call the logout endpoint to record pause timestamp
-        await fetch('https://staffly.space/attendance/logout', {
+        await fetch('https://testing.staffly.space/attendance/logout', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -261,15 +261,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('user');
     localStorage.removeItem('token');
     localStorage.removeItem('userId'); // Clear userId for language persistence
-    
+
     // Clear all session-related data
     sessionStorage.clear();
-    
+
     toast({
       title: 'Logged Out',
       description: 'You have been successfully logged out.',
     });
-    
+
     // Use replace to prevent going back to authenticated pages
     navigate('/login', { replace: true });
   };

@@ -387,10 +387,10 @@ export default function EmployeeManagement() {
         const mappedData = data.map(toCamelCase).map((emp: any) => {
           // ✅ Fix photo URLs to include backend base URL
           if (emp.profilePhoto && !emp.profilePhoto.startsWith('http')) {
-            emp.profilePhoto = `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}/${emp.profilePhoto}`;
+            emp.profilePhoto = `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}/${emp.profilePhoto}`;
           }
           if (emp.photoUrl && !emp.photoUrl.startsWith('http')) {
-            emp.photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}/${emp.photoUrl}`;
+            emp.photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}/${emp.photoUrl}`;
           }
           // Also set photoUrl from profilePhoto if not set
           if (!emp.photoUrl && emp.profilePhoto) {
@@ -961,10 +961,10 @@ export default function EmployeeManagement() {
 
       // Fix photo URLs to include backend base URL
       if (mappedUpdated.profilePhoto && !mappedUpdated.profilePhoto.startsWith('http')) {
-        mappedUpdated.profilePhoto = `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}/${mappedUpdated.profilePhoto}`;
+        mappedUpdated.profilePhoto = `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}/${mappedUpdated.profilePhoto}`;
       }
       if (mappedUpdated.photoUrl && !mappedUpdated.photoUrl.startsWith('http')) {
-        mappedUpdated.photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}/${mappedUpdated.photoUrl}`;
+        mappedUpdated.photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}/${mappedUpdated.photoUrl}`;
       }
       if (!mappedUpdated.photoUrl && mappedUpdated.profilePhoto) {
         mappedUpdated.photoUrl = mappedUpdated.profilePhoto;
@@ -1234,10 +1234,10 @@ export default function EmployeeManagement() {
         const mappedEmployee = toCamelCase(createdEmployee);
 
         if (mappedEmployee.profilePhoto && !mappedEmployee.profilePhoto.startsWith('http')) {
-          mappedEmployee.profilePhoto = `https://staffly.space/${mappedEmployee.profilePhoto}`;
+          mappedEmployee.profilePhoto = `https://testing.staffly.space/${mappedEmployee.profilePhoto}`;
         }
         if (mappedEmployee.photoUrl && !mappedEmployee.photoUrl.startsWith('http')) {
-          mappedEmployee.photoUrl = `https://staffly.space/${mappedEmployee.photoUrl}`;
+          mappedEmployee.photoUrl = `https://testing.staffly.space/${mappedEmployee.photoUrl}`;
         }
         if (!mappedEmployee.photoUrl && mappedEmployee.profilePhoto) {
           mappedEmployee.photoUrl = mappedEmployee.profilePhoto;
@@ -1518,7 +1518,7 @@ export default function EmployeeManagement() {
 
       let photoUrl = String(data['photoUrl'] ?? data['photo_url'] ?? data['profilePhoto'] ?? data['profile_photo'] ?? '');
       if (photoUrl && !photoUrl.startsWith('http')) {
-        photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}/${photoUrl}`;
+        photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}/${photoUrl}`;
       }
 
       const rawPhone = String(data['phone'] ?? '');

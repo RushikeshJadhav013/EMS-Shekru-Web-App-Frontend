@@ -25,10 +25,10 @@ async function handleRequest(request) {
   try {
     // Get the original URL
     const url = new URL(request.url)
-    
+
     // Replace the host with your backend
-    const backendUrl = `https://staffly.space${url.pathname}${url.search}`
-    
+    const backendUrl = `https://testing.staffly.space${url.pathname}${url.search}`
+
     // Create new request with same method, headers, and body
     const modifiedRequest = new Request(backendUrl, {
       method: request.method,
@@ -38,7 +38,7 @@ async function handleRequest(request) {
 
     // Fetch from backend
     const response = await fetch(modifiedRequest)
-    
+
     // Create new response with CORS headers
     const modifiedResponse = new Response(response.body, {
       status: response.status,
@@ -51,9 +51,9 @@ async function handleRequest(request) {
 
     return modifiedResponse
   } catch (error) {
-    return new Response(JSON.stringify({ 
-      error: 'Proxy error', 
-      details: error.message 
+    return new Response(JSON.stringify({
+      error: 'Proxy error',
+      details: error.message
     }), {
       status: 500,
       headers: {

@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { AlertTriangle, Clock, FileText, Send } from 'lucide-react';
 import { formatDateIST } from '@/utils/timezone';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
 
 interface OverdueTask {
   task_id: number;
@@ -49,7 +49,7 @@ const WorkSummaryDialog: React.FC<WorkSummaryDialogProps> = ({
 
   const fetchOverdueTasks = async () => {
     if (!user?.id) return;
-    
+
     const token = localStorage.getItem('token');
     if (!token) return;
 
@@ -85,19 +85,19 @@ const WorkSummaryDialog: React.FC<WorkSummaryDialogProps> = ({
 
   const validateDeadlineReason = (reason: string): string => {
     const trimmedReason = reason.trim();
-    
+
     if (!trimmedReason) {
       return 'Please provide a reason for not completing the task(s) due today.';
     }
-    
+
     if (trimmedReason.length < 15) {
       return 'Reason must be at least 15 characters long.';
     }
-    
+
     if (/^\d+$/.test(trimmedReason)) {
       return 'Reason cannot contain only numbers. Please provide a meaningful explanation.';
     }
-    
+
     return '';
   };
 
@@ -167,7 +167,7 @@ const WorkSummaryDialog: React.FC<WorkSummaryDialogProps> = ({
                   Tasks Due Today
                 </CardTitle>
                 <CardDescription className="text-orange-700">
-                  You have {overdueTasks.length} task(s) due today that are not completed. 
+                  You have {overdueTasks.length} task(s) due today that are not completed.
                   Please provide a reason below.
                 </CardDescription>
               </CardHeader>
@@ -242,14 +242,14 @@ const WorkSummaryDialog: React.FC<WorkSummaryDialogProps> = ({
         </div>
 
         <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={onClose}
             disabled={isSubmitting}
           >
             Cancel
           </Button>
-          <Button 
+          <Button
             onClick={handleSubmit}
             disabled={isSubmitting || !workSummary.trim() || (hasOverdueTasks && !!reasonError)}
             className="min-w-[120px]"

@@ -20,7 +20,7 @@ import {
 import { Language } from '@/i18n/translations';
 
 // API endpoints
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
 const API_ENDPOINTS = {
   sendOtp: `${API_BASE_URL}/auth/send-otp`,
   verifyOtp: `${API_BASE_URL}/auth/verify-otp`
@@ -35,7 +35,7 @@ interface ApiError {
   response?: {
     data?: {
       message?: string;
-      detail?: string | Array<{type: string; loc: Array<string | number>; msg: string; input: any}>;
+      detail?: string | Array<{ type: string; loc: Array<string | number>; msg: string; input: any }>;
     };
   };
 }
@@ -46,7 +46,7 @@ const Login: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -130,10 +130,10 @@ const Login: React.FC = () => {
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    
+
     setIsLoading(true);
     setError('');
-    
+
     try {
       // Create axios instance with timeout and proper error handling
       const axiosInstance = axios.create({
@@ -145,7 +145,7 @@ const Login: React.FC = () => {
 
       // Send email as query parameter
       const response = await axiosInstance.post(`${API_ENDPOINTS.sendOtp}?email=${encodeURIComponent(email)}`);
-      
+
       // Handle successful response
       if (response.status === 200 || response.status === 201) {
         setOtpSent(true);
@@ -163,7 +163,7 @@ const Login: React.FC = () => {
     } catch (err: any) {
       console.error('OTP send error:', err);
       let errorMessage = 'Failed to send OTP';
-      
+
       // Handle different types of errors
       if (err.code === 'ECONNABORTED') {
         errorMessage = 'Request timeout. Please check your internet connection and try again.';
@@ -171,16 +171,16 @@ const Login: React.FC = () => {
         errorMessage = 'Network error. Please check if the server is running and try again.';
       } else if (err.response?.data?.detail) {
         if (typeof err.response.data.detail === 'string') {
-            errorMessage = err.response.data.detail;
+          errorMessage = err.response.data.detail;
         } else if (Array.isArray(err.response.data.detail)) {
-            errorMessage = err.response.data.detail.map((error: any) => error.msg).join(', ');
-        } 
+          errorMessage = err.response.data.detail.map((error: any) => error.msg).join(', ');
+        }
       } else if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
       } else if (!err.response) {
         errorMessage = 'Unable to connect to the server. Please check if the server is running.';
       }
-      
+
       setError(errorMessage);
       toast({
         variant: "destructive",
@@ -201,10 +201,10 @@ const Login: React.FC = () => {
 
   const handleResendOtp = async () => {
     if (!email || !canResend) return;
-    
+
     setIsLoading(true);
     setError('');
-    
+
     try {
       // Create axios instance with timeout
       const axiosInstance = axios.create({
@@ -215,7 +215,7 @@ const Login: React.FC = () => {
       });
 
       const response = await axiosInstance.post(`${API_ENDPOINTS.sendOtp}?email=${encodeURIComponent(email)}`);
-      
+
       if (response.status === 200 || response.status === 201) {
         // Use backend expiry time or default to 120 seconds
         const expirySeconds = response.data?.expires_in_seconds || 120;
@@ -231,7 +231,7 @@ const Login: React.FC = () => {
     } catch (err: any) {
       console.error('OTP resend error:', err);
       let errorMessage = 'Failed to resend OTP';
-      
+
       // Handle different types of errors
       if (err.code === 'ECONNABORTED') {
         errorMessage = 'Request timeout. Please check your internet connection and try again.';
@@ -239,14 +239,14 @@ const Login: React.FC = () => {
         errorMessage = 'Network error. Please check if the server is running and try again.';
       } else if (err.response?.data?.detail) {
         if (typeof err.response.data.detail === 'string') {
-            errorMessage = err.response.data.detail;
+          errorMessage = err.response.data.detail;
         } else if (Array.isArray(err.response.data.detail)) {
-            errorMessage = err.response.data.detail.map((error: any) => error.msg).join(', ');
-        } 
+          errorMessage = err.response.data.detail.map((error: any) => error.msg).join(', ');
+        }
       } else if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
       }
-      
+
       setError(errorMessage);
       toast({
         variant: "destructive",
@@ -261,13 +261,13 @@ const Login: React.FC = () => {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !otp) return;
-    
+
     // Prevent duplicate submissions while already loading
     if (isLoading) return;
-    
+
     setIsLoading(true);
     setError('');
-    
+
     try {
       // Create axios instance with timeout
       const axiosInstance = axios.create({
@@ -281,16 +281,16 @@ const Login: React.FC = () => {
       const response = await axiosInstance.post(
         `${API_ENDPOINTS.verifyOtp}?email=${encodeURIComponent(email)}&otp=${otp}`
       );
-      
+
       // Handle successful OTP verification
       if (response.status === 200 || response.status === 201) {
         const userData = response.data;
         console.log('Verify OTP Response:', userData); // Debug log
-        
+
         // Clear error tracking on success
         setLastShownError('');
         setLastOtpAttempt('');
-        
+
         // Call the auth context login method with the verified data
         await login({
           user_id: userData.user_id,
@@ -306,7 +306,7 @@ const Login: React.FC = () => {
     } catch (err: any) {
       console.error('OTP verification error:', err);
       let errorMessage = 'Failed to verify OTP';
-      
+
       // Handle different types of errors
       if (err.code === 'ECONNABORTED') {
         errorMessage = 'Request timeout. Please check your internet connection and try again.';
@@ -314,30 +314,30 @@ const Login: React.FC = () => {
         errorMessage = 'Network error. Please check if the server is running and try again.';
       } else if (err.response?.data?.detail) {
         if (typeof err.response.data.detail === 'string') {
-            errorMessage = err.response.data.detail;
+          errorMessage = err.response.data.detail;
         } else if (Array.isArray(err.response.data.detail)) {
-            errorMessage = err.response.data.detail.map((error: any) => error.msg).join(', ');
-        } 
+          errorMessage = err.response.data.detail.map((error: any) => error.msg).join(', ');
+        }
       } else if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
       } else if (!err.response) {
         errorMessage = 'Unable to connect to the server. Please check if the server is running.';
       }
-      
+
       setError(errorMessage);
-      
+
       // Only show toast notification if:
       // 1. The error message is different from the last shown error, OR
       // 2. The OTP value has changed since the last attempt
       const shouldShowToast = lastShownError !== errorMessage || lastOtpAttempt !== otp;
-      
+
       if (shouldShowToast) {
         toast({
           variant: "destructive",
           title: "Verification Failed",
           description: errorMessage,
         });
-        
+
         // Update tracking variables
         setLastShownError(errorMessage);
         setLastOtpAttempt(otp);
@@ -395,7 +395,7 @@ const Login: React.FC = () => {
                 <h3 className="font-semibold text-slate-800 text-sm mb-1">Smart Attendance</h3>
                 <p className="text-xs text-slate-600">Real-time tracking</p>
               </div>
-              
+
               <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
                 <div className="h-10 w-10 rounded-xl bg-indigo-100 flex items-center justify-center mb-3">
                   <ClipboardList className="h-5 w-5 text-indigo-600" />
@@ -403,7 +403,7 @@ const Login: React.FC = () => {
                 <h3 className="font-semibold text-slate-800 text-sm mb-1">Task Manager</h3>
                 <p className="text-xs text-slate-600">Stay organized</p>
               </div>
-              
+
               <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
                 <div className="h-10 w-10 rounded-xl bg-purple-100 flex items-center justify-center mb-3">
                   <Users className="h-5 w-5 text-purple-600" />
@@ -411,7 +411,7 @@ const Login: React.FC = () => {
                 <h3 className="font-semibold text-slate-800 text-sm mb-1">Team Sync</h3>
                 <p className="text-xs text-slate-600">Collaborate better</p>
               </div>
-              
+
               <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
                 <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center mb-3">
                   <Shield className="h-5 w-5 text-emerald-600" />

@@ -57,7 +57,7 @@ const SalaryDashboard = () => {
             ]);
 
             const merged = (employeesData || []).map((emp: any) => {
-                const id = emp.id || emp.user_id;
+                const id = String(emp.id || emp.user_id || '');
                 let salary = (salariesData || []).find((s: any) => String(s.user_id) === String(id));
 
                 if (salary) {
@@ -100,27 +100,24 @@ const SalaryDashboard = () => {
     };
 
     const filteredItems = items.filter(item => {
-        const itemRole = item.role?.toLowerCase() || '';
-        const itemId = String(item.id || item.user_id || '');
+        const itemRole = (item.role || '').toLowerCase();
+        const normalizedItemRole = itemRole.replace(/[\s_]/g, '');
+        const itemId = String(item.id || '');
         const currentUserId = String(user?.id || '');
 
-        // Visibility Logic by Role
+        // Visibility Logic by Role (Permission-based)
         let isRoleVisible = false;
         if (userRole === 'admin') {
-            // Admin sees everyone except other admins
-            isRoleVisible = itemRole !== 'admin';
+            isRoleVisible = true;
         } else if (userRole === 'hr') {
-            // HR sees Manager, Team Lead, and Employee (excludes HR – including self)
-            isRoleVisible = ['manager', 'team_lead', 'team lead', 'employee'].includes(itemRole);
+            isRoleVisible = ['manager', 'teamlead', 'employee'].includes(normalizedItemRole);
         } else if (userRole === 'manager') {
-            // Manager sees Team Lead and Employee (excludes other managers, admins, and HRs)
-            isRoleVisible = ['team_lead', 'team lead', 'employee'].includes(itemRole);
+            isRoleVisible = ['teamlead', 'employee'].includes(normalizedItemRole);
         } else if (userRole === 'team_lead' || userRole === 'team lead') {
-            // Team Lead sees only employees (excludes other team leads, managers, admins, and HRs)
-            isRoleVisible = itemRole === 'employee';
+            isRoleVisible = normalizedItemRole === 'employee';
         }
 
-        // Exclude HR's own record from the list
+        // Exclude HR's own record from the list if HR
         if (userRole === 'hr' && itemId && itemId === currentUserId) {
             return false;
         }
@@ -128,14 +125,22 @@ const SalaryDashboard = () => {
         const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.employee_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (item.department && item.department.toLowerCase().includes(searchQuery.toLowerCase()));
+
         const matchesDept = deptFilter === 'all' || item.department === deptFilter;
-        const matchesRole = roleFilter === 'all' || item.role === roleFilter;
+
+        // Normalize role selection for comparison
+        const normalizedRoleFilter = roleFilter.toLowerCase().replace(/[\s_]/g, '');
+        const matchesRole = roleFilter === 'all' || normalizedItemRole === normalizedRoleFilter;
 
         return isRoleVisible && matchesSearch && matchesDept && matchesRole;
     });
 
     const uniqueDepts = Array.from(new Set(items.map(e => e.department).filter(Boolean)));
-    const uniqueRoles = Array.from(new Set(items.map(e => e.role).filter(role => role?.toLowerCase() !== 'admin')));
+
+    // Role filter options based on user access level
+    const availableRoles = userRole === 'admin'
+        ? ['hr', 'manager', 'team_lead', 'employee']
+        : ['manager', 'team_lead', 'employee'];
 
     const handleDeleteSalary = async (userId: string) => {
         if (!confirm('Are you sure you want to delete the salary record for this employee? This action cannot be undone.')) return;
@@ -219,8 +224,8 @@ const SalaryDashboard = () => {
                 {[
                     ...(userRole === 'admin' ? [
                         {
-                            label: 'Annual Payroll (Projected)',
-                            value: `₹ ${(items.reduce((acc, item) => acc + (item.salary?.annual_ctc || 0), 0) / 10000000).toFixed(2)} Cr`,
+                            label: 'Annual Payroll (Filtered)',
+                            value: `₹ ${(filteredItems.reduce((acc, item) => acc + (item.salary?.annual_ctc || 0), 0) / 10000000).toFixed(2)} Cr`,
                             sub: 'Total Annual Cost to Company',
                             icon: DollarSign,
                             color: 'blue',
@@ -231,7 +236,7 @@ const SalaryDashboard = () => {
                         },
                         {
                             label: 'Monthly Disbursement',
-                            value: `₹ ${items.reduce((acc, item) => acc + (item.salary?.monthly_ctc || 0), 0).toLocaleString('en-IN')}`,
+                            value: `₹ ${filteredItems.reduce((acc, item) => acc + (item.salary?.monthly_ctc || 0), 0).toLocaleString('en-IN')}`,
                             sub: 'Current Month Total CTC',
                             icon: TrendingUp,
                             color: 'emerald',
@@ -254,7 +259,7 @@ const SalaryDashboard = () => {
                         },
                         {
                             label: 'Active Pay Structures',
-                            value: items.filter(i => i.salary).length,
+                            value: filteredItems.filter(i => i.salary).length,
                             sub: 'Verified Salary Records',
                             icon: FileText,
                             color: 'emerald',
@@ -266,10 +271,10 @@ const SalaryDashboard = () => {
                     ]),
                     {
                         label: 'Average Annual Salary',
-                        value: `₹ ${(items.filter(i => i.salary).length > 0
-                            ? Math.round(items.reduce((acc, item) => acc + (item.salary?.annual_ctc || 0), 0) / items.filter(i => i.salary).length)
+                        value: `₹ ${(filteredItems.filter(i => i.salary).length > 0
+                            ? Math.round(filteredItems.reduce((acc, item) => acc + (item.salary?.annual_ctc || 0), 0) / filteredItems.filter(i => i.salary).length)
                             : 0).toLocaleString('en-IN')}`,
-                        sub: 'Per Active Employee',
+                        sub: 'Per Filtered Employee',
                         icon: AlertCircle,
                         color: 'indigo',
                         bg: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
@@ -278,9 +283,9 @@ const SalaryDashboard = () => {
                         hoverBorder: 'group-hover:border-indigo-500 dark:group-hover:border-indigo-400'
                     },
                     {
-                        label: 'Total Employees',
-                        value: employees.length,
-                        sub: 'Active Workforce',
+                        label: 'Showing Employees',
+                        value: filteredItems.length,
+                        sub: 'Filtered Workforce',
                         icon: Users,
                         color: 'amber',
                         bg: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
@@ -348,7 +353,7 @@ const SalaryDashboard = () => {
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="all">All Roles</SelectItem>
-                                            {uniqueRoles.map(role => (
+                                            {availableRoles.map(role => (
                                                 <SelectItem key={role} value={role}>{role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>
                                             ))}
                                         </SelectContent>

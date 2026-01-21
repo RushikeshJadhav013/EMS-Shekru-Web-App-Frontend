@@ -14,17 +14,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { AlertTriangle, Clock, Calendar, CheckCircle2 } from 'lucide-react';
 import { formatDateIST } from '@/utils/timezone';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
 
 // Helper component for View Tasks button with proper role-based navigation
 const ViewTasksButton: React.FC = () => {
   const { user } = useAuth();
-  
+
   const handleViewTasks = () => {
     const taskRoute = user?.role ? `/${user.role}/tasks` : '/employee/tasks';
     window.location.href = taskRoute;
   };
-  
+
   return (
     <Button onClick={handleViewTasks}>
       View Tasks
@@ -61,10 +61,10 @@ const TaskDeadlineWarnings: React.FC<TaskDeadlineWarningsProps> = ({
 
   const fetchWarnings = async () => {
     if (!user?.id) return;
-    
+
     const targetUserId = userId || user.id;
     const token = localStorage.getItem('token');
-    
+
     if (!token) {
       toast({
         title: 'Authentication required',
@@ -140,7 +140,7 @@ const TaskDeadlineWarnings: React.FC<TaskDeadlineWarningsProps> = ({
       'High': 'bg-orange-100 text-orange-800',
       'Urgent': 'bg-red-100 text-red-800',
     };
-    
+
     return (
       <Badge className={priorityColors[priority as keyof typeof priorityColors] || 'bg-gray-100 text-gray-800'}>
         {priority}
@@ -170,7 +170,7 @@ const TaskDeadlineWarnings: React.FC<TaskDeadlineWarningsProps> = ({
             Task Deadline Warnings
           </DialogTitle>
           <DialogDescription>
-            {hasWarnings 
+            {hasWarnings
               ? `You have ${warnings.length} task(s) with upcoming or overdue deadlines.`
               : 'All your tasks are on track! No deadline warnings at this time.'
             }

@@ -96,7 +96,7 @@ const AttendancePage: React.FC = () => {
   const fetchTodayAttendance = async () => {
     if (!user?.id) return;
     try {
-      const res = await fetch(`https://staffly.space/attendance/my-attendance/${user.id}`);
+      const res = await fetch(`https://testing.staffly.space/attendance/my-attendance/${user.id}`);
       if (!res.ok) throw new Error('Failed to fetch attendance');
       const data = await res.json();
 
@@ -468,7 +468,7 @@ const AttendancePage: React.FC = () => {
 
       // For now, we'll skip the selfie requirement for checkout
       // In a real implementation, you might want to add selfie capture here
-      const response = await fetch('https://staffly.space/attendance/check-out', {
+      const response = await fetch('https://testing.staffly.space/attendance/check-out', {
         method: 'POST',
         body: formData
       });
@@ -538,8 +538,8 @@ const AttendancePage: React.FC = () => {
       formData.append('selfie', selfieBlob, 'selfie.jpg');
 
       let apiUrl = '';
-      if (isCheckingIn) apiUrl = 'https://staffly.space/attendance/check-in';
-      else apiUrl = 'https://staffly.space/attendance/check-out';
+      if (isCheckingIn) apiUrl = 'https://testing.staffly.space/attendance/check-in';
+      else apiUrl = 'https://testing.staffly.space/attendance/check-out';
 
       const token = localStorage.getItem('token');
       const response = await fetch(apiUrl, {
@@ -1020,8 +1020,8 @@ const AttendancePage: React.FC = () => {
                         <span className="flex items-center gap-1">
                           <span className="font-medium">Accuracy:</span>
                           <span className={`font-semibold ${location.accuracy && location.accuracy < 10 ? 'text-green-600' :
-                              location.accuracy && location.accuracy < 50 ? 'text-yellow-600' :
-                                'text-orange-600'
+                            location.accuracy && location.accuracy < 50 ? 'text-yellow-600' :
+                              'text-orange-600'
                             }`}>
                             {location.accuracy ? `±${Math.round(location.accuracy)}m` : 'Unknown'}
                           </span>

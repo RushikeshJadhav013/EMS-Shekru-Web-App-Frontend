@@ -140,9 +140,9 @@ export default function Reports() {
 
       // Fetch all data in parallel
       const [empResponse, deptResponse, summaryResponse] = await Promise.all([
-        fetch(`https://staffly.space/reports/employee-performance?${empParams}`, { headers }),
-        fetch(`https://staffly.space/reports/department-metrics?${deptParams}`, { headers }),
-        fetch(`https://staffly.space/reports/executive-summary?${summaryParams}`, { headers }),
+        fetch(`https://testing.staffly.space/reports/employee-performance?${empParams}`, { headers }),
+        fetch(`https://testing.staffly.space/reports/department-metrics?${deptParams}`, { headers }),
+        fetch(`https://testing.staffly.space/reports/executive-summary?${summaryParams}`, { headers }),
       ]);
 
       // Handle employee performance response
@@ -256,17 +256,17 @@ export default function Reports() {
   const calculateEliteScore = (employee: EmployeePerformance) => {
     const productivity = calculateProductivity(employee.employeeId);
     const qualityScore = calculateQualityScore(employee.employeeId);
-    
+
     // Always use attendance and task completion as base metrics
     const baseScore = (employee.attendanceScore || 0) + (employee.taskCompletionRate || 0);
-    
+
     // If manual ratings exist, include them in the calculation
     if (productivity > 0 && qualityScore > 0) {
       return Math.round(
         (baseScore + productivity + qualityScore) / 4
       );
     }
-    
+
     // Otherwise, use attendance and task completion only (weighted average)
     return Math.round(baseScore / 2);
   };
@@ -397,7 +397,7 @@ export default function Reports() {
       }
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://staffly.space/reports/export?${params}`, {
+      const response = await fetch(`https://testing.staffly.space/reports/export?${params}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },

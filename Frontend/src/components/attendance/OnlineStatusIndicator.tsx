@@ -45,13 +45,13 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
 
   const loadStatusHistory = async () => {
     if (!attendanceId) return;
-    
+
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      
+
       // Load status history
-      const historyResponse = await fetch(`https://staffly.space/attendance/online-status/${attendanceId}`, {
+      const historyResponse = await fetch(`https://testing.staffly.space/attendance/online-status/${attendanceId}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -63,7 +63,7 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
       }
 
       // Load working hours calculation
-      const hoursResponse = await fetch(`https://staffly.space/attendance/working-hours/${attendanceId}`, {
+      const hoursResponse = await fetch(`https://testing.staffly.space/attendance/working-hours/${attendanceId}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -90,7 +90,7 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
   const formatTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-    
+
     if (hours > 0) {
       return `${hours}h ${minutes}m`;
     } else {
@@ -102,10 +102,10 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
     if (!decimalHours || decimalHours === 0) {
       return '0 hrs - 0 mins';
     }
-    
+
     const hours = Math.floor(decimalHours);
     const minutes = Math.round((decimalHours - hours) * 60);
-    
+
     if (hours === 0 && minutes === 0) {
       return '0 hrs - 0 mins';
     } else if (hours === 0) {
@@ -123,31 +123,29 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
 
   return (
     <>
-      <div 
+      <div
         className={`flex items-center gap-1.5 ${clickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
         onClick={handleClick}
       >
         {/* Status dot with pulse animation for online */}
         <div className="relative">
           <div
-            className={`${dotSize} rounded-full transition-colors duration-300 ${
-              isOnline
+            className={`${dotSize} rounded-full transition-colors duration-300 ${isOnline
                 ? 'bg-green-500'
                 : 'bg-gray-400 dark:bg-gray-600'
-            }`}
+              }`}
           />
           {isOnline && (
             <div className={`${dotSize} rounded-full bg-green-500 absolute top-0 left-0 animate-ping opacity-75`} />
           )}
         </div>
-        
+
         {showLabel && (
           <span
-            className={`text-xs font-medium ${
-              isOnline
+            className={`text-xs font-medium ${isOnline
                 ? 'text-green-600 dark:text-green-400'
                 : 'text-gray-500 dark:text-gray-400'
-            }`}
+              }`}
           >
             {isOnline ? 'Online' : 'Offline'}
           </span>
@@ -205,7 +203,7 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
                   <History className="h-4 w-4 text-slate-600" />
                   <span className="font-medium">Status Timeline</span>
                 </div>
-                
+
                 <div className="h-[300px] overflow-y-auto pr-4">
                   {statusHistory.length > 0 ? (
                     <div className="space-y-3">
@@ -217,10 +215,10 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
                               <div className="w-px h-8 bg-border mt-2" />
                             )}
                           </div>
-                          
+
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <Badge 
+                              <Badge
                                 variant={item.is_online ? 'default' : 'secondary'}
                                 className={`text-xs ${item.is_online ? 'bg-green-500' : 'bg-gray-500'} text-white`}
                               >
@@ -230,7 +228,7 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
                                 {formatDateTime(item.timestamp)}
                               </span>
                             </div>
-                            
+
                             {item.reason && (
                               <div className="text-sm text-muted-foreground bg-muted p-2 rounded mt-2">
                                 <strong>Reason:</strong> {item.reason}

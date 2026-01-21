@@ -205,7 +205,7 @@ const AttendanceWithToggle: React.FC = () => {
       return url;
     }
     const normalized = url.startsWith('/') ? url : `/${url}`;
-    return `https://staffly.space${normalized}`;
+    return `https://testing.staffly.space${normalized}`;
   }, []);
 
   // Determine if user can view employee attendance
@@ -459,7 +459,7 @@ const AttendanceWithToggle: React.FC = () => {
         );
       }
 
-      const apiUrl = `https://staffly.space/attendance/download/${exportType}?${params.toString()}`;
+      const apiUrl = `https://testing.staffly.space/attendance/download/${exportType}?${params.toString()}`;
       const res = await fetch(apiUrl, { method: 'GET' });
       if (!res.ok) {
         throw new Error(`Request failed with status ${res.status}`);
@@ -531,7 +531,7 @@ const AttendanceWithToggle: React.FC = () => {
   const loadFromBackend = async () => {
     try {
       if (!user?.id) return;
-      const res = await fetch(`https://staffly.space/attendance/my-attendance/${user.id}`);
+      const res = await fetch(`https://testing.staffly.space/attendance/my-attendance/${user.id}`);
       if (!res.ok) return;
       const data = await res.json();
       setAttendanceHistory(
@@ -544,21 +544,21 @@ const AttendanceWithToggle: React.FC = () => {
           .map((rec: any) => {
             // Determine work location from backend or based on WFH approval
             let workLocation = rec.workLocation || rec.work_location;
-            
+
             // If work location is not set, check for WFH approval for that date
             if (!workLocation && rec.check_in) {
               const recordDate = formatDateIST(rec.check_in, 'yyyy-MM-dd');
               const wfhStatus = getWfhStatusForDate(recordDate);
               workLocation = wfhStatus.hasApprovedWfh ? 'work_from_home' : 'office';
             }
-            
+
             // Normalize work location values to backend-accepted enums: "office" or "work_from_home"
             if (workLocation === 'work_from_home' || workLocation === 'wfh' || workLocation === 'WFH') {
               workLocation = 'work_from_home';
             } else if (workLocation === 'work_from_office' || !workLocation || workLocation === 'office' || workLocation === 'Office') {
               workLocation = 'office';
             }
-            
+
             return {
               id: String(rec.attendance_id),
               userId: String(rec.user_id),
@@ -628,7 +628,7 @@ const AttendanceWithToggle: React.FC = () => {
 
       const today = todayIST();
       const yesterday = formatDateIST(new Date(Date.now() - 24 * 60 * 60 * 1000));
-      
+
       // Find today's record - check for:
       // 1. Check-in today (normal case)
       // 2. Check-in yesterday but checkout today (after midnight checkout)
@@ -636,43 +636,43 @@ const AttendanceWithToggle: React.FC = () => {
       const todayRecord = data.find((rec: any) => {
         const checkInDate = formatDateIST(rec.check_in);
         const checkOutDate = rec.check_out ? formatDateIST(rec.check_out) : null;
-        
+
         // Case 1: Check-in today
         if (checkInDate === today) {
           return true;
         }
-        
+
         // Case 2: Check-in yesterday, checkout today (after midnight)
         if (checkInDate === yesterday && checkOutDate === today) {
           return true;
         }
-        
+
         // Case 3: Check-in yesterday, not checked out yet (still active)
         if (checkInDate === yesterday && !checkOutDate) {
           return true;
         }
-        
+
         return false;
       });
 
       if (todayRecord) {
         // Determine work location from backend or based on WFH approval
         let workLocation = todayRecord.workLocation || todayRecord.work_location;
-        
+
         // If work location is not set, check for WFH approval for the check-in date
         if (!workLocation) {
           const checkInDate = formatDateIST(todayRecord.check_in, 'yyyy-MM-dd');
           const wfhStatus = getWfhStatusForDate(checkInDate);
           workLocation = wfhStatus.hasApprovedWfh ? 'work_from_home' : 'office';
         }
-        
+
         // Normalize work location values to backend-accepted enums: "office" or "work_from_home"
         if (workLocation === 'work_from_home' || workLocation === 'wfh' || workLocation === 'WFH') {
           workLocation = 'work_from_home';
         } else if (workLocation === 'work_from_office' || !workLocation || workLocation === 'office' || workLocation === 'Office') {
           workLocation = 'office';
         }
-        
+
         const attendance: AttendanceRecord = {
           id: todayRecord.attendance_id.toString(),
           userId: todayRecord.user_id.toString(),
@@ -738,7 +738,7 @@ const AttendanceWithToggle: React.FC = () => {
             // Fetch actual work hours from backend
             try {
               const token = localStorage.getItem('token');
-              const workHoursResponse = await fetch(`https://staffly.space/attendance/working-hours/${attendance.id}`, {
+              const workHoursResponse = await fetch(`https://testing.staffly.space/attendance/working-hours/${attendance.id}`, {
                 headers: {
                   'Authorization': token ? `Bearer ${token}` : '',
                 },
@@ -806,7 +806,7 @@ const AttendanceWithToggle: React.FC = () => {
       const token = localStorage.getItem('token');
       const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
 
-      let url = 'https://staffly.space/attendance/all';
+      let url = 'https://testing.staffly.space/attendance/all';
       // Attempt backend enforcement by passing department scope
       if (user?.role === 'manager' && user?.department) {
         url += `?department=${encodeURIComponent(user.department)}`;
@@ -815,7 +815,7 @@ const AttendanceWithToggle: React.FC = () => {
       // Fetch attendance and employees in parallel to ensure we have role data
       const [attendanceRes, employeesRes] = await Promise.all([
         fetch(url, { headers }),
-        fetch('https://staffly.space/employees', { headers })
+        fetch('https://testing.staffly.space/employees', { headers })
       ]);
 
       if (!attendanceRes.ok) {
@@ -967,13 +967,13 @@ const AttendanceWithToggle: React.FC = () => {
         const statusValue = record.status?.toLowerCase() || '';
         const checkInTime = record.checkInTime || '';
         const checkOutTime = record.checkOutTime || '';
-        
+
         // Check if check-in was late (similar to getStatusBadge logic)
         const isCheckInLate = statusValue === 'late' || (checkInTime && checkInTime > '09:30:00');
-        
+
         // Check if check-out was early
         const isCheckOutEarly = checkOutTime && checkOutTime < '18:00:00';
-        
+
         if (filterStatus === 'late') {
           return isCheckInLate;
         }
@@ -996,7 +996,7 @@ const AttendanceWithToggle: React.FC = () => {
       return;
     }
     try {
-      const res = await fetch('https://staffly.space/employees');
+      const res = await fetch('https://testing.staffly.space/employees');
       if (!res.ok) {
         throw new Error(`Failed to load employees: ${res.status}`);
       }
@@ -1117,11 +1117,11 @@ const AttendanceWithToggle: React.FC = () => {
       if (!isCheckingIn && !todaysWork.trim()) {
         throw new Error('Work summary is required to check out.');
       }
-      
+
       // Check WFH approval status for check-in date
       const checkInDate = nowIST();
       const wfhStatus = isCheckingIn ? getWfhStatusForDate(checkInDate) : null;
-      
+
       // Determine check-in type and work location
       // If WFH is approved for the date, check-in type should be 'wfh'
       // Otherwise, it's 'office'
@@ -1131,7 +1131,7 @@ const AttendanceWithToggle: React.FC = () => {
       const checkInType = isCheckingIn && wfhStatus?.hasApprovedWfh ? 'wfh' : 'office';
       // WFH approval override: if approved, always use work_from_home, otherwise use office
       const workLocation = isCheckingIn && wfhStatus?.hasApprovedWfh ? 'work_from_home' : 'office';
-      
+
       const locationPayload = {
         latitude: location.latitude,
         longitude: location.longitude,
@@ -1164,8 +1164,8 @@ const AttendanceWithToggle: React.FC = () => {
         }),
       };
       const endpoint = isCheckingIn
-        ? 'https://staffly.space/attendance/check-in/json'
-        : 'https://staffly.space/attendance/check-out/json';
+        ? 'https://testing.staffly.space/attendance/check-in/json'
+        : 'https://testing.staffly.space/attendance/check-out/json';
 
       // ✅ Get token from localStorage for authentication
       const token = localStorage.getItem('token');
@@ -1178,12 +1178,12 @@ const AttendanceWithToggle: React.FC = () => {
         },
         body: JSON.stringify(payload),
       });
-      
+
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
         throw new Error(err.detail || 'Attendance API error');
       }
-      
+
       // Parse and log the API response for debugging
       const responseData = await response.json().catch(() => null);
       if (responseData) {
@@ -1197,7 +1197,7 @@ const AttendanceWithToggle: React.FC = () => {
           gps_location: responseData.gps_location,
         });
       }
-      
+
       await loadFromBackend();
       toast({ title: 'Success', description: isCheckingIn ? t.attendance.checkedIn : t.attendance.checkedOut });
 
@@ -1624,7 +1624,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     // Call API to update status
     const token = localStorage.getItem('token');
-    const response = await fetch('https://staffly.space/attendance/online-status', {
+    const response = await fetch('https://testing.staffly.space/attendance/online-status', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1752,7 +1752,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://staffly.space/attendance/user-online-status/${user.id}`, {
+      const response = await fetch(`https://testing.staffly.space/attendance/user-online-status/${user.id}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -1893,7 +1893,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://staffly.space/attendance/current-online-status', {
+      const response = await fetch('https://testing.staffly.space/attendance/current-online-status', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -1928,7 +1928,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://staffly.space/attendance/current-online-status', {
+      const response = await fetch('https://testing.staffly.space/attendance/current-online-status', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -2005,7 +2005,7 @@ const AttendanceWithToggle: React.FC = () => {
     // If record date is before today (past date)
     const recordDateObj = new Date(recordDate);
     const todayDateObj = new Date(today);
-    
+
     if (recordDateObj < todayDateObj) {
       if (!checkOutTime) {
         // Forgotten checkout - show as absent
@@ -2482,14 +2482,14 @@ const AttendanceWithToggle: React.FC = () => {
                                       setShowWorkSummaryDialog(true);
                                     }}
                                     title={record.workSummary}
-                                    style={{ 
-                                      wordBreak: 'break-word', 
+                                    style={{
+                                      wordBreak: 'break-word',
                                       overflowWrap: 'break-word',
                                       display: 'block',
                                       textAlign: 'left'
                                     }}
                                   >
-                                    <span style={{ 
+                                    <span style={{
                                       display: '-webkit-box',
                                       WebkitLineClamp: 2,
                                       WebkitBoxOrient: 'vertical',
@@ -2732,7 +2732,7 @@ const AttendanceWithToggle: React.FC = () => {
                                 >
                                   {record.checkInSelfie ? (
                                     <img
-                                      src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${record.checkInSelfie}`}
+                                      src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}${record.checkInSelfie}`}
                                       alt={`${record.name || 'Employee'}'s selfie`}
                                       className="w-full h-full object-cover"
                                       onError={(e) => {
@@ -2767,14 +2767,14 @@ const AttendanceWithToggle: React.FC = () => {
                                       setShowWorkSummaryDialog(true);
                                     }}
                                     title={record.workSummary}
-                                    style={{ 
-                                      wordBreak: 'break-word', 
+                                    style={{
+                                      wordBreak: 'break-word',
                                       overflowWrap: 'break-word',
                                       display: 'block',
                                       textAlign: 'left'
                                     }}
                                   >
-                                    <span style={{ 
+                                    <span style={{
                                       display: '-webkit-box',
                                       WebkitLineClamp: 2,
                                       WebkitBoxOrient: 'vertical',
@@ -3526,7 +3526,7 @@ const AttendanceWithToggle: React.FC = () => {
               <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                 {selectedRecord?.checkInSelfie ? (
                   <img
-                    src={selectedRecord.checkInSelfie.startsWith('http') ? selectedRecord.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${selectedRecord.checkInSelfie}`}
+                    src={selectedRecord.checkInSelfie.startsWith('http') ? selectedRecord.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}${selectedRecord.checkInSelfie}`}
                     alt="Check-in selfie"
                     className="w-full h-full object-cover"
                   />
@@ -3552,7 +3552,7 @@ const AttendanceWithToggle: React.FC = () => {
               <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                 {selectedRecord?.checkOutSelfie ? (
                   <img
-                    src={selectedRecord.checkOutSelfie.startsWith('http') ? selectedRecord.checkOutSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${selectedRecord.checkOutSelfie}`}
+                    src={selectedRecord.checkOutSelfie.startsWith('http') ? selectedRecord.checkOutSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}${selectedRecord.checkOutSelfie}`}
                     alt="Check-out selfie"
                     className="w-full h-full object-cover"
                   />

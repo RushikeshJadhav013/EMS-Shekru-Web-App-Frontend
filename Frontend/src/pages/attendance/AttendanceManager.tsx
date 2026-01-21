@@ -306,7 +306,7 @@ const AttendanceManager: React.FC = () => {
   const fetchAllOnlineStatus = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://staffly.space/attendance/current-online-status', {
+      const response = await fetch('https://testing.staffly.space/attendance/current-online-status', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -329,7 +329,7 @@ const AttendanceManager: React.FC = () => {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
     const normalized = url.startsWith('/') ? url : `/${url}`;
-    return `https://staffly.space${normalized}`;
+    return `https://testing.staffly.space${normalized}`;
   };
 
   // Helper function to determine if employee should show as absent
@@ -357,7 +357,7 @@ const AttendanceManager: React.FC = () => {
     // If record date is before today (past date)
     const recordDateObj = new Date(recordDate);
     const todayDateObj = new Date(today);
-    
+
     if (recordDateObj < todayDateObj) {
       // If checkout was forgotten (no checkout and it's a past date), show as absent
       if (!checkOutTime) {
@@ -398,7 +398,7 @@ const AttendanceManager: React.FC = () => {
     // If record date is before today (past date)
     const recordDateObj = new Date(recordDate);
     const todayDateObj = new Date(today);
-    
+
     if (recordDateObj < todayDateObj) {
       if (!checkOutTime) {
         // Forgotten checkout - show as absent
@@ -502,7 +502,7 @@ const AttendanceManager: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
-      const res = await fetch('https://staffly.space/employees', { headers });
+      const res = await fetch('https://testing.staffly.space/employees', { headers });
 
       if (!res.ok) throw new Error(`Failed to load employees: ${res.status}`);
       let data = await res.json();
@@ -519,7 +519,7 @@ const AttendanceManager: React.FC = () => {
           const role = (emp.role || '').toLowerCase();
           const empDept = (emp.department || emp.department_name || '').trim().toLowerCase();
           const managerIdForEmp = emp.manager_id ? String(emp.manager_id) : null;
-          
+
           // Team Lead reporting to this Manager in same department
           if (role === 'team_lead' && empDept === normalizedDept && managerIdForEmp === managerId) {
             teamLeadIds.add(uId);
@@ -533,7 +533,7 @@ const AttendanceManager: React.FC = () => {
           const role = (emp.role || '').toLowerCase();
           const empDept = (emp.department || emp.department_name || '').trim().toLowerCase();
           const teamLeadIdForEmp = emp.team_lead_id || emp.teamLeadId ? String(emp.team_lead_id || emp.teamLeadId) : null;
-          
+
           // Employee reporting to a Team Lead that reports to this Manager, in same department
           if (role === 'employee' && empDept === normalizedDept && teamLeadIdForEmp && teamLeadIds.has(teamLeadIdForEmp)) {
             allowedEmployeeIds.add(uId);
@@ -608,7 +608,7 @@ const AttendanceManager: React.FC = () => {
     if (!isAdmin) return;
     setOfficeFormLoading(true);
     try {
-      const res = await fetch('https://staffly.space/attendance/office-hours', {
+      const res = await fetch('https://testing.staffly.space/attendance/office-hours', {
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeaders(),
@@ -655,7 +655,7 @@ const AttendanceManager: React.FC = () => {
         check_in_grace_minutes: resolveGraceValue(globalTimingForm.checkInGrace),
         check_out_grace_minutes: resolveGraceValue(globalTimingForm.checkOutGrace),
       };
-      const res = await fetch('https://staffly.space/attendance/office-hours', {
+      const res = await fetch('https://testing.staffly.space/attendance/office-hours', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -697,7 +697,7 @@ const AttendanceManager: React.FC = () => {
         check_in_grace_minutes: resolveGraceValue(departmentTimingForm.checkInGrace),
         check_out_grace_minutes: resolveGraceValue(departmentTimingForm.checkOutGrace),
       };
-      const res = await fetch('https://staffly.space/attendance/office-hours', {
+      const res = await fetch('https://testing.staffly.space/attendance/office-hours', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -762,7 +762,7 @@ const AttendanceManager: React.FC = () => {
 
     try {
       setOfficeFormLoading(true);
-      const res = await fetch(`https://staffly.space/attendance/office-hours/${timing.id}`, {
+      const res = await fetch(`https://testing.staffly.space/attendance/office-hours/${timing.id}`, {
         method: 'DELETE',
         headers: {
           ...getAuthHeaders(),
@@ -797,7 +797,7 @@ const AttendanceManager: React.FC = () => {
 
   const fetchSummary = async () => {
     try {
-      const res = await fetch('https://staffly.space/attendance/summary');
+      const res = await fetch('https://testing.staffly.space/attendance/summary');
       if (!res.ok) throw new Error(`Failed to load summary: ${res.status}`);
       const data = await res.json();
       setSummary(data);
@@ -834,8 +834,8 @@ const AttendanceManager: React.FC = () => {
 
         // Fetch attendance and employees in parallel to ensure we have role data
         const [attendanceRes, employeesRes] = await Promise.all([
-          fetch(`https://staffly.space/attendance/all${query}`, { headers }),
-          fetch('https://staffly.space/employees', { headers })
+          fetch(`https://testing.staffly.space/attendance/all${query}`, { headers }),
+          fetch('https://testing.staffly.space/employees', { headers })
         ]);
 
         if (!attendanceRes.ok) {
@@ -852,7 +852,7 @@ const AttendanceManager: React.FC = () => {
         const userDepartmentMap: Record<string, string> = {};
         const userManagerMap: Record<string, string | null> = {};
         const userTeamLeadMap: Record<string, string | null> = {};
-        
+
         employeesData.forEach((emp: any) => {
           const uId = String(emp.user_id || emp.userId || emp.id);
           userRoleMap[uId] = (emp.role || '').toLowerCase();
@@ -874,7 +874,7 @@ const AttendanceManager: React.FC = () => {
             const role = userRoleMap[uId];
             const dept = userDepartmentMap[uId];
             const managerIdForUser = userManagerMap[uId];
-            
+
             // Team Lead reporting to this Manager in same department
             if (role === 'team_lead' && dept === normalizedDept && managerIdForUser === managerId) {
               teamLeadIds.add(uId);
@@ -887,7 +887,7 @@ const AttendanceManager: React.FC = () => {
             const role = userRoleMap[uId];
             const dept = userDepartmentMap[uId];
             const teamLeadIdForUser = userTeamLeadMap[uId];
-            
+
             // Employee reporting to a Team Lead that reports to this Manager, in same department
             if (role === 'employee' && dept === normalizedDept && teamLeadIdForUser && teamLeadIds.has(teamLeadIdForUser)) {
               allowedEmployeeIds.add(uId);
@@ -958,7 +958,7 @@ const AttendanceManager: React.FC = () => {
             // Normalize work location from backend
             // Backend should return the correct work location based on WFH approval and check-in type
             let workLocation = rec.workLocation || rec.work_location;
-            
+
             // Normalize work location values to backend-accepted enums: "office" or "work_from_home"
             if (workLocation === 'work_from_home' || workLocation === 'wfh' || workLocation === 'WFH' || workLocation === 'Work From Home') {
               workLocation = 'work_from_home';

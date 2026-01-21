@@ -33,12 +33,12 @@ export const useFieldValidation = (options: UseFieldValidationOptions) => {
 
       try {
         const encodedValue = encodeURIComponent(value.trim());
-        const url = excludeUserId 
-          ? `https://staffly.space/${endpoint}/${encodedValue}?exclude_user_id=${excludeUserId}`
-          : `https://staffly.space/${endpoint}/${encodedValue}`;
+        const url = excludeUserId
+          ? `https://testing.staffly.space/${endpoint}/${encodedValue}?exclude_user_id=${excludeUserId}`
+          : `https://testing.staffly.space/${endpoint}/${encodedValue}`;
 
         const response = await fetch(url);
-        
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
