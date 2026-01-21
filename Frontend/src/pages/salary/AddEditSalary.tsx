@@ -88,54 +88,9 @@ const AddEditSalary = () => {
     const [activeTab, setActiveTab] = useState<"auto" | "manual">("auto");
     const [isPayrollLocked, setIsPayrollLocked] = useState(false);
     const [forceUnlock, setForceUnlock] = useState(false);
-    const [isGenSlipOpen, setIsGenSlipOpen] = useState(false);
-    const [selectedGenMonth, setSelectedGenMonth] = useState(new Date().getMonth().toString());
-    const [selectedGenYear, setSelectedGenYear] = useState(new Date().getFullYear().toString());
-    const [isGenerating, setIsGenerating] = useState(false);
 
-    const months = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
-    ];
 
-    const handleGenerateSlip = async () => {
-        const userId = form.getValues('userId');
-        if (!userId) {
-            toast({
-                title: "Employee Required",
-                description: "Please select an employee first.",
-                variant: "destructive"
-            });
-            return;
-        }
 
-        try {
-            setIsGenerating(true);
-            const month = parseInt(selectedGenMonth) + 1;
-            const year = parseInt(selectedGenYear);
-
-            const response = await apiService.sendSalarySlip(userId, month, year);
-
-            if (response?.success) {
-                toast({
-                    title: "Salary Slip Generated & Sent",
-                    description: `Slip for ${months[parseInt(selectedGenMonth)]} ${selectedGenYear} has been generated and emailed successfully.`,
-                    variant: "success"
-                });
-                setIsGenSlipOpen(false);
-            } else {
-                throw new Error(response?.message || 'Failed to generate salary slip');
-            }
-        } catch (err: any) {
-            toast({
-                title: "Generation Failed",
-                description: err.message || "Failed to generate salary slip via API.",
-                variant: "destructive"
-            });
-        } finally {
-            setIsGenerating(false);
-        }
-    };
 
 
 
@@ -336,14 +291,7 @@ const AddEditSalary = () => {
         }
     }, [watchCtc, watchVarType, watchVarValue]);
 
-    // Mock Data for UI Demo (AddEditSalary)
-    const mockEmployees: Employee[] = [
-        { id: '1', name: 'Rohan Sharma', employee_id: 'EMP001', department: 'Unreal Engine', role: 'employee', email: 'rohan@example.com', status: 'active', created_at: '2023-01-01', updated_at: '2023-01-01' },
-        { id: '2', name: 'Priya Patel', employee_id: 'EMP002', department: 'React Development', role: 'manager', email: 'priya@example.com', status: 'active', created_at: '2023-02-15', updated_at: '2023-02-15' },
-        { id: '3', name: 'Amit Singh', employee_id: 'EMP003', department: '3D Art', role: 'team_lead', email: 'amit@example.com', status: 'active', created_at: '2023-03-10', updated_at: '2023-03-10' },
-        { id: '4', name: 'Sneha Gupta', employee_id: 'EMP004', department: 'HR', role: 'hr', email: 'sneha@example.com', status: 'active', created_at: '2023-04-01', updated_at: '2023-04-01' },
-        { id: '5', name: 'Vikram Malhotra', employee_id: 'EMP005', department: 'Management', role: 'admin', email: 'vikram@example.com', status: 'active', created_at: '2022-11-20', updated_at: '2022-11-20' },
-    ];
+
 
 
     const loadEmployees = async () => {
@@ -420,8 +368,7 @@ const AddEditSalary = () => {
 
         setIsCalculating(true);
         try {
-            // Mock Calculation Delay
-            await new Promise(resolve => setTimeout(resolve, 300));
+
 
             if (isManual) {
                 const values = form.getValues();
@@ -1527,153 +1474,9 @@ const AddEditSalary = () => {
                                             )}
                                         </div>
 
-                                        {/* Generate Slip Section */}
-                                        <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
-                                            <Dialog open={isGenSlipOpen} onOpenChange={setIsGenSlipOpen}>
-                                                <DialogTrigger asChild>
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        className="w-full h-12 border-2 border-blue-200/50 hover:border-blue-300/70 hover:bg-blue-50/50 dark:border-blue-800/50 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-                                                    >
-                                                        <FileText className="h-5 w-5 mr-3" />
-                                                        Generate Monthly Slip
-                                                    </Button>
-                                                </DialogTrigger>
-                                                <DialogContent className="sm:max-w-[425px] rounded-2xl border-0 shadow-2xl">
-                                                    <DialogHeader className="pb-4">
-                                                        <DialogTitle className="text-xl font-bold">Generate Salary Slip</DialogTitle>
-                                                        <DialogDescription className="text-base">
-                                                            Select the month and year to generate the salary slip for this employee.
-                                                        </DialogDescription>
-                                                    </DialogHeader>
-                                                    <div className="grid gap-6 py-4">
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor="month" className="text-sm font-semibold">
-                                                                Month
-                                                            </Label>
-                                                            <Select value={selectedGenMonth} onValueChange={setSelectedGenMonth}>
-                                                                <SelectTrigger id="month" className="h-12 rounded-xl">
-                                                                    <SelectValue placeholder="Select Month" />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    {months.map((m, idx) => (
-                                                                        <SelectItem key={m} value={idx.toString()}>
-                                                                            {m}
-                                                                        </SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor="year" className="text-sm font-semibold">
-                                                                Year
-                                                            </Label>
-                                                            <Select value={selectedGenYear} onValueChange={setSelectedGenYear}>
-                                                                <SelectTrigger id="year" className="h-12 rounded-xl">
-                                                                    <SelectValue placeholder="Select Year" />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    {[2024, 2025, 2026].map(y => (
-                                                                        <SelectItem key={y} value={y.toString()}>
-                                                                            {y}
-                                                                        </SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-                                                    </div>
-                                                    <DialogFooter className="pt-4">
-                                                        <Button
-                                                            type="button"
-                                                            onClick={handleGenerateSlip}
-                                                            disabled={isGenerating}
-                                                            className="h-12 px-8 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl font-semibold shadow-lg shadow-blue-500/25"
-                                                        >
-                                                            {isGenerating ? (
-                                                                <>
-                                                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                                    Generating...
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <FileText className="h-4 w-4 mr-2" />
-                                                                    Generate Now
-                                                                </>
-                                                            )}
-                                                        </Button>
-                                                    </DialogFooter>
-                                                </DialogContent>
-                                            </Dialog>
-                                        </div>
 
-                                        {/* Growth Journey – Revision & Increment Letters */}
-                                        <div className="mt-6">
-                                            <Card className="border-0 rounded-3xl shadow-none bg-gradient-to-br from-emerald-50 via-emerald-50 to-white dark:from-emerald-950 dark:via-emerald-950 dark:to-slate-950">
-                                                <CardHeader className="pb-2 flex flex-row items-center justify-between gap-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="h-10 w-10 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/40">
-                                                            <TrendingUp className="h-5 w-5 text-white" />
-                                                        </div>
-                                                        <div className="flex flex-col">
-                                                            <CardTitle className="text-base font-semibold">
-                                                                Growth Journey
-                                                            </CardTitle>
-                                                            <CardDescription className="text-xs font-medium tracking-wide uppercase">
-                                                                Revision &amp; Increment Letters
-                                                            </CardDescription>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-emerald-500">
-                                                            Total Growth
-                                                        </p>
-                                                        <p className="text-lg font-extrabold text-emerald-600">
-                                                            +10.0%
-                                                        </p>
-                                                    </div>
-                                                </CardHeader>
-                                                <CardContent className="pt-3">
-                                                    <div className="rounded-2xl border border-emerald-200/80 dark:border-emerald-800/80 bg-emerald-50/60 dark:bg-emerald-950/40 px-4 py-3 flex items-center gap-4">
-                                                        <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-white dark:bg-slate-950 border border-emerald-200/70 dark:border-emerald-800/70 shadow-sm">
-                                                            <FileText className="h-5 w-5 text-emerald-500" />
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <Badge className="h-5 px-2 text-[10px] font-semibold rounded-full bg-emerald-500 text-white">
-                                                                    Active Revision
-                                                                </Badge>
-                                                                <span className="text-[11px] font-medium text-emerald-700/80 dark:text-emerald-300/80">
-                                                                    Revision: Jan 2026
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
-                                                                <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-300">
-                                                                    <TrendingUp className="h-3 w-3" />
-                                                                    +10%
-                                                                </span>
-                                                                <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
-                                                                <span className="truncate max-w-[160px] text-[11px] font-mono">
-                                                                    GFJGFHJGHJGJHGBHGUHGBHJBHKJ
-                                                                </span>
-                                                                <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
-                                                                <span className="text-[11px]">
-                                                                    Issued on 19/01/2026
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            className="ml-auto h-10 rounded-xl border-emerald-300/70 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-700/80 dark:text-emerald-200 dark:hover:bg-emerald-900/40 px-4 text-xs font-semibold flex items-center gap-2"
-                                                        >
-                                                            <FileText className="h-4 w-4" />
-                                                            Download
-                                                        </Button>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
+
+
 
                                         {/* Footer Note */}
                                         <div className="text-center">
