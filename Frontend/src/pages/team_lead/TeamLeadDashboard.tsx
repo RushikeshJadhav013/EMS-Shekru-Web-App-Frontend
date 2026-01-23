@@ -144,11 +144,11 @@ const TeamLeadDashboard: React.FC = () => {
               // Check if task is assigned to this user
               const assignedTo = task.assignedTo || task.assigned_to || task.assignedToId || task.assigned_to_id;
               const assignedToArray = Array.isArray(assignedTo) ? assignedTo : (assignedTo ? [assignedTo] : []);
-              
+
               // Also check user_id or userId fields
               const taskUserId = task.user_id || task.userId;
               const taskUserIdArray = taskUserId ? [taskUserId] : [];
-              
+
               // Match by userId string or number
               const allAssignedIds = [...assignedToArray, ...taskUserIdArray].map(id => String(id));
               return allAssignedIds.includes(userId) || allAssignedIds.includes(String(emp.id));
@@ -166,31 +166,31 @@ const TeamLeadDashboard: React.FC = () => {
 
             // Filter tasks specifically for TODAY's date
             const todayDateStr = todayIST(); // Format: YYYY-MM-DD
-            
+
             const todayTasks = employeeTasks.filter((task: any) => {
               // Check all possible date fields
               const dueDate = task.due_date || task.dueDate || task.deadline || task.deadline_date;
               const startDate = task.startDate || task.start_date;
               const createdDate = task.created_at || task.createdAt;
-              
+
               const dueDateStr = extractDate(dueDate);
               const startDateStr = extractDate(startDate);
               const createdDateStr = extractDate(createdDate);
-              
+
               // Task is for today if:
               // 1. Due date is today
               // 2. Start date is today
               // 3. Created date is today (if no other date exists)
-              return dueDateStr === todayDateStr || 
-                     startDateStr === todayDateStr || 
-                     (createdDateStr === todayDateStr && !dueDateStr && !startDateStr);
+              return dueDateStr === todayDateStr ||
+                startDateStr === todayDateStr ||
+                (createdDateStr === todayDateStr && !dueDateStr && !startDateStr);
             });
 
             // Identify upcoming deadline tasks (due date >= today, status != Completed/Cancelled)
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const todayTimestamp = today.getTime();
-            
+
             // Configurable: next X days for "soon" deadline (default: 7 days)
             const DEADLINE_SOON_DAYS = 7;
             const soonThreshold = new Date(today);
@@ -200,24 +200,24 @@ const TeamLeadDashboard: React.FC = () => {
             const upcomingDeadlineTasks = employeeTasks.filter((task: any) => {
               // Get task status
               const status = (task.status || '').toLowerCase();
-              
+
               // Exclude completed and cancelled tasks
               if (status === 'completed' || status === 'done' || status === 'cancelled' || status === 'canceled') {
                 return false;
               }
-              
+
               // Check due date
               const dueDate = task.due_date || task.dueDate || task.deadline || task.deadline_date;
               if (!dueDate) return false;
-              
+
               const dueDateStr = extractDate(dueDate);
               if (!dueDateStr) return false;
-              
+
               // Parse due date
               const dueDateObj = new Date(dueDateStr);
               dueDateObj.setHours(0, 0, 0, 0);
               const dueDateTimestamp = dueDateObj.getTime();
-              
+
               // Task is upcoming if due date >= today
               return dueDateTimestamp >= todayTimestamp;
             });
@@ -226,16 +226,16 @@ const TeamLeadDashboard: React.FC = () => {
             upcomingDeadlineTasks.sort((a: any, b: any) => {
               const dateA = extractDate(a.due_date || a.dueDate || a.deadline || a.deadline_date);
               const dateB = extractDate(b.due_date || b.dueDate || b.deadline || b.deadline_date);
-              
+
               if (!dateA) return 1;
               if (!dateB) return -1;
-              
+
               return new Date(dateA).getTime() - new Date(dateB).getTime();
             });
 
             // Get the nearest upcoming deadline task
             const nearestDeadlineTask = upcomingDeadlineTasks.length > 0 ? upcomingDeadlineTasks[0] : null;
-            
+
             // Calculate deadline information
             let hasUpcomingDeadline = false;
             let deadlineDate: string | undefined = undefined;
@@ -248,29 +248,29 @@ const TeamLeadDashboard: React.FC = () => {
               hasUpcomingDeadline = true;
               const dueDate = nearestDeadlineTask.due_date || nearestDeadlineTask.dueDate || nearestDeadlineTask.deadline || nearestDeadlineTask.deadline_date;
               deadlineDate = extractDate(dueDate) || undefined;
-              
+
               if (deadlineDate) {
                 const dueDateObj = new Date(deadlineDate);
                 dueDateObj.setHours(0, 0, 0, 0);
                 const dueDateTimestamp = dueDateObj.getTime();
-                
+
                 // Calculate days until deadline
                 const diffTime = dueDateTimestamp - todayTimestamp;
                 daysUntilDeadline = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
+
                 // Determine priority
                 if (daysUntilDeadline === 0) {
                   deadlinePriority = 'today';
                 } else if (daysUntilDeadline <= DEADLINE_SOON_DAYS) {
                   deadlinePriority = 'soon';
                 }
-                
+
                 // Get task title and status
                 deadlineTaskTitle = nearestDeadlineTask.title || nearestDeadlineTask.task_name || nearestDeadlineTask.name || nearestDeadlineTask.description || 'Untitled Task';
-                
+
                 const rawStatus = nearestDeadlineTask.status || 'todo';
                 const normalizedStatus = rawStatus.toLowerCase();
-                
+
                 if (normalizedStatus === 'todo' || normalizedStatus === 'pending' || normalizedStatus === 'not_started') {
                   deadlineTaskStatus = 'Todo';
                 } else if (normalizedStatus === 'in-progress' || normalizedStatus === 'inprogress' || normalizedStatus === 'in_progress') {
@@ -292,21 +292,21 @@ const TeamLeadDashboard: React.FC = () => {
             // Format task info for TODAY - show task title and status
             let currentTask = 'No task assigned today';
             let taskStatus: string | undefined = undefined;
-            
+
             if (todayTasks.length > 0) {
               // Show the first task for today (prioritize active tasks)
               const activeTodayTasks = todayTasks.filter((task: any) => {
                 const status = (task.status || '').toLowerCase();
                 return status !== 'completed' && status !== 'cancelled' && status !== 'done';
               });
-              
+
               const taskToShow = activeTodayTasks.length > 0 ? activeTodayTasks[0] : todayTasks[0];
               const taskTitle = taskToShow.title || taskToShow.task_name || taskToShow.name || taskToShow.description || 'Untitled Task';
-              
+
               // Get task status and normalize it
               const rawStatus = taskToShow.status || 'todo';
               const normalizedStatus = rawStatus.toLowerCase();
-              
+
               // Map status to display format
               if (normalizedStatus === 'todo' || normalizedStatus === 'pending' || normalizedStatus === 'not_started') {
                 taskStatus = 'Todo';
@@ -319,15 +319,15 @@ const TeamLeadDashboard: React.FC = () => {
               } else {
                 taskStatus = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
               }
-              
+
               // Truncate long task titles
               const maxTitleLength = 35;
-              const displayTitle = taskTitle.length > maxTitleLength 
-                ? `${taskTitle.substring(0, maxTitleLength)}...` 
+              const displayTitle = taskTitle.length > maxTitleLength
+                ? `${taskTitle.substring(0, maxTitleLength)}...`
                 : taskTitle;
-              
+
               const additionalCount = todayTasks.length - 1;
-              currentTask = additionalCount > 0 
+              currentTask = additionalCount > 0
                 ? `${displayTitle} (+${additionalCount} more)`
                 : displayTitle;
             } else {
@@ -398,21 +398,21 @@ const TeamLeadDashboard: React.FC = () => {
               } else {
                 // Check check-in and check-out times
                 // Backend may use different field names - check all possible variations
-                const checkInTime = empAttendance.check_in || 
-                                    empAttendance.checkInTime || 
-                                    empAttendance.check_in_time || 
-                                    empAttendance.checkIn ||
-                                    empAttendance.checkin ||
-                                    empAttendance.checkin_time ||
-                                    null;
-                
-                const checkOutTime = empAttendance.check_out || 
-                                    empAttendance.checkOutTime || 
-                                    empAttendance.check_out_time || 
-                                    empAttendance.checkOut ||
-                                    empAttendance.checkout ||
-                                    empAttendance.checkout_time ||
-                                    null;
+                const checkInTime = empAttendance.check_in ||
+                  empAttendance.checkInTime ||
+                  empAttendance.check_in_time ||
+                  empAttendance.checkIn ||
+                  empAttendance.checkin ||
+                  empAttendance.checkin_time ||
+                  null;
+
+                const checkOutTime = empAttendance.check_out ||
+                  empAttendance.checkOutTime ||
+                  empAttendance.check_out_time ||
+                  empAttendance.checkOut ||
+                  empAttendance.checkout ||
+                  empAttendance.checkout_time ||
+                  null;
 
                 // Helper function to validate date string
                 const isValidDateString = (dateStr: any): boolean => {
@@ -447,21 +447,15 @@ const TeamLeadDashboard: React.FC = () => {
                   isOnline = true;
                   console.log(`✅ ${emp.name} is ONLINE (checked in at ${checkInTime}, not checked out)`);
                 } else if (hasCheckIn && hasCheckOut) {
-                  // Checked in AND checked out = Present but Offline
+                  // Checked in AND checked out = Shift Completed (Present)
                   status = 'present';
                   isOnline = false;
-                  console.log(`⭕ ${emp.name} is OFFLINE (checked in at ${checkInTime}, checked out at ${checkOutTime})`);
-                } else if (!hasCheckIn) {
+                  console.log(`⭕ ${emp.name} is OFFLINE (Shift Completed)`);
+                } else {
                   // No check-in = Absent/Offline
                   status = 'absent';
                   isOnline = false;
                   console.log(`❌ ${emp.name} is OFFLINE (no check-in record)`);
-                } else {
-                  // Fallback: if we have check-in but check-out status is unclear
-                  // Assume online if check-in exists
-                  status = 'present';
-                  isOnline = true;
-                  console.log(`✅ ${emp.name} is ONLINE (has check-in at ${checkInTime}, check-out status unclear)`);
                 }
               }
             } else {
@@ -497,27 +491,27 @@ const TeamLeadDashboard: React.FC = () => {
           // 1. Priority: Employees with upcoming deadlines first
           if (a.hasUpcomingDeadline && !b.hasUpcomingDeadline) return -1;
           if (!a.hasUpcomingDeadline && b.hasUpcomingDeadline) return 1;
-          
+
           // 2. If both have deadlines, sort by deadline priority (today > soon > null)
           if (a.hasUpcomingDeadline && b.hasUpcomingDeadline) {
             const priorityOrder = { 'today': 0, 'soon': 1, null: 2 };
             const aPriority = priorityOrder[a.deadlinePriority || null];
             const bPriority = priorityOrder[b.deadlinePriority || null];
-            
+
             if (aPriority !== bPriority) {
               return aPriority - bPriority;
             }
-            
+
             // If same priority, sort by days until deadline (nearest first)
             if (a.daysUntilDeadline !== undefined && b.daysUntilDeadline !== undefined) {
               return a.daysUntilDeadline - b.daysUntilDeadline;
             }
           }
-          
+
           // 3. Put 'You' at the top (if no deadline priority)
           if (a.userId === String(user.id)) return -1;
           if (b.userId === String(user.id)) return 1;
-          
+
           // 4. Alphabetical by name
           return a.name.localeCompare(b.name);
         });
@@ -558,14 +552,14 @@ const TeamLeadDashboard: React.FC = () => {
     };
 
     fetchTeamMembersWithStatus();
-    
+
     // Auto-refresh every 30 seconds to update online/offline status and tasks
     // This ensures real-time updates when employees check in/out
     const refreshInterval = setInterval(() => {
       console.log('🔄 Auto-refreshing team members status...');
       fetchTeamMembersWithStatus();
     }, 30000); // 30 seconds
-    
+
     return () => clearInterval(refreshInterval);
   }, [user?.department]);
 
@@ -730,26 +724,24 @@ const TeamLeadDashboard: React.FC = () => {
             ) : (
               <div className="divide-y">
                 {teamMembers.map((member) => (
-                  <div 
-                    key={member.userId} 
-                    className={`group transition-colors p-5 ${
-                      member.hasUpcomingDeadline && member.deadlinePriority === 'today'
-                        ? 'bg-red-50/50 dark:bg-red-950/20 hover:bg-red-50 dark:hover:bg-red-950/30 border-l-4 border-red-500'
-                        : member.hasUpcomingDeadline && member.deadlinePriority === 'soon'
+                  <div
+                    key={member.userId}
+                    className={`group transition-colors p-5 ${member.hasUpcomingDeadline && member.deadlinePriority === 'today'
+                      ? 'bg-red-50/50 dark:bg-red-950/20 hover:bg-red-50 dark:hover:bg-red-950/30 border-l-4 border-red-500'
+                      : member.hasUpcomingDeadline && member.deadlinePriority === 'soon'
                         ? 'bg-orange-50/50 dark:bg-orange-950/20 hover:bg-orange-50 dark:hover:bg-orange-950/30 border-l-4 border-orange-500'
                         : 'hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10'
-                    }`}
+                      }`}
                   >
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="flex items-center gap-4 flex-1 min-w-0">
                         <div className="relative flex-shrink-0">
-                          <div className={`h-12 w-12 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center border-2 shadow-sm font-bold text-gray-600 dark:text-gray-300 ${
-                            member.hasUpcomingDeadline && member.deadlinePriority === 'today'
-                              ? 'border-red-500'
-                              : member.hasUpcomingDeadline && member.deadlinePriority === 'soon'
+                          <div className={`h-12 w-12 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center border-2 shadow-sm font-bold text-gray-600 dark:text-gray-300 ${member.hasUpcomingDeadline && member.deadlinePriority === 'today'
+                            ? 'border-red-500'
+                            : member.hasUpcomingDeadline && member.deadlinePriority === 'soon'
                               ? 'border-orange-500'
                               : 'border-white'
-                          }`}>
+                            }`}>
                             {member.name.charAt(0)}
                           </div>
                         </div>
@@ -758,22 +750,32 @@ const TeamLeadDashboard: React.FC = () => {
                             <h4 className="font-bold text-gray-900 dark:text-white group-hover:text-emerald-600 transition-colors truncate">
                               {member.name}
                             </h4>
+                            <div className="flex items-center gap-1.5 ml-1">
+                              {member.isOnline ? (
+                                <Badge className="bg-green-500 hover:bg-green-600 h-5 px-1.5 text-[10px] animate-pulse">
+                                  Online
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="h-5 px-1.5 text-[10px] opacity-70">
+                                  Offline
+                                </Badge>
+                              )}
+                            </div>
                             {/* Upcoming Deadline Badge */}
                             {member.hasUpcomingDeadline && (
-                              <Badge 
-                                variant="outline" 
-                                className={`text-[9px] px-2 py-0 h-5 font-bold flex items-center gap-1 ${
-                                  member.deadlinePriority === 'today'
-                                    ? 'bg-red-100 text-red-700 border-red-400 dark:bg-red-950/50 dark:text-red-400 dark:border-red-800'
-                                    : 'bg-orange-100 text-orange-700 border-orange-400 dark:bg-orange-950/50 dark:text-orange-400 dark:border-orange-800'
-                                }`}
+                              <Badge
+                                variant="outline"
+                                className={`text-[9px] px-2 py-0 h-5 font-bold flex items-center gap-1 ${member.deadlinePriority === 'today'
+                                  ? 'bg-red-100 text-red-700 border-red-400 dark:bg-red-950/50 dark:text-red-400 dark:border-red-800'
+                                  : 'bg-orange-100 text-orange-700 border-orange-400 dark:bg-orange-950/50 dark:text-orange-400 dark:border-orange-800'
+                                  }`}
                               >
                                 <AlertTriangle className="h-3 w-3" />
-                                {member.deadlinePriority === 'today' 
-                                  ? 'Deadline Today' 
+                                {member.deadlinePriority === 'today'
+                                  ? 'Deadline Today'
                                   : member.daysUntilDeadline !== undefined
-                                  ? `Due in ${member.daysUntilDeadline} day${member.daysUntilDeadline !== 1 ? 's' : ''}`
-                                  : 'Upcoming Deadline'}
+                                    ? `Due in ${member.daysUntilDeadline} day${member.daysUntilDeadline !== 1 ? 's' : ''}`
+                                    : 'Upcoming Deadline'}
                               </Badge>
                             )}
                           </div>
@@ -786,15 +788,14 @@ const TeamLeadDashboard: React.FC = () => {
                                   {member.deadlineTaskTitle}
                                 </span>
                                 {member.deadlineTaskStatus && (
-                                  <Badge 
-                                    variant="outline" 
-                                    className={`text-[9px] px-1.5 py-0 h-4 font-bold ${
-                                      member.deadlineTaskStatus === 'Completed'
-                                        ? 'bg-green-50 text-green-700 border-green-300 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800'
-                                        : member.deadlineTaskStatus === 'In Progress'
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[9px] px-1.5 py-0 h-4 font-bold ${member.deadlineTaskStatus === 'Completed'
+                                      ? 'bg-green-50 text-green-700 border-green-300 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800'
+                                      : member.deadlineTaskStatus === 'In Progress'
                                         ? 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800'
                                         : 'bg-gray-50 text-gray-700 border-gray-300 dark:bg-gray-950/30 dark:text-gray-400 dark:border-gray-800'
-                                    }`}
+                                      }`}
                                   >
                                     {member.deadlineTaskStatus}
                                   </Badge>
@@ -816,17 +817,16 @@ const TeamLeadDashboard: React.FC = () => {
                                 {member.task}
                               </span>
                               {member.taskStatus && member.task !== 'No task assigned today' && (
-                                <Badge 
-                                  variant="outline" 
-                                  className={`text-[9px] px-1.5 py-0 h-4 font-bold ${
-                                    member.taskStatus === 'Completed'
-                                      ? 'bg-green-50 text-green-700 border-green-300 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800'
-                                      : member.taskStatus === 'In Progress'
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[9px] px-1.5 py-0 h-4 font-bold ${member.taskStatus === 'Completed'
+                                    ? 'bg-green-50 text-green-700 border-green-300 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800'
+                                    : member.taskStatus === 'In Progress'
                                       ? 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800'
                                       : member.taskStatus === 'Cancelled'
-                                      ? 'bg-red-50 text-red-700 border-red-300 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800'
-                                      : 'bg-gray-50 text-gray-700 border-gray-300 dark:bg-gray-950/30 dark:text-gray-400 dark:border-gray-800'
-                                  }`}
+                                        ? 'bg-red-50 text-red-700 border-red-300 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800'
+                                        : 'bg-gray-50 text-gray-700 border-gray-300 dark:bg-gray-950/30 dark:text-gray-400 dark:border-gray-800'
+                                    }`}
                                 >
                                   {member.taskStatus}
                                 </Badge>

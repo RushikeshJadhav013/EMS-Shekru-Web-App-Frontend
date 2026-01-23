@@ -397,7 +397,7 @@ export default function LeaveManagement() {
 
   const userWeekOffDays = useMemo(() => {
     // For management profiles, show all types of week offs from all departments
-    if (['admin', 'hr', 'manager', 'team_lead'].includes(user?.role || '')) {
+    if (['admin', 'hr', 'manager'].includes(user?.role || '')) {
       const allDays = new Set<string>();
       Object.values(weekOffConfig).forEach(days => {
         days.forEach(d => allDays.add(d.toLowerCase()));
@@ -411,7 +411,7 @@ export default function LeaveManagement() {
   }, [user?.department, user?.role, weekOffConfig]);
 
   const canApproveLeaves = ['admin', 'hr', 'manager'].includes(user?.role || '');
-  const canViewTeamLeaves = ['team_lead'].includes(user?.role || '');
+  const canViewTeamLeaves = [].includes(user?.role || '');
   // Admins should not have an option to apply for leave from the admin dashboard
   const canApply = user?.role !== 'admin';
 

@@ -211,7 +211,7 @@ const SalaryDashboard = () => {
                         size="lg"
                         onClick={loadEmployees}
                         disabled={loading}
-                        className="rounded-xl px-6 h-12 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all active:scale-95"
+                        className="rounded-xl px-6 h-12 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all active:scale-95"
                     >
                         <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                         Refresh

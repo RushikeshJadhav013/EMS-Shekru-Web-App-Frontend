@@ -27,6 +27,7 @@ interface TeamMemberStatus {
   task: string;
   progress: number;
   userId: string;
+  isOnline: boolean;
 }
 
 const ManagerDashboard: React.FC = () => {
@@ -279,17 +280,20 @@ const ManagerDashboard: React.FC = () => {
             // Determine status based on actual attendance
             const attendanceRecord = attendanceMap[uId];
             let status: 'present' | 'completed' | 'on-leave' | 'absent' = 'absent';
+            let isOnline = false;
 
             if (attendanceRecord) {
-              if (attendanceRecord.check_out || attendanceRecord.checkOutTime) {
+              const checkOutTime = attendanceRecord.check_out || attendanceRecord.checkOutTime;
+              if (checkOutTime && checkOutTime !== 'null' && checkOutTime !== 'None') {
                 status = 'completed';
+                isOnline = false;
               } else {
                 status = 'present';
+                isOnline = true;
               }
             } else {
-              // Check if currently on leave (simplified check: if not present and onLeave count > 0)
-              // In a real scenario, we'd check against a leaves list
               status = 'absent';
+              isOnline = false;
             }
 
             return {
@@ -298,6 +302,7 @@ const ManagerDashboard: React.FC = () => {
               task: currentTask,
               progress,
               userId: uId,
+              isOnline,
             };
           })
         );
@@ -614,30 +619,31 @@ const ManagerDashboard: React.FC = () => {
               <div key={member.userId} className="p-3 rounded-lg border space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`h-2 w-2 rounded-full ${member.status === 'present' ? 'bg-green-500' :
-                      member.status === 'completed' ? 'bg-blue-500' :
-                        member.status === 'on-leave' ? 'bg-amber-500' :
-                          'bg-gray-400'
-                      }`} />
+                    <div className={`h-2.5 w-2.5 rounded-full ${member.isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
                     <div>
-                      <p className="font-medium text-sm">{member.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-sm">{member.name}</p>
+                        <Badge variant={member.isOnline ? 'default' : 'secondary'} className={`h-4 px-1 text-[9px] ${member.isOnline ? 'bg-green-500' : 'opacity-70'}`}>
+                          {member.isOnline ? 'Online' : 'Offline'}
+                        </Badge>
+                      </div>
                       <p className="text-xs text-muted-foreground">{member.task}</p>
                     </div>
                   </div>
                   <Badge
                     variant={
-                      member.status === 'present' ? 'default' :
+                      member.status === 'present' || member.isOnline ? 'default' :
                         member.status === 'completed' ? 'secondary' :
                           member.status === 'on-leave' ? 'outline' :
                             'outline'
                     }
                     className={
-                      member.status === 'present' ? 'bg-green-500 hover:bg-green-600' :
+                      member.status === 'present' || member.isOnline ? 'bg-green-500 hover:bg-green-600' :
                         member.status === 'completed' ? 'bg-blue-500 hover:bg-blue-600' :
                           ''
                     }
                   >
-                    {member.status === 'present' ? 'Present' :
+                    {member.isOnline ? 'Working' :
                       member.status === 'completed' ? 'Completed' :
                         member.status === 'on-leave' ? 'On Leave' :
                           'Absent'}

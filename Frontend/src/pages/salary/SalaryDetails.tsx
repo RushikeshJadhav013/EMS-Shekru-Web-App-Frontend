@@ -1513,14 +1513,16 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                     </div>
                                                 </div>
                                             </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={handleDownloadOfferLetter}
-                                                className="h-11 w-11 rounded-xl hover:bg-blue-600 hover:text-white transition-all transform hover:scale-110 active:scale-95 shadow-sm"
-                                            >
-                                                <Download className="h-5 w-5" />
-                                            </Button>
+                                            {isAdminOrHr && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={handleDownloadOfferLetter}
+                                                    className="h-11 w-11 rounded-xl hover:bg-blue-600 hover:text-white transition-all transform hover:scale-110 active:scale-95 shadow-sm"
+                                                >
+                                                    <Download className="h-5 w-5" />
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
 

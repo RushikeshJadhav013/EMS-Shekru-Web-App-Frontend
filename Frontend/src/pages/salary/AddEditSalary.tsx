@@ -29,28 +29,38 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Mail, Hash, Building2 } from "lucide-react";
+
+// Helper to handle numbers with spaces
+const preprocessNumber = (val: unknown) => {
+    if (typeof val === 'string') {
+        const cleaned = val.replace(/\s/g, '');
+        if (cleaned === '') return 0;
+        const num = Number(cleaned);
+        return isNaN(num) ? 0 : num;
+    }
+    return Number(val) || 0;
+};
 
 // Validation Schema with stricter rules
 const salarySchema = z.object({
     userId: z.string().min(1, 'Employee is required'),
-    annualCtc: z.preprocess((val) => {
-        const num = Number(val);
-        return isNaN(num) || num === 0 ? 0 : num;
-    }, z.number().min(0, 'CTC must be a positive number')),
+    annualCtc: z.preprocess(preprocessNumber, z.number().min(0, 'CTC must be a positive number')),
     variablePayType: z.enum(['none', 'percentage', 'fixed']),
-    variablePayValue: z.preprocess((val) => Number(val) || 0, z.number().min(0).default(0)),
-    workingDays: z.preprocess((val) => Number(val) || 26, z.number().min(1).max(31).default(26)),
+    variablePayValue: z.preprocess(preprocessNumber, z.number().min(0).default(0)),
+    workingDays: z.preprocess(preprocessNumber, z.number().min(1).max(31).default(26)),
     // Manual Entry Fields (Annual)
-    basicAnnual: z.preprocess((val) => Number(val) || 0, z.number().min(0).optional()),
-    hraAnnual: z.preprocess((val) => Number(val) || 0, z.number().min(0).optional()),
-    specialAllowanceAnnual: z.preprocess((val) => Number(val) || 0, z.number().min(0).optional()),
-    conveyanceAnnual: z.preprocess((val) => Number(val) || 0, z.number().min(0).optional()),
-    medicalAllowanceAnnual: z.preprocess((val) => Number(val) || 0, z.number().min(0).optional()),
-    otherAllowanceAnnual: z.preprocess((val) => Number(val) || 0, z.number().min(0).optional()),
-    professionalTaxAnnual: z.preprocess((val) => Number(val) || 0, z.number().min(0).optional()),
-    otherDeductionAnnual: z.preprocess((val) => Number(val) || 0, z.number().min(0).optional()),
-    pfAnnual: z.preprocess((val) => Number(val) || 0, z.number().min(0).optional()),
-    variablePayAnnual: z.preprocess((val) => Number(val) || 0, z.number().min(0).optional()),
+    basicAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
+    hraAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
+    specialAllowanceAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
+    conveyanceAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
+    medicalAllowanceAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
+    otherAllowanceAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
+    professionalTaxAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
+    otherDeductionAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
+    pfAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
+    variablePayAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
 }).refine((data) => {
     // Only validate variable pay rules for 'auto' mode if ctc is present
     if (data.annualCtc > 0) {
@@ -66,6 +76,17 @@ const salarySchema = z.object({
     message: "Variable pay cannot exceed 50% of CTC",
     path: ["variablePayValue"],
 });
+
+// Helper for component logic
+const parseNumber = (val: any) => {
+    if (val === null || val === undefined) return 0;
+    if (typeof val === 'number') return val;
+    if (typeof val === 'string') {
+        const num = parseFloat(val.replace(/\s/g, ''));
+        return isNaN(num) ? 0 : num;
+    }
+    return 0;
+};
 
 type SalaryFormValues = z.infer<typeof salarySchema>;
 
@@ -174,17 +195,17 @@ const AddEditSalary = () => {
     const watchPTAnn = form.watch('professionalTaxAnnual');
     const watchDeductionAnn = form.watch('otherDeductionAnnual');
 
-    const totalCalculatedManualCTC = (watchBasicAnn || 0) + (watchHraAnn || 0) + (watchSpecialAnn || 0) +
-        (watchConveyanceAnn || 0) + (watchMedicalAnn || 0) + (watchOtherAnn || 0) +
-        (watchPFAnn || 0) + (watchVarPayAnn || 0) + (watchPTAnn || 0) + (watchDeductionAnn || 0);
+    const totalCalculatedManualCTC = (parseNumber(watchBasicAnn) || 0) + (parseNumber(watchHraAnn) || 0) + (parseNumber(watchSpecialAnn) || 0) +
+        (parseNumber(watchConveyanceAnn) || 0) + (parseNumber(watchMedicalAnn) || 0) + (parseNumber(watchOtherAnn) || 0) +
+        (parseNumber(watchPFAnn) || 0) + (parseNumber(watchVarPayAnn) || 0) + (parseNumber(watchPTAnn) || 0) + (parseNumber(watchDeductionAnn) || 0);
 
-    const manualCtcDifference = watchCtc - totalCalculatedManualCTC;
+    const manualCtcDifference = parseNumber(watchCtc) - totalCalculatedManualCTC;
 
     useEffect(() => {
         const timer = setTimeout(() => {
             if (activeTab === "manual") {
                 handleCalculatePreview();
-            } else if (watchCtc > 0) {
+            } else if (parseNumber(watchCtc) > 0) {
                 handleCalculatePreview();
             }
         }, 400); // Reduced from 800 for better reactivity
@@ -198,11 +219,13 @@ const AddEditSalary = () => {
 
     // Sync manual components when CTC changes in both Guided and Manual modes
     useEffect(() => {
-        if (watchCtc > 0) {
+        if (parseNumber(watchCtc) > 0) {
             // Try to use API calculation first for consistency with guided mode
             const calculateUsingApi = async () => {
+                const ctc = parseNumber(watchCtc);
+                const variableValue = parseNumber(watchVarValue);
                 try {
-                    const data = await apiService.calculateSalaryPreview(watchCtc, watchVarType, watchVarValue);
+                    const data = await apiService.calculateSalaryPreview(ctc, watchVarType, variableValue);
                     if (data) {
                         // Use API-calculated values for consistency
                         const mb = data.monthly_basic || data.monthlyBasic || (data.basic_annual ? data.basic_annual / 12 : 0);
@@ -237,9 +260,9 @@ const AddEditSalary = () => {
                 // Fallback to local calculation if API fails
                 // Standard Indian Payroll Proportions (following "Government Rules" logic)
                 // We calculate based on the current CTC and variable pay in the form
-                const variablePart = form.getValues('variablePayAnnual') || 0;
+                const variablePart = parseNumber(form.getValues('variablePayAnnual')) || 0;
                 // Fixed CTC available for core components
-                const fixedCtc = watchCtc - variablePart;
+                const fixedCtc = ctc - variablePart;
 
                 // 1. Basic: Usually 50% of Fixed CTC
                 const annualBasic = Math.round(fixedCtc * 0.5);
@@ -269,9 +292,9 @@ const AddEditSalary = () => {
                 // 7. Variable Pay calculation based on type
                 let annualVariablePay = 0;
                 if (watchVarType === 'percentage') {
-                    annualVariablePay = watchCtc * (watchVarValue / 100);
+                    annualVariablePay = ctc * (variableValue / 100);
                 } else if (watchVarType === 'fixed') {
-                    annualVariablePay = watchVarValue;
+                    annualVariablePay = variableValue;
                 }
 
                 // Always populate manual fields regardless of active tab
@@ -361,7 +384,10 @@ const AddEditSalary = () => {
     ) => {
         const isManual = activeTab === "manual";
 
-        if (!isManual && (!ctc || ctc <= 0)) {
+        const ctcVal = parseNumber(ctc);
+        const vValueVal = parseNumber(vValue);
+
+        if (!isManual && (!ctcVal || ctcVal <= 0)) {
             setPreviewData(null);
             return;
         }
@@ -372,32 +398,32 @@ const AddEditSalary = () => {
 
             if (isManual) {
                 const values = form.getValues();
-                const basic = Math.round((values.basicAnnual || 0) / 12);
-                const hra = Math.round((values.hraAnnual || 0) / 12);
-                const special = Math.round((values.specialAllowanceAnnual || 0) / 12);
-                const medical = Math.round((values.medicalAllowanceAnnual || 0) / 12);
-                const conveyance = Math.round((values.conveyanceAnnual || 0) / 12);
-                const other = Math.round((values.otherAllowanceAnnual || 0) / 12);
-                const pt = Math.round((values.professionalTaxAnnual || 0) / 12);
-                const otherDed = Math.round((values.otherDeductionAnnual || 0) / 12);
+                const basic = Math.round(parseNumber(values.basicAnnual || 0) / 12);
+                const hra = Math.round(parseNumber(values.hraAnnual || 0) / 12);
+                const special = Math.round(parseNumber(values.specialAllowanceAnnual || 0) / 12);
+                const medical = Math.round(parseNumber(values.medicalAllowanceAnnual || 0) / 12);
+                const conveyance = Math.round(parseNumber(values.conveyanceAnnual || 0) / 12);
+                const other = Math.round(parseNumber(values.otherAllowanceAnnual || 0) / 12);
+                const pt = Math.round(parseNumber(values.professionalTaxAnnual || 0) / 12);
+                const otherDed = Math.round(parseNumber(values.otherDeductionAnnual || 0) / 12);
 
                 // PF Calculation: Split Annual Total into Employer and Employee shares (50/50)
-                const pfAnnTotal = values.pfAnnual || 0;
+                const pfAnnTotal = parseNumber(values.pfAnnual || 0);
                 const pfAnnOneSide = pfAnnTotal / 2;
                 const pfEmp = Math.round(pfAnnOneSide / 12);
                 const pfEmpr = Math.round(pfAnnOneSide / 12);
 
-                const vPay = Math.round((values.variablePayAnnual || 0) / 12);
+                const vPay = Math.round(parseNumber(values.variablePayAnnual || 0) / 12);
 
                 const monthlyGross = basic + hra + special + medical + conveyance + other;
                 const monthlyDeductions = pfEmp + pt + otherDed;
                 const monthlyInHand = monthlyGross - monthlyDeductions;
                 // CTC = Monthly Gross * 12 + Employer PF * 12 + Annual Variable Pay
                 // (Note: Employer PF is outside Gross, but part of CTC)
-                const calculatedAnnualCtc = (monthlyGross + pfEmpr) * 12 + (values.variablePayAnnual || 0);
+                const calculatedAnnualCtc = (monthlyGross + pfEmpr) * 12 + parseNumber(values.variablePayAnnual || 0);
 
                 setPreviewData({
-                    annualCtc: values.annualCtc > 0 ? values.annualCtc : calculatedAnnualCtc,
+                    annualCtc: parseNumber(values.annualCtc) > 0 ? parseNumber(values.annualCtc) : calculatedAnnualCtc,
                     annualBasic: basic * 12,
                     monthlyBasic: basic,
                     hra,
@@ -417,7 +443,7 @@ const AddEditSalary = () => {
             } else {
                 // Try API call first, then fallback to local calculation
                 try {
-                    const data = await apiService.calculateSalaryPreview(ctc, vType, vValue);
+                    const data = await apiService.calculateSalaryPreview(ctcVal, vType, vValueVal);
 
                     // Robust mapping from API response (handling both snake_case, camelCase, and annual/monthly variations)
                     const monthlyBasic = data.monthly_basic || data.monthlyBasic || (data.basic_annual ? data.basic_annual / 12 : 0);
@@ -429,14 +455,14 @@ const AddEditSalary = () => {
 
                     const pfEmployer = data.pf_employer || data.pfEmployer || (data.pf_annual ? (data.pf_annual / 2) / 12 : (monthlyBasic > 0 ? Math.round(monthlyBasic * 0.12) : 0));
                     const pfEmployee = data.pf_employee || data.pfEmployee || (data.pf_annual ? (data.pf_annual / 2) / 12 : (monthlyBasic > 0 ? Math.round(monthlyBasic * 0.12) : 0));
-                    const professionalTax = data.professional_tax || data.professionalTax || (data.professional_tax_annual ? data.professional_tax_annual / 12 : (ctc > 0 ? 200 : 0));
+                    const professionalTax = data.professional_tax || data.professionalTax || (data.professional_tax_annual ? data.professional_tax_annual / 12 : (ctcVal > 0 ? 200 : 0));
                     const otherDeduction = data.other_deduction || data.otherDeduction || (data.other_deduction_annual ? data.other_deduction_annual / 12 : 0);
 
                     const monthlyGross = data.monthly_gross || data.monthlyGross || (monthlyBasic + hra + specialAllowance + medicalAllowance + conveyanceAllowance + otherAllowance);
                     // Re-calculate monthly deductions with mapped values
                     const totalMonthlyDeductions = pfEmployee + professionalTax + otherDeduction;
                     const monthlyInHand = data.monthly_in_hand || data.monthlyInHand || (monthlyGross - totalMonthlyDeductions);
-                    const annualCtc = data.annual_ctc || data.annualCtc || (data.ctc_annual || ctc);
+                    const annualCtc = data.annual_ctc || data.annualCtc || (data.ctc_annual || ctcVal);
 
                     setPreviewData({
                         ...data,
@@ -460,7 +486,7 @@ const AddEditSalary = () => {
                 } catch (error) {
                     console.warn('API calculation failed, using fallback:', error);
                     // Fallback calculation for guided mode
-                    const fixedCtc = vType === 'percentage' ? ctc * (1 - vValue / 100) : ctc - vValue;
+                    const fixedCtc = vType === 'percentage' ? ctcVal * (1 - vValueVal / 100) : ctcVal - vValueVal;
                     const annualBasic = Math.round(fixedCtc * 0.5);
                     const annualHra = Math.round(annualBasic * 0.5);
                     const annualPfOneSide = Math.round(annualBasic * 0.12); // One Side
@@ -485,7 +511,7 @@ const AddEditSalary = () => {
                     const monthlyInHand = monthlyGross - monthlyDeductions;
 
                     setPreviewData({
-                        annualCtc: ctc,
+                        annualCtc: ctcVal,
                         annualBasic,
                         monthlyBasic,
                         hra: monthlyHra,
@@ -496,7 +522,7 @@ const AddEditSalary = () => {
                         pfEmployer: monthlyPfEmpr,
                         pfEmployee: monthlyPfEmp,
                         professionalTax: monthlyPt,
-                        variablePay: vType === 'percentage' ? ctc * (vValue / 100) : vValue,
+                        variablePay: vType === 'percentage' ? ctcVal * (vValueVal / 100) : vValueVal,
                         monthlyGross,
                         monthlyDeductions,
                         otherDeduction: 0,
@@ -771,31 +797,82 @@ const AddEditSalary = () => {
 
             {/* Employee Details Section - Top of Page */}
             {selectedEmployee && (
-                <Card className="border-none shadow-md overflow-hidden bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-900/10 dark:to-indigo-900/10">
-                    <div className="h-1 bg-gradient-to-r from-blue-500 to-indigo-500 w-full" />
-                    <CardHeader className="pb-4">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Briefcase className="h-5 w-5 text-blue-600" />
-                            Employee Details
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="space-y-1">
-                                <h4 className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Employee Name</h4>
-                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{selectedEmployee.name}</p>
+                <Card className="border-none shadow-lg overflow-hidden bg-white dark:bg-gray-900 ring-1 ring-gray-200 dark:ring-gray-800">
+                    <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+                    <CardContent className="p-6">
+                        <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+                            {/* Avatar Section */}
+                            <div className="flex-shrink-0">
+                                <Avatar className="h-20 w-20 ring-4 ring-blue-50 dark:ring-blue-900/20 shadow-xl">
+                                    <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedEmployee.name}`} alt={selectedEmployee.name} />
+                                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xl font-bold">
+                                        {selectedEmployee.name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                                    </AvatarFallback>
+                                </Avatar>
                             </div>
-                            <div className="space-y-1">
-                                <h4 className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Role</h4>
-                                <Badge variant="secondary" className="bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300 font-semibold text-xs capitalize">
-                                    {selectedEmployee.role || 'N/A'}
-                                </Badge>
-                            </div>
-                            <div className="space-y-1">
-                                <h4 className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Department</h4>
-                                <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300 font-semibold text-xs">
-                                    {selectedEmployee.department || 'N/A'}
-                                </Badge>
+
+                            {/* Info Section */}
+                            <div className="flex-1 w-full text-center md:text-left space-y-4">
+                                <div>
+                                    <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 justify-center md:justify-start">
+                                        <h2 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white">
+                                            {selectedEmployee.name}
+                                        </h2>
+                                        <Badge variant="outline" className={`px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider h-6 ${selectedEmployee.status === 'active'
+                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'
+                                            : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'
+                                            }`}>
+                                            {selectedEmployee.status || 'Active'}
+                                        </Badge>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground font-medium flex items-center justify-center md:justify-start gap-2 mt-1">
+                                        <span className="flex items-center gap-1.5">
+                                            <Mail className="w-3.5 h-3.5" />
+                                            {selectedEmployee.email || 'No email provided'}
+                                        </span>
+                                        <span className="text-gray-300 dark:text-gray-700">•</span>
+                                        <span className="flex items-center gap-1.5">
+                                            <Hash className="w-3.5 h-3.5" />
+                                            {selectedEmployee.employee_id || 'ID: --'}
+                                        </span>
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 pt-2">
+                                    <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
+                                        <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                                            Department
+                                        </p>
+                                        <div className="flex items-center gap-2 font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                                            <div className="p-1 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
+                                                <Building2 className="w-3 h-3" />
+                                            </div>
+                                            {selectedEmployee.department || 'N/A'}
+                                        </div>
+                                    </div>
+                                    <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
+                                        <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                                            Role
+                                        </p>
+                                        <div className="flex items-center gap-2 font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                                            <div className="p-1 rounded bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400">
+                                                <Briefcase className="w-3 h-3" />
+                                            </div>
+                                            <span className="capitalize">{selectedEmployee.role || 'N/A'}</span>
+                                        </div>
+                                    </div>
+                                    <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 col-span-2 md:col-span-1">
+                                        <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                                            Joined Date
+                                        </p>
+                                        <div className="flex items-center gap-2 font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                                            <div className="p-1 rounded bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400">
+                                                <Calendar className="w-3 h-3" />
+                                            </div>
+                                            {selectedEmployee.created_at ? new Date(selectedEmployee.created_at).toLocaleDateString() : 'N/A'}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </CardContent>
@@ -862,12 +939,14 @@ const AddEditSalary = () => {
                                     // Sync manual fields when switching from guided to manual
                                     if (val === "manual" && activeTab === "auto") {
                                         setTimeout(async () => {
+                                            const ctc = parseNumber(watchCtc);
+                                            const vValue = parseNumber(watchVarValue);
                                             if (previewData) {
                                                 syncManualFieldsFromPreview();
-                                            } else if (watchCtc > 0) {
+                                            } else if (ctc > 0) {
                                                 // Use API calculation for consistency
                                                 try {
-                                                    const data = await apiService.calculateSalaryPreview(watchCtc, watchVarType, watchVarValue);
+                                                    const data = await apiService.calculateSalaryPreview(ctc, watchVarType, vValue);
                                                     if (data) {
                                                         form.setValue('basicAnnual', (data.monthly_basic || data.monthlyBasic || 0) * 12, { shouldValidate: true });
                                                         form.setValue('hraAnnual', (data.hra || 0) * 12, { shouldValidate: true });
@@ -887,8 +966,8 @@ const AddEditSalary = () => {
                                                     console.warn('API calculation failed during tab switch, using fallback:', error);
 
                                                     // Fallback calculation
-                                                    const variablePart = form.getValues('variablePayAnnual') || 0;
-                                                    const fixedCtc = watchCtc - variablePart;
+                                                    const variablePart = parseNumber(form.getValues('variablePayAnnual')) || 0;
+                                                    const fixedCtc = ctc - variablePart;
 
                                                     const annualBasic = Math.round(fixedCtc * 0.5);
                                                     const annualHra = Math.round(annualBasic * 0.5);
@@ -926,9 +1005,9 @@ const AddEditSalary = () => {
 
                                                     let annualVariablePay = 0;
                                                     if (watchVarType === 'percentage') {
-                                                        annualVariablePay = watchCtc * (watchVarValue / 100);
+                                                        annualVariablePay = ctc * (vValue / 100);
                                                     } else if (watchVarType === 'fixed') {
-                                                        annualVariablePay = watchVarValue;
+                                                        annualVariablePay = vValue;
                                                     }
 
                                                     form.setValue('basicAnnual', annualBasic, { shouldValidate: true });
@@ -987,11 +1066,12 @@ const AddEditSalary = () => {
                                                         <div className="relative group">
                                                             <span className="absolute left-3 top-2.5 text-gray-400 group-focus-within:text-blue-500 transition-colors">₹</span>
                                                             <Input
-                                                                type="number"
+                                                                type="text"
                                                                 className="pl-8 h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500 font-bold text-lg"
-                                                                placeholder="e.g. 12,00,000"
+                                                                placeholder="e.g. 12 00 000"
                                                                 disabled={isLocked}
                                                                 {...form.register("annualCtc")}
+                                                                onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
                                                             />
                                                         </div>
                                                         {form.formState.errors.annualCtc && <p className="text-red-500 text-xs mt-1">{form.formState.errors.annualCtc.message}</p>}
@@ -1001,10 +1081,11 @@ const AddEditSalary = () => {
                                                             Working Days (Month)
                                                         </Label>
                                                         <Input
-                                                            type="number"
+                                                            type="text"
                                                             className="h-11 font-semibold"
                                                             disabled={isLocked}
-                                                            {...form.register("workingDays", { valueAsNumber: true })}
+                                                            {...form.register("workingDays")}
+                                                            onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
                                                         />
                                                     </div>
                                                 </div>
@@ -1043,11 +1124,12 @@ const AddEditSalary = () => {
                                                                     <span className="absolute left-3 top-3 text-gray-400 group-focus-within:text-blue-500 transition-colors">₹</span>
                                                                 )}
                                                                 <Input
-                                                                    type="number"
+                                                                    type="text"
                                                                     className={`h-11 font-semibold ${watchVarType === 'fixed' ? 'pl-8' : ''}`}
-                                                                    placeholder={watchVarType === 'percentage' ? "e.g. 10" : "e.g. 50000"}
+                                                                    placeholder={watchVarType === 'percentage' ? "e.g. 10" : "e.g. 50 000"}
                                                                     disabled={watchVarType === 'none' || isLocked}
                                                                     {...form.register("variablePayValue")}
+                                                                    onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
                                                                 />
                                                                 {watchVarType === 'percentage' && (
                                                                     <span className="absolute right-3 top-3 text-gray-400 group-focus-within:text-blue-500 transition-colors">%</span>
@@ -1058,8 +1140,8 @@ const AddEditSalary = () => {
                                                                     <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
                                                                     <p className="text-[10px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full border border-blue-100 dark:border-blue-800 shadow-sm">
                                                                         {watchVarType === 'percentage'
-                                                                            ? `≈ ${formatCurrency((watchCtc * watchVarValue) / 100)} / year`
-                                                                            : `≈ ${((watchVarValue / watchCtc) * 100).toFixed(2)}% of CTC`
+                                                                            ? `≈ ${formatCurrency((parseNumber(watchCtc) * parseNumber(watchVarValue)) / 100)} / year`
+                                                                            : `≈ ${((parseNumber(watchVarValue) / parseNumber(watchCtc)) * 100).toFixed(2)}% of CTC`
                                                                         }
                                                                     </p>
                                                                     <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
@@ -1132,39 +1214,39 @@ const AddEditSalary = () => {
                                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                                                     <div className="space-y-2">
                                                         <Label className="text-[10px] font-bold uppercase text-muted-foreground">Basic Annual (₹)</Label>
-                                                        <Input type="number" className="h-10" {...form.register("basicAnnual")} />
+                                                        <Input type="text" className="h-10" {...form.register("basicAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="text-[10px] font-bold uppercase text-muted-foreground">HRA Annual (₹)</Label>
-                                                        <Input type="number" className="h-10" {...form.register("hraAnnual")} />
+                                                        <Input type="text" className="h-10" {...form.register("hraAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="text-[10px] font-bold uppercase text-muted-foreground">Special Allowance (₹)</Label>
-                                                        <Input type="number" className="h-10" {...form.register("specialAllowanceAnnual")} />
+                                                        <Input type="text" className="h-10" {...form.register("specialAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="text-[10px] font-bold uppercase text-muted-foreground">Conveyance (₹)</Label>
-                                                        <Input type="number" className="h-10" {...form.register("conveyanceAnnual")} />
+                                                        <Input type="text" className="h-10" {...form.register("conveyanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="text-[10px] font-bold uppercase text-muted-foreground">Medical (₹)</Label>
-                                                        <Input type="number" className="h-10" {...form.register("medicalAllowanceAnnual")} />
+                                                        <Input type="text" className="h-10" {...form.register("medicalAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="text-[10px] font-bold uppercase text-muted-foreground">Other Allowance (₹)</Label>
-                                                        <Input type="number" className="h-10" {...form.register("otherAllowanceAnnual")} />
+                                                        <Input type="text" className="h-10" {...form.register("otherAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2 p-3 bg-red-50/30 dark:bg-red-900/10 rounded-lg border border-red-100/50">
                                                         <Label className="text-[10px] font-bold uppercase text-red-600">Professional Tax (₹)</Label>
-                                                        <Input type="number" className="h-9 mt-1 border-red-200" {...form.register("professionalTaxAnnual")} />
+                                                        <Input type="text" className="h-9 mt-1 border-red-200" {...form.register("professionalTaxAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2 p-3 bg-red-50/30 dark:bg-red-900/10 rounded-lg border border-red-100/50">
                                                         <Label className="text-[10px] font-bold uppercase text-red-600">Other Deductions (₹)</Label>
-                                                        <Input type="number" className="h-9 mt-1 border-red-200" {...form.register("otherDeductionAnnual")} />
+                                                        <Input type="text" className="h-9 mt-1 border-red-200" {...form.register("otherDeductionAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2 p-3 bg-emerald-50/30 dark:bg-emerald-900/10 rounded-lg border border-emerald-100/50">
                                                         <Label className="text-[10px] font-bold uppercase text-emerald-600">PF Annual (₹)</Label>
-                                                        <Input type="number" className="h-9 mt-1 border-emerald-200" {...form.register("pfAnnual")} />
+                                                        <Input type="text" className="h-9 mt-1 border-emerald-200" {...form.register("pfAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2 lg:col-span-2">
                                                         <Label className="text-[10px] font-bold uppercase text-blue-600">Variable Pay / Performance Bonus</Label>
@@ -1201,11 +1283,12 @@ const AddEditSalary = () => {
                                                                         <span className="absolute left-3 top-2.5 text-blue-400 group-focus-within:text-blue-600 transition-colors">₹</span>
                                                                     )}
                                                                     <Input
-                                                                        type="number"
+                                                                        type="text"
                                                                         className={`h-11 font-semibold ${form.watch('variablePayType') === 'fixed' ? 'pl-8' : ''}`}
-                                                                        placeholder={form.watch('variablePayType') === 'percentage' ? "e.g. 10" : "e.g. 50000"}
+                                                                        placeholder={form.watch('variablePayType') === 'percentage' ? "e.g. 10" : "e.g. 50 000"}
                                                                         disabled={form.watch('variablePayType') === 'none' || isLocked}
                                                                         {...form.register("variablePayValue")}
+                                                                        onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
                                                                     />
                                                                     {form.watch('variablePayType') === 'percentage' && (
                                                                         <span className="absolute right-3 top-3 text-gray-400 group-focus-within:text-blue-500 transition-colors">%</span>
@@ -1218,8 +1301,8 @@ const AddEditSalary = () => {
                                                                 <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
                                                                 <p className="text-[10px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full border border-blue-100 dark:border-blue-800 shadow-sm">
                                                                     {form.watch('variablePayType') === 'percentage'
-                                                                        ? `≈ ${formatCurrency((watchCtc * form.watch('variablePayValue')) / 100)} / year`
-                                                                        : `≈ ${((form.watch('variablePayValue') / watchCtc) * 100).toFixed(2)}% of CTC`
+                                                                        ? `≈ ${formatCurrency((parseNumber(watchCtc) * parseNumber(form.watch('variablePayValue'))) / 100)} / year`
+                                                                        : `≈ ${((parseNumber(form.watch('variablePayValue')) / parseNumber(watchCtc)) * 100).toFixed(2)}% of CTC`
                                                                     }
                                                                 </p>
                                                                 <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
@@ -1228,7 +1311,7 @@ const AddEditSalary = () => {
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="text-[10px] font-bold uppercase text-muted-foreground">Working Days</Label>
-                                                        <Input type="number" className="h-10" {...form.register("workingDays")} />
+                                                        <Input type="text" className="h-10" {...form.register("workingDays")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                 </div>
 
@@ -1393,7 +1476,7 @@ const AddEditSalary = () => {
                                                         <p className="text-xs text-blue-200/80 uppercase tracking-wider">Annual CTC</p>
                                                     </div>
                                                     <p className="text-lg font-bold text-white group-hover:text-blue-200 transition-colors">
-                                                        {previewData ? formatCurrency(previewData.annualCtc) : formatCurrency(watchCtc)}
+                                                        {previewData ? formatCurrency(previewData.annualCtc) : formatCurrency(parseNumber(watchCtc))}
                                                     </p>
                                                 </div>
                                                 <div className="group cursor-pointer">

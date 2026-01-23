@@ -998,7 +998,16 @@ const AttendanceManager: React.FC = () => {
               workLocation: workLocation,
             };
           })
-          .reverse();
+          .sort((a, b) => {
+            // Sort by date descending
+            const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
+            if (dateCompare !== 0) return dateCompare;
+
+            // If same date, sort by check-in time descending
+            const timeA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
+            const timeB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
+            return timeB - timeA;
+          });
 
         console.log('Transformed attendance records:', transformedData);
         setAttendanceRecords(transformedData);

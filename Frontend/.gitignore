@@ -95,3 +95,8 @@ Thumbs.db
 .pnp.*
 ! .pnp.cjs
 ! .pnp.loader.mjs
+
+# Temporary Test Files
+test_*.js
+test_*.html
+proxy-server.js

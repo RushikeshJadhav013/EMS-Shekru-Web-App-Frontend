@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AttendanceCamera from '@/components/attendance/AttendanceCamera';
 import OnlineStatusToggle from '@/components/attendance/OnlineStatusToggle';
 import OnlineStatusIndicator from '@/components/attendance/OnlineStatusIndicator';
-import { Clock, MapPin, Calendar, LogIn, LogOut, FileText, CheckCircle, AlertCircle, Users, Filter, User, X, Download, Search, Loader2, Home, Send, Edit, Trash2, History } from 'lucide-react';
+import { Clock, MapPin, Calendar, LogIn, LogOut, FileText, CheckCircle, AlertCircle, Users, Filter, User, X, Download, Search, Loader2, Home, Send, Edit, Trash2, History, FileSpreadsheet } from 'lucide-react';
 import { AttendanceRecord, UserRole } from '@/types';
 import { format, subMonths, isAfter } from 'date-fns';
 import { formatIST, formatDateTimeIST, formatTimeIST, formatDateIST, todayIST, formatDateTimeComponentsIST, parseToIST, nowIST } from '@/utils/timezone';
@@ -63,6 +63,7 @@ const AttendanceWithToggle: React.FC = () => {
   const [isCheckingIn, setIsCheckingIn] = useState(true);
   const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
   const [todaysWork, setTodaysWork] = useState('');
+  const [taskPendingReason, setTaskPendingReason] = useState('');
   const [workPdf, setWorkPdf] = useState<File | null>(null);
   const [currentAttendance, setCurrentAttendance] = useState<AttendanceRecord | null>(null);
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
@@ -101,7 +102,9 @@ const AttendanceWithToggle: React.FC = () => {
   const [selectedExportEmployee, setSelectedExportEmployee] = useState<ExportEmployee | null>(null);
   const [selectedExportDepartment, setSelectedExportDepartment] = useState<string>('');
   const [exportDepartments, setExportDepartments] = useState<string[]>([]);
+
   const [isExporting, setIsExporting] = useState(false);
+  const [reportLayout, setReportLayout] = useState<'basic' | 'grid'>('basic');
 
   // Online/Offline status state
   const [isOnline, setIsOnline] = useState(true);
@@ -208,9 +211,9 @@ const AttendanceWithToggle: React.FC = () => {
     return `https://testing.staffly.space${normalized}`;
   }, []);
 
-  // Determine if user can view employee attendance
+  // Determine if user can view employee attendance (only for management roles)
   const canViewEmployeeAttendance = user?.role && ['admin', 'hr', 'manager'].includes(user.role);
-  const canExportAttendance = user?.role === 'hr';
+  const canExportAttendance = user?.role && ['admin', 'hr'].includes(user.role);
 
   // Access rules for attendance viewing
   const getViewableRoles = (): UserRole[] => {
@@ -381,11 +384,12 @@ const AttendanceWithToggle: React.FC = () => {
     }
   };
 
-  const openExportModal = (type: 'csv' | 'pdf') => {
+  const openExportModal = () => {
     if (!canExportAttendance) {
       return;
     }
-    setExportType(type);
+    setExportType('csv'); // Default to CSV
+    setReportLayout('basic');
     setExportModalOpen(true);
     setQuickFilter('custom');
     setExportStartDate(undefined);
@@ -422,8 +426,9 @@ const AttendanceWithToggle: React.FC = () => {
       return;
     }
 
+    // Allow Admin/HR to export without selecting a department
     const departmentParam = (selectedExportDepartment || user?.department || '').trim();
-    if (!departmentParam && canExportAttendance) {
+    if (!departmentParam && canExportAttendance && user?.role === 'manager') {
       toast({
         title: 'Department Required',
         description: 'Please select a department to export.',
@@ -436,36 +441,49 @@ const AttendanceWithToggle: React.FC = () => {
     setExportModalOpen(false);
 
     try {
-      const params = new URLSearchParams();
+      const params: any = {};
       if (departmentParam) {
-        params.append('department', departmentParam);
+        params.department = departmentParam;
       }
 
       // Enforce department scope for Manager exports
       if (user?.role === 'manager' && user?.department) {
-        params.set('department', user.department);
+        params.department = user.department;
       }
 
       if (exportStartDate) {
-        params.append('start_date', format(exportStartDate, 'yyyy-MM-dd'));
+        params.start_date = format(exportStartDate, 'yyyy-MM-dd');
       }
       if (exportEndDate) {
-        params.append('end_date', format(exportEndDate, 'yyyy-MM-dd'));
+        params.end_date = format(exportEndDate, 'yyyy-MM-dd');
       }
       if (employeeExportFilter === 'specific' && selectedExportEmployee) {
-        params.append(
-          'employee_id',
-          selectedExportEmployee.employee_id || selectedExportEmployee.user_id.toString(),
-        );
+        params.employee_id = selectedExportEmployee.employee_id || selectedExportEmployee.user_id.toString();
       }
 
-      const apiUrl = `https://testing.staffly.space/attendance/download/${exportType}?${params.toString()}`;
-      const res = await fetch(apiUrl, { method: 'GET' });
-      if (!res.ok) {
-        throw new Error(`Request failed with status ${res.status}`);
+      let blob: Blob;
+      if (reportLayout === 'grid') {
+        // Grid export needs month and year
+        const exportMonth = exportStartDate ? (exportStartDate.getMonth() + 1).toString() : (new Date().getMonth() + 1).toString();
+        const exportYear = exportStartDate ? exportStartDate.getFullYear().toString() : new Date().getFullYear().toString();
+
+        blob = exportType === 'csv'
+          ? await apiService.exportMonthlyGridCSV({
+            month: exportMonth,
+            year: exportYear,
+            department: params.department
+          })
+          : await apiService.exportMonthlyGridPDF({
+            month: exportMonth,
+            year: exportYear,
+            department: params.department
+          });
+      } else {
+        blob = exportType === 'csv'
+          ? await apiService.exportAttendanceCSV(params)
+          : await apiService.exportAttendancePDF(params);
       }
 
-      const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -484,7 +502,7 @@ const AttendanceWithToggle: React.FC = () => {
           ? `_${selectedExportEmployee.employee_id || selectedExportEmployee.user_id}`
           : '';
 
-      a.download = `attendance_report${empSuffix}_${dateStr}.${exportType}`;
+      a.download = `${reportLayout}_attendance_report${empSuffix}_${dateStr}.${exportType}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -559,6 +577,15 @@ const AttendanceWithToggle: React.FC = () => {
               workLocation = 'office';
             }
 
+            let status = 'present';
+            const recordDateStr = formatDateIST(rec.check_in, 'yyyy-MM-dd');
+            const todayStr = formatDateIST(new Date(), 'yyyy-MM-dd');
+
+            // If it's a past date and check-out is missing, mark as absent (forgotten checkout)
+            if (recordDateStr < todayStr && !rec.check_out) {
+              status = 'absent';
+            }
+
             return {
               id: String(rec.attendance_id),
               userId: String(rec.user_id),
@@ -577,14 +604,19 @@ const AttendanceWithToggle: React.FC = () => {
               },
               checkInSelfie: rec.checkInSelfie || '',
               checkOutSelfie: rec.checkOutSelfie || '',
-              status: 'present',
+              status: status,
               workHours: rec.total_hours,
               workSummary: rec.workSummary || rec.work_summary || null,
+              taskPendingReason: rec.taskPendingReason || rec.task_pending_reason || null,
               workReport: resolveStaticUrl(rec.workReport || rec.work_report),
               workLocation: workLocation,
             };
           })
-          .reverse()
+          .sort((a, b) => {
+            const timeA = new Date(a.checkInTime || 0).getTime();
+            const timeB = new Date(b.checkInTime || 0).getTime();
+            return timeB - timeA; // newest first
+          })
       );
 
       // Load WFH requests from backend
@@ -629,30 +661,11 @@ const AttendanceWithToggle: React.FC = () => {
       const today = todayIST();
       const yesterday = formatDateIST(new Date(Date.now() - 24 * 60 * 60 * 1000));
 
-      // Find today's record - check for:
-      // 1. Check-in today (normal case)
-      // 2. Check-in yesterday but checkout today (after midnight checkout)
-      // 3. Check-in yesterday but not checked out yet (still working from yesterday)
+      // Find today's record
       const todayRecord = data.find((rec: any) => {
         const checkInDate = formatDateIST(rec.check_in);
-        const checkOutDate = rec.check_out ? formatDateIST(rec.check_out) : null;
-
-        // Case 1: Check-in today
-        if (checkInDate === today) {
-          return true;
-        }
-
-        // Case 2: Check-in yesterday, checkout today (after midnight)
-        if (checkInDate === yesterday && checkOutDate === today) {
-          return true;
-        }
-
-        // Case 3: Check-in yesterday, not checked out yet (still active)
-        if (checkInDate === yesterday && !checkOutDate) {
-          return true;
-        }
-
-        return false;
+        // Only consider records from today for current check-in session
+        return checkInDate === today;
       });
 
       if (todayRecord) {
@@ -694,6 +707,7 @@ const AttendanceWithToggle: React.FC = () => {
           status: 'present',
           workHours: todayRecord.total_hours,
           workSummary: todayRecord.workSummary || todayRecord.work_summary || null,
+          taskPendingReason: todayRecord.taskPendingReason || todayRecord.task_pending_reason || null,
           workReport: resolveStaticUrl(todayRecord.workReport || todayRecord.work_report),
           workLocation: workLocation,
         };
@@ -810,6 +824,9 @@ const AttendanceWithToggle: React.FC = () => {
       // Attempt backend enforcement by passing department scope
       if (user?.role === 'manager' && user?.department) {
         url += `?department=${encodeURIComponent(user.department)}`;
+        url += `&manager_id=${encodeURIComponent(user.id)}`;
+      } else if (user?.role === 'team_lead') {
+        url += `?team_lead_id=${encodeURIComponent(user.id)}`;
       }
 
       // Fetch attendance and employees in parallel to ensure we have role data
@@ -841,21 +858,30 @@ const AttendanceWithToggle: React.FC = () => {
       });
 
       // Enforce strict visibility rules (Client-side fail-safe)
-      if (user?.role === 'manager' && user?.department) {
-        const normalizedDept = user.department.trim().toLowerCase();
+      if ((user?.role === 'manager' || user?.role === 'team_lead') && user?.id) {
+        const userId = String(user.id);
+        const userDept = user.department?.trim().toLowerCase();
+
         data = data.filter((rec: any) => {
           const recUserId = String(rec.user_id || rec.employee_id);
+          const recDept = (rec.department || '').trim().toLowerCase();
 
           // 1. Always show Self
-          if (recUserId === String(user.id)) return true;
+          if (recUserId === userId) return true;
 
-          // 2. Check Department
-          const recDept = (rec.department || '').trim().toLowerCase();
-          if (recDept !== normalizedDept) return false;
+          // 2. Manager view: Same department + (employees or team leads)
+          if (user.role === 'manager') {
+            if (recDept !== userDept) return false;
+            const recRole = userRoleMap[recUserId];
+            return recRole === 'employee' || recRole === 'team_lead';
+          }
 
-          // 3. Check Role (Only 'employee' and 'team_lead')
-          const recRole = userRoleMap[recUserId];
-          if (recRole === 'employee' || recRole === 'team_lead') return true;
+          // 3. Team Lead view: Only those reporting to them (matching on backend normally, but fail-safe here)
+          if (user.role === 'team_lead') {
+            // In a real app, we'd check if recUserId reports to userId
+            // For now, allow same department if backend already filtered it
+            return recDept === userDept;
+          }
 
           return false;
         });
@@ -896,32 +922,45 @@ const AttendanceWithToggle: React.FC = () => {
 
       const records: EmployeeAttendanceRecord[] = data
         .filter((rec: any) => rec.check_in && new Date(rec.check_in))
-        .map((rec: any) => ({
-          id: String(rec.attendance_id || rec.id || ''),
-          userId: String(rec.user_id || rec.employee_id || ''),
-          date: rec.check_in ? formatDateIST(rec.check_in) : selectedDate,
-          checkInTime: rec.check_in || undefined, // Use ISO datetime string if available
-          checkOutTime: rec.check_out || undefined, // Use ISO datetime string if available
-          checkInLocation: {
-            latitude: 0,
-            longitude: 0,
-            address: rec.checkInLocationLabel || rec.locationLabel || rec.gps_location || 'N/A',
-          },
-          checkOutLocation: {
-            latitude: 0,
-            longitude: 0,
-            address: rec.checkOutLocationLabel || rec.locationLabel || 'N/A',
-          },
-          checkInSelfie: rec.checkInSelfie || rec.selfie || '',
-          checkOutSelfie: rec.checkOutSelfie || '',
-          status: 'present',
-          workHours: rec.total_hours || 0,
-          name: rec.name || rec.userName || undefined,
-          email: rec.email || rec.userEmail || undefined,
-          department: rec.department || undefined,
-          workSummary: rec.workSummary || rec.work_summary || null,
-          workReport: resolveStaticUrl(rec.workReport || rec.work_report),
-        }))
+        .map((rec: any) => {
+          const checkInDate = rec.check_in;
+          const checkOutDate = rec.check_out;
+          const recordDateStr = formatDateIST(checkInDate, 'yyyy-MM-dd');
+          const todayStr = formatDateIST(new Date(), 'yyyy-MM-dd');
+
+          let statusResult = 'present';
+          // If it's a past date and check-out is missing, mark as absent (forgotten checkout)
+          if (recordDateStr < todayStr && !checkOutDate) {
+            statusResult = 'absent';
+          }
+
+          return {
+            id: String(rec.attendance_id || rec.id || ''),
+            userId: String(rec.user_id || rec.employee_id || ''),
+            date: rec.check_in ? formatDateIST(rec.check_in) : selectedDate,
+            checkInTime: rec.check_in || undefined,
+            checkOutTime: rec.check_out || undefined,
+            checkInLocation: {
+              latitude: 0,
+              longitude: 0,
+              address: rec.checkInLocationLabel || rec.locationLabel || rec.gps_location || 'N/A',
+            },
+            checkOutLocation: {
+              latitude: 0,
+              longitude: 0,
+              address: rec.checkOutLocationLabel || rec.locationLabel || 'N/A',
+            },
+            checkInSelfie: rec.checkInSelfie || rec.selfie || '',
+            checkOutSelfie: rec.checkOutSelfie || '',
+            status: statusResult,
+            workHours: rec.total_hours || 0,
+            name: rec.name || rec.userName || undefined,
+            email: rec.email || rec.userEmail || undefined,
+            department: rec.department || undefined,
+            workSummary: rec.workSummary || rec.work_summary || null,
+            workReport: resolveStaticUrl(rec.workReport || rec.work_report),
+          };
+        })
         .filter((r: AttendanceRecord) => {
           // Filter by date range based on time period
           const recordDate = new Date(r.date);
@@ -1008,7 +1047,8 @@ const AttendanceWithToggle: React.FC = () => {
         department: emp.department || emp.department_name || '',
       }));
 
-      if (user?.department) {
+      // Managers are restricted to their department, but Admin/HR can see everyone
+      if (user?.department && !['admin', 'hr'].includes(user?.role || '')) {
         const normalizedDept = user.department.trim().toLowerCase();
         mapped = mapped.filter(
           (emp) => (emp.department || '').trim().toLowerCase() === normalizedDept,
@@ -1154,6 +1194,7 @@ const AttendanceWithToggle: React.FC = () => {
         },
         selfie: compressedImage, // ✅ Use compressed image
         work_summary: !isCheckingIn ? todaysWork.trim() : undefined,
+        task_pending_reason: !isCheckingIn ? taskPendingReason.trim() : undefined,
         work_report: !isCheckingIn ? workReportBase64 : undefined,
         // Include WFH approval status and check-in type for backend
         ...(isCheckingIn && {
@@ -1243,6 +1284,7 @@ const AttendanceWithToggle: React.FC = () => {
         setCheckInTime(null);
         console.log('User checked out - all timers reset');
         setTodaysWork('');
+        setTaskPendingReason('');
         setWorkPdf(null);
       }
     } catch (e: any) {
@@ -1970,6 +2012,10 @@ const AttendanceWithToggle: React.FC = () => {
       return <Badge variant="outline" className="border-orange-500 text-orange-500">Early</Badge>;
     }
 
+    if (status === 'absent') {
+      return <Badge variant="destructive">Absent</Badge>;
+    }
+
     // If check-in was on time and no early check-out, show "On Time"
     if (status === 'present') {
       return <Badge variant="default" className="bg-green-500">On Time</Badge>;
@@ -1977,6 +2023,23 @@ const AttendanceWithToggle: React.FC = () => {
 
     return null;
   };
+
+  // Midnight refresh logic - ensures the page resets for a new day if left open
+  useEffect(() => {
+    const checkMidnight = setInterval(() => {
+      const now = new Date();
+      // Check if it's precisely midnight (first minute of the day)
+      if (now.getHours() === 0 && now.getMinutes() === 0) {
+        console.log('Midnight detected, refreshing attendance for new day...');
+        loadFromBackend();
+        if (viewMode === 'employee' && canViewEmployeeAttendance) {
+          loadEmployeeAttendance();
+        }
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(checkMidnight);
+  }, [viewMode, canViewEmployeeAttendance]);
 
   // Helper function to get online status for display in employee attendance table
   const getOnlineStatusForEmployeeDisplay = (record: EmployeeAttendanceRecord): { isOnline: boolean; label: string; showAbsent: boolean } => {
@@ -2068,45 +2131,55 @@ const AttendanceWithToggle: React.FC = () => {
               </p>
             </div>
           </div>
+
+          {canExportAttendance && (
+            <div className="relative z-10">
+              <Button
+                size="lg"
+                className="rounded-xl px-6 h-12 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 dark:shadow-none transition-all active:scale-95 gap-2"
+                onClick={() => openExportModal()}
+                disabled={isExporting}
+              >
+                <Download className="h-4 w-4" />
+                {isExporting ? 'Exporting...' : 'Export Report'}
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-center w-full">
           <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'self' | 'employee' | 'wfh' | 'wfh_requests')} className="w-full sm:w-auto">
-            <TabsList className={`grid ${canViewEmployeeAttendance ? 'grid-cols-4' : 'grid-cols-2'} h-14 w-full ${canViewEmployeeAttendance ? 'sm:w-[1000px]' : 'sm:w-[500px]'} bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm`}>
+            <TabsList className={`grid ${canViewEmployeeAttendance ? 'grid-cols-4' : 'grid-cols-2'} h-12 w-full ${canViewEmployeeAttendance ? 'sm:w-[1100px]' : 'sm:w-[1000px]'} bg-[#f8faff] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full p-1 shadow-sm`}>
               <TabsTrigger
                 value="self"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#2b59ff] data-[state=active]:to-[#5c51ff] data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:text-slate-700 transition-all duration-300 rounded-full h-full text-sm font-medium"
               >
-                <User className="h-4 w-4 mr-2" />
                 Self Attendance
               </TabsTrigger>
               {canViewEmployeeAttendance && (
                 <TabsTrigger
                   value="employee"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-600 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#2b59ff] data-[state=active]:to-[#5c51ff] data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:text-slate-700 transition-all duration-300 rounded-full h-full text-sm font-medium"
                 >
-                  <Users className="h-4 w-4 mr-2" />
                   Employee Attendance
                 </TabsTrigger>
               )}
               <TabsTrigger
                 value="wfh"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#2b59ff] data-[state=active]:to-[#5c51ff] data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:text-slate-700 transition-all duration-300 rounded-full h-full text-sm font-medium"
               >
-                <Home className="h-4 w-4 mr-2" />
                 Apply WFH
               </TabsTrigger>
               {canViewEmployeeAttendance && (
                 <TabsTrigger
                   value="wfh_requests"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md relative"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#2b59ff] data-[state=active]:to-[#5c51ff] data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:text-slate-700 transition-all duration-300 rounded-full h-full text-sm font-medium relative"
                 >
-                  <FileText className="h-4 w-4 mr-2" />
                   WFH Requests
                   {getPendingWfhCount() > 0 && (
                     <Badge
                       variant="destructive"
-                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs font-bold bg-red-500 text-white border-2 border-white dark:border-gray-800"
+                      className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 flex items-center justify-center text-[10px] font-bold bg-red-500 text-white border border-white dark:border-gray-800"
                     >
                       {getPendingWfhCount()}
                     </Badge>
@@ -2118,28 +2191,7 @@ const AttendanceWithToggle: React.FC = () => {
         </div>
       </div>
 
-      {canExportAttendance && viewMode === 'employee' && (
-        <div className="flex flex-col md:flex-row gap-2 justify-end">
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => openExportModal('csv')}
-            disabled={isExporting}
-          >
-            <Download className="h-4 w-4" />
-            {isExporting && exportType === 'csv' ? 'Exporting...' : 'Export CSV'}
-          </Button>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => openExportModal('pdf')}
-            disabled={isExporting}
-          >
-            <Download className="h-4 w-4" />
-            {isExporting && exportType === 'pdf' ? 'Exporting...' : 'Export PDF'}
-          </Button>
-        </div>
-      )}
+
 
       {viewMode === 'self' ? (
         <>
@@ -3280,6 +3332,16 @@ const AttendanceWithToggle: React.FC = () => {
                 )}
               </div>
             </div>
+            <div>
+              <Label htmlFor="task-pending-reason">Task Pending Reason (Optional)</Label>
+              <Input
+                id="task-pending-reason"
+                placeholder="Reason for any pending tasks..."
+                value={taskPendingReason}
+                onChange={(e) => setTaskPendingReason(e.target.value)}
+                className="mt-2"
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCheckoutDialog(false)}>
@@ -3301,24 +3363,121 @@ const AttendanceWithToggle: React.FC = () => {
           }
         }}
       >
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col overflow-visible">
           <DialogHeader>
-            <DialogTitle>
-              Attendance Report {exportType ? `(${exportType.toUpperCase()})` : ''}
-            </DialogTitle>
+            <DialogTitle>Export Attendance Report</DialogTitle>
             <DialogDescription>
-              Configure date range and employee filters to export department attendance.
+              Configure your export preferences. Select date range and employee filter options.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-4 flex-1 overflow-y-auto pr-1">
+          <div className="space-y-6 py-4 flex-1 overflow-y-auto overflow-x-visible pr-1">
+            {/* Report Layout Selection */}
             <div className="space-y-2">
-              <Label htmlFor="quick-filter">Quick Filter</Label>
+              <Label className="text-sm font-medium">Report Layout</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setReportLayout('basic')}
+                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === 'basic'
+                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-950'
+                    : 'border-gray-200 hover:border-blue-300 dark:border-gray-700'
+                    }`}
+                >
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${reportLayout === 'basic' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
+                      <FileText className="h-4.5 w-4.5" />
+                    </div>
+                    <span className={`text-xs font-bold ${reportLayout === 'basic' ? 'text-blue-600' : 'text-gray-600'}`}>
+                      Basic
+                    </span>
+                    <span className="text-[9px] text-muted-foreground text-center line-clamp-1">
+                      Standard list
+                    </span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportLayout('grid')}
+                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === 'grid'
+                    ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950'
+                    : 'border-gray-200 hover:border-indigo-300 dark:border-gray-700'
+                    }`}
+                >
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${reportLayout === 'grid' ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400'}`}>
+                      <Users className="h-4.5 w-4.5" />
+                    </div>
+                    <span className={`text-xs font-bold ${reportLayout === 'grid' ? 'text-indigo-600' : 'text-gray-600'}`}>
+                      Grid
+                    </span>
+                    <span className="text-[9px] text-muted-foreground text-center line-clamp-1">
+                      Monthly view
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Export Format Selection */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Export Format</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setExportType('csv')}
+                  className={`p-2.5 rounded-lg border transition-all ${exportType === 'csv'
+                    ? 'border-green-600 bg-green-50 dark:bg-green-950'
+                    : 'border-gray-200 hover:border-green-300 dark:border-gray-700'
+                    }`}
+                >
+                  <div className="flex flex-col items-center gap-1.5">
+                    <FileSpreadsheet className={`h-6 w-6 ${exportType === 'csv' ? 'text-green-600' : 'text-gray-400'}`} />
+                    <span className={`text-xs font-bold ${exportType === 'csv' ? 'text-green-600' : 'text-gray-600'}`}>
+                      CSV
+                    </span>
+                    <span className="text-[9px] text-muted-foreground text-center">
+                      Excel file
+                    </span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExportType('pdf')}
+                  className={`p-2.5 rounded-lg border transition-all ${exportType === 'pdf'
+                    ? 'border-red-600 bg-red-50 dark:bg-red-950'
+                    : 'border-gray-200 hover:border-red-300 dark:border-gray-700'
+                    }`}
+                >
+                  <div className="flex flex-col items-center gap-1.5">
+                    <FileText className={`h-6 w-6 ${exportType === 'pdf' ? 'text-red-600' : 'text-gray-400'}`} />
+                    <span className={`text-xs font-bold ${exportType === 'pdf' ? 'text-red-600' : 'text-gray-600'}`}>
+                      PDF
+                    </span>
+                    <span className="text-[9px] text-muted-foreground text-center">
+                      Print file
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Filter Dropdown */}
+            <div className="space-y-2">
+              <Label htmlFor="quick-filter" className="text-sm font-medium">Quick Filter</Label>
               <Select value={quickFilter} onValueChange={handleQuickFilter}>
-                <SelectTrigger id="quick-filter">
+                <SelectTrigger
+                  id="quick-filter"
+                  className="w-full h-10 border-2 border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                >
                   <SelectValue placeholder="Select time period" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent
+                  position="popper"
+                  className="w-[var(--radix-select-trigger-width)] min-w-[200px] max-w-[400px] z-50"
+                  sideOffset={5}
+                  align="start"
+                >
                   <SelectItem value="last_month">Last Month</SelectItem>
                   <SelectItem value="last_3_months">Last 3 Months</SelectItem>
                   <SelectItem value="last_6_months">Last 6 Months</SelectItem>
@@ -3327,7 +3486,8 @@ const AttendanceWithToggle: React.FC = () => {
               </Select>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Date Range Selection */}
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="export-start">Start Date</Label>
                 <DatePicker
@@ -3346,6 +3506,7 @@ const AttendanceWithToggle: React.FC = () => {
               </div>
             </div>
 
+            {/* Employee Filter */}
             <div className="space-y-2">
               <Label>Employee Filter</Label>
               <div className="flex gap-4">
@@ -3356,7 +3517,12 @@ const AttendanceWithToggle: React.FC = () => {
                     name="employee-export-filter"
                     className="h-4 w-4 text-blue-600"
                     checked={employeeExportFilter === 'all'}
-                    onChange={() => setEmployeeExportFilter('all')}
+                    onChange={() => {
+                      setEmployeeExportFilter('all');
+                      setSelectedExportEmployee(null);
+                      setEmployeeExportSearch('');
+                      if (!exportDepartments.length && !user?.department) setSelectedExportDepartment('');
+                    }}
                   />
                   <Label htmlFor="export-all" className="cursor-pointer">
                     All Employees
@@ -3378,6 +3544,7 @@ const AttendanceWithToggle: React.FC = () => {
               </div>
             </div>
 
+            {/* Employee Selection */}
             {employeeExportFilter === 'specific' && (
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -3499,8 +3666,9 @@ const AttendanceWithToggle: React.FC = () => {
                 (!exportStartDate && !exportEndDate) ||
                 (employeeExportFilter === 'specific' && !selectedExportEmployee)
               }
+              className={exportType === 'csv' ? 'bg-green-600 hover:bg-green-700' : exportType === 'pdf' ? 'bg-red-600 hover:bg-red-700' : ''}
             >
-              {isExporting ? 'Exporting...' : `Export ${exportType?.toUpperCase() ?? ''}`}
+              {isExporting ? 'Exporting...' : exportType ? `Export ${exportType.toUpperCase()}` : 'Select Format'}
             </Button>
           </DialogFooter>
         </DialogContent>

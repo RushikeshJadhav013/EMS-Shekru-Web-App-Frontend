@@ -2155,27 +2155,7 @@ export default function EmployeeManagement() {
                       className="mt-1"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="create-countryCode">Country Code</Label>
-                    <Select
-                      value={formData.countryCode || '+91'}
-                      onValueChange={(value) => {
-                        setFormData((prev) => ({ ...prev, countryCode: value }));
-                        validatePhoneNumber(formData.phone?.replace(/[^0-9]/g, '') || '', value);
-                      }}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select Country Code" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {countryCodes.map(({ code, flag, name }) => (
-                          <SelectItem key={code} value={code}>
-                            {flag} {code} ({name})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+
                   <div>
                     <Label htmlFor="create-phone">Phone <span className="text-red-500">*</span></Label>
                     <Input
@@ -2187,7 +2167,7 @@ export default function EmployeeManagement() {
                         validatePhoneNumber(phone.replace(/[^0-9]/g, ''), formData.countryCode || '+91');
                       }}
                       className={`mt-1 ${phoneError ? 'border-red-500' : ''}`}
-                      placeholder={formData.countryCode === '+91' ? 'e.g., 987-654-3210' : 'e.g., 123-456-7890'}
+                      placeholder='e.g., 987-654-3210'
                     />
                     {phoneError && (
                       <p className="text-red-500 text-sm mt-1">{phoneError}</p>
@@ -2539,23 +2519,11 @@ export default function EmployeeManagement() {
                       <TableCell className="font-medium">{employee.name}</TableCell>
                       <TableCell className="hidden sm:table-cell text-muted-foreground">{employee.email}</TableCell>
                       <TableCell>
-                        {employee.role === 'hr' ? (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 text-blue-700 dark:text-blue-300 text-sm font-semibold border border-blue-100/50 dark:border-blue-800/50 shadow-sm">
-                            All Departments
-                          </span>
-                        ) : employee.department && employee.department.includes(',') ? (
-                          <div className="flex flex-wrap gap-1">
-                            {employee.department.split(',').map((dept, index) => (
-                              <span key={index} className="inline-flex items-center px-2 py-0.5 rounded-md bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 text-xs font-medium">
-                                {dept.trim()}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 text-sm font-medium">
-                            {employee.department || 'No Dept'}
-                          </span>
-                        )}
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 text-sm font-medium">
+                          {employee.role?.toLowerCase() === 'hr' || (employee.department && employee.department.includes(',')) || !employee.department
+                            ? 'No Dept'
+                            : employee.department}
+                        </span>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-0 shadow-sm rounded-full px-3 py-0.5 font-medium transition-all">
@@ -2910,27 +2878,7 @@ export default function EmployeeManagement() {
                 className="mt-1"
               />
             </div>
-            <div>
-              <Label htmlFor="edit-countryCode">Country Code</Label>
-              <Select
-                value={formData.countryCode || '+91'}
-                onValueChange={(value) => {
-                  setFormData((prev) => ({ ...prev, countryCode: value }));
-                  validatePhoneNumber(formData.phone?.replace(/[^0-9]/g, '') || '', value);
-                }}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select Country Code" />
-                </SelectTrigger>
-                <SelectContent>
-                  {countryCodes.map(({ code, flag, name }) => (
-                    <SelectItem key={code} value={code}>
-                      {flag} {code} ({name})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+
             <div>
               <Label htmlFor="edit-phone">Phone <span className="text-red-500">*</span></Label>
               <Input
@@ -2942,7 +2890,7 @@ export default function EmployeeManagement() {
                   validatePhoneNumber(phone.replace(/[^0-9]/g, ''), formData.countryCode || '+91');
                 }}
                 className={`mt-1 ${phoneError ? 'border-red-500' : ''}`}
-                placeholder={formData.countryCode === '+91' ? 'e.g., 987-654-3210' : 'e.g., 123-456-7890'}
+                placeholder='e.g., 987-654-3210'
               />
               {phoneError && (
                 <p className="text-red-500 text-sm mt-1">{phoneError}</p>
@@ -3209,20 +3157,12 @@ export default function EmployeeManagement() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Department</span>
                     <div className="font-medium">
-                      {viewEmployee.role === 'hr' ? (
+                      {viewEmployee.role?.toLowerCase() === 'hr' || (viewEmployee.department && viewEmployee.department.includes(',')) || !viewEmployee.department ? (
                         <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-sm font-semibold border border-blue-200 dark:border-blue-800">
-                          All Departments
+                          No Dept
                         </span>
-                      ) : viewEmployee.department && viewEmployee.department.includes(',') ? (
-                        <div className="flex flex-wrap gap-1">
-                          {viewEmployee.department.split(',').map((dept, index) => (
-                            <span key={index} className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-xs font-medium">
-                              {dept.trim()}
-                            </span>
-                          ))}
-                        </div>
                       ) : (
-                        <span>{viewEmployee.department || 'No Department'}</span>
+                        <span>{viewEmployee.department}</span>
                       )}
                     </div>
                   </div>

@@ -604,14 +604,26 @@ const TaskManagement: React.FC = () => {
       const converted = data.map(mapBackendTaskToFrontend);
 
       // Check and update overdue tasks
+      // Check and update overdue tasks
       const tasksToUpdate: TaskWithPassMeta[] = [];
       const updatedConverted = converted.map(task => {
         // If task is not completed/cancelled and deadline has passed, mark as overdue
+        // Fix: Compare dates only, allowing the entire deadline day to pass before marking as overdue
         if (task.status !== 'completed' && task.status !== 'cancelled' &&
-          task.deadline && new Date(task.deadline) < new Date() &&
-          task.status !== 'overdue') {
-          tasksToUpdate.push(task);
-          return { ...task, status: 'overdue' as BaseTask['status'] };
+          task.deadline && task.status !== 'overdue') {
+
+          const deadlineDate = new Date(task.deadline);
+          const now = new Date();
+
+          // Reset check to midnight so we compare purely based on the calendar date
+          const dMidnight = new Date(deadlineDate.getFullYear(), deadlineDate.getMonth(), deadlineDate.getDate());
+          const nMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+          // Only overdue if today's date is strictly AFTER the deadline date
+          if (nMidnight > dMidnight) {
+            tasksToUpdate.push(task);
+            return { ...task, status: 'overdue' as BaseTask['status'] };
+          }
         }
         return task;
       });

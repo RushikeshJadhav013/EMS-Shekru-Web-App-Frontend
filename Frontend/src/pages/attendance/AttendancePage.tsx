@@ -111,14 +111,13 @@ const AttendancePage: React.FC = () => {
         // Convert backend format to frontend format
         // Use ISO datetime strings for proper timezone handling
         const checkInDate = new Date(todayRecord.check_in);
-        const checkOutDate = todayRecord.check_out ? new Date(todayRecord.check_out) : null;
 
         const attendance: AttendanceRecord = {
           id: todayRecord.attendance_id.toString(),
           userId: todayRecord.user_id.toString(),
           date: format(checkInDate, 'yyyy-MM-dd'),
-          checkInTime: todayRecord.check_in, // Use ISO datetime string
-          checkOutTime: todayRecord.check_out || undefined, // Use ISO datetime string
+          checkInTime: todayRecord.check_in,
+          checkOutTime: todayRecord.check_out || undefined,
           checkInLocation: { latitude: 0, longitude: 0, address: todayRecord.gps_location || 'N/A' },
           checkInSelfie: todayRecord.selfie || '',
           status: 'present',
@@ -128,21 +127,63 @@ const AttendancePage: React.FC = () => {
 
         // Store all history
         const history = data
-          .map((rec: any) => ({
-            id: rec.attendance_id.toString(),
-            userId: rec.user_id.toString(),
-            date: formatDateIST(rec.check_in, 'yyyy-MM-dd'),
-            checkInTime: rec.check_in, // Use ISO datetime string
-            checkOutTime: rec.check_out || undefined, // Use ISO datetime string
-            checkInLocation: { latitude: 0, longitude: 0, address: rec.gps_location || 'N/A' },
-            checkInSelfie: rec.selfie || '',
-            status: 'present',
-            workHours: rec.total_hours
-          }))
-          .reverse();
+          .map((rec: any) => {
+            const checkInDate = rec.check_in;
+            const checkOutDate = rec.check_out;
+            const recordDateStr = formatDateIST(checkInDate, 'yyyy-MM-dd');
+            const todayStr = formatDateIST(new Date(), 'yyyy-MM-dd');
+
+            let status = rec.status || 'present';
+
+            // Core logic: If it's a past date and check-out is missing, mark as absent (forgotten checkout)
+            // This applies to all users except Admin
+            if (user?.role !== 'admin' && recordDateStr < todayStr && !checkOutDate) {
+              status = 'absent';
+            }
+
+            return {
+              id: rec.attendance_id.toString(),
+              userId: rec.user_id.toString(),
+              date: recordDateStr,
+              checkInTime: rec.check_in,
+              checkOutTime: rec.check_out || undefined,
+              checkInLocation: { latitude: 0, longitude: 0, address: rec.gps_location || 'N/A' },
+              checkInSelfie: rec.selfie || '',
+              status: status,
+              workHours: rec.total_hours
+            };
+          })
+          .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setAttendanceHistory(history);
       } else {
         setCurrentAttendance(null);
+        // Map history even if no record for today
+        const history = data
+          .map((rec: any) => {
+            const checkInDate = rec.check_in;
+            const checkOutDate = rec.check_out;
+            const recordDateStr = formatDateIST(checkInDate, 'yyyy-MM-dd');
+            const todayStr = formatDateIST(new Date(), 'yyyy-MM-dd');
+
+            let status = rec.status || 'present';
+            if (user?.role !== 'admin' && recordDateStr < todayStr && !checkOutDate) {
+              status = 'absent';
+            }
+
+            return {
+              id: rec.attendance_id.toString(),
+              userId: rec.user_id.toString(),
+              date: recordDateStr,
+              checkInTime: rec.check_in,
+              checkOutTime: rec.check_out || undefined,
+              checkInLocation: { latitude: 0, longitude: 0, address: rec.gps_location || 'N/A' },
+              checkInSelfie: rec.selfie || '',
+              status: status,
+              workHours: rec.total_hours
+            };
+          })
+          .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setAttendanceHistory(history);
       }
     } catch (err) {
       console.error('Failed to fetch attendance:', err);
@@ -364,10 +405,23 @@ const AttendancePage: React.FC = () => {
 
     initLocation();
 
-    // Auto-refresh at midnight to reset for new day
+    // Auto-refresh at midnight to reset for new day and mark missing checkouts as absent
     const checkMidnight = setInterval(() => {
       const now = new Date();
       if (now.getHours() === 0 && now.getMinutes() === 0) {
+        console.log('Midnight reached. Resetting attendance state...');
+
+        // If user was online (checked in but not checked out) at midnight,
+        // and they are not Admin, notify them and force status to offline.
+        if (user?.role !== 'admin' && currentAttendance && !currentAttendance.checkOutTime) {
+          toast({
+            title: "Shift Ended Automatically",
+            description: "It's midnight! Since you didn't check out, you've been marked as Absent for yesterday and your status is now Offline.",
+            variant: "destructive",
+            duration: 10000,
+          });
+        }
+
         setCurrentAttendance(null);
         fetchTodayAttendance();
       }
@@ -829,7 +883,10 @@ const AttendancePage: React.FC = () => {
   };
 
   const getStatusBadge = (status: string, checkInTime?: string, checkOutTime?: string) => {
-    if (status === 'late' || checkInTime && checkInTime > '09:30:00') {
+    if (status === 'absent') {
+      return <Badge variant="destructive" className="bg-red-600">Absent (No Checkout)</Badge>;
+    }
+    if (status === 'late' || (checkInTime && checkInTime > '09:30:00')) {
       return <Badge variant="destructive">Late</Badge>;
     }
     if (checkOutTime && checkOutTime < '18:00:00') {
@@ -1059,9 +1116,24 @@ const AttendancePage: React.FC = () => {
 
           {/* Current Status Card */}
           <Card className="border-0 shadow-lg">
-            <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-              <CardTitle className="text-xl font-semibold">{t.attendance.todayStatus}</CardTitle>
-              <CardDescription>Your attendance status for today</CardDescription>
+            <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-xl font-semibold">{t.attendance.todayStatus}</CardTitle>
+                <CardDescription>Your attendance status for today</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                {currentAttendance && !currentAttendance.checkOutTime ? (
+                  <Badge className="bg-green-500 hover:bg-green-600 animate-pulse">
+                    <span className="h-2 w-2 rounded-full bg-white mr-2 shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                    Online
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="opacity-70">
+                    <span className="h-2 w-2 rounded-full bg-gray-400 mr-2" />
+                    Offline
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -1145,7 +1217,7 @@ const AttendancePage: React.FC = () => {
             <CardContent>
               <div className="space-y-3">
                 {attendanceHistory.length > 0 ? (
-                  attendanceHistory.slice(-10).reverse().map((record) => (
+                  attendanceHistory.slice(0, 10).map((record) => (
                     <div key={record.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
                       <div className="flex items-center gap-3">
                         <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
