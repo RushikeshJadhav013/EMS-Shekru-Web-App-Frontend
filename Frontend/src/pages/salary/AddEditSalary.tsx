@@ -13,10 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import {
     Loader2, Save, Calculator, ArrowLeft,
-    Lock, AlertTriangle, Calendar, TrendingUp, DollarSign, FileText, AlertCircle, Briefcase, RefreshCw
+    AlertTriangle, Calendar, TrendingUp, DollarSign, FileText, AlertCircle, Briefcase, RefreshCw
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import {
@@ -107,8 +106,6 @@ const AddEditSalary = () => {
     const [isCalculating, setIsCalculating] = useState(false);
     const [existingSalary, setExistingSalary] = useState<SalaryStructure | null>(null);
     const [activeTab, setActiveTab] = useState<"auto" | "manual">("auto");
-    const [isPayrollLocked, setIsPayrollLocked] = useState(false);
-    const [forceUnlock, setForceUnlock] = useState(false);
 
 
 
@@ -145,7 +142,6 @@ const AddEditSalary = () => {
 
     useEffect(() => {
         loadEmployees();
-        checkPayrollLock();
         if (userIdParam && userIdParam !== 'undefined') {
             loadExistingSalary(userIdParam);
         }
@@ -176,13 +172,6 @@ const AddEditSalary = () => {
 
 
 
-    const checkPayrollLock = () => {
-        // Simulate Logic: Check if we are past 25th of the month
-        const today = new Date();
-        if (today.getDate() > 25) {
-            setIsPayrollLocked(true);
-        }
-    };
 
     const watchBasicAnn = form.watch('basicAnnual');
     const watchHraAnn = form.watch('hraAnnual');
@@ -462,7 +451,7 @@ const AddEditSalary = () => {
                     // Re-calculate monthly deductions with mapped values
                     const totalMonthlyDeductions = pfEmployee + professionalTax + otherDeduction;
                     const monthlyInHand = data.monthly_in_hand || data.monthlyInHand || (monthlyGross - totalMonthlyDeductions);
-                    const annualCtc = data.annual_ctc || data.annualCtc || (data.ctc_annual || ctcVal);
+                    const annualCtc = data.package_ctc_annual || data.annualCtc || (data.ctc_annual || ctcVal);
 
                     setPreviewData({
                         ...data,
@@ -550,7 +539,7 @@ const AddEditSalary = () => {
                 // Map backend response to form values
                 form.reset({
                     userId: uid,
-                    annualCtc: data.annual_ctc || data.annualCtc,
+                    annualCtc: data.package_ctc_annual || data.annualCtc,
                     variablePayType: data.variable_pay_type || data.variablePayType || 'none',
                     variablePayValue: data.variable_pay_value || data.variablePayValue || 0,
                     workingDays: data.working_days || data.workingDays || 26,
@@ -665,7 +654,7 @@ const AddEditSalary = () => {
                 // Guided Mode Payload
                 const payload = {
                     user_id: userIdInt,
-                    annual_ctc: data.annualCtc,
+                    package_ctc_annual: data.annualCtc,
                     variable_pay_type: data.variablePayType,
                     variable_pay_value: data.variablePayValue,
                     working_days: data.workingDays,
@@ -675,7 +664,7 @@ const AddEditSalary = () => {
                 if (existingSalary) {
                     // Update CTC first if changed
                     response = await apiService.updateSalaryCtc(data.userId, {
-                        annualCtc: payload.annual_ctc,
+                        annualCtc: payload.package_ctc_annual,
                         variablePayType: payload.variable_pay_type,
                         variablePayValue: payload.variable_pay_value
                     });
@@ -743,7 +732,6 @@ const AddEditSalary = () => {
     const formatCurrency = (val?: number) => val ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val) : '₹0';
 
     // Lock Handling
-    const isLocked = isPayrollLocked && existingSalary && !forceUnlock;
 
 
 
@@ -779,20 +767,6 @@ const AddEditSalary = () => {
                         <p className="text-muted-foreground text-sm mt-1">Define compensation, benefits, and statutory details.</p>
                     </div>
                 </div>
-                {isPayrollLocked && existingSalary && (
-                    <div className="flex items-center gap-4 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                        <div className="flex items-center text-yellow-800 dark:text-yellow-400 text-sm font-medium">
-                            <Lock className="h-4 w-4 mr-2" />
-                            Payroll Locked for {new Date().toLocaleString('default', { month: 'long' })}
-                        </div>
-                        {user?.role === 'admin' && (
-                            <div className="flex items-center gap-2">
-                                <Label htmlFor="unlock-mode" className="text-xs pointer-events-none">Override</Label>
-                                <Switch id="unlock-mode" checked={forceUnlock} onCheckedChange={setForceUnlock} />
-                            </div>
-                        )}
-                    </div>
-                )}
             </div>
 
             {/* Employee Details Section - Top of Page */}
@@ -897,7 +871,7 @@ const AddEditSalary = () => {
                                         <Select
                                             onValueChange={field.onChange}
                                             value={field.value}
-                                            disabled={!!userIdParam || isLocked}
+                                            disabled={!!userIdParam}
                                         >
                                             <SelectTrigger className="w-full h-12 text-lg">
                                                 <SelectValue placeholder="Select an employee..." />
@@ -1069,7 +1043,7 @@ const AddEditSalary = () => {
                                                                 type="text"
                                                                 className="pl-8 h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500 font-bold text-lg"
                                                                 placeholder="e.g. 12 00 000"
-                                                                disabled={isLocked}
+                                                                disabled={false}
                                                                 {...form.register("annualCtc")}
                                                                 onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
                                                             />
@@ -1083,7 +1057,7 @@ const AddEditSalary = () => {
                                                         <Input
                                                             type="text"
                                                             className="h-11 font-semibold"
-                                                            disabled={isLocked}
+                                                            disabled={false}
                                                             {...form.register("workingDays")}
                                                             onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
                                                         />
@@ -1102,7 +1076,7 @@ const AddEditSalary = () => {
                                                                 name="variablePayType"
                                                                 control={form.control}
                                                                 render={({ field }) => (
-                                                                    <Select onValueChange={field.onChange} value={field.value} disabled={isLocked}>
+                                                                    <Select onValueChange={field.onChange} value={field.value} disabled={false}>
                                                                         <SelectTrigger className="h-11">
                                                                             <SelectValue placeholder="Select Type" />
                                                                         </SelectTrigger>
@@ -1127,7 +1101,7 @@ const AddEditSalary = () => {
                                                                     type="text"
                                                                     className={`h-11 font-semibold ${watchVarType === 'fixed' ? 'pl-8' : ''}`}
                                                                     placeholder={watchVarType === 'percentage' ? "e.g. 10" : "e.g. 50 000"}
-                                                                    disabled={watchVarType === 'none' || isLocked}
+                                                                    disabled={watchVarType === 'none'}
                                                                     {...form.register("variablePayValue")}
                                                                     onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
                                                                 />
@@ -1196,7 +1170,6 @@ const AddEditSalary = () => {
                                                 <div className="flex justify-between items-center">
                                                     <div>
                                                         <CardTitle className="text-xl flex items-center gap-2">
-                                                            <Lock className="h-5 w-5 text-amber-500" />
                                                             Manual Compensation Entry
                                                             <span className="px-2 py-0.5 rounded text-[10px] bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 border border-red-100 dark:border-red-800 uppercase tracking-widest font-bold">Admin Only</span>
                                                         </CardTitle>
@@ -1260,7 +1233,7 @@ const AddEditSalary = () => {
                                                                         <Select
                                                                             onValueChange={field.onChange}
                                                                             value={field.value}
-                                                                            disabled={isLocked}
+                                                                            disabled={false}
                                                                         >
                                                                             <SelectTrigger className="h-11">
                                                                                 <SelectValue placeholder="Select type" />
@@ -1286,7 +1259,7 @@ const AddEditSalary = () => {
                                                                         type="text"
                                                                         className={`h-11 font-semibold ${form.watch('variablePayType') === 'fixed' ? 'pl-8' : ''}`}
                                                                         placeholder={form.watch('variablePayType') === 'percentage' ? "e.g. 10" : "e.g. 50 000"}
-                                                                        disabled={form.watch('variablePayType') === 'none' || isLocked}
+                                                                        disabled={form.watch('variablePayType') === 'none'}
                                                                         {...form.register("variablePayValue")}
                                                                         onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
                                                                     />
@@ -1527,7 +1500,7 @@ const AddEditSalary = () => {
                                             <Button
                                                 type="submit"
                                                 className="w-full h-12 text-base font-bold shadow-xl shadow-blue-500/25 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 dark:from-blue-600 dark:to-blue-700 dark:hover:from-blue-700 dark:hover:to-blue-800 transform transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] rounded-2xl"
-                                                disabled={isLoading || isCalculating || !previewData || (isLocked && !forceUnlock)}
+                                                disabled={isLoading || isCalculating || !previewData}
                                             >
                                                 {isLoading ? (
                                                     <>
@@ -1542,19 +1515,6 @@ const AddEditSalary = () => {
                                                 )}
                                             </Button>
 
-                                            {isLocked && !forceUnlock && (
-                                                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-50/50 to-rose-50/50 dark:from-red-900/20 dark:to-rose-900/20 border border-red-200/50 dark:border-red-800/50 p-4">
-                                                    <div className="flex items-center justify-center gap-3">
-                                                        <div className="w-8 h-8 bg-red-500 rounded-xl flex items-center justify-center shadow-lg shadow-red-500/25">
-                                                            <Lock className="w-4 h-4 text-white" />
-                                                        </div>
-                                                        <div className="text-center">
-                                                            <p className="text-sm font-bold text-red-800 dark:text-red-200">Input Locked</p>
-                                                            <p className="text-xs text-red-600/80 dark:text-red-400/80">Policy Restriction Active</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
 
 

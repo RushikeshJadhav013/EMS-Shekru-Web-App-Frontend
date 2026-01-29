@@ -62,10 +62,10 @@ const SalaryDashboard = () => {
 
                 if (salary) {
                     // Ensure core fields are present for analytics and table display
-                    const annual_ctc = salary.annual_ctc || salary.ctc_annual || 0;
+                    const package_ctc_annual = salary.package_ctc_annual || salary.ctc_annual || 0;
 
                     // Improved calculation for dashboard consistency
-                    const monthly_ctc = salary.monthly_ctc || (annual_ctc > 0 ? annual_ctc / 12 : 0);
+                    const monthly_ctc = salary.monthly_ctc || (package_ctc_annual > 0 ? package_ctc_annual / 12 : 0);
 
                     // Calculate in-hand from earnings/deductions if direct field is 0 or missing
                     let monthly_in_hand = salary.monthly_in_hand || salary.net_salary || 0;
@@ -73,7 +73,7 @@ const SalaryDashboard = () => {
                         monthly_in_hand = (salary.total_earnings_annual - (salary.total_deductions_annual || 0)) / 12;
                     }
 
-                    salary = { ...salary, annual_ctc, monthly_ctc, monthly_in_hand };
+                    salary = { ...salary, package_ctc_annual, monthly_ctc, monthly_in_hand };
                 }
 
                 return { ...emp, id, salary };
@@ -225,7 +225,7 @@ const SalaryDashboard = () => {
                     ...(userRole === 'admin' ? [
                         {
                             label: 'Annual Payroll (Filtered)',
-                            value: `₹ ${(filteredItems.reduce((acc, item) => acc + (item.salary?.annual_ctc || 0), 0) / 10000000).toFixed(2)} Cr`,
+                            value: `₹ ${(filteredItems.reduce((acc, item) => acc + (item.salary?.package_ctc_annual || 0), 0) / 10000000).toFixed(2)} Cr`,
                             sub: 'Total Annual Cost to Company',
                             icon: DollarSign,
                             color: 'blue',
@@ -272,7 +272,7 @@ const SalaryDashboard = () => {
                     {
                         label: 'Average Annual Salary',
                         value: `₹ ${(filteredItems.filter(i => i.salary).length > 0
-                            ? Math.round(filteredItems.reduce((acc, item) => acc + (item.salary?.annual_ctc || 0), 0) / filteredItems.filter(i => i.salary).length)
+                            ? Math.round(filteredItems.reduce((acc, item) => acc + (item.salary?.package_ctc_annual || 0), 0) / filteredItems.filter(i => i.salary).length)
                             : 0).toLocaleString('en-IN')}`,
                         sub: 'Per Filtered Employee',
                         icon: AlertCircle,

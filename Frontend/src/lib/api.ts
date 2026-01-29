@@ -1202,7 +1202,7 @@ class ApiService {
   // 2. Create Salary
   async createSalary(data: any): Promise<any> {
     // Map camelCase to snake_case if needed, or assume caller sends correct format. 
-    // Spec: user_id, annual_ctc, etc.
+    // Spec: user_id, package_ctc_annual, etc.
     return this.request('/salary/employee/from-ctc', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -1220,7 +1220,7 @@ class ApiService {
   // 2. Salary Preview
   async calculateSalaryPreview(annualCtc: number, variablePayType: string, variablePayValue: number): Promise<any> {
     const params = new URLSearchParams();
-    params.append('annual_ctc', annualCtc.toString());
+    params.append('package_ctc_annual', annualCtc.toString());
     params.append('variable_pay_type', variablePayType);
     params.append('variable_pay_value', variablePayValue.toString());
 
@@ -1241,7 +1241,7 @@ class ApiService {
     // If the user provided list is EXHAUSTIVE, then `calculate-preview` might be missing or custom.
     // Let's assume the previous change to POST was correct for `calculate-preview` if it exists.
     // BUT the user just pasted a big list of APIs.
-    // Let's look at the `createSalary` (Item 7). It takes `user_id`, `annual_ctc`, etc.
+    // Let's look at the `createSalary` (Item 7). It takes `user_id`, `package_ctc_annual`, etc.
     // Maybe I should use `POST /salary/calculate-preview` if it exists.
     // I will keep the POST change I made but ensure types are correct.
 
@@ -1258,7 +1258,7 @@ class ApiService {
       // Validate and normalize the response data
       if (response && typeof response === 'object') {
         // Ensure all required fields are properly mapped from snake_case to camelCase
-        const annualCtc = response.ctc_annual || response.annual_ctc || 0;
+        const annualCtc = response.ctc_annual || response.package_ctc_annual || 0;
         const monthlyGross = response.total_earnings_annual ? response.total_earnings_annual / 12 : (response.monthly_gross || 0);
         const monthlyDeductions = response.total_deductions_annual ? response.total_deductions_annual / 12 : (response.monthly_deductions || 0);
 
@@ -1312,7 +1312,7 @@ class ApiService {
       method: 'PUT',
       body: JSON.stringify({
         user_id: Number(userId),
-        annual_ctc: data.annualCtc,
+        package_ctc_annual: data.annualCtc,
         variable_pay_type: data.variablePayType,
         variable_pay_value: data.variablePayValue,
       }),

@@ -12,6 +12,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Pagination } from '@/components/ui/pagination';
 import { toast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 import {
   Plus,
   Edit,
@@ -26,7 +36,9 @@ import {
   Loader2,
   Filter,
   User as UserIcon,
-  FileText
+  FileText,
+  Check,
+  ChevronsUpDown
 } from 'lucide-react';
 import { User, type UserRole } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -64,6 +76,45 @@ const toCamelCase = (obj: any): any => {
 
     return acc;
   }, {} as any);
+};
+
+const mapEmployeeData = (emp: any): EmployeeRecord => {
+  if (!emp) return emp;
+  const mapped = toCamelCase(emp);
+
+  // ✅ Fix photo URLs to include backend base URL
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
+  if (mapped.profilePhoto && !mapped.profilePhoto.startsWith('http')) {
+    mapped.profilePhoto = `${baseUrl}/${mapped.profilePhoto}`;
+  }
+  if (mapped.photoUrl && !mapped.photoUrl.startsWith('http')) {
+    mapped.photoUrl = `${baseUrl}/${mapped.photoUrl}`;
+  }
+  if (!mapped.photoUrl && mapped.profilePhoto) {
+    mapped.photoUrl = mapped.profilePhoto;
+  }
+
+  // ✅ Map is_active/isActive to status robustly
+  // Backend might return is_active as "true"/"false" strings or boolean
+  let finalStatus = mapped.status || 'active';
+  const rawActive = mapped.isActive !== undefined ? mapped.isActive : emp.is_active;
+
+  if (rawActive !== undefined && rawActive !== null) {
+    const s = String(rawActive).toLowerCase().trim();
+    if (s === 'true' || rawActive === true || s === 'active') {
+      finalStatus = 'active';
+    } else if (s === 'false' || rawActive === false || s === 'inactive') {
+      finalStatus = 'inactive';
+    }
+  }
+  mapped.status = finalStatus;
+
+  // ✅ Ensure shift field is properly set (handle multiple possible field names)
+  if (!mapped.shift && (mapped.shiftType || emp.shift_type)) {
+    mapped.shift = mapped.shiftType || emp.shift_type;
+  }
+
+  return mapped;
 };
 
 type BulkUploadResult = {
@@ -354,6 +405,53 @@ export default function EmployeeManagement() {
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isCreatingDepartment, setIsCreatingDepartment] = useState(false);
+  const [deptSearchValue, setDeptSearchValue] = useState('');
+  const [isDeptPopoverOpen, setIsDeptPopoverOpen] = useState(false);
+
+  const handleCreateDepartment = async (deptName: string) => {
+    if (!deptName.trim()) return;
+
+    // Check if already exists (case-insensitive)
+    const exists = departments.some(d => d.toLowerCase() === deptName.trim().toLowerCase());
+    if (exists) {
+      const existingName = departments.find(d => d.toLowerCase() === deptName.trim().toLowerCase());
+      setFormData(prev => ({ ...prev, department: existingName }));
+      setIsDeptPopoverOpen(false);
+      setDeptSearchValue('');
+      return existingName;
+    }
+
+    setIsCreatingDepartment(true);
+    try {
+      // Generate a code (uppercase, alphanumeric)
+      const code = deptName.trim().toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+
+      const newDept = await apiService.createDepartment({
+        name: deptName.trim(),
+        code: code || `DEPT_${Date.now().toString().slice(-4)}`,
+        status: 'active'
+      });
+
+      if (newDept) {
+        setDepartments(prev => [...prev, newDept.name].sort());
+        setFormData(prev => ({ ...prev, department: newDept.name }));
+        setIsDeptPopoverOpen(false);
+        setDeptSearchValue('');
+        toast({ title: 'Success', description: `Department "${newDept.name}" created successfully` });
+        return newDept.name;
+      }
+    } catch (error: any) {
+      console.error('Failed to create department:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create department',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsCreatingDepartment(false);
+    }
+  };
 
   // Delete confirmation states
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -384,26 +482,7 @@ export default function EmployeeManagement() {
       setIsLoading(true);
       try {
         const data = await apiService.getEmployees();
-        const mappedData = data.map(toCamelCase).map((emp: any) => {
-          // ✅ Fix photo URLs to include backend base URL
-          if (emp.profilePhoto && !emp.profilePhoto.startsWith('http')) {
-            emp.profilePhoto = `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}/${emp.profilePhoto}`;
-          }
-          if (emp.photoUrl && !emp.photoUrl.startsWith('http')) {
-            emp.photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}/${emp.photoUrl}`;
-          }
-          // Also set photoUrl from profilePhoto if not set
-          if (!emp.photoUrl && emp.profilePhoto) {
-            emp.photoUrl = emp.profilePhoto;
-          }
-          // ✅ Map is_active to status
-          emp.status = emp.isActive ? 'active' : 'inactive';
-          // ✅ Ensure shift field is properly set (handle multiple possible field names)
-          if (!emp.shift && emp.shiftType) {
-            emp.shift = emp.shiftType;
-          }
-          return emp;
-        });
+        const mappedData = data.map(mapEmployeeData);
         console.log('Loaded employees:', mappedData); // ✅ Debug log
         console.log('First employee structure:', mappedData[0]); // ✅ Debug log
         setEmployees(mappedData);
@@ -596,13 +675,9 @@ export default function EmployeeManagement() {
   const formatPhoneNumber = (digits: string, countryCode: string) => {
     if (!digits) return '';
     if (countryCode === '+91') {
-      if (digits.length <= 3) return digits;
-      if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
-      return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+      return digits.slice(0, 10);
     } else {
-      if (digits.length <= 3) return digits;
-      if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
-      return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+      return digits.slice(0, 15);
     }
   };
 
@@ -767,7 +842,7 @@ export default function EmployeeManagement() {
         employee_id: formData.employeeId,
         department: departmentValue,
         designation: formData.designation,
-        phone: formData.phone ? `${formData.countryCode || '+91'}-${formData.phone.replace(/[^0-9]/g, '')}` : '',
+        phone: formData.phone ? (formData.countryCode === '+91' ? formData.phone.replace(/[^0-9]/g, '') : `${formData.countryCode}-${formData.phone.replace(/[^0-9]/g, '')}`) : '',
         address: fullAddress,
         role: normalizeRole(formData.role || 'employee'),
         gender: formData.gender,
@@ -780,7 +855,7 @@ export default function EmployeeManagement() {
       };
 
       const newEmployee = await apiService.createEmployee(employeeData);
-      const mappedNewEmployee = toCamelCase(newEmployee);
+      const mappedNewEmployee = mapEmployeeData(newEmployee);
       setEmployees([...employees, mappedNewEmployee]);
       setIsCreateDialogOpen(false);
       resetForm();
@@ -899,25 +974,16 @@ export default function EmployeeManagement() {
         || (formData as any)?.user_id
         || '';
 
-      console.log('=== UPDATE DEBUG ===');
-      console.log('selectedEmployee:', selectedEmployee);
-      console.log('formData:', formData);
-      console.log('userIdToUpdate:', userIdToUpdate);
-      console.log('===================');
-
       // Validate that we have a user_id
       if (!userIdToUpdate) {
-        console.error('Failed to find user_id in:', { selectedEmployee, formData });
         toast({
           title: 'Error',
-          description: 'Unable to identify employee. Missing user ID. Check console for details.',
+          description: 'Unable to identify employee. Missing user ID.',
           variant: 'destructive'
         });
         setIsUpdating(false);
         return;
       }
-
-      console.log('Updating employee with user_id:', userIdToUpdate); // Debug log
 
       // Handle department assignment based on role
       const isHROrManager = formData.role === 'hr' || formData.role === 'manager';
@@ -939,7 +1005,7 @@ export default function EmployeeManagement() {
         employee_id: formData.employeeId,
         department: departmentValue,
         designation: formData.designation,
-        phone: formData.phone ? `${formData.countryCode || '+91'}-${formData.phone.replace(/[^0-9]/g, '')}` : '',
+        phone: formData.phone ? (formData.countryCode === '+91' ? formData.phone.replace(/[^0-9]/g, '') : `${formData.countryCode}-${formData.phone.replace(/[^0-9]/g, '')}`) : '',
         address: fullAddress,
         role: normalizeRole(formData.role || 'employee'),
         gender: formData.gender,
@@ -957,18 +1023,7 @@ export default function EmployeeManagement() {
 
       // Call API with user_id instead of employee_id
       const updatedEmployee = await apiService.updateEmployee(userIdToUpdate, employeeData);
-      const mappedUpdated = toCamelCase(updatedEmployee);
-
-      // Fix photo URLs to include backend base URL
-      if (mappedUpdated.profilePhoto && !mappedUpdated.profilePhoto.startsWith('http')) {
-        mappedUpdated.profilePhoto = `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}/${mappedUpdated.profilePhoto}`;
-      }
-      if (mappedUpdated.photoUrl && !mappedUpdated.photoUrl.startsWith('http')) {
-        mappedUpdated.photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}/${mappedUpdated.photoUrl}`;
-      }
-      if (!mappedUpdated.photoUrl && mappedUpdated.profilePhoto) {
-        mappedUpdated.photoUrl = mappedUpdated.profilePhoto;
-      }
+      const mappedUpdated = mapEmployeeData(updatedEmployee);
 
       // Update the employee in the list using the id field
       setEmployees(employees.map(emp => emp.id === userIdToUpdate ? mappedUpdated : emp));
@@ -1042,13 +1097,12 @@ export default function EmployeeManagement() {
     try {
       // Call API to update status
       const updatedEmployee = await apiService.updateEmployeeStatus(employee.id.toString(), isActive);
+      const mappedUpdated = mapEmployeeData(updatedEmployee);
 
       // Update local state
       setEmployees((prev) =>
         prev.map((emp) =>
-          emp.employeeId === employeeId
-            ? { ...emp, status: newStatus, updatedAt: new Date().toISOString() }
-            : emp
+          emp.id === employee.id ? mappedUpdated : emp
         )
       );
 
@@ -1157,7 +1211,7 @@ export default function EmployeeManagement() {
       const csvCountryCode = data.countrycode || '';
       const { countryCode, digits } = parsePhoneValue(phoneValue, csvCountryCode);
       const phoneDigits = digits;
-      const phoneFormatted = phoneDigits ? `${countryCode}-${phoneDigits}` : '';
+      const phoneFormatted = phoneDigits ? (countryCode === '+91' ? phoneDigits : `${countryCode}-${phoneDigits}`) : '';
 
       const errors: string[] = [];
 
@@ -1231,18 +1285,7 @@ export default function EmployeeManagement() {
 
       try {
         const createdEmployee = await apiService.createEmployee(employeePayload);
-        const mappedEmployee = toCamelCase(createdEmployee);
-
-        if (mappedEmployee.profilePhoto && !mappedEmployee.profilePhoto.startsWith('http')) {
-          mappedEmployee.profilePhoto = `https://testing.staffly.space/${mappedEmployee.profilePhoto}`;
-        }
-        if (mappedEmployee.photoUrl && !mappedEmployee.photoUrl.startsWith('http')) {
-          mappedEmployee.photoUrl = `https://testing.staffly.space/${mappedEmployee.photoUrl}`;
-        }
-        if (!mappedEmployee.photoUrl && mappedEmployee.profilePhoto) {
-          mappedEmployee.photoUrl = mappedEmployee.profilePhoto;
-        }
-        mappedEmployee.status = mappedEmployee.isActive ? 'active' : mappedEmployee.status || status;
+        const mappedEmployee = mapEmployeeData(createdEmployee);
 
         createdEmployees.push(mappedEmployee);
         summary.push({
@@ -1593,7 +1636,7 @@ export default function EmployeeManagement() {
       });
 
       const rawData = await apiService.getEmployeeById(userIdToFetch);
-      const fullData = toCamelCase(rawData);
+      const fullData = mapEmployeeData(rawData);
       populateForm(fullData);
     } catch (error) {
       console.error('Fetch failed:', error);
@@ -2043,31 +2086,74 @@ export default function EmployeeManagement() {
                           className="mt-1 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 font-medium text-blue-700 dark:text-blue-300"
                         />
                       ) : (
-                        <Select
-                          value={formData.department || ''}
-                          onValueChange={(value) => setFormData((prev) => ({ ...prev, department: value }))}
-                          disabled={departments.length === 0}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder={departments.length === 0 ? "No departments available" : "Select Department"} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {departments.length === 0 ? (
-                              <SelectItem value="no-departments" disabled>
-                                No active departments found. Please create departments first.
-                              </SelectItem>
-                            ) : (
-                              departments.map((dept) => (
-                                <SelectItem key={dept} value={dept}>
-                                  {dept}
-                                </SelectItem>
-                              ))
-                            )}
-                            {formData.department && !departments.some(d => d.toLowerCase() === formData.department?.toLowerCase()) && (
-                              <SelectItem value={formData.department}>{formData.department}</SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
+                        <Popover open={isDeptPopoverOpen} onOpenChange={setIsDeptPopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={isDeptPopoverOpen}
+                              className="w-full justify-between mt-1 h-10 px-3 font-normal"
+                              disabled={isCreatingDepartment}
+                            >
+                              {formData.department
+                                ? departments.find((d) => d.toLowerCase() === formData.department?.toLowerCase()) || formData.department
+                                : "Select or type department"}
+                              {isCreatingDepartment ? (
+                                <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
+                              ) : (
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[400px] p-0" align="start">
+                            <Command>
+                              <CommandInput
+                                placeholder="Search department..."
+                                value={deptSearchValue}
+                                onValueChange={setDeptSearchValue}
+                              />
+                              <CommandList className="max-h-[300px]">
+                                {deptSearchValue.trim().length > 0 && !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
+                                  <CommandGroup heading="New Department">
+                                    <CommandItem
+                                      value={deptSearchValue}
+                                      onSelect={() => handleCreateDepartment(deptSearchValue)}
+                                      className="cursor-pointer text-blue-600 font-medium"
+                                    >
+                                      <Plus className="mr-2 h-4 w-4" />
+                                      Create "{deptSearchValue}"
+                                    </CommandItem>
+                                  </CommandGroup>
+                                )}
+                                <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
+                                  {deptSearchValue.trim().length === 0 ? "No departments available." : "No matching departments found."}
+                                </CommandEmpty>
+                                <CommandGroup heading="Existing Departments">
+                                  {departments.map((dept) => (
+                                    <CommandItem
+                                      key={dept}
+                                      value={dept}
+                                      onSelect={(currentValue) => {
+                                        setFormData(prev => ({ ...prev, department: currentValue }));
+                                        setIsDeptPopoverOpen(false);
+                                        setDeptSearchValue('');
+                                      }}
+                                      className="cursor-pointer"
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          formData.department?.toLowerCase() === dept.toLowerCase() ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {dept}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                       )}
                       {!isHR && departments.length === 0 && (
                         <p className="text-sm text-amber-600 mt-1">
@@ -2167,7 +2253,7 @@ export default function EmployeeManagement() {
                         validatePhoneNumber(phone.replace(/[^0-9]/g, ''), formData.countryCode || '+91');
                       }}
                       className={`mt-1 ${phoneError ? 'border-red-500' : ''}`}
-                      placeholder='e.g., 987-654-3210'
+                      placeholder='e.g., 9876543210'
                     />
                     {phoneError && (
                       <p className="text-red-500 text-sm mt-1">{phoneError}</p>
@@ -2381,7 +2467,7 @@ export default function EmployeeManagement() {
               </DialogContent>
             </Dialog>
           </div>
-        </CardHeader>
+        </CardHeader >
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
             <div className="flex-1 min-w-0">
@@ -2605,7 +2691,7 @@ export default function EmployeeManagement() {
             />
           </div>
         </CardContent>
-      </Card>
+      </Card >
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="w-[95vw] max-w-[450px] max-h-[80vh] overflow-y-auto p-4">
@@ -2770,31 +2856,74 @@ export default function EmployeeManagement() {
                     className="mt-1 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 font-medium text-blue-700 dark:text-blue-300"
                   />
                 ) : (
-                  <Select
-                    value={formData.department || ''}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, department: value }))}
-                    disabled={departments.length === 0}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select Department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments.length === 0 ? (
-                        <SelectItem value="no-departments" disabled>
-                          No active departments found. Please create departments first.
-                        </SelectItem>
-                      ) : (
-                        departments.map((dept) => (
-                          <SelectItem key={dept} value={dept}>
-                            {dept}
-                          </SelectItem>
-                        ))
-                      )}
-                      {formData.department && !departments.some(d => d.toLowerCase() === formData.department?.toLowerCase()) && (
-                        <SelectItem value={formData.department}>{formData.department}</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={isDeptPopoverOpen} onOpenChange={setIsDeptPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={isDeptPopoverOpen}
+                        className="w-full justify-between mt-1 h-10 px-3 font-normal"
+                        disabled={isCreatingDepartment}
+                      >
+                        {formData.department
+                          ? departments.find((d) => d.toLowerCase() === formData.department?.toLowerCase()) || formData.department
+                          : "Select or type department"}
+                        {isCreatingDepartment ? (
+                          <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
+                        ) : (
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0" align="start">
+                      <Command>
+                        <CommandInput
+                          placeholder="Search department..."
+                          value={deptSearchValue}
+                          onValueChange={setDeptSearchValue}
+                        />
+                        <CommandList className="max-h-[300px]">
+                          {deptSearchValue.trim().length > 0 && !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
+                            <CommandGroup heading="New Department">
+                              <CommandItem
+                                value={deptSearchValue}
+                                onSelect={() => handleCreateDepartment(deptSearchValue)}
+                                className="cursor-pointer text-blue-600 font-medium"
+                              >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Create "{deptSearchValue}"
+                              </CommandItem>
+                            </CommandGroup>
+                          )}
+                          <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
+                            {deptSearchValue.trim().length === 0 ? "No departments available." : "No matching departments found."}
+                          </CommandEmpty>
+                          <CommandGroup heading="Existing Departments">
+                            {departments.map((dept) => (
+                              <CommandItem
+                                key={dept}
+                                value={dept}
+                                onSelect={(currentValue) => {
+                                  setFormData(prev => ({ ...prev, department: currentValue }));
+                                  setIsDeptPopoverOpen(false);
+                                  setDeptSearchValue('');
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    formData.department?.toLowerCase() === dept.toLowerCase() ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {dept}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 )}
               </div>
             )}
@@ -2890,7 +3019,7 @@ export default function EmployeeManagement() {
                   validatePhoneNumber(phone.replace(/[^0-9]/g, ''), formData.countryCode || '+91');
                 }}
                 className={`mt-1 ${phoneError ? 'border-red-500' : ''}`}
-                placeholder='e.g., 987-654-3210'
+                placeholder='e.g., 9876543210'
               />
               {phoneError && (
                 <p className="text-red-500 text-sm mt-1">{phoneError}</p>
@@ -3357,6 +3486,6 @@ export default function EmployeeManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }
