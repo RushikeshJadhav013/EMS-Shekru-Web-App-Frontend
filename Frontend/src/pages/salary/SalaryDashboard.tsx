@@ -222,53 +222,80 @@ const SalaryDashboard = () => {
             {/* Analytics Section */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                    ...(userRole === 'admin' ? [
-                        {
-                            label: 'Annual Payroll (Filtered)',
-                            value: `₹ ${(filteredItems.reduce((acc, item) => acc + (item.salary?.package_ctc_annual || 0), 0) / 10000000).toFixed(2)} Cr`,
-                            sub: 'Total Annual Cost to Company',
-                            icon: DollarSign,
-                            color: 'blue',
-                            bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
-                            cardBg: 'bg-blue-50/40 dark:bg-blue-950/10',
-                            borderColor: 'border-blue-300/80 dark:border-blue-700/50',
-                            hoverBorder: 'group-hover:border-blue-500 dark:group-hover:border-blue-400'
-                        },
-                        {
-                            label: 'Monthly Disbursement',
-                            value: `₹ ${filteredItems.reduce((acc, item) => acc + (item.salary?.monthly_ctc || 0), 0).toLocaleString('en-IN')}`,
-                            sub: 'Current Month Total CTC',
-                            icon: TrendingUp,
-                            color: 'emerald',
-                            bg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
-                            cardBg: 'bg-emerald-50/40 dark:bg-emerald-950/10',
-                            borderColor: 'border-emerald-300/80 dark:border-emerald-700/50',
-                            hoverBorder: 'group-hover:border-emerald-500 dark:group-hover:border-emerald-400'
-                        }
-                    ] : [
-                        {
-                            label: 'Total Departments',
-                            value: uniqueDepts.length,
-                            sub: 'Active Business Units',
-                            icon: Building2,
-                            color: 'blue',
-                            bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
-                            cardBg: 'bg-blue-50/40 dark:bg-blue-950/10',
-                            borderColor: 'border-blue-300/80 dark:border-blue-700/50',
-                            hoverBorder: 'group-hover:border-blue-500 dark:group-hover:border-blue-400'
-                        },
-                        {
-                            label: 'Active Pay Structures',
-                            value: filteredItems.filter(i => i.salary).length,
-                            sub: 'Verified Salary Records',
-                            icon: FileText,
-                            color: 'emerald',
-                            bg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
-                            cardBg: 'bg-emerald-50/40 dark:bg-emerald-950/10',
-                            borderColor: 'border-emerald-300/80 dark:border-emerald-700/50',
-                            hoverBorder: 'group-hover:border-emerald-500 dark:group-hover:border-emerald-400'
-                        }
-                    ]),
+                    ...(userRole === 'admin'
+                        ? [
+                            {
+                                label: 'Annual Payroll (Filtered)',
+                                value: `₹ ${(filteredItems.reduce((acc, item) => acc + (item.salary?.package_ctc_annual || 0), 0) / 10000000).toFixed(2)} Cr`,
+                                sub: 'Total Annual Cost to Company',
+                                icon: DollarSign,
+                                color: 'blue',
+                                bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
+                                cardBg: 'bg-blue-50/40 dark:bg-blue-950/10',
+                                borderColor: 'border-blue-300/80 dark:border-blue-700/50',
+                                hoverBorder: 'group-hover:border-blue-500 dark:group-hover:border-blue-400'
+                            },
+                            {
+                                label: 'Monthly Disbursement',
+                                value: `₹ ${filteredItems.reduce((acc, item) => acc + (item.salary?.monthly_ctc || 0), 0).toLocaleString('en-IN')}`,
+                                sub: 'Current Month Total CTC',
+                                icon: TrendingUp,
+                                color: 'emerald',
+                                bg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
+                                cardBg: 'bg-emerald-50/40 dark:bg-emerald-950/10',
+                                borderColor: 'border-emerald-300/80 dark:border-emerald-700/50',
+                                hoverBorder: 'group-hover:border-emerald-500 dark:group-hover:border-emerald-400'
+                            }
+                        ]
+                        : userRole === 'hr'
+                            ? [
+                                {
+                                    label: 'Total Employees',
+                                    value: filteredItems.length,
+                                    sub: 'In Current View',
+                                    icon: Users,
+                                    color: 'blue',
+                                    bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
+                                    cardBg: 'bg-blue-50/40 dark:bg-blue-950/10',
+                                    borderColor: 'border-blue-300/80 dark:border-blue-700/50',
+                                    hoverBorder: 'group-hover:border-blue-500 dark:group-hover:border-blue-400'
+                                },
+                                {
+                                    label: 'Active Pay Structures',
+                                    value: filteredItems.filter(i => i.salary).length,
+                                    sub: 'Verified Salary Records',
+                                    icon: FileText,
+                                    color: 'emerald',
+                                    bg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
+                                    cardBg: 'bg-emerald-50/40 dark:bg-emerald-950/10',
+                                    borderColor: 'border-emerald-300/80 dark:border-emerald-700/50',
+                                    hoverBorder: 'group-hover:border-emerald-500 dark:group-hover:border-emerald-400'
+                                }
+                            ]
+                            : [
+                                {
+                                    label: 'Total Departments',
+                                    value: uniqueDepts.length,
+                                    sub: 'Active Business Units',
+                                    icon: Building2,
+                                    color: 'blue',
+                                    bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
+                                    cardBg: 'bg-blue-50/40 dark:bg-blue-950/10',
+                                    borderColor: 'border-blue-300/80 dark:border-blue-700/50',
+                                    hoverBorder: 'group-hover:border-blue-500 dark:group-hover:border-blue-400'
+                                },
+                                {
+                                    label: 'Active Pay Structures',
+                                    value: filteredItems.filter(i => i.salary).length,
+                                    sub: 'Verified Salary Records',
+                                    icon: FileText,
+                                    color: 'emerald',
+                                    bg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
+                                    cardBg: 'bg-emerald-50/40 dark:bg-emerald-950/10',
+                                    borderColor: 'border-emerald-300/80 dark:border-emerald-700/50',
+                                    hoverBorder: 'group-hover:border-emerald-500 dark:group-hover:border-emerald-400'
+                                }
+                            ]),
                     {
                         label: 'Average Annual Salary',
                         value: `₹ ${(filteredItems.filter(i => i.salary).length > 0
@@ -283,9 +310,11 @@ const SalaryDashboard = () => {
                         hoverBorder: 'group-hover:border-indigo-500 dark:group-hover:border-indigo-400'
                     },
                     {
-                        label: 'Showing Employees',
-                        value: filteredItems.length,
-                        sub: 'Filtered Workforce',
+                        label: userRole === 'hr' ? 'Pending Salary Setup' : 'Showing Employees',
+                        value: userRole === 'hr'
+                            ? filteredItems.filter(i => !i.salary).length
+                            : filteredItems.length,
+                        sub: userRole === 'hr' ? 'Employees without salary' : 'Filtered Workforce',
                         icon: Users,
                         color: 'amber',
                         bg: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',

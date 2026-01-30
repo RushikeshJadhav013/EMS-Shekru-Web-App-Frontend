@@ -14,7 +14,7 @@ export interface Notification {
   userId: string;
   title: string;
   message: string;
-  type: 'leave' | 'task' | 'info' | 'warning' | 'shift';
+  type: 'leave' | 'task' | 'info' | 'warning' | 'shift' | 'salary';
   read: boolean;
   actionUrl?: string;
   createdAt: string;
@@ -63,7 +63,11 @@ type BackendTaskNotification = {
   notification_type: string;
   title: string;
   message: string;
-  pass_details: string | Record<string, unknown> | null;
+  pass_details: string | {
+    from?: number;
+    to?: number;
+    note?: string;
+  } | null;
   is_read: boolean;
   created_at: string;
 };
@@ -72,6 +76,17 @@ type BackendLeaveNotification = {
   notification_id: number;
   user_id: number;
   leave_id: number;
+  notification_type: string;
+  title: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+};
+
+type BackendSalaryNotification = {
+  notification_id: number;
+  user_id: number;
+  salary_id: number;
   notification_type: string;
   title: string;
   message: string;
@@ -108,6 +123,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const retryTimeoutRef = useRef<number | null>(null);
   const lastFetchRef = useRef<number>(0);
   const previousUnreadCountRef = useRef<number>(0);
+  const salaryUnreadCountRef = useRef<number>(0);
   const isFetchingRef = useRef<boolean>(false); // Prevent concurrent fetches
   const initialFetchDoneRef = useRef<boolean>(false); // Track if initial fetch is done
 
@@ -191,25 +207,28 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, []);
 
   const mapBackendTaskNotification = useCallback((notification: BackendTaskNotification, currentUserId?: string): Notification | null => {
-    let parsedDetails: Record<string, unknown> | null = null;
+    // Parse pass_details - can be string (JSON) or object
+    let passDetails: { from?: number; to?: number; note?: string } | null = null;
+    
     if (notification.pass_details) {
       if (typeof notification.pass_details === 'string') {
         try {
-          parsedDetails = JSON.parse(notification.pass_details);
+          passDetails = JSON.parse(notification.pass_details);
         } catch (error) {
           console.error('Failed to parse task pass details', error);
+          passDetails = null;
         }
-      } else if (typeof notification.pass_details === 'object') {
-        parsedDetails = notification.pass_details as Record<string, unknown>;
+      } else if (typeof notification.pass_details === 'object' && notification.pass_details !== null) {
+        // Already an object, use it directly
+        passDetails = notification.pass_details;
       }
     }
 
-    const fromValue = parsedDetails && typeof parsedDetails === 'object' ? parsedDetails['from'] : undefined;
-    const toValue = parsedDetails && typeof parsedDetails === 'object' ? parsedDetails['to'] : undefined;
-    const noteValue = parsedDetails && typeof parsedDetails === 'object' ? parsedDetails['note'] : undefined;
+    const fromValue = passDetails?.from;
+    const toValue = passDetails?.to;
+    const noteValue = passDetails?.note;
 
-    // ✅ Filter out self-notifications: only show if the notification is for the current user
-    // and the sender is different from the recipient
+    // ✅ Filter: only show notifications for the current user
     const notificationUserId = String(notification.user_id);
     if (currentUserId && notificationUserId !== currentUserId) {
       // This notification is not for the current user, filter it out
@@ -217,13 +236,21 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return null;
     }
 
-    // ✅ Prevent self-notifications: if sender and recipient are the same, don't show
-    if (fromValue !== undefined && String(fromValue) === notificationUserId) {
-      debugLog('Filtering out task notification - self notification', { fromValue, notificationUserId });
+    // ✅ Filter: Don't show if user assigned task to themselves (from === to === user_id)
+    // But still show if user received task from someone else (from !== user_id, to === user_id)
+    if (fromValue !== undefined && toValue !== undefined && 
+        String(fromValue) === notificationUserId && String(toValue) === notificationUserId) {
+      debugLog('Filtering out task notification - self-assigned task', { fromValue, toValue, notificationUserId });
       return null;
     }
 
-    debugLog('Mapping task notification', { id: notification.notification_id, title: notification.title, is_read: notification.is_read });
+    debugLog('Mapping task notification', { 
+      id: notification.notification_id, 
+      title: notification.title, 
+      is_read: notification.is_read,
+      from: fromValue,
+      to: toValue
+    });
 
     return {
       id: `backend-task-${notification.notification_id}`,
@@ -382,7 +409,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     debugLog('Fetching notifications from API...');
 
     try {
-      const [taskResult, leaveResult, shiftResult] = await Promise.allSettled([
+      const [taskResult, leaveResult, shiftResult, salaryResult, salaryUnreadResult] = await Promise.allSettled([
         fetch(`${API_BASE_URL}/tasks/notifications`, {
           headers: {
             Authorization: authHeader,
@@ -419,6 +446,30 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           }
           return { ok: false, status: 0 } as Response;
         }),
+        fetch(`${API_BASE_URL}/salary/notifications`, {
+          headers: {
+            Authorization: authHeader,
+          },
+          signal,
+        }).catch(err => {
+          // Silently handle network errors and aborts
+          if (import.meta.env.DEV && err.name !== 'AbortError') {
+            console.warn('Salary notifications fetch failed:', err.message);
+          }
+          return { ok: false, status: 0 } as Response;
+        }),
+        fetch(`${API_BASE_URL}/salary/notifications/unread/count`, {
+          headers: {
+            Authorization: authHeader,
+          },
+          signal,
+        }).catch(err => {
+          // Silently handle network errors and aborts
+          if (import.meta.env.DEV && err.name !== 'AbortError') {
+            console.warn('Salary unread count fetch failed:', err.message);
+          }
+          return { ok: false, status: 0 } as Response;
+        }),
       ]);
 
       // Check for 401 errors - if any endpoint returns 401, stop polling and clear auth
@@ -430,6 +481,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         hasUnauthorized = true;
       }
       if (shiftResult.status === 'fulfilled' && shiftResult.value.status === 401) {
+        hasUnauthorized = true;
+      }
+      if (salaryResult.status === 'fulfilled' && salaryResult.value.status === 401) {
+        hasUnauthorized = true;
+      }
+      if (salaryUnreadResult.status === 'fulfilled' && salaryUnreadResult.value.status === 401) {
         hasUnauthorized = true;
       }
 
@@ -453,23 +510,35 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const taskData: BackendTaskNotification[] = [];
       const leaveData: BackendLeaveNotification[] = [];
       const shiftData: BackendShiftNotification[] = [];
+      const salaryData: BackendSalaryNotification[] = [];
 
       // Handle task notifications
       if (taskResult.status === 'fulfilled' && taskResult.value.ok) {
         try {
           const data = await taskResult.value.json();
           debugLog('Task notifications API response:', data);
-          // Handle both array and object responses
+          
+          // API returns direct array: [{ notification_id, user_id, task_id, ... }]
           if (Array.isArray(data)) {
-            taskData.push(...data);
+            // Validate each item has required fields before adding
+            const validNotifications = data.filter((item: unknown) => 
+              item && 
+              typeof item === 'object' && 
+              'notification_id' in item && 
+              'user_id' in item &&
+              'task_id' in item &&
+              'is_read' in item
+            );
+            taskData.push(...validNotifications as BackendTaskNotification[]);
           } else if (data && typeof data === 'object') {
+            // Handle wrapped responses (fallback)
             if (Array.isArray(data.notifications)) {
-              taskData.push(...data.notifications);
+              taskData.push(...(data.notifications as BackendTaskNotification[]));
             } else if (Array.isArray(data.data)) {
-              taskData.push(...data.data);
+              taskData.push(...(data.data as BackendTaskNotification[]));
             }
           }
-          debugLog('Parsed task notifications:', taskData);
+          debugLog('Parsed task notifications:', taskData.length);
         } catch (error) {
           // Silently handle parse errors and aborts
           if (import.meta.env.DEV && !(error instanceof Error && error.name === 'AbortError')) {
@@ -490,18 +559,28 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         try {
           const data = await leaveResult.value.json();
           debugLog('Leave notifications API response:', data);
-          // Handle both array and object responses
+          
+          // API returns direct array: [{ notification_id, user_id, leave_id, ... }]
           if (Array.isArray(data)) {
-            leaveData.push(...data);
+            // Validate each item has required fields before adding
+            const validNotifications = data.filter((item: unknown) => 
+              item && 
+              typeof item === 'object' && 
+              'notification_id' in item && 
+              'user_id' in item &&
+              'leave_id' in item &&
+              'is_read' in item
+            );
+            leaveData.push(...validNotifications as BackendLeaveNotification[]);
           } else if (data && typeof data === 'object') {
-            // If API returns an object with notifications array
+            // Handle wrapped responses (fallback)
             if (Array.isArray(data.notifications)) {
-              leaveData.push(...data.notifications);
+              leaveData.push(...(data.notifications as BackendLeaveNotification[]));
             } else if (Array.isArray(data.data)) {
-              leaveData.push(...data.data);
+              leaveData.push(...(data.data as BackendLeaveNotification[]));
             }
           }
-          debugLog('Parsed leave notifications:', leaveData);
+          debugLog('Parsed leave notifications:', leaveData.length);
         } catch (error) {
           // Silently handle parse errors and aborts
           if (import.meta.env.DEV && !(error instanceof Error && error.name === 'AbortError')) {
@@ -548,24 +627,106 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         debugLog('Shift notifications API returned non-OK status:', shiftResult.value.status);
       }
 
+      // Handle salary notifications
+      if (salaryResult.status === 'fulfilled' && salaryResult.value.ok) {
+        try {
+          const data = await salaryResult.value.json();
+          debugLog('Salary notifications API response:', data);
+          if (Array.isArray(data)) {
+            salaryData.push(...data);
+          } else if (data && typeof data === 'object') {
+            if (Array.isArray(data.notifications)) {
+              salaryData.push(...data.notifications);
+            } else if (Array.isArray(data.data)) {
+              salaryData.push(...data.data);
+            }
+          }
+          debugLog('Parsed salary notifications:', salaryData);
+        } catch (error) {
+          if (import.meta.env.DEV && !(error instanceof Error && error.name === 'AbortError')) {
+            console.error('Failed to parse salary notifications', error);
+          }
+        }
+      } else if (salaryResult.status === 'rejected') {
+        if (import.meta.env.DEV && salaryResult.reason?.name !== 'AbortError' && !salaryResult.reason?.message?.includes('fetch')) {
+          console.error('Failed to fetch salary notifications:', salaryResult.reason);
+        }
+      } else if (salaryResult.status === 'fulfilled') {
+        debugLog('Salary notifications API returned non-OK status:', salaryResult.value.status);
+      }
+
+      // Handle salary unread count
+      if (salaryUnreadResult.status === 'fulfilled' && salaryUnreadResult.value.ok) {
+        try {
+          const data = await salaryUnreadResult.value.json();
+          const backendCount = typeof data === 'number'
+            ? data
+            : typeof data?.count === 'number'
+              ? data.count
+              : Array.isArray(data?.data)
+                ? data.data.length
+                : 0;
+          salaryUnreadCountRef.current = backendCount;
+          debugLog('Salary unread count:', backendCount);
+        } catch (error) {
+          if (import.meta.env.DEV && !(error instanceof Error && error.name === 'AbortError')) {
+            console.error('Failed to parse salary unread count', error);
+          }
+        }
+      }
+
+      // Filter out read notifications - only show unread ones
       const backendNotifications = [
-        ...taskData.map(n => mapBackendTaskNotification(n, user.id)).filter((n): n is Notification => n !== null),
-        ...leaveData.map(n => mapBackendLeaveNotification(n, user.id)).filter((n): n is Notification => n !== null),
-        ...shiftData.map(n => mapBackendShiftNotification(n, user.role, user.id)).filter((n): n is Notification => n !== null),
+        ...taskData
+          .filter(n => !n.is_read) // Only unread notifications
+          .map(n => mapBackendTaskNotification(n, user.id))
+          .filter((n): n is Notification => n !== null),
+        ...leaveData
+          .filter(n => !n.is_read) // Only unread notifications
+          .map(n => mapBackendLeaveNotification(n, user.id))
+          .filter((n): n is Notification => n !== null),
+        ...shiftData
+          .filter(n => !n.is_read) // Only unread notifications
+          .map(n => mapBackendShiftNotification(n, user.role, user.id))
+          .filter((n): n is Notification => n !== null),
+        ...salaryData
+          .filter(n => !n.is_read) // Only unread notifications
+          .map(n => ({
+            id: `backend-salary-${n.notification_id}`,
+            backendId: n.notification_id,
+            userId: String(n.user_id),
+            title: n.title,
+            message: n.message,
+            type: 'salary' as const,
+            read: n.is_read,
+            createdAt: n.created_at,
+            metadata: {
+              // keep flexible for future salary-specific routing if needed
+            },
+          } satisfies Notification)),
       ];
 
+      // Get dismissed notification IDs from localStorage to filter them out
+      const dismissedKey = `dismissed_notifications_${user.id}`;
+      const dismissedIds = new Set<string>(
+        JSON.parse(localStorage.getItem(dismissedKey) || '[]') as string[]
+      );
+
+      // Filter out dismissed notifications
+      const filteredBackendNotifications = backendNotifications.filter((notification) => {
+        if (notification.backendId) {
+          return !dismissedIds.has(String(notification.backendId));
+        }
+        return true; // Keep local notifications without backend IDs
+      });
+
       debugLog('Total backend notifications mapped:', backendNotifications.length);
-      debugLog('Backend notifications:', backendNotifications);
-      const taskMapped = taskData.map(n => mapBackendTaskNotification(n, user.id)).filter((n): n is Notification => n !== null);
-      const leaveMapped = leaveData.map(n => mapBackendLeaveNotification(n, user.id)).filter((n): n is Notification => n !== null);
-      const shiftMapped = shiftData.map(n => mapBackendShiftNotification(n, user.role, user.id)).filter((n): n is Notification => n !== null);
-      debugLog('Task notifications:', { raw: taskData.length, mapped: taskMapped.length });
-      debugLog('Leave notifications:', { raw: leaveData.length, mapped: leaveMapped.length });
-      debugLog('Shift notifications:', { raw: shiftData.length, mapped: shiftMapped.length });
+      debugLog('Filtered dismissed notifications:', backendNotifications.length - filteredBackendNotifications.length);
+      debugLog('Backend notifications after filtering:', filteredBackendNotifications.length);
 
       setNotifications((prev) => {
         const localOnly = prev.filter((notification) => !notification.backendId);
-        const combined = [...backendNotifications, ...localOnly];
+        const combined = [...filteredBackendNotifications, ...localOnly];
         const uniqueById = new Map<string, Notification>();
         combined.forEach((notification) => {
           if (!uniqueById.has(notification.id)) {
@@ -807,17 +968,23 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         endpoint = `${API_BASE_URL}/leave/notifications/${backendId}/read`;
       } else if (backendType === 'shift') {
         endpoint = `${API_BASE_URL}/shift/notifications/${backendId}/read`;
+      } else if (backendType === 'salary') {
+        endpoint = `${API_BASE_URL}/salary/notifications/${backendId}/read`;
       } else {
         return;
       }
 
-      debugLog('Marking notification as read:', { endpoint, notificationId });
+      debugLog('Marking notification as read:', { endpoint, notificationId, backendId });
 
       const response = await fetch(endpoint, {
         method: 'PUT',
         headers: {
-          Authorization: authHeader,
+          'Authorization': authHeader,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          notification_id: backendId,
+        }),
       });
 
       if (!response.ok) {
@@ -847,6 +1014,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const taskIds: number[] = [];
     const leaveIds: number[] = [];
     const shiftIds: number[] = [];
+    const salaryIds: number[] = [];
     const notificationIdsToRemove: string[] = [];
 
     setNotifications((prev) =>
@@ -860,6 +1028,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
               taskIds.push(notif.backendId);
             } else if (notif.type === 'shift') {
               shiftIds.push(notif.backendId);
+            } else if (notif.type === 'salary') {
+              salaryIds.push(notif.backendId);
             }
           }
         }
@@ -868,7 +1038,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       })
     );
 
-    if (!user || (taskIds.length === 0 && leaveIds.length === 0 && shiftIds.length === 0)) {
+    if (!user || (taskIds.length === 0 && leaveIds.length === 0 && shiftIds.length === 0 && salaryIds.length === 0)) {
       // Still remove local notifications even if no backend IDs
       setTimeout(() => {
         setNotifications((prev) => prev.filter((notif) => !notificationIdsToRemove.includes(notif.id)));
@@ -887,24 +1057,48 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           fetch(`${API_BASE_URL}/tasks/notifications/${id}/read`, {
             method: 'PUT',
             headers: {
-              Authorization: authHeader,
+              'Authorization': authHeader,
+              'Content-Type': 'application/json',
             },
+            body: JSON.stringify({
+              notification_id: id,
+            }),
           })
         ),
         ...leaveIds.map((id) =>
           fetch(`${API_BASE_URL}/leave/notifications/${id}/read`, {
             method: 'PUT',
             headers: {
-              Authorization: authHeader,
+              'Authorization': authHeader,
+              'Content-Type': 'application/json',
             },
+            body: JSON.stringify({
+              notification_id: id,
+            }),
           })
         ),
         ...shiftIds.map((id) =>
           fetch(`${API_BASE_URL}/shift/notifications/${id}/read`, {
             method: 'PUT',
             headers: {
-              Authorization: authHeader,
+              'Authorization': authHeader,
+              'Content-Type': 'application/json',
             },
+            body: JSON.stringify({
+              notification_id: id,
+            }),
+          })
+        ),
+        ...salaryIds.map((id) =>
+          fetch(`${API_BASE_URL}/salary/notifications/${id}/read`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': authHeader,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              notification_id: id,
+            }),
           })
         ),
       ]);
@@ -930,13 +1124,98 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [fetchBackendNotifications, user]);
 
   const clearNotification = useCallback(async (notificationId: string) => {
-    // Mark as read first
-    await markAsRead(notificationId);
-    // Then remove it from the list
-    setTimeout(() => {
+    // Find the notification to get backend info
+    let targetNotification: Notification | undefined;
+    setNotifications((prev) => {
+      targetNotification = prev.find(n => n.id === notificationId);
+      return prev;
+    });
+
+    if (!targetNotification) {
+      return;
+    }
+
+    // Mark as read in backend FIRST (before removing from UI) to ensure permanent removal
+    if (user && targetNotification.backendId && targetNotification.type) {
+      const authHeader = getAuthHeader();
+      if (authHeader) {
+        try {
+          let endpoint = '';
+          const backendType = targetNotification.type;
+          const backendId = targetNotification.backendId;
+
+          if (backendType === 'task') {
+            endpoint = `${API_BASE_URL}/tasks/notifications/${backendId}/read`;
+          } else if (backendType === 'leave') {
+            endpoint = `${API_BASE_URL}/leave/notifications/${backendId}/read`;
+          } else if (backendType === 'shift') {
+            endpoint = `${API_BASE_URL}/shift/notifications/${backendId}/read`;
+          } else if (backendType === 'salary') {
+            endpoint = `${API_BASE_URL}/salary/notifications/${backendId}/read`;
+          }
+
+          if (endpoint) {
+            const response = await fetch(endpoint, {
+              method: 'PUT',
+              headers: {
+                'Authorization': authHeader,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                notification_id: backendId,
+              }),
+            });
+
+            if (!response.ok) {
+              throw new Error(`Failed to mark notification as read (${response.status})`);
+            }
+
+            // Only remove from UI after successful backend update
+            setNotifications((prev) => prev.filter((notif) => notif.id !== notificationId));
+            
+            // Store dismissed notification ID to prevent it from reappearing
+            const dismissedKey = `dismissed_notifications_${user.id}`;
+            const dismissed = JSON.parse(localStorage.getItem(dismissedKey) || '[]') as string[];
+            if (!dismissed.includes(String(targetNotification.backendId))) {
+              dismissed.push(String(targetNotification.backendId));
+              // Keep only last 1000 dismissed IDs to prevent localStorage from growing too large
+              if (dismissed.length > 1000) {
+                dismissed.shift(); // Remove oldest
+              }
+              localStorage.setItem(dismissedKey, JSON.stringify(dismissed));
+            }
+          } else {
+            // No backend ID, just remove from UI (local notification)
+            setNotifications((prev) => prev.filter((notif) => notif.id !== notificationId));
+          }
+        } catch (error) {
+          console.error('Failed to mark notification as read when clearing', error);
+          // Still remove from UI even if backend call fails - user dismissed it
+          setNotifications((prev) => prev.filter((notif) => notif.id !== notificationId));
+          
+          // Store dismissed notification ID anyway to prevent reappearing
+          if (targetNotification.backendId) {
+            const dismissedKey = `dismissed_notifications_${user.id}`;
+            const dismissed = JSON.parse(localStorage.getItem(dismissedKey) || '[]') as string[];
+            if (!dismissed.includes(String(targetNotification.backendId))) {
+              dismissed.push(String(targetNotification.backendId));
+              // Keep only last 1000 dismissed IDs to prevent localStorage from growing too large
+              if (dismissed.length > 1000) {
+                dismissed.shift(); // Remove oldest
+              }
+              localStorage.setItem(dismissedKey, JSON.stringify(dismissed));
+            }
+          }
+        }
+      } else {
+        // No auth header, just remove from UI
+        setNotifications((prev) => prev.filter((notif) => notif.id !== notificationId));
+      }
+    } else {
+      // No backend ID or user, just remove from UI (local notification)
       setNotifications((prev) => prev.filter((notif) => notif.id !== notificationId));
-    }, 300);
-  }, [markAsRead]);
+    }
+  }, [user]);
 
   const clearAll = () => {
     setNotifications([]);

@@ -598,7 +598,7 @@ const TeamLeadDashboard: React.FC = () => {
       </div>
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           {
             label: t.navigation.teamSize,
@@ -649,39 +649,39 @@ const TeamLeadDashboard: React.FC = () => {
         ].map((stat, i) => (
           <Card key={i} className={`border-2 ${stat.borderColor} ${stat.hoverBorder} shadow-sm ${stat.cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative`}>
             {/* Background Accent */}
-            <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-5 group-hover:opacity-10 transition-opacity ${stat.bg.split(' ')[0]}`} />
+            <div className={`absolute -right-3 -top-3 w-16 h-16 rounded-full opacity-5 group-hover:opacity-10 transition-opacity ${stat.bg.split(' ')[0]}`} />
 
-            <CardContent className="p-6 relative">
-              <div className="flex justify-between items-start mb-4">
-                <div className={`p-3 rounded-2xl ${stat.bg} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
-                  <stat.icon className="h-6 w-6" />
+            <CardContent className="p-4 relative">
+              <div className="flex justify-between items-start mb-3">
+                <div className={`p-2 rounded-xl ${stat.bg} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+                  <stat.icon className="h-5 w-5" />
                 </div>
                 {stat.action && (
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full hover:bg-white/50 dark:hover:bg-black/20" onClick={() => navigate('/team_lead/tasks')}>
-                    <ChevronRight className="h-4 w-4" />
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-full hover:bg-white/50 dark:hover:bg-black/20" onClick={() => navigate('/team_lead/tasks')}>
+                    <ChevronRight className="h-3.5 w-3.5" />
                   </Button>
                 )}
               </div>
-              <div className="space-y-2">
-                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{stat.label}</h3>
+              <div className="space-y-1.5">
+                <h3 className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</h3>
                 <div className="flex items-baseline gap-1">
-                  <div className="text-3xl font-black text-gray-900 dark:text-gray-100">{stat.value}</div>
+                  <div className="text-2xl font-black text-gray-900 dark:text-gray-100">{stat.value}</div>
                 </div>
                 {stat.progress !== undefined ? (
-                  <div className="pt-2">
-                    <div className="flex justify-between text-[10px] font-bold text-muted-foreground mb-1">
+                  <div className="pt-1.5">
+                    <div className="flex justify-between text-[9px] font-bold text-muted-foreground mb-1">
                       <span>PROGRESS</span>
                       <span>{stat.progress}%</span>
                     </div>
-                    <Progress value={stat.progress} className="h-1.5" />
+                    <Progress value={stat.progress} className="h-1" />
                   </div>
                 ) : (
-                  <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5`}>
-                    <CheckCircle2 className={`h-3 w-3 ${stat.color === 'blue' ? 'text-blue-500' :
+                  <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5`}>
+                    <CheckCircle2 className={`h-2.5 w-2.5 ${stat.color === 'blue' ? 'text-blue-500' :
                       stat.color === 'indigo' ? 'text-indigo-500' :
                         'text-amber-500'
                       }`} />
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{stat.sub}</span>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">{stat.sub}</span>
                   </div>
                 )}
               </div>

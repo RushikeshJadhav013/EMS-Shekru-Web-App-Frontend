@@ -129,7 +129,7 @@ const ContactSupport: React.FC = () => {
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-200/30 rounded-full blur-3xl"></div>
       </div>
 
-      <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12">
+      <div className="relative z-10 w-full">
         {/* Back Button */}
         <div className="relative inline-block mb-4 sm:mb-6">
           <Button

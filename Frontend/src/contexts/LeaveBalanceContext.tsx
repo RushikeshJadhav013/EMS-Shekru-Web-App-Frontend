@@ -71,7 +71,7 @@ export const LeaveBalanceProvider: React.FC<{ children: React.ReactNode }> = ({ 
         allocationConfig = allocationConfig[0];
       }
 
-      const defaults = {
+      const defaults: LeaveBalance = {
         annual: { allocated: 0, used: 0, remaining: 0 },
         sick: { allocated: 0, used: 0, remaining: 0 },
         casual: { allocated: 0, used: 0, remaining: 0 },
@@ -96,7 +96,8 @@ export const LeaveBalanceProvider: React.FC<{ children: React.ReactNode }> = ({ 
             defaults[key as keyof typeof defaults] = {
               allocated: Number(item.allocated) || 0,
               used: Number(item.used) || 0,
-              remaining: Number(item.remaining) || 0,
+              // We'll recompute remaining below to avoid negative values / drift
+              remaining: 0,
             };
           }
         });
@@ -117,29 +118,42 @@ export const LeaveBalanceProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         if (sickAlloc != null) {
           defaults.sick.allocated = Number(sickAlloc) || 0;
-          defaults.sick.remaining = defaults.sick.allocated - defaults.sick.used;
         }
 
         if (casualAlloc != null) {
           defaults.casual.allocated = Number(casualAlloc) || 0;
-          defaults.casual.remaining = defaults.casual.allocated - defaults.casual.used;
         }
 
         if (totalAlloc != null) {
+          // We still honour the configured total for visibility,
+          // but the effective "Total Leaves" card will be recomputed from sick+casual below.
           defaults.annual.allocated = Number(totalAlloc) || 0;
-          defaults.annual.remaining = defaults.annual.allocated - defaults.annual.used;
         }
       }
 
-      // Enforce Total Leave (annual) = Sick Leave + Casual Leave 
-      // Only recalculate if annual is still 0 but we have component leaves
-      if (defaults.annual.allocated === 0 && (defaults.sick.allocated > 0 || defaults.casual.allocated > 0)) {
-        defaults.annual = {
-          allocated: defaults.sick.allocated + defaults.casual.allocated,
-          used: defaults.sick.used + defaults.casual.used,
-          remaining: (defaults.sick.allocated + defaults.casual.allocated) - (defaults.sick.used + defaults.casual.used),
-        };
-      }
+      // Normalise and prevent negative balances for paid leave types
+      (['annual', 'sick', 'casual'] as const).forEach((key) => {
+        const alloc = Math.max(0, defaults[key].allocated);
+        const used = Math.max(0, defaults[key].used);
+        const remaining = Math.max(0, alloc - used);
+        defaults[key] = { allocated: alloc, used, remaining };
+      });
+
+      // Unpaid leave: track only "days taken" and never deduct from paid balances
+      defaults.unpaid = {
+        allocated: 0,
+        used: Math.max(0, unpaidCount),
+        remaining: 0,
+      };
+
+      // Enforce Total Leaves = Sick + Casual (paid leave only, excluding unpaid)
+      const totalAllocated = defaults.sick.allocated + defaults.casual.allocated;
+      const totalUsed = defaults.sick.used + defaults.casual.used;
+      defaults.annual = {
+        allocated: totalAllocated,
+        used: totalUsed,
+        remaining: Math.max(0, totalAllocated - totalUsed),
+      };
 
       setLeaveBalance(defaults);
       localStorage.setItem('leaveBalance', JSON.stringify(defaults));

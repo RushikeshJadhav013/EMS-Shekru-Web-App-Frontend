@@ -137,47 +137,45 @@ const MainLayout: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-        <div className="flex h-16 items-center px-4 gap-4">
-          {/* Sidebar Toggle */}
+      <header className="sticky top-0 z-50 w-full border-b bg-white dark:bg-gray-950 shadow-sm">
+        <div className="flex h-16 w-full items-center gap-4 px-4 sm:px-6 lg:px-8">
+          {/* Sidebar Toggle - Mobile */}
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="lg:hidden h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
 
+          {/* Sidebar Toggle - Desktop */}
           <Button
             variant="ghost"
             size="icon"
-            className="hidden lg:flex h-10 w-10 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800 hover:shadow-md hover:scale-105 transition-all duration-300"
+            className="hidden lg:flex h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200"
             onClick={() => setSidebarOpen(!sidebarOpen)}
           >
-            <Menu className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+            <Menu className="h-5 w-5 text-gray-600 dark:text-gray-400" />
           </Button>
 
           {/* Logo */}
           <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate(`/${user.role}`)}>
             <div className="relative">
-              {/* Animated glow background */}
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 blur-md opacity-75 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
-
               {/* Logo container */}
-              <div className="relative h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-700 flex items-center justify-center shadow-lg group-hover:shadow-2xl group-hover:scale-110 transition-all duration-300 border border-white/20">
-                <span className="text-white font-bold text-xl tracking-tight drop-shadow-md">S</span>
+              <div className="relative h-10 w-10 rounded-lg bg-gradient-to-br from-purple-500 via-blue-500 to-indigo-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
+                <span className="text-white font-bold text-xl tracking-tight">S</span>
               </div>
 
-              {/* Corner accent */}
-              <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 shadow-md group-hover:scale-125 transition-transform duration-300"></div>
+              {/* Corner accent - orange dot */}
+              <div className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-orange-500 shadow-sm"></div>
             </div>
 
             <div className="hidden sm:flex flex-col">
-              <span className="font-bold text-lg bg-gradient-to-r from-blue-600 to-indigo-700 dark:from-blue-400 dark:to-indigo-500 bg-clip-text text-transparent leading-tight">
+              <span className="font-semibold text-base text-blue-600 dark:text-blue-400 leading-tight">
                 Shekru labs India
               </span>
-              <span className="text-xs text-muted-foreground font-medium tracking-wide">
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-normal">
                 Employee Management
               </span>
             </div>
@@ -187,18 +185,18 @@ const MainLayout: React.FC = () => {
 
           {/* Language Selector */}
           <Select value={language} onValueChange={(value: Language) => setLanguage(value)}>
-            <SelectTrigger className="w-[140px] h-10 bg-white dark:bg-gray-950 border-2 hover:border-blue-400 dark:hover:border-blue-600 transition-all duration-300 hover:shadow-md">
-              <Globe className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400" />
+            <SelectTrigger className="w-[140px] h-10 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 rounded-lg">
+              <Globe className="h-4 w-4 mr-2 text-gray-600 dark:text-gray-400" />
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="border-2 shadow-2xl">
-              <SelectItem value="en" className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors">
+            <SelectContent className="border border-gray-200 dark:border-gray-700 shadow-lg">
+              <SelectItem value="en" className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
                 <span className="font-medium">English</span>
               </SelectItem>
-              <SelectItem value="hi" className="cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors">
+              <SelectItem value="hi" className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
                 <span className="font-medium">हिंदी</span>
               </SelectItem>
-              <SelectItem value="mr" className="cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors">
+              <SelectItem value="mr" className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
                 <span className="font-medium">मराठी</span>
               </SelectItem>
             </SelectContent>
@@ -210,16 +208,15 @@ const MainLayout: React.FC = () => {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-12 w-12 rounded-full p-0 hover:bg-transparent transition-all duration-300 hover:scale-110">
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200">
                 <div className="relative">
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 animate-pulse"></div>
-                  <Avatar className="h-11 w-11 border-2 border-white dark:border-gray-900 relative">
+                  <Avatar className="h-10 w-10 border-2 border-white dark:border-gray-900 relative">
                     <AvatarImage src={user.profilePhoto} alt={user.name} className="object-cover" />
-                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-lg">
+                    <AvatarFallback className="bg-blue-600 text-white font-semibold text-sm">
                       {user.name.split(' ').map(n => n[0]).join('')}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-gradient-to-r from-green-400 to-emerald-500 border-2 border-white dark:border-gray-900 shadow-md"></div>
+                  <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white dark:border-gray-900"></div>
                 </div>
               </Button>
             </DropdownMenuTrigger>
@@ -268,11 +265,11 @@ const MainLayout: React.FC = () => {
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-4rem)]">
+      <div className="flex h-[calc(100vh-4rem)] w-full transition-all duration-500">
         {/* Sidebar */}
         <aside
           className={`${sidebarOpen ? 'w-64' : 'w-20'
-            } hidden lg:flex flex-col border-r bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl transition-all duration-500 shadow-[20px_0_30px_-15px_rgba(0,0,0,0.05)] overflow-hidden relative z-40`}
+            } hidden lg:flex flex-shrink-0 flex-col border-r bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl transition-all duration-500 shadow-[20px_0_30px_-15px_rgba(0,0,0,0.05)] overflow-hidden relative z-40`}
         >
           <div className="flex-1 space-y-2 p-3 pt-4 overflow-y-auto scrollbar-none hover:scrollbar-thin transition-all">
             <nav className="space-y-1 focus:outline-none">
@@ -430,8 +427,20 @@ const MainLayout: React.FC = () => {
         )}
 
         {/* Main Content */}
-        <main className={`flex-1 ${location.pathname.includes('/chat') ? 'overflow-hidden' : 'overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent'}`}>
-          <div className={`h-full animate-fade-in ${location.pathname.includes('/chat') || location.pathname.includes('/tasks') ? '' : 'container mx-auto p-6'}`}>
+        <main
+          className={`flex-1 min-w-0 w-full overflow-x-hidden transition-all duration-500 ${
+            location.pathname.includes('/chat')
+              ? 'overflow-hidden'
+              : 'overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent'
+          }`}
+        >
+          <div
+            className={
+              location.pathname.includes('/chat')
+                ? 'h-full w-full'
+                : 'h-full w-full animate-fade-in px-4 py-6 sm:px-6 lg:px-8'
+            }
+          >
             <Outlet />
           </div>
         </main>

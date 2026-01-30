@@ -194,7 +194,7 @@ export default function Inbox() {
   // Only Admin can access this module
   if (user?.role !== 'admin') {
     return (
-      <div className="container mx-auto p-6">
+      <div className="w-full">
         <Card>
           <CardHeader>
             <CardTitle>Access Restricted</CardTitle>
@@ -210,7 +210,7 @@ export default function Inbox() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="w-full">
       <div className="flex items-center gap-2 mb-6">
         <InboxIcon className="h-8 w-8 text-primary" />
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Inbox</h1>

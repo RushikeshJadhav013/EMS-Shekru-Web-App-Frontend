@@ -102,6 +102,8 @@ type TaskWithPassMeta = BaseTask & {
   lastPassedAt?: string;
   assignedToName?: string;
   assignedByName?: string;
+  assignedToRole?: UserRole;
+  assignedByRole?: UserRole;
 };
 
 type BackendEmployee = {
@@ -229,6 +231,8 @@ const mapBackendTaskToFrontend = (task: BackendTask): TaskWithPassMeta => {
     lastPassedAt,
     assignedToName: task.assigned_to_name ?? undefined,
     assignedByName: task.assigned_by_name ?? undefined,
+    assignedToRole: task.assigned_to_role ? normalizeRole(task.assigned_to_role) : undefined,
+    assignedByRole: task.assigned_by_role ? normalizeRole(task.assigned_by_role) : undefined,
   };
 };
 
@@ -559,40 +563,66 @@ const TaskManagement: React.FC = () => {
         data.forEach(t => {
           if (t.assigned_to && t.assigned_to_name) {
             const tid = String(t.assigned_to);
-            // Get role from backend data, or look up from employees list, or default to 'employee'
-            const assignedToRole = t.assigned_to_role
-              ? normalizeRole(t.assigned_to_role)
-              : (employees.find(emp => emp.userId === tid)?.role || 'employee');
+            // Find employee in list for role lookup
+            const employeeFromList = employees.find(emp => emp.userId === tid);
+            
+            // Prioritize: backend role (from API) > employees list role > existing cache role
+            // Only default to 'employee' if we truly have no role information
+            let assignedToRole: UserRole | undefined;
+            if (t.assigned_to_role) {
+              // Backend provided role - use it (most reliable)
+              assignedToRole = normalizeRole(t.assigned_to_role);
+            } else if (employeeFromList?.role) {
+              // Use role from employees list
+              assignedToRole = employeeFromList.role;
+            } else if (prev.get(tid)?.role) {
+              // Use existing cached role
+              assignedToRole = prev.get(tid)!.role;
+            }
+            // Don't default to 'employee' - let it be undefined if we don't know
 
-            // Update if not exists or if we have better role info now
+            // Always update if role changed or user doesn't exist
             const existing = next.get(tid);
-            if (!existing || (existing.role === 'employee' && assignedToRole !== 'employee')) {
+            if (!existing || (assignedToRole && existing.role !== assignedToRole) || (!existing.role && assignedToRole)) {
               next.set(tid, {
                 userId: tid,
-                employeeId: existing?.employeeId || '',
+                employeeId: existing?.employeeId || employeeFromList?.employeeId || '',
                 name: t.assigned_to_name,
-                email: existing?.email || '',
-                role: assignedToRole,
+                email: existing?.email || employeeFromList?.email || '',
+                role: assignedToRole || existing?.role || 'employee', // Only use employee as last resort
               });
               changed = true;
             }
           }
           if (t.assigned_by && t.assigned_by_name) {
             const bid = String(t.assigned_by);
-            // Get role from backend data, or look up from employees list, or default to 'employee'
-            const assignedByRole = t.assigned_by_role
-              ? normalizeRole(t.assigned_by_role)
-              : (employees.find(emp => emp.userId === bid)?.role || 'employee');
+            // Find employee in list for role lookup
+            const employeeFromList = employees.find(emp => emp.userId === bid);
+            
+            // Prioritize: backend role (from API) > employees list role > existing cache role
+            // Only default to 'employee' if we truly have no role information
+            let assignedByRole: UserRole | undefined;
+            if (t.assigned_by_role) {
+              // Backend provided role - use it (most reliable)
+              assignedByRole = normalizeRole(t.assigned_by_role);
+            } else if (employeeFromList?.role) {
+              // Use role from employees list
+              assignedByRole = employeeFromList.role;
+            } else if (prev.get(bid)?.role) {
+              // Use existing cached role
+              assignedByRole = prev.get(bid)!.role;
+            }
+            // Don't default to 'employee' - let it be undefined if we don't know
 
-            // Update if not exists or if we have better role info now
+            // Always update if role changed or user doesn't exist
             const existing = next.get(bid);
-            if (!existing || (existing.role === 'employee' && assignedByRole !== 'employee')) {
+            if (!existing || (assignedByRole && existing.role !== assignedByRole) || (!existing.role && assignedByRole)) {
               next.set(bid, {
                 userId: bid,
-                employeeId: existing?.employeeId || '',
+                employeeId: existing?.employeeId || employeeFromList?.employeeId || '',
                 name: t.assigned_by_name,
-                email: existing?.email || '',
-                role: assignedByRole,
+                email: existing?.email || employeeFromList?.email || '',
+                role: assignedByRole || existing?.role || 'employee', // Only use employee as last resort
               });
               changed = true;
             }
@@ -829,18 +859,24 @@ const TaskManagement: React.FC = () => {
     return assigneeId;
   }, [employeesById, user, userId]);
 
-  const getAssignedByInfo = useCallback((assignedById: string) => {
+  const getAssignedByInfo = useCallback((assignedById: string, role?: UserRole) => {
     if (!assignedById) {
       return { name: 'Unknown', roleLabel: undefined };
     }
 
-    if (userId && assignedById === userId) {
+    // Priority 1: Backend-provided role from task (most reliable)
+    if (role) {
+      const assigner = employeesById.get(assignedById);
+      const cachedUser = userCache.get(assignedById);
+      const name = assigner?.name || cachedUser?.name || (userId && assignedById === userId ? user?.name : undefined) || `User #${assignedById}`;
+      const finalName = name === `User #${assignedById}` && userId && assignedById === userId ? (user?.name || 'Self') : name;
       return {
-        name: user?.name || 'Self',
-        roleLabel: formatRoleLabel(user?.role),
+        name: finalName,
+        roleLabel: formatRoleLabel(role),
       };
     }
 
+    // Priority 2: Check employees list (authoritative source)
     const assigner = employeesById.get(assignedById);
     if (assigner) {
       return {
@@ -849,34 +885,49 @@ const TaskManagement: React.FC = () => {
       };
     }
 
-    // If not found in employees list, try to fetch from cache or return ID
-    // The user cache should have been populated when tasks were loaded
-    const cachedUser = userCache.get(assignedById);
-    if (cachedUser) {
-      return {
-        name: cachedUser.name,
-        roleLabel: formatRoleLabel(cachedUser.role),
-      };
-    }
-
-    return {
-      name: `User #${assignedById}`,
-      roleLabel: undefined,
-    };
-  }, [employeesById, user?.name, user?.role, userId, userCache]);
-
-  const getAssignedToInfo = useCallback((assignedToId: string) => {
-    if (!assignedToId) {
-      return { name: 'Unassigned', roleLabel: undefined };
-    }
-
-    if (userId && assignedToId === userId) {
+    // Priority 3: Current user (if self)
+    if (userId && assignedById === userId) {
       return {
         name: user?.name || 'Self',
         roleLabel: formatRoleLabel(user?.role),
       };
     }
 
+    // Priority 4: Check user cache (populated from backend task data)
+    const cachedUser = userCache.get(assignedById);
+    if (cachedUser && cachedUser.role) {
+      return {
+        name: cachedUser.name,
+        roleLabel: formatRoleLabel(cachedUser.role),
+      };
+    }
+
+    // If we can't determine role, don't show a default - show undefined
+    // This prevents showing incorrect "Employee" for users who might be Managers, etc.
+    return {
+      name: cachedUser?.name || `User #${assignedById}`,
+      roleLabel: undefined,
+    };
+  }, [employeesById, user?.name, user?.role, userId, userCache]);
+
+  const getAssignedToInfo = useCallback((assignedToId: string, role?: UserRole) => {
+    if (!assignedToId) {
+      return { name: 'Unassigned', roleLabel: undefined };
+    }
+
+    // Priority 1: Backend-provided role from task (most reliable)
+    if (role) {
+      const assignee = employeesById.get(assignedToId);
+      const cachedUser = userCache.get(assignedToId);
+      const name = assignee?.name || cachedUser?.name || (userId && assignedToId === userId ? user?.name : undefined) || `User #${assignedToId}`;
+      const finalName = name === `User #${assignedToId}` && userId && assignedToId === userId ? (user?.name || 'Self') : name;
+      return {
+        name: finalName,
+        roleLabel: formatRoleLabel(role),
+      };
+    }
+
+    // Priority 2: Check employees list (authoritative source)
     const assignee = employeesById.get(assignedToId);
     if (assignee) {
       return {
@@ -885,17 +936,27 @@ const TaskManagement: React.FC = () => {
       };
     }
 
-    // If not found in employees list, try to fetch from cache or return ID
+    // Priority 3: Current user (if self)
+    if (userId && assignedToId === userId) {
+      return {
+        name: user?.name || 'Self',
+        roleLabel: formatRoleLabel(user?.role),
+      };
+    }
+
+    // Priority 4: Check user cache (populated from backend task data)
     const cachedUser = userCache.get(assignedToId);
-    if (cachedUser) {
+    if (cachedUser && cachedUser.role) {
       return {
         name: cachedUser.name,
         roleLabel: formatRoleLabel(cachedUser.role),
       };
     }
 
+    // If we can't determine role, don't show a default - show undefined
+    // This prevents showing incorrect "Employee" for users who might be Managers, etc.
     return {
-      name: `User #${assignedToId}`,
+      name: cachedUser?.name || `User #${assignedToId}`,
       roleLabel: undefined,
     };
   }, [employeesById, user?.name, user?.role, userId, userCache]);
@@ -925,13 +986,33 @@ const TaskManagement: React.FC = () => {
       // Update cached users with correct roles from employees list
       prev.forEach((cachedUser, cachedUserId) => {
         const employee = employees.find(emp => emp.userId === cachedUserId);
-        if (employee && cachedUser.role !== employee.role) {
-          next.set(cachedUserId, {
-            ...cachedUser,
-            role: employee.role,
-            employeeId: employee.employeeId || cachedUser.employeeId,
-            email: employee.email || cachedUser.email,
-            department: employee.department || cachedUser.department,
+        if (employee) {
+          // Always update role from employees list if it exists (employees list is authoritative)
+          if (cachedUser.role !== employee.role) {
+            next.set(cachedUserId, {
+              ...cachedUser,
+              role: employee.role,
+              name: employee.name, // Also update name in case it changed
+              email: employee.email || cachedUser.email, // Update email if available
+              employeeId: employee.employeeId || cachedUser.employeeId,
+              department: employee.department || cachedUser.department,
+            });
+            changed = true;
+          }
+        }
+      });
+
+      // Add any employees that aren't in cache yet
+      employees.forEach((emp) => {
+        if (!next.has(emp.userId)) {
+          next.set(emp.userId, {
+            userId: emp.userId,
+            employeeId: emp.employeeId,
+            name: emp.name,
+            email: emp.email,
+            department: emp.department,
+            role: emp.role,
+            photo_url: emp.photo_url,
           });
           changed = true;
         }
@@ -1078,8 +1159,13 @@ const TaskManagement: React.FC = () => {
 
   const selectedTaskAssignerInfo = useMemo(() => {
     if (!selectedTask) return null;
-    return getAssignedByInfo(selectedTask.assignedBy);
+    return getAssignedByInfo(selectedTask.assignedBy, selectedTask.assignedByRole);
   }, [getAssignedByInfo, selectedTask]);
+
+  const selectedTaskAssigneeInfo = useMemo(() => {
+    if (!selectedTask) return null;
+    return getAssignedToInfo(selectedTask.assignedTo[0] || '', selectedTask.assignedToRole);
+  }, [getAssignedToInfo, selectedTask]);
 
   const selectedTaskHistory = useMemo(() => {
     if (!selectedTask) return [];
@@ -2831,8 +2917,8 @@ const TaskManagement: React.FC = () => {
                     </TableRow>
                   ) : (
                     visibleTasks.map((task) => {
-                      const assignedByInfo = getAssignedByInfo(task.assignedBy);
-                      const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || '');
+                      const assignedByInfo = getAssignedByInfo(task.assignedBy, task.assignedByRole);
+                      const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || '', task.assignedToRole);
                       // In "All Tasks" view, admin can only manage tasks they created
                       const canManageTask = Boolean(userId && task.assignedBy === userId);
                       const isReceivedTask = Boolean(userId && task.assignedTo.includes(userId));
@@ -2856,9 +2942,9 @@ const TaskManagement: React.FC = () => {
                               <UserCheck className="h-4 w-4 text-muted-foreground" />
                               <div className="flex flex-col">
                                 <span className="text-sm font-medium">{assignedByInfo.name}</span>
-                                {assignedByInfo.roleLabel && (
-                                  <span className="text-xs text-muted-foreground">{assignedByInfo.roleLabel}</span>
-                                )}
+                                {assignedByInfo.roleLabel ? (
+                                  <span className="text-xs text-muted-foreground mt-0.5">{assignedByInfo.roleLabel}</span>
+                                ) : null}
                               </div>
                             </div>
                           </TableCell>
@@ -2867,9 +2953,9 @@ const TaskManagement: React.FC = () => {
                               <User className="h-4 w-4 text-muted-foreground" />
                               <div className="flex flex-col">
                                 <span className="text-sm font-medium">{assignedToInfo.name}</span>
-                                {assignedToInfo.roleLabel && (
-                                  <span className="text-xs text-muted-foreground">{assignedToInfo.roleLabel}</span>
-                                )}
+                                {assignedToInfo.roleLabel ? (
+                                  <span className="text-xs text-muted-foreground mt-0.5">{assignedToInfo.roleLabel}</span>
+                                ) : null}
                               </div>
                             </div>
                           </TableCell>
@@ -3058,8 +3144,8 @@ const TaskManagement: React.FC = () => {
           ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {visibleTasks.map((task) => {
-                const assignedByInfo = getAssignedByInfo(task.assignedBy);
-                const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || '');
+                const assignedByInfo = getAssignedByInfo(task.assignedBy, task.assignedByRole);
+                const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || '', task.assignedToRole);
                 // In "All Tasks" view, admin can only manage tasks they created
                 const canManageTask = Boolean(userId && task.assignedBy === userId);
                 const isReceivedTask = Boolean(userId && task.assignedTo.includes(userId));
@@ -3142,9 +3228,14 @@ const TaskManagement: React.FC = () => {
                             <UserCheck className="h-3.5 w-3.5" />
                             <span>By:</span>
                           </div>
-                          <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]">
-                            {assignedByInfo.name}
-                          </span>
+                          <div className="flex flex-col items-end">
+                            <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]">
+                              {assignedByInfo.name}
+                            </span>
+                            {assignedByInfo.roleLabel && (
+                              <span className="text-[10px] text-muted-foreground">{assignedByInfo.roleLabel}</span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Deadline Row */}
@@ -3666,7 +3757,12 @@ const TaskManagement: React.FC = () => {
                         <User className="h-4 w-4 text-violet-600" />
                         Assigned To
                       </h4>
-                      <p className="text-muted-foreground font-medium">{getAssigneeLabel(selectedTask.assignedTo[0] || '')}</p>
+                      <p className="text-muted-foreground font-medium">
+                        {selectedTaskAssigneeInfo?.name || 'Unassigned'}
+                        {selectedTaskAssigneeInfo?.roleLabel && (
+                          <span className="block text-xs text-muted-foreground">{selectedTaskAssigneeInfo.roleLabel}</span>
+                        )}
+                      </p>
                     </div>
 
                     <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
@@ -3746,20 +3842,30 @@ const TaskManagement: React.FC = () => {
                     selectedTaskHistory.map((entry) => {
                       const actor = employeesById.get(String(entry.user_id));
                       const actorName = actor?.name ?? (entry.user_id ? `User #${entry.user_id}` : 'Unknown');
+                      const actorRole = actor?.role;
+                      const actorInfo = getAssignedByInfo(String(entry.user_id), actorRole);
                       const entryTime = formatDateTimeIST(entry.created_at, 'MMM dd, yyyy HH:mm');
                       const details = entry.details || {};
 
                       const renderDetails = () => {
                         if (!details) return null;
                         if (entry.action === 'passed') {
-                          const from = details.from ? getAssigneeLabel(String(details.from)) : 'Unknown';
-                          const to = details.to ? getAssigneeLabel(String(details.to)) : 'Unknown';
+                          const fromId = details.from ? String(details.from) : '';
+                          const toId = details.to ? String(details.to) : '';
+                          const fromInfo = fromId ? getAssignedToInfo(fromId) : { name: 'Unknown', roleLabel: undefined };
+                          const toInfo = toId ? getAssignedToInfo(toId) : { name: 'Unknown', roleLabel: undefined };
                           const toName = typeof details.to_name === 'string' ? details.to_name : null;
                           const note = typeof details.note === 'string' && details.note.trim().length > 0 ? details.note : null;
                           return (
                             <div className="text-sm text-muted-foreground space-y-1">
-                              <div>From: <span className="font-medium text-foreground">{from}</span></div>
-                              <div>To: <span className="font-medium text-foreground">{toName || to}</span></div>
+                              <div>
+                                From: <span className="font-medium text-foreground">{fromInfo.name}</span>
+                                {fromInfo.roleLabel && <span className="text-xs ml-1">({fromInfo.roleLabel})</span>}
+                              </div>
+                              <div>
+                                To: <span className="font-medium text-foreground">{toName || toInfo.name}</span>
+                                {toInfo.roleLabel && <span className="text-xs ml-1">({toInfo.roleLabel})</span>}
+                              </div>
                               {note && <div className="italic">"{note}"</div>}
                             </div>
                           );
@@ -3790,9 +3896,12 @@ const TaskManagement: React.FC = () => {
                         }
 
                         if (entry.action === 'created') {
+                          const assignedToId = String(details.assigned_to ?? '');
+                          const assignedToInfo = assignedToId ? getAssignedToInfo(assignedToId) : { name: 'Unassigned', roleLabel: undefined };
                           return (
                             <div className="text-sm text-muted-foreground">
-                              Task assigned to <span className="font-medium text-foreground">{getAssigneeLabel(String(details.assigned_to ?? ''))}</span>
+                              Task assigned to <span className="font-medium text-foreground">{assignedToInfo.name}</span>
+                              {assignedToInfo.roleLabel && <span className="text-xs ml-1">({assignedToInfo.roleLabel})</span>}
                             </div>
                           );
                         }
@@ -3849,10 +3958,15 @@ const TaskManagement: React.FC = () => {
                           <div className="flex-1 space-y-2">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                               <p className="font-semibold text-lg">{actionLabel}</p>
-                              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                <User className="h-3.5 w-3.5" />
-                                {actorName}
-                              </p>
+                              <div className="flex flex-col items-end">
+                                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                  <User className="h-3.5 w-3.5" />
+                                  {actorInfo.name}
+                                </p>
+                                {actorInfo.roleLabel && (
+                                  <p className="text-xs text-muted-foreground">{actorInfo.roleLabel}</p>
+                                )}
+                              </div>
                             </div>
                             <p className="text-sm text-muted-foreground flex items-center gap-2">
                               <Clock className="h-3 w-3" />
@@ -4389,12 +4503,15 @@ const TaskManagement: React.FC = () => {
                 <div className="space-y-4">
                   {passEntries.map((entry, index) => {
                     const details = entry.details as Record<string, unknown> | undefined;
-                    const fromLabel = details?.from ? getAssigneeLabel(String(details.from)) : 'Unknown';
-                    const toLabel = details?.to ? getAssigneeLabel(String(details.to)) : 'Unknown';
-                    const toName = typeof details?.to_name === 'string' ? details.to_name : toLabel;
+                    const fromId = details?.from ? String(details.from) : '';
+                    const toId = details?.to ? String(details.to) : '';
+                    const fromInfo = fromId ? getAssignedToInfo(fromId) : { name: 'Unknown', roleLabel: undefined };
+                    const toInfo = toId ? getAssignedToInfo(toId) : { name: 'Unknown', roleLabel: undefined };
+                    const toName = typeof details?.to_name === 'string' ? details.to_name : toInfo.name;
                     const note = typeof details?.note === 'string' && details.note.trim().length > 0 ? details.note : null;
                     const actor = employeesById.get(String(entry.user_id));
-                    const actorName = actor?.name ?? (entry.user_id ? `User #${entry.user_id}` : 'Unknown');
+                    const actorRole = actor?.role;
+                    const actorInfo = getAssignedByInfo(String(entry.user_id), actorRole);
                     const timestamp = formatDateTimeIST(entry.created_at, 'MMM dd, yyyy HH:mm');
 
                     return (
@@ -4409,7 +4526,10 @@ const TaskManagement: React.FC = () => {
                             </div>
                             <div>
                               <div className="font-semibold text-foreground">Pass #{passEntries.length - index}</div>
-                              <div className="text-xs text-muted-foreground">by {actorName}</div>
+                              <div className="text-xs text-muted-foreground">
+                                by {actorInfo.name}
+                                {actorInfo.roleLabel && <span className="ml-1">({actorInfo.roleLabel})</span>}
+                              </div>
                             </div>
                           </div>
                           <div className="text-xs text-muted-foreground flex items-center gap-1">
@@ -4421,7 +4541,10 @@ const TaskManagement: React.FC = () => {
                         <div className="flex items-center gap-3 mb-2">
                           <div className="flex-1 p-3 rounded-md bg-white dark:bg-gray-900 border">
                             <div className="text-xs text-muted-foreground mb-1">From</div>
-                            <div className="font-medium text-sm">{fromLabel}</div>
+                            <div className="font-medium text-sm">{fromInfo.name}</div>
+                            {fromInfo.roleLabel && (
+                              <div className="text-xs text-muted-foreground mt-0.5">{fromInfo.roleLabel}</div>
+                            )}
                           </div>
                           <div className="flex-shrink-0">
                             <ChevronRight className="h-5 w-5 text-violet-600" />
@@ -4429,6 +4552,9 @@ const TaskManagement: React.FC = () => {
                           <div className="flex-1 p-3 rounded-md bg-white dark:bg-gray-900 border">
                             <div className="text-xs text-muted-foreground mb-1">To</div>
                             <div className="font-medium text-sm">{toName}</div>
+                            {toInfo.roleLabel && (
+                              <div className="text-xs text-muted-foreground mt-0.5">{toInfo.roleLabel}</div>
+                            )}
                           </div>
                         </div>
 

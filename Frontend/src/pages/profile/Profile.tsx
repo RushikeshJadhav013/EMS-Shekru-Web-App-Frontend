@@ -176,7 +176,7 @@ const Profile: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="w-full space-y-6">
         {/* Header Card */}
         <Card className="overflow-hidden border-0 shadow-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
           <div className="relative h-32 bg-gradient-to-r from-primary via-primary/80 to-primary/60">

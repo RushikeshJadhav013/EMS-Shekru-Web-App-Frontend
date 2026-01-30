@@ -233,7 +233,7 @@ export default function TeamManagement() {
   // Only Team Leads and Managers can access this module
   if (!['team_lead', 'manager'].includes(user?.role || '')) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="w-full">
         <Card>
           <CardHeader>
             <CardTitle>Access Restricted</CardTitle>
@@ -251,7 +251,7 @@ export default function TeamManagement() {
   return (
     <div className="relative min-h-screen">
       {user?.role === 'manager' && <V2Overlay fallbackPath="/manager" />}
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="w-full space-y-6">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Team Management</h1>
         {/* Team Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

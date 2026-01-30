@@ -220,7 +220,7 @@ export default function AccessControl() {
   // Only Admin can access this module
   if (user?.role !== 'admin') {
     return (
-      <div className="container mx-auto p-6">
+      <div className="w-full">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -239,7 +239,7 @@ export default function AccessControl() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="w-full space-y-6">
       <div className="flex items-center gap-2 mb-6">
         <Shield className="h-8 w-8 text-primary" />
         <h1 className="text-3xl font-bold">Access Control</h1>

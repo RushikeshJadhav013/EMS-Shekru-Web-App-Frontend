@@ -101,12 +101,12 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
     const userRole = user?.role?.toLowerCase();
-    const isAdminOrHr = userRole === 'admin' || userRole === 'hr';
-    const isOwner = user?.id === targetUserId;
+    // HR viewing their own salary should behave like a regular employee/manager (no HR admin controls)
+    const isSelf = String(targetUserId) === String(user?.id);
+    const isAdminOrHr = userRole === 'admin' || (userRole === 'hr' && !isSelf);
+    const isOwner = isSelf;
     const canViewAll = isAdminOrHr;
 
-    // HR viewing themselves should be treated like an employee (read-only for structure/increments)
-    const isSelf = String(targetUserId) === String(user?.id);
     const canEdit = userRole === 'admin' || (userRole === 'hr' && !isSelf);
 
     const [showSensitive, setShowSensitive] = useState(false);
@@ -1044,7 +1044,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     </Select>
                                 </div>
 
-                                {isAdminOrHr && (
+                                {isAdminOrHr && !(userRole === 'hr' && isSelf) && (
                                     <Button
                                         size="default"
                                         className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 shadow-sm shadow-emerald-200 dark:shadow-none transition-all active:scale-95"

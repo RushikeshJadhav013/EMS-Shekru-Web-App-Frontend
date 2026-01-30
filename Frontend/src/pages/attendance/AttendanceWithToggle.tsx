@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AttendanceCamera from '@/components/attendance/AttendanceCamera';
 import OnlineStatusToggle from '@/components/attendance/OnlineStatusToggle';
 import OnlineStatusIndicator from '@/components/attendance/OnlineStatusIndicator';
-import { Clock, MapPin, Calendar, LogIn, LogOut, FileText, CheckCircle, AlertCircle, Users, Filter, User, X, Download, Search, Loader2, Home, Send, Edit, Trash2, History, FileSpreadsheet } from 'lucide-react';
+import { Clock, MapPin, Calendar, LogIn, LogOut, FileText, CheckCircle, AlertCircle, Users, Filter, User, X, Download, Search, Loader2, Home, Send, Edit, Trash2, History, FileSpreadsheet, Timer } from 'lucide-react';
 import { AttendanceRecord, UserRole } from '@/types';
 import { format, subMonths, isAfter } from 'date-fns';
 import { formatIST, formatDateTimeIST, formatTimeIST, formatDateIST, todayIST, formatDateTimeComponentsIST, parseToIST, nowIST } from '@/utils/timezone';
@@ -63,7 +63,7 @@ const AttendanceWithToggle: React.FC = () => {
   const [isCheckingIn, setIsCheckingIn] = useState(true);
   const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
   const [todaysWork, setTodaysWork] = useState('');
-  const [taskPendingReason, setTaskPendingReason] = useState('');
+  const [taskDeadlineReason, setTaskDeadlineReason] = useState('');
   const [workPdf, setWorkPdf] = useState<File | null>(null);
   const [currentAttendance, setCurrentAttendance] = useState<AttendanceRecord | null>(null);
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
@@ -74,7 +74,8 @@ const AttendanceWithToggle: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(todayIST());
   const [filterRole, setFilterRole] = useState<'all' | UserRole>('all');
-  const [timePeriodFilter, setTimePeriodFilter] = useState<'today' | 'current_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_12_months' | 'custom'>('current_month');
+  // Default employee attendance view to "Today" for clearer, focused data when the page first loads
+  const [timePeriodFilter, setTimePeriodFilter] = useState<'today' | 'current_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_12_months' | 'custom'>('today');
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(new Date());
   const [searchTerm, setSearchTerm] = useState('');
@@ -607,7 +608,7 @@ const AttendanceWithToggle: React.FC = () => {
               status: status,
               workHours: rec.total_hours,
               workSummary: rec.workSummary || rec.work_summary || null,
-              taskPendingReason: rec.taskPendingReason || rec.task_pending_reason || null,
+              taskDeadlineReason: rec.taskDeadlineReason || rec.task_deadline_reason || rec.taskPendingReason || rec.task_pending_reason || null,
               workReport: resolveStaticUrl(rec.workReport || rec.work_report),
               workLocation: workLocation,
             };
@@ -707,7 +708,7 @@ const AttendanceWithToggle: React.FC = () => {
           status: 'present',
           workHours: todayRecord.total_hours,
           workSummary: todayRecord.workSummary || todayRecord.work_summary || null,
-          taskPendingReason: todayRecord.taskPendingReason || todayRecord.task_pending_reason || null,
+          taskDeadlineReason: todayRecord.taskDeadlineReason || todayRecord.task_deadline_reason || todayRecord.taskPendingReason || todayRecord.task_pending_reason || null,
           workReport: resolveStaticUrl(todayRecord.workReport || todayRecord.work_report),
           workLocation: workLocation,
         };
@@ -1035,9 +1036,23 @@ const AttendanceWithToggle: React.FC = () => {
       return;
     }
     try {
-      const res = await fetch('https://testing.staffly.space/employees');
+      const token = localStorage.getItem('token');
+      const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+      
+      const res = await fetch('https://testing.staffly.space/employees', { headers });
       if (!res.ok) {
-        throw new Error(`Failed to load employees: ${res.status}`);
+        const errorText = await res.text().catch(() => '');
+        console.error(`Failed to load employees: ${res.status}`, errorText);
+        toast({
+          title: 'Error',
+          description: res.status === 403 
+            ? 'Access denied. You do not have permission to view employees.' 
+            : `Failed to load employees: ${res.status}`,
+          variant: 'destructive',
+        });
+        setExportEmployees([]);
+        setExportDepartments([]);
+        return;
       }
       const data = await res.json();
       let mapped: ExportEmployee[] = data.map((emp: any) => ({
@@ -1068,8 +1083,15 @@ const AttendanceWithToggle: React.FC = () => {
       }
     } catch (error) {
       console.error('loadExportEmployees error', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to load employees. Please try again.',
+        variant: 'destructive',
+      });
+      setExportEmployees([]);
+      setExportDepartments([]);
     }
-  }, [canExportAttendance, user?.department]);
+  }, [canExportAttendance, user?.department, user?.role]);
 
   useEffect(() => {
     if (canExportAttendance) {
@@ -1194,7 +1216,7 @@ const AttendanceWithToggle: React.FC = () => {
         },
         selfie: compressedImage, // ✅ Use compressed image
         work_summary: !isCheckingIn ? todaysWork.trim() : undefined,
-        task_pending_reason: !isCheckingIn ? taskPendingReason.trim() : undefined,
+        task_deadline_reason: !isCheckingIn ? taskDeadlineReason.trim() : undefined,
         work_report: !isCheckingIn ? workReportBase64 : undefined,
         // Include WFH approval status and check-in type for backend
         ...(isCheckingIn && {
@@ -1284,7 +1306,7 @@ const AttendanceWithToggle: React.FC = () => {
         setCheckInTime(null);
         console.log('User checked out - all timers reset');
         setTodaysWork('');
-        setTaskPendingReason('');
+        setTaskDeadlineReason('');
         setWorkPdf(null);
       }
     } catch (e: any) {
@@ -2409,42 +2431,33 @@ const AttendanceWithToggle: React.FC = () => {
 
                 {attendanceHistory.length > 0 ? (
                   <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden w-full">
-                    <div className="w-full overflow-x-auto xl:overflow-x-visible">
-                      <table className="w-full table-auto min-w-[1730px] xl:min-w-full" style={{ tableLayout: 'fixed', width: '100%' }}>
-                        <thead className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-                          <tr className="hover:bg-transparent">
-                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '150px' }}>{t.attendance.employee}</th>
-                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '110px' }}>{t.attendance.department}</th>
-                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>Work Location</th>
-                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>Online Status</th>
-                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>{t.attendance.checkInTime}</th>
-                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>{t.attendance.checkOutTime}</th>
-                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>{t.attendance.hours}</th>
-                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '90px' }}>{t.attendance.location}</th>
-                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '100px' }}>{t.common.status}</th>
-                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '280px' }}>{t.attendance.workSummary}</th>
-                            <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '90px' }}>{t.attendance.workReport}</th>
+                    <div className="w-full overflow-x-auto">
+                      <table className="w-full table-auto min-w-[1800px]" style={{ tableLayout: 'auto' }}>
+                        <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+                          <tr>
+                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.department}</th>
+                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Work Location</th>
+                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Online Status</th>
+                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.checkInTime}</th>
+                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.checkOutTime}</th>
+                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.hours}</th>
+                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.location}</th>
+                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.selfiePhoto}</th>
+                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.common.status}</th>
+                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.workSummary}</th>
+                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.workReport}</th>
                           </tr>
                         </thead>
                         <tbody>
                           {getFilteredAttendanceHistory().map((record) => (
-                            <tr key={record.id} className="border-t hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                              <td className="p-3">
-                                <div className="min-w-[120px]">
-                                  <p className="font-medium text-sm truncate" title={user?.name || '-'}>{user?.name || '-'}</p>
-                                  <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    {formatDateIST(record.date, 'dd MMM yyyy')}
-                                  </p>
-                                </div>
-                              </td>
+                            <tr key={record.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900">
                               <td className="p-3 whitespace-nowrap">
                                 <Badge variant="outline" className="text-xs">{user?.department || '-'}</Badge>
                               </td>
                               <td className="p-3 whitespace-nowrap">
                                 {record.workLocation === 'work_from_home' ? (
                                   <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse"></div>
+                                    <div className="h-1.5 w-1.5 rounded-full bg-orange-500"></div>
                                     <span className="text-xs font-medium text-orange-700 dark:text-orange-300">WFH</span>
                                   </div>
                                 ) : (
@@ -2465,9 +2478,9 @@ const AttendanceWithToggle: React.FC = () => {
                                       />
                                     );
                                   } else if (record.checkOutTime) {
-                                    return <span className="text-xs text-muted-foreground">Checked Out</span>;
+                                    return <span className="text-xs text-slate-500 dark:text-slate-400">Checked Out</span>;
                                   } else {
-                                    return <span className="text-xs text-muted-foreground">Past Date</span>;
+                                    return <span className="text-xs text-slate-500 dark:text-slate-400">Past Date</span>;
                                   }
                                 })()}
                               </td>
@@ -2487,48 +2500,70 @@ const AttendanceWithToggle: React.FC = () => {
                                 {record.workHours ? (
                                   <span className="text-xs font-semibold text-slate-900 dark:text-white">{formatWorkHours(record.workHours)}</span>
                                 ) : (
-                                  <span className="text-xs text-muted-foreground">-</span>
+                                  <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
                                 )}
                               </td>
-                              <td className="p-3">
+                              <td className="p-3 whitespace-nowrap">
                                 {record.checkInLocation?.address && record.checkInLocation.address !== 'N/A' ? (
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <MapPin className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
-                                    <span
-                                      className="text-xs text-slate-700 dark:text-slate-200 truncate min-w-0"
-                                      title={record.checkInLocation.address}
-                                    >
-                                      {record.checkInLocation.address}
-                                    </span>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedLocation({
-                                          checkIn: record.checkInLocation?.address,
-                                          checkOut: record.checkOutLocation?.address,
-                                        });
-                                        setShowLocationDialog(true);
-                                      }}
-                                      className="ml-auto text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-7 px-2 text-xs flex-shrink-0"
-                                    >
-                                      View
-                                    </Button>
-                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedLocation({
+                                        checkIn: record.checkInLocation?.address,
+                                        checkOut: record.checkOutLocation?.address
+                                      });
+                                      setShowLocationDialog(true);
+                                    }}
+                                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-7 px-2 text-xs"
+                                  >
+                                    <MapPin className="h-3 w-3 mr-1" />
+                                    View
+                                  </Button>
                                 ) : (
-                                  <span className="text-xs text-muted-foreground">-</span>
+                                  <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
                                 )}
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                <div
+                                  className="h-8 w-8 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity mx-auto"
+                                  onClick={() => {
+                                    setSelectedRecord(record);
+                                    setShowSelfieModal(true);
+                                  }}
+                                >
+                                  {record.checkInSelfie ? (
+                                    <img
+                                      src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}${record.checkInSelfie}`}
+                                      alt={`${user?.name || 'Employee'}'s selfie`}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        const target = e.currentTarget as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        const fallback = document.createElement('div');
+                                        fallback.className = 'w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center';
+                                        fallback.innerHTML = '<svg class="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>';
+                                        target.parentNode?.appendChild(fallback);
+                                      }}
+                                    />
+                                  ) : null}
+                                  {!record.checkInSelfie && (
+                                    <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                      <User className="h-4 w-4 text-gray-400" />
+                                    </div>
+                                  )}
+                                </div>
                               </td>
                               <td className="p-3 whitespace-nowrap">
                                 <div className="flex justify-center">
                                   {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
                                 </div>
                               </td>
-                              <td className="p-3 text-xs text-muted-foreground" style={{ width: '280px', maxWidth: '280px', minWidth: '280px' }}>
+                              <td className="p-3 text-xs text-slate-600 dark:text-slate-400 max-w-[280px]">
                                 {record.workSummary ? (
                                   <button
                                     type="button"
-                                    className="text-left hover:text-blue-600 block w-full text-xs leading-relaxed"
+                                    className="text-left hover:text-blue-600 dark:hover:text-blue-400 block w-full text-xs leading-relaxed"
                                     onClick={() => {
                                       setSelectedWorkSummary(record.workSummary || '');
                                       setShowWorkSummaryDialog(true);
@@ -2551,11 +2586,11 @@ const AttendanceWithToggle: React.FC = () => {
                                       {record.workSummary}
                                     </span>
                                     {record.workSummary.length > 60 && (
-                                      <span className="text-blue-600 font-medium mt-1 block">View more...</span>
+                                      <span className="text-blue-600 dark:text-blue-400 font-medium mt-1 block">View more...</span>
                                     )}
                                   </button>
                                 ) : (
-                                  <span className="text-muted-foreground">—</span>
+                                  <span className="text-slate-400 dark:text-slate-500">—</span>
                                 )}
                               </td>
                               <td className="p-3 whitespace-nowrap">
@@ -2564,12 +2599,12 @@ const AttendanceWithToggle: React.FC = () => {
                                     href={record.workReport}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-xs text-blue-600 hover:underline"
+                                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                                   >
                                     {t.attendance.viewReport || 'View'}
                                   </a>
                                 ) : (
-                                  <span className="text-muted-foreground text-xs">—</span>
+                                  <span className="text-slate-400 dark:text-slate-500 text-xs">—</span>
                                 )}
                               </td>
                             </tr>
@@ -2593,9 +2628,9 @@ const AttendanceWithToggle: React.FC = () => {
               <CardTitle className="text-sm font-bold text-slate-900">{t.attendance.employeeAttendance}</CardTitle>
               <CardDescription className="text-[11px] font-medium">{t.attendance.viewAndManage}</CardDescription>
             </CardHeader>
-            <CardContent className="w-full">
-              <div className="flex flex-col md:flex-row gap-3 mb-6">
-                <div className="flex-1">
+              <CardContent className="w-full">
+              <div className="flex flex-col md:flex-row md:flex-wrap gap-3 mb-6">
+                <div className="w-full md:w-[260px] lg:w-[500px]">
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -2643,14 +2678,14 @@ const AttendanceWithToggle: React.FC = () => {
                       onDateChange={setCustomStartDate}
                       toDate={new Date()}
                       placeholder="From Date"
-                      className="w-[160px]"
+                      className="w-[220px]"
                     />
                     <DatePicker
                       date={customEndDate}
                       onDateChange={setCustomEndDate}
                       toDate={new Date()}
                       placeholder="To Date"
-                      className="w-[160px]"
+                      className="w-[220px]"
                     />
                   </>
                 )}
@@ -2662,23 +2697,24 @@ const AttendanceWithToggle: React.FC = () => {
                 </p>
               )}
 
+              {/* Simple Table List View */}
               <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden w-full">
-                <div className="w-full overflow-x-auto xl:overflow-x-visible">
-                  <table className="w-full table-auto min-w-[1800px] xl:min-w-full" style={{ tableLayout: 'fixed', width: '100%' }}>
-                    <thead className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-                      <tr className="hover:bg-transparent">
-                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '150px' }}>{t.attendance.employee}</th>
-                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '110px' }}>{t.attendance.department}</th>
-                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>Work Location</th>
-                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>Online Status</th>
-                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>{t.attendance.checkInTime}</th>
-                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>{t.attendance.checkOutTime}</th>
-                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '120px' }}>{t.attendance.hours}</th>
-                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '90px' }}>{t.attendance.location}</th>
-                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '70px' }}>{t.attendance.selfiePhoto}</th>
-                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '100px' }}>{t.common.status}</th>
-                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '280px' }}>{t.attendance.workSummary}</th>
-                        <th className="text-left p-3 font-medium whitespace-nowrap" style={{ width: '90px' }}>{t.attendance.workReport}</th>
+                <div className="w-full overflow-x-auto overflow-y-auto max-h-[calc(100vh-400px)]">
+                  <table className="w-full table-auto min-w-[1800px]" style={{ tableLayout: 'auto' }}>
+                    <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20">
+                      <tr>
+                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700">{t.attendance.employee}</th>
+                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.department}</th>
+                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Work Location</th>
+                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Online Status</th>
+                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.checkInTime}</th>
+                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.checkOutTime}</th>
+                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.hours}</th>
+                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.location}</th>
+                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.selfiePhoto}</th>
+                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.common.status}</th>
+                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.workSummary}</th>
+                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.workReport}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2686,11 +2722,11 @@ const AttendanceWithToggle: React.FC = () => {
                         filteredEmployeeAttendanceData
                           .slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage)
                           .map((record) => (
-                            <tr key={record.id} className="border-t hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                              <td className="p-3">
-                                <div className="min-w-[120px]">
-                                  <p className="font-medium text-sm truncate" title={record.name || '-'}>{record.name || '-'}</p>
-                                  <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                            <tr key={record.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900">
+                              <td className="p-3 sticky left-0 z-10 bg-white dark:bg-slate-950 border-r border-slate-100 dark:border-slate-800">
+                                <div className="min-w-[150px]">
+                                  <p className="font-medium text-sm text-slate-900 dark:text-white truncate" title={record.name || '-'}>{record.name || '-'}</p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
                                     <Calendar className="h-3 w-3" />
                                     {formatDateIST(record.date, 'dd MMM yyyy')}
                                   </p>
@@ -2702,7 +2738,7 @@ const AttendanceWithToggle: React.FC = () => {
                               <td className="p-3 whitespace-nowrap">
                                 {record.workLocation === 'work_from_home' ? (
                                   <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse"></div>
+                                    <div className="h-1.5 w-1.5 rounded-full bg-orange-500"></div>
                                     <span className="text-xs font-medium text-orange-700 dark:text-orange-300">WFH</span>
                                   </div>
                                 ) : (
@@ -2722,7 +2758,7 @@ const AttendanceWithToggle: React.FC = () => {
                                       </Badge>
                                     );
                                   } else if (statusInfo.label === 'Checked Out') {
-                                    return <span className="text-xs text-muted-foreground">Checked Out</span>;
+                                    return <span className="text-xs text-slate-500 dark:text-slate-400">Checked Out</span>;
                                   } else {
                                     return (
                                       <OnlineStatusIndicator
@@ -2750,7 +2786,7 @@ const AttendanceWithToggle: React.FC = () => {
                                 {record.workHours ? (
                                   <span className="text-xs font-semibold text-slate-900 dark:text-white">{formatWorkHours(record.workHours)}</span>
                                 ) : (
-                                  <span className="text-xs text-muted-foreground">-</span>
+                                  <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
                                 )}
                               </td>
                               <td className="p-3 whitespace-nowrap">
@@ -2771,7 +2807,7 @@ const AttendanceWithToggle: React.FC = () => {
                                     View
                                   </Button>
                                 ) : (
-                                  <span className="text-xs text-muted-foreground">-</span>
+                                  <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
                                 )}
                               </td>
                               <td className="p-3 whitespace-nowrap">
@@ -2809,11 +2845,11 @@ const AttendanceWithToggle: React.FC = () => {
                                   {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
                                 </div>
                               </td>
-                              <td className="p-3 text-xs text-muted-foreground" style={{ width: '280px', maxWidth: '280px', minWidth: '280px' }}>
+                              <td className="p-3 text-xs text-slate-600 dark:text-slate-400 max-w-[280px]">
                                 {record.workSummary ? (
                                   <button
                                     type="button"
-                                    className="text-left hover:text-blue-600 block w-full text-xs leading-relaxed"
+                                    className="text-left hover:text-blue-600 dark:hover:text-blue-400 block w-full text-xs leading-relaxed"
                                     onClick={() => {
                                       setSelectedWorkSummary(record.workSummary || '');
                                       setShowWorkSummaryDialog(true);
@@ -2836,11 +2872,11 @@ const AttendanceWithToggle: React.FC = () => {
                                       {record.workSummary}
                                     </span>
                                     {record.workSummary.length > 60 && (
-                                      <span className="text-blue-600 font-medium mt-1 block">View more...</span>
+                                      <span className="text-blue-600 dark:text-blue-400 font-medium mt-1 block">View more...</span>
                                     )}
                                   </button>
                                 ) : (
-                                  <span className="text-muted-foreground">—</span>
+                                  <span className="text-slate-400 dark:text-slate-500">—</span>
                                 )}
                               </td>
                               <td className="p-3 whitespace-nowrap">
@@ -2849,12 +2885,12 @@ const AttendanceWithToggle: React.FC = () => {
                                     href={record.workReport}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-xs text-blue-600 hover:underline"
+                                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                                   >
                                     {t.attendance.viewReport || 'View'}
                                   </a>
                                 ) : (
-                                  <span className="text-muted-foreground text-xs">—</span>
+                                  <span className="text-slate-400 dark:text-slate-500 text-xs">—</span>
                                 )}
                               </td>
                             </tr>
@@ -2868,7 +2904,7 @@ const AttendanceWithToggle: React.FC = () => {
                               </div>
                               <div className="space-y-1">
                                 <p className="text-lg font-semibold text-slate-900 dark:text-white">No records found</p>
-                                <p className="text-sm text-muted-foreground">Try adjusting your filters or date range</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Try adjusting your filters or date range</p>
                               </div>
                             </div>
                           </td>
@@ -3333,12 +3369,12 @@ const AttendanceWithToggle: React.FC = () => {
               </div>
             </div>
             <div>
-              <Label htmlFor="task-pending-reason">Task Pending Reason (Optional)</Label>
+              <Label htmlFor="task-deadline-reason">Task Deadline Reason (Optional)</Label>
               <Input
-                id="task-pending-reason"
-                placeholder="Reason for any pending tasks..."
-                value={taskPendingReason}
-                onChange={(e) => setTaskPendingReason(e.target.value)}
+                id="task-deadline-reason"
+                placeholder="Reason for any task deadlines not met..."
+                value={taskDeadlineReason}
+                onChange={(e) => setTaskDeadlineReason(e.target.value)}
                 className="mt-2"
               />
             </div>

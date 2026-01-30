@@ -101,7 +101,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5">
-      <div className="container mx-auto py-8 px-4 space-y-8">
+      <div className="w-full space-y-8">
         {/* Header */}
         <div className="space-y-2">
           <div className="flex items-center gap-3">

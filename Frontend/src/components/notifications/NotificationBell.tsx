@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Check, X, Clock, AlertCircle, CheckCircle, FileText, Calendar, Loader2 } from 'lucide-react';
+import { Bell, Check, X, Clock, AlertCircle, CheckCircle, FileText, Calendar, Loader2, IndianRupee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatDistanceToNowIST } from '@/utils/timezone';
+import { formatBackendDateIST } from '@/utils/timezone';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export const NotificationBell: React.FC = () => {
@@ -45,20 +45,27 @@ export const NotificationBell: React.FC = () => {
     return null;
   }
   
-  // Show ALL notifications, not just unread - sorted by created_at (latest first)
-  const allNotifications = [...notifications].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  // Show ALL notifications - sorted by created_at (latest first)
+  // Also prioritize unread notifications at the top
+  const allNotifications = [...notifications].sort((a, b) => {
+    // First sort by read status (unread first)
+    if (a.read !== b.read) {
+      return a.read ? 1 : -1;
+    }
+    // Then sort by date (newest first)
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
   
-  // Group notifications by type
+  // Group notifications by type (maintaining sort order)
   const leaveNotifications = allNotifications.filter(n => n.type === 'leave');
   const taskNotifications = allNotifications.filter(n => n.type === 'task');
+  const salaryNotifications = allNotifications.filter(n => n.type === 'salary');
   const shiftNotifications = allNotifications.filter(n => n.type === 'shift');
-  const otherNotifications = allNotifications.filter(n => !['leave', 'task', 'shift'].includes(n.type));
+  const otherNotifications = allNotifications.filter(n => !['leave', 'task', 'salary', 'shift'].includes(n.type));
 
   const handleNotificationClick = async (notification: any) => {
-    // Mark as read first
-    await markAsRead(notification.id);
+    // Remove notification from list immediately (clearNotification handles marking as read)
+    clearNotification(notification.id);
     
     const userRole = user?.role || 'employee';
     
@@ -70,6 +77,10 @@ export const NotificationBell: React.FC = () => {
     } else if (notification.type === 'task' && notification.metadata?.taskId) {
       // For task notifications, go to role-based tasks page with taskId
       navigate(`/${userRole}/tasks?taskId=${notification.metadata.taskId}`);
+      setIsOpen(false);
+    } else if (notification.type === 'salary') {
+      // For salary notifications, go to salary dashboard
+      navigate('/salary');
       setIsOpen(false);
     } else if (notification.type === 'shift') {
       // For shift notifications, redirect to Team page
@@ -101,6 +112,8 @@ export const NotificationBell: React.FC = () => {
         return <Calendar className="h-5 w-5 text-purple-500" />;
       case 'task':
         return <FileText className="h-5 w-5 text-blue-500" />;
+      case 'salary':
+        return <IndianRupee className="h-5 w-5 text-emerald-500" />;
       case 'shift':
         return <Clock className="h-5 w-5 text-orange-500" />;
       case 'warning':
@@ -116,6 +129,8 @@ export const NotificationBell: React.FC = () => {
         return 'bg-purple-50 dark:bg-purple-950/20 border-l-4 border-purple-500';
       case 'task':
         return 'bg-blue-50 dark:bg-blue-950/20 border-l-4 border-blue-500';
+      case 'salary':
+        return 'bg-emerald-50 dark:bg-emerald-950/20 border-l-4 border-emerald-500';
       case 'shift':
         return 'bg-orange-50 dark:bg-orange-950/20 border-l-4 border-orange-500';
       case 'warning':
@@ -125,40 +140,65 @@ export const NotificationBell: React.FC = () => {
     }
   };
 
+  const getModuleLabel = (type: string) => {
+    switch (type) {
+      case 'leave':
+        return 'Leave';
+      case 'task':
+        return 'Task';
+      case 'salary':
+        return 'Salary';
+      case 'shift':
+        return 'Shift';
+      default:
+        return 'Other';
+    }
+  };
+
   const NotificationItem = ({ notification }: { notification: any }) => (
     <div
-      className={`p-4 hover:bg-opacity-75 dark:hover:bg-opacity-30 cursor-pointer transition-all duration-200 hover:scale-[1.01] ${getNotificationBgColor(notification.type)} ${notification.read ? 'opacity-60' : ''}`}
+      className={`p-4 hover:bg-opacity-75 dark:hover:bg-opacity-30 cursor-pointer transition-all duration-200 hover:scale-[1.01] ${getNotificationBgColor(notification.type)} ${notification.read ? 'opacity-70' : 'opacity-100'}`}
       onClick={() => handleNotificationClick(notification)}
     >
       <div className="flex gap-3">
-        <div className="flex-shrink-0 mt-1">
+        <div className="flex-shrink-0 mt-0.5">
           {getNotificationIcon(notification.type)}
         </div>
-        <div className="flex-1 space-y-1 min-w-0">
+        <div className="flex-1 space-y-1.5 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <p className={`text-sm line-clamp-1 ${notification.read ? 'font-normal' : 'font-semibold'}`}>
-              {notification.title}
+            <p className={`text-sm leading-tight line-clamp-2 ${notification.read ? 'font-normal text-muted-foreground' : 'font-semibold text-foreground'}`}>
+              {notification.title || 'Notification'}
             </p>
             {!notification.read && (
-              <Badge className="h-5 text-[10px] px-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 shadow-md flex-shrink-0">
+              <Badge className="h-5 text-[10px] px-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 shadow-md flex-shrink-0 animate-pulse">
                 NEW
               </Badge>
             )}
           </div>
-          <p className="text-xs text-muted-foreground line-clamp-2">
-            {notification.message}
-          </p>
-          <div className="flex items-center justify-between pt-1">
-            <p className="text-[10px] text-muted-foreground">
-              {(() => {
-                try {
-                  return formatDistanceToNowIST(notification.createdAt);
-                } catch (error) {
-                  console.error('Error formatting notification time:', error);
-                  return 'Just now';
-                }
-              })()}
+          {notification.message && (
+            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+              {notification.message}
             </p>
+          )}
+          <div className="flex items-center justify-between pt-1 gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-700 dark:text-slate-300">
+                {getModuleLabel(notification.type)}
+              </span>
+              <p className="text-[10px] text-muted-foreground whitespace-nowrap">
+                {(() => {
+                  try {
+                    if (notification.createdAt) {
+                      return formatBackendDateIST(notification.createdAt, 'MMM dd, yyyy HH:mm');
+                    }
+                    return 'Just now';
+                  } catch (error) {
+                    console.error('Error formatting notification time:', error);
+                    return 'Just now';
+                  }
+                })()}
+              </p>
+            </div>
             <Button
               variant="ghost"
               size="sm"
@@ -279,7 +319,20 @@ export const NotificationBell: React.FC = () => {
                   </Badge>
                 </TabsTrigger>
               )}
-              
+
+              {salaryNotifications.length > 0 && (
+                <TabsTrigger 
+                  value="salary" 
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-500 data-[state=active]:bg-transparent px-4 py-2"
+                >
+                  <IndianRupee className="h-4 w-4 mr-1 text-emerald-500" />
+                  <span className="text-xs font-medium">Salary</span>
+                  <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-emerald-500 text-white">
+                    {salaryNotifications.length}
+                  </Badge>
+                </TabsTrigger>
+              )}
+
               {shiftNotifications.length > 0 && (
                 <TabsTrigger 
                   value="shift" 
@@ -289,18 +342,6 @@ export const NotificationBell: React.FC = () => {
                   <span className="text-xs font-medium">Shifts</span>
                   <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-orange-500 text-white">
                     {shiftNotifications.length}
-                  </Badge>
-                </TabsTrigger>
-              )}
-              
-              {otherNotifications.length > 0 && (
-                <TabsTrigger 
-                  value="other" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-green-500 data-[state=active]:bg-transparent px-4 py-2"
-                >
-                  <span className="text-xs font-medium">Other</span>
-                  <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-green-500 text-white">
-                    {otherNotifications.length}
                   </Badge>
                 </TabsTrigger>
               )}
@@ -343,6 +384,18 @@ export const NotificationBell: React.FC = () => {
                 )}
               </TabsContent>
 
+              <TabsContent value="salary" className="m-0 divide-y">
+                {salaryNotifications.length === 0 ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground">
+                    <p className="text-sm">No salary notifications</p>
+                  </div>
+                ) : (
+                  salaryNotifications.map((notification) => (
+                    <NotificationItem key={notification.id} notification={notification} />
+                  ))
+                )}
+              </TabsContent>
+
               <TabsContent value="shift" className="m-0 divide-y">
                 {shiftNotifications.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
@@ -350,18 +403,6 @@ export const NotificationBell: React.FC = () => {
                   </div>
                 ) : (
                   shiftNotifications.map((notification) => (
-                    <NotificationItem key={notification.id} notification={notification} />
-                  ))
-                )}
-              </TabsContent>
-
-              <TabsContent value="other" className="m-0 divide-y">
-                {otherNotifications.length === 0 ? (
-                  <div className="flex items-center justify-center py-8 text-muted-foreground">
-                    <p className="text-sm">No other notifications</p>
-                  </div>
-                ) : (
-                  otherNotifications.map((notification) => (
                     <NotificationItem key={notification.id} notification={notification} />
                   ))
                 )}

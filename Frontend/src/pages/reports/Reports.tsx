@@ -441,22 +441,28 @@ export default function Reports() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 relative">
       {!['admin', 'hr'].includes(user?.role || '') && <V2Overlay fallbackPath="/dashboard" />}
-      <div className="container mx-auto px-4 py-6 space-y-6 max-w-7xl">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm p-4 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-tr from-blue-500/10 to-indigo-500/10 dark:from-blue-500/20 dark:to-indigo-500/20 rounded-lg border border-blue-100 dark:border-blue-800">
-              <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+      <div className="w-full space-y-6">
+        {/* Header Section - aligned with other modern pages */}
+        <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-sm mt-1">
+          <div className="absolute top-0 right-0 -mr-16 -mt-16 h-40 w-40 bg-blue-500/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-40 w-40 bg-indigo-500/5 rounded-full blur-3xl" />
+
+          <div className="relative flex items-center gap-4">
+            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-200/60 dark:shadow-none">
+              <FileText className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
                 Performance Reports
               </h1>
-              <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-1">Track and analyze team performance</p>
+              <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-blue-500" />
+                <span>{formatIST(currentDate, 'EEEE, dd MMM yyyy')}</span>
+              </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex flex-wrap items-center gap-2 sm:gap-3">
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
               <SelectTrigger className="w-[120px] h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
                 <Calendar className="h-4 w-4 mr-1.5 text-slate-400" />
@@ -468,9 +474,15 @@ export default function Reports() {
                 ))}
               </SelectContent>
             </Select>
+
             <Popover open={yearOpen} onOpenChange={setYearOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={yearOpen} className="w-[120px] justify-between h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={yearOpen}
+                  className="w-[120px] justify-between h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
+                >
                   {selectedYear}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -507,6 +519,7 @@ export default function Reports() {
                 </Command>
               </PopoverContent>
             </Popover>
+
             <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
               <SelectTrigger className="w-[160px] h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-left">
                 <Filter className="h-4 w-4 mr-1.5 text-slate-400" />

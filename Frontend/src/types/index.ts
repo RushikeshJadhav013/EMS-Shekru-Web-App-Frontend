@@ -48,7 +48,8 @@ export interface AttendanceRecord {
   status: 'present' | 'absent' | 'late' | 'half-day' | 'holiday' | 'weekend';
   overtime?: number;
   remarks?: string;
-  taskPendingReason?: string;
+  taskDeadlineReason?: string;
+  taskPendingReason?: string; // Deprecated: kept for backward compatibility
 }
 
 export interface LeaveRequest {

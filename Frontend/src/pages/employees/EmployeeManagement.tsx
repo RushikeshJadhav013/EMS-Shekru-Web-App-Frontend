@@ -1664,7 +1664,7 @@ export default function EmployeeManagement() {
   };
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 space-y-6">
+    <div className="w-full space-y-6">
       {/* Modern Header Section */}
       <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800 rounded-2xl p-6 shadow-sm border">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

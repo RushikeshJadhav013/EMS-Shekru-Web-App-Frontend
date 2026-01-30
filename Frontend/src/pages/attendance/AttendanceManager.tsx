@@ -1650,8 +1650,8 @@ const AttendanceManager: React.FC = () => {
           <CardDescription className="text-[11px] font-medium">{t.attendance.viewAndManage}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-3 mb-6">
-            <div className="flex-1">
+          <div className="flex flex-col md:flex-row md:flex-wrap gap-3 mb-6">
+            <div className="w-full md:w-[260px] lg:w-[320px]">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input

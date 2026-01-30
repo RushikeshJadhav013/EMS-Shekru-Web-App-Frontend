@@ -1165,12 +1165,12 @@ export default function LeaveManagement() {
     setHistoryCurrentPage(1);
   }, [historyFilter, customHistoryStartDate, customHistoryEndDate]);
 
-  // Filter leave requests based on selected period
+  // Filter leave requests based on selected period (My Leave History)
   const getFilteredLeaveRequests = useMemo(() => {
     const userLeaves = leaveRequests.filter(req => String(req.employeeId) === String(user?.id));
     const now = new Date();
     let startDate: Date;
-    let endDate: Date = new Date(now.getFullYear() + 2, 11, 31, 23, 59, 59); // 2 years in future
+    let endDate: Date = new Date(now.getFullYear() + 2, 11, 31, 23, 59, 59); // default: 2 years in future
 
     switch (leaveHistoryPeriod) {
       case 'all':
@@ -1192,8 +1192,8 @@ export default function LeaveManagement() {
       case 'custom':
         if (!leaveHistoryCustomStartDate || !leaveHistoryCustomEndDate) {
           return userLeaves.sort((a, b) => {
-            const timeA = new Date(a.requestDate).getTime();
-            const timeB = new Date(b.requestDate).getTime();
+            const timeA = new Date(a.startDate).getTime();
+            const timeB = new Date(b.startDate).getTime();
             return timeB - timeA;
           });
         }
@@ -1202,8 +1202,8 @@ export default function LeaveManagement() {
         break;
       default:
         return userLeaves.sort((a, b) => {
-          const timeA = new Date(a.requestDate).getTime();
-          const timeB = new Date(b.requestDate).getTime();
+          const timeA = new Date(a.startDate).getTime();
+          const timeB = new Date(b.startDate).getTime();
           return timeB - timeA;
         });
     }
@@ -1214,14 +1214,14 @@ export default function LeaveManagement() {
     });
 
     return filtered.sort((a, b) => {
-      const timeA = new Date(a.requestDate).getTime();
-      const timeB = new Date(b.requestDate).getTime();
+      const timeA = new Date(a.startDate).getTime();
+      const timeB = new Date(b.startDate).getTime();
       return timeB - timeA;
     });
   }, [leaveRequests, user?.id, leaveHistoryPeriod, leaveHistoryCustomStartDate, leaveHistoryCustomEndDate]);
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 space-y-6">
+    <div className="w-full space-y-6">
       {/* Modern Header */}
       <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border shadow-sm mt-1">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
@@ -1538,15 +1538,15 @@ export default function LeaveManagement() {
                     value={leaveHistoryPeriod}
                     onValueChange={(value) => setLeaveHistoryPeriod(value)}
                   >
-                    <SelectTrigger className="w-[200px] bg-white dark:bg-slate-800 border-2 shadow-md hover:shadow-lg transition-all">
+                    <SelectTrigger className="w-[220px] bg-white dark:bg-slate-800 border-2 shadow-md hover:shadow-lg transition-all">
                       <SelectValue placeholder="Select period" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All History</SelectItem>
                       <SelectItem value="current_month">Current Month</SelectItem>
                       <SelectItem value="last_3_months">Last 3 Months</SelectItem>
                       <SelectItem value="last_6_months">Last 6 Months</SelectItem>
                       <SelectItem value="last_1_year">Last 1 Year</SelectItem>
+                      <SelectItem value="all">All History</SelectItem>
                       <SelectItem value="custom">Custom Range</SelectItem>
                     </SelectContent>
                   </Select>
@@ -1586,7 +1586,7 @@ export default function LeaveManagement() {
                     <p className="text-sm text-muted-foreground">No leave requests found for the selected period.</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {getFilteredLeaveRequests.map((request) => {
                       const daysCount = Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
                       const statusConfig = {
@@ -1594,20 +1594,20 @@ export default function LeaveManagement() {
                           bg: 'bg-amber-50 dark:bg-amber-950',
                           border: 'border-amber-200 dark:border-amber-800',
                           icon: Clock,
-                          iconColor: 'text-amber-600 dark:text-amber-400'
+                          iconColor: 'text-amber-600 dark:text-amber-400',
                         },
                         approved: {
                           bg: 'bg-emerald-50 dark:bg-emerald-950',
                           border: 'border-emerald-200 dark:border-emerald-800',
                           icon: CheckCircle,
-                          iconColor: 'text-emerald-600 dark:text-emerald-400'
+                          iconColor: 'text-emerald-600 dark:text-emerald-400',
                         },
                         rejected: {
                           bg: 'bg-red-50 dark:bg-red-950',
                           border: 'border-red-200 dark:border-red-800',
                           icon: XCircle,
-                          iconColor: 'text-red-600 dark:text-red-400'
-                        }
+                          iconColor: 'text-red-600 dark:text-red-400',
+                        },
                       };
                       const config = statusConfig[request.status] || statusConfig.pending;
                       const StatusIcon = config.icon;
@@ -1615,89 +1615,72 @@ export default function LeaveManagement() {
                       return (
                         <div
                           key={request.id}
-                          className={`group relative overflow-hidden rounded-xl border-2 ${config.border} ${config.bg} p-5 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]`}
+                          className={`flex items-start justify-between gap-4 rounded-xl border ${config.border} bg-white dark:bg-slate-900 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors`}
                         >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 space-y-3">
-                              <div className="flex items-center gap-3 flex-wrap">
-                                <div className={`h-10 w-10 rounded-lg ${config.bg} flex items-center justify-center shadow-md`}>
-                                  <StatusIcon className={`h-5 w-5 ${config.iconColor}`} />
-                                </div>
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-3 flex-wrap">
-                                    <div className="flex items-center gap-2">
-                                      <CalendarIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                                      <span className="font-semibold text-gray-900 dark:text-gray-100">
-                                        {format(request.startDate, 'MMM dd, yyyy')}
-                                      </span>
-                                      <span className="text-gray-400">→</span>
-                                      <span className="font-semibold text-gray-900 dark:text-gray-100">
-                                        {format(request.endDate, 'MMM dd, yyyy')}
-                                      </span>
-                                    </div>
-                                    <Badge className={`${getLeaveTypeColor(request.type)} font-medium`}>
-                                      {request.type}
-                                    </Badge>
-                                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                      <Timer className="h-3.5 w-3.5" />
-                                      <span>{daysCount} {daysCount === 1 ? 'day' : 'days'}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="pl-13">
-                                <div className="flex items-start gap-2">
-                                  <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                                    {request.reason}
-                                  </p>
-                                </div>
-                              </div>
+                          <div className="flex items-start gap-3 flex-1">
+                            <div className={`mt-1 h-9 w-9 rounded-lg ${config.bg} flex items-center justify-center`}>
+                              <StatusIcon className={`h-4 w-4 ${config.iconColor}`} />
                             </div>
-
-                            <div className="flex flex-col items-end gap-2">
-                              {request.status === 'pending' && (
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    size="sm"
-                                    className="group gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-500 px-4 py-2 font-semibold text-white shadow-lg shadow-indigo-200/50 transition-all hover:from-sky-500 hover:via-indigo-500 hover:to-indigo-600 hover:shadow-indigo-300/70 dark:shadow-indigo-900/50"
-                                    onClick={() => handleEditLeave(request)}
-                                  >
-                                    <Pencil className="h-4 w-4 transition-transform group-hover:scale-110" />
-                                    <span className="hidden sm:inline">Edit</span>
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    className="group gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-red-500 to-orange-500 px-4 py-2 font-semibold text-white shadow-lg shadow-rose-200/50 transition-all hover:from-rose-600 hover:via-red-500 hover:to-red-600 hover:shadow-rose-300/70 dark:shadow-rose-900/50 pointer-events-auto z-10 relative"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handleDeleteLeave(request);
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4 transition-transform group-hover:scale-110" />
-                                    <span className="hidden sm:inline">Delete</span>
-                                  </Button>
-                                </div>
-                              )}
-                              <Badge
-                                className={`px-5 py-2 text-sm font-bold capitalize transition-all duration-300 ${getStatusBadgeStyle(request.status)}`}
-                              >
-                                {request.status}
-                              </Badge>
-                              {request.approvedBy && (
-                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                  <User className="h-3 w-3" />
-                                  <span>by {request.approvedBy}</span>
-                                </div>
-                              )}
+                            <div className="space-y-1 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                  {format(request.startDate, 'dd MMM yyyy')}
+                                </span>
+                                <span className="text-xs text-muted-foreground">to</span>
+                                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                  {format(request.endDate, 'dd MMM yyyy')}
+                                </span>
+                                <Badge className={`${getLeaveTypeColor(request.type)} text-[10px] font-semibold capitalize`}>
+                                  {request.type}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Timer className="h-3 w-3" />
+                                  {daysCount} {daysCount === 1 ? 'day' : 'days'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground flex items-start gap-2">
+                                <FileText className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                                <span className="line-clamp-2">{request.reason}</span>
+                              </p>
                             </div>
                           </div>
-
-                          {/* Decorative gradient overlay */}
-                          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-200/20 to-purple-200/20 dark:from-indigo-800/20 dark:to-purple-800/20 rounded-full blur-2xl -z-0 pointer-events-none" />
+                          <div className="flex flex-col items-end gap-1">
+                            <Badge
+                              className={`px-3 py-1 text-xs font-bold capitalize ${getStatusBadgeStyle(request.status)}`}
+                            >
+                              {request.status}
+                            </Badge>
+                            {request.approvedBy && (
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <User className="h-3 w-3" />
+                                <span>by {request.approvedBy}</span>
+                              </span>
+                            )}
+                            {request.status === 'pending' && (
+                              <div className="mt-1 flex items-center gap-1.5">
+                                <Button
+                                  size="xs"
+                                  className="h-7 px-2 text-[11px]"
+                                  onClick={() => handleEditLeave(request)}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="xs"
+                                  variant="destructive"
+                                  className="h-7 px-2 text-[11px]"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleDeleteLeave(request);
+                                  }}
+                                >
+                                  Delete
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       );
                     })}

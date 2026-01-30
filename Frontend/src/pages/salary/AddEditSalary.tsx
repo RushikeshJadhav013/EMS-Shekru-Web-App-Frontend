@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import {
     Loader2, Save, Calculator, ArrowLeft,
-    AlertTriangle, Calendar, TrendingUp, DollarSign, FileText, AlertCircle, Briefcase, RefreshCw
+    AlertTriangle, Calendar, TrendingUp, DollarSign, FileText, AlertCircle, RefreshCw
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import {
@@ -28,8 +28,6 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Mail, Hash, Building2 } from "lucide-react";
 
 // Helper to handle numbers with spaces
 const preprocessNumber = (val: unknown) => {
@@ -768,90 +766,6 @@ const AddEditSalary = () => {
                     </div>
                 </div>
             </div>
-
-            {/* Employee Details Section - Top of Page */}
-            {selectedEmployee && (
-                <Card className="border-none shadow-lg overflow-hidden bg-white dark:bg-gray-900 ring-1 ring-gray-200 dark:ring-gray-800">
-                    <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
-                    <CardContent className="p-6">
-                        <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-                            {/* Avatar Section */}
-                            <div className="flex-shrink-0">
-                                <Avatar className="h-20 w-20 ring-4 ring-blue-50 dark:ring-blue-900/20 shadow-xl">
-                                    <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedEmployee.name}`} alt={selectedEmployee.name} />
-                                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xl font-bold">
-                                        {selectedEmployee.name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
-                                    </AvatarFallback>
-                                </Avatar>
-                            </div>
-
-                            {/* Info Section */}
-                            <div className="flex-1 w-full text-center md:text-left space-y-4">
-                                <div>
-                                    <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 justify-center md:justify-start">
-                                        <h2 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white">
-                                            {selectedEmployee.name}
-                                        </h2>
-                                        <Badge variant="outline" className={`px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider h-6 ${selectedEmployee.status === 'active'
-                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'
-                                            : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'
-                                            }`}>
-                                            {selectedEmployee.status || 'Active'}
-                                        </Badge>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground font-medium flex items-center justify-center md:justify-start gap-2 mt-1">
-                                        <span className="flex items-center gap-1.5">
-                                            <Mail className="w-3.5 h-3.5" />
-                                            {selectedEmployee.email || 'No email provided'}
-                                        </span>
-                                        <span className="text-gray-300 dark:text-gray-700">•</span>
-                                        <span className="flex items-center gap-1.5">
-                                            <Hash className="w-3.5 h-3.5" />
-                                            {selectedEmployee.employee_id || 'ID: --'}
-                                        </span>
-                                    </p>
-                                </div>
-
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 pt-2">
-                                    <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
-                                        <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
-                                            Department
-                                        </p>
-                                        <div className="flex items-center gap-2 font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                                            <div className="p-1 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
-                                                <Building2 className="w-3 h-3" />
-                                            </div>
-                                            {selectedEmployee.department || 'N/A'}
-                                        </div>
-                                    </div>
-                                    <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
-                                        <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
-                                            Role
-                                        </p>
-                                        <div className="flex items-center gap-2 font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                                            <div className="p-1 rounded bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400">
-                                                <Briefcase className="w-3 h-3" />
-                                            </div>
-                                            <span className="capitalize">{selectedEmployee.role || 'N/A'}</span>
-                                        </div>
-                                    </div>
-                                    <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 col-span-2 md:col-span-1">
-                                        <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
-                                            Joined Date
-                                        </p>
-                                        <div className="flex items-center gap-2 font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                                            <div className="p-1 rounded bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400">
-                                                <Calendar className="w-3 h-3" />
-                                            </div>
-                                            {selectedEmployee.created_at ? new Date(selectedEmployee.created_at).toLocaleDateString() : 'N/A'}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
 
             {/* Step 1: Employee Selection (Always Visible if no user selected) */}
             {
