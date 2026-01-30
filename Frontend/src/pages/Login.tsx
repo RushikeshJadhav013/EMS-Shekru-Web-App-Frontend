@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Language } from '@/i18n/translations';
+import loginBackgroundImage from '@/components/asstes/1e1d6f69-f317-4dee-a2a3-1f26ae3e6592.png';
 
 // API endpoints
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
@@ -355,7 +356,7 @@ const Login: React.FC = () => {
         <div 
           className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: `url("https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80")`,
+            backgroundImage: `url(${loginBackgroundImage})`,
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat'
           }}
