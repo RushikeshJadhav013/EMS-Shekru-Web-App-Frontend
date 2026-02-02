@@ -70,7 +70,7 @@ import { format } from 'date-fns';
 import { formatIST, formatDateTimeIST, formatDateIST, todayIST, parseToIST, nowIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
 
 const ROLE_ORDER: UserRole[] = ['admin', 'hr', 'manager', 'team_lead', 'employee'];
 
