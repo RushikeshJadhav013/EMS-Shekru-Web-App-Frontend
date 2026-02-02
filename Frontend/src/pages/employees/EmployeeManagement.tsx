@@ -83,7 +83,7 @@ const mapEmployeeData = (emp: any): EmployeeRecord => {
   const mapped = toCamelCase(emp);
 
   // ✅ Fix photo URLs to include backend base URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
   if (mapped.profilePhoto && !mapped.profilePhoto.startsWith('http')) {
     mapped.profilePhoto = `${baseUrl}/${mapped.profilePhoto}`;
   }
@@ -1561,7 +1561,7 @@ export default function EmployeeManagement() {
 
       let photoUrl = String(data['photoUrl'] ?? data['photo_url'] ?? data['profilePhoto'] ?? data['profile_photo'] ?? '');
       if (photoUrl && !photoUrl.startsWith('http')) {
-        photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}/${photoUrl}`;
+        photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}/${photoUrl}`;
       }
 
       const rawPhone = String(data['phone'] ?? '');

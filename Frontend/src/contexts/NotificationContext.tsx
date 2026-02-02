@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
 // Polling disabled - only fetch on app init/auth
 const FETCH_INTERVAL_MS = 0; // Disabled
 const POLLING_IDLE_TIMEOUT_MS = 10 * 60_000; // 10 minutes idle timeout
@@ -209,7 +209,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const mapBackendTaskNotification = useCallback((notification: BackendTaskNotification, currentUserId?: string): Notification | null => {
     // Parse pass_details - can be string (JSON) or object
     let passDetails: { from?: number; to?: number; note?: string } | null = null;
-    
+
     if (notification.pass_details) {
       if (typeof notification.pass_details === 'string') {
         try {
@@ -238,15 +238,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     // ✅ Filter: Don't show if user assigned task to themselves (from === to === user_id)
     // But still show if user received task from someone else (from !== user_id, to === user_id)
-    if (fromValue !== undefined && toValue !== undefined && 
-        String(fromValue) === notificationUserId && String(toValue) === notificationUserId) {
+    if (fromValue !== undefined && toValue !== undefined &&
+      String(fromValue) === notificationUserId && String(toValue) === notificationUserId) {
       debugLog('Filtering out task notification - self-assigned task', { fromValue, toValue, notificationUserId });
       return null;
     }
 
-    debugLog('Mapping task notification', { 
-      id: notification.notification_id, 
-      title: notification.title, 
+    debugLog('Mapping task notification', {
+      id: notification.notification_id,
+      title: notification.title,
       is_read: notification.is_read,
       from: fromValue,
       to: toValue
@@ -517,14 +517,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         try {
           const data = await taskResult.value.json();
           debugLog('Task notifications API response:', data);
-          
+
           // API returns direct array: [{ notification_id, user_id, task_id, ... }]
           if (Array.isArray(data)) {
             // Validate each item has required fields before adding
-            const validNotifications = data.filter((item: unknown) => 
-              item && 
-              typeof item === 'object' && 
-              'notification_id' in item && 
+            const validNotifications = data.filter((item: unknown) =>
+              item &&
+              typeof item === 'object' &&
+              'notification_id' in item &&
               'user_id' in item &&
               'task_id' in item &&
               'is_read' in item
@@ -559,14 +559,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         try {
           const data = await leaveResult.value.json();
           debugLog('Leave notifications API response:', data);
-          
+
           // API returns direct array: [{ notification_id, user_id, leave_id, ... }]
           if (Array.isArray(data)) {
             // Validate each item has required fields before adding
-            const validNotifications = data.filter((item: unknown) => 
-              item && 
-              typeof item === 'object' && 
-              'notification_id' in item && 
+            const validNotifications = data.filter((item: unknown) =>
+              item &&
+              typeof item === 'object' &&
+              'notification_id' in item &&
               'user_id' in item &&
               'leave_id' in item &&
               'is_read' in item
@@ -1172,7 +1172,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
             // Only remove from UI after successful backend update
             setNotifications((prev) => prev.filter((notif) => notif.id !== notificationId));
-            
+
             // Store dismissed notification ID to prevent it from reappearing
             const dismissedKey = `dismissed_notifications_${user.id}`;
             const dismissed = JSON.parse(localStorage.getItem(dismissedKey) || '[]') as string[];
@@ -1192,7 +1192,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           console.error('Failed to mark notification as read when clearing', error);
           // Still remove from UI even if backend call fails - user dismissed it
           setNotifications((prev) => prev.filter((notif) => notif.id !== notificationId));
-          
+
           // Store dismissed notification ID anyway to prevent reappearing
           if (targetNotification.backendId) {
             const dismissedKey = `dismissed_notifications_${user.id}`;

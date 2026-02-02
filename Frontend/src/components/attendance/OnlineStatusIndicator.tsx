@@ -51,7 +51,7 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
       const token = localStorage.getItem('token');
 
       // Load status history
-      const historyResponse = await fetch(`https://testing.staffly.space/attendance/online-status/${attendanceId}`, {
+      const historyResponse = await fetch(`https://staffly.space/attendance/online-status/${attendanceId}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -63,7 +63,7 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
       }
 
       // Load working hours calculation
-      const hoursResponse = await fetch(`https://testing.staffly.space/attendance/working-hours/${attendanceId}`, {
+      const hoursResponse = await fetch(`https://staffly.space/attendance/working-hours/${attendanceId}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -131,8 +131,8 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
         <div className="relative">
           <div
             className={`${dotSize} rounded-full transition-colors duration-300 ${isOnline
-                ? 'bg-green-500'
-                : 'bg-gray-400 dark:bg-gray-600'
+              ? 'bg-green-500'
+              : 'bg-gray-400 dark:bg-gray-600'
               }`}
           />
           {isOnline && (
@@ -143,8 +143,8 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
         {showLabel && (
           <span
             className={`text-xs font-medium ${isOnline
-                ? 'text-green-600 dark:text-green-400'
-                : 'text-gray-500 dark:text-gray-400'
+              ? 'text-green-600 dark:text-green-400'
+              : 'text-gray-500 dark:text-gray-400'
               }`}
           >
             {isOnline ? 'Online' : 'Offline'}
