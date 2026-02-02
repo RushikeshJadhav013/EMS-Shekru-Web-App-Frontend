@@ -33,6 +33,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Pagination } from '@/components/ui/pagination';
 import { useToast } from '@/hooks/use-toast';
 import {
   Plus,
@@ -70,7 +71,7 @@ import { format } from 'date-fns';
 import { formatIST, formatDateTimeIST, formatDateIST, todayIST, parseToIST, nowIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
 
 const ROLE_ORDER: UserRole[] = ['admin', 'hr', 'manager', 'team_lead', 'employee'];
 
@@ -414,6 +415,10 @@ const TaskManagement: React.FC = () => {
   const [exportUserFilter, setExportUserFilter] = useState<string>('all');
   const [isExporting, setIsExporting] = useState(false);
 
+  // Pagination states
+  const [taskCurrentPage, setTaskCurrentPage] = useState(1);
+  const [taskItemsPerPage, setTaskItemsPerPage] = useState(10);
+
   const isCreateDisabled = !newTask.title.trim() || !newTask.description.trim() || !newTask.assignedTo.length || isSubmitting;
 
   const userId = useMemo(() => {
@@ -565,7 +570,7 @@ const TaskManagement: React.FC = () => {
             const tid = String(t.assigned_to);
             // Find employee in list for role lookup
             const employeeFromList = employees.find(emp => emp.userId === tid);
-            
+
             // Prioritize: backend role (from API) > employees list role > existing cache role
             // Only default to 'employee' if we truly have no role information
             let assignedToRole: UserRole | undefined;
@@ -598,7 +603,7 @@ const TaskManagement: React.FC = () => {
             const bid = String(t.assigned_by);
             // Find employee in list for role lookup
             const employeeFromList = employees.find(emp => emp.userId === bid);
-            
+
             // Prioritize: backend role (from API) > employees list role > existing cache role
             // Only default to 'employee' if we truly have no role information
             let assignedByRole: UserRole | undefined;
@@ -1156,6 +1161,20 @@ const TaskManagement: React.FC = () => {
       }
     });
   }, [filteredCreatedTasks, filteredReceivedTasks, filteredTasks, taskOwnershipFilter, selectedDepartmentFilter, employees, isOverdueFilterActive]);
+
+  // Paginated tasks
+  const paginatedTasks = useMemo(() => {
+    const startIndex = (taskCurrentPage - 1) * taskItemsPerPage;
+    const endIndex = startIndex + taskItemsPerPage;
+    return visibleTasks.slice(startIndex, endIndex);
+  }, [visibleTasks, taskCurrentPage, taskItemsPerPage]);
+
+  const taskTotalPages = Math.ceil(visibleTasks.length / taskItemsPerPage);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setTaskCurrentPage(1);
+  }, [taskOwnershipFilter, filterStatus, searchQuery, selectedDepartmentFilter, isOverdueFilterActive]);
 
   const selectedTaskAssignerInfo = useMemo(() => {
     if (!selectedTask) return null;
@@ -2882,451 +2901,483 @@ const TaskManagement: React.FC = () => {
 
         <CardContent className="pt-6">
           {viewMode === 'list' ? (
-            <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
-              <Table>
-                <TableHeader className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead>Task</TableHead>
-                    <TableHead>Assigned By</TableHead>
-                    <TableHead>Assigned To</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Deadline</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Pass</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoadingTasks ? (
-                    <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                        Loading tasks...
-                      </TableCell>
+            <div className="space-y-6">
+              <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead>Task</TableHead>
+                      <TableHead>Assigned By</TableHead>
+                      <TableHead>Assigned To</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Deadline</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Pass</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ) : visibleTasks.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                        {taskOwnershipFilter === 'all'
-                          ? 'No tasks found in the system'
-                          : taskOwnershipFilter === 'created'
-                            ? user?.role === 'admin'
-                              ? 'No tasks created yet. Create your first task to get started.'
-                              : 'No tasks created by you yet'
-                            : 'No tasks assigned to you yet'}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    visibleTasks.map((task) => {
-                      const assignedByInfo = getAssignedByInfo(task.assignedBy, task.assignedByRole);
-                      const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || '', task.assignedToRole);
-                      // In "All Tasks" view, admin can only manage tasks they created
-                      const canManageTask = Boolean(userId && task.assignedBy === userId);
-                      const isReceivedTask = Boolean(userId && task.assignedTo.includes(userId));
-                      // Don't allow passing completed, cancelled, or overdue tasks
-                      const canPassTask = isReceivedTask && task.assignedTo[0] === userId && passEligibleEmployees.length > 0 && task.status !== 'completed' && task.status !== 'cancelled' && task.status !== 'overdue';
-                      const lastPassByLabel = task.lastPassedBy ? getAssigneeLabel(task.lastPassedBy) : null;
-                      const lastPassToLabel = task.lastPassedTo ? getAssigneeLabel(task.lastPassedTo) : null;
-                      const lastPassTimestamp = task.lastPassedAt ? formatDateTimeIST(task.lastPassedAt, 'MMM dd, yyyy HH:mm') : null;
-                      return (
-                        <TableRow key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{task.title}</p>
-                              <p className="text-sm text-muted-foreground line-clamp-1">
-                                {task.description}
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <UserCheck className="h-4 w-4 text-muted-foreground" />
-                              <div className="flex flex-col">
-                                <span className="text-sm font-medium">{assignedByInfo.name}</span>
-                                {assignedByInfo.roleLabel ? (
-                                  <span className="text-xs text-muted-foreground mt-0.5">{assignedByInfo.roleLabel}</span>
-                                ) : null}
+                  </TableHeader>
+                  <TableBody>
+                    {isLoadingTasks ? (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                          Loading tasks...
+                        </TableCell>
+                      </TableRow>
+                    ) : visibleTasks.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                          {taskOwnershipFilter === 'all'
+                            ? 'No tasks found in the system'
+                            : taskOwnershipFilter === 'created'
+                              ? user?.role === 'admin'
+                                ? 'No tasks created yet. Create your first task to get started.'
+                                : 'No tasks created by you yet'
+                              : 'No tasks assigned to you yet'}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedTasks.map((task) => {
+                        const assignedByInfo = getAssignedByInfo(task.assignedBy, task.assignedByRole);
+                        const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || '', task.assignedToRole);
+                        // In "All Tasks" view, admin can only manage tasks they created
+                        const canManageTask = Boolean(userId && task.assignedBy === userId);
+                        const isReceivedTask = Boolean(userId && task.assignedTo.includes(userId));
+                        // Don't allow passing completed, cancelled, or overdue tasks
+                        const canPassTask = isReceivedTask && task.assignedTo[0] === userId && passEligibleEmployees.length > 0 && task.status !== 'completed' && task.status !== 'cancelled' && task.status !== 'overdue';
+                        const lastPassByLabel = task.lastPassedBy ? getAssigneeLabel(task.lastPassedBy) : null;
+                        const lastPassToLabel = task.lastPassedTo ? getAssigneeLabel(task.lastPassedTo) : null;
+                        const lastPassTimestamp = task.lastPassedAt ? formatDateTimeIST(task.lastPassedAt, 'MMM dd, yyyy HH:mm') : null;
+                        return (
+                          <TableRow key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{task.title}</p>
+                                <p className="text-sm text-muted-foreground line-clamp-1">
+                                  {task.description}
+                                </p>
                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <User className="h-4 w-4 text-muted-foreground" />
-                              <div className="flex flex-col">
-                                <span className="text-sm font-medium">{assignedToInfo.name}</span>
-                                {assignedToInfo.roleLabel ? (
-                                  <span className="text-xs text-muted-foreground mt-0.5">{assignedToInfo.roleLabel}</span>
-                                ) : null}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <UserCheck className="h-4 w-4 text-muted-foreground" />
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium">{assignedByInfo.name}</span>
+                                  {assignedByInfo.roleLabel ? (
+                                    <span className="text-xs text-muted-foreground mt-0.5">{assignedByInfo.roleLabel}</span>
+                                  ) : null}
+                                </div>
                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getPriorityColor(task.priority)}>
-                              {capitalizePriority(task.priority)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4 text-muted-foreground" />
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium">{assignedToInfo.name}</span>
+                                  {assignedToInfo.roleLabel ? (
+                                    <span className="text-xs text-muted-foreground mt-0.5">{assignedToInfo.roleLabel}</span>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={getPriorityColor(task.priority)}>
+                                {capitalizePriority(task.priority)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                <span className={`text-sm ${isTaskOverdue(task) ? 'font-bold text-orange-600 dark:text-orange-400' : ''}`}>
+                                  {formatDisplayDate(task.deadline)}
+                                </span>
+                                {isTaskOverdue(task) && (
+                                  <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100 text-xs">
+                                    Overdue
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {(task.status as string) === 'completed' || (task.status as string) === 'cancelled' || (task.status as string) === 'overdue' ? (
+                                <div className={`w-[170px] h-10 bg-white dark:bg-gray-950 border-2 rounded-md flex items-center px-3 gap-2 ${(task.status as string) === 'overdue' ? 'border-orange-200 dark:border-orange-800' : 'border-violet-200 dark:border-violet-800'
+                                  }`}>
+                                  <div className={`h-3 w-3 rounded-full ${(task.status as string) === 'cancelled' ? 'bg-gradient-to-br from-red-400 to-rose-600' :
+                                    (task.status as string) === 'overdue' ? 'bg-gradient-to-br from-orange-400 to-orange-600' :
+                                      'bg-gradient-to-br from-green-400 to-emerald-600'
+                                    } shadow-md flex-shrink-0`} />
+                                  <span className="font-medium text-sm">
+                                    {(task.status as string) === 'cancelled' ? 'Cancelled' :
+                                      (task.status as string) === 'overdue' ? 'Overdue' : 'Completed'}
+                                  </span>
+                                  {(task.status as string) === 'completed' && <CheckCircle2 className="h-3.5 w-3.5 text-green-600 flex-shrink-0 ml-auto" />}
+                                  {(task.status as string) === 'cancelled' && <XCircle className="h-3.5 w-3.5 text-red-600 flex-shrink-0 ml-auto" />}
+                                  {(task.status as string) === 'overdue' && <AlertCircle className="h-3.5 w-3.5 text-orange-600 flex-shrink-0 ml-auto" />}
+                                </div>
+                              ) : (
+                                <Select
+                                  value={task.status}
+                                  onValueChange={(value: BaseTask['status']) => {
+                                    if (isStatusTransitionAllowed(task.status, value)) {
+                                      updateTaskStatus(task.id, value);
+                                    } else {
+                                      toast({
+                                        title: 'Invalid Status Change',
+                                        description: 'Cannot move back to this status once the task has progressed further.',
+                                        variant: 'destructive',
+                                      });
+                                    }
+                                  }}
+                                  disabled={updatingTaskId === task.id}
+                                >
+                                  <SelectTrigger className="w-[170px] h-10 bg-white dark:bg-gray-950 border-2 hover:border-violet-300 dark:hover:border-violet-700 transition-all duration-300 hover:shadow-md">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="border-2 shadow-2xl min-w-[200px]">
+                                    {/* Show "To Do" only if allowed */}
+                                    {isStatusTransitionAllowed(task.status, 'todo') && (
+                                      <SelectItem value="todo" className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors py-2.5">
+                                        <div className="flex items-center gap-3">
+                                          <div className="h-3 w-3 rounded-full bg-gradient-to-br from-slate-400 to-slate-600 shadow-md animate-pulse flex-shrink-0" />
+                                          <span className="font-medium text-sm">To Do</span>
+                                        </div>
+                                      </SelectItem>
+                                    )}
+                                    {/* Show "In Progress" only if allowed */}
+                                    {isStatusTransitionAllowed(task.status, 'in-progress') && (
+                                      <SelectItem value="in-progress" className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors py-2.5">
+                                        <div className="flex items-center gap-3">
+                                          <div className="h-3 w-3 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 shadow-md animate-pulse flex-shrink-0" />
+                                          <span className="font-medium text-sm">In Progress</span>
+                                        </div>
+                                      </SelectItem>
+                                    )}
+
+                                    {/* Show "Completed" only if allowed */}
+                                    {isStatusTransitionAllowed(task.status, 'completed') && (
+                                      <SelectItem value="completed" className="cursor-pointer hover:bg-green-50 dark:hover:bg-green-950 transition-colors py-2.5">
+                                        <div className="flex items-center gap-3">
+                                          <div className="h-3 w-3 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 shadow-md flex-shrink-0" />
+                                          <span className="font-medium text-sm flex-1">Completed</span>
+                                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+                                        </div>
+                                      </SelectItem>
+                                    )}
+                                    {/* Show Cancel option to task creator for any status except already cancelled/completed */}
+                                    {canManageTask && (task.status as string) !== 'cancelled' && (task.status as string) !== 'completed' && (
+                                      <SelectItem value="cancelled" className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950 transition-colors py-2.5">
+                                        <div className="flex items-center gap-3">
+                                          <div className="h-3 w-3 rounded-full bg-gradient-to-br from-red-400 to-rose-600 shadow-md flex-shrink-0" />
+                                          <span className="font-medium text-sm flex-1">Cancelled</span>
+                                          <XCircle className="h-3.5 w-3.5 text-red-600 flex-shrink-0" />
+                                        </div>
+                                      </SelectItem>
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {task.lastPassedBy && task.lastPassedTo ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openPassHistoryDialog(task);
+                                  }}
+                                  className="h-8 px-3 gap-2 text-xs border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-950 hover:border-violet-300 dark:hover:border-violet-700 transition-all"
+                                >
+                                  <Share2 className="h-3.5 w-3.5 text-violet-600" />
+                                  View History
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className={`flex flex-wrap items-center gap-2 ${task.status === 'completed' ? 'justify-center' : ''}`}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setSelectedTask(task)}
+                                  className="hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-950 p-2 h-auto"
+                                  title="View task details"
+                                >
+                                  👁
+                                </Button>
+                                {task.status !== 'completed' && canPassTask && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openPassDialog(task)}
+                                    className="flex items-center gap-1"
+                                  >
+                                    <Share2 className="h-4 w-4" />
+                                    Pass
+                                  </Button>
+                                )}
+                                {task.status !== 'completed' && (task.status as string) !== 'cancelled' && canManageTask && (
+                                  <>
+                                    {(task.status as string) !== 'overdue' && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleEditClick(task)}
+                                        className="hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950 p-2 h-auto"
+                                        title="Edit task"
+                                      >
+                                        ✏️
+                                      </Button>
+                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDeleteTask(task.id)}
+                                      disabled={deletingTaskId === task.id || !canDeleteTask(task)}
+                                      className="hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 p-2 h-auto disabled:opacity-50"
+                                      title={!canDeleteTask(task) ? 'Cannot delete task once work has started' : 'Delete task'}
+                                    >
+                                      {deletingTaskId === task.id ? <Loader2 className="h-4 w-4 animate-spin" /> : '🗑'}
+                                    </Button>
+                                  </>
+                                )}
+                                {canReassignTask(task) && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleReassignClick(task)}
+                                    className="flex items-center gap-1 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300"
+                                  >
+                                    <RefreshCcw className="h-4 w-4" />
+                                    Reassign
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              {visibleTasks.length > 0 && (
+                <div className="mt-6 px-2">
+                  <Pagination
+                    currentPage={taskCurrentPage}
+                    totalPages={taskTotalPages}
+                    totalItems={visibleTasks.length}
+                    itemsPerPage={taskItemsPerPage}
+                    onPageChange={setTaskCurrentPage}
+                    onItemsPerPageChange={setTaskItemsPerPage}
+                    showItemsPerPage={true}
+                    showEntriesInfo={true}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {paginatedTasks.map((task) => {
+                  const assignedByInfo = getAssignedByInfo(task.assignedBy, task.assignedByRole);
+                  const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || '', task.assignedToRole);
+                  // In "All Tasks" view, admin can only manage tasks they created
+                  const canManageTask = Boolean(userId && task.assignedBy === userId);
+                  const isReceivedTask = Boolean(userId && task.assignedTo.includes(userId));
+                  // Don't allow passing completed, cancelled, or overdue tasks
+                  const canPassTask = isReceivedTask && task.assignedTo[0] === userId && passEligibleEmployees.length > 0 && task.status !== 'completed' && task.status !== 'cancelled' && task.status !== 'overdue';
+                  const lastPassByLabel = task.lastPassedBy ? getAssigneeLabel(task.lastPassedBy) : null;
+                  const lastPassToLabel = task.lastPassedTo ? getAssigneeLabel(task.lastPassedTo) : null;
+                  return (
+                    <Card
+                      key={task.id}
+                      className={`border transition-all duration-300 cursor-pointer transform hover:scale-[1.02] shadow-sm hover:shadow-xl group relative overflow-hidden ${isTaskOverdue(task)
+                        ? 'border-orange-200 bg-orange-50/30 dark:border-orange-900/50 dark:bg-orange-900/10'
+                        : 'border-slate-200 bg-white dark:border-gray-800 dark:bg-gray-950/50'
+                        }`}
+                      onClick={() => setSelectedTask(task)}
+                    >
+                      {/* Status Indicator Strip */}
+                      <div className={`absolute top-0 left-0 w-1 h-full ${task.status === 'completed' ? 'bg-green-500' :
+                        task.status === 'cancelled' ? 'bg-red-500' :
+                          task.status === 'overdue' ? 'bg-orange-500' :
+                            task.status === 'in-progress' ? 'bg-blue-500' :
+                              'bg-slate-400'
+                        }`} />
+
+                      <CardHeader className="p-4 pb-0">
+                        <div className="flex justify-between items-start gap-3">
+                          <div className="space-y-1.5 flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-muted-foreground" />
-                              <span className={`text-sm ${isTaskOverdue(task) ? 'font-bold text-orange-600 dark:text-orange-400' : ''}`}>
-                                {formatDisplayDate(task.deadline)}
-                              </span>
+                              <Badge variant="outline" className={`${getPriorityColor(task.priority)} text-[10px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider`}>
+                                {task.priority}
+                              </Badge>
                               {isTaskOverdue(task) && (
-                                <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100 text-xs">
+                                <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 text-[10px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider">
                                   Overdue
                                 </Badge>
                               )}
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            {(task.status as string) === 'completed' || (task.status as string) === 'cancelled' || (task.status as string) === 'overdue' ? (
-                              <div className={`w-[170px] h-10 bg-white dark:bg-gray-950 border-2 rounded-md flex items-center px-3 gap-2 ${(task.status as string) === 'overdue' ? 'border-orange-200 dark:border-orange-800' : 'border-violet-200 dark:border-violet-800'
-                                }`}>
-                                <div className={`h-3 w-3 rounded-full ${(task.status as string) === 'cancelled' ? 'bg-gradient-to-br from-red-400 to-rose-600' :
-                                  (task.status as string) === 'overdue' ? 'bg-gradient-to-br from-orange-400 to-orange-600' :
-                                    'bg-gradient-to-br from-green-400 to-emerald-600'
-                                  } shadow-md flex-shrink-0`} />
-                                <span className="font-medium text-sm">
-                                  {(task.status as string) === 'cancelled' ? 'Cancelled' :
-                                    (task.status as string) === 'overdue' ? 'Overdue' : 'Completed'}
-                                </span>
-                                {(task.status as string) === 'completed' && <CheckCircle2 className="h-3.5 w-3.5 text-green-600 flex-shrink-0 ml-auto" />}
-                                {(task.status as string) === 'cancelled' && <XCircle className="h-3.5 w-3.5 text-red-600 flex-shrink-0 ml-auto" />}
-                                {(task.status as string) === 'overdue' && <AlertCircle className="h-3.5 w-3.5 text-orange-600 flex-shrink-0 ml-auto" />}
+                            <CardTitle className="text-base font-bold leading-tight truncate pr-1" title={task.title}>
+                              {task.title}
+                            </CardTitle>
+                          </div>
+                          {/* Progress Ring or Simple Status Icon */}
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center border-2 ${task.status === 'completed' ? 'border-green-100 bg-green-50 text-green-600 dark:border-green-900/30 dark:bg-green-900/20' :
+                            task.status === 'in-progress' ? 'border-blue-100 bg-blue-50 text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20' :
+                              'border-slate-100 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900'
+                            }`}>
+                            {typeof task.progress === 'number' && task.progress > 0 ? (
+                              <span className="text-[10px] font-bold">{task.progress}%</span>
+                            ) : (
+                              <div className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)}`} />
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="p-4 pt-3 space-y-4">
+                        <p className="text-xs text-muted-foreground line-clamp-2 h-8 leading-relaxed">
+                          {task.description || "No description provided."}
+                        </p>
+
+                        {/* Compact Metadata Grid */}
+                        <div className="grid grid-cols-1 gap-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-800/50">
+                          {/* Assignee Row */}
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                              <User className="h-3.5 w-3.5" />
+                              <span>To:</span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]" title={assignedToInfo.name}>{assignedToInfo.name}</span>
+                              {assignedToInfo.roleLabel && (
+                                <span className="text-[10px] text-muted-foreground">{assignedToInfo.roleLabel}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Assigner Row */}
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                              <UserCheck className="h-3.5 w-3.5" />
+                              <span>By:</span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]">
+                                {assignedByInfo.name}
+                              </span>
+                              {assignedByInfo.roleLabel && (
+                                <span className="text-[10px] text-muted-foreground">{assignedByInfo.roleLabel}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Deadline Row */}
+                          <div className="flex items-center justify-between text-xs border-t border-slate-200 dark:border-slate-700/50 pt-2 mt-0.5">
+                            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                              <Calendar className="h-3.5 w-3.5" />
+                              <span>Due:</span>
+                            </div>
+                            <span className={`font-medium ${isTaskOverdue(task) ? 'text-orange-600 dark:text-orange-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                              {formatDisplayDate(task.deadline)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="flex items-center justify-between pt-1">
+                          {/* Left Side: Pass History Info (Subtle) */}
+                          <div className="flex items-center">
+                            {task.lastPassedBy ? (
+                              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-violet-50 text-violet-700 dark:bg-violet-900/20 dark:text-violet-300 border border-violet-100 dark:border-violet-900/30 cursor-pointer hover:bg-violet-100 transition-colors"
+                                onClick={(e) => { e.stopPropagation(); openPassHistoryDialog(task); }}>
+                                <Share2 className="h-3 w-3" />
+                                <span className="text-[10px] font-medium">History</span>
                               </div>
                             ) : (
-                              <Select
-                                value={task.status}
-                                onValueChange={(value: BaseTask['status']) => {
-                                  if (isStatusTransitionAllowed(task.status, value)) {
-                                    updateTaskStatus(task.id, value);
-                                  } else {
-                                    toast({
-                                      title: 'Invalid Status Change',
-                                      description: 'Cannot move back to this status once the task has progressed further.',
-                                      variant: 'destructive',
-                                    });
-                                  }
-                                }}
-                                disabled={updatingTaskId === task.id}
-                              >
-                                <SelectTrigger className="w-[170px] h-10 bg-white dark:bg-gray-950 border-2 hover:border-violet-300 dark:hover:border-violet-700 transition-all duration-300 hover:shadow-md">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="border-2 shadow-2xl min-w-[200px]">
-                                  {/* Show "To Do" only if allowed */}
-                                  {isStatusTransitionAllowed(task.status, 'todo') && (
-                                    <SelectItem value="todo" className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors py-2.5">
-                                      <div className="flex items-center gap-3">
-                                        <div className="h-3 w-3 rounded-full bg-gradient-to-br from-slate-400 to-slate-600 shadow-md animate-pulse flex-shrink-0" />
-                                        <span className="font-medium text-sm">To Do</span>
-                                      </div>
-                                    </SelectItem>
-                                  )}
-                                  {/* Show "In Progress" only if allowed */}
-                                  {isStatusTransitionAllowed(task.status, 'in-progress') && (
-                                    <SelectItem value="in-progress" className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors py-2.5">
-                                      <div className="flex items-center gap-3">
-                                        <div className="h-3 w-3 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 shadow-md animate-pulse flex-shrink-0" />
-                                        <span className="font-medium text-sm">In Progress</span>
-                                      </div>
-                                    </SelectItem>
-                                  )}
+                              <div className="text-[10px] text-muted-foreground px-1 italic opacity-50">
+                                No history
+                              </div>
+                            )}
+                          </div>
 
-                                  {/* Show "Completed" only if allowed */}
-                                  {isStatusTransitionAllowed(task.status, 'completed') && (
-                                    <SelectItem value="completed" className="cursor-pointer hover:bg-green-50 dark:hover:bg-green-950 transition-colors py-2.5">
-                                      <div className="flex items-center gap-3">
-                                        <div className="h-3 w-3 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 shadow-md flex-shrink-0" />
-                                        <span className="font-medium text-sm flex-1">Completed</span>
-                                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
-                                      </div>
-                                    </SelectItem>
-                                  )}
-                                  {/* Show Cancel option to task creator for any status except already cancelled/completed */}
-                                  {canManageTask && (task.status as string) !== 'cancelled' && (task.status as string) !== 'completed' && (
-                                    <SelectItem value="cancelled" className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950 transition-colors py-2.5">
-                                      <div className="flex items-center gap-3">
-                                        <div className="h-3 w-3 rounded-full bg-gradient-to-br from-red-400 to-rose-600 shadow-md flex-shrink-0" />
-                                        <span className="font-medium text-sm flex-1">Cancelled</span>
-                                        <XCircle className="h-3.5 w-3.5 text-red-600 flex-shrink-0" />
-                                      </div>
-                                    </SelectItem>
-                                  )}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {task.lastPassedBy && task.lastPassedTo ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openPassHistoryDialog(task);
-                                }}
-                                className="h-8 px-3 gap-2 text-xs border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-950 hover:border-violet-300 dark:hover:border-violet-700 transition-all"
-                              >
-                                <Share2 className="h-3.5 w-3.5 text-violet-600" />
-                                View History
-                              </Button>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className={`flex flex-wrap items-center gap-2 ${task.status === 'completed' ? 'justify-center' : ''}`}>
+                          {/* Right Side: Action Buttons */}
+                          <div className="flex items-center gap-1">
+                            {/* Reassign Button */}
+                            {canReassignTask(task) && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setSelectedTask(task)}
-                                className="hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-950 p-2 h-auto"
-                                title="View task details"
+                                onClick={(e) => { e.stopPropagation(); handleReassignClick(task); }}
+                                className="h-7 w-7 p-0 rounded-full hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/30 dark:hover:text-green-400 text-slate-400"
+                                title="Reassign Task"
                               >
-                                👁
+                                <RefreshCcw className="h-3.5 w-3.5" />
                               </Button>
-                              {task.status !== 'completed' && canPassTask && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => openPassDialog(task)}
-                                  className="flex items-center gap-1"
-                                >
-                                  <Share2 className="h-4 w-4" />
-                                  Pass
-                                </Button>
-                              )}
-                              {task.status !== 'completed' && (task.status as string) !== 'cancelled' && canManageTask && (
-                                <>
-                                  {(task.status as string) !== 'overdue' && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleEditClick(task)}
-                                      className="hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950 p-2 h-auto"
-                                      title="Edit task"
-                                    >
-                                      ✏️
-                                    </Button>
-                                  )}
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDeleteTask(task.id)}
-                                    disabled={deletingTaskId === task.id || !canDeleteTask(task)}
-                                    className="hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 p-2 h-auto disabled:opacity-50"
-                                    title={!canDeleteTask(task) ? 'Cannot delete task once work has started' : 'Delete task'}
-                                  >
-                                    {deletingTaskId === task.id ? <Loader2 className="h-4 w-4 animate-spin" /> : '🗑'}
-                                  </Button>
-                                </>
-                              )}
-                              {canReassignTask(task) && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleReassignClick(task)}
-                                  className="flex items-center gap-1 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300"
-                                >
-                                  <RefreshCcw className="h-4 w-4" />
-                                  Reassign
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {visibleTasks.map((task) => {
-                const assignedByInfo = getAssignedByInfo(task.assignedBy, task.assignedByRole);
-                const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || '', task.assignedToRole);
-                // In "All Tasks" view, admin can only manage tasks they created
-                const canManageTask = Boolean(userId && task.assignedBy === userId);
-                const isReceivedTask = Boolean(userId && task.assignedTo.includes(userId));
-                // Don't allow passing completed, cancelled, or overdue tasks
-                const canPassTask = isReceivedTask && task.assignedTo[0] === userId && passEligibleEmployees.length > 0 && task.status !== 'completed' && task.status !== 'cancelled' && task.status !== 'overdue';
-                const lastPassByLabel = task.lastPassedBy ? getAssigneeLabel(task.lastPassedBy) : null;
-                const lastPassToLabel = task.lastPassedTo ? getAssigneeLabel(task.lastPassedTo) : null;
-                return (
-                  <Card
-                    key={task.id}
-                    className={`border transition-all duration-300 cursor-pointer transform hover:scale-[1.02] shadow-sm hover:shadow-xl group relative overflow-hidden ${isTaskOverdue(task)
-                      ? 'border-orange-200 bg-orange-50/30 dark:border-orange-900/50 dark:bg-orange-900/10'
-                      : 'border-slate-200 bg-white dark:border-gray-800 dark:bg-gray-950/50'
-                      }`}
-                    onClick={() => setSelectedTask(task)}
-                  >
-                    {/* Status Indicator Strip */}
-                    <div className={`absolute top-0 left-0 w-1 h-full ${task.status === 'completed' ? 'bg-green-500' :
-                      task.status === 'cancelled' ? 'bg-red-500' :
-                        task.status === 'overdue' ? 'bg-orange-500' :
-                          task.status === 'in-progress' ? 'bg-blue-500' :
-                            'bg-slate-400'
-                      }`} />
-
-                    <CardHeader className="p-4 pb-0">
-                      <div className="flex justify-between items-start gap-3">
-                        <div className="space-y-1.5 flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className={`${getPriorityColor(task.priority)} text-[10px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider`}>
-                              {task.priority}
-                            </Badge>
-                            {isTaskOverdue(task) && (
-                              <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 text-[10px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider">
-                                Overdue
-                              </Badge>
                             )}
-                          </div>
-                          <CardTitle className="text-base font-bold leading-tight truncate pr-1" title={task.title}>
-                            {task.title}
-                          </CardTitle>
-                        </div>
-                        {/* Progress Ring or Simple Status Icon */}
-                        <div className={`h-8 w-8 rounded-full flex items-center justify-center border-2 ${task.status === 'completed' ? 'border-green-100 bg-green-50 text-green-600 dark:border-green-900/30 dark:bg-green-900/20' :
-                          task.status === 'in-progress' ? 'border-blue-100 bg-blue-50 text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20' :
-                            'border-slate-100 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900'
-                          }`}>
-                          {typeof task.progress === 'number' && task.progress > 0 ? (
-                            <span className="text-[10px] font-bold">{task.progress}%</span>
-                          ) : (
-                            <div className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)}`} />
-                          )}
-                        </div>
-                      </div>
-                    </CardHeader>
 
-                    <CardContent className="p-4 pt-3 space-y-4">
-                      <p className="text-xs text-muted-foreground line-clamp-2 h-8 leading-relaxed">
-                        {task.description || "No description provided."}
-                      </p>
+                            {/* Pass Button */}
+                            {task.status !== 'completed' && canPassTask && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); openPassDialog(task); }}
+                                className="h-7 w-7 p-0 rounded-full hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/30 dark:hover:text-violet-400 text-slate-400"
+                                title="Pass Task"
+                              >
+                                <Share2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
 
-                      {/* Compact Metadata Grid */}
-                      <div className="grid grid-cols-1 gap-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-800/50">
-                        {/* Assignee Row */}
-                        <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                            <User className="h-3.5 w-3.5" />
-                            <span>To:</span>
-                          </div>
-                          <div className="flex flex-col items-end">
-                            <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]" title={assignedToInfo.name}>{assignedToInfo.name}</span>
-                            {assignedToInfo.roleLabel && (
-                              <span className="text-[10px] text-muted-foreground">{assignedToInfo.roleLabel}</span>
+                            {/* Edit Button */}
+                            {task.status !== 'completed' && (task.status as string) !== 'cancelled' && canManageTask && (task.status as string) !== 'overdue' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); handleEditClick(task); }}
+                                className="h-7 w-7 p-0 rounded-full hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-900/30 dark:hover:text-amber-400 text-slate-400"
+                                title="Edit Task"
+                              >
+                                <div className="h-3.5 w-3.5">✏️</div>
+                              </Button>
+                            )}
+
+                            {/* Delete Button */}
+                            {task.status !== 'completed' && (task.status as string) !== 'cancelled' && canManageTask && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
+                                disabled={deletingTaskId === task.id || !canDeleteTask(task)}
+                                className="h-7 w-7 p-0 rounded-full hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 text-slate-400 disabled:opacity-30"
+                                title={!canDeleteTask(task) ? 'Cannot delete started task' : 'Delete Task'}
+                              >
+                                {deletingTaskId === task.id ? <Loader2 className="h-3 w-3 animate-spin" /> : '🗑'}
+                              </Button>
                             )}
                           </div>
                         </div>
-
-                        {/* Assigner Row */}
-                        <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                            <UserCheck className="h-3.5 w-3.5" />
-                            <span>By:</span>
-                          </div>
-                          <div className="flex flex-col items-end">
-                            <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]">
-                              {assignedByInfo.name}
-                            </span>
-                            {assignedByInfo.roleLabel && (
-                              <span className="text-[10px] text-muted-foreground">{assignedByInfo.roleLabel}</span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Deadline Row */}
-                        <div className="flex items-center justify-between text-xs border-t border-slate-200 dark:border-slate-700/50 pt-2 mt-0.5">
-                          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                            <Calendar className="h-3.5 w-3.5" />
-                            <span>Due:</span>
-                          </div>
-                          <span className={`font-medium ${isTaskOverdue(task) ? 'text-orange-600 dark:text-orange-400' : 'text-slate-700 dark:text-slate-200'}`}>
-                            {formatDisplayDate(task.deadline)}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Footer Actions */}
-                      <div className="flex items-center justify-between pt-1">
-                        {/* Left Side: Pass History Info (Subtle) */}
-                        <div className="flex items-center">
-                          {task.lastPassedBy ? (
-                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-violet-50 text-violet-700 dark:bg-violet-900/20 dark:text-violet-300 border border-violet-100 dark:border-violet-900/30 cursor-pointer hover:bg-violet-100 transition-colors"
-                              onClick={(e) => { e.stopPropagation(); openPassHistoryDialog(task); }}>
-                              <Share2 className="h-3 w-3" />
-                              <span className="text-[10px] font-medium">History</span>
-                            </div>
-                          ) : (
-                            <div className="text-[10px] text-muted-foreground px-1 italic opacity-50">
-                              No history
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Right Side: Action Buttons */}
-                        <div className="flex items-center gap-1">
-                          {/* Reassign Button */}
-                          {canReassignTask(task) && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); handleReassignClick(task); }}
-                              className="h-7 w-7 p-0 rounded-full hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/30 dark:hover:text-green-400 text-slate-400"
-                              title="Reassign Task"
-                            >
-                              <RefreshCcw className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-
-                          {/* Pass Button */}
-                          {task.status !== 'completed' && canPassTask && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); openPassDialog(task); }}
-                              className="h-7 w-7 p-0 rounded-full hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/30 dark:hover:text-violet-400 text-slate-400"
-                              title="Pass Task"
-                            >
-                              <Share2 className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-
-                          {/* Edit Button */}
-                          {task.status !== 'completed' && (task.status as string) !== 'cancelled' && canManageTask && (task.status as string) !== 'overdue' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); handleEditClick(task); }}
-                              className="h-7 w-7 p-0 rounded-full hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-900/30 dark:hover:text-amber-400 text-slate-400"
-                              title="Edit Task"
-                            >
-                              <div className="h-3.5 w-3.5">✏️</div>
-                            </Button>
-                          )}
-
-                          {/* Delete Button */}
-                          {task.status !== 'completed' && (task.status as string) !== 'cancelled' && canManageTask && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
-                              disabled={deletingTaskId === task.id || !canDeleteTask(task)}
-                              className="h-7 w-7 p-0 rounded-full hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 text-slate-400 disabled:opacity-30"
-                              title={!canDeleteTask(task) ? 'Cannot delete started task' : 'Delete Task'}
-                            >
-                              {deletingTaskId === task.id ? <Loader2 className="h-3 w-3 animate-spin" /> : '🗑'}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+              {visibleTasks.length > 0 && (
+                <div className="mt-6 px-2">
+                  <Pagination
+                    currentPage={taskCurrentPage}
+                    totalPages={taskTotalPages}
+                    totalItems={visibleTasks.length}
+                    itemsPerPage={taskItemsPerPage}
+                    onPageChange={setTaskCurrentPage}
+                    onItemsPerPageChange={setTaskItemsPerPage}
+                    showItemsPerPage={true}
+                    showEntriesInfo={true}
+                  />
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -3709,572 +3760,574 @@ const TaskManagement: React.FC = () => {
       </Dialog>
 
       {/* Task Detail Dialog */}
-      {selectedTask && (
-        <Dialog open={Boolean(selectedTask)} onOpenChange={() => setSelectedTask(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader className="flex-shrink-0">
-              <DialogTitle className="text-2xl font-bold">{selectedTask.title}</DialogTitle>
-              <DialogDescription>
-                Detailed view of task assignments and progress
-              </DialogDescription>
-            </DialogHeader>
+      {
+        selectedTask && (
+          <Dialog open={Boolean(selectedTask)} onOpenChange={() => setSelectedTask(null)}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader className="flex-shrink-0">
+                <DialogTitle className="text-2xl font-bold">{selectedTask.title}</DialogTitle>
+                <DialogDescription>
+                  Detailed view of task assignments and progress
+                </DialogDescription>
+              </DialogHeader>
 
-            <Tabs defaultValue="details" className="mt-4 flex-1 flex flex-col overflow-hidden">
-              <TabsList className="grid grid-cols-3 gap-2 bg-muted/50 flex-shrink-0">
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="activity">Activity</TabsTrigger>
-                <TabsTrigger value="comments">Comments</TabsTrigger>
-              </TabsList>
+              <Tabs defaultValue="details" className="mt-4 flex-1 flex flex-col overflow-hidden">
+                <TabsList className="grid grid-cols-3 gap-2 bg-muted/50 flex-shrink-0">
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="activity">Activity</TabsTrigger>
+                  <TabsTrigger value="comments">Comments</TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="details" className="mt-4 overflow-y-auto flex-1">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-lg bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 border">
-                      <h4 className="font-semibold mb-3 flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                          <FileText className="h-4 w-4 text-white" />
+                <TabsContent value="details" className="mt-4 overflow-y-auto flex-1">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 rounded-lg bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 border">
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                            <FileText className="h-4 w-4 text-white" />
+                          </div>
+                          Description
+                        </h4>
+                        <p className="text-muted-foreground leading-relaxed">{selectedTask.description}</p>
+                      </div>
+
+                      <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                        <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                          <UserCheck className="h-4 w-4 text-violet-600" />
+                          Assigned By
+                        </h4>
+                        <p className="text-muted-foreground font-medium">
+                          {selectedTaskAssignerInfo?.name || 'Unknown'}
+                          {selectedTaskAssignerInfo?.roleLabel && (
+                            <span className="block text-xs text-muted-foreground">{selectedTaskAssignerInfo.roleLabel}</span>
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                        <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                          <User className="h-4 w-4 text-violet-600" />
+                          Assigned To
+                        </h4>
+                        <p className="text-muted-foreground font-medium">
+                          {selectedTaskAssigneeInfo?.name || 'Unassigned'}
+                          {selectedTaskAssigneeInfo?.roleLabel && (
+                            <span className="block text-xs text-muted-foreground">{selectedTaskAssigneeInfo.roleLabel}</span>
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                        <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                          <AlertCircle className="h-4 w-4 text-violet-600" />
+                          Priority
+                        </h4>
+                        <Badge className={getPriorityColor(selectedTask.priority)}>
+                          {capitalizePriority(selectedTask.priority)}
+                        </Badge>
+                      </div>
+
+                      <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                        <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                          <Calendar className="h-4 w-4 text-violet-600" />
+                          Deadline
+                        </h4>
+                        <p className="text-muted-foreground font-medium">
+                          {formatDisplayDate(selectedTask.deadline)}
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                        <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                          <Clock className="h-4 w-4 text-violet-600" />
+                          Assigned Date
+                        </h4>
+                        <p className="text-muted-foreground font-medium">
+                          {selectedTask.createdAt ? formatDateIST(parseToIST(selectedTask.createdAt) || new Date(), 'MMM dd, yyyy') : 'N/A'}
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                        <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                          <Clock className="h-4 w-4 text-violet-600" />
+                          Status
+                        </h4>
+                        <div className="flex items-center gap-2">
+                          <div className={`h-3 w-3 rounded-full ${getStatusColor(selectedTask.status)} shadow-md`} />
+                          <span className="capitalize font-medium">{selectedTask.status.replace('-', ' ')}</span>
                         </div>
-                        Description
-                      </h4>
-                      <p className="text-muted-foreground leading-relaxed">{selectedTask.description}</p>
-                    </div>
-
-                    <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
-                      <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                        <UserCheck className="h-4 w-4 text-violet-600" />
-                        Assigned By
-                      </h4>
-                      <p className="text-muted-foreground font-medium">
-                        {selectedTaskAssignerInfo?.name || 'Unknown'}
-                        {selectedTaskAssignerInfo?.roleLabel && (
-                          <span className="block text-xs text-muted-foreground">{selectedTaskAssignerInfo.roleLabel}</span>
-                        )}
-                      </p>
-                    </div>
-
-                    <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
-                      <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                        <User className="h-4 w-4 text-violet-600" />
-                        Assigned To
-                      </h4>
-                      <p className="text-muted-foreground font-medium">
-                        {selectedTaskAssigneeInfo?.name || 'Unassigned'}
-                        {selectedTaskAssigneeInfo?.roleLabel && (
-                          <span className="block text-xs text-muted-foreground">{selectedTaskAssigneeInfo.roleLabel}</span>
-                        )}
-                      </p>
-                    </div>
-
-                    <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
-                      <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                        <AlertCircle className="h-4 w-4 text-violet-600" />
-                        Priority
-                      </h4>
-                      <Badge className={getPriorityColor(selectedTask.priority)}>
-                        {capitalizePriority(selectedTask.priority)}
-                      </Badge>
-                    </div>
-
-                    <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
-                      <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                        <Calendar className="h-4 w-4 text-violet-600" />
-                        Deadline
-                      </h4>
-                      <p className="text-muted-foreground font-medium">
-                        {formatDisplayDate(selectedTask.deadline)}
-                      </p>
-                    </div>
-
-                    <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
-                      <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                        <Clock className="h-4 w-4 text-violet-600" />
-                        Assigned Date
-                      </h4>
-                      <p className="text-muted-foreground font-medium">
-                        {selectedTask.createdAt ? formatDateIST(parseToIST(selectedTask.createdAt) || new Date(), 'MMM dd, yyyy') : 'N/A'}
-                      </p>
-                    </div>
-
-                    <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
-                      <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                        <Clock className="h-4 w-4 text-violet-600" />
-                        Status
-                      </h4>
-                      <div className="flex items-center gap-2">
-                        <div className={`h-3 w-3 rounded-full ${getStatusColor(selectedTask.status)} shadow-md`} />
-                        <span className="capitalize font-medium">{selectedTask.status.replace('-', ' ')}</span>
                       </div>
                     </div>
+
+                    {selectedTask.tags && selectedTask.tags.length > 0 && (
+                      <div className="p-4 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 border">
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                            <Paperclip className="h-4 w-4 text-white" />
+                          </div>
+                          Tags
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedTask.tags.map(tag => (
+                            <Badge key={tag} className="bg-white dark:bg-gray-900 border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-950 transition-colors">{tag}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
+                </TabsContent>
 
-                  {selectedTask.tags && selectedTask.tags.length > 0 && (
-                    <div className="p-4 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 border">
-                      <h4 className="font-semibold mb-3 flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                          <Paperclip className="h-4 w-4 text-white" />
+                <TabsContent value="activity" className="mt-6 overflow-y-auto flex-1">
+                  <div className="space-y-4">
+                    {isFetchingHistory && selectedTask && isFetchingHistory === selectedTask.id ? (
+                      <div className="flex justify-center py-8 text-muted-foreground">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      </div>
+                    ) : selectedTaskHistory.length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className="h-16 w-16 rounded-full bg-gradient-to-br from-slate-100 to-gray-200 dark:from-slate-800 dark:to-gray-900 flex items-center justify-center mx-auto mb-3">
+                          <Clock className="h-8 w-8 text-muted-foreground" />
                         </div>
-                        Tags
-                      </h4>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedTask.tags.map(tag => (
-                          <Badge key={tag} className="bg-white dark:bg-gray-900 border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-950 transition-colors">{tag}</Badge>
-                        ))}
+                        <p className="text-sm text-muted-foreground">No history entries yet</p>
                       </div>
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
+                    ) : (
+                      selectedTaskHistory.map((entry) => {
+                        const actor = employeesById.get(String(entry.user_id));
+                        const actorName = actor?.name ?? (entry.user_id ? `User #${entry.user_id}` : 'Unknown');
+                        const actorRole = actor?.role;
+                        const actorInfo = getAssignedByInfo(String(entry.user_id), actorRole);
+                        const entryTime = formatDateTimeIST(entry.created_at, 'MMM dd, yyyy HH:mm');
+                        const details = entry.details || {};
 
-              <TabsContent value="activity" className="mt-6 overflow-y-auto flex-1">
-                <div className="space-y-4">
-                  {isFetchingHistory && selectedTask && isFetchingHistory === selectedTask.id ? (
-                    <div className="flex justify-center py-8 text-muted-foreground">
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    </div>
-                  ) : selectedTaskHistory.length === 0 ? (
-                    <div className="text-center py-8">
-                      <div className="h-16 w-16 rounded-full bg-gradient-to-br from-slate-100 to-gray-200 dark:from-slate-800 dark:to-gray-900 flex items-center justify-center mx-auto mb-3">
-                        <Clock className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                      <p className="text-sm text-muted-foreground">No history entries yet</p>
-                    </div>
-                  ) : (
-                    selectedTaskHistory.map((entry) => {
-                      const actor = employeesById.get(String(entry.user_id));
-                      const actorName = actor?.name ?? (entry.user_id ? `User #${entry.user_id}` : 'Unknown');
-                      const actorRole = actor?.role;
-                      const actorInfo = getAssignedByInfo(String(entry.user_id), actorRole);
-                      const entryTime = formatDateTimeIST(entry.created_at, 'MMM dd, yyyy HH:mm');
-                      const details = entry.details || {};
-
-                      const renderDetails = () => {
-                        if (!details) return null;
-                        if (entry.action === 'passed') {
-                          const fromId = details.from ? String(details.from) : '';
-                          const toId = details.to ? String(details.to) : '';
-                          const fromInfo = fromId ? getAssignedToInfo(fromId) : { name: 'Unknown', roleLabel: undefined };
-                          const toInfo = toId ? getAssignedToInfo(toId) : { name: 'Unknown', roleLabel: undefined };
-                          const toName = typeof details.to_name === 'string' ? details.to_name : null;
-                          const note = typeof details.note === 'string' && details.note.trim().length > 0 ? details.note : null;
-                          return (
-                            <div className="text-sm text-muted-foreground space-y-1">
-                              <div>
-                                From: <span className="font-medium text-foreground">{fromInfo.name}</span>
-                                {fromInfo.roleLabel && <span className="text-xs ml-1">({fromInfo.roleLabel})</span>}
-                              </div>
-                              <div>
-                                To: <span className="font-medium text-foreground">{toName || toInfo.name}</span>
-                                {toInfo.roleLabel && <span className="text-xs ml-1">({toInfo.roleLabel})</span>}
-                              </div>
-                              {note && <div className="italic">"{note}"</div>}
-                            </div>
-                          );
-                        }
-
-                        if (entry.action === 'status_changed') {
-                          const from = typeof details.from === 'string' ? details.from : 'Unknown';
-                          const to = typeof details.to === 'string' ? details.to : 'Unknown';
-                          return (
-                            <div className="text-sm text-muted-foreground space-y-1">
-                              <div>Status changed from <span className="font-medium text-foreground">{from}</span> to <span className="font-medium text-foreground">{to}</span></div>
-                            </div>
-                          );
-                        }
-
-                        if (entry.action === 'updated') {
-                          const changes = details.changes as Record<string, { from: unknown; to: unknown }> | undefined;
-                          if (!changes) return null;
-                          return (
-                            <div className="text-sm text-muted-foreground space-y-1">
-                              {Object.entries(changes).map(([field, change]) => (
-                                <div key={field}>
-                                  <span className="font-medium text-foreground capitalize">{field.replace('_', ' ')}:</span> {String(change.from)} → {String(change.to)}
+                        const renderDetails = () => {
+                          if (!details) return null;
+                          if (entry.action === 'passed') {
+                            const fromId = details.from ? String(details.from) : '';
+                            const toId = details.to ? String(details.to) : '';
+                            const fromInfo = fromId ? getAssignedToInfo(fromId) : { name: 'Unknown', roleLabel: undefined };
+                            const toInfo = toId ? getAssignedToInfo(toId) : { name: 'Unknown', roleLabel: undefined };
+                            const toName = typeof details.to_name === 'string' ? details.to_name : null;
+                            const note = typeof details.note === 'string' && details.note.trim().length > 0 ? details.note : null;
+                            return (
+                              <div className="text-sm text-muted-foreground space-y-1">
+                                <div>
+                                  From: <span className="font-medium text-foreground">{fromInfo.name}</span>
+                                  {fromInfo.roleLabel && <span className="text-xs ml-1">({fromInfo.roleLabel})</span>}
                                 </div>
-                              ))}
-                            </div>
-                          );
-                        }
-
-                        if (entry.action === 'created') {
-                          const assignedToId = String(details.assigned_to ?? '');
-                          const assignedToInfo = assignedToId ? getAssignedToInfo(assignedToId) : { name: 'Unassigned', roleLabel: undefined };
-                          return (
-                            <div className="text-sm text-muted-foreground">
-                              Task assigned to <span className="font-medium text-foreground">{assignedToInfo.name}</span>
-                              {assignedToInfo.roleLabel && <span className="text-xs ml-1">({assignedToInfo.roleLabel})</span>}
-                            </div>
-                          );
-                        }
-
-                        return null;
-                      };
-
-                      const actionLabelMap: Record<string, string> = {
-                        created: 'Task Created',
-                        passed: 'Task Passed',
-                        status_changed: 'Status Changed',
-                        updated: 'Task Updated',
-                      };
-
-                      const actionLabel = actionLabelMap[entry.action] ?? entry.action;
-                      const actionIcon = (() => {
-                        switch (entry.action) {
-                          case 'created':
-                            return <PlayCircle className="h-6 w-6 text-white" />;
-                          case 'passed':
-                            return <Share2 className="h-6 w-6 text-white" />;
-                          case 'status_changed':
-                            return <RefreshCcw className="h-6 w-6 text-white" />;
-                          case 'updated':
-                            return <Pencil className="h-6 w-6 text-white" />;
-                          default:
-                            return <Clock className="h-6 w-6 text-white" />;
-                        }
-                      })();
-
-                      const gradientClass = (() => {
-                        switch (entry.action) {
-                          case 'created':
-                            return 'from-blue-500 to-indigo-600';
-                          case 'passed':
-                            return 'from-violet-500 to-purple-600';
-                          case 'status_changed':
-                            return 'from-amber-500 to-orange-600';
-                          case 'updated':
-                            return 'from-emerald-500 to-teal-600';
-                          default:
-                            return 'from-slate-500 to-gray-600';
-                        }
-                      })();
-
-                      return (
-                        <div
-                          key={entry.id}
-                          className="flex items-start gap-4 p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-all"
-                        >
-                          <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${gradientClass} flex items-center justify-center shadow-lg flex-shrink-0`}>
-                            {actionIcon}
-                          </div>
-                          <div className="flex-1 space-y-2">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                              <p className="font-semibold text-lg">{actionLabel}</p>
-                              <div className="flex flex-col items-end">
-                                <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                  <User className="h-3.5 w-3.5" />
-                                  {actorInfo.name}
-                                </p>
-                                {actorInfo.roleLabel && (
-                                  <p className="text-xs text-muted-foreground">{actorInfo.roleLabel}</p>
-                                )}
+                                <div>
+                                  To: <span className="font-medium text-foreground">{toName || toInfo.name}</span>
+                                  {toInfo.roleLabel && <span className="text-xs ml-1">({toInfo.roleLabel})</span>}
+                                </div>
+                                {note && <div className="italic">"{note}"</div>}
                               </div>
-                            </div>
-                            <p className="text-sm text-muted-foreground flex items-center gap-2">
-                              <Clock className="h-3 w-3" />
-                              {entryTime}
-                            </p>
-                            {renderDetails()}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </TabsContent>
+                            );
+                          }
 
-              <TabsContent value="comments" className="mt-4 flex flex-col h-[calc(100vh-280px)] min-h-[500px]">
-                {/* Comments Header */}
-                <div className="p-3 rounded-lg border bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 flex-shrink-0">
-                  <h3 className="font-semibold text-base flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-violet-600" />
-                    Task Discussion
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Chat with team members about this task
-                  </p>
-                </div>
+                          if (entry.action === 'status_changed') {
+                            const from = typeof details.from === 'string' ? details.from : 'Unknown';
+                            const to = typeof details.to === 'string' ? details.to : 'Unknown';
+                            return (
+                              <div className="text-sm text-muted-foreground space-y-1">
+                                <div>Status changed from <span className="font-medium text-foreground">{from}</span> to <span className="font-medium text-foreground">{to}</span></div>
+                              </div>
+                            );
+                          }
 
-                {/* Comments List with Scrolling - WhatsApp Style */}
-                <div className="flex-1 overflow-y-auto space-y-3 p-4 bg-[#efeae2] dark:bg-slate-900 rounded-lg my-3" style={{ scrollbarWidth: 'thin', scrollbarColor: '#a78bfa #e2e8f0', backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'100\' height=\'100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M0 0h100v100H0z\' fill=\'%23efeae2\' fill-opacity=\'0.4\'/%3E%3Cpath d=\'M50 0L0 50M100 0L50 50M100 50L50 100M50 50L0 100\' stroke=\'%23d1ccc0\' stroke-width=\'0.5\' opacity=\'0.3\'/%3E%3C/svg%3E")' }}>
-                  {isLoadingComments ? (
-                    <div className="text-center py-12">
-                      <Loader2 className="h-10 w-10 animate-spin mx-auto text-violet-600" />
-                      <p className="text-base text-muted-foreground mt-3">Loading comments...</p>
-                    </div>
-                  ) : taskComments.length === 0 ? (
-                    <div className="text-center py-16">
-                      <div className="h-20 w-20 rounded-full bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900 dark:to-purple-900 flex items-center justify-center mx-auto mb-4">
-                        <MessageSquare className="h-10 w-10 text-violet-600 dark:text-violet-400" />
-                      </div>
-                      <p className="text-base text-muted-foreground font-medium">No comments yet</p>
-                      <p className="text-sm text-muted-foreground mt-2">Start the conversation!</p>
-                    </div>
-                  ) : (
-                    <>
-                      {taskComments.map((comment, index) => {
-                        const isOwnComment = comment.user_id === user?.id;
-                        const commentUser = employeesById.get(String(comment.user_id));
-                        const userPhotoUrl = commentUser?.photo_url;
-                        const userInitials = comment.user_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+                          if (entry.action === 'updated') {
+                            const changes = details.changes as Record<string, { from: unknown; to: unknown }> | undefined;
+                            if (!changes) return null;
+                            return (
+                              <div className="text-sm text-muted-foreground space-y-1">
+                                {Object.entries(changes).map(([field, change]) => (
+                                  <div key={field}>
+                                    <span className="font-medium text-foreground capitalize">{field.replace('_', ' ')}:</span> {String(change.from)} → {String(change.to)}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          }
 
-                        // Use WhatsApp-style time formatting
-                        const formattedTime = getCommentTimeDisplay(comment.created_at);
-                        const dateSeparator = getDateSeparator(comment.created_at);
+                          if (entry.action === 'created') {
+                            const assignedToId = String(details.assigned_to ?? '');
+                            const assignedToInfo = assignedToId ? getAssignedToInfo(assignedToId) : { name: 'Unassigned', roleLabel: undefined };
+                            return (
+                              <div className="text-sm text-muted-foreground">
+                                Task assigned to <span className="font-medium text-foreground">{assignedToInfo.name}</span>
+                                {assignedToInfo.roleLabel && <span className="text-xs ml-1">({assignedToInfo.roleLabel})</span>}
+                              </div>
+                            );
+                          }
 
-                        // Check if we need to show date separator (different from previous comment's date)
-                        const previousComment = index > 0 ? taskComments[index - 1] : null;
-                        const previousDateSeparator = previousComment ? getDateSeparator(previousComment.created_at) : null;
-                        const showDateSeparator = dateSeparator && dateSeparator !== previousDateSeparator;
+                          return null;
+                        };
+
+                        const actionLabelMap: Record<string, string> = {
+                          created: 'Task Created',
+                          passed: 'Task Passed',
+                          status_changed: 'Status Changed',
+                          updated: 'Task Updated',
+                        };
+
+                        const actionLabel = actionLabelMap[entry.action] ?? entry.action;
+                        const actionIcon = (() => {
+                          switch (entry.action) {
+                            case 'created':
+                              return <PlayCircle className="h-6 w-6 text-white" />;
+                            case 'passed':
+                              return <Share2 className="h-6 w-6 text-white" />;
+                            case 'status_changed':
+                              return <RefreshCcw className="h-6 w-6 text-white" />;
+                            case 'updated':
+                              return <Pencil className="h-6 w-6 text-white" />;
+                            default:
+                              return <Clock className="h-6 w-6 text-white" />;
+                          }
+                        })();
+
+                        const gradientClass = (() => {
+                          switch (entry.action) {
+                            case 'created':
+                              return 'from-blue-500 to-indigo-600';
+                            case 'passed':
+                              return 'from-violet-500 to-purple-600';
+                            case 'status_changed':
+                              return 'from-amber-500 to-orange-600';
+                            case 'updated':
+                              return 'from-emerald-500 to-teal-600';
+                            default:
+                              return 'from-slate-500 to-gray-600';
+                          }
+                        })();
 
                         return (
-                          <div key={comment.id}>
-                            {/* Date Separator */}
-                            {showDateSeparator && (
-                              <div className="flex items-center gap-3 my-4">
-                                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
-                                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
-                                  {dateSeparator}
-                                </span>
-                                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                          <div
+                            key={entry.id}
+                            className="flex items-start gap-4 p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-all"
+                          >
+                            <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${gradientClass} flex items-center justify-center shadow-lg flex-shrink-0`}>
+                              {actionIcon}
+                            </div>
+                            <div className="flex-1 space-y-2">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                <p className="font-semibold text-lg">{actionLabel}</p>
+                                <div className="flex flex-col items-end">
+                                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                    <User className="h-3.5 w-3.5" />
+                                    {actorInfo.name}
+                                  </p>
+                                  {actorInfo.roleLabel && (
+                                    <p className="text-xs text-muted-foreground">{actorInfo.roleLabel}</p>
+                                  )}
+                                </div>
                               </div>
-                            )}
+                              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                <Clock className="h-3 w-3" />
+                                {entryTime}
+                              </p>
+                              {renderDetails()}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </TabsContent>
 
-                            {/* Comment */}
-                            <div
-                              className={`flex gap-2 ${isOwnComment ? 'flex-row-reverse' : 'flex-row'} animate-in slide-in-from-bottom-2`}
-                            >
-                              {/* Profile Photo */}
-                              <div className="flex-shrink-0">
-                                {userPhotoUrl ? (
-                                  <img
-                                    src={userPhotoUrl}
-                                    alt={comment.user_name}
-                                    className="w-8 h-8 rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-sm"
-                                  />
-                                ) : (
-                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white dark:border-slate-700">
-                                    {userInitials}
-                                  </div>
-                                )}
-                              </div>
+                <TabsContent value="comments" className="mt-4 flex flex-col h-[calc(100vh-280px)] min-h-[500px]">
+                  {/* Comments Header */}
+                  <div className="p-3 rounded-lg border bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 flex-shrink-0">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-violet-600" />
+                      Task Discussion
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Chat with team members about this task
+                    </p>
+                  </div>
 
-                              {/* Message Bubble */}
-                              <div className={`max-w-[70%] ${isOwnComment ? 'items-end' : 'items-start'} flex flex-col`}>
-                                {/* Name & Role (only for others' messages) */}
-                                {!isOwnComment && (
-                                  <div className="flex items-center gap-2 mb-1 px-2">
-                                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                      {comment.user_name}
-                                    </span>
-                                    <span className="text-xs px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 font-medium">
-                                      {comment.user_role}
-                                    </span>
-                                  </div>
-                                )}
+                  {/* Comments List with Scrolling - WhatsApp Style */}
+                  <div className="flex-1 overflow-y-auto space-y-3 p-4 bg-[#efeae2] dark:bg-slate-900 rounded-lg my-3" style={{ scrollbarWidth: 'thin', scrollbarColor: '#a78bfa #e2e8f0', backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'100\' height=\'100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M0 0h100v100H0z\' fill=\'%23efeae2\' fill-opacity=\'0.4\'/%3E%3Cpath d=\'M50 0L0 50M100 0L50 50M100 50L50 100M50 50L0 100\' stroke=\'%23d1ccc0\' stroke-width=\'0.5\' opacity=\'0.3\'/%3E%3C/svg%3E")' }}>
+                    {isLoadingComments ? (
+                      <div className="text-center py-12">
+                        <Loader2 className="h-10 w-10 animate-spin mx-auto text-violet-600" />
+                        <p className="text-base text-muted-foreground mt-3">Loading comments...</p>
+                      </div>
+                    ) : taskComments.length === 0 ? (
+                      <div className="text-center py-16">
+                        <div className="h-20 w-20 rounded-full bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900 dark:to-purple-900 flex items-center justify-center mx-auto mb-4">
+                          <MessageSquare className="h-10 w-10 text-violet-600 dark:text-violet-400" />
+                        </div>
+                        <p className="text-base text-muted-foreground font-medium">No comments yet</p>
+                        <p className="text-sm text-muted-foreground mt-2">Start the conversation!</p>
+                      </div>
+                    ) : (
+                      <>
+                        {taskComments.map((comment, index) => {
+                          const isOwnComment = comment.user_id === user?.id;
+                          const commentUser = employeesById.get(String(comment.user_id));
+                          const userPhotoUrl = commentUser?.photo_url;
+                          const userInitials = comment.user_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
 
-                                {/* Message Content */}
-                                <div
-                                  className={`rounded-lg px-3 py-2 shadow-sm ${isOwnComment
-                                    ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-tr-none'
-                                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-tl-none'
-                                    }`}
-                                >
-                                  {/* Role badge for own messages (inside bubble) */}
-                                  {isOwnComment && (
-                                    <div className="flex items-center gap-1.5 mb-1">
-                                      <span className="text-xs font-semibold text-white/90">You</span>
-                                      <span className="text-xs px-1.5 py-0.5 rounded bg-white/20 text-white font-medium">
+                          // Use WhatsApp-style time formatting
+                          const formattedTime = getCommentTimeDisplay(comment.created_at);
+                          const dateSeparator = getDateSeparator(comment.created_at);
+
+                          // Check if we need to show date separator (different from previous comment's date)
+                          const previousComment = index > 0 ? taskComments[index - 1] : null;
+                          const previousDateSeparator = previousComment ? getDateSeparator(previousComment.created_at) : null;
+                          const showDateSeparator = dateSeparator && dateSeparator !== previousDateSeparator;
+
+                          return (
+                            <div key={comment.id}>
+                              {/* Date Separator */}
+                              {showDateSeparator && (
+                                <div className="flex items-center gap-3 my-4">
+                                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
+                                    {dateSeparator}
+                                  </span>
+                                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                                </div>
+                              )}
+
+                              {/* Comment */}
+                              <div
+                                className={`flex gap-2 ${isOwnComment ? 'flex-row-reverse' : 'flex-row'} animate-in slide-in-from-bottom-2`}
+                              >
+                                {/* Profile Photo */}
+                                <div className="flex-shrink-0">
+                                  {userPhotoUrl ? (
+                                    <img
+                                      src={userPhotoUrl}
+                                      alt={comment.user_name}
+                                      className="w-8 h-8 rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-sm"
+                                    />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white dark:border-slate-700">
+                                      {userInitials}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Message Bubble */}
+                                <div className={`max-w-[70%] ${isOwnComment ? 'items-end' : 'items-start'} flex flex-col`}>
+                                  {/* Name & Role (only for others' messages) */}
+                                  {!isOwnComment && (
+                                    <div className="flex items-center gap-2 mb-1 px-2">
+                                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                        {comment.user_name}
+                                      </span>
+                                      <span className="text-xs px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 font-medium">
                                         {comment.user_role}
                                       </span>
                                     </div>
                                   )}
 
-                                  {/* File Attachment */}
-                                  {comment.file_url && (
-                                    <a
-                                      href={`${API_BASE_URL}${comment.file_url}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      download={comment.file_name}
-                                      className={`flex items-center gap-2 p-2 rounded-lg mb-2 transition-colors ${isOwnComment
-                                        ? 'bg-white/10 hover:bg-white/20'
-                                        : 'bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600'
-                                        }`}
-                                    >
-                                      {comment.file_type?.startsWith('image/') ? (
-                                        <div className="flex flex-col gap-1">
-                                          <img
-                                            src={`${API_BASE_URL}${comment.file_url}`}
-                                            alt={comment.file_name || 'Attachment'}
-                                            className="max-w-[200px] max-h-[200px] rounded-lg object-cover"
-                                          />
-                                          <span className={`text-xs ${isOwnComment ? 'text-white/80' : 'text-slate-600 dark:text-slate-400'}`}>
-                                            {comment.file_name}
-                                          </span>
-                                        </div>
-                                      ) : (
-                                        <>
-                                          {comment.file_type?.includes('pdf') ? (
-                                            <FileText className={`h-5 w-5 ${isOwnComment ? 'text-white' : 'text-red-500'}`} />
-                                          ) : comment.file_type?.includes('spreadsheet') || comment.file_type?.includes('excel') || comment.file_name?.endsWith('.csv') ? (
-                                            <FileSpreadsheet className={`h-5 w-5 ${isOwnComment ? 'text-white' : 'text-green-500'}`} />
-                                          ) : comment.file_type?.includes('word') || comment.file_name?.endsWith('.doc') || comment.file_name?.endsWith('.docx') ? (
-                                            <FileText className={`h-5 w-5 ${isOwnComment ? 'text-white' : 'text-blue-500'}`} />
-                                          ) : (
-                                            <FileIcon className={`h-5 w-5 ${isOwnComment ? 'text-white' : 'text-slate-500'}`} />
-                                          )}
-                                          <div className="flex-1 min-w-0">
-                                            <p className={`text-sm font-medium truncate ${isOwnComment ? 'text-white' : 'text-slate-800 dark:text-slate-200'}`}>
-                                              {comment.file_name}
-                                            </p>
-                                            {comment.file_size && (
-                                              <p className={`text-xs ${isOwnComment ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}`}>
-                                                {(comment.file_size / 1024).toFixed(1)} KB
-                                              </p>
-                                            )}
-                                          </div>
-                                          <Download className={`h-4 w-4 ${isOwnComment ? 'text-white/70' : 'text-slate-400'}`} />
-                                        </>
-                                      )}
-                                    </a>
-                                  )}
-
-                                  {/* Text Comment */}
-                                  {comment.comment && (
-                                    <p className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${isOwnComment ? 'text-white' : 'text-slate-800 dark:text-slate-200'}`}>
-                                      {comment.comment}
-                                    </p>
-                                  )}
-                                  <div className="flex items-center justify-end gap-2 mt-1">
-                                    <span className={`text-xs ${isOwnComment ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}`}>
-                                      {formattedTime}
-                                    </span>
+                                  {/* Message Content */}
+                                  <div
+                                    className={`rounded-lg px-3 py-2 shadow-sm ${isOwnComment
+                                      ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-tr-none'
+                                      : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-tl-none'
+                                      }`}
+                                  >
+                                    {/* Role badge for own messages (inside bubble) */}
                                     {isOwnComment && (
-                                      <button
-                                        onClick={() => handleDeleteComment(comment.id)}
-                                        className="opacity-0 group-hover:opacity-100 hover:bg-white/20 rounded p-0.5 transition-all"
-                                      >
-                                        <Trash2 className="h-3 w-3" />
-                                      </button>
+                                      <div className="flex items-center gap-1.5 mb-1">
+                                        <span className="text-xs font-semibold text-white/90">You</span>
+                                        <span className="text-xs px-1.5 py-0.5 rounded bg-white/20 text-white font-medium">
+                                          {comment.user_role}
+                                        </span>
+                                      </div>
                                     )}
+
+                                    {/* File Attachment */}
+                                    {comment.file_url && (
+                                      <a
+                                        href={`${API_BASE_URL}${comment.file_url}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        download={comment.file_name}
+                                        className={`flex items-center gap-2 p-2 rounded-lg mb-2 transition-colors ${isOwnComment
+                                          ? 'bg-white/10 hover:bg-white/20'
+                                          : 'bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600'
+                                          }`}
+                                      >
+                                        {comment.file_type?.startsWith('image/') ? (
+                                          <div className="flex flex-col gap-1">
+                                            <img
+                                              src={`${API_BASE_URL}${comment.file_url}`}
+                                              alt={comment.file_name || 'Attachment'}
+                                              className="max-w-[200px] max-h-[200px] rounded-lg object-cover"
+                                            />
+                                            <span className={`text-xs ${isOwnComment ? 'text-white/80' : 'text-slate-600 dark:text-slate-400'}`}>
+                                              {comment.file_name}
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          <>
+                                            {comment.file_type?.includes('pdf') ? (
+                                              <FileText className={`h-5 w-5 ${isOwnComment ? 'text-white' : 'text-red-500'}`} />
+                                            ) : comment.file_type?.includes('spreadsheet') || comment.file_type?.includes('excel') || comment.file_name?.endsWith('.csv') ? (
+                                              <FileSpreadsheet className={`h-5 w-5 ${isOwnComment ? 'text-white' : 'text-green-500'}`} />
+                                            ) : comment.file_type?.includes('word') || comment.file_name?.endsWith('.doc') || comment.file_name?.endsWith('.docx') ? (
+                                              <FileText className={`h-5 w-5 ${isOwnComment ? 'text-white' : 'text-blue-500'}`} />
+                                            ) : (
+                                              <FileIcon className={`h-5 w-5 ${isOwnComment ? 'text-white' : 'text-slate-500'}`} />
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                              <p className={`text-sm font-medium truncate ${isOwnComment ? 'text-white' : 'text-slate-800 dark:text-slate-200'}`}>
+                                                {comment.file_name}
+                                              </p>
+                                              {comment.file_size && (
+                                                <p className={`text-xs ${isOwnComment ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}`}>
+                                                  {(comment.file_size / 1024).toFixed(1)} KB
+                                                </p>
+                                              )}
+                                            </div>
+                                            <Download className={`h-4 w-4 ${isOwnComment ? 'text-white/70' : 'text-slate-400'}`} />
+                                          </>
+                                        )}
+                                      </a>
+                                    )}
+
+                                    {/* Text Comment */}
+                                    {comment.comment && (
+                                      <p className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${isOwnComment ? 'text-white' : 'text-slate-800 dark:text-slate-200'}`}>
+                                        {comment.comment}
+                                      </p>
+                                    )}
+                                    <div className="flex items-center justify-end gap-2 mt-1">
+                                      <span className={`text-xs ${isOwnComment ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}`}>
+                                        {formattedTime}
+                                      </span>
+                                      {isOwnComment && (
+                                        <button
+                                          onClick={() => handleDeleteComment(comment.id)}
+                                          className="opacity-0 group-hover:opacity-100 hover:bg-white/20 rounded p-0.5 transition-all"
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
                             </div>
+                          );
+                        })}
+                        <div ref={commentsEndRef} />
+                      </>
+                    )}
+                  </div>
+
+                  {/* WhatsApp-style Comment Input */}
+                  <div className="p-2 bg-slate-50 dark:bg-slate-900 flex-shrink-0">
+                    {/* Attached Files Preview */}
+                    {attachedFiles.length > 0 && (
+                      <div className="mb-2 flex flex-wrap gap-2 px-2">
+                        {attachedFiles.map((file, index) => (
+                          <div key={index} className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-2 py-1 rounded-lg border text-xs shadow-sm">
+                            <Paperclip className="h-3 w-3 text-violet-600" />
+                            <span className="font-medium truncate max-w-[100px]">{file.name}</span>
+                            <button
+                              onClick={() => removeAttachedFile(index)}
+                              className="hover:bg-red-100 dark:hover:bg-red-900 rounded-full p-0.5"
+                            >
+                              <XCircle className="h-3 w-3 text-red-500" />
+                            </button>
                           </div>
-                        );
-                      })}
-                      <div ref={commentsEndRef} />
-                    </>
-                  )}
-                </div>
+                        ))}
+                      </div>
+                    )}
 
-                {/* WhatsApp-style Comment Input */}
-                <div className="p-2 bg-slate-50 dark:bg-slate-900 flex-shrink-0">
-                  {/* Attached Files Preview */}
-                  {attachedFiles.length > 0 && (
-                    <div className="mb-2 flex flex-wrap gap-2 px-2">
-                      {attachedFiles.map((file, index) => (
-                        <div key={index} className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-2 py-1 rounded-lg border text-xs shadow-sm">
-                          <Paperclip className="h-3 w-3 text-violet-600" />
-                          <span className="font-medium truncate max-w-[100px]">{file.name}</span>
-                          <button
-                            onClick={() => removeAttachedFile(index)}
-                            className="hover:bg-red-100 dark:hover:bg-red-900 rounded-full p-0.5"
-                          >
-                            <XCircle className="h-3 w-3 text-red-500" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                    {/* WhatsApp-style Input Row */}
+                    <div className="flex items-center gap-2">
+                      {/* Emoji Picker Button */}
+                      <div className="relative" ref={emojiPickerRef}>
+                        <button
+                          type="button"
+                          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                          className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors"
+                          title="Add emoji"
+                        >
+                          <span className="text-xl">😊</span>
+                        </button>
 
-                  {/* WhatsApp-style Input Row */}
-                  <div className="flex items-center gap-2">
-                    {/* Emoji Picker Button */}
-                    <div className="relative" ref={emojiPickerRef}>
+                        {/* Emoji Picker Popup */}
+                        {showEmojiPicker && (
+                          <div className="absolute bottom-full left-0 mb-2 p-3 bg-white dark:bg-slate-900 border-2 rounded-2xl shadow-2xl z-50 w-80 max-h-64 overflow-y-auto">
+                            <div className="grid grid-cols-8 gap-1">
+                              {['😊', '😂', '❤️', '👍', '👎', '🎉', '🔥', '✨', '💯', '👏', '🙏', '💪', '✅', '❌', '⚠️', '📌', '📝', '💡', '🚀', '⭐', '🎯', '📊', '💼', '📅', '⏰', '🔔', '📧', '📞', '💬', '🤝', '👥', '🏆'].map((emoji) => (
+                                <button
+                                  key={emoji}
+                                  type="button"
+                                  onClick={() => handleEmojiSelect(emoji)}
+                                  className="text-2xl hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg p-1.5 transition-colors"
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* File Upload Button */}
                       <button
                         type="button"
-                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        onClick={() => fileInputRef.current?.click()}
                         className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors"
-                        title="Add emoji"
+                        title="Attach file"
                       >
-                        <span className="text-xl">😊</span>
+                        <Paperclip className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                       </button>
-
-                      {/* Emoji Picker Popup */}
-                      {showEmojiPicker && (
-                        <div className="absolute bottom-full left-0 mb-2 p-3 bg-white dark:bg-slate-900 border-2 rounded-2xl shadow-2xl z-50 w-80 max-h-64 overflow-y-auto">
-                          <div className="grid grid-cols-8 gap-1">
-                            {['😊', '😂', '❤️', '👍', '👎', '🎉', '🔥', '✨', '💯', '👏', '🙏', '💪', '✅', '❌', '⚠️', '📌', '📝', '💡', '🚀', '⭐', '🎯', '📊', '💼', '📅', '⏰', '🔔', '📧', '📞', '💬', '🤝', '👥', '🏆'].map((emoji) => (
-                              <button
-                                key={emoji}
-                                type="button"
-                                onClick={() => handleEmojiSelect(emoji)}
-                                className="text-2xl hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg p-1.5 transition-colors"
-                              >
-                                {emoji}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* File Upload Button */}
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors"
-                      title="Attach file"
-                    >
-                      <Paperclip className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                    </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx,.xls,.ppt,.pptx,.zip,.rar"
-                    />
-
-                    {/* Input Field */}
-                    <div className="flex-1 bg-white dark:bg-slate-800 rounded-full px-4 py-2 border border-slate-300 dark:border-slate-700 focus-within:border-violet-500 transition-colors">
                       <input
-                        type="text"
-                        placeholder="Type a message"
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handlePostComment();
-                          }
-                        }}
-                        className="w-full bg-transparent outline-none text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx,.xls,.ppt,.pptx,.zip,.rar"
                       />
-                    </div>
 
-                    {/* Send Button */}
-                    <button
-                      onClick={handlePostComment}
-                      disabled={(!newComment.trim() && attachedFiles.length === 0) || isPostingComment}
-                      className="p-2.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                      title="Send message"
-                    >
-                      {isPostingComment ? (
-                        <Loader2 className="h-5 w-5 text-white animate-spin" />
-                      ) : (
-                        <Send className="h-5 w-5 text-white" />
-                      )}
-                    </button>
+                      {/* Input Field */}
+                      <div className="flex-1 bg-white dark:bg-slate-800 rounded-full px-4 py-2 border border-slate-300 dark:border-slate-700 focus-within:border-violet-500 transition-colors">
+                        <input
+                          type="text"
+                          placeholder="Type a message"
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              handlePostComment();
+                            }
+                          }}
+                          className="w-full bg-transparent outline-none text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                        />
+                      </div>
+
+                      {/* Send Button */}
+                      <button
+                        onClick={handlePostComment}
+                        disabled={(!newComment.trim() && attachedFiles.length === 0) || isPostingComment}
+                        className="p-2.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                        title="Send message"
+                      >
+                        {isPostingComment ? (
+                          <Loader2 className="h-5 w-5 text-white animate-spin" />
+                        ) : (
+                          <Send className="h-5 w-5 text-white" />
+                        )}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </DialogContent>
-        </Dialog>
-      )}
+                </TabsContent>
+              </Tabs>
+            </DialogContent>
+          </Dialog>
+        )
+      }
 
       {/* Export Dialog */}
       <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
@@ -4586,7 +4639,7 @@ const TaskManagement: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 };
 

@@ -50,6 +50,8 @@ interface EmployeePerformance {
   qualityScore: number;
   overallRating: number;
   month: string;
+  completedTasks?: number;
+  taskEfficiency?: number;
 }
 
 interface DepartmentMetrics {
@@ -140,9 +142,9 @@ export default function Reports() {
 
       // Fetch all data in parallel
       const [empResponse, deptResponse, summaryResponse] = await Promise.all([
-        fetch(`https://staffly.space/reports/employee-performance?${empParams}`, { headers }),
-        fetch(`https://staffly.space/reports/department-metrics?${deptParams}`, { headers }),
-        fetch(`https://staffly.space/reports/executive-summary?${summaryParams}`, { headers }),
+        fetch(`https://testing.staffly.space/reports/employee-performance?${empParams}`, { headers }),
+        fetch(`https://testing.staffly.space/reports/department-metrics?${deptParams}`, { headers }),
+        fetch(`https://testing.staffly.space/reports/executive-summary?${summaryParams}`, { headers }),
       ]);
 
       // Handle employee performance response
@@ -271,38 +273,43 @@ export default function Reports() {
     return Math.round(baseScore / 2);
   };
 
-  // Calculate top 5 performers from employee performance data
+  // Calculate top 5 performers with enriched data
   const topPerformers = React.useMemo(() => {
-    // First, try to use API top performers if available and valid
-    const apiPerformers = executiveSummary?.topPerformers;
-    if (apiPerformers && Array.isArray(apiPerformers) && apiPerformers.length > 0) {
-      // Validate and use API data
-      return apiPerformers
-        .map((performer: any) => ({
-          employeeId: performer.employeeId || performer.id || '',
-          name: performer.name || '',
-          department: performer.department || '',
-          role: performer.role || '',
-          taskCompletionScore: performer.taskCompletionScore || performer.taskCompletionRate || 0,
-          attendanceScore: performer.attendanceScore || 0,
-          completedTasks: performer.completedTasks || 0,
-          taskEfficiency: performer.taskEfficiency || performer.taskCompletionRate || 0,
-          score: performer.score || performer.overallRating || 0,
-        }))
-        .filter((p: any) => p.score > 0 && p.name)
-        .sort((a: any, b: any) => b.score - a.score)
-        .slice(0, 5);
-    }
-
-    // Fallback: Calculate from employee performance data
     if (!employeePerformance || employeePerformance.length === 0) {
+      // Fallback to executive summary top performers if general performance is empty
+      const apiPerformers = executiveSummary?.topPerformers;
+      if (apiPerformers && Array.isArray(apiPerformers)) {
+        return apiPerformers
+          .map((p: any) => ({
+            employeeId: p.employeeId || p.id || '',
+            name: p.name || '',
+            department: p.department || '',
+            role: p.role || '',
+            taskCompletionScore: Math.round(p.taskCompletionScore || p.taskCompletionRate || 0),
+            attendanceScore: Math.round(p.attendanceScore || 0),
+            completedTasks: p.completedTasks || 0,
+            taskEfficiency: p.taskEfficiency || Math.round(p.taskCompletionScore || p.taskCompletionRate || 0),
+            score: Math.round(p.score || p.overallRating || 0),
+          }))
+          .filter(p => p.name && p.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 5);
+      }
       return [];
     }
 
-    // Calculate score for each employee and sort
-    const performers = employeePerformance
+    // Merge detailed performance (including local ratings) with executive summary data
+    const enrichedPerformers = employeePerformance
       .map(emp => {
+        // Find matching summary data for this employee to get task counts
+        const summaryData = executiveSummary?.topPerformers?.find(
+          (p: any) => (p.employeeId || p.id) === emp.employeeId
+        );
+
+        const productivity = calculateProductivity(emp.employeeId);
+        const qualityScore = calculateQualityScore(emp.employeeId);
         const score = calculateEliteScore(emp);
+
         return {
           employeeId: emp.employeeId,
           name: emp.name,
@@ -310,18 +317,18 @@ export default function Reports() {
           role: emp.role,
           taskCompletionScore: Math.round(emp.taskCompletionRate || 0),
           attendanceScore: Math.round(emp.attendanceScore || 0),
-          completedTasks: 0, // Would need to come from API or task data
-          taskEfficiency: Math.round(emp.taskCompletionRate || 0), // Using task completion as efficiency proxy
+          completedTasks: summaryData?.completedTasks || emp.completedTasks || 0,
+          taskEfficiency: summaryData?.taskEfficiency || emp.taskEfficiency || Math.round(emp.taskCompletionRate || 0),
           score: score,
-          productivity: calculateProductivity(emp.employeeId),
-          qualityScore: calculateQualityScore(emp.employeeId),
+          productivity,
+          qualityScore,
         };
       })
-      .filter(emp => emp.score > 0 && emp.name) // Only include employees with valid scores and names
-      .sort((a, b) => b.score - a.score) // Sort by score descending
-      .slice(0, 5); // Get top 5
+      .filter(p => p.name && p.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
 
-    return performers;
+    return enrichedPerformers;
   }, [employeePerformance, employeeRatings, executiveSummary]);
 
   const filteredPerformance = employeePerformance;
@@ -397,7 +404,7 @@ export default function Reports() {
       }
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://staffly.space/reports/export?${params}`, {
+      const response = await fetch(`https://testing.staffly.space/reports/export?${params}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -441,7 +448,7 @@ export default function Reports() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 relative">
       {!['admin', 'hr'].includes(user?.role || '') && <V2Overlay fallbackPath="/dashboard" />}
-      <div className="w-full space-y-6">
+      <div className="w-full space-y-6 pb-20">
         {/* Header Section - aligned with other modern pages */}
         <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-sm mt-1">
           <div className="absolute top-0 right-0 -mr-16 -mt-16 h-40 w-40 bg-blue-500/5 rounded-full blur-3xl" />
@@ -580,7 +587,7 @@ export default function Reports() {
                 </Button>
               </div>
 
-              <div className="p-4 sm:p-6">
+              <div className="p-4 sm:p-6 pb-10">
                 {isLoading ? (
                   <div className="text-center py-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"></div>
@@ -862,7 +869,7 @@ export default function Reports() {
                   Export
                 </Button>
               </div>
-              <div className="p-4">
+              <div className="p-4 pb-10">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {departmentMetrics.map((dept) => {
                     const badge = getPerformanceBadge(dept.performanceScore);
@@ -943,7 +950,7 @@ export default function Reports() {
                 <p className="mt-4 text-xs text-slate-500">Loading summary...</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-8 pb-10">
                 {/* Quick Stats */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">

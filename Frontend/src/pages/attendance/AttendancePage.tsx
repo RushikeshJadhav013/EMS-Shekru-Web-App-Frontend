@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import { formatIST, formatDateTimeIST, formatTimeIST, formatDateIST, todayIST, formatDateTimeComponentsIST, parseToIST, nowIST } from '@/utils/timezone';
 import { getCurrentLocation as fetchPreciseLocation, getCurrentLocationFast, getCurrentLocationWithContinuousImprovement } from '@/utils/geolocation';
 import { DatePicker } from '@/components/ui/date-picker';
+import { Pagination } from '@/components/ui/pagination';
 import { apiService } from '@/lib/api';
 
 type GeoLocation = {
@@ -49,6 +50,8 @@ const AttendancePage: React.FC = () => {
   const [locationWatcher, setLocationWatcher] = useState<{ stop: () => void } | null>(null);
   const [isImprovingAccuracy, setIsImprovingAccuracy] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
 
   // WFH Request state
   const [wfhStartDate, setWfhStartDate] = useState<Date | undefined>(undefined);
@@ -96,7 +99,7 @@ const AttendancePage: React.FC = () => {
   const fetchTodayAttendance = async () => {
     if (!user?.id) return;
     try {
-      const res = await fetch(`https://staffly.space/attendance/my-attendance/${user.id}`);
+      const res = await fetch(`https://testing.staffly.space/attendance/my-attendance/${user.id}`);
       if (!res.ok) throw new Error('Failed to fetch attendance');
       const data = await res.json();
 
@@ -522,7 +525,7 @@ const AttendancePage: React.FC = () => {
 
       // For now, we'll skip the selfie requirement for checkout
       // In a real implementation, you might want to add selfie capture here
-      const response = await fetch('https://staffly.space/attendance/check-out', {
+      const response = await fetch('https://testing.staffly.space/attendance/check-out', {
         method: 'POST',
         body: formData
       });
@@ -592,8 +595,8 @@ const AttendancePage: React.FC = () => {
       formData.append('selfie', selfieBlob, 'selfie.jpg');
 
       let apiUrl = '';
-      if (isCheckingIn) apiUrl = 'https://staffly.space/attendance/check-in';
-      else apiUrl = 'https://staffly.space/attendance/check-out';
+      if (isCheckingIn) apiUrl = 'https://testing.staffly.space/attendance/check-in';
+      else apiUrl = 'https://testing.staffly.space/attendance/check-out';
 
       const token = localStorage.getItem('token');
       const response = await fetch(apiUrl, {
@@ -1217,26 +1220,41 @@ const AttendancePage: React.FC = () => {
             <CardContent>
               <div className="space-y-3">
                 {attendanceHistory.length > 0 ? (
-                  attendanceHistory.slice(0, 10).map((record) => (
-                    <div key={record.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
-                          <Calendar className="h-6 w-6 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{formatDateIST(record.date, 'dd MMM yyyy')}</p>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span>In: {formatAttendanceTime(record.date, record.checkInTime)}</span>
-                            <span>Out: {formatAttendanceTime(record.date, record.checkOutTime)}</span>
-                            {record.workHours && <span>{record.workHours} Hrs</span>}
+                  <>
+                    {attendanceHistory
+                      .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                      .map((record) => (
+                        <div key={record.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+                              <Calendar className="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{formatDateIST(record.date, 'dd MMM yyyy')}</p>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <span>In: {formatAttendanceTime(record.date, record.checkInTime)}</span>
+                                <span>Out: {formatAttendanceTime(record.date, record.checkOutTime)}</span>
+                                {record.workHours && <span>{record.workHours} Hrs</span>}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
-                      </div>
+                      ))}
+                    <div className="mt-4">
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={Math.ceil(attendanceHistory.length / itemsPerPage)}
+                        totalItems={attendanceHistory.length}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={setCurrentPage}
+                        onItemsPerPageChange={setItemsPerPage}
+                        showItemsPerPage={true}
+                      />
                     </div>
-                  ))
+                  </>
                 ) : (
                   <p className="text-center py-8 text-muted-foreground">No attendance history</p>
                 )}

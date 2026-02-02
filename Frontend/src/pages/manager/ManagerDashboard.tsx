@@ -228,7 +228,7 @@ const ManagerDashboard: React.FC = () => {
         // Fetch all tasks and today's attendance in parallel
         const [tasks, attendanceRes] = await Promise.all([
           apiService.getMyTasks(),
-          fetch('https://staffly.space/attendance/today', {
+          fetch('https://testing.staffly.space/attendance/today', {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`,
             }
@@ -401,7 +401,7 @@ const ManagerDashboard: React.FC = () => {
             cardBg: 'bg-blue-50/40 dark:bg-blue-950/10',
             borderColor: 'border-blue-300/80 dark:border-blue-700/50',
             hoverBorder: 'group-hover:border-blue-500 dark:group-hover:border-blue-400',
-            path: '/manager/employees'
+
           },
           {
             label: 'Present Today',
@@ -444,8 +444,8 @@ const ManagerDashboard: React.FC = () => {
         ].map((item, i) => (
           <Card
             key={i}
-            className={`border-2 ${item.borderColor} ${item.hoverBorder} shadow-sm ${item.cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative cursor-pointer`}
-            onClick={() => navigate(item.path, { state: item.pathState })}
+            className={`border-2 ${item.borderColor} ${item.hoverBorder} shadow-sm ${item.cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative ${item.path ? 'cursor-pointer' : ''}`}
+            onClick={() => item.path && navigate(item.path, { state: item.pathState })}
           >
             {/* Background Accent */}
             <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-5 group-hover:opacity-10 transition-opacity ${item.bg.split(' ')[0]}`} />

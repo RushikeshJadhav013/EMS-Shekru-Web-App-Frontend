@@ -33,12 +33,12 @@ export function CalendarDatePicker({
       const minMonthIndex = minDate.getMonth();
       const newYear = newMonth.getFullYear();
       const newMonthIndex = newMonth.getMonth();
-      
+
       if (newYear < minYear || (newYear === minYear && newMonthIndex < minMonthIndex)) {
         return;
       }
     }
-    
+
     setMonth(newMonth);
     onMonthChange?.(newMonth);
   };

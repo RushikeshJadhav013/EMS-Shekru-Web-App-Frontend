@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Pagination } from '@/components/ui/pagination';
 import {
   Dialog,
   DialogContent,
@@ -96,6 +97,12 @@ const WFHRequests: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [requestToDelete, setRequestToDelete] = useState<WFHRequest | null>(null);
   const [isDeletingRequest, setIsDeletingRequest] = useState(false);
+
+  // Pagination states
+  const [myRequestsPage, setMyRequestsPage] = useState(1);
+  const [pendingApprovalsPage, setPendingApprovalsPage] = useState(1);
+  const [recentDecisionsPage, setRecentDecisionsPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Load WFH requests on mount and when component becomes visible
   useEffect(() => {
@@ -281,6 +288,30 @@ const WFHRequests: React.FC = () => {
     return wfhRequests.filter(req => req.status === statusFilter);
   }, [wfhRequests, statusFilter]);
 
+  const paginatedMyRequests = useMemo(() => {
+    const start = (myRequestsPage - 1) * itemsPerPage;
+    return filteredRequests.slice(start, start + itemsPerPage);
+  }, [filteredRequests, myRequestsPage, itemsPerPage]);
+
+  const paginatedPendingApprovals = useMemo(() => {
+    const start = (pendingApprovalsPage - 1) * itemsPerPage;
+    return visiblePendingApprovals.slice(start, start + itemsPerPage);
+  }, [visiblePendingApprovals, pendingApprovalsPage, itemsPerPage]);
+
+  const filteredDecisions = useMemo(() => {
+    return recentDecisions.filter(decision => decisionFilter === 'all' || decision.status === decisionFilter);
+  }, [recentDecisions, decisionFilter]);
+
+  const paginatedRecentDecisions = useMemo(() => {
+    const start = (recentDecisionsPage - 1) * itemsPerPage;
+    return filteredDecisions.slice(start, start + itemsPerPage);
+  }, [filteredDecisions, recentDecisionsPage, itemsPerPage]);
+
+  // Reset pages when filters change
+  useEffect(() => { setMyRequestsPage(1); }, [statusFilter]);
+  useEffect(() => { setPendingApprovalsPage(1); }, [visiblePendingApprovals]);
+  useEffect(() => { setRecentDecisionsPage(1); }, [decisionFilter]);
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'approved':
@@ -396,7 +427,7 @@ const WFHRequests: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {filteredRequests.map((request) => (
+                  {paginatedMyRequests.map((request) => (
                     <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 space-y-2">
@@ -449,6 +480,19 @@ const WFHRequests: React.FC = () => {
                   ))}
                 </div>
               )}
+              {filteredRequests.length > 0 && (
+                <div className="mt-6">
+                  <Pagination
+                    currentPage={myRequestsPage}
+                    totalPages={Math.ceil(filteredRequests.length / itemsPerPage)}
+                    totalItems={filteredRequests.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setMyRequestsPage}
+                    onItemsPerPageChange={setItemsPerPage}
+                    showItemsPerPage={true}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -473,7 +517,7 @@ const WFHRequests: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {visiblePendingApprovals.map((request) => (
+                  {paginatedPendingApprovals.map((request) => (
                     <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 space-y-2">
@@ -538,6 +582,19 @@ const WFHRequests: React.FC = () => {
                   ))}
                 </div>
               )}
+              {visiblePendingApprovals.length > 0 && (
+                <div className="mt-6">
+                  <Pagination
+                    currentPage={pendingApprovalsPage}
+                    totalPages={Math.ceil(visiblePendingApprovals.length / itemsPerPage)}
+                    totalItems={visiblePendingApprovals.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setPendingApprovalsPage}
+                    onItemsPerPageChange={setItemsPerPage}
+                    showItemsPerPage={true}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -583,46 +640,57 @@ const WFHRequests: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {recentDecisions
-                    .filter(decision => decisionFilter === 'all' || decision.status === decisionFilter)
-                    .map((decision) => (
-                      <div key={decision.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <span className="font-medium text-sm">{decision.employee_name}</span>
-                              <Badge variant="outline" className="text-xs">
-                                {decision.wfh_type === 'full_day' ? 'Full Day' : 'Half Day'}
-                              </Badge>
-                              {getStatusBadge(decision.status)}
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Calendar className="h-4 w-4" />
-                              <span>
-                                {decision.start_date} - {decision.end_date}
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{decision.reason}</p>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span>Decision: {formatDateTimeIST(new Date(decision.updated_at), 'dd MMM yyyy, hh:mm a')}</span>
-                              {decision.approved_by && (
-                                <span>By: {decision.approved_by}</span>
-                              )}
-                            </div>
-                            {decision.rejection_reason && (
-                              <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
-                                <p className="text-sm text-red-800 dark:text-red-200">
-                                  <strong>Rejection Reason:</strong> {decision.rejection_reason}
-                                </p>
-                              </div>
+                  {paginatedRecentDecisions.map((decision) => (
+                    <div key={decision.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="font-medium text-sm">{decision.employee_name}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {decision.wfh_type === 'full_day' ? 'Full Day' : 'Half Day'}
+                            </Badge>
+                            {getStatusBadge(decision.status)}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Calendar className="h-4 w-4" />
+                            <span>
+                              {decision.start_date} - {decision.end_date}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{decision.reason}</p>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>Decision: {formatDateTimeIST(new Date(decision.updated_at), 'dd MMM yyyy, hh:mm a')}</span>
+                            {decision.approved_by && (
+                              <span>By: {decision.approved_by}</span>
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
-                            {getStatusIcon(decision.status)}
-                          </div>
+                          {decision.rejection_reason && (
+                            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
+                              <p className="text-sm text-red-800 dark:text-red-200">
+                                <strong>Rejection Reason:</strong> {decision.rejection_reason}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(decision.status)}
                         </div>
                       </div>
-                    ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {filteredDecisions.length > 0 && (
+                <div className="mt-6">
+                  <Pagination
+                    currentPage={recentDecisionsPage}
+                    totalPages={Math.ceil(filteredDecisions.length / itemsPerPage)}
+                    totalItems={filteredDecisions.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setRecentDecisionsPage}
+                    onItemsPerPageChange={setItemsPerPage}
+                    showItemsPerPage={true}
+                  />
                 </div>
               )}
             </CardContent>

@@ -82,7 +82,9 @@ const AttendanceWithToggle: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<'all' | 'present' | 'late' | 'early'>('all');
   const [filteredEmployeeAttendanceData, setFilteredEmployeeAttendanceData] = useState<EmployeeAttendanceRecord[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [selfCurrentPage, setSelfCurrentPage] = useState(1);
+  const [selfItemsPerPage, setSelfItemsPerPage] = useState(10);
   const [selectedRecord, setSelectedRecord] = useState<EmployeeAttendanceRecord | null>(null);
   const [showSelfieModal, setShowSelfieModal] = useState(false);
   const [showWorkSummaryDialog, setShowWorkSummaryDialog] = useState(false);
@@ -209,7 +211,7 @@ const AttendanceWithToggle: React.FC = () => {
       return url;
     }
     const normalized = url.startsWith('/') ? url : `/${url}`;
-    return `https://staffly.space${normalized}`;
+    return `https://testing.staffly.space${normalized}`;
   }, []);
 
   // Determine if user can view employee attendance (only for management roles)
@@ -550,7 +552,7 @@ const AttendanceWithToggle: React.FC = () => {
   const loadFromBackend = async () => {
     try {
       if (!user?.id) return;
-      const res = await fetch(`https://staffly.space/attendance/my-attendance/${user.id}`);
+      const res = await fetch(`https://testing.staffly.space/attendance/my-attendance/${user.id}`);
       if (!res.ok) return;
       const data = await res.json();
       setAttendanceHistory(
@@ -753,7 +755,7 @@ const AttendanceWithToggle: React.FC = () => {
             // Fetch actual work hours from backend
             try {
               const token = localStorage.getItem('token');
-              const workHoursResponse = await fetch(`https://staffly.space/attendance/working-hours/${attendance.id}`, {
+              const workHoursResponse = await fetch(`https://testing.staffly.space/attendance/working-hours/${attendance.id}`, {
                 headers: {
                   'Authorization': token ? `Bearer ${token}` : '',
                 },
@@ -821,7 +823,7 @@ const AttendanceWithToggle: React.FC = () => {
       const token = localStorage.getItem('token');
       const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
 
-      let url = 'https://staffly.space/attendance/all';
+      let url = 'https://testing.staffly.space/attendance/all';
       // Attempt backend enforcement by passing department scope
       if (user?.role === 'manager' && user?.department) {
         url += `?department=${encodeURIComponent(user.department)}`;
@@ -833,7 +835,7 @@ const AttendanceWithToggle: React.FC = () => {
       // Fetch attendance and employees in parallel to ensure we have role data
       const [attendanceRes, employeesRes] = await Promise.all([
         fetch(url, { headers }),
-        fetch('https://staffly.space/employees', { headers })
+        fetch('https://testing.staffly.space/employees', { headers })
       ]);
 
       if (!attendanceRes.ok) {
@@ -1038,15 +1040,15 @@ const AttendanceWithToggle: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
-      
-      const res = await fetch('https://staffly.space/employees', { headers });
+
+      const res = await fetch('https://testing.staffly.space/employees', { headers });
       if (!res.ok) {
         const errorText = await res.text().catch(() => '');
         console.error(`Failed to load employees: ${res.status}`, errorText);
         toast({
           title: 'Error',
-          description: res.status === 403 
-            ? 'Access denied. You do not have permission to view employees.' 
+          description: res.status === 403
+            ? 'Access denied. You do not have permission to view employees.'
             : `Failed to load employees: ${res.status}`,
           variant: 'destructive',
         });
@@ -1227,8 +1229,8 @@ const AttendanceWithToggle: React.FC = () => {
         }),
       };
       const endpoint = isCheckingIn
-        ? 'https://staffly.space/attendance/check-in/json'
-        : 'https://staffly.space/attendance/check-out/json';
+        ? 'https://testing.staffly.space/attendance/check-in/json'
+        : 'https://testing.staffly.space/attendance/check-out/json';
 
       // ✅ Get token from localStorage for authentication
       const token = localStorage.getItem('token');
@@ -1688,7 +1690,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     // Call API to update status
     const token = localStorage.getItem('token');
-    const response = await fetch('https://staffly.space/attendance/online-status', {
+    const response = await fetch('https://testing.staffly.space/attendance/online-status', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1816,7 +1818,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://staffly.space/attendance/user-online-status/${user.id}`, {
+      const response = await fetch(`https://testing.staffly.space/attendance/user-online-status/${user.id}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -1957,7 +1959,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://staffly.space/attendance/current-online-status', {
+      const response = await fetch('https://testing.staffly.space/attendance/current-online-status', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -1992,7 +1994,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://staffly.space/attendance/current-online-status', {
+      const response = await fetch('https://testing.staffly.space/attendance/current-online-status', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -2430,189 +2432,208 @@ const AttendanceWithToggle: React.FC = () => {
                 </div>
 
                 {attendanceHistory.length > 0 ? (
-                  <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden w-full">
-                    <div className="w-full overflow-x-auto">
-                      <table className="w-full table-auto min-w-[1800px]" style={{ tableLayout: 'auto' }}>
-                        <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
-                          <tr>
-                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.department}</th>
-                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Work Location</th>
-                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Online Status</th>
-                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.checkInTime}</th>
-                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.checkOutTime}</th>
-                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.hours}</th>
-                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.location}</th>
-                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.selfiePhoto}</th>
-                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.common.status}</th>
-                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.workSummary}</th>
-                            <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.workReport}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {getFilteredAttendanceHistory().map((record) => (
-                            <tr key={record.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900">
-                              <td className="p-3 whitespace-nowrap">
-                                <Badge variant="outline" className="text-xs">{user?.department || '-'}</Badge>
-                              </td>
-                              <td className="p-3 whitespace-nowrap">
-                                {record.workLocation === 'work_from_home' ? (
-                                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-orange-500"></div>
-                                    <span className="text-xs font-medium text-orange-700 dark:text-orange-300">WFH</span>
-                                  </div>
-                                ) : (
-                                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                                    <div className="h-1.5 w-1.5 rounded-sm bg-blue-500"></div>
-                                    <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Office</span>
-                                  </div>
-                                )}
-                              </td>
-                              <td className="p-3 whitespace-nowrap">
-                                {(() => {
-                                  if (!record.checkOutTime && record.date === todayIST()) {
-                                    return (
-                                      <OnlineStatusIndicator
-                                        isOnline={isOnline}
-                                        size="sm"
-                                        showLabel={true}
-                                      />
-                                    );
-                                  } else if (record.checkOutTime) {
-                                    return <span className="text-xs text-slate-500 dark:text-slate-400">Checked Out</span>;
-                                  } else {
-                                    return <span className="text-xs text-slate-500 dark:text-slate-400">Past Date</span>;
-                                  }
-                                })()}
-                              </td>
-                              <td className="p-3 whitespace-nowrap">
-                                <div className="flex items-center gap-1.5">
-                                  <Clock className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
-                                  <span className="text-xs font-semibold text-slate-900 dark:text-white">{formatAttendanceTime(record.date, record.checkInTime)}</span>
-                                </div>
-                              </td>
-                              <td className="p-3 whitespace-nowrap">
-                                <div className="flex items-center gap-1.5">
-                                  <Clock className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
-                                  <span className="text-xs font-semibold text-slate-900 dark:text-white">{formatAttendanceTime(record.date, record.checkOutTime)}</span>
-                                </div>
-                              </td>
-                              <td className="p-3 whitespace-nowrap">
-                                {record.workHours ? (
-                                  <span className="text-xs font-semibold text-slate-900 dark:text-white">{formatWorkHours(record.workHours)}</span>
-                                ) : (
-                                  <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
-                                )}
-                              </td>
-                              <td className="p-3 whitespace-nowrap">
-                                {record.checkInLocation?.address && record.checkInLocation.address !== 'N/A' ? (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      setSelectedLocation({
-                                        checkIn: record.checkInLocation?.address,
-                                        checkOut: record.checkOutLocation?.address
-                                      });
-                                      setShowLocationDialog(true);
-                                    }}
-                                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-7 px-2 text-xs"
-                                  >
-                                    <MapPin className="h-3 w-3 mr-1" />
-                                    View
-                                  </Button>
-                                ) : (
-                                  <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
-                                )}
-                              </td>
-                              <td className="p-3 whitespace-nowrap">
-                                <div
-                                  className="h-8 w-8 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity mx-auto"
-                                  onClick={() => {
-                                    setSelectedRecord(record);
-                                    setShowSelfieModal(true);
-                                  }}
-                                >
-                                  {record.checkInSelfie ? (
-                                    <img
-                                      src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${record.checkInSelfie}`}
-                                      alt={`${user?.name || 'Employee'}'s selfie`}
-                                      className="w-full h-full object-cover"
-                                      onError={(e) => {
-                                        const target = e.currentTarget as HTMLImageElement;
-                                        target.style.display = 'none';
-                                        const fallback = document.createElement('div');
-                                        fallback.className = 'w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center';
-                                        fallback.innerHTML = '<svg class="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>';
-                                        target.parentNode?.appendChild(fallback);
-                                      }}
-                                    />
-                                  ) : null}
-                                  {!record.checkInSelfie && (
-                                    <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                                      <User className="h-4 w-4 text-gray-400" />
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="p-3 whitespace-nowrap">
-                                <div className="flex justify-center">
-                                  {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
-                                </div>
-                              </td>
-                              <td className="p-3 text-xs text-slate-600 dark:text-slate-400 max-w-[280px]">
-                                {record.workSummary ? (
-                                  <button
-                                    type="button"
-                                    className="text-left hover:text-blue-600 dark:hover:text-blue-400 block w-full text-xs leading-relaxed"
-                                    onClick={() => {
-                                      setSelectedWorkSummary(record.workSummary || '');
-                                      setShowWorkSummaryDialog(true);
-                                    }}
-                                    title={record.workSummary}
-                                    style={{
-                                      wordBreak: 'break-word',
-                                      overflowWrap: 'break-word',
-                                      display: 'block',
-                                      textAlign: 'left'
-                                    }}
-                                  >
-                                    <span style={{
-                                      display: '-webkit-box',
-                                      WebkitLineClamp: 2,
-                                      WebkitBoxOrient: 'vertical',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis'
-                                    }}>
-                                      {record.workSummary}
-                                    </span>
-                                    {record.workSummary.length > 60 && (
-                                      <span className="text-blue-600 dark:text-blue-400 font-medium mt-1 block">View more...</span>
-                                    )}
-                                  </button>
-                                ) : (
-                                  <span className="text-slate-400 dark:text-slate-500">—</span>
-                                )}
-                              </td>
-                              <td className="p-3 whitespace-nowrap">
-                                {record.workReport ? (
-                                  <a
-                                    href={record.workReport}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                                  >
-                                    {t.attendance.viewReport || 'View'}
-                                  </a>
-                                ) : (
-                                  <span className="text-slate-400 dark:text-slate-500 text-xs">—</span>
-                                )}
-                              </td>
+                  <>
+                    <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden w-full">
+                      <div className="w-full overflow-x-auto">
+                        <table className="w-full table-auto min-w-[1800px]" style={{ tableLayout: 'auto' }}>
+                          <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+                            <tr>
+                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.department}</th>
+                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Work Location</th>
+                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Online Status</th>
+                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.checkInTime}</th>
+                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.checkOutTime}</th>
+                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.hours}</th>
+                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.location}</th>
+                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.selfiePhoto}</th>
+                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.common.status}</th>
+                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.workSummary}</th>
+                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.workReport}</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {getFilteredAttendanceHistory()
+                              .slice((selfCurrentPage - 1) * selfItemsPerPage, (selfCurrentPage - 1) * selfItemsPerPage + selfItemsPerPage)
+                              .map((record) => (
+                                <tr key={record.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900">
+                                  <td className="p-3 whitespace-nowrap">
+                                    <Badge variant="outline" className="text-xs">{user?.department || '-'}</Badge>
+                                  </td>
+                                  <td className="p-3 whitespace-nowrap">
+                                    {record.workLocation === 'work_from_home' ? (
+                                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                                        <div className="h-1.5 w-1.5 rounded-full bg-orange-500"></div>
+                                        <span className="text-xs font-medium text-orange-700 dark:text-orange-300">WFH</span>
+                                      </div>
+                                    ) : (
+                                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                                        <div className="h-1.5 w-1.5 rounded-sm bg-blue-500"></div>
+                                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Office</span>
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="p-3 whitespace-nowrap">
+                                    {(() => {
+                                      if (!record.checkOutTime && record.date === todayIST()) {
+                                        return (
+                                          <OnlineStatusIndicator
+                                            isOnline={isOnline}
+                                            size="sm"
+                                            showLabel={true}
+                                          />
+                                        );
+                                      } else if (record.checkOutTime) {
+                                        return <span className="text-xs text-slate-500 dark:text-slate-400">Checked Out</span>;
+                                      } else {
+                                        return <span className="text-xs text-slate-500 dark:text-slate-400">Past Date</span>;
+                                      }
+                                    })()}
+                                  </td>
+                                  <td className="p-3 whitespace-nowrap">
+                                    <div className="flex items-center gap-1.5">
+                                      <Clock className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                                      <span className="text-xs font-semibold text-slate-900 dark:text-white">{formatAttendanceTime(record.date, record.checkInTime)}</span>
+                                    </div>
+                                  </td>
+                                  <td className="p-3 whitespace-nowrap">
+                                    <div className="flex items-center gap-1.5">
+                                      <Clock className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+                                      <span className="text-xs font-semibold text-slate-900 dark:text-white">{formatAttendanceTime(record.date, record.checkOutTime)}</span>
+                                    </div>
+                                  </td>
+                                  <td className="p-3 whitespace-nowrap">
+                                    {record.workHours ? (
+                                      <span className="text-xs font-semibold text-slate-900 dark:text-white">{formatWorkHours(record.workHours)}</span>
+                                    ) : (
+                                      <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
+                                    )}
+                                  </td>
+                                  <td className="p-3 whitespace-nowrap">
+                                    {record.checkInLocation?.address && record.checkInLocation.address !== 'N/A' ? (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          setSelectedLocation({
+                                            checkIn: record.checkInLocation?.address,
+                                            checkOut: record.checkOutLocation?.address
+                                          });
+                                          setShowLocationDialog(true);
+                                        }}
+                                        className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-7 px-2 text-xs"
+                                      >
+                                        <MapPin className="h-3 w-3 mr-1" />
+                                        View
+                                      </Button>
+                                    ) : (
+                                      <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
+                                    )}
+                                  </td>
+                                  <td className="p-3 whitespace-nowrap">
+                                    <div
+                                      className="h-8 w-8 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity mx-auto"
+                                      onClick={() => {
+                                        setSelectedRecord(record);
+                                        setShowSelfieModal(true);
+                                      }}
+                                    >
+                                      {record.checkInSelfie ? (
+                                        <img
+                                          src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}${record.checkInSelfie}`}
+                                          alt={`${user?.name || 'Employee'}'s selfie`}
+                                          className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            const target = e.currentTarget as HTMLImageElement;
+                                            target.style.display = 'none';
+                                            const fallback = document.createElement('div');
+                                            fallback.className = 'w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center';
+                                            fallback.innerHTML = '<svg class="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>';
+                                            target.parentNode?.appendChild(fallback);
+                                          }}
+                                        />
+                                      ) : null}
+                                      {!record.checkInSelfie && (
+                                        <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                          <User className="h-4 w-4 text-gray-400" />
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="p-3 whitespace-nowrap">
+                                    <div className="flex justify-center">
+                                      {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
+                                    </div>
+                                  </td>
+                                  <td className="p-3 text-xs text-slate-600 dark:text-slate-400 max-w-[280px]">
+                                    {record.workSummary ? (
+                                      <button
+                                        type="button"
+                                        className="text-left hover:text-blue-600 dark:hover:text-blue-400 block w-full text-xs leading-relaxed"
+                                        onClick={() => {
+                                          setSelectedWorkSummary(record.workSummary || '');
+                                          setShowWorkSummaryDialog(true);
+                                        }}
+                                        title={record.workSummary}
+                                        style={{
+                                          wordBreak: 'break-word',
+                                          overflowWrap: 'break-word',
+                                          display: 'block',
+                                          textAlign: 'left'
+                                        }}
+                                      >
+                                        <span style={{
+                                          display: '-webkit-box',
+                                          WebkitLineClamp: 2,
+                                          WebkitBoxOrient: 'vertical',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis'
+                                        }}>
+                                          {record.workSummary}
+                                        </span>
+                                        {record.workSummary.length > 60 && (
+                                          <span className="text-blue-600 dark:text-blue-400 font-medium mt-1 block">View more...</span>
+                                        )}
+                                      </button>
+                                    ) : (
+                                      <span className="text-slate-400 dark:text-slate-500">—</span>
+                                    )}
+                                  </td>
+                                  <td className="p-3 whitespace-nowrap">
+                                    {record.workReport ? (
+                                      <a
+                                        href={record.workReport}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                                      >
+                                        {t.attendance.viewReport || 'View'}
+                                      </a>
+                                    ) : (
+                                      <span className="text-slate-400 dark:text-slate-500 text-xs">—</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
+
+                    {getFilteredAttendanceHistory().length > 0 && (
+                      <div className="mt-6">
+                        <Pagination
+                          currentPage={selfCurrentPage}
+                          totalPages={Math.ceil(getFilteredAttendanceHistory().length / selfItemsPerPage)}
+                          totalItems={getFilteredAttendanceHistory().length}
+                          itemsPerPage={selfItemsPerPage}
+                          onPageChange={setSelfCurrentPage}
+                          onItemsPerPageChange={setSelfItemsPerPage}
+                          showItemsPerPage={true}
+                        />
+                      </div>
+                    )}
+                  </>
+
                 ) : (
                   <p className="text-center py-8 text-muted-foreground">No attendance history</p>
                 )}
@@ -2628,7 +2649,7 @@ const AttendanceWithToggle: React.FC = () => {
               <CardTitle className="text-sm font-bold text-slate-900">{t.attendance.employeeAttendance}</CardTitle>
               <CardDescription className="text-[11px] font-medium">{t.attendance.viewAndManage}</CardDescription>
             </CardHeader>
-              <CardContent className="w-full">
+            <CardContent className="w-full">
               <div className="flex flex-col md:flex-row md:flex-wrap gap-3 mb-6">
                 <div className="w-full md:w-[260px] lg:w-[500px]">
                   <div className="relative">
@@ -2820,7 +2841,7 @@ const AttendanceWithToggle: React.FC = () => {
                                 >
                                   {record.checkInSelfie ? (
                                     <img
-                                      src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${record.checkInSelfie}`}
+                                      src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}${record.checkInSelfie}`}
                                       alt={`${record.name || 'Employee'}'s selfie`}
                                       className="w-full h-full object-cover"
                                       onError={(e) => {
@@ -2915,15 +2936,16 @@ const AttendanceWithToggle: React.FC = () => {
                 </div>
               </div>
 
-              {filteredEmployeeAttendanceData.length > itemsPerPage && (
-                <div className="mt-4">
+              {filteredEmployeeAttendanceData.length > 0 && (
+                <div className="mt-6">
                   <Pagination
                     currentPage={currentPage}
                     totalPages={Math.ceil(filteredEmployeeAttendanceData.length / itemsPerPage)}
                     totalItems={filteredEmployeeAttendanceData.length}
                     itemsPerPage={itemsPerPage}
                     onPageChange={setCurrentPage}
-                    showItemsPerPage={false}
+                    onItemsPerPageChange={setItemsPerPage}
+                    showItemsPerPage={true}
                   />
                 </div>
               )}
@@ -3730,7 +3752,7 @@ const AttendanceWithToggle: React.FC = () => {
               <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                 {selectedRecord?.checkInSelfie ? (
                   <img
-                    src={selectedRecord.checkInSelfie.startsWith('http') ? selectedRecord.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${selectedRecord.checkInSelfie}`}
+                    src={selectedRecord.checkInSelfie.startsWith('http') ? selectedRecord.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}${selectedRecord.checkInSelfie}`}
                     alt="Check-in selfie"
                     className="w-full h-full object-cover"
                   />
@@ -3756,7 +3778,7 @@ const AttendanceWithToggle: React.FC = () => {
               <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                 {selectedRecord?.checkOutSelfie ? (
                   <img
-                    src={selectedRecord.checkOutSelfie.startsWith('http') ? selectedRecord.checkOutSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${selectedRecord.checkOutSelfie}`}
+                    src={selectedRecord.checkOutSelfie.startsWith('http') ? selectedRecord.checkOutSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}${selectedRecord.checkOutSelfie}`}
                     alt="Check-out selfie"
                     className="w-full h-full object-cover"
                   />

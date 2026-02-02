@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Pagination } from '@/components/ui/pagination';
 import { toast } from '@/hooks/use-toast';
 import {
   Plus,
@@ -68,6 +69,10 @@ export default function DepartmentManagement() {
   });
   const [allEmployees, setAllEmployees] = useState<any[]>([]);
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+
   const managerName = (managerId?: string) => {
     if (!managerId) return undefined;
     const found = managers.find((mgr) => mgr.id === String(managerId));
@@ -103,6 +108,24 @@ export default function DepartmentManagement() {
 
     return result;
   }, [departments, searchQuery, selectedStatus, selectedManagerFilter, sortBy]);
+
+  const paginatedDepartments = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredDepartments.slice(startIndex, endIndex);
+  }, [filteredDepartments, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredDepartments.length / itemsPerPage);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedStatus, selectedManagerFilter, sortBy]);
+
+  // Reset to first page when items per page changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
 
   const handleCreateDepartment = () => {
     if (!formData.name || !formData.code) {
@@ -509,7 +532,7 @@ export default function DepartmentManagement() {
 
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-6 pb-24">
       {/* Header */}
       <div className="bg-white dark:bg-slate-900 rounded-lg p-6 shadow-md border border-slate-200 dark:border-slate-700">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
@@ -597,7 +620,7 @@ export default function DepartmentManagement() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="border border-slate-200 dark:border-slate-700">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
@@ -616,7 +639,7 @@ export default function DepartmentManagement() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="border border-slate-200 dark:border-slate-700">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
@@ -736,7 +759,7 @@ export default function DepartmentManagement() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredDepartments.map((department) => {
+                  paginatedDepartments.map((department) => {
                     const manager = managers.find(
                       (m) => m.id === String(department.managerId ?? ''),
                     );
@@ -879,6 +902,18 @@ export default function DepartmentManagement() {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          <div className="mt-6">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredDepartments.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+              showItemsPerPage={true}
+            />
           </div>
         </CardContent>
       </Card>

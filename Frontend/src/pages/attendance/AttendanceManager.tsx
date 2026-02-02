@@ -94,7 +94,7 @@ const AttendanceManager: React.FC = () => {
   const [customStartDate, setCustomStartDate] = useState<Date>(subDays(nowIST(), 7));
   const [customEndDate, setCustomEndDate] = useState<Date>(nowIST());
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isExporting, setIsExporting] = useState(false);
   const [summary, setSummary] = useState<{ total_employees: number; present_today: number; late_arrivals: number; early_departures: number; absent_today: number }>({ total_employees: 0, present_today: 0, late_arrivals: 0, early_departures: 0, absent_today: 0 });
 
@@ -116,6 +116,8 @@ const AttendanceManager: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'attendance' | 'office-hours' | 'wfh-requests'>('attendance');
   const [officeTimings, setOfficeTimings] = useState<OfficeTiming[]>([]);
   const [officeFormLoading, setOfficeFormLoading] = useState(false);
+  const [isGlobalSaving, setIsGlobalSaving] = useState(false);
+  const [isDeptSaving, setIsDeptSaving] = useState(false);
   const [globalTimingForm, setGlobalTimingForm] = useState<TimingFormState>({
     startTime: '09:30',
     endTime: '18:00',
@@ -138,6 +140,8 @@ const AttendanceManager: React.FC = () => {
   const [selectedWfhRequest, setSelectedWfhRequest] = useState<any>(null);
   const [showWfhRequestDialog, setShowWfhRequestDialog] = useState(false);
   const [isProcessingWfhRequest, setIsProcessingWfhRequest] = useState(false);
+  const [wfhCurrentPage, setWfhCurrentPage] = useState(1);
+  const [wfhItemsPerPage, setWfhItemsPerPage] = useState(10);
 
   // Ref for scrolling to department form when editing
   const departmentFormRef = useRef<HTMLDivElement>(null);
@@ -306,7 +310,7 @@ const AttendanceManager: React.FC = () => {
   const fetchAllOnlineStatus = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://staffly.space/attendance/current-online-status', {
+      const response = await fetch('https://testing.staffly.space/attendance/current-online-status', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -329,7 +333,7 @@ const AttendanceManager: React.FC = () => {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
     const normalized = url.startsWith('/') ? url : `/${url}`;
-    return `https://staffly.space${normalized}`;
+    return `https://testing.staffly.space${normalized}`;
   };
 
   // Helper function to determine if employee should show as absent
@@ -502,7 +506,7 @@ const AttendanceManager: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
-      const res = await fetch('https://staffly.space/employees', { headers });
+      const res = await fetch('https://testing.staffly.space/employees', { headers });
 
       if (!res.ok) throw new Error(`Failed to load employees: ${res.status}`);
       let data = await res.json();
@@ -608,7 +612,7 @@ const AttendanceManager: React.FC = () => {
     if (!isAdmin) return;
     setOfficeFormLoading(true);
     try {
-      const res = await fetch('https://staffly.space/attendance/office-hours', {
+      const res = await fetch('https://testing.staffly.space/attendance/office-hours', {
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeaders(),
@@ -647,7 +651,7 @@ const AttendanceManager: React.FC = () => {
 
   const handleGlobalTimingSave = async () => {
     try {
-      setOfficeFormLoading(true);
+      setIsGlobalSaving(true);
       const payload = {
         department: null,
         start_time: globalTimingForm.startTime,
@@ -655,7 +659,7 @@ const AttendanceManager: React.FC = () => {
         check_in_grace_minutes: resolveGraceValue(globalTimingForm.checkInGrace),
         check_out_grace_minutes: resolveGraceValue(globalTimingForm.checkOutGrace),
       };
-      const res = await fetch('https://staffly.space/attendance/office-hours', {
+      const res = await fetch('https://testing.staffly.space/attendance/office-hours', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -674,7 +678,7 @@ const AttendanceManager: React.FC = () => {
         variant: 'destructive',
       });
     } finally {
-      setOfficeFormLoading(false);
+      setIsGlobalSaving(false);
     }
   };
 
@@ -689,7 +693,7 @@ const AttendanceManager: React.FC = () => {
     }
 
     try {
-      setOfficeFormLoading(true);
+      setIsDeptSaving(true);
       const payload = {
         department: departmentTimingForm.department.trim(),
         start_time: departmentTimingForm.startTime,
@@ -697,7 +701,7 @@ const AttendanceManager: React.FC = () => {
         check_in_grace_minutes: resolveGraceValue(departmentTimingForm.checkInGrace),
         check_out_grace_minutes: resolveGraceValue(departmentTimingForm.checkOutGrace),
       };
-      const res = await fetch('https://staffly.space/attendance/office-hours', {
+      const res = await fetch('https://testing.staffly.space/attendance/office-hours', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -719,7 +723,7 @@ const AttendanceManager: React.FC = () => {
         variant: 'destructive',
       });
     } finally {
-      setOfficeFormLoading(false);
+      setIsDeptSaving(false);
     }
   };
 
@@ -762,7 +766,7 @@ const AttendanceManager: React.FC = () => {
 
     try {
       setOfficeFormLoading(true);
-      const res = await fetch(`https://staffly.space/attendance/office-hours/${timing.id}`, {
+      const res = await fetch(`https://testing.staffly.space/attendance/office-hours/${timing.id}`, {
         method: 'DELETE',
         headers: {
           ...getAuthHeaders(),
@@ -797,7 +801,7 @@ const AttendanceManager: React.FC = () => {
 
   const fetchSummary = async () => {
     try {
-      const res = await fetch('https://staffly.space/attendance/summary');
+      const res = await fetch('https://testing.staffly.space/attendance/summary');
       if (!res.ok) throw new Error(`Failed to load summary: ${res.status}`);
       const data = await res.json();
       setSummary(data);
@@ -834,8 +838,8 @@ const AttendanceManager: React.FC = () => {
 
         // Fetch attendance and employees in parallel to ensure we have role data
         const [attendanceRes, employeesRes] = await Promise.all([
-          fetch(`https://staffly.space/attendance/all${query}`, { headers }),
-          fetch('https://staffly.space/employees', { headers })
+          fetch(`https://testing.staffly.space/attendance/all${query}`, { headers }),
+          fetch('https://testing.staffly.space/employees', { headers })
         ]);
 
         if (!attendanceRes.ok) {
@@ -1675,9 +1679,15 @@ const AttendanceManager: React.FC = () => {
               </SelectContent>
             </Select>
             <Select value={timePeriodFilter} onValueChange={(value: any) => setTimePeriodFilter(value)}>
-              <SelectTrigger className="w-[180px] h-11 bg-white dark:bg-gray-950 border-2">
-                <Calendar className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Time Period" />
+              <SelectTrigger className={`${timePeriodFilter === 'custom' ? 'md:w-[320px]' : 'md:w-[180px]'} w-full h-11 bg-white dark:bg-gray-950 border-2 font-bold text-slate-700 dark:text-slate-200 transition-all duration-300`}>
+                <Calendar className="h-4 w-4 mr-2 text-blue-500" />
+                <SelectValue>
+                  {timePeriodFilter === 'custom'
+                    ? (customStartDate && customEndDate
+                      ? `Custom: ${formatDateIST(customStartDate)} - ${formatDateIST(customEndDate)}`
+                      : 'Custom Range')
+                    : undefined}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="today">Today</SelectItem>
@@ -1691,22 +1701,36 @@ const AttendanceManager: React.FC = () => {
             </Select>
 
             {timePeriodFilter === 'custom' && (
-              <>
-                <DatePicker
-                  date={customStartDate}
-                  onDateChange={setCustomStartDate}
-                  toDate={new Date()}
-                  placeholder="From Date"
-                  className="w-[160px]"
-                />
-                <DatePicker
-                  date={customEndDate}
-                  onDateChange={setCustomEndDate}
-                  toDate={new Date()}
-                  placeholder="To Date"
-                  className="w-[160px]"
-                />
-              </>
+              <div className="w-full mt-2 p-4 border rounded-2xl bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-100 dark:border-blue-800 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
+                      <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                      From Date
+                    </Label>
+                    <DatePicker
+                      date={customStartDate}
+                      onDateChange={setCustomStartDate}
+                      toDate={new Date()}
+                      placeholder="Start Date"
+                      className="w-full bg-white dark:bg-gray-950 border-blue-200"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
+                      <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                      To Date
+                    </Label>
+                    <DatePicker
+                      date={customEndDate}
+                      onDateChange={setCustomEndDate}
+                      toDate={new Date()}
+                      placeholder="End Date"
+                      className="w-full bg-white dark:bg-gray-950 border-indigo-200"
+                    />
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
@@ -1929,7 +1953,7 @@ const AttendanceManager: React.FC = () => {
             </div>
           </div>
 
-          {filteredRecords.length > itemsPerPage && (
+          {filteredRecords.length > 0 && (
             <div className="mt-4">
               <Pagination
                 currentPage={currentPage}
@@ -1937,7 +1961,8 @@ const AttendanceManager: React.FC = () => {
                 totalItems={filteredRecords.length}
                 itemsPerPage={itemsPerPage}
                 onPageChange={setCurrentPage}
-                showItemsPerPage={false}
+                onItemsPerPageChange={setItemsPerPage}
+                showItemsPerPage={true}
               />
             </div>
           )}
@@ -2613,10 +2638,10 @@ const AttendanceManager: React.FC = () => {
               </Button>
               <Button
                 onClick={handleGlobalTimingSave}
-                disabled={officeFormLoading}
+                disabled={isGlobalSaving || officeFormLoading}
                 className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md"
               >
-                {officeFormLoading ? 'Saving...' : 'Save Global Settings'}
+                {isGlobalSaving ? 'Saving...' : 'Save Global Settings'}
               </Button>
             </div>
           </CardContent>
@@ -2821,10 +2846,10 @@ const AttendanceManager: React.FC = () => {
               </Button>
               <Button
                 onClick={handleDepartmentTimingSave}
-                disabled={officeFormLoading || !departmentTimingForm.department.trim()}
+                disabled={isDeptSaving || officeFormLoading || !departmentTimingForm.department.trim()}
                 className="gap-2 bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 shadow-md"
               >
-                {officeFormLoading ? 'Saving...' : 'Save Department Timing'}
+                {isDeptSaving ? 'Saving...' : 'Save Department Timing'}
               </Button>
             </div>
           </CardContent>
@@ -3091,64 +3116,78 @@ const AttendanceManager: React.FC = () => {
                       <span className="ml-2 text-muted-foreground">Loading decisions...</span>
                     </div>
                   ) : allWfhRequests.filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter)).length > 0 ? (
-                    <div className="space-y-3">
-                      {allWfhRequests
-                        .filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter))
-                        .sort((a, b) => new Date(b.processedAt || b.submittedAt).getTime() - new Date(a.processedAt || a.submittedAt).getTime())
-                        .map((request) => (
-                          <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                            <div className="flex items-start justify-between">
-                              <div className="space-y-2 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4 text-blue-600" />
-                                    <span className="font-medium">{request.submittedBy}</span>
-                                    <Badge
-                                      variant="outline"
-                                      className={`text-xs ${request.role === 'hr'
-                                        ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950'
-                                        : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
-                                        }`}
-                                    >
-                                      {request.role === 'hr' ? 'HR' : 'Manager'}
-                                    </Badge>
+                    <>
+                      <div className="space-y-3">
+                        {allWfhRequests
+                          .filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter))
+                          .sort((a, b) => new Date(b.processedAt || b.submittedAt).getTime() - new Date(a.processedAt || a.submittedAt).getTime())
+                          .slice((wfhCurrentPage - 1) * wfhItemsPerPage, wfhCurrentPage * wfhItemsPerPage)
+                          .map((request) => (
+                            <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                              <div className="flex items-start justify-between">
+                                <div className="space-y-2 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <div className="flex items-center gap-2">
+                                      <User className="h-4 w-4 text-blue-600" />
+                                      <span className="font-medium">{request.submittedBy}</span>
+                                      <Badge
+                                        variant="outline"
+                                        className={`text-xs ${request.role === 'hr'
+                                          ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950'
+                                          : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
+                                          }`}
+                                      >
+                                        {request.role === 'hr' ? 'HR' : 'Manager'}
+                                      </Badge>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Calendar className="h-4 w-4 text-green-600" />
+                                      <span className="text-sm">
+                                        {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
+                                      </span>
+                                      <Badge variant="outline" className="text-xs">
+                                        {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
+                                      </Badge>
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <Calendar className="h-4 w-4 text-green-600" />
-                                    <span className="text-sm">
-                                      {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
-                                    </span>
-                                    <Badge variant="outline" className="text-xs">
-                                      {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
-                                    </Badge>
+                                  <p className="text-sm text-muted-foreground">{request.reason}</p>
+                                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                    <span>Submitted: {formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
+                                    <span>Decision: {formatDateTimeIST(request.processedAt || request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
+                                    <span>Department: {request.department}</span>
                                   </div>
+                                  {request.rejectionReason && (
+                                    <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
+                                      <p className="text-sm text-red-800 dark:text-red-200">
+                                        <strong>Rejection Reason:</strong> {request.rejectionReason}
+                                      </p>
+                                    </div>
+                                  )}
                                 </div>
-                                <p className="text-sm text-muted-foreground">{request.reason}</p>
-                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                  <span>Submitted: {formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
-                                  <span>Decision: {formatDateTimeIST(request.processedAt || request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
-                                  <span>Department: {request.department}</span>
+                                <div className="flex items-center gap-2 ml-4">
+                                  <Badge
+                                    variant={request.status === 'approved' ? 'default' : 'destructive'}
+                                    className={request.status === 'approved' ? 'bg-green-500' : ''}
+                                  >
+                                    {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                                  </Badge>
                                 </div>
-                                {request.rejectionReason && (
-                                  <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
-                                    <p className="text-sm text-red-800 dark:text-red-200">
-                                      <strong>Rejection Reason:</strong> {request.rejectionReason}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 ml-4">
-                                <Badge
-                                  variant={request.status === 'approved' ? 'default' : 'destructive'}
-                                  className={request.status === 'approved' ? 'bg-green-500' : ''}
-                                >
-                                  {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                                </Badge>
                               </div>
                             </div>
-                          </div>
-                        ))}
-                    </div>
+                          ))}
+                      </div>
+                      <div className="mt-4">
+                        <Pagination
+                          currentPage={wfhCurrentPage}
+                          totalPages={Math.ceil(allWfhRequests.filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter)).length / wfhItemsPerPage)}
+                          totalItems={allWfhRequests.filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter)).length}
+                          itemsPerPage={wfhItemsPerPage}
+                          onPageChange={setWfhCurrentPage}
+                          onItemsPerPageChange={setWfhItemsPerPage}
+                          showItemsPerPage={true}
+                        />
+                      </div>
+                    </>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
                       <History className="h-12 w-12 mx-auto mb-4 opacity-50" />

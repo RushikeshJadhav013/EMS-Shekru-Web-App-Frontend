@@ -13,6 +13,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { Pagination } from '@/components/ui/pagination';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -36,6 +37,10 @@ const SalaryDashboard = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [deptFilter, setDeptFilter] = useState('all');
     const [roleFilter, setRoleFilter] = useState('all');
+
+    // Pagination states
+    const [salaryCurrentPage, setSalaryCurrentPage] = useState(1);
+    const [salaryItemsPerPage, setSalaryItemsPerPage] = useState(10);
 
     const userRole = user?.role?.toLowerCase();
     const isAdminOrHr = userRole === 'admin' || userRole === 'hr';
@@ -141,6 +146,19 @@ const SalaryDashboard = () => {
     const availableRoles = userRole === 'admin'
         ? ['hr', 'manager', 'team_lead', 'employee']
         : ['manager', 'team_lead', 'employee'];
+
+    // Paginated Items
+    const paginatedItems = React.useMemo(() => {
+        const startIndex = (salaryCurrentPage - 1) * salaryItemsPerPage;
+        return filteredItems.slice(startIndex, startIndex + salaryItemsPerPage);
+    }, [filteredItems, salaryCurrentPage, salaryItemsPerPage]);
+
+    const totalPages = Math.ceil(filteredItems.length / salaryItemsPerPage);
+
+    // Reset pagination when filters change
+    useEffect(() => {
+        setSalaryCurrentPage(1);
+    }, [searchQuery, deptFilter, roleFilter]);
 
     const handleDeleteSalary = async (userId: string) => {
         if (!confirm('Are you sure you want to delete the salary record for this employee? This action cannot be undone.')) return;
@@ -438,7 +456,7 @@ const SalaryDashboard = () => {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredItems.map((item) => (
+                                    paginatedItems.map((item) => (
                                         <TableRow key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors pointer-events-none sm:pointer-events-auto">
                                             <TableCell className="font-bold text-slate-700 dark:text-slate-300">{item.employee_id}</TableCell>
                                             <TableCell>
@@ -512,6 +530,21 @@ const SalaryDashboard = () => {
                             </TableBody>
                         </Table>
                     </div>
+
+                    {filteredItems.length > 0 && (
+                        <div className="mt-6 px-2">
+                            <Pagination
+                                currentPage={salaryCurrentPage}
+                                totalPages={totalPages}
+                                totalItems={filteredItems.length}
+                                itemsPerPage={salaryItemsPerPage}
+                                onPageChange={setSalaryCurrentPage}
+                                onItemsPerPageChange={setSalaryItemsPerPage}
+                                showItemsPerPage={true}
+                                showEntriesInfo={true}
+                            />
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

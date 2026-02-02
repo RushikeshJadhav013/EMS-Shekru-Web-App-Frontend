@@ -1497,23 +1497,23 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 </div>
 
                                 <div className="space-y-5">
-                                    {/* Offer Letter Card */}
-                                    <div className="relative p-5 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 hover:border-blue-200 dark:hover:border-blue-900/50 hover:bg-white dark:hover:bg-slate-800/40 transition-all duration-300 group/item overflow-hidden">
-                                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl -mr-16 -mt-16 transition-opacity opacity-0 group-hover/item:opacity-100" />
-                                        <div className="flex justify-between items-center relative z-10">
-                                            <div className="flex items-center gap-4">
-                                                <div className="h-12 w-12 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-800 group-hover/item:scale-110 group-hover/item:shadow-blue-100 dark:group-hover/item:shadow-none transition-all">
-                                                    <FileText className="h-6 w-6 text-blue-600" />
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-sm text-slate-900 dark:text-white">Offer Letter</h4>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <Badge variant="secondary" className="text-[9px] font-black uppercase tracking-tighter h-4.5 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 border-none px-2">Official Contract</Badge>
-                                                        <span className="text-[10px] text-muted-foreground font-medium">PDF • 1.2 MB</span>
+                                    {/* Offer Letter Card - Only visible to Admin or HR (viewing others) */}
+                                    {isAdminOrHr && (
+                                        <div className="relative p-5 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 hover:border-blue-200 dark:hover:border-blue-900/50 hover:bg-white dark:hover:bg-slate-800/40 transition-all duration-300 group/item overflow-hidden">
+                                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl -mr-16 -mt-16 transition-opacity opacity-0 group-hover/item:opacity-100" />
+                                            <div className="flex justify-between items-center relative z-10">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="h-12 w-12 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-800 group-hover/item:scale-110 group-hover/item:shadow-blue-100 dark:group-hover/item:shadow-none transition-all">
+                                                        <FileText className="h-6 w-6 text-blue-600" />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-sm text-slate-900 dark:text-white">Offer Letter</h4>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <Badge variant="secondary" className="text-[9px] font-black uppercase tracking-tighter h-4.5 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 border-none px-2">Official Contract</Badge>
+                                                            <span className="text-[10px] text-muted-foreground font-medium">PDF • 1.2 MB</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            {isAdminOrHr && (
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
@@ -1522,9 +1522,9 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                 >
                                                     <Download className="h-5 w-5" />
                                                 </Button>
-                                            )}
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
 
                                     {/* Salary Annexure Card */}
                                     <div className="relative p-5 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 hover:border-purple-200 dark:hover:border-purple-900/50 hover:bg-white dark:hover:bg-slate-800/40 transition-all duration-300 group/item overflow-hidden">

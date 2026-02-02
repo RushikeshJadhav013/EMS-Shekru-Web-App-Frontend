@@ -101,25 +101,22 @@ const AdminDashboard: React.FC = () => {
           setDepartmentPerformance(data.departmentPerformance || []);
         }
 
-        // Enhanced Recent Activities Logic
-        // 1. Keep non-attendance activities from dashboard API, but ONLY for today
-        const today = new Date();
-        const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-        const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+        // Enhanced Recent Activities Logic - Strictly Today
+        const todayDateStr = todayIST(); // YYYY-MM-DD
 
+        // 1. Filter dashboard activities for today only
         let activities = (data.recentActivities || []).filter((a: any) => {
-          // Exclude check-ins (we fetch fresh ones)
-          if (a.type === 'check-in') return false;
-
-          // Filter for today only
           if (!a.time) return false;
-          const t = new Date(a.time);
-          return t >= startOfDay && t <= endOfDay;
+          // Avoid duplicate check-ins/outs as we fetch fresh ones next
+          if (a.type === 'check-in' || a.type === 'check-out') return false;
+
+          const activityDateStr = a.time.split('T')[0];
+          return activityDateStr === todayDateStr;
         });
 
         // 2. Fetch fresh attendance records for today to get accurate check-in AND check-out
         try {
-          const attendanceData = await apiService.getAttendanceRecords({ date: todayIST() });
+          const attendanceData = await apiService.getAttendanceRecords({ date: todayDateStr });
 
           const attendanceActivities: any[] = [];
 
@@ -132,7 +129,7 @@ const AdminDashboard: React.FC = () => {
               const checkOutTime = rec.check_out || rec.checkOutTime;
 
               // Add Check-In Activity
-              if (checkInTime) {
+              if (checkInTime && checkInTime.split('T')[0] === todayDateStr) {
                 attendanceActivities.push({
                   id: `in-${recId}`,
                   type: 'check-in',
@@ -140,12 +137,11 @@ const AdminDashboard: React.FC = () => {
                   time: checkInTime,
                   status: rec.status || 'present',
                   checkInStatus: rec.checkInStatus || rec.check_in_status,
-                  originalRec: rec
                 });
               }
 
               // Add Check-Out Activity
-              if (checkOutTime) {
+              if (checkOutTime && checkOutTime.split('T')[0] === todayDateStr) {
                 attendanceActivities.push({
                   id: `out-${recId}`,
                   type: 'check-out',
@@ -153,7 +149,6 @@ const AdminDashboard: React.FC = () => {
                   time: checkOutTime,
                   status: 'checked_out',
                   checkOutStatus: rec.checkOutStatus || rec.check_out_status,
-                  originalRec: rec
                 });
               }
             });
@@ -165,10 +160,6 @@ const AdminDashboard: React.FC = () => {
 
         } catch (attError) {
           console.error("Failed to fetch fresh attendance for activities", attError);
-          // Fallback: If attendance fetch fails, stick with what we have (even if just check-ins from dashboard API)
-          if (!activities.length) {
-            activities = data.recentActivities || [];
-          }
         }
 
         setRecentActivities(activities);

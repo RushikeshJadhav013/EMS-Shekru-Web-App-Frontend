@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarWithSelect } from '@/components/ui/calendar-with-select';
 import { DatePicker } from '@/components/ui/date-picker';
+import { HolidayCalendar } from '@/components/ui/holiday-calendar';
 import {
   Dialog,
   DialogContent,
@@ -160,11 +161,15 @@ export default function LeaveManagement() {
 
   // Pagination states for approval requests
   const [approvalCurrentPage, setApprovalCurrentPage] = useState(1);
-  const [approvalItemsPerPage, setApprovalItemsPerPage] = useState(20);
+  const [approvalItemsPerPage, setApprovalItemsPerPage] = useState(10);
 
   // Pagination states for approval history
   const [historyCurrentPage, setHistoryCurrentPage] = useState(1);
   const [historyItemsPerPage, setHistoryItemsPerPage] = useState(20);
+
+  // Pagination states for My Leave History
+  const [myLeaveCurrentPage, setMyLeaveCurrentPage] = useState(1);
+  const [myLeaveItemsPerPage, setMyLeaveItemsPerPage] = useState(10);
 
   // Holiday dialog state
   const [selectedHoliday, setSelectedHoliday] = useState<typeof holidays[0] | null>(null);
@@ -1165,6 +1170,10 @@ export default function LeaveManagement() {
     setHistoryCurrentPage(1);
   }, [historyFilter, customHistoryStartDate, customHistoryEndDate]);
 
+  useEffect(() => {
+    setMyLeaveCurrentPage(1);
+  }, [leaveHistoryPeriod, leaveHistoryCustomStartDate, leaveHistoryCustomEndDate]);
+
   // Filter leave requests based on selected period (My Leave History)
   const getFilteredLeaveRequests = useMemo(() => {
     const userLeaves = leaveRequests.filter(req => String(req.employeeId) === String(user?.id));
@@ -1587,103 +1596,119 @@ export default function LeaveManagement() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {getFilteredLeaveRequests.map((request) => {
-                      const daysCount = Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                      const statusConfig = {
-                        pending: {
-                          bg: 'bg-amber-50 dark:bg-amber-950',
-                          border: 'border-amber-200 dark:border-amber-800',
-                          icon: Clock,
-                          iconColor: 'text-amber-600 dark:text-amber-400',
-                        },
-                        approved: {
-                          bg: 'bg-emerald-50 dark:bg-emerald-950',
-                          border: 'border-emerald-200 dark:border-emerald-800',
-                          icon: CheckCircle,
-                          iconColor: 'text-emerald-600 dark:text-emerald-400',
-                        },
-                        rejected: {
-                          bg: 'bg-red-50 dark:bg-red-950',
-                          border: 'border-red-200 dark:border-red-800',
-                          icon: XCircle,
-                          iconColor: 'text-red-600 dark:text-red-400',
-                        },
-                      };
-                      const config = statusConfig[request.status] || statusConfig.pending;
-                      const StatusIcon = config.icon;
+                    {getFilteredLeaveRequests
+                      .slice((myLeaveCurrentPage - 1) * myLeaveItemsPerPage, myLeaveCurrentPage * myLeaveItemsPerPage)
+                      .map((request) => {
+                        const daysCount = Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                        const statusConfig = {
+                          pending: {
+                            bg: 'bg-amber-50 dark:bg-amber-950',
+                            border: 'border-amber-200 dark:border-amber-800',
+                            icon: Clock,
+                            iconColor: 'text-amber-600 dark:text-amber-400',
+                          },
+                          approved: {
+                            bg: 'bg-emerald-50 dark:bg-emerald-950',
+                            border: 'border-emerald-200 dark:border-emerald-800',
+                            icon: CheckCircle,
+                            iconColor: 'text-emerald-600 dark:text-emerald-400',
+                          },
+                          rejected: {
+                            bg: 'bg-red-50 dark:bg-red-950',
+                            border: 'border-red-200 dark:border-red-800',
+                            icon: XCircle,
+                            iconColor: 'text-red-600 dark:text-red-400',
+                          },
+                        };
+                        const config = statusConfig[request.status] || statusConfig.pending;
+                        const StatusIcon = config.icon;
 
-                      return (
-                        <div
-                          key={request.id}
-                          className={`flex items-start justify-between gap-4 rounded-xl border ${config.border} bg-white dark:bg-slate-900 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors`}
-                        >
-                          <div className="flex items-start gap-3 flex-1">
-                            <div className={`mt-1 h-9 w-9 rounded-lg ${config.bg} flex items-center justify-center`}>
-                              <StatusIcon className={`h-4 w-4 ${config.iconColor}`} />
-                            </div>
-                            <div className="space-y-1 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                  {format(request.startDate, 'dd MMM yyyy')}
-                                </span>
-                                <span className="text-xs text-muted-foreground">to</span>
-                                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                  {format(request.endDate, 'dd MMM yyyy')}
-                                </span>
-                                <Badge className={`${getLeaveTypeColor(request.type)} text-[10px] font-semibold capitalize`}>
-                                  {request.type}
-                                </Badge>
-                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Timer className="h-3 w-3" />
-                                  {daysCount} {daysCount === 1 ? 'day' : 'days'}
-                                </span>
+                        return (
+                          <div
+                            key={request.id}
+                            className={`flex items-start justify-between gap-4 rounded-xl border ${config.border} bg-white dark:bg-slate-900 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors`}
+                          >
+                            <div className="flex items-start gap-3 flex-1">
+                              <div className={`mt-1 h-9 w-9 rounded-lg ${config.bg} flex items-center justify-center`}>
+                                <StatusIcon className={`h-4 w-4 ${config.iconColor}`} />
                               </div>
-                              <p className="text-xs text-muted-foreground flex items-start gap-2">
-                                <FileText className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-                                <span className="line-clamp-2">{request.reason}</span>
-                              </p>
+                              <div className="space-y-1 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                    {format(request.startDate, 'dd MMM yyyy')}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">to</span>
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                    {format(request.endDate, 'dd MMM yyyy')}
+                                  </span>
+                                  <Badge className={`${getLeaveTypeColor(request.type)} text-[10px] font-semibold capitalize`}>
+                                    {request.type}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Timer className="h-3 w-3" />
+                                    {daysCount} {daysCount === 1 ? 'day' : 'days'}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground flex items-start gap-2">
+                                  <FileText className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                                  <span className="line-clamp-2">{request.reason}</span>
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                              <Badge
+                                className={`px-3 py-1 text-xs font-bold capitalize ${getStatusBadgeStyle(request.status)}`}
+                              >
+                                {request.status}
+                              </Badge>
+                              {request.approvedBy && (
+                                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                  <User className="h-3 w-3" />
+                                  <span>by {request.approvedBy}</span>
+                                </span>
+                              )}
+                              {request.status === 'pending' && (
+                                <div className="mt-1 flex items-center gap-1.5">
+                                  <Button
+                                    size="xs"
+                                    className="h-7 px-2 text-[11px]"
+                                    onClick={() => handleEditLeave(request)}
+                                  >
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="xs"
+                                    variant="destructive"
+                                    className="h-7 px-2 text-[11px]"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleDeleteLeave(request);
+                                    }}
+                                  >
+                                    Delete
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <Badge
-                              className={`px-3 py-1 text-xs font-bold capitalize ${getStatusBadgeStyle(request.status)}`}
-                            >
-                              {request.status}
-                            </Badge>
-                            {request.approvedBy && (
-                              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                <User className="h-3 w-3" />
-                                <span>by {request.approvedBy}</span>
-                              </span>
-                            )}
-                            {request.status === 'pending' && (
-                              <div className="mt-1 flex items-center gap-1.5">
-                                <Button
-                                  size="xs"
-                                  className="h-7 px-2 text-[11px]"
-                                  onClick={() => handleEditLeave(request)}
-                                >
-                                  Edit
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="xs"
-                                  variant="destructive"
-                                  className="h-7 px-2 text-[11px]"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleDeleteLeave(request);
-                                  }}
-                                >
-                                  Delete
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    {getFilteredLeaveRequests.length > 0 && (
+                      <div className="mt-6 px-2">
+                        <Pagination
+                          currentPage={myLeaveCurrentPage}
+                          totalPages={Math.ceil(getFilteredLeaveRequests.length / myLeaveItemsPerPage)}
+                          totalItems={getFilteredLeaveRequests.length}
+                          itemsPerPage={myLeaveItemsPerPage}
+                          onPageChange={setMyLeaveCurrentPage}
+                          onItemsPerPageChange={setMyLeaveItemsPerPage}
+                          showItemsPerPage={true}
+                          showEntriesInfo={true}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -1832,36 +1857,43 @@ export default function LeaveManagement() {
                       Set Company Holidays
                     </h3>
                     <div className="space-y-3">
-                      <div className="flex gap-2 items-start">
-                        <div className="flex-1 space-y-2">
-                          <DatePicker
+                      <div className="flex flex-col md:flex-row gap-6 items-start">
+                        <div className="flex-shrink-0 mx-auto md:mx-0">
+                          <HolidayCalendar
                             date={holidayForm.date}
                             onDateChange={(date) => date && setHolidayForm({ ...holidayForm, date })}
-                            placeholder="Select holiday date"
-                            className="w-full"
-                            disablePastDates={true}
-                          />
-                          <Input
-                            type="text"
-                            placeholder="Holiday name (e.g., Diwali, New Year)"
-                            value={holidayForm.name}
-                            onChange={e => setHolidayForm({ ...holidayForm, name: e.target.value })}
-                          />
-                          <Textarea
-                            placeholder="Description (optional) - e.g., Festival of Lights celebration"
-                            value={holidayForm.description || ''}
-                            onChange={e => setHolidayForm({ ...holidayForm, description: e.target.value })}
-                            rows={2}
-                            className="resize-none"
+                            className="w-[280px]"
                           />
                         </div>
-                        <Button
-                          onClick={handleAddHoliday}
-                          className="gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-lg mt-0"
-                        >
-                          <CalendarIcon className="h-4 w-4" />
-                          Add Holiday
-                        </Button>
+                        <div className="flex-1 space-y-4 w-full">
+                          <div className="space-y-2">
+                            <Label>Holiday Name</Label>
+                            <Input
+                              type="text"
+                              placeholder="e.g., Diwali, New Year"
+                              value={holidayForm.name}
+                              onChange={e => setHolidayForm({ ...holidayForm, name: e.target.value })}
+                              className="bg-white dark:bg-slate-900"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Description</Label>
+                            <Textarea
+                              placeholder="Description (optional) - e.g., Festival of Lights celebration"
+                              value={holidayForm.description || ''}
+                              onChange={e => setHolidayForm({ ...holidayForm, description: e.target.value })}
+                              rows={3}
+                              className="resize-none bg-white dark:bg-slate-900"
+                            />
+                          </div>
+                          <Button
+                            onClick={handleAddHoliday}
+                            className="w-full gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-md"
+                          >
+                            <CalendarIcon className="h-4 w-4" />
+                            Add Holiday
+                          </Button>
+                        </div>
                       </div>
                     </div>
                     <div>
@@ -2046,7 +2078,7 @@ export default function LeaveManagement() {
                           holiday:
                             'bg-gradient-to-br from-rose-500 to-red-600 text-white font-bold hover:scale-110 hover:rotate-3 transition-all duration-300 shadow-md cursor-pointer ring-2 ring-red-200 dark:ring-red-900',
                           weekOff:
-                            'border-2 border-dashed border-sky-400 text-sky-600 font-bold bg-sky-50/50 hover:bg-sky-100 dark:bg-sky-900/10 dark:text-sky-400 transition-colors',
+                            'week-off-day border-2 border-dashed border-sky-400 text-sky-600 font-bold bg-sky-50/50 hover:bg-sky-100 dark:bg-sky-900/10 dark:text-sky-400 transition-colors',
                           leave:
                             'bg-indigo-100 text-indigo-700 font-semibold border-2 border-indigo-200 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800',
                         }}
@@ -2210,6 +2242,7 @@ export default function LeaveManagement() {
               </div>
 
             </CardContent>
+
           </Card>
         </TabsContent>
 
@@ -2320,8 +2353,8 @@ export default function LeaveManagement() {
                         itemsPerPage={approvalItemsPerPage}
                         onPageChange={setApprovalCurrentPage}
                         onItemsPerPageChange={setApprovalItemsPerPage}
-                        showItemsPerPage={false}
-                        showEntriesInfo={false}
+                        showItemsPerPage={true}
+                        showEntriesInfo={true}
                       />
                     </div>
                   )}

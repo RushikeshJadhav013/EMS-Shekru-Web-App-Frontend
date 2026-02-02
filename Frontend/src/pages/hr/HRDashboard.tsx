@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Pagination } from '@/components/ui/pagination';
 import { ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import {
   Users,
@@ -366,36 +367,15 @@ const HRDashboard: React.FC = () => {
           </div>
         ))}
         {recentActivities.length > ACTIVITIES_PER_PAGE && (
-          <div className="mt-4 pt-4 border-t flex items-center justify-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setActivitiesPage(p => Math.max(1, p - 1))}
-              disabled={activitiesPage === 1}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            {Array.from({ length: Math.ceil(recentActivities.length / ACTIVITIES_PER_PAGE) }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant={activitiesPage === page ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActivitiesPage(page)}
-                className="h-8 w-8 p-0"
-              >
-                {page}
-              </Button>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setActivitiesPage(p => Math.min(Math.ceil(recentActivities.length / ACTIVITIES_PER_PAGE), p + 1))}
-              disabled={activitiesPage === Math.ceil(recentActivities.length / ACTIVITIES_PER_PAGE)}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronRightIcon className="h-4 w-4" />
-            </Button>
+          <div className="mt-6">
+            <Pagination
+              currentPage={activitiesPage}
+              totalPages={Math.ceil(recentActivities.length / ACTIVITIES_PER_PAGE)}
+              totalItems={recentActivities.length}
+              itemsPerPage={ACTIVITIES_PER_PAGE}
+              onPageChange={setActivitiesPage}
+              showItemsPerPage={false} // Activities feed usually has fixed limit on dashboard
+            />
           </div>
         )}
       </>
