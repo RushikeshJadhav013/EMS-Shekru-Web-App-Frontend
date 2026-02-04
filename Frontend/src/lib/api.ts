@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
 
 interface EmployeeData {
   name: string;
@@ -1178,7 +1178,7 @@ class ApiService {
       description: data.description || '',
       is_recurring: data.is_recurring ?? false,
     };
-    
+
     return this.request('/calendar/holidays', {
       method: 'POST',
       body: JSON.stringify(requestData),
@@ -1450,7 +1450,7 @@ class ApiService {
     }
     const queryString = queryParams.toString();
     const url = `${this.baseURL}/salary/offer-letter/download/${userId}${queryString ? `?${queryString}` : ''}`;
-    
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {

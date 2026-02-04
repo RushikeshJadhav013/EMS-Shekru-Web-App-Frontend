@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { AlertTriangle, Clock, FileText, Send } from 'lucide-react';
 import { formatDateIST } from '@/utils/timezone';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
 
 // Allow only letters, numbers, spaces, and new lines (no special characters)
 const sanitizeAlphaNumText = (value: string) => value.replace(/[^a-zA-Z0-9 \n]/g, '');
