@@ -110,12 +110,16 @@ export const LeaveBalanceProvider: React.FC<{ children: React.ReactNode }> = ({ 
       };
 
       // Apply global allocation config if available (Admin's settings)
+      // Allocation config is the source of truth for allocated values
+      // Balance API is the source of truth for used/remaining values
       if (allocationConfig) {
         // Handle potential snake_case or camelCase
         const sickAlloc = allocationConfig.sick_leave_allocation ?? allocationConfig.sickLeaveAllocation;
         const casualAlloc = allocationConfig.casual_leave_allocation ?? allocationConfig.casualLeaveAllocation;
         const totalAlloc = allocationConfig.total_annual_leave ?? allocationConfig.totalAnnualLeave;
 
+        // Always use allocation config for allocated values (if provided)
+        // This ensures consistency with admin-configured allocations
         if (sickAlloc != null) {
           defaults.sick.allocated = Number(sickAlloc) || 0;
         }
@@ -125,8 +129,8 @@ export const LeaveBalanceProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
 
         if (totalAlloc != null) {
-          // We still honour the configured total for visibility,
-          // but the effective "Total Leaves" card will be recomputed from sick+casual below.
+          // Set annual leave allocation from config
+          // The effective "Total Leaves" will be recomputed from sick+annual below
           defaults.annual.allocated = Number(totalAlloc) || 0;
         }
       }
@@ -146,13 +150,18 @@ export const LeaveBalanceProvider: React.FC<{ children: React.ReactNode }> = ({ 
         remaining: 0,
       };
 
-      // Enforce Total Leaves = Sick + Casual (paid leave only, excluding unpaid)
-      const totalAllocated = defaults.sick.allocated + defaults.casual.allocated;
-      const totalUsed = defaults.sick.used + defaults.casual.used;
+      // Calculate Total Leaves = Sick + Annual (paid leave only, excluding unpaid)
+      // Use normalized values after all adjustments to ensure accurate calculation
+      // Store this in annual field for display purposes (Total Leaves card)
+      // This ensures the total is always calculated correctly from the latest API data
+      const totalAllocated = defaults.sick.allocated + defaults.annual.allocated;
+      const totalUsed = defaults.sick.used + defaults.annual.used;
+      const totalRemaining = Math.max(0, totalAllocated - totalUsed);
+      
       defaults.annual = {
         allocated: totalAllocated,
         used: totalUsed,
-        remaining: Math.max(0, totalAllocated - totalUsed),
+        remaining: totalRemaining,
       };
 
       setLeaveBalance(defaults);

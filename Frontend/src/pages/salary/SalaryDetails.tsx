@@ -99,6 +99,12 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
     const [isCreatingIncrement, setIsCreatingIncrement] = useState(false);
     const [salarySlipHistory, setSalarySlipHistory] = useState<SalarySlipHistoryItem[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+    const [isOfferLetterDialogOpen, setIsOfferLetterDialogOpen] = useState(false);
+    const [offerLetterForm, setOfferLetterForm] = useState({
+        letter_date: '',
+        joining_date: '',
+    });
+    const [isDownloadingOfferLetter, setIsDownloadingOfferLetter] = useState(false);
 
     const userRole = user?.role?.toLowerCase();
     // HR viewing their own salary should behave like a regular employee/manager (no HR admin controls)
@@ -764,10 +770,45 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         }
     };
 
+    const handleOpenOfferLetterDialog = () => {
+        setIsOfferLetterDialogOpen(true);
+        // Reset form
+        setOfferLetterForm({
+            letter_date: '',
+            joining_date: '',
+        });
+    };
+
     const handleDownloadOfferLetter = async () => {
+        // Validate form
+        if (!offerLetterForm.letter_date || !offerLetterForm.joining_date) {
+            toast({ 
+                title: 'Validation Error', 
+                description: 'Please fill in both letter date and joining date.', 
+                variant: 'destructive' 
+            });
+            return;
+        }
+
+        // Validate that joining_date >= letter_date
+        const letterDate = new Date(offerLetterForm.letter_date);
+        const joiningDate = new Date(offerLetterForm.joining_date);
+        if (joiningDate < letterDate) {
+            toast({ 
+                title: 'Validation Error', 
+                description: 'Joining date must be same or later than letter date.', 
+                variant: 'destructive' 
+            });
+            return;
+        }
+
+        setIsDownloadingOfferLetter(true);
         try {
             toast({ title: 'Generating Letter', description: 'Preparing PDF...', variant: 'default' });
-            const blob = await apiService.downloadOfferLetter(targetUserId!);
+            const blob = await apiService.downloadOfferLetter(targetUserId!, {
+                letter_date: offerLetterForm.letter_date,
+                joining_date: offerLetterForm.joining_date,
+            });
 
             // Create download link
             const url = window.URL.createObjectURL(blob);
@@ -780,8 +821,16 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             document.body.removeChild(a);
 
             toast({ title: 'Success', description: `Offer letter downloaded successfully.`, variant: 'success' });
+            setIsOfferLetterDialogOpen(false);
+            // Reset form
+            setOfferLetterForm({
+                letter_date: '',
+                joining_date: '',
+            });
         } catch (err: any) {
             toast({ title: 'Error', description: err.message || 'Failed to download offer letter', variant: 'destructive' });
+        } finally {
+            setIsDownloadingOfferLetter(false);
         }
     };
 
@@ -1517,7 +1566,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    onClick={handleDownloadOfferLetter}
+                                                    onClick={handleOpenOfferLetterDialog}
                                                     className="h-11 w-11 rounded-xl hover:bg-blue-600 hover:text-white transition-all transform hover:scale-110 active:scale-95 shadow-sm"
                                                 >
                                                     <Download className="h-5 w-5" />
@@ -2100,6 +2149,91 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                     </p>
                 )}
             </div>
+
+            {/* Offer Letter Download Dialog */}
+            <Dialog open={isOfferLetterDialogOpen} onOpenChange={setIsOfferLetterDialogOpen}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <FileText className="h-5 w-5 text-blue-600" />
+                            Download Offer Letter
+                        </DialogTitle>
+                        <DialogDescription>
+                            Please provide the required dates to generate the offer letter.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="letter_date" className="flex items-center gap-1">
+                                Letter Date <span className="text-red-500">*</span>
+                                <span className="text-xs text-muted-foreground font-normal">(required)</span>
+                            </Label>
+                            <Input
+                                id="letter_date"
+                                type="date"
+                                value={offerLetterForm.letter_date}
+                                onChange={(e) => setOfferLetterForm({ ...offerLetterForm, letter_date: e.target.value })}
+                                className="w-full"
+                                required
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Letter creation date (YYYY-MM-DD)
+                            </p>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="joining_date" className="flex items-center gap-1">
+                                Joining Date <span className="text-red-500">*</span>
+                                <span className="text-xs text-muted-foreground font-normal">(required)</span>
+                            </Label>
+                            <Input
+                                id="joining_date"
+                                type="date"
+                                value={offerLetterForm.joining_date}
+                                onChange={(e) => setOfferLetterForm({ ...offerLetterForm, joining_date: e.target.value })}
+                                className="w-full"
+                                min={offerLetterForm.letter_date || undefined}
+                                required
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Joining date (YYYY-MM-DD). Must be same or later than letter date.
+                            </p>
+                            {offerLetterForm.letter_date && offerLetterForm.joining_date && 
+                             new Date(offerLetterForm.joining_date) < new Date(offerLetterForm.letter_date) && (
+                                <p className="text-xs text-red-500 flex items-center gap-1">
+                                    <AlertCircle className="h-3 w-3" />
+                                    Joining date must be same or later than letter date.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsOfferLetterDialogOpen(false)}
+                            disabled={isDownloadingOfferLetter}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleDownloadOfferLetter}
+                            disabled={isDownloadingOfferLetter || !offerLetterForm.letter_date || !offerLetterForm.joining_date}
+                            className="bg-blue-600 hover:bg-blue-700"
+                        >
+                            {isDownloadingOfferLetter ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Downloading...
+                                </>
+                            ) : (
+                                <>
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Download
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div >
     );
 };

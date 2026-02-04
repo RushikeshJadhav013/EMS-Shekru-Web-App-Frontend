@@ -18,6 +18,9 @@ import { formatDateIST } from '@/utils/timezone';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
 
+// Allow only letters, numbers, spaces, and new lines (no special characters)
+const sanitizeAlphaNumText = (value: string) => value.replace(/[^a-zA-Z0-9 \n]/g, '');
+
 interface OverdueTask {
   task_id: number;
   title: string;
@@ -102,9 +105,10 @@ const WorkSummaryDialog: React.FC<WorkSummaryDialogProps> = ({
   };
 
   const handleDeadlineReasonChange = (value: string) => {
-    setDeadlineReason(value);
+    const cleaned = sanitizeAlphaNumText(value);
+    setDeadlineReason(cleaned);
     if (overdueTasks.length > 0) {
-      const error = validateDeadlineReason(value);
+      const error = validateDeadlineReason(cleaned);
       setReasonError(error);
     }
   };
@@ -200,7 +204,7 @@ const WorkSummaryDialog: React.FC<WorkSummaryDialogProps> = ({
               id="work-summary"
               placeholder="Describe what you accomplished today, key tasks completed, challenges faced, and any important updates..."
               value={workSummary}
-              onChange={(e) => setWorkSummary(e.target.value)}
+              onChange={(e) => setWorkSummary(sanitizeAlphaNumText(e.target.value))}
               className="min-h-[120px] resize-none"
               disabled={isSubmitting}
             />

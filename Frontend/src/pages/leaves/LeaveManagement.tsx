@@ -162,6 +162,7 @@ export default function LeaveManagement() {
   // Pagination states for approval requests
   const [approvalCurrentPage, setApprovalCurrentPage] = useState(1);
   const [approvalItemsPerPage, setApprovalItemsPerPage] = useState(10);
+  const [expandedReasons, setExpandedReasons] = useState<Set<string>>(new Set());
 
   // Pagination states for approval history
   const [historyCurrentPage, setHistoryCurrentPage] = useState(1);
@@ -182,6 +183,16 @@ export default function LeaveManagement() {
   });
 
   const handleAddHoliday = async () => {
+    // Check if user is admin
+    if (user?.role !== 'admin') {
+      toast({
+        title: 'Access Denied',
+        description: 'Only administrators can add holidays.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     if (!holidayForm.name) {
       toast({
         title: 'Error',
@@ -246,6 +257,16 @@ export default function LeaveManagement() {
   };
 
   const handleRemoveHoliday = async (id: number) => {
+    // Check if user is admin (also checked in context, but adding here for better UX)
+    if (user?.role !== 'admin') {
+      toast({
+        title: 'Access Denied',
+        description: 'Only administrators can remove holidays.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     try {
       await removeHoliday(id);
       toast({ title: 'Holiday removed', description: 'Company holiday removed from calendar.' });
@@ -258,7 +279,45 @@ export default function LeaveManagement() {
     }
   };
 
-  const handleSaveWeekOff = () => {
+  const [weekOffConfig, setWeekOffConfig] = useState<Record<string, string[]>>({});
+  const [isLoadingWeekOffs, setIsLoadingWeekOffs] = useState(true);
+  const [companyDepartments, setCompanyDepartments] = useState<string[]>([]);
+  const [weekOffForm, setWeekOffForm] = useState<{ department: string; days: string[] }>({
+    department: '',
+    days: ['saturday'],
+  });
+
+  // Fetch weekoffs from API
+  const fetchWeekOffs = useCallback(async () => {
+    try {
+      setIsLoadingWeekOffs(true);
+      const response = await apiService.getWeekoffs();
+      const weekOffMap: Record<string, string[]> = {};
+      response.forEach((item) => {
+        if (item.is_active) {
+          // Convert API day names (e.g., "Saturday", "Sunday") to lowercase format
+          weekOffMap[item.department] = item.days.map(day => day.toLowerCase());
+        }
+      });
+      setWeekOffConfig(weekOffMap);
+    } catch (error) {
+      console.error('Failed to fetch weekoffs:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load week-off configurations.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingWeekOffs(false);
+    }
+  }, []);
+
+  // Load weekoffs on mount
+  useEffect(() => {
+    fetchWeekOffs();
+  }, [fetchWeekOffs]);
+
+  const handleSaveWeekOff = async () => {
     const department = weekOffForm.department.trim();
     if (!department) {
       toast({
@@ -276,20 +335,44 @@ export default function LeaveManagement() {
       });
       return;
     }
-    const uniqueDays = Array.from(new Set(weekOffForm.days));
-    setWeekOffConfig((prev) => ({
-      ...prev,
-      [department]: uniqueDays,
-    }));
-    toast({
-      title: 'Week-off saved',
-      description: `${department} will now have days off on ${uniqueDays
-        .map((day) => weekDayLabels[day] || day)
-        .join(', ')}.`,
-    });
+    try {
+      const uniqueDays = Array.from(new Set(weekOffForm.days));
+      // Convert to capitalized format for API (e.g., "Saturday", "Sunday")
+      const capitalizedDays = uniqueDays.map(day => {
+        const lowerDay = day.toLowerCase();
+        return lowerDay.charAt(0).toUpperCase() + lowerDay.slice(1);
+      });
+      
+      await apiService.createWeekoff({
+        department: department,
+        days: capitalizedDays,
+      });
+
+      // Update local state
+      setWeekOffConfig((prev) => ({
+        ...prev,
+        [department]: uniqueDays,
+      }));
+
+      toast({
+        title: 'Week-off saved',
+        description: `${department} will now have days off on ${uniqueDays
+          .map((day) => weekDayLabels[day] || day)
+          .join(', ')}.`,
+      });
+    } catch (error) {
+      console.error('Failed to save weekoff:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to save week-off configuration.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleRemoveWeekOff = (department: string) => {
+    // Note: API doesn't have DELETE endpoint, so we just remove from local state
+    // In a real scenario, you might want to set is_active to false via API
     setWeekOffConfig((prev) => {
       const updated = { ...prev };
       delete updated[department];
@@ -300,32 +383,6 @@ export default function LeaveManagement() {
       description: `${department} no longer has a dedicated weekly off set.`,
     });
   };
-
-  const loadStoredWeekOffs = () => {
-    const stored = localStorage.getItem('departmentWeekOffs');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (parsed && typeof parsed === 'object') {
-          return parsed as Record<string, string[]>;
-        }
-      } catch (error) {
-        console.error('Failed to parse week-off rules:', error);
-      }
-    }
-    return {};
-  };
-
-  const [weekOffConfig, setWeekOffConfig] = useState<Record<string, string[]>>(loadStoredWeekOffs);
-  const [companyDepartments, setCompanyDepartments] = useState<string[]>([]);
-  const [weekOffForm, setWeekOffForm] = useState<{ department: string; days: string[] }>({
-    department: '',
-    days: ['saturday'],
-  });
-
-  useEffect(() => {
-    localStorage.setItem('departmentWeekOffs', JSON.stringify(weekOffConfig));
-  }, [weekOffConfig]);
 
   const { leaveBalance, loadLeaveBalance } = useLeaveBalance();
 
@@ -1851,63 +1908,78 @@ export default function LeaveManagement() {
                     </div>
                   </div>
 
-                  <div className="p-4 border rounded-lg bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950">
-                    <h3 className="font-semibold mb-3 flex items-center gap-2">
-                      <CalendarIcon className="h-5 w-5 text-amber-600" />
-                      Set Company Holidays
-                    </h3>
-                    <div className="space-y-3">
-                      <div className="flex flex-col md:flex-row gap-6 items-start">
-                        <div className="flex-shrink-0 mx-auto md:mx-0">
-                          <HolidayCalendar
-                            date={holidayForm.date}
-                            onDateChange={(date) => date && setHolidayForm({ ...holidayForm, date })}
-                            className="w-[280px]"
-                          />
-                        </div>
-                        <div className="flex-1 space-y-4 w-full">
-                          <div className="space-y-2">
-                            <Label>Holiday Name</Label>
-                            <Input
-                              type="text"
-                              placeholder="e.g., Diwali, New Year"
-                              value={holidayForm.name}
-                              onChange={e => setHolidayForm({ ...holidayForm, name: e.target.value })}
-                              className="bg-white dark:bg-slate-900"
+                  {user?.role === 'admin' && (
+                    <div className="p-4 border rounded-lg bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950">
+                      <h3 className="font-semibold mb-3 flex items-center gap-2">
+                        <CalendarIcon className="h-5 w-5 text-amber-600" />
+                        Set Company Holidays
+                      </h3>
+                      <div className="space-y-3">
+                        <div className="flex flex-col md:flex-row gap-6 items-start">
+                          <div className="flex-shrink-0 mx-auto md:mx-0">
+                            <HolidayCalendar
+                              date={holidayForm.date}
+                              onDateChange={(date) => date && setHolidayForm({ ...holidayForm, date })}
+                              className="w-[280px]"
                             />
                           </div>
-                          <div className="space-y-2">
-                            <Label>Description</Label>
-                            <Textarea
-                              placeholder="Description (optional) - e.g., Festival of Lights celebration"
-                              value={holidayForm.description || ''}
-                              onChange={e => setHolidayForm({ ...holidayForm, description: e.target.value })}
-                              rows={3}
-                              className="resize-none bg-white dark:bg-slate-900"
-                            />
+                          <div className="flex-1 space-y-4 w-full">
+                            <div className="space-y-2">
+                              <Label>Holiday Name</Label>
+                              <Input
+                                type="text"
+                                placeholder="e.g., Diwali, New Year"
+                                value={holidayForm.name}
+                                onChange={e => setHolidayForm({ ...holidayForm, name: e.target.value })}
+                                className="bg-white dark:bg-slate-900"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Description</Label>
+                              <Textarea
+                                placeholder="Description (optional) - e.g., Festival of Lights celebration"
+                                value={holidayForm.description || ''}
+                                onChange={e => setHolidayForm({ ...holidayForm, description: e.target.value })}
+                                rows={3}
+                                className="resize-none bg-white dark:bg-slate-900"
+                              />
+                            </div>
+                            <Button
+                              onClick={handleAddHoliday}
+                              className="w-full gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-md"
+                            >
+                              <CalendarIcon className="h-4 w-4" />
+                              Add Holiday
+                            </Button>
                           </div>
-                          <Button
-                            onClick={handleAddHoliday}
-                            className="w-full gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-md"
-                          >
-                            <CalendarIcon className="h-4 w-4" />
-                            Add Holiday
-                          </Button>
                         </div>
                       </div>
+                      <div className="mt-4">
+                        <h4 className="font-medium mb-2">Current Holidays:</h4>
+                        {holidays.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No holidays configured yet.</p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {holidays.map(h => (
+                              <li key={h.id || h.date.toISOString()} className="flex items-center justify-between gap-2 p-2 bg-white dark:bg-slate-800 rounded border">
+                                <span className="flex-1">
+                                  <strong>{h.name}</strong> - {format(h.date, 'MMMM dd, yyyy')}
+                                  {h.description && <span className="text-sm text-muted-foreground ml-2">({h.description})</span>}
+                                </span>
+                                <Button 
+                                  size="sm" 
+                                  variant="destructive" 
+                                  onClick={() => h.id && handleRemoveHoliday(h.id)}
+                                >
+                                  Remove
+                                </Button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-medium mb-1">Current Holidays:</h4>
-                      <ul>
-                        {holidays.map(h => (
-                          <li key={h.date.toISOString()} className="flex items-center gap-2 mb-1">
-                            <span>{h.name} ({h.date.toDateString()})</span>
-                            <Button size="sm" variant="destructive" onClick={() => h.id && handleRemoveHoliday(h.id)}>Remove</Button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
+                  )}
 
                   <div className="p-4 border rounded-lg bg-gradient-to-r from-sky-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950">
                     <div className="flex items-start justify-between gap-3">
@@ -2262,86 +2334,122 @@ export default function LeaveManagement() {
                       <p>No leave requests to display</p>
                     </div>
                   ) : (
-                    paginatedApprovalRequests.map((request) => (
-                      <div
-                        key={request.id}
-                        id={`leave-request-${request.id}`}
-                        className="border rounded-lg p-4 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-md">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-2 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <User className="h-4 w-4" />
-                              <span className="font-medium">{request.employeeName}</span>
-                              {request.role && (
-                                <Badge variant="outline" className="text-[10px] uppercase font-bold text-slate-500 border-slate-300">
-                                  {request.role}
+                    paginatedApprovalRequests.map((request) => {
+                      const reasonLength = request.reason?.length || 0;
+                      const shouldTruncate = reasonLength > 150;
+                      const isExpanded = expandedReasons.has(request.id);
+                      const displayReason = shouldTruncate && !isExpanded 
+                        ? request.reason.substring(0, 150) + '...' 
+                        : request.reason;
+
+                      return (
+                        <div
+                          key={request.id}
+                          id={`leave-request-${request.id}`}
+                          className="border rounded-lg p-4 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-md">
+                          <div className="flex flex-col lg:flex-row lg:items-start gap-4">
+                            <div className="space-y-3 flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <User className="h-4 w-4 flex-shrink-0" />
+                                <span className="font-medium">{request.employeeName}</span>
+                                {request.role && (
+                                  <Badge variant="outline" className="text-[10px] uppercase font-bold text-slate-500 border-slate-300">
+                                    {request.role}
+                                  </Badge>
+                                )}
+                                <Badge className={getLeaveTypeColor(request.type)}>
+                                  {request.type}
                                 </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  ID: {request.employeeId}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                                <div className="flex items-center gap-1">
+                                  <FileText className="h-3 w-3" />
+                                  <span>{request.department}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <CalendarDays className="h-3 w-3" />
+                                  <span>
+                                    {format(request.startDate, 'MMM dd')} - {format(request.endDate, 'MMM dd, yyyy')}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  <span>
+                                    {Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1} days
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="text-sm space-y-1">
+                                <span className="font-medium">Reason:</span>
+                                <div className="mt-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 max-h-48 overflow-y-auto">
+                                  <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">
+                                    {displayReason}
+                                  </p>
+                                  {shouldTruncate && (
+                                    <button
+                                      onClick={() => {
+                                        const newExpanded = new Set(expandedReasons);
+                                        if (isExpanded) {
+                                          newExpanded.delete(request.id);
+                                        } else {
+                                          newExpanded.add(request.id);
+                                        }
+                                        setExpandedReasons(newExpanded);
+                                      }}
+                                      className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                                    >
+                                      {isExpanded ? 'Show less' : 'Show more'}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-2 flex-shrink-0 lg:flex-col lg:items-stretch lg:w-full lg:max-w-[140px]">
+                              {request.status === 'pending' && canApproveLeaves ? (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    className="w-full min-w-[120px] h-9 gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                                    onClick={() => handleApproveReject(request.id, 'approved')}
+                                    disabled={approvingLeaveId === request.id}
+                                  >
+                                    <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                                    <span className="whitespace-nowrap">
+                                      {approvingLeaveId === request.id ? 'Processing...' : 'Approve'}
+                                    </span>
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="w-full min-w-[120px] h-9 gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                                    onClick={() => handleApproveReject(request.id, 'rejected')}
+                                    disabled={approvingLeaveId === request.id}
+                                  >
+                                    <XCircle className="h-4 w-4 flex-shrink-0" />
+                                    <span className="whitespace-nowrap">
+                                      {approvingLeaveId === request.id ? 'Processing...' : 'Reject'}
+                                    </span>
+                                  </Button>
+                                </>
+                              ) : (
+                                <div className="flex flex-col gap-2 w-full">
+                                  <Badge className={`w-full px-4 py-1.5 text-sm font-bold capitalize transition-all duration-300 text-center ${getStatusBadgeStyle(request.status)}`}>
+                                    {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                                  </Badge>
+                                  {request.status !== 'pending' && request.approvedBy && (
+                                    <span className="text-xs text-muted-foreground text-center">
+                                      by {request.approvedBy}
+                                    </span>
+                                  )}
+                                </div>
                               )}
-                              <Badge className={getLeaveTypeColor(request.type)}>
-                                {request.type}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                ID: {request.employeeId}
-                              </span>
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-                              <div className="flex items-center gap-1">
-                                <FileText className="h-3 w-3" />
-                                <span>{request.department}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <CalendarDays className="h-3 w-3" />
-                                <span>
-                                  {format(request.startDate, 'MMM dd')} - {format(request.endDate, 'MMM dd, yyyy')}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                <span>
-                                  {Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1} days
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-sm">
-                              <span className="font-medium">Reason:</span> {request.reason}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {request.status === 'pending' && canApproveLeaves ? (
-                              <>
-                                <Button
-                                  size="sm"
-                                  className="gap-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                                  onClick={() => handleApproveReject(request.id, 'approved')}
-                                  disabled={approvingLeaveId === request.id}
-                                >
-                                  <CheckCircle className="h-4 w-4" />
-                                  {approvingLeaveId === request.id ? 'Processing...' : 'Approve'}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  className="gap-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700"
-                                  onClick={() => handleApproveReject(request.id, 'rejected')}
-                                  disabled={approvingLeaveId === request.id}
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                  {approvingLeaveId === request.id ? 'Processing...' : 'Reject'}
-                                </Button>
-                              </>
-                            ) : (
-                              <Badge className={`px-4 py-1.5 text-sm font-bold capitalize transition-all duration-300 ${getStatusBadgeStyle(request.status)}`}>
-                                {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                              </Badge>
-                            )}
-                            {request.status !== 'pending' && request.approvedBy && (
-                              <span className="text-xs text-muted-foreground">
-                                by {request.approvedBy}
-                              </span>
-                            )}
                           </div>
                         </div>
-                      </div>
-                    )))}
+                      );
+                    }))}
 
                   {/* Pagination for Approval Requests */}
                   {approvalRequests.length > 0 && (

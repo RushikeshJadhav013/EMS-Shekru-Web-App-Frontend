@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import {
     Loader2, Save, Calculator, ArrowLeft,
-    AlertTriangle, Calendar, TrendingUp, DollarSign, FileText, AlertCircle, RefreshCw
+    AlertTriangle, Calendar, TrendingUp, DollarSign, FileText, AlertCircle, RefreshCw, User, CheckCircle2
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import {
@@ -738,9 +738,9 @@ const AddEditSalary = () => {
     }
 
     return (
-        <div className="p-6 max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="p-6 max-w-6xl mx-auto space-y-6">
+            {/* Simple Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-6 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-100/50 dark:border-blue-900/30">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="sm" onClick={() => {
                         if (userIdParam) {
@@ -753,25 +753,25 @@ const AddEditSalary = () => {
                     </Button>
                     <div>
                         <div className="flex items-center gap-3">
-                            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+                            <h1 className="text-2xl font-bold tracking-tight text-foreground">
                                 {existingSalary ? 'Salary Structure' : 'Create Salary Structure'}
                             </h1>
                             {existingSalary && (
-                                <Badge className="bg-blue-500 text-white">
+                                <Badge className="bg-primary text-primary-foreground">
                                     Edit Mode
                                 </Badge>
                             )}
                         </div>
-                        <p className="text-muted-foreground text-sm mt-1">Define compensation, benefits, and statutory details.</p>
+                        <p className="text-sm text-muted-foreground mt-1">Define compensation, benefits, and statutory details.</p>
                     </div>
                 </div>
             </div>
 
-            {/* Step 1: Employee Selection (Always Visible if no user selected) */}
+            {/* Step 1: Employee Selection */}
             {
                 !watchUserId && (
-                    <Card className="max-w-2xl mx-auto mt-10 border-dashed border-2">
-                        <CardHeader>
+                    <Card className="max-w-2xl mx-auto mt-10 border-0 shadow-lg bg-slate-50/50 dark:bg-slate-900/50">
+                        <CardHeader className="bg-white/50 dark:bg-slate-800/50">
                             <CardTitle>Select Employee</CardTitle>
                             <CardDescription>Choose an employee to configure their salary structure.</CardDescription>
                         </CardHeader>
@@ -787,7 +787,7 @@ const AddEditSalary = () => {
                                             value={field.value}
                                             disabled={!!userIdParam}
                                         >
-                                            <SelectTrigger className="w-full h-12 text-lg">
+                                            <SelectTrigger className="w-full h-10 bg-white dark:bg-slate-800">
                                                 <SelectValue placeholder="Select an employee..." />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -913,11 +913,11 @@ const AddEditSalary = () => {
                                     }
                                 }} className="w-full">
                                     {userRole === 'admin' && (
-                                        <TabsList className="grid w-full grid-cols-2 mb-6 bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl">
-                                            <TabsTrigger value="auto" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm transition-all">
+                                        <TabsList className="grid w-full grid-cols-2 mb-6 bg-slate-100/50 dark:bg-slate-800/50">
+                                            <TabsTrigger value="auto" className="data-[state=active]:bg-blue-100 dark:data-[state=active]:bg-blue-900/30 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-300">
                                                 <Calculator className="h-4 w-4 mr-2" /> Guided Mode
                                             </TabsTrigger>
-                                            <TabsTrigger value="manual" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm transition-all">
+                                            <TabsTrigger value="manual" className="data-[state=active]:bg-orange-100 dark:data-[state=active]:bg-orange-900/30 data-[state=active]:text-orange-700 dark:data-[state=active]:text-orange-300">
                                                 <FileText className="h-4 w-4 mr-2" /> Manual Entry
                                             </TabsTrigger>
                                         </TabsList>
@@ -925,37 +925,25 @@ const AddEditSalary = () => {
 
                                     <TabsContent value="auto">
                                         {/* Section 1: Core Compensation - AUTO */}
-                                        <Card className="border-none shadow-md overflow-hidden bg-white/50 backdrop-blur-sm dark:bg-gray-900/50">
-                                            <div className="h-1 bg-blue-500 w-full" />
-                                            <CardHeader className="pb-4">
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="h-12 w-12 rounded-2xl bg-blue-50 dark:bg-blue-900/40 flex items-center justify-center border border-blue-100 dark:border-blue-800">
-                                                            <Calculator className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                                                        </div>
-                                                        <div>
-                                                            <CardTitle className="text-xl font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                                                Guided Salary Setup
-                                                                <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 uppercase tracking-widest font-bold">Standard</span>
-                                                            </CardTitle>
-                                                            <CardDescription className="text-xs font-medium">
-                                                                Automated compensation structuring based on annual CTC and statutory norms.
-                                                            </CardDescription>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                        <Card className="border-0 shadow-lg bg-blue-50/30 dark:bg-blue-950/10">
+                                            <CardHeader className="bg-white/60 dark:bg-slate-800/60">
+                                                <CardTitle className="flex items-center gap-2">
+                                                    <Calculator className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                                    Guided Salary Setup
+                                                </CardTitle>
+                                                <CardDescription>Automated compensation structuring based on annual CTC and statutory norms.</CardDescription>
                                             </CardHeader>
                                             <CardContent className="space-y-6">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <div className="space-y-2">
-                                                        <Label className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-muted-foreground">
+                                                        <Label className="flex items-center gap-2">
                                                             Annual CTC (₹) <span className="text-red-500">*</span>
                                                         </Label>
-                                                        <div className="relative group">
-                                                            <span className="absolute left-3 top-2.5 text-gray-400 group-focus-within:text-blue-500 transition-colors">₹</span>
+                                                        <div className="relative">
+                                                            <span className="absolute left-3 top-2.5 text-muted-foreground">₹</span>
                                                             <Input
                                                                 type="text"
-                                                                className="pl-8 h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500 font-bold text-lg"
+                                                                className="pl-8 h-10 bg-white dark:bg-slate-800"
                                                                 placeholder="e.g. 12 00 000"
                                                                 disabled={false}
                                                                 {...form.register("annualCtc")}
@@ -965,12 +953,10 @@ const AddEditSalary = () => {
                                                         {form.formState.errors.annualCtc && <p className="text-red-500 text-xs mt-1">{form.formState.errors.annualCtc.message}</p>}
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-muted-foreground">
-                                                            Working Days (Month)
-                                                        </Label>
+                                                        <Label>Working Days (Month)</Label>
                                                         <Input
                                                             type="text"
-                                                            className="h-11 font-semibold"
+                                                            className="h-10 bg-white dark:bg-slate-800"
                                                             disabled={false}
                                                             {...form.register("workingDays")}
                                                             onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
@@ -978,20 +964,20 @@ const AddEditSalary = () => {
                                                     </div>
                                                 </div>
 
-                                                <div className="p-5 bg-gray-50/50 dark:bg-gray-800/20 rounded-xl space-y-5 border border-gray-100 dark:border-gray-800">
-                                                    <div className="flex items-center gap-2 text-[10px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-[0.2em]">
-                                                        <TrendingUp className="h-3 w-3 text-orange-500" />
+                                                <div className="p-5 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg space-y-5 border border-amber-100/50 dark:border-amber-900/30">
+                                                    <div className="flex items-center gap-2 text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                                                        <TrendingUp className="h-3 w-3" />
                                                         Variable Pay Setup
                                                     </div>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                         <div className="space-y-2">
-                                                            <Label className="text-xs font-bold text-muted-foreground uppercase">Type</Label>
+                                                            <Label className="text-xs uppercase">Type</Label>
                                                             <Controller
                                                                 name="variablePayType"
                                                                 control={form.control}
                                                                 render={({ field }) => (
                                                                     <Select onValueChange={field.onChange} value={field.value} disabled={false}>
-                                                                        <SelectTrigger className="h-11">
+                                                                        <SelectTrigger className="h-10 bg-white dark:bg-slate-800">
                                                                             <SelectValue placeholder="Select Type" />
                                                                         </SelectTrigger>
                                                                         <SelectContent>
@@ -1004,35 +990,35 @@ const AddEditSalary = () => {
                                                             />
                                                         </div>
                                                         <div className="space-y-2">
-                                                            <Label className="text-xs font-bold text-muted-foreground uppercase">
+                                                            <Label className="text-xs uppercase">
                                                                 {watchVarType === 'percentage' ? 'Percentage (%)' : watchVarType === 'fixed' ? 'Amount (₹)' : 'Value'}
                                                             </Label>
-                                                            <div className="relative group">
+                                                            <div className="relative">
                                                                 {watchVarType === 'fixed' && (
-                                                                    <span className="absolute left-3 top-3 text-gray-400 group-focus-within:text-blue-500 transition-colors">₹</span>
+                                                                    <span className="absolute left-3 top-2.5 text-muted-foreground">₹</span>
                                                                 )}
                                                                 <Input
                                                                     type="text"
-                                                                    className={`h-11 font-semibold ${watchVarType === 'fixed' ? 'pl-8' : ''}`}
+                                                                    className={`h-10 bg-white dark:bg-slate-800 ${watchVarType === 'fixed' ? 'pl-8' : ''}`}
                                                                     placeholder={watchVarType === 'percentage' ? "e.g. 10" : "e.g. 50 000"}
                                                                     disabled={watchVarType === 'none'}
                                                                     {...form.register("variablePayValue")}
                                                                     onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
                                                                 />
                                                                 {watchVarType === 'percentage' && (
-                                                                    <span className="absolute right-3 top-3 text-gray-400 group-focus-within:text-blue-500 transition-colors">%</span>
+                                                                    <span className="absolute right-3 top-2.5 text-muted-foreground">%</span>
                                                                 )}
                                                             </div>
                                                             {watchVarType !== 'none' && watchVarValue > 0 && watchCtc > 0 && (
                                                                 <div className="flex items-center gap-2 mt-2">
-                                                                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
-                                                                    <p className="text-[10px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full border border-blue-100 dark:border-blue-800 shadow-sm">
+                                                                    <div className="h-px flex-1 bg-border" />
+                                                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                                                         {watchVarType === 'percentage'
                                                                             ? `≈ ${formatCurrency((parseNumber(watchCtc) * parseNumber(watchVarValue)) / 100)} / year`
                                                                             : `≈ ${((parseNumber(watchVarValue) / parseNumber(watchCtc)) * 100).toFixed(2)}% of CTC`
                                                                         }
                                                                     </p>
-                                                                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
+                                                                    <div className="h-px flex-1 bg-border" />
                                                                 </div>
                                                             )}
                                                         </div>
@@ -1078,68 +1064,69 @@ const AddEditSalary = () => {
 
                                     <TabsContent value="manual">
                                         {/* Section 1: Core Compensation - MANUAL */}
-                                        <Card className="border-none shadow-md overflow-hidden bg-white/50 backdrop-blur-sm dark:bg-gray-900/50">
-                                            <div className="h-1 bg-amber-500 w-full" />
-                                            <CardHeader>
-                                                <div className="flex justify-between items-center">
-                                                    <div>
-                                                        <CardTitle className="text-xl flex items-center gap-2">
-                                                            Manual Compensation Entry
-                                                            <span className="px-2 py-0.5 rounded text-[10px] bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 border border-red-100 dark:border-red-800 uppercase tracking-widest font-bold">Admin Only</span>
-                                                        </CardTitle>
-                                                        <CardDescription>Provide exact annual values for each salary component.</CardDescription>
-                                                    </div>
-                                                </div>
+                                        <Card className="border-0 shadow-lg bg-orange-50/30 dark:bg-orange-950/10">
+                                            <CardHeader className="bg-white/60 dark:bg-slate-800/60">
+                                                <CardTitle className="flex items-center gap-2">
+                                                    <FileText className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                                                    Manual Compensation Entry
+                                                    <Badge variant="destructive" className="ml-2">Admin Only</Badge>
+                                                </CardTitle>
+                                                <CardDescription>Provide exact annual values for each salary component.</CardDescription>
                                             </CardHeader>
                                             <CardContent className="space-y-6">
-                                                <div className="p-4 bg-amber-50/50 dark:bg-amber-900/10 rounded-xl border border-amber-100 dark:border-amber-900/20">
-                                                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                                                <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border border-amber-100/50 dark:border-amber-900/30">
+                                                    <p className="text-xs text-amber-800 dark:text-amber-300">
                                                         <strong>Note:</strong> Enter exact annual values for each salary component. The system will automatically calculate total CTC and monthly breakdowns.
                                                     </p>
                                                 </div>
 
                                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                                                     <div className="space-y-2">
-                                                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">Basic Annual (₹)</Label>
-                                                        <Input type="text" className="h-10" {...form.register("basicAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Label className="text-xs uppercase text-muted-foreground">Basic Annual (₹)</Label>
+                                                        <Input 
+                                                            type="text" 
+                                                            className="h-10" 
+                                                            {...form.register("basicAnnual")} 
+                                                            onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} 
+                                                        />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">HRA Annual (₹)</Label>
-                                                        <Input type="text" className="h-10" {...form.register("hraAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Label className="text-xs uppercase text-muted-foreground">HRA Annual (₹)</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("hraAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">Special Allowance (₹)</Label>
-                                                        <Input type="text" className="h-10" {...form.register("specialAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Label className="text-xs uppercase text-muted-foreground">Special Allowance (₹)</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("specialAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">Conveyance (₹)</Label>
-                                                        <Input type="text" className="h-10" {...form.register("conveyanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Label className="text-xs uppercase text-muted-foreground">Conveyance (₹)</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("conveyanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">Medical (₹)</Label>
-                                                        <Input type="text" className="h-10" {...form.register("medicalAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Label className="text-xs uppercase text-muted-foreground">Medical (₹)</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("medicalAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">Other Allowance (₹)</Label>
-                                                        <Input type="text" className="h-10" {...form.register("otherAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Label className="text-xs uppercase text-muted-foreground">Other Allowance (₹)</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("otherAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
-                                                    <div className="space-y-2 p-3 bg-red-50/30 dark:bg-red-900/10 rounded-lg border border-red-100/50">
-                                                        <Label className="text-[10px] font-bold uppercase text-red-600">Professional Tax (₹)</Label>
-                                                        <Input type="text" className="h-9 mt-1 border-red-200" {...form.register("professionalTaxAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs uppercase text-muted-foreground">Professional Tax (₹)</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("professionalTaxAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
-                                                    <div className="space-y-2 p-3 bg-red-50/30 dark:bg-red-900/10 rounded-lg border border-red-100/50">
-                                                        <Label className="text-[10px] font-bold uppercase text-red-600">Other Deductions (₹)</Label>
-                                                        <Input type="text" className="h-9 mt-1 border-red-200" {...form.register("otherDeductionAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs uppercase text-muted-foreground">Other Deductions (₹)</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("otherDeductionAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
-                                                    <div className="space-y-2 p-3 bg-emerald-50/30 dark:bg-emerald-900/10 rounded-lg border border-emerald-100/50">
-                                                        <Label className="text-[10px] font-bold uppercase text-emerald-600">PF Annual (₹)</Label>
-                                                        <Input type="text" className="h-9 mt-1 border-emerald-200" {...form.register("pfAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs uppercase text-muted-foreground">PF Annual (₹)</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("pfAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
-                                                    <div className="space-y-2 lg:col-span-2">
-                                                        <Label className="text-[10px] font-bold uppercase text-blue-600">Variable Pay / Performance Bonus</Label>
+                                                    <div className="space-y-2 lg:col-span-2 p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-100/50 dark:border-blue-900/30">
+                                                        <Label className="text-xs uppercase text-blue-700 dark:text-blue-400">Variable Pay / Performance Bonus</Label>
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div className="space-y-2">
-                                                                <Label className="text-[10px] font-bold uppercase text-muted-foreground">Type</Label>
+                                                                <Label className="text-xs uppercase text-muted-foreground">Type</Label>
                                                                 <Controller
                                                                     name="variablePayType"
                                                                     control={form.control}
@@ -1149,7 +1136,7 @@ const AddEditSalary = () => {
                                                                             value={field.value}
                                                                             disabled={false}
                                                                         >
-                                                                            <SelectTrigger className="h-11">
+                                                                            <SelectTrigger className="h-10 bg-white dark:bg-slate-800">
                                                                                 <SelectValue placeholder="Select type" />
                                                                             </SelectTrigger>
                                                                             <SelectContent>
@@ -1162,43 +1149,43 @@ const AddEditSalary = () => {
                                                                 />
                                                             </div>
                                                             <div className="space-y-2">
-                                                                <Label className="text-[10px] font-bold uppercase text-muted-foreground">
+                                                                <Label className="text-xs uppercase text-muted-foreground">
                                                                     {form.watch('variablePayType') === 'percentage' ? 'Percentage (%)' : 'Amount (₹)'}
                                                                 </Label>
-                                                                <div className="relative group">
+                                                                <div className="relative">
                                                                     {form.watch('variablePayType') === 'fixed' && (
-                                                                        <span className="absolute left-3 top-2.5 text-blue-400 group-focus-within:text-blue-600 transition-colors">₹</span>
+                                                                        <span className="absolute left-3 top-2.5 text-muted-foreground">₹</span>
                                                                     )}
                                                                     <Input
                                                                         type="text"
-                                                                        className={`h-11 font-semibold ${form.watch('variablePayType') === 'fixed' ? 'pl-8' : ''}`}
+                                                                        className={`h-10 bg-white dark:bg-slate-800 ${form.watch('variablePayType') === 'fixed' ? 'pl-8' : ''}`}
                                                                         placeholder={form.watch('variablePayType') === 'percentage' ? "e.g. 10" : "e.g. 50 000"}
                                                                         disabled={form.watch('variablePayType') === 'none'}
                                                                         {...form.register("variablePayValue")}
                                                                         onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
                                                                     />
                                                                     {form.watch('variablePayType') === 'percentage' && (
-                                                                        <span className="absolute right-3 top-3 text-gray-400 group-focus-within:text-blue-500 transition-colors">%</span>
+                                                                        <span className="absolute right-3 top-2.5 text-muted-foreground">%</span>
                                                                     )}
                                                                 </div>
                                                             </div>
                                                         </div>
                                                         {form.watch('variablePayType') !== 'none' && form.watch('variablePayValue') > 0 && (
                                                             <div className="flex items-center gap-2 mt-2">
-                                                                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
-                                                                <p className="text-[10px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full border border-blue-100 dark:border-blue-800 shadow-sm">
+                                                                <div className="h-px flex-1 bg-border" />
+                                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                                                     {form.watch('variablePayType') === 'percentage'
                                                                         ? `≈ ${formatCurrency((parseNumber(watchCtc) * parseNumber(form.watch('variablePayValue'))) / 100)} / year`
                                                                         : `≈ ${((parseNumber(form.watch('variablePayValue')) / parseNumber(watchCtc)) * 100).toFixed(2)}% of CTC`
                                                                     }
                                                                 </p>
-                                                                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
+                                                                <div className="h-px flex-1 bg-border" />
                                                             </div>
                                                         )}
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">Working Days</Label>
-                                                        <Input type="text" className="h-10" {...form.register("workingDays")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Label className="text-xs uppercase text-muted-foreground">Working Days</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("workingDays")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                 </div>
 
@@ -1210,98 +1197,97 @@ const AddEditSalary = () => {
 
 
                                 {/* Section 3: Live Calculation Breakdown */}
-                                <Card className="border-none shadow-md overflow-hidden bg-white/50 backdrop-blur-sm dark:bg-gray-900/50">
-                                    <div className="h-1 bg-green-500 w-full" />
-                                    <CardHeader>
-                                        <CardTitle className="text-xl flex items-center justify-between">
+                                <Card className="border-0 shadow-lg bg-green-50/30 dark:bg-green-950/10">
+                                    <CardHeader className="bg-white/60 dark:bg-slate-800/60">
+                                        <CardTitle className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
-                                                <Calculator className="h-5 w-5 text-green-500" />
+                                                <Calculator className="h-5 w-5 text-green-600 dark:text-green-400" />
                                                 Estimated Payroll Breakdown
                                             </div>
-                                            {isCalculating && <Loader2 className="h-4 w-4 animate-spin text-green-600" />}
+                                            {isCalculating && <Loader2 className="h-4 w-4 animate-spin" />}
                                         </CardTitle>
                                         <CardDescription>Detailed earnings and statutory deductions based on CTC.</CardDescription>
                                     </CardHeader>
                                     <CardContent>
                                         {!previewData ? (
-                                            <div className="py-12 flex flex-col items-center justify-center text-muted-foreground bg-gray-50/50 dark:bg-gray-900/20 rounded-xl border border-dashed">
+                                            <div className="py-12 flex flex-col items-center justify-center text-muted-foreground bg-muted/50 rounded-lg border border-dashed">
                                                 <Calculator className="h-10 w-10 mb-2 opacity-20" />
                                                 <p>Enter Annual CTC to see breakdown</p>
                                             </div>
                                         ) : (
                                             <div className="space-y-6">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                                    <div className="space-y-4">
-                                                        <h4 className="text-sm font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">Monthly Earnings</h4>
+                                                    <div className="space-y-4 p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-100/50 dark:border-blue-900/30">
+                                                        <h4 className="text-sm font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-400">Monthly Earnings</h4>
                                                         <div className="space-y-3">
-                                                            <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                                                                <span className="text-sm font-medium">Basic Salary</span>
+                                                            <div className="flex justify-between items-center py-2 border-b border-blue-100/50 dark:border-blue-900/30">
+                                                                <span className="text-sm">Basic Salary</span>
                                                                 <span className="font-semibold">{formatCurrency(previewData.monthlyBasic)}</span>
                                                             </div>
-                                                            <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                                                                <span className="text-sm font-medium">HRA</span>
+                                                            <div className="flex justify-between items-center py-2 border-b border-blue-100/50 dark:border-blue-900/30">
+                                                                <span className="text-sm">HRA</span>
                                                                 <span className="font-semibold">{formatCurrency(previewData.hra)}</span>
                                                             </div>
-                                                            <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                                                                <span className="text-sm font-medium">Special Allowance</span>
+                                                            <div className="flex justify-between items-center py-2 border-b border-blue-100/50 dark:border-blue-900/30">
+                                                                <span className="text-sm">Special Allowance</span>
                                                                 <span className="font-semibold">{formatCurrency(previewData.specialAllowance)}</span>
                                                             </div>
                                                             {previewData.medicalAllowance > 0 && (
-                                                                <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                                                                    <span className="text-sm font-medium">Medical Allowance</span>
+                                                                <div className="flex justify-between items-center py-2 border-b border-blue-100/50 dark:border-blue-900/30">
+                                                                    <span className="text-sm">Medical Allowance</span>
                                                                     <span className="font-semibold">{formatCurrency(previewData.medicalAllowance)}</span>
                                                                 </div>
                                                             )}
                                                             {previewData.conveyanceAllowance > 0 && (
-                                                                <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                                                                    <span className="text-sm font-medium">Conveyance Allowance</span>
+                                                                <div className="flex justify-between items-center py-2 border-b border-blue-100/50 dark:border-blue-900/30">
+                                                                    <span className="text-sm">Conveyance Allowance</span>
                                                                     <span className="font-semibold">{formatCurrency(previewData.conveyanceAllowance)}</span>
                                                                 </div>
                                                             )}
                                                             {previewData.otherAllowance > 0 && (
-                                                                <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                                                                    <span className="text-sm font-medium">Other Allowance</span>
+                                                                <div className="flex justify-between items-center py-2 border-b border-blue-100/50 dark:border-blue-900/30">
+                                                                    <span className="text-sm">Other Allowance</span>
                                                                     <span className="font-semibold">{formatCurrency(previewData.otherAllowance)}</span>
                                                                 </div>
                                                             )}
-                                                            <div className="flex justify-between items-center py-2 mt-4 bg-gray-50/50 dark:bg-gray-800/50 px-2 rounded font-bold">
+                                                            <div className="flex justify-between items-center py-2 mt-4 bg-blue-100/50 dark:bg-blue-900/30 px-2 rounded font-semibold">
                                                                 <span>Monthly Gross</span>
-                                                                <span className="text-blue-600">{formatCurrency(previewData.monthlyGross)}</span>
+                                                                <span>{formatCurrency(previewData.monthlyGross)}</span>
                                                             </div>
                                                         </div>
                                                     </div>
 
-                                                    <div className="space-y-4">
-                                                        <h4 className="text-sm font-bold uppercase tracking-widest text-red-600 dark:text-red-400">Statutory Deductions</h4>
+                                                    <div className="space-y-4 p-4 bg-rose-50/50 dark:bg-rose-950/20 rounded-lg border border-rose-100/50 dark:border-rose-900/30">
+                                                        <h4 className="text-sm font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-400">Statutory Deductions</h4>
                                                         <div className="space-y-3">
-                                                            <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                                                                <span className="text-sm font-medium text-muted-foreground line-through decoration-red-300">EPF (Employer)</span>
+                                                            <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
+                                                                <span className="text-sm text-muted-foreground line-through">EPF (Employer)</span>
                                                                 <span className="text-xs italic text-muted-foreground">Incl. in CTC</span>
                                                             </div>
-                                                            <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                                                                <span className="text-sm font-medium">EPF (Employee)</span>
-                                                                <span className="font-semibold text-red-600">-{formatCurrency(previewData.pfEmployee)}</span>
+                                                            <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
+                                                                <span className="text-sm">EPF (Employee)</span>
+                                                                <span className="font-semibold text-destructive">-{formatCurrency(previewData.pfEmployee)}</span>
                                                             </div>
-                                                            <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                                                                <span className="text-sm font-medium">Professional Tax</span>
-                                                                <span className="font-semibold text-red-600">-{formatCurrency(previewData.professionalTax)}</span>
+                                                            <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
+                                                                <span className="text-sm">Professional Tax</span>
+                                                                <span className="font-semibold text-destructive">-{formatCurrency(previewData.professionalTax)}</span>
                                                             </div>
                                                             {previewData.otherDeduction > 0 && (
-                                                                <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                                                                    <span className="text-sm font-medium">Other Deductions</span>
-                                                                    <span className="font-semibold text-red-600">-{formatCurrency(previewData.otherDeduction)}</span>
+                                                                <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
+                                                                    <span className="text-sm">Other Deductions</span>
+                                                                    <span className="font-semibold text-destructive">-{formatCurrency(previewData.otherDeduction)}</span>
                                                                 </div>
                                                             )}
-                                                            <div className="flex justify-between items-center py-2 mt-4 bg-red-50/50 dark:bg-red-900/10 px-2 rounded font-bold">
+                                                            <div className="flex justify-between items-center py-2 mt-4 bg-rose-100/50 dark:bg-rose-900/30 px-2 rounded font-semibold">
                                                                 <span>Total Deductions</span>
-                                                                <span className="text-red-600">-{formatCurrency(previewData.monthlyDeductions)}</span>
+                                                                <span className="text-destructive">-{formatCurrency(previewData.monthlyDeductions)}</span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="p-4 bg-yellow-50/50 dark:bg-yellow-900/10 rounded-xl border border-yellow-100 dark:border-yellow-900/30 flex items-start gap-3">
-                                                    <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
-                                                    <p className="text-xs text-yellow-800 dark:text-yellow-400 leading-relaxed">
+                                                <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border border-amber-100/50 dark:border-amber-900/30 flex items-start gap-3">
+                                                    <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                                                    <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
                                                         Values are estimates based on standard Indian payroll regulations. Employer Provident Fund (EPF) of {formatCurrency(previewData.pfEmployer)} is included in the Annual CTC but deducted before calculating Monthly Gross.
                                                     </p>
                                                 </div>
@@ -1313,98 +1299,64 @@ const AddEditSalary = () => {
 
                             {/* Right Column: Sticky Summary & Sidebar */}
                             <div className="lg:col-span-4 lg:sticky lg:top-8 space-y-6">
-                                <Card className="border-none shadow-2xl bg-white dark:bg-gray-900 overflow-hidden ring-1 ring-gray-100/80 dark:ring-gray-800/80 transform transition-all duration-300 hover:shadow-3xl hover:scale-[1.02]">
-                                    {/* Modern Gradient Header with Glass Effect */}
-                                    <div className="relative p-6 bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950 text-white overflow-hidden">
-                                        {/* Animated Background Pattern */}
-                                        <div className="absolute inset-0 opacity-10">
-                                            <div
-                                                className="absolute inset-0"
-                                                style={{
-                                                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='7' cy='7' r='7'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-                                                }}
-                                            />
+                                <Card className="border-0 shadow-lg bg-indigo-50/30 dark:bg-indigo-950/10">
+                                    <CardHeader className="bg-white/60 dark:bg-slate-800/60">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">Live Preview</Badge>
+                                            <span className="text-xs text-muted-foreground">
+                                                {new Date().toLocaleDateString('default', { month: 'short', day: 'numeric' })}
+                                            </span>
                                         </div>
-
-                                        {/* Glow Effect */}
-                                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-400/20 rounded-full blur-3xl animate-pulse" />
-
-                                        <div className="relative z-10">
-                                            {/* Status Badge */}
-                                            <div className="flex items-center justify-between mb-6">
-                                                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 backdrop-blur-sm border border-emerald-400/30 rounded-full">
-                                                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                                                    <span className="text-xs font-medium text-emerald-300">Live Preview</span>
-                                                </div>
-                                                <div className="text-xs text-blue-300 font-medium">
-                                                    {new Date().toLocaleDateString('default', { month: 'short', day: 'numeric' })}
-                                                </div>
+                                        <div className="mb-4">
+                                            <p className="text-sm text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+                                                <DollarSign className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                                Estimated In-Hand Pay
+                                            </p>
+                                            <div className="flex items-baseline gap-2">
+                                                <h2 className="text-3xl font-bold tracking-tight text-indigo-700 dark:text-indigo-300">
+                                                    {previewData ? formatCurrency(previewData.monthlyInHand) : '₹0'}
+                                                </h2>
+                                                <span className="text-sm text-muted-foreground">per month</span>
                                             </div>
-
-                                            {/* Main In-Hand Amount */}
-                                            <div className="mb-6">
-                                                <p className="text-blue-200 text-sm font-semibold uppercase tracking-wider mb-2 flex items-center gap-2">
-                                                    <DollarSign className="w-4 h-4" />
-                                                    Estimated In-Hand Pay
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg border border-indigo-100/50 dark:border-indigo-900/30">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <TrendingUp className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Annual CTC</p>
+                                                </div>
+                                                <p className="text-lg font-semibold">
+                                                    {previewData ? formatCurrency(previewData.annualCtc) : formatCurrency(parseNumber(watchCtc))}
                                                 </p>
-                                                <div className="flex items-baseline gap-2">
-                                                    <h2 className="text-4xl font-black tracking-tight bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-                                                        {previewData ? formatCurrency(previewData.monthlyInHand) : '₹0'}
-                                                    </h2>
-                                                    <span className="text-blue-300 text-sm font-semibold">per month</span>
-                                                </div>
                                             </div>
-
-                                            {/* Stats Grid */}
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="group cursor-pointer">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <TrendingUp className="w-4 h-4 text-blue-300" />
-                                                        <p className="text-xs text-blue-200/80 uppercase tracking-wider">Annual CTC</p>
-                                                    </div>
-                                                    <p className="text-lg font-bold text-white group-hover:text-blue-200 transition-colors">
-                                                        {previewData ? formatCurrency(previewData.annualCtc) : formatCurrency(parseNumber(watchCtc))}
-                                                    </p>
+                                            <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg border border-indigo-100/50 dark:border-indigo-900/30">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Calculator className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Monthly Gross</p>
                                                 </div>
-                                                <div className="group cursor-pointer">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <Calculator className="w-4 h-4 text-blue-300" />
-                                                        <p className="text-xs text-blue-200/80 uppercase tracking-wider">Monthly Gross</p>
-                                                    </div>
-                                                    <p className="text-lg font-bold text-white group-hover:text-blue-200 transition-colors">
-                                                        {previewData ? formatCurrency(previewData.monthlyGross) : '₹0'}
-                                                    </p>
-                                                </div>
+                                                <p className="text-lg font-semibold">
+                                                    {previewData ? formatCurrency(previewData.monthlyGross) : '₹0'}
+                                                </p>
                                             </div>
                                         </div>
-                                    </div>
+                                    </CardHeader>
 
-                                    <CardContent className="p-6 space-y-6">
+                                    <CardContent className="space-y-6">
                                         {/* Validation Status */}
                                         <div className="space-y-4">
-                                            <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-50/50 to-teal-50/50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-200/50 dark:border-emerald-800/50 p-4 transition-all duration-300 hover:shadow-lg hover:scale-[1.02]">
-                                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/5 to-teal-400/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                <div className="relative flex items-center gap-4">
-                                                    <div className="flex-shrink-0 w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/25">
-                                                        <div className="w-3 h-3 bg-white rounded-full animate-pulse" />
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <p className="font-semibold text-emerald-800 dark:text-emerald-200">Structure Validation Passed</p>
-                                                        <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80 mt-1">All salary components are compliant</p>
-                                                    </div>
+                                            <div className="flex items-center gap-4 p-4 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-lg border border-emerald-100/50 dark:border-emerald-900/30">
+                                                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                                <div>
+                                                    <p className="font-semibold text-sm text-emerald-800 dark:text-emerald-300">Structure Validation Passed</p>
+                                                    <p className="text-xs text-emerald-700/80 dark:text-emerald-400/80 mt-1">All salary components are compliant</p>
                                                 </div>
                                             </div>
 
-                                            <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200/50 dark:border-blue-800/50 p-4 transition-all duration-300 hover:shadow-lg hover:scale-[1.02]">
-                                                <div className="absolute inset-0 bg-gradient-to-r from-blue-400/5 to-indigo-400/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                <div className="relative flex items-center gap-4">
-                                                    <div className="flex-shrink-0 w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25">
-                                                        <Calendar className="w-5 h-5 text-white" />
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <p className="font-semibold text-blue-800 dark:text-blue-200">Effective Date</p>
-                                                        <p className="text-xs text-blue-600/80 dark:text-blue-400/80 mt-1">Starting {new Date().toLocaleDateString('default', { month: 'long', year: 'numeric' })}</p>
-                                                    </div>
+                                            <div className="flex items-center gap-4 p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-100/50 dark:border-blue-900/30">
+                                                <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                                <div>
+                                                    <p className="font-semibold text-sm text-blue-800 dark:text-blue-300">Effective Date</p>
+                                                    <p className="text-xs text-blue-700/80 dark:text-blue-400/80 mt-1">Starting {new Date().toLocaleDateString('default', { month: 'long', year: 'numeric' })}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -1413,17 +1365,17 @@ const AddEditSalary = () => {
                                         <div className="space-y-4">
                                             <Button
                                                 type="submit"
-                                                className="w-full h-12 text-base font-bold shadow-xl shadow-blue-500/25 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 dark:from-blue-600 dark:to-blue-700 dark:hover:from-blue-700 dark:hover:to-blue-800 transform transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] rounded-2xl"
+                                                className="w-full"
                                                 disabled={isLoading || isCalculating || !previewData}
                                             >
                                                 {isLoading ? (
                                                     <>
-                                                        <Loader2 className="animate-spin h-5 w-5 mr-3" />
+                                                        <Loader2 className="animate-spin h-4 w-4 mr-2" />
                                                         Processing...
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Save className="h-5 w-5 mr-3" />
+                                                        <Save className="h-4 w-4 mr-2" />
                                                         {existingSalary ? 'Confirm & Save Changes' : 'Initialize Salary Structure'}
                                                     </>
                                                 )}
@@ -1455,7 +1407,7 @@ const AddEditSalary = () => {
                     </div>
                 )
             }
-        </div >
+        </div>
     );
 };
 

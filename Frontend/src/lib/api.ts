@@ -1158,21 +1158,37 @@ class ApiService {
   }
 
   // Holiday Management APIs
-  async getHolidays(): Promise<Array<{ id: number; date: string; name: string; description?: string; created_at: string; updated_at: string }>> {
-    return this.request('/calendar/holidays');
+  async getHolidays(params?: { start_date?: string; end_date?: string }): Promise<Array<{ id: number; date: string; name: string; description?: string; is_recurring?: boolean; created_at: string; updated_at?: string }>> {
+    const queryParams = new URLSearchParams();
+    if (params?.start_date) {
+      queryParams.append('start_date', params.start_date);
+    }
+    if (params?.end_date) {
+      queryParams.append('end_date', params.end_date);
+    }
+    const queryString = queryParams.toString();
+    return this.request(`/calendar/holidays${queryString ? `?${queryString}` : ''}`);
   }
 
-  async createHoliday(data: { date: string; name: string; description?: string }): Promise<{ id: number; date: string; name: string; description?: string; created_at: string; updated_at: string }> {
+  async createHoliday(data: { date: string; name: string; description?: string; is_recurring?: boolean }): Promise<{ id: number; date: string; name: string; description?: string; is_recurring?: boolean; created_at: string; updated_at?: string }> {
+    // Ensure is_recurring is always sent (default to false if not provided)
+    const requestData = {
+      date: data.date,
+      name: data.name,
+      description: data.description || '',
+      is_recurring: data.is_recurring ?? false,
+    };
+    
     return this.request('/calendar/holidays', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(requestData),
       headers: {
         'Content-Type': 'application/json',
       },
     });
   }
 
-  async updateHoliday(id: number, data: { date?: string; name?: string; description?: string }): Promise<{ id: number; date: string; name: string; description?: string; created_at: string; updated_at: string }> {
+  async updateHoliday(id: number, data: { date?: string; name?: string; description?: string; is_recurring?: boolean }): Promise<{ id: number; date: string; name: string; description?: string; is_recurring?: boolean; created_at: string; updated_at?: string }> {
     return this.request(`/calendar/holidays/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -1185,6 +1201,21 @@ class ApiService {
   async deleteHoliday(id: number): Promise<void> {
     await this.request(`/calendar/holidays/${id}`, {
       method: 'DELETE',
+    });
+  }
+
+  // Weekoff Management APIs
+  async getWeekoffs(): Promise<Array<{ id: number; department: string; days: string[]; is_active: boolean; created_at: string }>> {
+    return this.request('/calendar/weekoffs');
+  }
+
+  async createWeekoff(data: { department: string; days: string[] }): Promise<{ id: number; department: string; days: string[]; is_active: boolean; created_at: string }> {
+    return this.request('/calendar/weekoffs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
   }
 
@@ -1408,9 +1439,19 @@ class ApiService {
     });
   }
 
-  async downloadOfferLetter(userId: string): Promise<Blob> {
+  async downloadOfferLetter(userId: string, params?: { letter_date?: string; joining_date?: string }): Promise<Blob> {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/salary/offer-letter/download/${userId}`, {
+    const queryParams = new URLSearchParams();
+    if (params?.letter_date) {
+      queryParams.append('letter_date', params.letter_date);
+    }
+    if (params?.joining_date) {
+      queryParams.append('joining_date', params.joining_date);
+    }
+    const queryString = queryParams.toString();
+    const url = `${this.baseURL}/salary/offer-letter/download/${userId}${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
