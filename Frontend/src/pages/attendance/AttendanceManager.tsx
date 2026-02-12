@@ -10,11 +10,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, Clock, MapPin, Search, Filter, Download, AlertCircle, CheckCircle, Users, X, User, Settings, LogOut, AlertTriangle, CheckCircle2, Timer, FileSpreadsheet, FileText, Home, Send, History } from 'lucide-react';
+import { Calendar, Clock, MapPin, Search, Filter, Download, AlertCircle, CheckCircle, Users, X, User, Settings, LogOut, AlertTriangle, CheckCircle2, Timer, FileSpreadsheet, FileText, Home, Send, History, LayoutGrid } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AttendanceRecord } from '@/types';
 import { format, subMonths, subDays, isAfter } from 'date-fns';
 import { Pagination } from '@/components/ui/pagination';
+import TruncatedText from '@/components/ui/TruncatedText';
 import { formatIST, formatDateTimeIST, formatTimeIST, formatDateIST, todayIST, formatDateTimeComponentsIST, parseToIST, nowIST } from '@/utils/timezone';
 import { DatePicker } from '@/components/ui/date-picker';
 import OnlineStatusIndicator from '@/components/attendance/OnlineStatusIndicator';
@@ -90,7 +91,7 @@ const AttendanceManager: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterDate, setFilterDate] = useState(todayIST());
   const [selectedDate, setSelectedDate] = useState<Date>(nowIST());
-  const [timePeriodFilter, setTimePeriodFilter] = useState<'today' | 'current_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_12_months' | 'custom'>('current_month');
+  const [timePeriodFilter, setTimePeriodFilter] = useState<'today' | 'current_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_12_months' | 'custom'>('today');
   const [customStartDate, setCustomStartDate] = useState<Date>(subDays(nowIST(), 7));
   const [customEndDate, setCustomEndDate] = useState<Date>(nowIST());
   const [currentPage, setCurrentPage] = useState(1);
@@ -101,7 +102,7 @@ const AttendanceManager: React.FC = () => {
   // Export modal states
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportType, setExportType] = useState<'csv' | 'pdf' | null>('csv');
-  const [reportLayout, setReportLayout] = useState<'basic' | 'grid'>('basic');
+  const [reportLayout, setReportLayout] = useState<'basic' | 'grid' | 'detailed_grid'>('basic');
   const [quickFilter, setQuickFilter] = useState<string>('custom');
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
@@ -142,6 +143,12 @@ const AttendanceManager: React.FC = () => {
   const [isProcessingWfhRequest, setIsProcessingWfhRequest] = useState(false);
   const [wfhCurrentPage, setWfhCurrentPage] = useState(1);
   const [wfhItemsPerPage, setWfhItemsPerPage] = useState(10);
+  const [pendingWfhCurrentPage, setPendingWfhCurrentPage] = useState(1);
+  const [pendingWfhItemsPerPage, setPendingWfhItemsPerPage] = useState(10);
+  const [wfhDecisionsDurationFilter, setWfhDecisionsDurationFilter] = useState<string>('all');
+  const [wfhDecisionsStartDate, setWfhDecisionsStartDate] = useState<Date | undefined>(undefined);
+  const [wfhDecisionsEndDate, setWfhDecisionsEndDate] = useState<Date | undefined>(undefined);
+  const [wfhRoleFilter, setWfhRoleFilter] = useState<'all' | 'hr' | 'manager' | 'team_lead' | 'employee'>('all');
 
   // Ref for scrolling to department form when editing
   const departmentFormRef = useRef<HTMLDivElement>(null);
@@ -154,6 +161,10 @@ const AttendanceManager: React.FC = () => {
   const [openTimePicker, setOpenTimePicker] = useState<'globalStart' | 'globalEnd' | 'deptStart' | 'deptEnd' | null>(null);
   const HOURS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
   const MINUTES = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
+
+  useEffect(() => {
+    setWfhCurrentPage(1);
+  }, [wfhRequestFilter, wfhRoleFilter, wfhDecisionsDurationFilter, wfhDecisionsStartDate, wfhDecisionsEndDate]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -999,6 +1010,7 @@ const AttendanceManager: React.FC = () => {
               scheduledEnd: scheduledEnd || undefined,
               workSummary: rec.workSummary || rec.work_summary || null,
               workReport: resolveMediaUrl(rec.workReport || rec.work_report),
+              taskDeadlineReason: rec.taskDeadlineReason || rec.task_deadline_reason || rec.taskPendingReason || rec.task_pending_reason || null,
               workLocation: workLocation,
             };
           })
@@ -1054,6 +1066,9 @@ const AttendanceManager: React.FC = () => {
         }
         if (filterStatus === 'present') {
           return statusValue === 'present' && checkOutStatusValue !== 'early';
+        }
+        if (filterStatus === 'absent') {
+          return statusValue === 'absent' || !record.checkInTime;
         }
         return true;
       });
@@ -1181,6 +1196,12 @@ const AttendanceManager: React.FC = () => {
     today.setHours(23, 59, 59, 999);
 
     switch (filter) {
+      case 'current_month':
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        firstDayOfMonth.setHours(0, 0, 0, 0);
+        setStartDate(firstDayOfMonth);
+        setEndDate(today);
+        break;
       case 'last_month':
         setStartDate(subMonths(today, 1));
         setEndDate(today);
@@ -1193,8 +1214,54 @@ const AttendanceManager: React.FC = () => {
         setStartDate(subMonths(today, 6));
         setEndDate(today);
         break;
+      case 'last_year':
+        const oneYearAgo = new Date(today);
+        oneYearAgo.setFullYear(today.getFullYear() - 1);
+        setStartDate(oneYearAgo);
+        setEndDate(today);
+        break;
       case 'custom':
         // Don't modify dates when custom is selected, let user choose
+        break;
+    }
+  };
+
+  const handleWfhDecisionsDurationFilter = (filter: string) => {
+    setWfhDecisionsDurationFilter(filter);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    switch (filter) {
+      case 'current_month':
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        firstDayOfMonth.setHours(0, 0, 0, 0);
+        setWfhDecisionsStartDate(firstDayOfMonth);
+        setWfhDecisionsEndDate(today);
+        break;
+      case 'last_month':
+        setWfhDecisionsStartDate(subMonths(today, 1));
+        setWfhDecisionsEndDate(today);
+        break;
+      case 'last_3_months':
+        setWfhDecisionsStartDate(subMonths(today, 3));
+        setWfhDecisionsEndDate(today);
+        break;
+      case 'last_6_months':
+        setWfhDecisionsStartDate(subMonths(today, 6));
+        setWfhDecisionsEndDate(today);
+        break;
+      case 'last_year':
+        const oneYearAgo = new Date(today);
+        oneYearAgo.setFullYear(today.getFullYear() - 1);
+        setWfhDecisionsStartDate(oneYearAgo);
+        setWfhDecisionsEndDate(today);
+        break;
+      case 'custom':
+        // Don't modify dates when custom is selected, let user choose
+        break;
+      case 'all':
+        setWfhDecisionsStartDate(undefined);
+        setWfhDecisionsEndDate(undefined);
         break;
     }
   };
@@ -1279,6 +1346,22 @@ const AttendanceManager: React.FC = () => {
             department: exportParams.department
           })
           : await apiService.exportMonthlyGridPDF({
+            month: exportMonth,
+            year: exportYear,
+            department: exportParams.department
+          });
+      } else if (reportLayout === 'detailed_grid') {
+        // Detailed Grid export also needs month and year
+        const exportMonth = startDate ? (startDate.getMonth() + 1).toString() : (new Date().getMonth() + 1).toString();
+        const exportYear = startDate ? startDate.getFullYear().toString() : new Date().getFullYear().toString();
+
+        blob = exportType === 'csv'
+          ? await apiService.exportMonthlyGridDetailedCSV({
+            month: exportMonth,
+            year: exportYear,
+            department: exportParams.department
+          })
+          : await apiService.exportMonthlyGridDetailedPDF({
             month: exportMonth,
             year: exportYear,
             department: exportParams.department
@@ -1676,10 +1759,11 @@ const AttendanceManager: React.FC = () => {
                 <SelectItem value="present">Present</SelectItem>
                 <SelectItem value="late">Late</SelectItem>
                 <SelectItem value="early">Early Departure</SelectItem>
+                <SelectItem value="absent">Absent</SelectItem>
               </SelectContent>
             </Select>
             <Select value={timePeriodFilter} onValueChange={(value: any) => setTimePeriodFilter(value)}>
-              <SelectTrigger className={`${timePeriodFilter === 'custom' ? 'md:w-[320px]' : 'md:w-[180px]'} w-full h-11 bg-white dark:bg-gray-950 border-2 font-bold text-slate-700 dark:text-slate-200 transition-all duration-300`}>
+              <SelectTrigger className={`${timePeriodFilter === 'custom' ? 'md:w-[320px]' : 'md:w-[180px]'} w-full h-11 bg-white dark:bg-gray-950 border-2 text-slate-700 dark:text-slate-200 transition-all duration-300`}>
                 <Calendar className="h-4 w-4 mr-2 text-blue-500" />
                 <SelectValue>
                   {timePeriodFilter === 'custom'
@@ -1758,6 +1842,7 @@ const AttendanceManager: React.FC = () => {
                     <th className="text-left p-3 font-medium">{t.common.status}</th>
                     <th className="text-left p-3 font-medium">{t.attendance.workSummary}</th>
                     <th className="text-left p-3 font-medium">{t.attendance.workReport}</th>
+                    <th className="text-left p-3 font-medium">Overdue Reason</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1931,11 +2016,23 @@ const AttendanceManager: React.FC = () => {
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
                           </td>
+                          <td className="p-3 text-sm text-muted-foreground max-w-[200px]">
+                            {record.taskDeadlineReason ? (
+                              <div className="text-left w-full">
+                                <TruncatedText
+                                  text={record.taskDeadlineReason}
+                                  maxLength={40}
+                                />
+                              </div>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
                         </tr>
                       ))
                   ) : (
                     <tr>
-                      <td colSpan={13} className="h-64 text-center">
+                      <td colSpan={14} className="h-64 text-center">
                         <div className="flex flex-col items-center justify-center space-y-3">
                           <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                             <Search className="h-8 w-8 text-slate-400" />
@@ -2078,7 +2175,7 @@ const AttendanceManager: React.FC = () => {
             <DialogTitle>{t.attendance.workSummaryTitle}</DialogTitle>
             <DialogDescription>{t.attendance.workSummaryDescription}</DialogDescription>
           </DialogHeader>
-          <div className="py-4 text-sm text-muted-foreground whitespace-pre-wrap">
+          <div className="py-4 text-sm text-muted-foreground whitespace-pre-wrap break-words max-h-96 overflow-y-auto">
             {summaryModal.summary || t.attendance.noSummaryProvided}
           </div>
           <DialogFooter>
@@ -2184,6 +2281,26 @@ const AttendanceManager: React.FC = () => {
                     </span>
                   </div>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setReportLayout('detailed_grid')}
+                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === 'detailed_grid'
+                    ? 'border-purple-600 bg-purple-50 dark:bg-purple-950'
+                    : 'border-gray-200 hover:border-purple-300 dark:border-gray-700'
+                    }`}
+                >
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${reportLayout === 'detailed_grid' ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-400'}`}>
+                      <LayoutGrid className="h-4.5 w-4.5" />
+                    </div>
+                    <span className={`text-xs font-bold ${reportLayout === 'detailed_grid' ? 'text-purple-600' : 'text-gray-600'}`}>
+                      Detailed Grid
+                    </span>
+                    <span className="text-[9px] text-muted-foreground text-center line-clamp-1">
+                      Full details
+                    </span>
+                  </div>
+                </button>
               </div>
             </div>
 
@@ -2245,6 +2362,9 @@ const AttendanceManager: React.FC = () => {
                   sideOffset={5}
                   align="start"
                 >
+                  <SelectItem value="current_month" className="cursor-pointer hover:bg-blue-50">
+                    Current Month
+                  </SelectItem>
                   <SelectItem value="last_month" className="cursor-pointer hover:bg-blue-50">
                     Last Month
                   </SelectItem>
@@ -2253,6 +2373,9 @@ const AttendanceManager: React.FC = () => {
                   </SelectItem>
                   <SelectItem value="last_6_months" className="cursor-pointer hover:bg-blue-50">
                     Last 6 Months
+                  </SelectItem>
+                  <SelectItem value="last_year" className="cursor-pointer hover:bg-blue-50">
+                    Last 1 Year
                   </SelectItem>
                   <SelectItem value="custom" className="cursor-pointer hover:bg-blue-50">
                     Custom Date Range
@@ -2371,7 +2494,7 @@ const AttendanceManager: React.FC = () => {
                         id="employee-search"
                         placeholder="Search by name or employee ID..."
                         value={employeeSearch}
-                        onChange={(e) => setEmployeeSearch(e.target.value)}
+                        onChange={(e) => setEmployeeSearch(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                         className="pl-10"
                       />
                     </div>
@@ -2538,7 +2661,7 @@ const AttendanceManager: React.FC = () => {
                     onChange={(e) =>
                       setGlobalTimingForm((prev) => ({ ...prev, startTime: e.target.value }))
                     }
-                    className="h-10 border-blue-100 focus:border-blue-400 pr-10"
+                    className="h-10 border-blue-100 focus:border-blue-400 pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
                   />
                   <button
                     type="button"
@@ -2569,7 +2692,7 @@ const AttendanceManager: React.FC = () => {
                     onChange={(e) =>
                       setGlobalTimingForm((prev) => ({ ...prev, endTime: e.target.value }))
                     }
-                    className="h-10 border-blue-100 focus:border-blue-400 pr-10"
+                    className="h-10 border-blue-100 focus:border-blue-400 pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
                   />
                   <button
                     type="button"
@@ -2737,7 +2860,7 @@ const AttendanceManager: React.FC = () => {
                     onChange={(e) =>
                       setDepartmentTimingForm((prev) => ({ ...prev, startTime: e.target.value }))
                     }
-                    className="h-10 border-purple-100 focus:border-purple-400 pr-10"
+                    className="h-10 border-purple-100 focus:border-purple-400 pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
                   />
                   <button
                     type="button"
@@ -2768,7 +2891,7 @@ const AttendanceManager: React.FC = () => {
                     onChange={(e) =>
                       setDepartmentTimingForm((prev) => ({ ...prev, endTime: e.target.value }))
                     }
-                    className="h-10 border-purple-100 focus:border-purple-400 pr-10"
+                    className="h-10 border-purple-100 focus:border-purple-400 pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
                   />
                   <button
                     type="button"
@@ -2992,73 +3115,89 @@ const AttendanceManager: React.FC = () => {
                     <span className="ml-2 text-muted-foreground">Loading requests...</span>
                   </div>
                 ) : allWfhRequests.filter(req => req.status === 'pending').length > 0 ? (
-                  <div className="space-y-3">
-                    {allWfhRequests.filter(req => req.status === 'pending').map((request) => (
-                      <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-2 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-blue-600" />
-                                <span className="font-medium">{request.submittedBy}</span>
-                                <Badge
-                                  variant="outline"
-                                  className={`text-xs ${request.role === 'hr'
-                                    ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950'
-                                    : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
-                                    }`}
-                                >
-                                  {request.role === 'hr' ? 'HR' : 'Manager'}
-                                </Badge>
+                  <>
+                    <div className="space-y-3">
+                      {allWfhRequests
+                        .filter(req => req.status === 'pending')
+                        .slice((pendingWfhCurrentPage - 1) * pendingWfhItemsPerPage, pendingWfhCurrentPage * pendingWfhItemsPerPage)
+                        .map((request) => (
+                          <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-2 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4 text-blue-600" />
+                                    <span className="font-medium">{request.submittedBy}</span>
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-xs ${request.role === 'hr'
+                                        ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950'
+                                        : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
+                                        }`}
+                                    >
+                                      {request.role === 'hr' ? 'HR' : 'Manager'}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Calendar className="h-4 w-4 text-green-600" />
+                                    <span className="text-sm">
+                                      {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
+                                    </span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <p className="text-sm text-muted-foreground">{request.reason}</p>
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                  <span>Submitted: {formatRelativeTime(request.submittedAt)} ({formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')})</span>
+                                  <span>Department: {request.department}</span>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4 text-green-600" />
-                                <span className="text-sm">
-                                  {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
-                                </span>
-                                <Badge variant="outline" className="text-xs">
-                                  {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
-                                </Badge>
+                              <div className="flex items-center gap-2 ml-4">
+                                <Badge variant="secondary">Pending</Badge>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-950"
+                                    onClick={() => handleAdminWfhRequestAction(request.id, 'approve')}
+                                    disabled={isProcessingWfhRequest}
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                                    onClick={() => {
+                                      setSelectedWfhRequest(request);
+                                      setShowWfhRequestDialog(true);
+                                    }}
+                                    disabled={isProcessingWfhRequest}
+                                  >
+                                    <X className="h-4 w-4 mr-1" />
+                                    Reject
+                                  </Button>
+                                </div>
                               </div>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{request.reason}</p>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span>Submitted: {formatRelativeTime(request.submittedAt)} ({formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')})</span>
-                              <span>Department: {request.department}</span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 ml-4">
-                            <Badge variant="secondary">Pending</Badge>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-950"
-                                onClick={() => handleAdminWfhRequestAction(request.id, 'approve')}
-                                disabled={isProcessingWfhRequest}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-                                onClick={() => {
-                                  setSelectedWfhRequest(request);
-                                  setShowWfhRequestDialog(true);
-                                }}
-                                disabled={isProcessingWfhRequest}
-                              >
-                                <X className="h-4 w-4 mr-1" />
-                                Reject
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                        ))}
+                    </div>
+                    <div className="mt-4">
+                      <Pagination
+                        currentPage={pendingWfhCurrentPage}
+                        totalPages={Math.ceil(allWfhRequests.filter(req => req.status === 'pending').length / pendingWfhItemsPerPage)}
+                        totalItems={allWfhRequests.filter(req => req.status === 'pending').length}
+                        itemsPerPage={pendingWfhItemsPerPage}
+                        onPageChange={setPendingWfhCurrentPage}
+                        onItemsPerPageChange={setPendingWfhItemsPerPage}
+                        showItemsPerPage={true}
+                      />
+                    </div>
+                  </>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -3087,26 +3226,93 @@ const AttendanceManager: React.FC = () => {
               <CardContent className="pt-6">
                 <div className="space-y-4">
                   {/* Filter Controls for Recent Decisions */}
-                  <div className="flex gap-3">
-                    <div className="flex-1 max-w-xs">
-                      <Label htmlFor="decision-status-filter">Decision Status</Label>
-                      <Select value={wfhRequestFilter} onValueChange={(value: any) => setWfhRequestFilter(value)}>
-                        <SelectTrigger id="decision-status-filter" className="mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Decisions</SelectItem>
-                          <SelectItem value="approved">Approved</SelectItem>
-                          <SelectItem value="rejected">Rejected</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex-1">
-                      <Label>Total Decisions</Label>
-                      <div className="mt-1 px-3 py-2 bg-muted rounded-md text-sm flex items-center justify-between">
-                        <span>{allWfhRequests.filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter)).length} of {allWfhRequests.filter(req => req.status !== 'pending').length} decisions</span>
+                  <div className="space-y-3">
+                    <div className="flex gap-3">
+                      <div className="flex-1 max-w-xs">
+                        <Label htmlFor="decision-status-filter">Decision Status</Label>
+                        <Select value={wfhRequestFilter} onValueChange={(value: any) => setWfhRequestFilter(value)}>
+                          <SelectTrigger id="decision-status-filter" className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Decisions</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex-1 max-w-xs">
+                        <Label htmlFor="decision-duration-filter">Duration</Label>
+                        <Select value={wfhDecisionsDurationFilter} onValueChange={handleWfhDecisionsDurationFilter}>
+                          <SelectTrigger id="decision-duration-filter" className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Time</SelectItem>
+                            <SelectItem value="current_month">Current Month</SelectItem>
+                            <SelectItem value="last_month">Last Month</SelectItem>
+                            <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                            <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                            <SelectItem value="last_year">Last 1 Year</SelectItem>
+                            <SelectItem value="custom">Custom Range</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex-1 max-w-xs">
+                        <Label htmlFor="decision-role-filter">Role</Label>
+                        <Select value={wfhRoleFilter} onValueChange={(value: any) => setWfhRoleFilter(value)}>
+                          <SelectTrigger id="decision-role-filter" className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Roles</SelectItem>
+                            <SelectItem value="hr">HR</SelectItem>
+                            <SelectItem value="manager">Manager</SelectItem>
+                            <SelectItem value="team_lead">Team Lead</SelectItem>
+                            <SelectItem value="employee">Employee</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex-1">
+                        <Label>Total Decisions</Label>
+                        <div className="mt-1 px-3 py-2 bg-muted rounded-md text-sm flex items-center justify-between">
+                          <span>{allWfhRequests.filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter) && (wfhRoleFilter === 'all' || (req.role || 'employee').toLowerCase() === wfhRoleFilter)).length} of {allWfhRequests.filter(req => req.status !== 'pending').length} decisions</span>
+                        </div>
                       </div>
                     </div>
+                    {wfhDecisionsDurationFilter === 'custom' && (
+                      <div className="p-4 border rounded-2xl bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-100 dark:border-blue-800 shadow-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
+                              <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                              From Date
+                            </Label>
+                            <DatePicker
+                              date={wfhDecisionsStartDate}
+                              onDateChange={setWfhDecisionsStartDate}
+                              toDate={new Date()}
+                              placeholder="Start Date"
+                              className="w-full bg-white dark:bg-gray-950 border-blue-200"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
+                              <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                              To Date
+                            </Label>
+                            <DatePicker
+                              date={wfhDecisionsEndDate}
+                              onDateChange={setWfhDecisionsEndDate}
+                              fromDate={wfhDecisionsStartDate}
+                              toDate={new Date()}
+                              placeholder="End Date"
+                              className="w-full bg-white dark:bg-gray-950 border-indigo-200"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Recent Decisions Table */}
@@ -3115,11 +3321,11 @@ const AttendanceManager: React.FC = () => {
                       <Timer className="h-8 w-8 animate-spin text-blue-600" />
                       <span className="ml-2 text-muted-foreground">Loading decisions...</span>
                     </div>
-                  ) : allWfhRequests.filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter)).length > 0 ? (
+                  ) : allWfhRequests.filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter) && (wfhRoleFilter === 'all' || (req.role || 'employee').toLowerCase() === wfhRoleFilter)).length > 0 ? (
                     <>
                       <div className="space-y-3">
                         {allWfhRequests
-                          .filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter))
+                          .filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter) && (wfhRoleFilter === 'all' || (req.role || 'employee').toLowerCase() === wfhRoleFilter))
                           .sort((a, b) => new Date(b.processedAt || b.submittedAt).getTime() - new Date(a.processedAt || a.submittedAt).getTime())
                           .slice((wfhCurrentPage - 1) * wfhItemsPerPage, wfhCurrentPage * wfhItemsPerPage)
                           .map((request) => (
@@ -3250,7 +3456,7 @@ const AttendanceManager: React.FC = () => {
                 <Label htmlFor="admin-rejection-reason">Rejection Reason <span className="text-red-500">*</span></Label>
                 <Textarea
                   id="admin-rejection-reason"
-                  placeholder="Please provide a clear reason for rejecting this request..."
+                  placeholder="Please provide a clear reason for rejecting this request."
                   rows={3}
                   className="resize-none"
                   onChange={(e) => {

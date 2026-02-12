@@ -27,6 +27,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatIST, nowIST, todayIST, parseToIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import TruncatedText from '@/components/ui/TruncatedText';
 
 const EmployeeDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -471,14 +472,25 @@ const EmployeeDashboard: React.FC = () => {
                                   "bg-slate-300 dark:bg-slate-600"
                         )} />
 
-                        <div className="flex-1 min-w-0 space-y-2">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <h4 className={cn(
-                              "font-semibold text-gray-900 dark:text-gray-100 truncate",
-                              isCompleted && "text-muted-foreground line-through decoration-slate-400"
-                            )}>
-                              {task.title}
-                            </h4>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <TruncatedText
+                                text={task.title}
+                                maxLength={35}
+                                textClassName={cn(
+                                  "font-semibold text-gray-900 dark:text-gray-100",
+                                  isCompleted && "text-muted-foreground line-through decoration-slate-400"
+                                )}
+                              />
+                              <div className="mt-1">
+                                <TruncatedText
+                                  text={task.description}
+                                  maxLength={60}
+                                  textClassName="text-xs text-muted-foreground"
+                                />
+                              </div>
+                            </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               {getStatusBadge()}
                             </div>
@@ -560,7 +572,12 @@ const EmployeeDashboard: React.FC = () => {
                   </div>
                   <div className="flex-1 space-y-1">
                     <p className="text-sm font-medium">{activity.action}</p>
-                    <p className="text-xs text-muted-foreground">{activity.description}</p>
+                    <div className="text-xs text-muted-foreground">
+                      <TruncatedText
+                        text={activity.description}
+                        maxLength={50}
+                      />
+                    </div>
                     <p className="text-xs text-muted-foreground">{activity.time}</p>
                   </div>
                 </div>

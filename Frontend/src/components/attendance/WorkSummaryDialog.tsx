@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Clock, FileText, Send } from 'lucide-react';
 import { formatDateIST } from '@/utils/timezone';
+import TruncatedText from '@/components/ui/TruncatedText';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
 
@@ -180,7 +181,12 @@ const WorkSummaryDialog: React.FC<WorkSummaryDialogProps> = ({
                   {overdueTasks.map((task) => (
                     <div key={task.task_id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-orange-200">
                       <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">{task.title}</h4>
+                        <div className="font-medium text-gray-900">
+                          <TruncatedText
+                            text={task.title}
+                            maxLength={40}
+                          />
+                        </div>
                         <p className="text-sm text-gray-600">
                           Due: {formatDateIST(task.due_date, 'MMM dd, yyyy')} • Status: {task.status}
                         </p>

@@ -329,7 +329,7 @@ export default function TeamManagement() {
                       <Label>Team Name</Label>
                       <Input
                         value={newTeamData.name}
-                        onChange={(e) => setNewTeamData({ ...newTeamData, name: e.target.value })}
+                        onChange={(e) => setNewTeamData({ ...newTeamData, name: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
                         placeholder="Enter team name"
                       />
                     </div>
@@ -337,7 +337,7 @@ export default function TeamManagement() {
                       <Label>Department</Label>
                       <Input
                         value={newTeamData.department}
-                        onChange={(e) => setNewTeamData({ ...newTeamData, department: e.target.value })}
+                        onChange={(e) => setNewTeamData({ ...newTeamData, department: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
                         placeholder="Enter department"
                       />
                     </div>
@@ -345,7 +345,7 @@ export default function TeamManagement() {
                       <Label>Description</Label>
                       <Textarea
                         value={newTeamData.description}
-                        onChange={(e) => setNewTeamData({ ...newTeamData, description: e.target.value })}
+                        onChange={(e) => setNewTeamData({ ...newTeamData, description: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
                         placeholder="Enter team description"
                         rows={3}
                       />
@@ -485,7 +485,7 @@ export default function TeamManagement() {
                   <div className="flex gap-2">
                     <Input
                       value={messageInput}
-                      onChange={(e) => setMessageInput(e.target.value)}
+                      onChange={(e) => setMessageInput(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                       placeholder="Type your message..."
                       onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                     />

@@ -31,7 +31,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDateIST } from '@/utils/timezone';
 import { cn } from '@/lib/utils';
-import EmojiPicker from '../../components/chat/EmojiPicker';
+
 import MessageBubble from '../../components/chat/MessageBubble';
 import {
   AlertDialog,
@@ -88,7 +88,7 @@ const ChatBox: React.FC = () => {
   const { themeMode } = useTheme();
   const { toast } = useToast();
   const [messageText, setMessageText] = useState('');
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [messageToDelete, setMessageToDelete] = useState<any>(null);
@@ -104,24 +104,14 @@ const ChatBox: React.FC = () => {
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
   const typingPulseRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
-        setShowEmojiPicker(false);
-      }
-    };
-    if (showEmojiPicker) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showEmojiPicker]);
+
 
   useEffect(() => {
     if (chatId && (!activeChat || activeChat.id !== chatId)) {
@@ -154,7 +144,7 @@ const ChatBox: React.FC = () => {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setMessageText(e.target.value);
+    setMessageText(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''));
     handleTyping();
   };
 
@@ -164,7 +154,7 @@ const ChatBox: React.FC = () => {
       await sendMessage(messageText, 'text', replyingTo || undefined);
       setMessageText('');
       setReplyingTo(null);
-      setShowEmojiPicker(false);
+
     } catch (error) {
       console.error('Failed to send message:', error);
     }
@@ -287,11 +277,7 @@ const ChatBox: React.FC = () => {
     }
   };
 
-  const handleEmojiSelect = (emoji: string) => {
-    setMessageText(prev => prev + emoji);
-    setShowEmojiPicker(false);
-    inputRef.current?.focus();
-  };
+
 
   const chatName = useMemo(() => {
     if (!activeChat) return '';
@@ -560,14 +546,7 @@ const ChatBox: React.FC = () => {
               className="border-0 bg-transparent focus-visible:ring-0 shadow-none text-[15px] h-11 placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium"
             />
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn("rounded-full text-slate-400 hover:text-amber-500 transition-colors", showEmojiPicker && "text-amber-500 bg-amber-500/10")}
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            >
-              <Smile className="h-5 w-5" />
-            </Button>
+
           </div>
 
           <Button
@@ -582,11 +561,7 @@ const ChatBox: React.FC = () => {
           </Button>
         </div>
 
-        {showEmojiPicker && (
-          <div ref={emojiPickerRef} className="absolute bottom-24 right-6 z-50 animate-in fade-in slide-in-from-bottom-8 duration-300">
-            <EmojiPicker onEmojiSelect={handleEmojiSelect} />
-          </div>
-        )}
+
       </div>
 
       {/* Custom Confirmation Dialog for Deletion */}
@@ -632,7 +607,7 @@ const ChatBox: React.FC = () => {
           <div className="py-4">
             <Textarea
               value={editText}
-              onChange={(e) => setEditText(e.target.value)}
+              onChange={(e) => setEditText(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
               placeholder="Type updated message..."
               className="min-h-[100px] border-2 focus:ring-green-500/50 resize-none font-medium text-[15px]"
               autoFocus
@@ -678,7 +653,7 @@ const ChatBox: React.FC = () => {
               <div className="flex gap-2">
                 <Input
                   value={newGroupName}
-                  onChange={(e) => setNewGroupName(e.target.value)}
+                  onChange={(e) => setNewGroupName(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                   className="rounded-xl border-2 font-bold"
                   placeholder="Enter group name"
                 />
@@ -775,7 +750,7 @@ const ChatBox: React.FC = () => {
                 placeholder="Search teammates..."
                 className="pl-9 h-11 rounded-xl border-2"
                 value={memberSearchTerm}
-                onChange={(e) => setMemberSearchTerm(e.target.value)}
+                onChange={(e) => setMemberSearchTerm(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
               />
             </div>
 

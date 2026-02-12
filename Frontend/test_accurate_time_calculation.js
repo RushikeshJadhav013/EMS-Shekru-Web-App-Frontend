@@ -11,7 +11,7 @@ function formatTimeDisplay(totalSeconds) {
   if (hours === 0 && minutes === 0) {
     return '0 hrs - 0 mins';
   } else if (hours === 0) {
-    return `0 hrs - ${minutes} mins`;
+    return `0 hrs - ${minutes} mins`
   } else if (minutes === 0) {
     return `${hours} hrs - 0 mins`;
   } else {

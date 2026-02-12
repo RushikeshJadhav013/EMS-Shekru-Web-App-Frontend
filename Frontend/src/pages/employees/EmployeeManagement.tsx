@@ -424,11 +424,18 @@ export default function EmployeeManagement() {
 
     setIsCreatingDepartment(true);
     try {
+      // Sanitize department name
+      const sanitizedDeptName = deptName.trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
+      if (!sanitizedDeptName) {
+        toast({ title: 'Invalid Name', description: 'Department name cannot be empty or only emojis', variant: 'destructive' });
+        return;
+      }
+
       // Generate a code (uppercase, alphanumeric)
-      const code = deptName.trim().toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+      const code = sanitizedDeptName.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
 
       const newDept = await apiService.createDepartment({
-        name: deptName.trim(),
+        name: sanitizedDeptName,
         code: code || `DEPT_${Date.now().toString().slice(-4)}`,
         status: 'active'
       });
@@ -1192,12 +1199,12 @@ export default function EmployeeManagement() {
       const data = row.data;
       const employeeId = (data.employeeid || `EMP${Date.now()}${row.rowNumber}`).trim();
       const employeeIdKey = employeeId.toLowerCase();
-      const name = (data.name || '').trim();
+      const name = (data.name || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       const email = (data.email || '').trim();
       const emailKey = email.toLowerCase();
-      const department = (data.department || '').trim();
+      const department = (data.department || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       const role = normalizeRole(data.role);
-      const designation = (data.designation || '').trim();
+      const designation = (data.designation || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       const address = (data.address || '').trim();
       const joiningDate = data.joiningdate || new Date().toISOString().split('T')[0];
       const status = data.status || 'active';
@@ -2110,7 +2117,7 @@ export default function EmployeeManagement() {
                               <CommandInput
                                 placeholder="Search department..."
                                 value={deptSearchValue}
-                                onValueChange={setDeptSearchValue}
+                                onValueChange={(val) => setDeptSearchValue(val.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                               />
                               <CommandList className="max-h-[300px]">
                                 {deptSearchValue.trim().length > 0 && !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
@@ -2224,7 +2231,7 @@ export default function EmployeeManagement() {
                     <Input
                       id="create-designation"
                       value={formData.designation || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, designation: e.target.value }))}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, designation: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                       className="mt-1"
                       placeholder='e.g.,Software Engineer'
                     />
@@ -2267,7 +2274,7 @@ export default function EmployeeManagement() {
                         <Input
                           id="create-houseNo"
                           value={addressFields.houseNo || ''}
-                          onChange={(e) => setAddressFields((prev) => ({ ...prev, houseNo: e.target.value }))}
+                          onChange={(e) => setAddressFields((prev) => ({ ...prev, houseNo: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                           className="mt-1 text-sm"
                           placeholder="e.g., 123"
                         />
@@ -2277,7 +2284,7 @@ export default function EmployeeManagement() {
                         <Input
                           id="create-street"
                           value={addressFields.street || ''}
-                          onChange={(e) => setAddressFields((prev) => ({ ...prev, street: e.target.value }))}
+                          onChange={(e) => setAddressFields((prev) => ({ ...prev, street: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                           className="mt-1 text-sm"
                           placeholder="e.g., Galaxy Tower"
                         />
@@ -2287,7 +2294,7 @@ export default function EmployeeManagement() {
                         <Input
                           id="create-area"
                           value={addressFields.area || ''}
-                          onChange={(e) => setAddressFields((prev) => ({ ...prev, area: e.target.value }))}
+                          onChange={(e) => setAddressFields((prev) => ({ ...prev, area: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                           className="mt-1 text-sm"
                           placeholder="e.g., Downtown"
                         />
@@ -2297,7 +2304,7 @@ export default function EmployeeManagement() {
                         <Input
                           id="create-city"
                           value={addressFields.city || ''}
-                          onChange={(e) => setAddressFields((prev) => ({ ...prev, city: e.target.value }))}
+                          onChange={(e) => setAddressFields((prev) => ({ ...prev, city: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                           className="mt-1 text-sm"
                           placeholder="e.g., Mumbai"
                         />
@@ -2321,7 +2328,7 @@ export default function EmployeeManagement() {
                         <Input
                           id="create-state"
                           value={addressFields.state || ''}
-                          onChange={(e) => setAddressFields((prev) => ({ ...prev, state: e.target.value }))}
+                          onChange={(e) => setAddressFields((prev) => ({ ...prev, state: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                           className="mt-1 text-sm"
                           placeholder="e.g., Maharashtra"
                         />
@@ -2469,97 +2476,94 @@ export default function EmployeeManagement() {
           </div>
         </CardHeader >
         <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
-            <div className="flex-1 min-w-0">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <Input
-                  placeholder="Search by name, ID, or email..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 h-11 w-full bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-blue-500 text-sm"
-                  aria-label="Search employees"
-                />
+          <div className="flex flex-col sm:flex-row items-end gap-3 mb-6">
+            <div className="flex-1 min-w-0 w-full">
+              <div className="flex flex-col gap-2">
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Search</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <Input
+                    placeholder="Search by name, ID, or email..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
+                    className="pl-10 pr-4 h-11 w-full bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-blue-500 text-sm"
+                    aria-label="Search employees"
+                  />
+                </div>
               </div>
             </div>
-            <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-              <SelectTrigger className={`w-full sm:w-44 h-11 bg-white dark:bg-gray-950 border-2 transition-all duration-300 hover:shadow-md flex-shrink-0 ${selectedDepartment === 'all'
-                ? 'border-blue-400 dark:border-blue-600 hover:border-blue-400 dark:hover:border-blue-600'
-                : 'hover:border-blue-300 dark:hover:border-blue-700 border-gray-200 dark:border-gray-800'
-                }`}>
-                <Filter className={`h-4 w-4 mr-2 ${selectedDepartment === 'all'
-                  ? 'text-blue-600'
-                  : 'text-gray-600 dark:text-gray-400'
-                  }`} />
-                <SelectValue placeholder="Department" />
-              </SelectTrigger>
-              <SelectContent className="border-2 shadow-2xl">
-                <SelectItem value="all" className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors font-medium">
-                  <div className="flex items-center gap-2">
-                    All Departments
-                  </div>
-                </SelectItem>
-                {departments.map((dept, index) => {
-                  const departmentColors = [
-                    'from-red-500 to-rose-600',
-                    'from-orange-500 to-amber-600',
-                    'from-yellow-500 to-lime-600',
-                    'from-green-500 to-emerald-600',
-                    'from-cyan-500 to-blue-600',
-                    'from-purple-500 to-pink-600',
-                    'from-indigo-500 to-violet-600',
-                    'from-slate-500 to-gray-600',
-                  ];
-                  const colorClass = departmentColors[index % departmentColors.length];
-
-                  return (
-                    <SelectItem key={dept} value={dept} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                      <div className="flex items-center gap-2">
-                        {dept}
-                      </div>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-            <Select value={selectedRole} onValueChange={setSelectedRole}>
-              <SelectTrigger className="w-full sm:w-44 h-11 bg-white dark:bg-gray-950 border-2 hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
-                <UserIcon className="h-4 w-4 mr-2 text-purple-600" />
-                <SelectValue placeholder="Role" />
-              </SelectTrigger>
-              <SelectContent className="border-2 shadow-2xl">
-                <SelectItem value="all" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors font-medium">
-                  <div className="flex items-center gap-2">
-                    All Roles
-                  </div>
-                </SelectItem>
-                <SelectItem value="Admin" className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950 transition-colors">
-                  <div className="flex items-center gap-2">
-                    Admin
-                  </div>
-                </SelectItem>
-                <SelectItem value="HR" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors">
-                  <div className="flex items-center gap-2">
-                    HR
-                  </div>
-                </SelectItem>
-                <SelectItem value="Manager" className="cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors">
-                  <div className="flex items-center gap-2">
-                    Manager
-                  </div>
-                </SelectItem>
-                <SelectItem value="TeamLead" className="cursor-pointer hover:bg-cyan-50 dark:hover:bg-cyan-950 transition-colors">
-                  <div className="flex items-center gap-2">
-                    TeamLead
-                  </div>
-                </SelectItem>
-                <SelectItem value="Employee" className="cursor-pointer hover:bg-green-50 dark:hover:bg-green-950 transition-colors">
-                  <div className="flex items-center gap-2">
-                    Employee
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-2 w-full sm:w-44">
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Department</Label>
+              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                <SelectTrigger className={`w-full h-11 bg-white dark:bg-gray-950 border-2 transition-all duration-300 hover:shadow-md flex-shrink-0 ${selectedDepartment === 'all'
+                  ? 'border-blue-400 dark:border-blue-600 hover:border-blue-400 dark:hover:border-blue-600'
+                  : 'hover:border-blue-300 dark:hover:border-blue-700 border-gray-200 dark:border-gray-800'
+                  }`}>
+                  <Filter className={`h-4 w-4 mr-2 ${selectedDepartment === 'all'
+                    ? 'text-blue-600'
+                    : 'text-gray-600 dark:text-gray-400'
+                    }`} />
+                  <SelectValue placeholder="Department" />
+                </SelectTrigger>
+                <SelectContent className="border-2 shadow-2xl">
+                  <SelectItem value="all" className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors font-medium">
+                    <div className="flex items-center gap-2">
+                      All Departments
+                    </div>
+                  </SelectItem>
+                  {departments.map((dept, index) => {
+                    return (
+                      <SelectItem key={dept} value={dept} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                        <div className="flex items-center gap-2">
+                          {dept}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2 w-full sm:w-44">
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Role</Label>
+              <Select value={selectedRole} onValueChange={setSelectedRole}>
+                <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-950 border-2 hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
+                  <UserIcon className="h-4 w-4 mr-2 text-purple-600" />
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent className="border-2 shadow-2xl">
+                  <SelectItem value="all" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors font-medium">
+                    <div className="flex items-center gap-2">
+                      All Roles
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="Admin" className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950 transition-colors">
+                    <div className="flex items-center gap-2">
+                      Admin
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="HR" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors">
+                    <div className="flex items-center gap-2">
+                      HR
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="Manager" className="cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors">
+                    <div className="flex items-center gap-2">
+                      Manager
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="TeamLead" className="cursor-pointer hover:bg-cyan-50 dark:hover:bg-cyan-950 transition-colors">
+                    <div className="flex items-center gap-2">
+                      TeamLead
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="Employee" className="cursor-pointer hover:bg-green-50 dark:hover:bg-green-950 transition-colors">
+                    <div className="flex items-center gap-2">
+                      Employee
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="rounded-xl border-2 border-gray-200 dark:border-gray-800 overflow-hidden shadow-lg">
@@ -2880,7 +2884,7 @@ export default function EmployeeManagement() {
                         <CommandInput
                           placeholder="Search department..."
                           value={deptSearchValue}
-                          onValueChange={setDeptSearchValue}
+                          onValueChange={(val) => setDeptSearchValue(val.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                         />
                         <CommandList className="max-h-[300px]">
                           {deptSearchValue.trim().length > 0 && !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (

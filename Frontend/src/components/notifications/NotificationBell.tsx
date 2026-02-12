@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatBackendDateIST } from '@/utils/timezone';
+import TruncatedText from '@/components/ui/TruncatedText';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export const NotificationBell: React.FC = () => {
@@ -20,12 +21,12 @@ export const NotificationBell: React.FC = () => {
   const { notifications, unreadCount, isLoading, error, markAsRead, markAllAsRead, clearNotification } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
-  
+
   // ✅ REMOVED: No more API calls from UI component
   // Notifications are fetched ONLY from NotificationContext on:
   // 1. App initialization (user login)
   // 2. Page visibility change (when tab becomes visible)
-  
+
   // Debug: Log notifications state (only in dev)
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -33,18 +34,18 @@ export const NotificationBell: React.FC = () => {
       console.log('[NotificationBell] Unread count:', unreadCount);
     }
   }, [notifications.length, unreadCount]);
-  
+
   // Check if notifications are enabled
   const areNotificationsEnabled = () => {
     const stored = localStorage.getItem('notificationsEnabled');
     return stored === null ? true : stored === 'true';
   };
-  
+
   // Don't render the bell if notifications are disabled
   if (!areNotificationsEnabled()) {
     return null;
   }
-  
+
   // Show ALL notifications - sorted by created_at (latest first)
   // Also prioritize unread notifications at the top
   const allNotifications = [...notifications].sort((a, b) => {
@@ -55,7 +56,7 @@ export const NotificationBell: React.FC = () => {
     // Then sort by date (newest first)
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
-  
+
   // Group notifications by type (maintaining sort order)
   const leaveNotifications = allNotifications.filter(n => n.type === 'leave');
   const taskNotifications = allNotifications.filter(n => n.type === 'task');
@@ -66,9 +67,9 @@ export const NotificationBell: React.FC = () => {
   const handleNotificationClick = async (notification: any) => {
     // Remove notification from list immediately (clearNotification handles marking as read)
     clearNotification(notification.id);
-    
+
     const userRole = user?.role || 'employee';
-    
+
     // Route based on notification type and metadata
     if (notification.type === 'leave' && notification.metadata?.leaveId) {
       // For leave notifications, go to role-based leaves page with approvals tab
@@ -166,9 +167,12 @@ export const NotificationBell: React.FC = () => {
         </div>
         <div className="flex-1 space-y-1.5 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <p className={`text-sm leading-tight line-clamp-2 ${notification.read ? 'font-normal text-muted-foreground' : 'font-semibold text-foreground'}`}>
-              {notification.title || 'Notification'}
-            </p>
+            <div className={`text-sm leading-tight ${notification.read ? 'font-normal text-muted-foreground' : 'font-semibold text-foreground'}`}>
+              <TruncatedText
+                text={notification.title || 'Notification'}
+                maxLength={60}
+              />
+            </div>
             {!notification.read && (
               <Badge className="h-5 text-[10px] px-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 shadow-md flex-shrink-0 animate-pulse">
                 NEW
@@ -176,9 +180,12 @@ export const NotificationBell: React.FC = () => {
             )}
           </div>
           {notification.message && (
-            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-              {notification.message}
-            </p>
+            <div className="text-xs text-muted-foreground leading-relaxed">
+              <TruncatedText
+                text={notification.message}
+                maxLength={100}
+              />
+            </div>
           )}
           <div className="flex items-center justify-between pt-1 gap-2 flex-wrap">
             <div className="flex items-center gap-2 flex-wrap">
@@ -219,9 +226,9 @@ export const NotificationBell: React.FC = () => {
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="icon" 
+        <Button
+          variant="ghost"
+          size="icon"
           className="relative h-10 w-10 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 transition-all duration-300 hover:scale-110"
         >
           <Bell className={`h-5 w-5 text-blue-600 dark:text-blue-400 ${unreadCount > 0 ? 'animate-shake' : ''}`} />
@@ -257,7 +264,7 @@ export const NotificationBell: React.FC = () => {
             )}
           </div>
         </div>
-        
+
         {error ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <div className="h-20 w-20 rounded-full bg-gradient-to-br from-red-100 to-orange-100 dark:from-red-900 dark:to-orange-900 flex items-center justify-center mb-4">
@@ -277,8 +284,8 @@ export const NotificationBell: React.FC = () => {
         ) : (
           <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="w-full justify-start border-b rounded-none bg-transparent p-0 h-auto">
-              <TabsTrigger 
-                value="all" 
+              <TabsTrigger
+                value="all"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent px-4 py-2"
               >
                 <span className="text-xs font-medium">All</span>
@@ -293,10 +300,10 @@ export const NotificationBell: React.FC = () => {
                   </Badge>
                 )}
               </TabsTrigger>
-              
+
               {leaveNotifications.length > 0 && (
-                <TabsTrigger 
-                  value="leave" 
+                <TabsTrigger
+                  value="leave"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500 data-[state=active]:bg-transparent px-4 py-2"
                 >
                   <Calendar className="h-4 w-4 mr-1 text-purple-500" />
@@ -306,10 +313,10 @@ export const NotificationBell: React.FC = () => {
                   </Badge>
                 </TabsTrigger>
               )}
-              
+
               {taskNotifications.length > 0 && (
-                <TabsTrigger 
-                  value="task" 
+                <TabsTrigger
+                  value="task"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent px-4 py-2"
                 >
                   <FileText className="h-4 w-4 mr-1 text-blue-500" />
@@ -321,8 +328,8 @@ export const NotificationBell: React.FC = () => {
               )}
 
               {salaryNotifications.length > 0 && (
-                <TabsTrigger 
-                  value="salary" 
+                <TabsTrigger
+                  value="salary"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-500 data-[state=active]:bg-transparent px-4 py-2"
                 >
                   <IndianRupee className="h-4 w-4 mr-1 text-emerald-500" />
@@ -334,8 +341,8 @@ export const NotificationBell: React.FC = () => {
               )}
 
               {shiftNotifications.length > 0 && (
-                <TabsTrigger 
-                  value="shift" 
+                <TabsTrigger
+                  value="shift"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-orange-500 data-[state=active]:bg-transparent px-4 py-2"
                 >
                   <Clock className="h-4 w-4 mr-1 text-orange-500" />

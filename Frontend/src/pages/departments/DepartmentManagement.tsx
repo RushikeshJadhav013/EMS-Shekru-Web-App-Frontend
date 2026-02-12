@@ -330,11 +330,12 @@ export default function DepartmentManagement() {
 
   // Stable handlers to prevent input focus loss
   const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({ ...prev, name: e.target.value }));
+    setFormData((prev) => ({ ...prev, name: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }));
   }, []);
 
   const handleCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({ ...prev, code: e.target.value.toUpperCase() }));
+    // Sanitize and convert to uppercase
+    setFormData((prev) => ({ ...prev, code: e.target.value.toUpperCase().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }));
   }, []);
 
   const handleManagerChange = useCallback((value: string) => {
@@ -353,14 +354,12 @@ export default function DepartmentManagement() {
     }));
   }, []);
 
-
-
   const handleLocationChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({ ...prev, location: e.target.value }));
+    setFormData((prev) => ({ ...prev, location: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }));
   }, []);
 
   const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setFormData((prev) => ({ ...prev, description: e.target.value }));
+    setFormData((prev) => ({ ...prev, description: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }));
   }, []);
 
   const loadDepartments = useCallback(async () => {
@@ -668,60 +667,70 @@ export default function DepartmentManagement() {
                 Search, filter, and manage departments across your organization.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3 w-full xl:w-auto">
-              <div className="flex-1 min-w-[200px]">
+            <div className="flex flex-wrap gap-4 w-full xl:w-auto">
+              <div className="flex flex-col gap-2 flex-1 min-w-[200px]">
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Search</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
                     placeholder="Search departments..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 border-slate-300 dark:border-slate-600"
+                    onChange={(e) => setSearchQuery(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
+                    className="pl-10 border-slate-300 dark:border-slate-600 h-10"
                   />
                 </div>
               </div>
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-[140px] border-slate-300 dark:border-slate-600">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select
-                value={selectedManagerFilter}
-                onValueChange={(value) =>
-                  setSelectedManagerFilter(value as 'all' | string)
-                }
-              >
-                <SelectTrigger className="w-[170px] border-slate-300 dark:border-slate-600">
-                  <SelectValue placeholder="Manager" />
-                </SelectTrigger>
-                <SelectContent className="max-h-64 overflow-y-auto">
-                  <SelectItem value="all">All Managers</SelectItem>
-                  {managers.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={sortBy}
-                onValueChange={(value) =>
-                  setSortBy(value as 'name' | 'employees')
-                }
-              >
-                <SelectTrigger className="w-[150px] border-slate-300 dark:border-slate-600">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name">Name (A-Z)</SelectItem>
-                  <SelectItem value="employees">Employees</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex flex-col gap-2">
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Status</Label>
+                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                  <SelectTrigger className="w-[140px] border-slate-300 dark:border-slate-600 h-10">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Manager</Label>
+                <Select
+                  value={selectedManagerFilter}
+                  onValueChange={(value) =>
+                    setSelectedManagerFilter(value as 'all' | string)
+                  }
+                >
+                  <SelectTrigger className="w-[170px] border-slate-300 dark:border-slate-600 h-10">
+                    <SelectValue placeholder="Manager" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-64 overflow-y-auto">
+                    <SelectItem value="all">All Managers</SelectItem>
+                    {managers.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Sort By</Label>
+                <Select
+                  value={sortBy}
+                  onValueChange={(value) =>
+                    setSortBy(value as 'name' | 'employees')
+                  }
+                >
+                  <SelectTrigger className="w-[150px] border-slate-300 dark:border-slate-600 h-10">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name">Name (A-Z)</SelectItem>
+                    <SelectItem value="employees">Employees</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </CardHeader>

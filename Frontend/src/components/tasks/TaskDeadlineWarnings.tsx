@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Clock, Calendar, CheckCircle2 } from 'lucide-react';
 import { formatDateIST } from '@/utils/timezone';
+import TruncatedText from '@/components/ui/TruncatedText';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
 
@@ -222,11 +223,17 @@ const TaskDeadlineWarnings: React.FC<TaskDeadlineWarningsProps> = ({
                         {getWarningIcon(warning.warning_type)}
                         <div className="flex-1">
                           <h4 className="font-semibold text-gray-900 mb-1">
-                            {warning.title}
+                            <TruncatedText
+                              text={warning.title}
+                              maxLength={40}
+                            />
                           </h4>
-                          <p className="text-sm text-gray-600 mb-2">
-                            {warning.message}
-                          </p>
+                          <div className="text-sm text-gray-600 mb-2">
+                            <TruncatedText
+                              text={warning.message}
+                              maxLength={100}
+                            />
+                          </div>
                           <div className="flex items-center gap-4 text-xs text-gray-500">
                             <span>Due: {formatDate(warning.due_date)}</span>
                             <span>Status: {warning.status}</span>

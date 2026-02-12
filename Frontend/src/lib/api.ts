@@ -362,8 +362,13 @@ class ApiService {
       }
     });
 
+    const token = localStorage.getItem('token');
+
     const response = await fetch(`${this.baseURL}/employees/register`, {
       method: 'POST',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
       body: formData,
     });
 
@@ -450,6 +455,27 @@ class ApiService {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({ is_active: isActive }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
+  // Update employee role
+  async updateEmployeeRole(userId: string, role: string): Promise<Employee> {
+    const token = localStorage.getItem('token');
+
+    const response = await fetch(`${this.baseURL}/employees/${userId}/role`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ role }),
     });
 
     if (!response.ok) {
@@ -1143,6 +1169,64 @@ class ApiService {
 
     const token = localStorage.getItem('token');
     const response = await fetch(`${this.baseURL}/attendance/report/monthly-grid/download/csv?${queryParams.toString()}`, {
+      method: 'GET',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.blob();
+  }
+
+  // Export Monthly Attendance Detailed Grid as PDF
+  async exportMonthlyGridDetailedPDF(params: {
+    month: string;
+    year: string;
+    department?: string;
+  }): Promise<Blob> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('month', params.month);
+    queryParams.append('year', params.year);
+    if (params.department && params.department !== 'all') {
+      queryParams.append('department', params.department);
+    }
+
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${this.baseURL}/attendance/report/monthly-grid-detailed/download/pdf?${queryParams.toString()}`, {
+      method: 'GET',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.blob();
+  }
+
+  // Export Monthly Attendance Detailed Grid as CSV
+  async exportMonthlyGridDetailedCSV(params: {
+    month: string;
+    year: string;
+    department?: string;
+  }): Promise<Blob> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('month', params.month);
+    queryParams.append('year', params.year);
+    if (params.department && params.department !== 'all') {
+      queryParams.append('department', params.department);
+    }
+
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${this.baseURL}/attendance/report/monthly-grid-detailed/download/csv?${queryParams.toString()}`, {
       method: 'GET',
       headers: {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),

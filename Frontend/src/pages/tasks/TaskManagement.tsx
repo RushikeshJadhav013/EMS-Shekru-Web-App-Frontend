@@ -35,6 +35,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Pagination } from '@/components/ui/pagination';
 import { useToast } from '@/hooks/use-toast';
+import TruncatedText from '@/components/ui/TruncatedText';
 import {
   Plus,
   Clock,
@@ -353,6 +354,7 @@ const TaskManagement: React.FC = () => {
     department: '',
     employeeId: '',
   });
+  const [assignRoleFilter, setAssignRoleFilter] = useState<'all' | UserRole>('all');
   const [departments, setDepartments] = useState<string[]>([]);
   const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
   const [userCache, setUserCache] = useState<Map<string, EmployeeSummary>>(new Map());
@@ -399,11 +401,11 @@ const TaskManagement: React.FC = () => {
   const [newComment, setNewComment] = useState('');
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isPostingComment, setIsPostingComment] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const commentsEndRef = React.useRef<HTMLDivElement>(null);
-  const emojiPickerRef = React.useRef<HTMLDivElement>(null);
+
 
   // Export states
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
@@ -1523,7 +1525,7 @@ const TaskManagement: React.FC = () => {
 
       setNewComment('');
       setAttachedFiles([]);
-      setShowEmojiPicker(false);
+
 
       // Sync comments immediately after posting (only adds new comments, no blinking)
       await syncTaskComments(Number(selectedTask.id));
@@ -1548,9 +1550,7 @@ const TaskManagement: React.FC = () => {
     }
   }, [newComment, attachedFiles, selectedTask, toast, syncTaskComments]);
 
-  const handleEmojiSelect = useCallback((emoji: string) => {
-    setNewComment(prev => prev + emoji);
-  }, []);
+
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -1564,19 +1564,7 @@ const TaskManagement: React.FC = () => {
     setAttachedFiles(prev => prev.filter((_, i) => i !== index));
   }, []);
 
-  // Close emoji picker when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
-        setShowEmojiPicker(false);
-      }
-    };
 
-    if (showEmojiPicker) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showEmojiPicker]);
 
   const handleDeleteComment = useCallback(async (commentId: number) => {
     if (!selectedTask) return;
@@ -2129,10 +2117,10 @@ const TaskManagement: React.FC = () => {
   // Get priority color
   const getPriorityColor = (priority: BaseTask['priority']) => {
     switch (priority) {
-      case 'low': return 'bg-green-100 text-green-800';
+      case 'low': return 'text-green-600 bg-white border border-green-200';
       case 'medium': return 'bg-gray-100 text-gray-800';
       case 'high': return 'bg-gray-100 text-gray-800';
-      case 'urgent': return 'bg-red-100 text-red-800';
+      case 'urgent': return 'text-red-600 bg-white border border-red-200';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -2462,7 +2450,7 @@ const TaskManagement: React.FC = () => {
                     <Input
                       id="title"
                       value={newTask.title}
-                      onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                      onChange={(e) => setNewTask({ ...newTask, title: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
                       placeholder="Enter task title"
                       className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all"
                     />
@@ -2476,7 +2464,7 @@ const TaskManagement: React.FC = () => {
                     <Textarea
                       id="description"
                       value={newTask.description}
-                      onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                      onChange={(e) => setNewTask({ ...newTask, description: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
                       placeholder="Enter task description"
                       rows={4}
                       className="resize-none border-2 focus:ring-2 focus:ring-violet-500 transition-all"
@@ -2544,6 +2532,29 @@ const TaskManagement: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
+                    <Label htmlFor="assignRoleFilter" className="text-sm font-semibold flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-violet-600" />
+                      Filter Role
+                    </Label>
+                    <Select
+                      value={assignRoleFilter}
+                      onValueChange={(value: 'all' | UserRole) => setAssignRoleFilter(value)}
+                    >
+                      <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                        <SelectValue placeholder="All Roles" />
+                      </SelectTrigger>
+                      <SelectContent className="border-2 shadow-xl">
+                        <SelectItem value="all">All Roles</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="hr">HR</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="team_lead">Team Lead</SelectItem>
+                        <SelectItem value="employee">Employee</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="assignTo" className="text-sm font-semibold flex items-center gap-2">
                       <User className="h-4 w-4 text-violet-600" />
                       Assign To
@@ -2565,6 +2576,7 @@ const TaskManagement: React.FC = () => {
                         )}
                         {canAssignToSelection
                           .filter((emp) => emp.userId !== userId)
+                          .filter((emp) => assignRoleFilter === 'all' || emp.role === assignRoleFilter)
                           .map((emp) => (
                             <SelectItem key={emp.userId} value={emp.userId} className="cursor-pointer">
                               {emp.name}
@@ -2768,98 +2780,108 @@ const TaskManagement: React.FC = () => {
               <CardTitle className="text-xl font-semibold">Task Management</CardTitle>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  className="pl-9 w-full sm:w-[200px] h-10 bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-violet-500"
-                  placeholder="Search tasks..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="flex flex-col gap-2">
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Search</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    className="pl-9 w-full sm:w-[200px] h-10 bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-violet-500"
+                    placeholder="Search tasks..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
+                  />
+                </div>
               </div>
 
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="todo">To Do</SelectItem>
-                  <SelectItem value="in-progress">In Progress</SelectItem>
-                  <SelectItem value="overdue">Overdue</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex flex-col gap-2">
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Status</Label>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="todo">To Do</SelectItem>
+                    <SelectItem value="in-progress">In Progress</SelectItem>
+                    <SelectItem value="overdue">Overdue</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-              <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1">
-                {user?.role === 'admin' ? (
-                  // Admin sections: Created (default) and All Tasks
-                  <>
-                    <Button
-                      size="sm"
-                      variant={taskOwnershipFilter === 'created' ? 'default' : 'outline'}
-                      onClick={() => setTaskOwnershipFilter('created')}
-                      className={taskOwnershipFilter === 'created' ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md' : ''}
-                    >
-                      Created
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={taskOwnershipFilter === 'all' ? 'default' : 'outline'}
-                      onClick={() => {
-                        setTaskOwnershipFilter('all');
-                        setSelectedDepartmentFilter('all');
-                      }}
-                      className={taskOwnershipFilter === 'all' ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md' : ''}
-                    >
-                      All Tasks
-                    </Button>
-                  </>
-                ) : (
-                  // Other roles sections: Received (default) and Created
-                  <>
-                    <Button
-                      size="sm"
-                      variant={taskOwnershipFilter === 'received' ? 'default' : 'outline'}
-                      onClick={() => setTaskOwnershipFilter('received')}
-                      className={taskOwnershipFilter === 'received' ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md' : ''}
-                    >
-                      Received
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={taskOwnershipFilter === 'created' ? 'default' : 'outline'}
-                      onClick={() => setTaskOwnershipFilter('created')}
-                      className={taskOwnershipFilter === 'created' ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md' : ''}
-                    >
-                      Created
-                    </Button>
-                  </>
-                )}
+              <div className="flex flex-col gap-2">
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Filter</Label>
+                <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1 h-10">
+                  {user?.role === 'admin' ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant={taskOwnershipFilter === 'created' ? 'default' : 'outline'}
+                        onClick={() => setTaskOwnershipFilter('created')}
+                        className={taskOwnershipFilter === 'created' ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md' : 'h-8'}
+                      >
+                        Created
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={taskOwnershipFilter === 'all' ? 'default' : 'outline'}
+                        onClick={() => {
+                          setTaskOwnershipFilter('all');
+                          setSelectedDepartmentFilter('all');
+                        }}
+                        className={taskOwnershipFilter === 'all' ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md' : 'h-8'}
+                      >
+                        All Tasks
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        size="sm"
+                        variant={taskOwnershipFilter === 'received' ? 'default' : 'outline'}
+                        onClick={() => setTaskOwnershipFilter('received')}
+                        className={taskOwnershipFilter === 'received' ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md' : 'h-8'}
+                      >
+                        Received
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={taskOwnershipFilter === 'created' ? 'default' : 'outline'}
+                        onClick={() => setTaskOwnershipFilter('created')}
+                        className={taskOwnershipFilter === 'created' ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md' : 'h-8'}
+                      >
+                        Created
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Department Filter - Show when viewing All Tasks for Admin only */}
               {taskOwnershipFilter === 'all' && user?.role === 'admin' && (
-                <Select
-                  value={selectedDepartmentFilter}
-                  onValueChange={setSelectedDepartmentFilter}
-                >
-                  <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white dark:bg-gray-950">
-                    <SelectValue placeholder="Select Department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {user?.role === 'admin' && (
-                      <SelectItem value="all">All Departments</SelectItem>
-                    )}
-                    {departments.map((dept) => (
-                      <SelectItem key={dept} value={dept}>
-                        {dept}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex flex-col gap-2">
+                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Department</Label>
+                  <Select
+                    value={selectedDepartmentFilter}
+                    onValueChange={setSelectedDepartmentFilter}
+                  >
+                    <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white dark:bg-gray-950">
+                      <SelectValue placeholder="Select Department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {user?.role === 'admin' && (
+                        <SelectItem value="all">All Departments</SelectItem>
+                      )}
+                      {departments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
 
               <div className="flex gap-1">
@@ -2949,12 +2971,23 @@ const TaskManagement: React.FC = () => {
                         const lastPassTimestamp = task.lastPassedAt ? formatDateTimeIST(task.lastPassedAt, 'MMM dd, yyyy HH:mm') : null;
                         return (
                           <TableRow key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">{task.title}</p>
-                                <p className="text-sm text-muted-foreground line-clamp-1">
-                                  {task.description}
-                                </p>
+                            <TableCell
+                              className="cursor-pointer group hover:bg-violet-50/30 dark:hover:bg-violet-900/10 transition-colors"
+                              onClick={() => setSelectedTask(task)}
+                            >
+                              <div className="max-w-[300px] py-1">
+                                <div className="mb-1">
+                                  <TruncatedText
+                                    text={task.title}
+                                    maxLength={40}
+                                    textClassName="font-semibold text-sm group-hover:text-violet-600 transition-colors"
+                                  />
+                                </div>
+                                <TruncatedText
+                                  text={task.description}
+                                  maxLength={80}
+                                  textClassName="text-xs text-muted-foreground leading-relaxed"
+                                />
                               </div>
                             </TableCell>
                             <TableCell>
@@ -2987,14 +3020,9 @@ const TaskManagement: React.FC = () => {
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <Calendar className="h-4 w-4 text-muted-foreground" />
-                                <span className={`text-sm ${isTaskOverdue(task) ? 'font-bold text-orange-600 dark:text-orange-400' : ''}`}>
+                                <span className="text-sm">
                                   {formatDisplayDate(task.deadline)}
                                 </span>
-                                {isTaskOverdue(task) && (
-                                  <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100 text-xs">
-                                    Overdue
-                                  </Badge>
-                                )}
                               </div>
                             </TableCell>
                             <TableCell>
@@ -3219,9 +3247,13 @@ const TaskManagement: React.FC = () => {
                                 </Badge>
                               )}
                             </div>
-                            <CardTitle className="text-base font-bold leading-tight truncate pr-1" title={task.title}>
-                              {task.title}
-                            </CardTitle>
+                            <div className="text-base font-bold leading-tight pr-1">
+                              <TruncatedText
+                                text={task.title}
+                                maxLength={30}
+                                textClassName="text-gray-900 dark:text-gray-100"
+                              />
+                            </div>
                           </div>
                           {/* Progress Ring or Simple Status Icon */}
                           <div className={`h-8 w-8 rounded-full flex items-center justify-center border-2 ${task.status === 'completed' ? 'border-green-100 bg-green-50 text-green-600 dark:border-green-900/30 dark:bg-green-900/20' :
@@ -3238,9 +3270,12 @@ const TaskManagement: React.FC = () => {
                       </CardHeader>
 
                       <CardContent className="p-4 pt-3 space-y-4">
-                        <p className="text-xs text-muted-foreground line-clamp-2 h-8 leading-relaxed">
-                          {task.description || "No description provided."}
-                        </p>
+                        <div className="text-xs text-muted-foreground leading-relaxed">
+                          <TruncatedText
+                            text={task.description || "No description provided."}
+                            maxLength={70}
+                          />
+                        </div>
 
                         {/* Compact Metadata Grid */}
                         <div className="grid grid-cols-1 gap-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-800/50">
@@ -3464,7 +3499,7 @@ const TaskManagement: React.FC = () => {
               </Label>
               <Textarea
                 value={passNote}
-                onChange={(e) => setPassNote(e.target.value)}
+                onChange={(e) => setPassNote(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                 placeholder="Add context about why you're passing the task or partial progress made"
                 rows={4}
                 className="resize-none border-2 focus:ring-2 focus:ring-violet-500 transition-all"
@@ -3529,7 +3564,7 @@ const TaskManagement: React.FC = () => {
               <Input
                 id="edit-title"
                 value={editTaskForm.title}
-                onChange={(e) => setEditTaskForm((prev) => ({ ...prev, title: e.target.value }))}
+                onChange={(e) => setEditTaskForm((prev) => ({ ...prev, title: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                 placeholder="Enter task title"
                 className="h-11 border-2 focus:ring-2 focus:ring-blue-500 transition-all"
               />
@@ -3543,7 +3578,7 @@ const TaskManagement: React.FC = () => {
               <Textarea
                 id="edit-description"
                 value={editTaskForm.description}
-                onChange={(e) => setEditTaskForm((prev) => ({ ...prev, description: e.target.value }))}
+                onChange={(e) => setEditTaskForm((prev) => ({ ...prev, description: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                 placeholder="Enter task description"
                 rows={4}
                 className="resize-none border-2 focus:ring-2 focus:ring-blue-500 transition-all"
@@ -3650,7 +3685,7 @@ const TaskManagement: React.FC = () => {
                 <Input
                   id="reassign-title"
                   value={reassignForm.title}
-                  onChange={(e) => setReassignForm(prev => ({ ...prev, title: e.target.value }))}
+                  onChange={(e) => setReassignForm(prev => ({ ...prev, title: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                   placeholder="Enter task title"
                   className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400"
                 />
@@ -3663,7 +3698,7 @@ const TaskManagement: React.FC = () => {
                 <Textarea
                   id="reassign-description"
                   value={reassignForm.description}
-                  onChange={(e) => setReassignForm(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) => setReassignForm(prev => ({ ...prev, description: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                   placeholder="Describe the task requirements"
                   className="mt-1.5 min-h-[100px] bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400 resize-none"
                 />
@@ -3765,7 +3800,7 @@ const TaskManagement: React.FC = () => {
           <Dialog open={Boolean(selectedTask)} onOpenChange={() => setSelectedTask(null)}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader className="flex-shrink-0">
-                <DialogTitle className="text-2xl font-bold">{selectedTask.title}</DialogTitle>
+                <DialogTitle className="text-2xl font-bold whitespace-pre-wrap break-words">{selectedTask.title}</DialogTitle>
                 <DialogDescription>
                   Detailed view of task assignments and progress
                 </DialogDescription>
@@ -3788,7 +3823,7 @@ const TaskManagement: React.FC = () => {
                           </div>
                           Description
                         </h4>
-                        <p className="text-muted-foreground leading-relaxed">{selectedTask.description}</p>
+                        <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">{selectedTask.description}</p>
                       </div>
 
                       <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
@@ -3918,7 +3953,7 @@ const TaskManagement: React.FC = () => {
                                   To: <span className="font-medium text-foreground">{toName || toInfo.name}</span>
                                   {toInfo.roleLabel && <span className="text-xs ml-1">({toInfo.roleLabel})</span>}
                                 </div>
-                                {note && <div className="italic">"{note}"</div>}
+                                {note && <div className="italic whitespace-pre-wrap break-words">"{note}"</div>}
                               </div>
                             );
                           }
@@ -4242,35 +4277,7 @@ const TaskManagement: React.FC = () => {
 
                     {/* WhatsApp-style Input Row */}
                     <div className="flex items-center gap-2">
-                      {/* Emoji Picker Button */}
-                      <div className="relative" ref={emojiPickerRef}>
-                        <button
-                          type="button"
-                          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                          className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors"
-                          title="Add emoji"
-                        >
-                          <span className="text-xl">😊</span>
-                        </button>
 
-                        {/* Emoji Picker Popup */}
-                        {showEmojiPicker && (
-                          <div className="absolute bottom-full left-0 mb-2 p-3 bg-white dark:bg-slate-900 border-2 rounded-2xl shadow-2xl z-50 w-80 max-h-64 overflow-y-auto">
-                            <div className="grid grid-cols-8 gap-1">
-                              {['😊', '😂', '❤️', '👍', '👎', '🎉', '🔥', '✨', '💯', '👏', '🙏', '💪', '✅', '❌', '⚠️', '📌', '📝', '💡', '🚀', '⭐', '🎯', '📊', '💼', '📅', '⏰', '🔔', '📧', '📞', '💬', '🤝', '👥', '🏆'].map((emoji) => (
-                                <button
-                                  key={emoji}
-                                  type="button"
-                                  onClick={() => handleEmojiSelect(emoji)}
-                                  className="text-2xl hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg p-1.5 transition-colors"
-                                >
-                                  {emoji}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
 
                       {/* File Upload Button */}
                       <button
@@ -4296,7 +4303,7 @@ const TaskManagement: React.FC = () => {
                           type="text"
                           placeholder="Type a message"
                           value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
+                          onChange={(e) => setNewComment(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                           onKeyPress={(e) => {
                             if (e.key === 'Enter' && !e.shiftKey) {
                               e.preventDefault();
@@ -4521,8 +4528,8 @@ const TaskManagement: React.FC = () => {
           setIsPassHistoryDialogOpen(false);
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[85vh] border-2 shadow-2xl [&>button]:hidden">
-          <DialogHeader className="pb-4 border-b bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 -m-6 mb-0 p-6 rounded-t-lg">
+        <DialogContent className="max-w-3xl h-[85vh] flex flex-col border-2 shadow-2xl [&>button]:hidden p-0 overflow-hidden">
+          <DialogHeader className="pb-4 border-b bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 p-6 rounded-t-lg">
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
                 <Share2 className="h-6 w-6 text-white" />
@@ -4536,7 +4543,7 @@ const TaskManagement: React.FC = () => {
             </div>
           </DialogHeader>
 
-          <div className="mt-6 max-h-[calc(85vh-180px)] overflow-y-auto pr-2">
+          <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
             {passHistoryTask && (() => {
               const passEntries = getPassHistoryEntries(passHistoryTask.id);
 
@@ -4575,10 +4582,10 @@ const TaskManagement: React.FC = () => {
                         <div className="flex items-start justify-between gap-4 mb-3">
                           <div className="flex items-center gap-2">
                             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
-                              {passEntries.length - index}
+                              {index + 1}
                             </div>
                             <div>
-                              <div className="font-semibold text-foreground">Pass #{passEntries.length - index}</div>
+                              <div className="font-semibold text-foreground">Pass #{index + 1}</div>
                               <div className="text-xs text-muted-foreground">
                                 by {actorInfo.name}
                                 {actorInfo.roleLabel && <span className="ml-1">({actorInfo.roleLabel})</span>}
@@ -4617,7 +4624,7 @@ const TaskManagement: React.FC = () => {
                               <MessageSquare className="h-3 w-3" />
                               Note
                             </div>
-                            <div className="text-sm italic text-foreground">"{note}"</div>
+                            <div className="text-sm italic text-foreground whitespace-pre-wrap break-words">"{note}"</div>
                           </div>
                         )}
                       </div>
@@ -4628,11 +4635,11 @@ const TaskManagement: React.FC = () => {
             })()}
           </div>
 
-          <div className="flex justify-end gap-3 pt-6 border-t mt-6">
+          <div className="flex-shrink-0 flex justify-end gap-3 p-6 border-t bg-slate-50 dark:bg-slate-950/50">
             <Button
               variant="outline"
               onClick={() => setIsPassHistoryDialogOpen(false)}
-              className="h-11 px-6 border-2 hover:shadow-lg hover:border-slate-400 dark:hover:border-slate-600 transition-all"
+              className="h-11 px-6 border-2 hover:shadow-lg hover:border-slate-400 dark:hover:border-slate-600 transition-all bg-white dark:bg-slate-900"
             >
               Close
             </Button>

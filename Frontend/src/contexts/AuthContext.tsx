@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, LoginCredentials, UserRole } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { isTokenValid, decodeJWT, getUserFromToken } from '@/utils/jwt';
+import { verifyTokenWithBackend } from '@/services/authService';
 
 interface LoginResponse {
   user_id: string;
@@ -20,7 +22,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (userData: LoginResponse) => Promise<void>;
-  logout: () => void;
+  logout: (showToast?: boolean) => Promise<void>;
   updateUser: (user: User) => void;
   showDeadlineWarnings: boolean;
   setShowDeadlineWarnings: (show: boolean) => void;
@@ -103,13 +105,90 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Check for existing session
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+
+  /**
+   * Validates and restores user session from localStorage
+   */
+  const validateAndRestoreSession = async () => {
+    setIsLoading(true);
+    try {
+      const storedToken = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+
+      // If no token or user, clear everything
+      if (!storedToken || !storedUser) {
+        console.log('No stored token or user found');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('userId');
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+
+      // First, do client-side validation (fast check)
+      if (!isTokenValid(storedToken)) {
+        console.warn('Token is invalid or expired (client-side check)');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('userId');
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+
+      // Optional: Verify with backend (uncomment if backend endpoint exists)
+      // This provides server-side validation which is more secure
+      // const verificationResult = await verifyTokenWithBackend(storedToken);
+      // if (!verificationResult.valid) {
+      //   console.warn('Token verification failed with backend:', verificationResult.message);
+      //   localStorage.removeItem('token');
+      //   localStorage.removeItem('user');
+      //   localStorage.removeItem('userId');
+      //   setUser(null);
+      //   setIsLoading(false);
+      //   return;
+      // }
+
+      // Token is valid, restore user session
+      try {
+        const user = JSON.parse(storedUser) as User;
+
+        // Verify token payload matches stored user (optional extra check)
+        const tokenUser = getUserFromToken(storedToken);
+        if (tokenUser && tokenUser.userId && user.id !== tokenUser.userId) {
+          console.warn('Token user ID does not match stored user ID');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('userId');
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
+
+        setUser(user);
+        console.log('Session restored successfully');
+      } catch (parseError) {
+        console.error('Error parsing stored user data:', parseError);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('userId');
+        setUser(null);
+      }
+    } catch (error) {
+      console.error('Error validating session:', error);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('userId');
+      setUser(null);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    // Validate and restore session on app initialization
+    validateAndRestoreSession();
   }, []);
 
   // Map backend role values to frontend role values
@@ -162,6 +241,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       console.log('Processed User Data:', user); // Debug log
+
+      // Validate token before storing
+      if (!isTokenValid(userData.access_token)) {
+        console.error('Invalid token received from backend');
+        toast({
+          title: 'Login Failed',
+          description: 'Invalid authentication token. Please try again.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
 
       // Store the user data and token
       setUser(user);
@@ -234,11 +325,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setOtpSent(false);
   };
 
-  const logout = async () => {
+  const logout = async (showToast = true) => {
     // Before logging out, record logout timestamp for pause/resume functionality
     try {
       const token = localStorage.getItem('token');
-      if (token && user?.id) {
+      if (token && isTokenValid(token) && user?.id) {
         // Call the logout endpoint to record pause timestamp
         await fetch('https://staffly.space/attendance/logout', {
           method: 'POST',
@@ -265,10 +356,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Clear all session-related data
     sessionStorage.clear();
 
-    toast({
-      title: 'Logged Out',
-      description: 'You have been successfully logged out.',
-    });
+    if (showToast) {
+      toast({
+        title: 'Logged Out',
+        description: 'You have been successfully logged out.',
+      });
+    }
 
     // Use replace to prevent going back to authenticated pages
     navigate('/login', { replace: true });

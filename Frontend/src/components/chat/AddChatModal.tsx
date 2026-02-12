@@ -179,7 +179,7 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
               <Input
                 placeholder="Search by name, role or department..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => setSearchTerm(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                 className={cn(
                   "pl-12 pr-4 py-6 border-0 rounded-2xl font-medium focus-visible:ring-2 focus-visible:ring-green-500/30 transition-all shadow-inner",
                   isDark ? "bg-slate-800/40 text-white placeholder:text-slate-500" : "bg-gray-100 text-slate-900 placeholder:text-slate-400"
@@ -274,7 +274,7 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
                     <Input
                       placeholder="Group Name"
                       value={groupName}
-                      onChange={(e) => setGroupName(e.target.value)}
+                      onChange={(e) => setGroupName(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                       className={cn(
                         "pl-9 h-10 border rounded-xl focus-visible:ring-1 shadow-sm text-sm font-semibold transition-all",
                         groupNameError
@@ -287,7 +287,7 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
                   <Input
                     placeholder="Description (Optional)"
                     value={groupDescription}
-                    onChange={(e) => setGroupDescription(e.target.value)}
+                    onChange={(e) => setGroupDescription(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                     className={cn(
                       "h-10 border-0 rounded-xl focus-visible:ring-1 focus-visible:ring-green-500/50 shadow-sm text-sm font-medium flex-[1.5]",
                       isDark ? "bg-slate-800 text-white" : "bg-white text-slate-900"

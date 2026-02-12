@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams, useLocation } from 'react-router-dom';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
+import TruncatedText from '@/components/ui/TruncatedText';
 import { Pagination } from '@/components/ui/pagination';
 import { useLeaveBalance } from '@/contexts/LeaveBalanceContext';
 import { useHolidays } from '@/contexts/HolidayContext';
@@ -136,6 +137,8 @@ export default function LeaveManagement() {
   const [customHistoryEndDate, setCustomHistoryEndDate] = useState<Date | undefined>(new Date());
   const [leaveHistoryCustomStartDate, setLeaveHistoryCustomStartDate] = useState<Date | undefined>(undefined);
   const [leaveHistoryCustomEndDate, setLeaveHistoryCustomEndDate] = useState<Date | undefined>(new Date());
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<'all' | 'approved' | 'rejected'>('all');
+  const [historyRoleFilter, setHistoryRoleFilter] = useState<'all' | 'hr' | 'manager' | 'team_lead' | 'employee'>('all');
 
   const [formData, setFormData] = useState({
     type: 'sick',
@@ -342,7 +345,7 @@ export default function LeaveManagement() {
         const lowerDay = day.toLowerCase();
         return lowerDay.charAt(0).toUpperCase() + lowerDay.slice(1);
       });
-      
+
       await apiService.createWeekoff({
         department: department,
         days: capitalizedDays,
@@ -1182,17 +1185,32 @@ export default function LeaveManagement() {
         });
     }
 
-    const filtered = approvalHistory.filter(request => {
+    let filtered = approvalHistory.filter(request => {
       const requestDate = new Date(request.startDate);
       return requestDate >= startDate && requestDate <= endDate;
     });
+
+    // Apply Status Filter
+    if (historyStatusFilter !== 'all') {
+      filtered = filtered.filter(req => req.status === historyStatusFilter);
+    }
+
+    // Apply Role Filter
+    if (historyRoleFilter !== 'all') {
+      filtered = filtered.filter(req => {
+        // Map role names if necessary, ensuring case-insensitivity
+        const reqRole = (req.role || '').toLowerCase();
+        const filterRole = historyRoleFilter.toLowerCase();
+        return reqRole === filterRole;
+      });
+    }
 
     return filtered.sort((a, b) => {
       const timeA = new Date(a.requestDate).getTime();
       const timeB = new Date(b.requestDate).getTime();
       return timeB - timeA;
     });
-  }, [approvalHistory, historyFilter, customHistoryStartDate, customHistoryEndDate]);
+  }, [approvalHistory, historyFilter, customHistoryStartDate, customHistoryEndDate, historyStatusFilter, historyRoleFilter]);
 
   // Paginated approval requests - sorted by most recent first
   const paginatedApprovalRequests = useMemo(() => {
@@ -1555,8 +1573,8 @@ export default function LeaveManagement() {
                   <Label>Reason *</Label>
                   <Textarea
                     value={formData.reason}
-                    onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                    placeholder="Please provide a reason for your leave request (minimum 10 characters)..."
+                    onChange={(e) => setFormData({ ...formData, reason: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
+                    placeholder="Please provide a reason for your leave request (minimum 10 characters)."
                     rows={3}
                     className={formData.reason.trim().length > 0 && formData.reason.trim().length < 10 ? 'border-red-500' : ''}
                   />
@@ -1685,11 +1703,11 @@ export default function LeaveManagement() {
                             key={request.id}
                             className={`flex items-start justify-between gap-4 rounded-xl border ${config.border} bg-white dark:bg-slate-900 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors`}
                           >
-                            <div className="flex items-start gap-3 flex-1">
-                              <div className={`mt-1 h-9 w-9 rounded-lg ${config.bg} flex items-center justify-center`}>
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                              <div className={`mt-1 h-9 w-9 rounded-lg ${config.bg} flex items-center justify-center flex-shrink-0`}>
                                 <StatusIcon className={`h-4 w-4 ${config.iconColor}`} />
                               </div>
-                              <div className="space-y-1 flex-1">
+                              <div className="space-y-1 flex-1 min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                                     {format(request.startDate, 'dd MMM yyyy')}
@@ -1708,7 +1726,7 @@ export default function LeaveManagement() {
                                 </div>
                                 <p className="text-xs text-muted-foreground flex items-start gap-2">
                                   <FileText className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-                                  <span className="line-clamp-2">{request.reason}</span>
+                                  <span className="line-clamp-2 break-words overflow-wrap-anywhere whitespace-pre-wrap">{request.reason}</span>
                                 </p>
                               </div>
                             </div>
@@ -1930,7 +1948,7 @@ export default function LeaveManagement() {
                                 type="text"
                                 placeholder="e.g., Diwali, New Year"
                                 value={holidayForm.name}
-                                onChange={e => setHolidayForm({ ...holidayForm, name: e.target.value })}
+                                onChange={e => setHolidayForm({ ...holidayForm, name: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
                                 className="bg-white dark:bg-slate-900"
                               />
                             </div>
@@ -1939,7 +1957,7 @@ export default function LeaveManagement() {
                               <Textarea
                                 placeholder="Description (optional) - e.g., Festival of Lights celebration"
                                 value={holidayForm.description || ''}
-                                onChange={e => setHolidayForm({ ...holidayForm, description: e.target.value })}
+                                onChange={e => setHolidayForm({ ...holidayForm, description: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
                                 rows={3}
                                 className="resize-none bg-white dark:bg-slate-900"
                               />
@@ -1966,9 +1984,9 @@ export default function LeaveManagement() {
                                   <strong>{h.name}</strong> - {format(h.date, 'MMMM dd, yyyy')}
                                   {h.description && <span className="text-sm text-muted-foreground ml-2">({h.description})</span>}
                                 </span>
-                                <Button 
-                                  size="sm" 
-                                  variant="destructive" 
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
                                   onClick={() => h.id && handleRemoveHoliday(h.id)}
                                 >
                                   Remove
@@ -2019,7 +2037,7 @@ export default function LeaveManagement() {
                             placeholder="e.g., Engineering"
                             value={weekOffForm.department}
                             onChange={(e) =>
-                              setWeekOffForm((prev) => ({ ...prev, department: e.target.value }))
+                              setWeekOffForm((prev) => ({ ...prev, department: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))
                             }
                           />
                         )}
@@ -2335,13 +2353,6 @@ export default function LeaveManagement() {
                     </div>
                   ) : (
                     paginatedApprovalRequests.map((request) => {
-                      const reasonLength = request.reason?.length || 0;
-                      const shouldTruncate = reasonLength > 150;
-                      const isExpanded = expandedReasons.has(request.id);
-                      const displayReason = shouldTruncate && !isExpanded 
-                        ? request.reason.substring(0, 150) + '...' 
-                        : request.reason;
-
                       return (
                         <div
                           key={request.id}
@@ -2385,34 +2396,22 @@ export default function LeaveManagement() {
                               <div className="text-sm space-y-1">
                                 <span className="font-medium">Reason:</span>
                                 <div className="mt-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 max-h-48 overflow-y-auto">
-                                  <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">
-                                    {displayReason}
-                                  </p>
-                                  {shouldTruncate && (
-                                    <button
-                                      onClick={() => {
-                                        const newExpanded = new Set(expandedReasons);
-                                        if (isExpanded) {
-                                          newExpanded.delete(request.id);
-                                        } else {
-                                          newExpanded.add(request.id);
-                                        }
-                                        setExpandedReasons(newExpanded);
-                                      }}
-                                      className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
-                                    >
-                                      {isExpanded ? 'Show less' : 'Show more'}
-                                    </button>
-                                  )}
+                                  <div className="text-slate-700 dark:text-slate-300 text-sm">
+                                    <TruncatedText
+                                      text={request.reason}
+                                      maxLength={150}
+                                      textClassName="whitespace-pre-wrap break-words"
+                                    />
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-start gap-2 flex-shrink-0 lg:flex-col lg:items-stretch lg:w-full lg:max-w-[140px]">
+                            <div className="flex items-center gap-2 flex-shrink-0">
                               {request.status === 'pending' && canApproveLeaves ? (
                                 <>
                                   <Button
                                     size="sm"
-                                    className="w-full min-w-[120px] h-9 gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                                    className="px-4 h-9 gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                                     onClick={() => handleApproveReject(request.id, 'approved')}
                                     disabled={approvingLeaveId === request.id}
                                   >
@@ -2423,7 +2422,7 @@ export default function LeaveManagement() {
                                   </Button>
                                   <Button
                                     size="sm"
-                                    className="w-full min-w-[120px] h-9 gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                                    className="px-4 h-9 gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                                     onClick={() => handleApproveReject(request.id, 'rejected')}
                                     disabled={approvingLeaveId === request.id}
                                   >
@@ -2481,6 +2480,28 @@ export default function LeaveManagement() {
                             <SelectItem value="last_3_months">Last 3 Months</SelectItem>
                             <SelectItem value="last_6_months">Last 6 Months</SelectItem>
                             <SelectItem value="custom">Custom Range</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select value={historyStatusFilter} onValueChange={(val: any) => setHistoryStatusFilter(val)}>
+                          <SelectTrigger className="w-[140px] h-9 bg-white dark:bg-gray-950">
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select value={historyRoleFilter} onValueChange={(val: any) => setHistoryRoleFilter(val)}>
+                          <SelectTrigger className="w-[140px] h-9 bg-white dark:bg-gray-950">
+                            <SelectValue placeholder="Role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Roles</SelectItem>
+                            <SelectItem value="hr">HR</SelectItem>
+                            <SelectItem value="manager">Manager</SelectItem>
+                            <SelectItem value="team_lead">Team Lead</SelectItem>
+                            <SelectItem value="employee">Employee</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -2608,9 +2629,9 @@ export default function LeaveManagement() {
               <Label>Reason *</Label>
               <Textarea
                 value={editFormData.reason}
-                onChange={(e) => setEditFormData(prev => ({ ...prev, reason: e.target.value }))}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, reason: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                 rows={4}
-                placeholder="Update the reason for your leave request (minimum 10 characters)..."
+                placeholder="Update the reason for your leave request (minimum 10 characters)."
                 className={editFormData.reason.trim().length > 0 && editFormData.reason.trim().length < 10 ? 'border-red-500' : ''}
               />
               <div className="flex justify-between text-sm mt-1">
@@ -2675,7 +2696,7 @@ export default function LeaveManagement() {
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide">Reason</p>
-                    <p className="text-sm text-red-700 dark:text-red-300 mt-1 line-clamp-2">
+                    <p className="text-sm text-red-700 dark:text-red-300 mt-1 line-clamp-2 break-words overflow-wrap-anywhere whitespace-pre-wrap">
                       {leaveToDelete.reason}
                     </p>
                   </div>

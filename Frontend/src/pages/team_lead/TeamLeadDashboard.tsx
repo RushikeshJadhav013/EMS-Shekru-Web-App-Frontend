@@ -22,6 +22,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { formatIST, todayIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
+import TruncatedText from '@/components/ui/TruncatedText';
 
 interface TeamMemberStatus {
   name: string;
@@ -592,7 +593,7 @@ const TeamLeadDashboard: React.FC = () => {
             className="rounded-xl px-6 h-12 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 dark:shadow-none transition-all hover:scale-105 active:scale-95"
           >
             <Plus className="h-5 w-5 mr-2" />
-            Create New Task
+            Create Task
           </Button>
         </div>
       </div>
@@ -784,9 +785,12 @@ const TeamLeadDashboard: React.FC = () => {
                             <div className="space-y-1 mt-1">
                               <div className="flex items-center gap-2">
                                 <ClipboardList className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                                <span className="text-xs font-semibold text-gray-900 dark:text-white truncate">
-                                  {member.deadlineTaskTitle}
-                                </span>
+                                <div className="text-xs font-semibold text-gray-900 dark:text-white flex-1 min-w-0">
+                                  <TruncatedText
+                                    text={member.deadlineTaskTitle}
+                                    maxLength={35}
+                                  />
+                                </div>
                                 {member.deadlineTaskStatus && (
                                   <Badge
                                     variant="outline"
@@ -813,9 +817,12 @@ const TeamLeadDashboard: React.FC = () => {
                           ) : (
                             <div className="flex items-center gap-2 mt-1">
                               <ClipboardList className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                              <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 truncate">
-                                {member.task}
-                              </span>
+                              <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 flex-1 min-w-0">
+                                <TruncatedText
+                                  text={member.task}
+                                  maxLength={35}
+                                />
+                              </div>
                               {member.taskStatus && member.task !== 'No task assigned today' && (
                                 <Badge
                                   variant="outline"
@@ -880,7 +887,12 @@ const TeamLeadDashboard: React.FC = () => {
                   </div>
                   <div className="space-y-0.5">
                     <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{activity.user}</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{activity.status}</p>
+                    <div className="text-xs text-muted-foreground leading-relaxed">
+                      <TruncatedText
+                        text={activity.status}
+                        maxLength={50}
+                      />
+                    </div>
                     <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tight pt-1">
                       {activity.time}
                     </p>

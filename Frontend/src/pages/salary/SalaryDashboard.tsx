@@ -101,7 +101,7 @@ const SalaryDashboard = () => {
     const loadEmployees = loadDashboardData;
 
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchQuery(e.target.value);
+        setSearchQuery(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''));
     };
 
     const filteredItems = items.filter(item => {
@@ -377,47 +377,48 @@ const SalaryDashboard = () => {
                         </div>
                         <div className="flex flex-wrap items-center gap-4">
                             <div className="flex items-center gap-2">
-                                <div className="flex flex-col gap-1">
+                                <div className="flex flex-col gap-2">
                                     <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">Department</Label>
                                     <Select value={deptFilter} onValueChange={setDeptFilter}>
-                                        <SelectTrigger className="w-[160px] h-9 bg-white dark:bg-gray-800">
-                                            <SelectValue placeholder="Department" />
+                                        <SelectTrigger className="w-[180px] h-10 bg-white dark:bg-gray-800 border-2 transition-all duration-300 hover:shadow-md">
+                                            <SelectValue placeholder="All Departments" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="all">All Departments</SelectItem>
                                             {uniqueDepts.map(dept => (
-                                                <SelectItem key={dept} value={dept!}>{dept}</SelectItem>
+                                                <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
 
-                                <div className="flex flex-col gap-1">
+                                <div className="flex flex-col gap-2">
                                     <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">Role</Label>
                                     <Select value={roleFilter} onValueChange={setRoleFilter}>
-                                        <SelectTrigger className="w-[140px] h-9 bg-white dark:bg-gray-800">
-                                            <SelectValue placeholder="Role" />
+                                        <SelectTrigger className="w-[160px] h-10 bg-white dark:bg-gray-800 border-2 transition-all duration-300 hover:shadow-md">
+                                            <SelectValue placeholder="All Roles" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="all">All Roles</SelectItem>
                                             {availableRoles.map(role => (
-                                                <SelectItem key={role} value={role}>{role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>
+                                                <SelectItem key={role} value={role}>
+                                                    {role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                                                </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
                             </div>
 
-                            <div className="flex flex-col gap-1">
+                            <div className="flex flex-col gap-2">
                                 <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">Search</Label>
-                                <div className="relative w-64">
-                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
-                                        type="search"
-                                        placeholder="Name or Emp ID..."
-                                        className="pl-9 h-9 bg-white dark:bg-gray-800"
+                                        placeholder="Name, ID, or Dept..."
                                         value={searchQuery}
-                                        onChange={handleSearch}
+                                        onChange={(e) => setSearchQuery(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
+                                        className="pl-9 w-[220px] h-10 bg-white dark:bg-gray-800 border-2 focus:ring-2 focus:ring-blue-500"
                                     />
                                 </div>
                             </div>
@@ -462,7 +463,7 @@ const SalaryDashboard = () => {
                                             <TableCell>
                                                 <div className="flex flex-col">
                                                     <span className="font-bold text-gray-900 dark:text-gray-100">{item.name}</span>
-                                                    <span className="text-[10px] text-muted-foreground uppercase font-medium">{item.email}</span>
+                                                    <span className="text-[10px] text-muted-foreground lowercase font-medium">{item.email}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell>

@@ -53,6 +53,15 @@ interface WFHRequest {
   admin_approval?: 'pending' | 'approved' | 'rejected';
 }
 
+const reasonTemplates = [
+  "Not feeling well",
+  "Personal appointment",
+  "Family emergency",
+  "Car trouble",
+  "Child care",
+  "Working from home today"
+];
+
 const WFHRequests: React.FC = () => {
   const { user } = useAuth();
   const {
@@ -75,6 +84,10 @@ const WFHRequests: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'my-requests' | 'pending-approvals' | 'recent-decisions'>('my-requests');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [decisionFilter, setDecisionFilter] = useState<'all' | 'approved' | 'rejected'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'hr' | 'manager' | 'team_lead' | 'employee'>('all');
+  const [durationFilter, setDurationFilter] = useState<'all' | 'current_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_year' | 'custom'>('all');
+  const [customDateRange, setCustomDateRange] = useState<{ startDate: Date | null; endDate: Date | null }>({ startDate: null, endDate: null });
+  const [isCustomRangeDialogOpen, setIsCustomRangeDialogOpen] = useState(false);
 
   // Sync context data with local state
   useEffect(() => {
@@ -97,12 +110,16 @@ const WFHRequests: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [requestToDelete, setRequestToDelete] = useState<WFHRequest | null>(null);
   const [isDeletingRequest, setIsDeletingRequest] = useState(false);
+  const [isMyRequestsCustomRangeDialogOpen, setIsMyRequestsCustomRangeDialogOpen] = useState(false);
 
   // Pagination states
   const [myRequestsPage, setMyRequestsPage] = useState(1);
   const [pendingApprovalsPage, setPendingApprovalsPage] = useState(1);
   const [recentDecisionsPage, setRecentDecisionsPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const [myRequestsDurationFilter, setMyRequestsDurationFilter] = useState<'all' | 'current_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_year' | 'custom'>('all');
+  const [myRequestsCustomDateRange, setMyRequestsCustomDateRange] = useState<{ startDate: Date | null; endDate: Date | null }>({ startDate: null, endDate: null });
 
   // Load WFH requests on mount and when component becomes visible
   useEffect(() => {
@@ -284,9 +301,50 @@ const WFHRequests: React.FC = () => {
   }, [pendingApprovals, user?.role]);
 
   const filteredRequests = useMemo(() => {
-    if (statusFilter === 'all') return wfhRequests;
-    return wfhRequests.filter(req => req.status === statusFilter);
-  }, [wfhRequests, statusFilter]);
+    let filtered = wfhRequests;
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(req => req.status === statusFilter);
+    }
+
+    // Apply duration filter
+    if (myRequestsDurationFilter !== 'all') {
+      const now = new Date();
+      let startDate: Date | null = null;
+      let endDate: Date | null = null;
+
+      if (myRequestsDurationFilter === 'current_month') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      } else if (myRequestsDurationFilter === 'last_month') {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+      } else if (myRequestsDurationFilter === 'last_3_months') {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+        endDate = now;
+      } else if (myRequestsDurationFilter === 'last_6_months') {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+        endDate = now;
+      } else if (myRequestsDurationFilter === 'last_year') {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 12, 1);
+        endDate = now;
+      } else if (myRequestsDurationFilter === 'custom' && myRequestsCustomDateRange.startDate && myRequestsCustomDateRange.endDate) {
+        startDate = myRequestsCustomDateRange.startDate;
+        endDate = new Date(myRequestsCustomDateRange.endDate);
+        endDate.setHours(23, 59, 59, 999);
+      }
+
+      if (startDate && endDate) {
+        filtered = filtered.filter(req => {
+          const reqDate = new Date(req.created_at);
+          return reqDate >= startDate! && reqDate <= endDate!;
+        });
+      }
+    }
+
+    return filtered;
+  }, [wfhRequests, statusFilter, myRequestsDurationFilter, myRequestsCustomDateRange]);
 
   const paginatedMyRequests = useMemo(() => {
     const start = (myRequestsPage - 1) * itemsPerPage;
@@ -299,8 +357,54 @@ const WFHRequests: React.FC = () => {
   }, [visiblePendingApprovals, pendingApprovalsPage, itemsPerPage]);
 
   const filteredDecisions = useMemo(() => {
-    return recentDecisions.filter(decision => decisionFilter === 'all' || decision.status === decisionFilter);
-  }, [recentDecisions, decisionFilter]);
+    let filtered = recentDecisions.filter(decision => decisionFilter === 'all' || decision.status === decisionFilter);
+
+    // Apply role filter
+    if (roleFilter !== 'all') {
+      filtered = filtered.filter(decision => {
+        const role = decision.requester_role;
+        const normalizedRole = role ? role.toLowerCase().replace(/\s+/g, '_') : 'employee';
+        return normalizedRole === (roleFilter as string);
+      });
+    }
+
+    // Apply duration filter
+    if (durationFilter !== 'all') {
+      const now = new Date();
+      let startDate: Date | null = null;
+      let endDate: Date | null = null;
+
+      if (durationFilter === 'current_month') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      } else if (durationFilter === 'last_month') {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+      } else if (durationFilter === 'last_3_months') {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+        endDate = now;
+      } else if (durationFilter === 'last_6_months') {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+        endDate = now;
+      } else if (durationFilter === 'last_year') {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 12, 1);
+        endDate = now;
+      } else if (durationFilter === 'custom' && customDateRange.startDate && customDateRange.endDate) {
+        startDate = customDateRange.startDate;
+        endDate = new Date(customDateRange.endDate);
+        endDate.setHours(23, 59, 59, 999);
+      }
+
+      if (startDate && endDate) {
+        filtered = filtered.filter(decision => {
+          const decisionDate = new Date(decision.updated_at);
+          return decisionDate >= startDate! && decisionDate <= endDate!;
+        });
+      }
+    }
+
+    return filtered;
+  }, [recentDecisions, decisionFilter, durationFilter, customDateRange, roleFilter]);
 
   const paginatedRecentDecisions = useMemo(() => {
     const start = (recentDecisionsPage - 1) * itemsPerPage;
@@ -308,9 +412,9 @@ const WFHRequests: React.FC = () => {
   }, [filteredDecisions, recentDecisionsPage, itemsPerPage]);
 
   // Reset pages when filters change
-  useEffect(() => { setMyRequestsPage(1); }, [statusFilter]);
+  useEffect(() => { setMyRequestsPage(1); }, [statusFilter, myRequestsDurationFilter, myRequestsCustomDateRange]);
   useEffect(() => { setPendingApprovalsPage(1); }, [visiblePendingApprovals]);
-  useEffect(() => { setRecentDecisionsPage(1); }, [decisionFilter]);
+  useEffect(() => { setRecentDecisionsPage(1); }, [decisionFilter, durationFilter, customDateRange, roleFilter]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -401,17 +505,38 @@ const WFHRequests: React.FC = () => {
                   </div>
                   <CardDescription>View and manage your work from home requests</CardDescription>
                 </div>
-                <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Requests</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-3">
+                  <Select value={myRequestsDurationFilter} onValueChange={(value: any) => {
+                    setMyRequestsDurationFilter(value);
+                    if (value === 'custom') {
+                      setIsMyRequestsCustomRangeDialogOpen(true);
+                    }
+                  }}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Duration</SelectItem>
+                      <SelectItem value="current_month">Current Month</SelectItem>
+                      <SelectItem value="last_month">Last Month</SelectItem>
+                      <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                      <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                      <SelectItem value="last_year">Last 1 Year</SelectItem>
+                      <SelectItem value="custom">Custom Range</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="pt-6">
@@ -615,16 +740,50 @@ const WFHRequests: React.FC = () => {
                   </div>
                   <CardDescription>View recently approved and rejected WFH requests</CardDescription>
                 </div>
-                <Select value={decisionFilter} onValueChange={(value: any) => setDecisionFilter(value)}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Decisions</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-3">
+                  <Select value={roleFilter} onValueChange={(value: any) => setRoleFilter(value)}>
+                    <SelectTrigger className="w-[150px]">
+                      <SelectValue placeholder="Filter by Role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Roles</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="hr">HR</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="team_lead">Team Lead</SelectItem>
+                      <SelectItem value="employee">Employee</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={durationFilter} onValueChange={(value: any) => {
+                    setDurationFilter(value);
+                    if (value === 'custom') {
+                      setIsCustomRangeDialogOpen(true);
+                    }
+                  }}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Duration</SelectItem>
+                      <SelectItem value="current_month">Current Month</SelectItem>
+                      <SelectItem value="last_month">Last Month</SelectItem>
+                      <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                      <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                      <SelectItem value="last_year">Last 1 Year</SelectItem>
+                      <SelectItem value="custom">Custom Range</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={decisionFilter} onValueChange={(value: any) => setDecisionFilter(value)}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Decisions</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="pt-6">
@@ -737,9 +896,23 @@ const WFHRequests: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-2">
               <Label>Reason</Label>
+
+              {/* Quick Select Suggestions */}
+              <div className="flex flex-wrap gap-2 mb-2">
+                {reasonTemplates.map((template, index) => (
+                  <Badge
+                    key={index}
+                    variant="outline"
+                    className="cursor-pointer hover:bg-blue-100"
+                    onClick={() => setFormData({ ...formData, reason: template })}
+                  >
+                    {template}
+                  </Badge>
+                ))}
+              </div>
+
               <Textarea
                 value={formData.reason}
                 onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
@@ -748,6 +921,7 @@ const WFHRequests: React.FC = () => {
               />
             </div>
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancel
@@ -759,6 +933,88 @@ const WFHRequests: React.FC = () => {
             >
               {isSubmitting ? 'Updating...' : 'Update Request'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Custom Date Range Dialog */}
+      <Dialog open={isCustomRangeDialogOpen} onOpenChange={setIsCustomRangeDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Select Custom Date Range</DialogTitle>
+            <DialogDescription>
+              Choose a start and end date to filter the decisions.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="start-date" className="text-right">
+                Start Date
+              </Label>
+              <div className="col-span-3">
+                <DatePicker
+                  date={customDateRange.startDate || undefined}
+                  onDateChange={(date) => setCustomDateRange(prev => ({ ...prev, startDate: date || null }))}
+                  placeholder="Pick start date"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="end-date" className="text-right">
+                End Date
+              </Label>
+              <div className="col-span-3">
+                <DatePicker
+                  date={customDateRange.endDate || undefined}
+                  onDateChange={(date) => setCustomDateRange(prev => ({ ...prev, endDate: date || null }))}
+                  placeholder="Pick end date"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsCustomRangeDialogOpen(false)}>Apply Filter</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* My Requests Custom Date Range Dialog */}
+      <Dialog open={isMyRequestsCustomRangeDialogOpen} onOpenChange={setIsMyRequestsCustomRangeDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Select Custom Date Range</DialogTitle>
+            <DialogDescription>
+              Choose a start and end date to filter your requests.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="req-start-date" className="text-right">
+                Start Date
+              </Label>
+              <div className="col-span-3">
+                <DatePicker
+                  date={myRequestsCustomDateRange.startDate || undefined}
+                  onDateChange={(date) => setMyRequestsCustomDateRange(prev => ({ ...prev, startDate: date || null }))}
+                  placeholder="Pick start date"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="req-end-date" className="text-right">
+                End Date
+              </Label>
+              <div className="col-span-3">
+                <DatePicker
+                  date={myRequestsCustomDateRange.endDate || undefined}
+                  onDateChange={(date) => setMyRequestsCustomDateRange(prev => ({ ...prev, endDate: date || null }))}
+                  placeholder="Pick end date"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsMyRequestsCustomRangeDialogOpen(false)}>Apply Filter</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

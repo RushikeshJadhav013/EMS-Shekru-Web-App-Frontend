@@ -25,6 +25,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatTimeIST, formatIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
+import TruncatedText from '@/components/ui/TruncatedText';
 
 type HRActivity = {
   id: string | number;
@@ -349,9 +350,12 @@ const HRDashboard: React.FC = () => {
             </div>
             <div className="flex-1 space-y-1">
               <p className="text-sm font-medium">{activity.user}</p>
-              <p className="text-xs text-muted-foreground">
-                {formatActivityDescription(activity)}
-              </p>
+              <div className="text-xs text-muted-foreground">
+                <TruncatedText
+                  text={formatActivityDescription(activity)}
+                  maxLength={60}
+                />
+              </div>
             </div>
             <div className="text-right">
               <p className="text-xs text-muted-foreground">
@@ -606,7 +610,12 @@ const HRDashboard: React.FC = () => {
                         {formatShortDate(req.start_date)} → {formatShortDate(req.end_date)} • {req.department}
                       </div>
                       {req.reason ? (
-                        <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{req.reason}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          <TruncatedText
+                            text={req.reason}
+                            maxLength={80}
+                          />
+                        </div>
                       ) : null}
                     </div>
                     <div className="flex gap-2 flex-shrink-0">

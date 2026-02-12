@@ -20,6 +20,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { formatTimeIST, formatIST, nowIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
+import TruncatedText from '@/components/ui/TruncatedText';
 
 interface TeamMemberStatus {
   name: string;
@@ -503,9 +504,12 @@ const ManagerDashboard: React.FC = () => {
                       </div>
                       <div className="flex-1 space-y-1">
                         <p className="text-sm font-medium">{activity.user}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {activity.description || ''}
-                        </p>
+                        <div className="text-xs text-muted-foreground">
+                          <TruncatedText
+                            text={activity.description || ''}
+                            maxLength={50}
+                          />
+                        </div>
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-muted-foreground">
@@ -627,7 +631,12 @@ const ManagerDashboard: React.FC = () => {
                           {member.isOnline ? 'Online' : 'Offline'}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground">{member.task}</p>
+                      <div className="text-xs text-muted-foreground flex-1 min-w-0">
+                        <TruncatedText
+                          text={member.task}
+                          maxLength={35}
+                        />
+                      </div>
                     </div>
                   </div>
                   <Badge

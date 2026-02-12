@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Pagination } from '@/components/ui/pagination';
 import { useToast } from '@/hooks/use-toast';
 import {
     Select,
@@ -120,6 +121,33 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
     const [selectedMonth, setSelectedMonth] = useState<string>("all");
     const [isAnnexureSending, setIsAnnexureSending] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+
+    // Pagination states
+    const [growthPage, setGrowthPage] = useState(1);
+    const growthPerPage = 5;
+    const [archivePage, setArchivePage] = useState(1);
+    const archivePerPage = 10;
+
+    const sortedIncrements = React.useMemo(() => {
+        return [...increments].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }, [increments]);
+
+    const uniqueArchiveSlips = React.useMemo(() => {
+        return Array.from(
+            salarySlipHistory
+                .filter(slip => selectedMonth === "all" || slip.month.toString() === selectedMonth)
+                .reduce((acc, slip) => {
+                    const key = `${slip.year}-${slip.month}`;
+                    if (!acc.has(key) || new Date(slip.generated_at).getTime() > new Date(acc.get(key)!.generated_at).getTime()) {
+                        acc.set(key, slip);
+                    }
+                    return acc;
+                }, new Map<string, SalarySlipHistoryItem>()).values()
+        ).sort((a, b) => {
+            if (b.year !== a.year) return b.year - a.year;
+            return b.month - a.month;
+        });
+    }, [salarySlipHistory, selectedMonth]);
 
     const months = [
         "January", "February", "March", "April", "May", "June",
@@ -782,10 +810,10 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
     const handleDownloadOfferLetter = async () => {
         // Validate form
         if (!offerLetterForm.letter_date || !offerLetterForm.joining_date) {
-            toast({ 
-                title: 'Validation Error', 
-                description: 'Please fill in both letter date and joining date.', 
-                variant: 'destructive' 
+            toast({
+                title: 'Validation Error',
+                description: 'Please fill in both letter date and joining date.',
+                variant: 'destructive'
             });
             return;
         }
@@ -794,10 +822,10 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         const letterDate = new Date(offerLetterForm.letter_date);
         const joiningDate = new Date(offerLetterForm.joining_date);
         if (joiningDate < letterDate) {
-            toast({ 
-                title: 'Validation Error', 
-                description: 'Joining date must be same or later than letter date.', 
-                variant: 'destructive' 
+            toast({
+                title: 'Validation Error',
+                description: 'Joining date must be same or later than letter date.',
+                variant: 'destructive'
             });
             return;
         }
@@ -1065,8 +1093,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-3">
-                                <div className="flex items-center gap-2">
-                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground mr-1">Year</Label>
+                                <div className="flex items-center gap-3">
+                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Year</Label>
                                     <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
                                         <SelectTrigger className="w-[85px] h-9 text-xs font-bold border dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm">
                                             <SelectValue />
@@ -1078,8 +1106,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground mr-1">Month</Label>
+                                <div className="flex items-center gap-3">
+                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Month</Label>
                                     <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                                         <SelectTrigger className="w-[120px] h-9 text-xs font-bold border dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm">
                                             <SelectValue />
@@ -1142,24 +1170,9 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                             </TableRow>
                                         ) : (
                                             (() => {
-                                                // Group by month and year, keeping only the most recent generation if duplicates exist
-                                                const uniqueSlips = Array.from(
-                                                    salarySlipHistory
-                                                        .filter(slip => selectedMonth === "all" || slip.month.toString() === selectedMonth)
-                                                        .reduce((acc, slip) => {
-                                                            const key = `${slip.year}-${slip.month}`;
-                                                            if (!acc.has(key) || new Date(slip.generated_at).getTime() > new Date(acc.get(key)!.generated_at).getTime()) {
-                                                                acc.set(key, slip);
-                                                            }
-                                                            return acc;
-                                                        }, new Map<string, SalarySlipHistoryItem>()).values()
-                                                ).sort((a, b) => {
-                                                    // Sort by year desc, then month desc
-                                                    if (b.year !== a.year) return b.year - a.year;
-                                                    return b.month - a.month;
-                                                });
+                                                const paginatedSlips = uniqueArchiveSlips.slice((archivePage - 1) * archivePerPage, archivePage * archivePerPage);
 
-                                                if (uniqueSlips.length === 0) {
+                                                if (paginatedSlips.length === 0) {
                                                     return (
                                                         <TableRow>
                                                             <TableCell colSpan={4} className="text-center py-16">
@@ -1172,7 +1185,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                     );
                                                 }
 
-                                                return uniqueSlips.map((slip) => {
+                                                return paginatedSlips.map((slip) => {
                                                     const date = new Date(slip.generated_at);
                                                     const monthName = months[slip.month - 1];
 
@@ -1180,7 +1193,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                         <TableRow key={slip.id} className="group hover:bg-gray-50/80 dark:hover:bg-gray-900/40 transition-colors">
                                                             <TableCell className="pl-6 py-4">
                                                                 <div className="font-black text-sm text-gray-900 dark:text-gray-100 tracking-tight">{monthName} {slip.year}</div>
-                                                                <div className="text-[10px] text-muted-foreground font-bold mt-0.5">
+                                                                <div className="text-[10px] text-muted-foreground font-bold mt-1.5">
                                                                     ID: {String(slip.id).slice(0, 8)} | Generated: {date.toLocaleDateString()}
                                                                 </div>
                                                             </TableCell>
@@ -1249,6 +1262,18 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     </TableBody>
                                 </Table>
                             </div>
+                            {uniqueArchiveSlips.length > archivePerPage && (
+                                <div className="p-4 border-t border-gray-50 dark:border-gray-800">
+                                    <Pagination
+                                        currentPage={archivePage}
+                                        totalPages={Math.ceil(uniqueArchiveSlips.length / archivePerPage)}
+                                        totalItems={uniqueArchiveSlips.length}
+                                        itemsPerPage={archivePerPage}
+                                        onPageChange={setArchivePage}
+                                        showItemsPerPage={false}
+                                    />
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </div>
@@ -1596,10 +1621,10 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                             </div>
                                             <div className="flex gap-2">
                                                 <Button
-                                                    variant="ghost"
+                                                    variant="outline"
                                                     size="sm"
                                                     onClick={handleDownloadAnnexure}
-                                                    className="h-11 w-11 rounded-xl hover:bg-purple-600 hover:text-white transition-all transform hover:scale-110 active:scale-95 shadow-sm"
+                                                    className="h-11 w-11 rounded-xl hover:bg-purple-600 hover:text-white transition-all transform hover:scale-110 active:scale-95 shadow-sm border-2 border-purple-100 dark:border-purple-900/50"
                                                     title="Download Annexure"
                                                 >
                                                     <Download className="h-5 w-5" />
@@ -1660,79 +1685,94 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     )}
                                 </div>
 
-                                <div className="relative flex-1 space-y-4 max-h-[500px] overflow-y-auto pr-3 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent">
-                                    {increments.length > 0 ? (
-                                        increments
-                                            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                                            .map((inc, index) => {
-                                                const effectiveDate = new Date(inc.effective_date);
-                                                const createdDate = new Date(inc.created_at);
-                                                const isLatest = index === 0;
+                                <div className="relative flex-1 space-y-4 max-h-[500px] overflow-y-auto pr-3 pt-4 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                                    {sortedIncrements.length > 0 ? (
+                                        <div className="space-y-4">
+                                            {sortedIncrements
+                                                .slice((growthPage - 1) * growthPerPage, growthPage * growthPerPage)
+                                                .map((inc, index) => {
+                                                    const effectiveDate = new Date(inc.effective_date);
+                                                    const createdDate = new Date(inc.created_at);
+                                                    const isLatest = index === 0 && growthPage === 1;
 
-                                                return (
-                                                    <div key={inc.id} className={`group/inc relative p-5 rounded-2xl border-2 transition-all duration-300 ${isLatest
-                                                        ? 'bg-gradient-to-br from-emerald-50/80 to-teal-50/80 dark:from-emerald-900/20 dark:to-teal-900/20 border-emerald-200 dark:border-emerald-800/50 shadow-md shadow-emerald-500/5 scale-[1.02] z-10'
-                                                        : 'bg-white dark:bg-gray-800/30 border-slate-50 dark:border-slate-800 hover:border-emerald-100 hover:bg-slate-50/50 dark:hover:bg-slate-800/50'
-                                                        }`}>
-                                                        {isLatest && (
-                                                            <div className="absolute -top-3 left-6">
-                                                                <Badge className="bg-emerald-600 text-white border-none text-[8px] font-black uppercase tracking-widest px-2 shadow-lg shadow-emerald-600/20">Active Revision</Badge>
-                                                            </div>
-                                                        )}
-
-                                                        <div className="flex justify-between items-center">
-                                                            <div className="flex items-center gap-4">
-                                                                <div className={`h-12 w-12 rounded-xl flex items-center justify-center border-2 transition-all ${isLatest
-                                                                    ? 'bg-white dark:bg-slate-950 border-emerald-400/30 shadow-inner group-hover/inc:rotate-12'
-                                                                    : 'bg-slate-50 dark:bg-slate-800/80 border-slate-100 dark:border-slate-700'
-                                                                    }`}>
-                                                                    <FileText className={`h-6 w-6 ${isLatest ? 'text-emerald-600' : 'text-slate-400'}`} />
+                                                    return (
+                                                        <div key={inc.id} className={`group/inc relative p-5 rounded-2xl border-2 transition-all duration-300 ${isLatest
+                                                            ? 'bg-gradient-to-br from-emerald-50/80 to-teal-50/80 dark:from-emerald-900/20 dark:to-teal-900/20 border-emerald-200 dark:border-emerald-800/50 shadow-md shadow-emerald-500/5 scale-[1.02] z-10'
+                                                            : 'bg-white dark:bg-gray-800/30 border-slate-50 dark:border-slate-800 hover:border-emerald-100 hover:bg-slate-50/50 dark:hover:bg-slate-800/50'
+                                                            }`}>
+                                                            {isLatest && (
+                                                                <div className="absolute -top-3 left-6">
+                                                                    <Badge className="bg-emerald-600 text-white border-none text-[8px] font-black uppercase tracking-widest px-2 shadow-lg shadow-emerald-600/20">Active Revision</Badge>
                                                                 </div>
-                                                                <div>
-                                                                    <div className="flex items-center gap-3">
-                                                                        <h4 className={`font-bold text-sm ${isLatest ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
-                                                                            Revision: {effectiveDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                                                                        </h4>
-                                                                        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full ${isLatest ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-700'} transition-all`}>
-                                                                            <TrendingUp className="h-3 w-3" />
-                                                                            <span className="text-[10px] font-black uppercase tracking-tighter">+{inc.increment_percentage}%</span>
+                                                            )}
+
+                                                            <div className="flex justify-between items-center">
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className={`h-12 w-12 rounded-xl flex items-center justify-center border-2 transition-all ${isLatest
+                                                                        ? 'bg-white dark:bg-slate-950 border-emerald-400/30 shadow-inner group-hover/inc:rotate-12'
+                                                                        : 'bg-slate-50 dark:bg-slate-800/80 border-slate-100 dark:border-slate-700'
+                                                                        }`}>
+                                                                        <FileText className={`h-6 w-6 ${isLatest ? 'text-emerald-600' : 'text-slate-400'}`} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="flex items-center gap-3">
+                                                                            <h4 className={`font-bold text-sm ${isLatest ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
+                                                                                Revision: {effectiveDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                                                                            </h4>
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full ${isLatest ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-700'} transition-all`}>
+                                                                                <TrendingUp className="h-3 w-3" />
+                                                                                <span className="text-[10px] font-black uppercase tracking-tighter">+{inc.increment_percentage}%</span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2 mt-1.5">
+                                                                            <Badge variant="outline" className="text-[8px] border-slate-200 dark:border-slate-700 font-bold uppercase tracking-tighter h-4 px-1">{inc.reason}</Badge>
+                                                                            <span className="text-[9px] text-muted-foreground font-medium">• Issued on {createdDate.toLocaleDateString()}</span>
                                                                         </div>
                                                                     </div>
-                                                                    <div className="flex items-center gap-2 mt-1.5">
-                                                                        <Badge variant="outline" className="text-[8px] border-slate-200 dark:border-slate-700 font-bold uppercase tracking-tighter h-4 px-1">{inc.reason}</Badge>
-                                                                        <span className="text-[9px] text-muted-foreground font-medium">• Issued on {createdDate.toLocaleDateString()}</span>
-                                                                    </div>
+                                                                </div>
+                                                                <div className="flex gap-2">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => handleDownloadIncrementLetter(inc.id.toString(), inc.effective_date)}
+                                                                        className={`h-10 px-4 rounded-xl border-2 transition-all font-bold ${isLatest
+                                                                            ? 'bg-white dark:bg-slate-900 border-emerald-200 hover:bg-emerald-600 hover:border-emerald-600 hover:text-white'
+                                                                            : 'border-slate-100 dark:border-slate-800 hover:bg-slate-900 dark:hover:bg-slate-100 hover:text-white dark:hover:text-black hover:border-transparent'
+                                                                            }`}
+                                                                    >
+                                                                        <Download className="h-4 w-4 mr-2" />
+                                                                        <span className="text-[11px]">Download</span>
+                                                                    </Button>
+                                                                    {isAdminOrHr && (
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            onClick={() => handleSendIncrementLetter(inc.id.toString())}
+                                                                            className={`h-10 w-10 rounded-xl transition-all ${isLatest ? 'hover:bg-emerald-600 hover:text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-800'} text-emerald-600`}
+                                                                            title="Email to Employee"
+                                                                        >
+                                                                            <Send className="h-4 w-4" />
+                                                                        </Button>
+                                                                    )}
                                                                 </div>
                                                             </div>
-                                                            <div className="flex gap-2">
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    onClick={() => handleDownloadIncrementLetter(inc.id.toString(), inc.effective_date)}
-                                                                    className={`h-10 px-4 rounded-xl border-2 transition-all font-bold ${isLatest
-                                                                        ? 'bg-white dark:bg-slate-900 border-emerald-200 hover:bg-emerald-600 hover:border-emerald-600 hover:text-white'
-                                                                        : 'border-slate-100 dark:border-slate-800 hover:bg-slate-900 dark:hover:bg-slate-100 hover:text-white dark:hover:text-black hover:border-transparent'
-                                                                        }`}
-                                                                >
-                                                                    <Download className="h-4 w-4 mr-2" />
-                                                                    <span className="text-[11px]">Download</span>
-                                                                </Button>
-                                                                {isAdminOrHr && (
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        onClick={() => handleSendIncrementLetter(inc.id.toString())}
-                                                                        className={`h-10 w-10 rounded-xl transition-all ${isLatest ? 'hover:bg-emerald-600 hover:text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-800'} text-emerald-600`}
-                                                                        title="Email to Employee"
-                                                                    >
-                                                                        <Send className="h-4 w-4" />
-                                                                    </Button>
-                                                                )}
-                                                            </div>
                                                         </div>
-                                                    </div>
-                                                );
-                                            })
+                                                    );
+                                                })}
+
+                                            {sortedIncrements.length > growthPerPage && (
+                                                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                    <Pagination
+                                                        currentPage={growthPage}
+                                                        totalPages={Math.ceil(sortedIncrements.length / growthPerPage)}
+                                                        totalItems={sortedIncrements.length}
+                                                        itemsPerPage={growthPerPage}
+                                                        onPageChange={setGrowthPage}
+                                                        showItemsPerPage={false}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center py-20 text-center flex-1">
                                             <div className="relative mb-6">
@@ -1904,7 +1944,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 <Input
                                     id="bank_name"
                                     value={bankForm.bank_name}
-                                    onChange={(e) => setBankForm(prev => ({ ...prev, bank_name: e.target.value }))}
+                                    onChange={(e) => setBankForm(prev => ({ ...prev, bank_name: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                                     placeholder="Enter bank name"
                                 />
                             </div>
@@ -1914,7 +1954,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 <Input
                                     id="bank_account"
                                     value={bankForm.bank_account}
-                                    onChange={(e) => setBankForm(prev => ({ ...prev, bank_account: e.target.value }))}
+                                    onChange={(e) => setBankForm(prev => ({ ...prev, bank_account: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                                     placeholder="Enter account number"
                                 />
                             </div>
@@ -1924,7 +1964,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 <Input
                                     id="ifsc_code"
                                     value={bankForm.ifsc_code}
-                                    onChange={(e) => setBankForm(prev => ({ ...prev, ifsc_code: e.target.value }))}
+                                    onChange={(e) => setBankForm(prev => ({ ...prev, ifsc_code: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                                     placeholder="Enter IFSC code"
                                 />
                             </div>
@@ -1934,7 +1974,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 <Input
                                     id="uan_number"
                                     value={bankForm.uan_number}
-                                    onChange={(e) => setBankForm(prev => ({ ...prev, uan_number: e.target.value }))}
+                                    onChange={(e) => setBankForm(prev => ({ ...prev, uan_number: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                                     placeholder="Enter UAN number"
                                 />
                             </div>
@@ -2100,7 +2140,11 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 <div className="space-y-2">
                                     <Label>Reason / Remarks</Label>
                                     <Textarea
-                                        {...incrementForm.register('reason')}
+                                        {...incrementForm.register('reason', {
+                                            onChange: (e) => {
+                                                e.target.value = e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
+                                            }
+                                        })}
                                         placeholder="e.g. Annual Appraisal, Promotion, etc."
                                         rows={3}
                                     />
@@ -2197,13 +2241,13 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                             <p className="text-xs text-muted-foreground">
                                 Joining date (YYYY-MM-DD). Must be same or later than letter date.
                             </p>
-                            {offerLetterForm.letter_date && offerLetterForm.joining_date && 
-                             new Date(offerLetterForm.joining_date) < new Date(offerLetterForm.letter_date) && (
-                                <p className="text-xs text-red-500 flex items-center gap-1">
-                                    <AlertCircle className="h-3 w-3" />
-                                    Joining date must be same or later than letter date.
-                                </p>
-                            )}
+                            {offerLetterForm.letter_date && offerLetterForm.joining_date &&
+                                new Date(offerLetterForm.joining_date) < new Date(offerLetterForm.letter_date) && (
+                                    <p className="text-xs text-red-500 flex items-center gap-1">
+                                        <AlertCircle className="h-3 w-3" />
+                                        Joining date must be same or later than letter date.
+                                    </p>
+                                )}
                         </div>
                     </div>
                     <DialogFooter>

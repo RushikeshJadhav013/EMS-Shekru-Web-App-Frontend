@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { apiService } from '@/lib/api';
@@ -100,12 +100,29 @@ export default function ShiftScheduleManagement() {
     is_active: true,
   });
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState('all');
+  const [departmentsList, setDepartmentsList] = useState<string[]>([]);
   const [assignFormData, setAssignFormData] = useState({
     shift_id: 0,
     assignment_date: selectedDate,
     notes: '',
   });
 
+  useEffect(() => {
+    if (user?.role === 'admin' || user?.role === 'hr') {
+      loadDepartments();
+    }
+  }, [user]);
+
+  const loadDepartments = async () => {
+    try {
+      const data = await apiService.getDepartments();
+      setDepartmentsList(data.map((d: any) => d.name));
+    } catch (error) {
+      console.error('Failed to load departments:', error);
+    }
+  };
   useEffect(() => {
     loadShifts();
     loadSchedule();
@@ -152,6 +169,54 @@ export default function ShiftScheduleManagement() {
       setIsLoading(false);
     }
   };
+
+  const filteredDailySchedule = useMemo(() => {
+    if (!schedule) return null;
+
+    const query = searchTerm.toLowerCase();
+
+    // Filter shifts based on assignments
+    const filteredShifts = schedule.shifts.map(shiftData => {
+      const filteredAssignments = shiftData.assignments.filter(assignment => {
+        const userName = assignment.user?.name?.toLowerCase() || '';
+        const empId = assignment.user?.employee_id?.toLowerCase() || '';
+        const matchesSearch = userName.includes(query) || empId.includes(query);
+        const matchesDept = selectedDepartmentFilter === 'all' || assignment.user?.department === selectedDepartmentFilter;
+        return matchesSearch && matchesDept;
+      });
+
+      return {
+        ...shiftData,
+        assignments: filteredAssignments,
+        total_assigned: filteredAssignments.length
+      };
+    });
+
+    // Filter unassigned users
+    const filteredUnassigned = schedule.unassigned_users.filter(user => {
+      const userName = user.name.toLowerCase();
+      const empId = user.employee_id?.toLowerCase() || '';
+      const matchesSearch = userName.includes(query) || empId.includes(query);
+      const matchesDept = selectedDepartmentFilter === 'all' || user.department === selectedDepartmentFilter;
+      return matchesSearch && matchesDept;
+    });
+
+    // Filter users on leave
+    const filteredLeaves = schedule.users_on_leave.filter(user => {
+      const userName = user.name.toLowerCase();
+      const empId = user.employee_id?.toLowerCase() || '';
+      const matchesSearch = userName.includes(query) || empId.includes(query);
+      const matchesDept = selectedDepartmentFilter === 'all' || user.department === selectedDepartmentFilter;
+      return matchesSearch && matchesDept;
+    });
+
+    return {
+      ...schedule,
+      shifts: filteredShifts,
+      unassigned_users: filteredUnassigned,
+      users_on_leave: filteredLeaves
+    };
+  }, [schedule, searchTerm, selectedDepartmentFilter]);
 
   const loadWeeklySchedule = async () => {
     if (!weekStartDate) {
@@ -506,7 +571,7 @@ export default function ShiftScheduleManagement() {
                 <Input
                   id="name"
                   value={shiftFormData.name}
-                  onChange={(e) => setShiftFormData({ ...shiftFormData, name: e.target.value })}
+                  onChange={(e) => setShiftFormData({ ...shiftFormData, name: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
                   placeholder="e.g., Morning Shift, Evening Shift"
                 />
               </div>
@@ -535,7 +600,7 @@ export default function ShiftScheduleManagement() {
                 <Input
                   id="description"
                   value={shiftFormData.description}
-                  onChange={(e) => setShiftFormData({ ...shiftFormData, description: e.target.value })}
+                  onChange={(e) => setShiftFormData({ ...shiftFormData, description: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
                   placeholder="Optional description"
                 />
               </div>
@@ -649,14 +714,46 @@ export default function ShiftScheduleManagement() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-4">
-                <Input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="max-w-xs"
-                />
-                <Button onClick={loadSchedule} variant="outline">
+              <div className="flex flex-wrap items-end gap-4">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="daily_date" className="text-sm font-medium text-slate-700 dark:text-slate-300">Select Date</Label>
+                  <Input
+                    id="daily_date"
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
+                    className="w-[200px] h-11"
+                  />
+                </div>
+                {(user?.role === 'admin' || user?.role === 'hr') && (
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Department</Label>
+                    <Select value={selectedDepartmentFilter} onValueChange={setSelectedDepartmentFilter}>
+                      <SelectTrigger className="w-[180px] h-11">
+                        <SelectValue placeholder="All Departments" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Departments</SelectItem>
+                        {departmentsList.map(dept => (
+                          <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="flex flex-col gap-2 flex-1 min-w-[200px]">
+                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Search User</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                      placeholder="Search by name, ID..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
+                      className="pl-10 h-11"
+                    />
+                  </div>
+                </div>
+                <Button onClick={loadSchedule} variant="outline" className="h-11 shadow-sm">
                   Load Schedule
                 </Button>
               </div>
@@ -680,7 +777,7 @@ export default function ShiftScheduleManagement() {
           )}
 
           {/* Schedule View */}
-          {schedule && (
+          {filteredDailySchedule && (
             <Tabs defaultValue="schedule" className="space-y-4">
               <TabsList>
                 <TabsTrigger value="schedule">Shift Schedule</TabsTrigger>
@@ -689,7 +786,7 @@ export default function ShiftScheduleManagement() {
               </TabsList>
 
               <TabsContent value="schedule" className="space-y-4">
-                {schedule.shifts.map((shiftData) => (
+                {filteredDailySchedule.shifts.map((shiftData) => (
                   <Card key={shiftData.shift.shift_id}>
                     <CardHeader>
                       <div className="flex items-center justify-between">
@@ -784,7 +881,7 @@ export default function ShiftScheduleManagement() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {schedule.users_on_leave.length > 0 ? (
+                    {filteredDailySchedule.users_on_leave.length > 0 ? (
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -795,7 +892,7 @@ export default function ShiftScheduleManagement() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {schedule.users_on_leave.map((user) => (
+                          {filteredDailySchedule.users_on_leave.map((user) => (
                             <TableRow key={user.user_id}>
                               <TableCell className="font-medium">{user.name}</TableCell>
                               <TableCell>{user.employee_id || 'N/A'}</TableCell>
@@ -830,7 +927,7 @@ export default function ShiftScheduleManagement() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {schedule.unassigned_users.length > 0 ? (
+                    {filteredDailySchedule.unassigned_users.length > 0 ? (
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -841,7 +938,7 @@ export default function ShiftScheduleManagement() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {schedule.unassigned_users.map((user) => (
+                          {filteredDailySchedule.unassigned_users.map((user) => (
                             <TableRow key={user.user_id}>
                               <TableCell className="font-medium">{user.name}</TableCell>
                               <TableCell>{user.employee_id || 'N/A'}</TableCell>
@@ -887,9 +984,9 @@ export default function ShiftScheduleManagement() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col gap-4 md:flex-row md:items-end">
-                <div className="space-y-2">
-                  <Label htmlFor="week_start">Week Start *</Label>
+              <div className="flex flex-wrap items-end gap-4">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="week_start" className="text-sm font-medium text-slate-700 dark:text-slate-300">Week Start *</Label>
                   <Input
                     id="week_start"
                     type="date"
@@ -900,19 +997,21 @@ export default function ShiftScheduleManagement() {
                         setWeekEndDate(format(addDays(new Date(e.target.value), 6), 'yyyy-MM-dd'));
                       }
                     }}
+                    className="w-[200px] h-11"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="week_end">Week End</Label>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="week_end" className="text-sm font-medium text-slate-700 dark:text-slate-300">Week End</Label>
                   <Input
                     id="week_end"
                     type="date"
                     value={weekEndDate}
                     min={weekStartDate}
                     onChange={(e) => setWeekEndDate(e.target.value)}
+                    className="w-[200px] h-11"
                   />
                 </div>
-                <Button onClick={loadWeeklySchedule} disabled={isWeeklyLoading}>
+                <Button onClick={loadWeeklySchedule} disabled={isWeeklyLoading} className="h-11 shadow-sm">
                   {isWeeklyLoading ? 'Loading...' : 'Load Weekly Schedule'}
                 </Button>
               </div>
@@ -1188,7 +1287,7 @@ export default function ShiftScheduleManagement() {
               <Input
                 id="notes"
                 value={assignFormData.notes}
-                onChange={(e) => setAssignFormData({ ...assignFormData, notes: e.target.value })}
+                onChange={(e) => setAssignFormData({ ...assignFormData, notes: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
                 placeholder="Optional notes about this assignment"
               />
             </div>
