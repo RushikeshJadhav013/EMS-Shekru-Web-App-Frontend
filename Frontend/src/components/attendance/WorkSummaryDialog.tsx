@@ -185,6 +185,7 @@ const WorkSummaryDialog: React.FC<WorkSummaryDialogProps> = ({
                           <TruncatedText
                             text={task.title}
                             maxLength={40}
+                            showToggle={false}
                           />
                         </div>
                         <p className="text-sm text-gray-600">

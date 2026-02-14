@@ -452,10 +452,10 @@ const EmployeeDashboard: React.FC = () => {
 
                   const getPriorityColor = (p: string) => {
                     switch (p?.toLowerCase()) {
-                      case 'urgent': return 'text-red-600 bg-red-100 dark:bg-red-900/30 border-red-200';
+                      case 'urgent': return 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 border-blue-200';
                       case 'high': return 'text-orange-600 bg-orange-100 dark:bg-orange-900/30 border-orange-200';
                       case 'medium': return 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 border-blue-200';
-                      default: return 'text-slate-600 bg-slate-100 dark:bg-slate-800 border-slate-200';
+                      default: return 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 border-blue-200';
                     }
                   };
 
@@ -478,6 +478,7 @@ const EmployeeDashboard: React.FC = () => {
                               <TruncatedText
                                 text={task.title}
                                 maxLength={35}
+                                showToggle={false}
                                 textClassName={cn(
                                   "font-semibold text-gray-900 dark:text-gray-100",
                                   isCompleted && "text-muted-foreground line-through decoration-slate-400"
@@ -487,6 +488,7 @@ const EmployeeDashboard: React.FC = () => {
                                 <TruncatedText
                                   text={task.description}
                                   maxLength={60}
+                                  showToggle={false}
                                   textClassName="text-xs text-muted-foreground"
                                 />
                               </div>
@@ -576,6 +578,7 @@ const EmployeeDashboard: React.FC = () => {
                       <TruncatedText
                         text={activity.description}
                         maxLength={50}
+                        showToggle={false}
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">{activity.time}</p>

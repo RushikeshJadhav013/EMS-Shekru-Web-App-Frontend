@@ -171,6 +171,7 @@ export const NotificationBell: React.FC = () => {
               <TruncatedText
                 text={notification.title || 'Notification'}
                 maxLength={60}
+                showToggle={false}
               />
             </div>
             {!notification.read && (
@@ -184,6 +185,7 @@ export const NotificationBell: React.FC = () => {
               <TruncatedText
                 text={notification.message}
                 maxLength={100}
+                showToggle={false}
               />
             </div>
           )}

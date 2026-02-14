@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -57,6 +57,7 @@ const AttendanceWithToggle: React.FC = () => {
     email?: string;
     department?: string;
     workLocation?: string;
+    taskDeadlineReason?: string | null;
   }
   const [viewMode, setViewMode] = useState<'self' | 'employee' | 'wfh' | 'wfh_requests'>('self');
   const [showCamera, setShowCamera] = useState(false);
@@ -90,6 +91,7 @@ const AttendanceWithToggle: React.FC = () => {
   const [showWorkSummaryDialog, setShowWorkSummaryDialog] = useState(false);
   const [showLocationDialog, setShowLocationDialog] = useState(false);
   const [selectedWorkSummary, setSelectedWorkSummary] = useState<string>('');
+  const [selectedOverdueReason, setSelectedOverdueReason] = useState<string>('');
   const [selectedLocation, setSelectedLocation] = useState<{ checkIn?: string, checkOut?: string }>({});
   const initialLocationRequestedRef = useRef(false);
   const lastGeocodeKeyRef = useRef<string | null>(null);
@@ -115,9 +117,8 @@ const AttendanceWithToggle: React.FC = () => {
   const [workingHours, setWorkingHours] = useState('0:00');
   const [onlineStatusMap, setOnlineStatusMap] = useState<Record<number, boolean>>({});
   const [allUsersOnlineStatus, setAllUsersOnlineStatus] = useState<Record<string, boolean>>({});
-  const [historyDurationFilter, setHistoryDurationFilter] = useState<'current_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_year' | 'custom'>('current_month');
+  const [historyQuickFilter, setHistoryQuickFilter] = useState<'today' | 'all' | 'date'>('today');
   const [historyCustomDateRange, setHistoryCustomDateRange] = useState<{ startDate: Date | null; endDate: Date | null }>({ startDate: null, endDate: null });
-  const [isHistoryCustomRangeDialogOpen, setIsHistoryCustomRangeDialogOpen] = useState(false);
 
   // Enhanced time tracking with proper timer logic
   const [onlineWorkingHours, setOnlineWorkingHours] = useState('0 hrs - 0 mins');
@@ -142,6 +143,67 @@ const AttendanceWithToggle: React.FC = () => {
   const [wfhType, setWfhType] = useState<'full_day' | 'half_day'>('full_day');
   const [isSubmittingWfh, setIsSubmittingWfh] = useState(false);
   const [wfhRequests, setWfhRequests] = useState<any[]>([]);
+  // WFH History Filtering and Pagination
+  const [wfhHistoryPage, setWfhHistoryPage] = useState(1);
+  const [wfhHistoryItemsPerPage, setWfhHistoryItemsPerPage] = useState(5);
+  const [wfhHistoryTimeFilter, setWfhHistoryTimeFilter] = useState<'all' | 'current_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_year' | 'custom'>('all');
+  const [wfhHistoryStartDate, setWfhHistoryStartDate] = useState<Date | undefined>(undefined);
+  const [wfhHistoryEndDate, setWfhHistoryEndDate] = useState<Date | undefined>(new Date());
+
+  // Reset WFH history page when filters change
+  useEffect(() => {
+    setWfhHistoryPage(1);
+  }, [wfhHistoryTimeFilter, wfhHistoryStartDate, wfhHistoryEndDate]);
+
+  const filteredWfhHistory = useMemo(() => {
+    let filtered = [...wfhRequests];
+
+    if (wfhHistoryTimeFilter !== 'all') {
+      const today = new Date();
+      let startDate: Date | undefined;
+      let endDate: Date = new Date();
+
+      switch (wfhHistoryTimeFilter) {
+        case 'current_month':
+          startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          break;
+        case 'last_month':
+          startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+          endDate = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59);
+          break;
+        case 'last_3_months':
+          startDate = subMonths(today, 3);
+          break;
+        case 'last_6_months':
+          startDate = subMonths(today, 6);
+          break;
+        case 'last_year':
+          startDate = subMonths(today, 12);
+          break;
+        case 'custom':
+          startDate = wfhHistoryStartDate;
+          endDate = wfhHistoryEndDate || new Date();
+          endDate.setHours(23, 59, 59, 999);
+          break;
+      }
+
+      if (startDate) {
+        filtered = filtered.filter(req => {
+          const reqDate = new Date(req.submittedAt || req.startDate);
+          return reqDate >= startDate! && reqDate <= endDate;
+        });
+      }
+    }
+
+    // Sort by submission date or start date descending
+    return filtered.sort((a, b) => new Date(b.submittedAt || b.startDate).getTime() - new Date(a.submittedAt || a.startDate).getTime());
+  }, [wfhRequests, wfhHistoryTimeFilter, wfhHistoryStartDate, wfhHistoryEndDate]);
+
+  const paginatedWfhHistory = filteredWfhHistory.slice(
+    (wfhHistoryPage - 1) * wfhHistoryItemsPerPage,
+    wfhHistoryPage * wfhHistoryItemsPerPage
+  );
+
   const [editingWfhId, setEditingWfhId] = useState<string | null>(null);
   const [isDeletingWfhId, setIsDeletingWfhId] = useState<string | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -157,6 +219,82 @@ const AttendanceWithToggle: React.FC = () => {
   const [showWfhRequestDialog, setShowWfhRequestDialog] = useState(false);
   const [isProcessingWfhRequest, setIsProcessingWfhRequest] = useState(false);
   const [showClearConfirmation, setShowClearConfirmation] = useState(false);
+  const [wfhRequestTimeFilter, setWfhRequestTimeFilter] = useState<'all' | 'current_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_year' | 'custom'>('all');
+  const [wfhRequestStartDate, setWfhRequestStartDate] = useState<Date | undefined>(undefined);
+  const [wfhRequestEndDate, setWfhRequestEndDate] = useState<Date | undefined>(new Date());
+  const [recentDecisionsCurrentPage, setRecentDecisionsCurrentPage] = useState(1);
+  const [recentDecisionsItemsPerPage, setRecentDecisionsItemsPerPage] = useState(10);
+
+  // Reset recent decisions page when filters change
+  useEffect(() => {
+    setRecentDecisionsCurrentPage(1);
+  }, [wfhRequestFilter, wfhRoleFilter, wfhRequestTimeFilter, wfhRequestStartDate, wfhRequestEndDate]);
+
+  const filteredRecentDecisions = useMemo(() => {
+    let filtered = allWfhRequests.filter(req => req.status !== 'pending');
+
+    // Apply Status Filter
+    if (wfhRequestFilter !== 'all') {
+      filtered = filtered.filter(req => req.status === wfhRequestFilter);
+    }
+
+    // Apply Role Filter
+    if (wfhRoleFilter !== 'all') {
+      filtered = filtered.filter(req => (req.role || 'employee').toLowerCase() === wfhRoleFilter);
+    }
+
+    // Apply Duration Filter
+    if (wfhRequestTimeFilter !== 'all') {
+      const today = new Date();
+      let startDate: Date | undefined;
+      let endDate: Date = new Date();
+
+      switch (wfhRequestTimeFilter) {
+        case 'current_month':
+          startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          break;
+        case 'last_month':
+          startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+          endDate = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59);
+          break;
+        case 'last_3_months':
+          startDate = subMonths(today, 3);
+          break;
+        case 'last_6_months':
+          startDate = subMonths(today, 6);
+          break;
+        case 'last_year':
+          startDate = subMonths(today, 12);
+          break;
+        case 'custom':
+          startDate = wfhRequestStartDate;
+          endDate = wfhRequestEndDate || new Date();
+          break;
+      }
+
+      if (startDate) {
+        filtered = filtered.filter(req => {
+          const reqDate = new Date(req.processedAt || req.submittedAt || req.startDate);
+          return reqDate >= startDate! && (endDate ? reqDate <= endDate : true);
+        });
+      }
+    }
+
+    return filtered.sort((a, b) => new Date(b.processedAt || b.submittedAt).getTime() - new Date(a.processedAt || a.submittedAt).getTime());
+  }, [allWfhRequests, wfhRequestFilter, wfhRoleFilter, wfhRequestTimeFilter, wfhRequestStartDate, wfhRequestEndDate]);
+
+  // Helper function to format role for display
+  const formatRoleDisplay = (role: string): string => {
+    if (!role) return 'Employee';
+    const roleMap: Record<string, string> = {
+      'admin': 'Admin',
+      'hr': 'HR',
+      'manager': 'Manager',
+      'team_lead': 'Team Lead',
+      'employee': 'Employee',
+    };
+    return roleMap[role.toLowerCase()] || role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
 
   // Helper function to format time in "X hrs - Y mins" format with tags
   const formatTimeDisplay = (totalSeconds: number): string => {
@@ -194,53 +332,39 @@ const AttendanceWithToggle: React.FC = () => {
     }
   };
 
-  // Filter attendance history based on duration filter
+  // Filter attendance history based on quick filter
   const getFilteredAttendanceHistory = () => {
     let filtered = [...attendanceHistory];
-    const now = new Date();
-    let startDate: Date | null = null;
-    let endDate: Date | null = now;
 
-    switch (historyDurationFilter) {
-      case 'current_month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case 'last_month':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0);
-        break;
-      case 'last_3_months':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-        break;
-      case 'last_6_months':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-        break;
-      case 'last_year':
-        startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
-        break;
-      case 'custom':
-        if (historyCustomDateRange.startDate) {
-          startDate = historyCustomDateRange.startDate;
-          endDate = historyCustomDateRange.endDate || now;
-        }
-        break;
-    }
-
-    if (startDate) {
-      startDate.setHours(0, 0, 0, 0);
-      if (endDate) endDate.setHours(23, 59, 59, 999);
-
+    if (historyQuickFilter === 'today') {
+      const today = todayIST();
+      filtered = filtered.filter(record => record.date === today);
+    } else if (historyQuickFilter === 'date') {
       filtered = filtered.filter(record => {
-        const rDate = new Date(record.date);
-        rDate.setHours(0, 0, 0, 0);
-        return rDate >= startDate! && (!endDate || rDate <= endDate);
+        if (!historyCustomDateRange.startDate && !historyCustomDateRange.endDate) return true;
+
+        const recordDate = record.date;
+        const start = historyCustomDateRange.startDate ? formatDateIST(historyCustomDateRange.startDate) : null;
+        const end = historyCustomDateRange.endDate ? formatDateIST(historyCustomDateRange.endDate) : null;
+
+        if (start && end) {
+          return recordDate >= start && recordDate <= end;
+        }
+
+        if (start) {
+          return recordDate >= start;
+        }
+
+        if (end) {
+          return recordDate <= end;
+        }
+
+        return true;
       });
     }
 
     return filtered.sort((a, b) => {
-      const timeA = new Date(a.checkInTime || 0).getTime();
-      const timeB = new Date(b.checkInTime || 0).getTime();
-      return timeB - timeA;
+      return b.date.localeCompare(a.date);
     });
   };
 
@@ -253,8 +377,8 @@ const AttendanceWithToggle: React.FC = () => {
     return `https://staffly.space${normalized}`;
   }, []);
 
-  // Determine if user can view employee attendance (only for management roles)
-  const canViewEmployeeAttendance = user?.role && ['admin', 'hr', 'manager'].includes(user.role);
+  // Determine if user can view employee attendance (management roles including Team Lead)
+  const canViewEmployeeAttendance = user?.role && ['admin', 'hr', 'manager', 'team_lead'].includes(user.role);
   const canExportAttendance = user?.role && ['admin', 'hr'].includes(user.role);
 
   // Access rules for attendance viewing
@@ -262,6 +386,7 @@ const AttendanceWithToggle: React.FC = () => {
     if (user?.role === 'admin') return ['admin', 'hr', 'manager', 'team_lead', 'employee'];
     if (user?.role === 'hr') return ['hr', 'manager', 'team_lead', 'employee'];
     if (user?.role === 'manager') return ['team_lead', 'employee'];
+    if (user?.role === 'team_lead') return ['employee'];
     return [];
   };
 
@@ -306,21 +431,84 @@ const AttendanceWithToggle: React.FC = () => {
     }
   }, [toast, t.attendance.locationRequired]);
 
+  // Load user's own WFH requests
+  const loadMyWfhRequests = useCallback(async () => {
+    try {
+      const wfhResponse = await apiService.getMyWFHRequests();
+      let wfhData = [];
+
+      if (Array.isArray(wfhResponse)) {
+        wfhData = wfhResponse;
+      } else if (wfhResponse && typeof wfhResponse === 'object') {
+        if (wfhResponse.data && Array.isArray(wfhResponse.data)) {
+          wfhData = wfhResponse.data;
+        } else if (wfhResponse.requests && Array.isArray(wfhResponse.requests)) {
+          wfhData = wfhResponse.requests;
+        } else if (wfhResponse.wfh_requests && Array.isArray(wfhResponse.wfh_requests)) {
+          wfhData = wfhResponse.wfh_requests;
+        } else if (wfhResponse.results && Array.isArray(wfhResponse.results)) {
+          wfhData = wfhResponse.results;
+        }
+      }
+
+      const formattedWfhRequests = wfhData.map((req: any) => ({
+        id: req.wfh_id || req.id,
+        wfhId: req.wfh_id || req.id,
+        startDate: req.start_date,
+        endDate: req.end_date,
+        reason: req.reason,
+        type: ((req.wfh_type || 'Full Day').toLowerCase().includes('full') ? 'full_day' : 'half_day'),
+        status: (req.status || 'pending').toLowerCase(),
+        submittedAt: req.created_at,
+        submittedById: req.user_id,
+        rejectionReason: req.rejection_reason,
+        approvedBy: req.approved_by,
+      }));
+
+      setWfhRequests(formattedWfhRequests);
+    } catch (wfhError) {
+      console.error('Failed to load WFH requests:', wfhError);
+      setWfhRequests([]);
+    }
+  }, []);
+
   // Load all WFH requests for management view
   const loadAllWfhRequests = useCallback(async () => {
     if (!canViewEmployeeAttendance) return;
 
     setIsLoadingWfhRequests(true);
     try {
-      // Frontend-only implementation - in real app, this would be an API call
-      // Just load existing requests without adding duplicate sample data
-      setAllWfhRequests(allWfhRequests);
+      const response = await apiService.getAllWFHRequests();
+      const mappedRequests = Array.isArray(response) ? response.map((req: any) => ({
+        id: req.id?.toString() || req.wfh_id?.toString(),
+        wfhId: req.id || req.wfh_id,
+        user_id: req.user_id,
+        submittedBy: req.employee_name || req.user_name || req.name || 'Unknown User',
+        role: req.role || req.user_role || req.requester_role || 'employee',
+        department: req.department || '',
+        startDate: req.start_date,
+        endDate: req.end_date,
+        reason: req.reason,
+        type: ((req.wfh_type || 'Full Day').toLowerCase().includes('full') ? 'full_day' : 'half_day'),
+        status: (req.status || 'pending').toLowerCase(),
+        submittedAt: req.created_at,
+        submittedById: req.user_id,
+        rejectionReason: req.rejection_reason,
+        approvedBy: req.approved_by,
+      })) : [];
+
+      setAllWfhRequests(mappedRequests);
     } catch (error) {
       console.error('Failed to load WFH requests:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load WFH requests',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoadingWfhRequests(false);
     }
-  }, [canViewEmployeeAttendance, allWfhRequests]);
+  }, [canViewEmployeeAttendance, toast]);
 
   useEffect(() => {
     loadFromBackend();
@@ -331,22 +519,33 @@ const AttendanceWithToggle: React.FC = () => {
     }
   }, [refreshLocationFast]);
 
-  // Handle navigation from HR Dashboard with viewMode state
+  // Handle navigation from HR Dashboard with viewMode state or query param
   useEffect(() => {
     const state = routerLocation.state as { viewMode?: string } | null;
-    if (state?.viewMode === 'employee') {
-      setViewMode('employee');
+    const queryParams = new URLSearchParams(routerLocation.search);
+    const tab = queryParams.get('tab');
+
+    if (state?.viewMode) {
+      setViewMode(state.viewMode as any);
+    } else if (tab) {
+      setViewMode(tab as any);
     }
-  }, [routerLocation.state]);
+  }, [routerLocation.state, routerLocation.search]);
 
   useEffect(() => {
     if (viewMode === 'employee' && canViewEmployeeAttendance) {
       loadEmployeeAttendance();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, canViewEmployeeAttendance]);
+
+  // Separate useEffect for WFH requests to ensure proper loading
+  useEffect(() => {
     if (viewMode === 'wfh_requests' && canViewEmployeeAttendance) {
+      // Load immediately when tab is opened
       loadAllWfhRequests();
 
-      // Refresh sample data every 30 seconds to keep timestamps current
+      // Refresh data every 30 seconds to keep timestamps current
       const dataInterval = setInterval(() => {
         loadAllWfhRequests();
       }, 30000);
@@ -361,7 +560,7 @@ const AttendanceWithToggle: React.FC = () => {
         clearInterval(renderInterval);
       };
     }
-  }, [viewMode, selectedDate, loadAllWfhRequests, timePeriodFilter, customStartDate, customEndDate]);
+  }, [viewMode, canViewEmployeeAttendance, loadAllWfhRequests]);
 
   // Reset pagination on filter change
   useEffect(() => {
@@ -591,7 +790,12 @@ const AttendanceWithToggle: React.FC = () => {
   const loadFromBackend = async () => {
     try {
       if (!user?.id) return;
-      const res = await fetch(`https://staffly.space/attendance/my-attendance/${user.id}`);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`https://staffly.space/attendance/my-attendance/${user.id}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
       if (!res.ok) return;
       const data = await res.json();
       setAttendanceHistory(
@@ -661,44 +865,10 @@ const AttendanceWithToggle: React.FC = () => {
           })
       );
 
+
       // Load WFH requests from backend
-      try {
-        const wfhResponse = await apiService.getMyWFHRequests();
-        let wfhData = [];
+      await loadMyWfhRequests();
 
-        if (Array.isArray(wfhResponse)) {
-          wfhData = wfhResponse;
-        } else if (wfhResponse && typeof wfhResponse === 'object') {
-          if (wfhResponse.data && Array.isArray(wfhResponse.data)) {
-            wfhData = wfhResponse.data;
-          } else if (wfhResponse.requests && Array.isArray(wfhResponse.requests)) {
-            wfhData = wfhResponse.requests;
-          } else if (wfhResponse.wfh_requests && Array.isArray(wfhResponse.wfh_requests)) {
-            wfhData = wfhResponse.wfh_requests;
-          } else if (wfhResponse.results && Array.isArray(wfhResponse.results)) {
-            wfhData = wfhResponse.results;
-          }
-        }
-
-        const formattedWfhRequests = wfhData.map((req: any) => ({
-          id: req.wfh_id || req.id,
-          wfhId: req.wfh_id || req.id,
-          startDate: req.start_date,
-          endDate: req.end_date,
-          reason: req.reason,
-          type: ((req.wfh_type || 'Full Day').toLowerCase().includes('full') ? 'full_day' : 'half_day'),
-          status: (req.status || 'pending').toLowerCase(),
-          submittedAt: req.created_at,
-          submittedById: req.user_id,
-          rejectionReason: req.rejection_reason,
-          approvedBy: req.approved_by,
-        }));
-
-        setWfhRequests(formattedWfhRequests);
-      } catch (wfhError) {
-        console.error('Failed to load WFH requests:', wfhError);
-        setWfhRequests([]);
-      }
 
       const today = todayIST();
       const yesterday = formatDateIST(new Date(Date.now() - 24 * 60 * 60 * 1000));
@@ -914,15 +1084,15 @@ const AttendanceWithToggle: React.FC = () => {
           // 2. Manager view: Same department + (employees or team leads)
           if (user.role === 'manager') {
             if (recDept !== userDept) return false;
-            const recRole = userRoleMap[recUserId];
-            return recRole === 'employee' || recRole === 'team_lead';
+            const recRole = (userRoleMap[recUserId] || '').replace(/[\s_]+/g, '').toLowerCase();
+            return recRole === 'employee' || recRole === 'teamlead' || recRole === 'team_lead';
           }
 
           // 3. Team Lead view: Only those reporting to them (matching on backend normally, but fail-safe here)
           if (user.role === 'team_lead') {
-            // In a real app, we'd check if recUserId reports to userId
-            // For now, allow same department if backend already filtered it
-            return recDept === userDept;
+            const recRole = (userRoleMap[recUserId] || '').replace(/[\s_]+/g, '').toLowerCase();
+            // Team leads can see employees in their department
+            return recDept === userDept && (recRole === 'employee');
           }
 
           return false;
@@ -1019,6 +1189,7 @@ const AttendanceWithToggle: React.FC = () => {
             workSummary: rec.workSummary || rec.work_summary || null,
             workReport: resolveStaticUrl(rec.workReport || rec.work_report),
             workLocation: workLocation,
+            taskDeadlineReason: rec.taskDeadlineReason || rec.task_deadline_reason || rec.taskPendingReason || rec.task_pending_reason || null,
           };
         })
         .filter((r: AttendanceRecord) => {
@@ -1068,10 +1239,12 @@ const AttendanceWithToggle: React.FC = () => {
         const checkOutTime = record.checkOutTime || '';
 
         // Check if check-in was late (similar to getStatusBadge logic)
-        const isCheckInLate = statusValue === 'late' || (checkInTime && checkInTime > '09:30:00');
+        const checkInT = checkInTime && (checkInTime.includes(' ') || checkInTime.includes('T')) ? (checkInTime.includes('T') ? checkInTime.split('T')[1].substring(0, 8) : checkInTime.split(' ')[1].substring(0, 8)) : checkInTime;
+        const isCheckInLate = statusValue === 'late' || (checkInT && checkInT > '09:30:00');
 
         // Check if check-out was early
-        const isCheckOutEarly = checkOutTime && checkOutTime < '18:00:00';
+        const checkOutT = checkOutTime && (checkOutTime.includes(' ') || checkOutTime.includes('T')) ? (checkOutTime.includes('T') ? checkOutTime.split('T')[1].substring(0, 8) : checkOutTime.split(' ')[1].substring(0, 8)) : checkOutTime;
+        const isCheckOutEarly = checkOutT && checkOutT < '18:00:00';
 
         if (filterStatus === 'late') {
           return isCheckInLate;
@@ -1391,13 +1564,20 @@ const AttendanceWithToggle: React.FC = () => {
     return tomorrow;
   };
 
-  // Helper function to check if a date is valid for WFH (must be tomorrow or later)
+  // Helper function to get today's date (start of day in IST)
+  const getTodayISTDate = (): Date => {
+    const today = nowIST();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  };
+
+  // Helper function to check if a date is valid for WFH (must be today or later)
   const isValidWfhDate = (date: Date | undefined): boolean => {
     if (!date) return false;
-    const tomorrow = getTomorrowIST();
+    const today = getTodayISTDate();
     const checkDate = new Date(date);
     checkDate.setHours(0, 0, 0, 0);
-    return checkDate >= tomorrow;
+    return checkDate >= today;
   };
 
   // Helper function to validate WFH form
@@ -1408,7 +1588,7 @@ const AttendanceWithToggle: React.FC = () => {
     }
 
     if (!isValidWfhDate(wfhStartDate)) {
-      return { valid: false, message: 'Start date must be tomorrow or later.' };
+      return { valid: false, message: 'Start date must be today or later.' };
     }
 
     // For full day, check end date
@@ -1418,7 +1598,7 @@ const AttendanceWithToggle: React.FC = () => {
       }
 
       if (!isValidWfhDate(wfhEndDate)) {
-        return { valid: false, message: 'End date must be tomorrow or later.' };
+        return { valid: false, message: 'End date must be today or later.' };
       }
 
       if (wfhEndDate < wfhStartDate) {
@@ -1456,32 +1636,15 @@ const AttendanceWithToggle: React.FC = () => {
       // For half day, use start date as both start and end date
       const endDate = wfhType === 'half_day' ? wfhStartDate : wfhEndDate;
 
-      const response = await apiService.submitWFHRequest({
+      await apiService.submitWFHRequest({
         start_date: format(wfhStartDate!, 'yyyy-MM-dd'),
         end_date: format(endDate!, 'yyyy-MM-dd'),
         wfh_type: wfhTypeLabel,
         reason: wfhReason.trim(),
       });
 
-      // Map the API response to our local format
-      const newRequest = {
-        id: response.wfh_id?.toString() || Date.now().toString(),
-        wfhId: response.wfh_id,
-        startDate: response.start_date,
-        endDate: response.end_date,
-        reason: response.reason,
-        type: wfhType,
-        status: response.status || 'pending',
-        submittedAt: response.created_at || new Date().toISOString(),
-        submittedBy: user?.name || 'Unknown',
-        submittedById: user?.id || '',
-        department: user?.department || '',
-        role: user?.role || 'employee',
-      };
-
-      setWfhRequests(prev => [newRequest, ...prev]);
-      // Also add to all requests for managers to see
-      setAllWfhRequests(prev => [newRequest, ...prev]);
+      // Reload WFH requests from backend to get fresh data
+      await loadMyWfhRequests();
 
       toast({
         title: 'WFH Request Submitted',
@@ -1540,24 +1703,15 @@ const AttendanceWithToggle: React.FC = () => {
       // For half day, use start date as both start and end date
       const endDate = wfhType === 'half_day' ? wfhStartDate : wfhEndDate;
 
-      const response = await apiService.updateWFHRequest(parseInt(editingWfhId!), {
+      await apiService.updateWFHRequest(parseInt(editingWfhId!), {
         start_date: format(wfhStartDate!, 'yyyy-MM-dd'),
         end_date: format(endDate!, 'yyyy-MM-dd'),
         wfh_type: wfhTypeLabel,
         reason: wfhReason.trim(),
       });
 
-      setWfhRequests(prev => prev.map(req =>
-        (req.id === editingWfhId || req.wfhId === parseInt(editingWfhId!))
-          ? {
-            ...req,
-            startDate: response.start_date,
-            endDate: response.end_date,
-            reason: response.reason,
-            type: wfhType,
-          }
-          : req
-      ));
+      // Reload WFH requests from backend to get fresh data
+      await loadMyWfhRequests();
 
       toast({
         title: 'WFH Request Updated',
@@ -1587,7 +1741,8 @@ const AttendanceWithToggle: React.FC = () => {
     try {
       await apiService.deleteWFHRequest(parseInt(wfhId));
 
-      setWfhRequests(prev => prev.filter(req => req.id !== wfhId && req.wfhId !== parseInt(wfhId)));
+      // Reload WFH requests from backend to get fresh data
+      await loadMyWfhRequests();
 
       toast({
         title: 'WFH Request Deleted',
@@ -1609,36 +1764,15 @@ const AttendanceWithToggle: React.FC = () => {
   const handleWfhRequestAction = async (requestId: string, action: 'approve' | 'reject', reason?: string) => {
     setIsProcessingWfhRequest(true);
     try {
-      // Frontend-only implementation
-      const currentTime = new Date(); // Use current time for accurate timestamp
-      setAllWfhRequests(prev =>
-        prev.map(req =>
-          req.id === requestId
-            ? {
-              ...req,
-              status: action === 'approve' ? 'approved' : 'rejected',
-              processedAt: currentTime.toISOString(), // Use current time
-              processedBy: user?.name || 'Unknown',
-              rejectionReason: action === 'reject' ? reason : undefined
-            }
-            : req
-        )
+      // Call the backend API to approve/reject
+      await apiService.approveWFHRequest(
+        parseInt(requestId),
+        action === 'approve',
+        action === 'reject' ? reason : undefined
       );
 
-      // Also update user's own requests if it's their request
-      setWfhRequests(prev =>
-        prev.map(req =>
-          req.id === requestId
-            ? {
-              ...req,
-              status: action === 'approve' ? 'approved' : 'rejected',
-              processedAt: currentTime.toISOString(), // Use current time
-              processedBy: user?.name || 'Unknown',
-              rejectionReason: action === 'reject' ? reason : undefined
-            }
-            : req
-        )
-      );
+      // Reload WFH requests from backend to get fresh data
+      await loadAllWfhRequests();
 
       toast({
         title: `Request ${action === 'approve' ? 'Approved' : 'Rejected'}`,
@@ -2080,8 +2214,11 @@ const AttendanceWithToggle: React.FC = () => {
   }, [viewMode, canViewEmployeeAttendance, fetchAllUsersOnlineStatus]);
 
   const getStatusBadge = (status: string, checkInTime?: string, checkOutTime?: string) => {
+    const checkInT = checkInTime && (checkInTime.includes(' ') || checkInTime.includes('T')) ? (checkInTime.includes('T') ? checkInTime.split('T')[1].substring(0, 8) : checkInTime.split(' ')[1].substring(0, 8)) : checkInTime;
+    const checkOutT = checkOutTime && (checkOutTime.includes(' ') || checkOutTime.includes('T')) ? (checkOutTime.includes('T') ? checkOutTime.split('T')[1].substring(0, 8) : checkOutTime.split(' ')[1].substring(0, 8)) : checkOutTime;
+
     // Check if check-in was late
-    const isCheckInLate = status === 'late' || (checkInTime && checkInTime > '09:30:00');
+    const isCheckInLate = status === 'late' || (checkInT && checkInT > '09:30:00');
 
     // If check-in was late, always show "Late" badge regardless of check-out time
     if (isCheckInLate) {
@@ -2089,8 +2226,13 @@ const AttendanceWithToggle: React.FC = () => {
     }
 
     // For check-out badge: if check-out time is provided, check if it's early
-    if (checkOutTime && checkOutTime < '18:00:00') {
+    if (checkOutT && checkOutT < '18:00:00') {
       return <Badge variant="outline" className="border-orange-500 text-orange-500">Early</Badge>;
+    }
+
+    // If check-out time is provided and it's not early, show nothing (on-time check-out)
+    if (checkOutTime) {
+      return null;
     }
 
     if (status === 'absent') {
@@ -2308,7 +2450,7 @@ const AttendanceWithToggle: React.FC = () => {
                         <div className="flex items-center gap-2 flex-wrap">
                           <LogIn className="h-4 w-4 text-green-500" />
                           <span className="text-sm font-medium">Check-in Time</span>
-                          {getStatusBadge(currentAttendance.status, currentAttendance.checkInTime)}
+                          {getStatusBadge(currentAttendance.status, currentAttendance.checkInTime, currentAttendance.checkOutTime)}
                           {currentAttendance.workLocation === 'work_from_home' ? (
                             <Badge variant="outline" className="bg-orange-50 border-orange-500 text-orange-700 dark:bg-orange-950 dark:text-orange-300">
                               <Home className="h-3 w-3 mr-1" />
@@ -2352,8 +2494,12 @@ const AttendanceWithToggle: React.FC = () => {
                         <div className="flex items-center gap-2">
                           <LogOut className="h-4 w-4 text-red-500" />
                           <span className="text-sm font-medium">Check-out Time</span>
-                          {currentAttendance.checkOutTime &&
-                            getStatusBadge(currentAttendance.status, currentAttendance.checkInTime, currentAttendance.checkOutTime)}
+                          {(() => {
+                            const checkOutT = currentAttendance.checkOutTime && (currentAttendance.checkOutTime.includes(' ') || currentAttendance.checkOutTime.includes('T')) ? (currentAttendance.checkOutTime.includes('T') ? currentAttendance.checkOutTime.split('T')[1].substring(0, 8) : currentAttendance.checkOutTime.split(' ')[1].substring(0, 8)) : currentAttendance.checkOutTime;
+                            return checkOutT && checkOutT < '18:00:00' && (
+                              <Badge variant="outline" className="border-orange-500 text-orange-500">Early</Badge>
+                            );
+                          })()}
                         </div>
                         <p className="text-lg font-semibold">
                           {currentAttendance.checkOutTime
@@ -2437,32 +2583,56 @@ const AttendanceWithToggle: React.FC = () => {
               <CardDescription>Your recent attendance records</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row items-end justify-between gap-4">
-                  <div className="flex flex-col items-start gap-2 w-full sm:w-auto">
-                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Duration Filter</Label>
-                    <Select
-                      value={historyDurationFilter}
-                      onValueChange={(val: any) => {
-                        setHistoryDurationFilter(val);
-                        if (val === 'custom') setIsHistoryCustomRangeDialogOpen(true);
-                      }}
-                    >
-                      <SelectTrigger className="w-[180px] h-10">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="current_month">Current Month</SelectItem>
-                        <SelectItem value="last_month">Last Month</SelectItem>
-                        <SelectItem value="last_3_months">Last 3 Months</SelectItem>
-                        <SelectItem value="last_6_months">Last 6 Months</SelectItem>
-                        <SelectItem value="last_year">Last 1 Year</SelectItem>
-                        <SelectItem value="custom">Custom Range</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="text-sm text-muted-foreground bg-muted px-3 py-1.5 rounded-md">
-                    Showing {getFilteredAttendanceHistory().length} records
+              <div className="space-y-6">
+                <div className="flex flex-col gap-3">
+                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Quick Filters</Label>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant={historyQuickFilter === 'today' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setHistoryQuickFilter('today')}
+                        className={historyQuickFilter === 'today' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                      >
+                        Today
+                      </Button>
+                      <Button
+                        variant={historyQuickFilter === 'all' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setHistoryQuickFilter('all')}
+                        className={historyQuickFilter === 'all' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                      >
+                        All
+                      </Button>
+                      <Button
+                        variant={historyQuickFilter === 'date' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setHistoryQuickFilter('date')}
+                        className={historyQuickFilter === 'date' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                      >
+                        Date
+                      </Button>
+
+                      {historyQuickFilter === 'date' && (
+                        <div className="flex flex-col sm:flex-row items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
+                          <DatePicker
+                            date={historyCustomDateRange.startDate || undefined}
+                            onDateChange={(date) => setHistoryCustomDateRange({ ...historyCustomDateRange, startDate: date || null })}
+                            placeholder="From Date"
+                            className="w-[160px] rounded-xl border-2 border-slate-200 dark:border-slate-800 h-11 hover:border-indigo-400 transition-all shadow-sm"
+                          />
+                          <DatePicker
+                            date={historyCustomDateRange.endDate || undefined}
+                            onDateChange={(date) => setHistoryCustomDateRange({ ...historyCustomDateRange, endDate: date || null })}
+                            placeholder="To Date"
+                            className="w-[160px] rounded-xl border-2 border-slate-200 dark:border-slate-800 h-11 hover:border-indigo-400 transition-all shadow-sm"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-sm text-muted-foreground bg-muted px-3 py-1.5 rounded-md">
+                      Showing {getFilteredAttendanceHistory().length} records
+                    </div>
                   </div>
                 </div>
 
@@ -2607,6 +2777,7 @@ const AttendanceWithToggle: React.FC = () => {
                                         className="text-left hover:text-blue-600 dark:hover:text-blue-400 block w-full text-xs leading-relaxed"
                                         onClick={() => {
                                           setSelectedWorkSummary(record.workSummary || '');
+                                          setSelectedOverdueReason('');
                                           setShowWorkSummaryDialog(true);
                                         }}
                                         title={record.workSummary}
@@ -2650,10 +2821,21 @@ const AttendanceWithToggle: React.FC = () => {
                                   </td>
                                   <td className="p-3 text-xs text-slate-600 dark:text-slate-400 max-w-[280px]">
                                     {record.taskDeadlineReason ? (
-                                      <div className="text-left text-xs leading-relaxed" style={{
-                                        wordBreak: 'break-word',
-                                        overflowWrap: 'break-word'
-                                      }}>
+                                      <button
+                                        type="button"
+                                        className="text-left hover:text-blue-600 dark:hover:text-blue-400 block w-full text-xs leading-relaxed"
+                                        onClick={() => {
+                                          setSelectedOverdueReason(record.taskDeadlineReason || '');
+                                          setShowWorkSummaryDialog(true);
+                                        }}
+                                        title={record.taskDeadlineReason}
+                                        style={{
+                                          wordBreak: 'break-word',
+                                          overflowWrap: 'break-word',
+                                          display: 'block',
+                                          textAlign: 'left'
+                                        }}
+                                      >
                                         <span style={{
                                           display: '-webkit-box',
                                           WebkitLineClamp: 2,
@@ -2663,7 +2845,10 @@ const AttendanceWithToggle: React.FC = () => {
                                         }}>
                                           {record.taskDeadlineReason}
                                         </span>
-                                      </div>
+                                        {record.taskDeadlineReason.length > 60 && (
+                                          <span className="text-blue-600 dark:text-blue-400 font-medium mt-1 block">View more...</span>
+                                        )}
+                                      </button>
                                     ) : (
                                       <span className="text-slate-400 dark:text-slate-500">—</span>
                                     )}
@@ -2736,27 +2921,32 @@ const AttendanceWithToggle: React.FC = () => {
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Time Period</Label>
-                  <Select value={timePeriodFilter} onValueChange={(value: any) => {
-                    setTimePeriodFilter(value);
-                  }}>
-                    <SelectTrigger className="w-[180px] h-11 bg-white dark:bg-gray-950 border-2">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      <SelectValue placeholder="Time Period" />
+                  <Select
+                    value={timePeriodFilter || 'today'}
+                    onValueChange={(value: any) => {
+                      setTimePeriodFilter(value);
+                    }}
+                  >
+                    <SelectTrigger className="w-[190px] h-11 bg-white dark:bg-gray-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl hover:border-blue-400 focus:ring-blue-500/20 transition-all duration-300">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-blue-500" />
+                        <SelectValue placeholder="Time Period" />
+                      </div>
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="today">Today</SelectItem>
-                      <SelectItem value="current_month">Current Month</SelectItem>
-                      <SelectItem value="last_month">Last Month</SelectItem>
-                      <SelectItem value="last_3_months">Last 3 Months</SelectItem>
-                      <SelectItem value="last_6_months">Last 6 Months</SelectItem>
-                      <SelectItem value="last_12_months">Last 1 Year</SelectItem>
-                      <SelectItem value="custom">Custom Range</SelectItem>
+                    <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 shadow-xl">
+                      <SelectItem value="today" className="rounded-lg">Today</SelectItem>
+                      <SelectItem value="current_month" className="rounded-lg">Current Month</SelectItem>
+                      <SelectItem value="last_month" className="rounded-lg">Last Month</SelectItem>
+                      <SelectItem value="last_3_months" className="rounded-lg">Last 3 Months</SelectItem>
+                      <SelectItem value="last_6_months" className="rounded-lg">Last 6 Months</SelectItem>
+                      <SelectItem value="last_12_months" className="rounded-lg">Last 1 Year</SelectItem>
+                      <SelectItem value="custom" className="rounded-lg">Custom Date Range</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {timePeriodFilter === 'custom' && (
-                  <>
+                  <div className="flex flex-col md:flex-row gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
                     <div className="flex flex-col gap-2">
                       <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">From Date</Label>
                       <DatePicker
@@ -2764,7 +2954,7 @@ const AttendanceWithToggle: React.FC = () => {
                         onDateChange={setCustomStartDate}
                         toDate={new Date()}
                         placeholder="From Date"
-                        className="w-[220px]"
+                        className="w-[180px] rounded-xl border-2 border-slate-200 dark:border-slate-800 h-11 hover:border-indigo-400 transition-all"
                       />
                     </div>
                     <div className="flex flex-col gap-2">
@@ -2774,10 +2964,10 @@ const AttendanceWithToggle: React.FC = () => {
                         onDateChange={setCustomEndDate}
                         toDate={new Date()}
                         placeholder="To Date"
-                        className="w-[220px]"
+                        className="w-[180px] rounded-xl border-2 border-slate-200 dark:border-slate-800 h-11 hover:border-indigo-400 transition-all"
                       />
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
 
@@ -2943,6 +3133,7 @@ const AttendanceWithToggle: React.FC = () => {
                                     className="text-left hover:text-blue-600 dark:hover:text-blue-400 block w-full text-xs leading-relaxed"
                                     onClick={() => {
                                       setSelectedWorkSummary(record.workSummary || '');
+                                      setSelectedOverdueReason('');
                                       setShowWorkSummaryDialog(true);
                                     }}
                                     title={record.workSummary}
@@ -3079,7 +3270,7 @@ const AttendanceWithToggle: React.FC = () => {
                                   <User className="h-4 w-4 text-blue-600" />
                                   <span className="font-medium">{request.submittedBy}</span>
                                   <Badge variant="outline" className="text-xs">
-                                    {request.role}
+                                    {formatRoleDisplay(request.role)}
                                   </Badge>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -3172,41 +3363,83 @@ const AttendanceWithToggle: React.FC = () => {
             <CardContent className="pt-6">
               <div className="space-y-4">
                 {/* Filter Controls for Recent Decisions */}
-                <div className="flex gap-3">
-                  <div className="flex-1 max-w-xs">
-                    <Label htmlFor="decision-status-filter">Decision Status</Label>
-                    <Select value={wfhRequestFilter} onValueChange={(value: any) => setWfhRequestFilter(value)}>
-                      <SelectTrigger id="decision-status-filter" className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Decisions</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex-1 max-w-xs">
-                    <Label htmlFor="role-filter">Role</Label>
-                    <Select value={wfhRoleFilter} onValueChange={(value: any) => setWfhRoleFilter(value)}>
-                      <SelectTrigger id="role-filter" className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Roles</SelectItem>
-                        <SelectItem value="hr">HR</SelectItem>
-                        <SelectItem value="manager">Manager</SelectItem>
-                        <SelectItem value="team_lead">Team Lead</SelectItem>
-                        <SelectItem value="employee">Employee</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex-1">
-                    <Label>Total Decisions</Label>
-                    <div className="mt-1 px-3 py-2 bg-muted rounded-md text-sm flex items-center justify-between">
-                      <span>{allWfhRequests.filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter) && (wfhRoleFilter === 'all' || (req.role || 'employee').toLowerCase() === wfhRoleFilter)).length} of {allWfhRequests.filter(req => req.status !== 'pending').length} decisions</span>
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="flex-1 min-w-[150px]">
+                      <Label htmlFor="decision-status-filter">Decision Status</Label>
+                      <Select value={wfhRequestFilter} onValueChange={(value: any) => setWfhRequestFilter(value)}>
+                        <SelectTrigger id="decision-status-filter" className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Decisions</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex-1 min-w-[150px]">
+                      <Label htmlFor="role-filter">Role</Label>
+                      <Select value={wfhRoleFilter} onValueChange={(value: any) => setWfhRoleFilter(value)}>
+                        <SelectTrigger id="role-filter" className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Roles</SelectItem>
+                          <SelectItem value="hr">HR</SelectItem>
+                          <SelectItem value="manager">Manager</SelectItem>
+                          <SelectItem value="team_lead">Team Lead</SelectItem>
+                          <SelectItem value="employee">Employee</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex-1 min-w-[150px]">
+                      <Label htmlFor="decision-time-filter">Duration</Label>
+                      <Select value={wfhRequestTimeFilter} onValueChange={(value: any) => setWfhRequestTimeFilter(value)}>
+                        <SelectTrigger id="decision-time-filter" className="mt-1">
+                          <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+                          <SelectValue placeholder="Filter by time" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Time</SelectItem>
+                          <SelectItem value="current_month">Current Month</SelectItem>
+                          <SelectItem value="last_month">Last Month</SelectItem>
+                          <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                          <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                          <SelectItem value="last_year">Last 1 Year</SelectItem>
+                          <SelectItem value="custom">Custom Range</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex-1 min-w-[150px]">
+                      <Label>Summary</Label>
+                      <div className="mt-1 px-3 py-2 bg-muted rounded-md text-sm flex items-center justify-between">
+                        <span>{filteredRecentDecisions.length} of {allWfhRequests.filter(req => req.status !== 'pending').length} decisions</span>
+                      </div>
                     </div>
                   </div>
+
+                  {wfhRequestTimeFilter === 'custom' && (
+                    <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="space-y-1 flex-1">
+                        <Label className="text-xs">From Date</Label>
+                        <DatePicker
+                          date={wfhRequestStartDate}
+                          onDateChange={setWfhRequestStartDate}
+                          placeholder="Start"
+                        />
+                      </div>
+                      <div className="self-center mt-5 text-muted-foreground">to</div>
+                      <div className="space-y-1 flex-1">
+                        <Label className="text-xs">To Date</Label>
+                        <DatePicker
+                          date={wfhRequestEndDate}
+                          onDateChange={setWfhRequestEndDate}
+                          placeholder="End"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Recent Decisions Table */}
@@ -3215,65 +3448,80 @@ const AttendanceWithToggle: React.FC = () => {
                     <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                     <span className="ml-2 text-muted-foreground">Loading decisions...</span>
                   </div>
-                ) : allWfhRequests.filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter) && (wfhRoleFilter === 'all' || (req.role || 'employee').toLowerCase() === wfhRoleFilter)).length > 0 ? (
-                  <div className="space-y-3">
-                    {allWfhRequests
-                      .filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter) && (wfhRoleFilter === 'all' || (req.role || 'employee').toLowerCase() === wfhRoleFilter))
-                      .sort((a, b) => new Date(b.processedAt || b.submittedAt).getTime() - new Date(a.processedAt || a.submittedAt).getTime())
-                      .map((request) => (
-                        <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-2 flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <div className="flex items-center gap-2">
-                                  <User className="h-4 w-4 text-blue-600" />
-                                  <span className="font-medium">{request.submittedBy}</span>
-                                  <Badge variant="outline" className="text-xs">
-                                    {request.role}
-                                  </Badge>
+                ) : filteredRecentDecisions.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      {filteredRecentDecisions
+                        .slice((recentDecisionsCurrentPage - 1) * recentDecisionsItemsPerPage, recentDecisionsCurrentPage * recentDecisionsItemsPerPage)
+                        .map((request) => (
+                          <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-2 flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4 text-blue-600" />
+                                    <span className="font-medium">{request.submittedBy}</span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {formatRoleDisplay(request.role)}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Calendar className="h-4 w-4 text-green-600" />
+                                    <span className="text-sm">
+                                      {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
+                                    </span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
+                                    </Badge>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="h-4 w-4 text-green-600" />
-                                  <span className="text-sm">
-                                    {formatDateIST(request.startDate, 'dd MMM yyyy')} - {formatDateIST(request.endDate, 'dd MMM yyyy')}
-                                  </span>
-                                  <Badge variant="outline" className="text-xs">
-                                    {request.type === 'full_day' ? 'Full Day' : 'Half Day'}
-                                  </Badge>
+                                <p className="text-sm text-muted-foreground break-words overflow-wrap-anywhere whitespace-pre-wrap">{request.reason}</p>
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                  <span>Submitted: {formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
+                                  <span>Decision: {formatDateTimeIST(request.processedAt || request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
+                                  <span>Department: {request.department}</span>
                                 </div>
+                                {request.rejectionReason && (
+                                  <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
+                                    <p className="text-sm text-red-800 dark:text-red-200 break-words overflow-wrap-anywhere whitespace-pre-wrap">
+                                      <strong>Rejection Reason:</strong> {request.rejectionReason}
+                                    </p>
+                                  </div>
+                                )}
                               </div>
-                              <p className="text-sm text-muted-foreground break-words overflow-wrap-anywhere whitespace-pre-wrap">{request.reason}</p>
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span>Submitted: {formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
-                                <span>Decision: {formatDateTimeIST(request.processedAt || request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
-                                <span>Department: {request.department}</span>
+                              <div className="flex items-center gap-2 ml-4">
+                                <Badge
+                                  variant={request.status === 'approved' ? 'default' : 'destructive'}
+                                  className={request.status === 'approved' ? 'bg-green-500' : ''}
+                                >
+                                  {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                                </Badge>
                               </div>
-                              {request.rejectionReason && (
-                                <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
-                                  <p className="text-sm text-red-800 dark:text-red-200 break-words overflow-wrap-anywhere whitespace-pre-wrap">
-                                    <strong>Rejection Reason:</strong> {request.rejectionReason}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 ml-4">
-                              <Badge
-                                variant={request.status === 'approved' ? 'default' : 'destructive'}
-                                className={request.status === 'approved' ? 'bg-green-500' : ''}
-                              >
-                                {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                              </Badge>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                    </div>
+
+                    {filteredRecentDecisions.length > recentDecisionsItemsPerPage && (
+                      <div className="mt-6 border-t pt-4">
+                        <Pagination
+                          currentPage={recentDecisionsCurrentPage}
+                          totalPages={Math.ceil(filteredRecentDecisions.length / recentDecisionsItemsPerPage)}
+                          totalItems={filteredRecentDecisions.length}
+                          itemsPerPage={recentDecisionsItemsPerPage}
+                          onPageChange={setRecentDecisionsCurrentPage}
+                          onItemsPerPageChange={setRecentDecisionsItemsPerPage}
+                          showItemsPerPage={true}
+                        />
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No decisions yet</p>
                     <p className="text-sm">
-                      {wfhRequestFilter === 'all' ? 'No requests have been approved or rejected' : `No ${wfhRequestFilter} requests`}
+                      {wfhRequestTimeFilter === 'all' ? (wfhRequestFilter === 'all' ? 'No requests have been approved or rejected' : `No ${wfhRequestFilter} requests found`) : `No requests found for the selected duration`}
                     </p>
                   </div>
                 )}
@@ -3315,13 +3563,18 @@ const AttendanceWithToggle: React.FC = () => {
                     </Label>
                     <DatePicker
                       date={wfhStartDate}
-                      onDateChange={setWfhStartDate}
+                      onDateChange={(date) => {
+                        setWfhStartDate(date);
+                        if (date && (!wfhEndDate || wfhEndDate < date)) {
+                          setWfhEndDate(date);
+                        }
+                      }}
                       placeholder={wfhType === 'half_day' ? 'Select date' : 'Select start date'}
                       disablePastDates={true}
-                      fromDate={getTomorrowIST()}
+                      fromDate={getTodayISTDate()}
                     />
                     {wfhStartDate && !isValidWfhDate(wfhStartDate) && (
-                      <p className="text-xs text-red-500 mt-1">Date must be tomorrow or later</p>
+                      <p className="text-xs text-red-500 mt-1">Date must be today or later</p>
                     )}
                   </div>
                   {wfhType === 'full_day' && (
@@ -3332,10 +3585,10 @@ const AttendanceWithToggle: React.FC = () => {
                         onDateChange={setWfhEndDate}
                         placeholder="Select end date"
                         disablePastDates={true}
-                        fromDate={wfhStartDate || getTomorrowIST()}
+                        fromDate={wfhStartDate || getTodayISTDate()}
                       />
                       {wfhEndDate && !isValidWfhDate(wfhEndDate) && (
-                        <p className="text-xs text-red-500 mt-1">Date must be tomorrow or later</p>
+                        <p className="text-xs text-red-500 mt-1">Date must be today or later</p>
                       )}
                       {wfhStartDate && wfhEndDate && wfhEndDate < wfhStartDate && (
                         <p className="text-xs text-red-500 mt-1">End date must be on or after start date</p>
@@ -3367,7 +3620,7 @@ const AttendanceWithToggle: React.FC = () => {
                     <div className="text-sm text-blue-800 dark:text-blue-200">
                       <p className="font-medium mb-1">Request Guidelines:</p>
                       <ul className="list-disc list-inside space-y-1 text-xs">
-                        <li>Submit requests at least 24 hours in advance</li>
+                        <li>Submit requests in advance</li>
                         <li>Provide a clear and valid reason for the request</li>
                         <li>Ensure you have necessary equipment and internet connectivity</li>
                         <li>Your request will be reviewed by your {user?.role === 'employee' || user?.role === 'team_lead' ? 'manager and HR' : 'admin'}</li>
@@ -3402,14 +3655,51 @@ const AttendanceWithToggle: React.FC = () => {
           {/* WFH Request History */}
           <Card className="border-0 shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-              <CardTitle className="text-xl font-semibold">Your WFH Requests</CardTitle>
-              <CardDescription>Track the status of your work from home requests</CardDescription>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <CardTitle className="text-xl font-semibold">Your WFH Requests</CardTitle>
+                  <CardDescription>Track the status of your work from home requests</CardDescription>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select value={wfhHistoryTimeFilter} onValueChange={(value: any) => setWfhHistoryTimeFilter(value)}>
+                    <SelectTrigger className="w-[180px] bg-white dark:bg-slate-950">
+                      <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <SelectValue placeholder="Filter by time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Requests</SelectItem>
+                      <SelectItem value="current_month">Current Month</SelectItem>
+                      <SelectItem value="last_month">Last Month</SelectItem>
+                      <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                      <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                      <SelectItem value="last_year">Last 1 Year</SelectItem>
+                      <SelectItem value="custom">Custom Range</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {wfhHistoryTimeFilter === 'custom' && (
+                    <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2 duration-200">
+                      <DatePicker
+                        date={wfhHistoryStartDate}
+                        onDateChange={setWfhHistoryStartDate}
+                        placeholder="Start"
+                      />
+                      <span className="text-muted-foreground text-xs">to</span>
+                      <DatePicker
+                        date={wfhHistoryEndDate}
+                        onDateChange={setWfhHistoryEndDate}
+                        placeholder="End"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-4">
-                {wfhRequests.length > 0 ? (
+                {filteredWfhHistory.length > 0 ? (
                   <div className="space-y-3">
-                    {wfhRequests.map((request) => (
+                    {paginatedWfhHistory.map((request) => (
                       <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
                         <div className="flex items-start justify-between gap-4">
                           <div className="space-y-2 flex-1 min-w-0">
@@ -3461,12 +3751,26 @@ const AttendanceWithToggle: React.FC = () => {
                         </div>
                       </div>
                     ))}
+
+                    {filteredWfhHistory.length > wfhHistoryItemsPerPage && (
+                      <div className="mt-6 pt-4 border-t">
+                        <Pagination
+                          currentPage={wfhHistoryPage}
+                          totalPages={Math.ceil(filteredWfhHistory.length / wfhHistoryItemsPerPage)}
+                          totalItems={filteredWfhHistory.length}
+                          itemsPerPage={wfhHistoryItemsPerPage}
+                          onPageChange={setWfhHistoryPage}
+                          onItemsPerPageChange={setWfhHistoryItemsPerPage}
+                          showItemsPerPage={true}
+                        />
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <Home className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No WFH requests submitted yet</p>
-                    <p className="text-sm">Submit your first work from home request above</p>
+                    <p>No WFH requests found for the selected period</p>
+                    <p className="text-sm">Try adjusting your filters or submit a new request</p>
                   </div>
                 )}
               </div>
@@ -3475,39 +3779,6 @@ const AttendanceWithToggle: React.FC = () => {
         </>
       )
       }
-
-      {/* Custom Date Range Dialog for Attendance History */}
-      <Dialog open={isHistoryCustomRangeDialogOpen} onOpenChange={setIsHistoryCustomRangeDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Select Custom Date Range</DialogTitle>
-            <DialogDescription>
-              Choose a start and end date to filter your attendance history.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="history-start-date">Start Date</Label>
-              <DatePicker
-                date={historyCustomDateRange.startDate || undefined}
-                onDateChange={(date) => setHistoryCustomDateRange(prev => ({ ...prev, startDate: date || null }))}
-                placeholder="Pick a start date"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="history-end-date">End Date</Label>
-              <DatePicker
-                date={historyCustomDateRange.endDate || undefined}
-                onDateChange={(date) => setHistoryCustomDateRange(prev => ({ ...prev, endDate: date || null }))}
-                placeholder="Pick an end date"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setIsHistoryCustomRangeDialogOpen(false)}>Apply Filter</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Checkout Confirmation Dialog */}
       <Dialog open={showCheckoutDialog} onOpenChange={setShowCheckoutDialog}>
@@ -3706,19 +3977,21 @@ const AttendanceWithToggle: React.FC = () => {
             {/* Date Range Selection */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="export-start">Start Date</Label>
+                <Label htmlFor="export-start" className="text-sm font-medium">Start Date</Label>
                 <DatePicker
                   date={exportStartDate}
                   onDateChange={setExportStartDate}
                   placeholder="Select start date"
+                  className="rounded-xl border-2 border-slate-200 dark:border-slate-800 h-11"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="export-end">End Date</Label>
+                <Label htmlFor="export-end" className="text-sm font-medium">End Date</Label>
                 <DatePicker
                   date={exportEndDate}
                   onDateChange={setExportEndDate}
                   placeholder="Select end date"
+                  className="rounded-xl border-2 border-slate-200 dark:border-slate-800 h-11"
                 />
               </div>
             </div>
@@ -3964,6 +4237,14 @@ const AttendanceWithToggle: React.FC = () => {
                 {selectedRecord?.workSummary || 'Not provided'}
               </p>
             </div>
+            {selectedRecord?.taskDeadlineReason && (
+              <div>
+                <p className="font-medium">Overdue Reason</p>
+                <p className="text-muted-foreground">
+                  {selectedRecord.taskDeadlineReason}
+                </p>
+              </div>
+            )}
             {selectedRecord?.workReport && (
               <div>
                 <p className="font-medium">Work Report</p>
@@ -4081,20 +4362,29 @@ const AttendanceWithToggle: React.FC = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-blue-600" />
-              Work Summary Details
+              Attendance Details
             </DialogTitle>
             <DialogDescription>
-              Detailed work summary for the selected attendance record
+              Detailed work summary and overdue reasons for the selected record
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-4">
+          <div className="py-2 space-y-4">
             <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border">
               <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300 mb-2">Work Summary</h4>
               <div className="text-sm text-slate-900 dark:text-slate-100 leading-relaxed whitespace-pre-wrap">
                 {selectedWorkSummary || 'No work summary provided'}
               </div>
             </div>
+
+            {selectedOverdueReason && (
+              <div className="bg-orange-50 dark:bg-orange-950/20 rounded-lg p-4 border border-orange-200 dark:border-orange-800">
+                <h4 className="font-medium text-sm text-orange-700 dark:text-orange-300 mb-2">Overdue Reason</h4>
+                <div className="text-sm text-slate-900 dark:text-slate-100 leading-relaxed whitespace-pre-wrap">
+                  {selectedOverdueReason}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end">
@@ -4197,7 +4487,7 @@ const AttendanceWithToggle: React.FC = () => {
                     <User className="h-4 w-4 text-blue-600" />
                     <span className="font-medium">{selectedWfhRequest.submittedBy}</span>
                     <Badge variant="outline" className="text-xs">
-                      {selectedWfhRequest.role}
+                      {formatRoleDisplay(selectedWfhRequest.role)}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2">
@@ -4215,6 +4505,7 @@ const AttendanceWithToggle: React.FC = () => {
                 <Textarea
                   id="rejection-reason"
                   placeholder="Please provide a clear reason for rejecting this request."
+                  value={selectedWfhRequest?.rejectionReason || ''}
                   rows={3}
                   className="resize-none"
                   onChange={(e) => {
@@ -4309,8 +4600,15 @@ const AttendanceWithToggle: React.FC = () => {
                 <Label>Start Date *</Label>
                 <DatePicker
                   date={wfhStartDate}
-                  onDateChange={setWfhStartDate}
+                  onDateChange={(date) => {
+                    setWfhStartDate(date);
+                    if (date && (!wfhEndDate || wfhEndDate < date)) {
+                      setWfhEndDate(date);
+                    }
+                  }}
                   placeholder="Select start date"
+                  disablePastDates={true}
+                  fromDate={getTodayISTDate()}
                 />
               </div>
               <div className="space-y-2">
@@ -4319,6 +4617,8 @@ const AttendanceWithToggle: React.FC = () => {
                   date={wfhEndDate}
                   onDateChange={setWfhEndDate}
                   placeholder="Select end date"
+                  disablePastDates={true}
+                  fromDate={wfhStartDate || getTodayISTDate()}
                 />
               </div>
             </div>

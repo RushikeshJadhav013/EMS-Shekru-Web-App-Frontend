@@ -7,6 +7,7 @@ interface TruncatedTextProps {
     className?: string;
     textClassName?: string;
     showMoreClassName?: string;
+    showToggle?: boolean;
 }
 
 const TruncatedText: React.FC<TruncatedTextProps> = ({
@@ -14,7 +15,8 @@ const TruncatedText: React.FC<TruncatedTextProps> = ({
     maxLength = 100,
     className,
     textClassName,
-    showMoreClassName
+    showMoreClassName,
+    showToggle = true
 }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -30,7 +32,7 @@ const TruncatedText: React.FC<TruncatedTextProps> = ({
             <span className={cn(textClassName, "break-words whitespace-pre-wrap")}>
                 {displayedText}
             </span>
-            {shouldTruncate && (
+            {showToggle && shouldTruncate && (
                 <button
                     onClick={(e) => {
                         e.stopPropagation();

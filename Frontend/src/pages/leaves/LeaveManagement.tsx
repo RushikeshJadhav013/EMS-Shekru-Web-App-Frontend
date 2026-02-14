@@ -255,6 +255,25 @@ export default function LeaveManagement() {
       setIsHolidayDialogOpen(true);
       return; // Don't update selectedDate
     }
+
+    // Interactive Weekly-off Toggling for Admins/HR
+    if (['admin', 'hr'].includes(user?.role || '') && activeTab === 'calendar' && weekOffForm.department) {
+      const dayName = format(date, 'eeee').toLowerCase();
+      setWeekOffForm((prev) => {
+        const exists = prev.days.includes(dayName);
+        const nextDays = exists
+          ? prev.days.filter((d) => d !== dayName)
+          : [...prev.days, dayName];
+
+        toast({
+          title: exists ? 'Weekly-off removed' : 'Weekly-off added',
+          description: `${exists ? 'Removed' : 'Added'} ${format(date, 'eeee')} as a weekly-off for ${prev.department}.`,
+        });
+
+        return { ...prev, days: nextDays };
+      });
+    }
+
     // Only update selected date if it's not a holiday
     setSelectedDate(date);
   };
@@ -436,10 +455,11 @@ export default function LeaveManagement() {
   }, [companyDepartments, leaveRequests, approvalRequests, user?.department, weekOffConfig]);
 
   useEffect(() => {
-    if (!weekOffForm.department && departmentOptions.length > 0) {
-      setWeekOffForm((prev) => ({ ...prev, department: departmentOptions[0] }));
+    // Only auto-select department if none is selected and it's the first load
+    if (!weekOffForm.department && departmentOptions.length > 0 && Array.isArray(departmentOptions)) {
+      // We don't force it anymore to allow users to clear selection and see 'All'
     }
-  }, [departmentOptions, weekOffForm.department]);
+  }, [departmentOptions]);
 
   useEffect(() => {
     if (!weekOffForm.department) {
@@ -458,11 +478,15 @@ export default function LeaveManagement() {
     } else if (weekOffForm.days.length === 0) {
       setWeekOffForm((prev) => ({ ...prev, days: ['saturday'] }));
     }
-  }, [weekOffForm.department, weekOffForm.days.length, weekOffConfig]);
+  }, [weekOffForm.department, weekOffConfig]);
 
   const userWeekOffDays = useMemo(() => {
-    // For management profiles, show all types of week offs from all departments
+    // For management profiles, prioritize showing what's currently in the planner form
     if (['admin', 'hr', 'manager'].includes(user?.role || '')) {
+      if (weekOffForm.department) {
+        return weekOffForm.days;
+      }
+
       const allDays = new Set<string>();
       Object.values(weekOffConfig).forEach(days => {
         days.forEach(d => allDays.add(d.toLowerCase()));
@@ -473,7 +497,7 @@ export default function LeaveManagement() {
     // For regular employees, show only their department's week offs
     if (!user?.department) return [];
     return weekOffConfig[user.department] || [];
-  }, [user?.department, user?.role, weekOffConfig]);
+  }, [user?.department, user?.role, weekOffConfig, weekOffForm.department, weekOffForm.days]);
 
   const canApproveLeaves = ['admin', 'hr', 'manager'].includes(user?.role || '');
   const canViewTeamLeaves = [].includes(user?.role || '');
@@ -1885,17 +1909,9 @@ export default function LeaveManagement() {
                           Other Leave
                         </Label>
                         <Input
-                          type="number"
-                          min="0"
-                          max="365"
+                          disabled
                           value={leaveAllocationConfig.other_leave_allocation}
-                          onChange={(e) =>
-                            setLeaveAllocationConfig((prev) => ({
-                              ...prev,
-                              other_leave_allocation: parseInt(e.target.value) || 0,
-                            }))
-                          }
-                          className="border-2 border-gray-200 dark:border-gray-800 focus:border-gray-500"
+                          className="border-2 border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800 opacity-80 cursor-not-allowed font-bold"
                           placeholder="e.g., 0"
                         />
                         <p className="text-xs text-muted-foreground">
@@ -2054,15 +2070,21 @@ export default function LeaveManagement() {
                                 onClick={() =>
                                   setWeekOffForm((prev) => {
                                     const exists = prev.days.includes(day.value);
+                                    const isAdminOrHR = ['admin', 'hr'].includes(user?.role || '');
+                                    const limit = isAdminOrHR ? 7 : 2;
+
                                     const nextDays = exists
                                       ? prev.days.filter((d) => d !== day.value)
-                                      : prev.days.length >= 2
+                                      : prev.days.length >= limit
                                         ? prev.days
                                         : [...prev.days, day.value];
-                                    if (!exists && prev.days.length >= 2) {
+
+                                    if (!exists && prev.days.length >= limit) {
                                       toast({
                                         title: 'Limit reached',
-                                        description: 'You can only select up to two weekly off days.',
+                                        description: isAdminOrHR
+                                          ? 'You can select up to 7 weekly off days.'
+                                          : 'You can only select up to two weekly off days.',
                                       });
                                     }
                                     return { ...prev, days: nextDays };

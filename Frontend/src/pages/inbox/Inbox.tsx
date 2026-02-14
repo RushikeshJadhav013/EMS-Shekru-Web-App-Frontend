@@ -168,12 +168,12 @@ export default function Inbox() {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: string): "default" | "destructive" | "secondary" | "outline" => {
     switch (priority) {
-      case 'high': return 'destructive';
+      case 'high': return 'secondary';
       case 'medium': return 'secondary';
-      case 'low': return 'outline';
-      default: return 'outline';
+      case 'low': return 'secondary';
+      default: return 'secondary';
     }
   };
 
@@ -252,8 +252,8 @@ export default function Inbox() {
                   <div
                     key={message.id}
                     className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedMessage?.id === message.id
-                        ? 'bg-accent border-primary'
-                        : 'hover:bg-accent/50'
+                      ? 'bg-accent border-primary'
+                      : 'hover:bg-accent/50'
                       } ${!message.read ? 'font-semibold' : ''}`}
                     onClick={() => {
                       setSelectedMessage(message);

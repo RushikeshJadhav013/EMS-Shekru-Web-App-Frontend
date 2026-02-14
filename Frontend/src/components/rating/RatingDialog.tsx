@@ -28,13 +28,13 @@ export interface EmployeeRating {
   ratedAt: string;
 }
 
-export default function RatingDialog({ 
-  open, 
-  onOpenChange, 
-  employeeId, 
-  employeeName, 
+export default function RatingDialog({
+  open,
+  onOpenChange,
+  employeeId,
+  employeeName,
   onSave,
-  currentRatings 
+  currentRatings
 }: RatingDialogProps) {
   const [productivityRating, setProductivityRating] = useState(currentRatings?.productivityRating || 0);
   const [productivityDescription, setProductivityDescription] = useState(currentRatings?.productivityDescription || '');
@@ -44,13 +44,21 @@ export default function RatingDialog({
   const [hoveredQualityStar, setHoveredQualityStar] = useState(0);
 
   useEffect(() => {
-    if (currentRatings) {
-      setProductivityRating(currentRatings.productivityRating);
-      setProductivityDescription(currentRatings.productivityDescription);
-      setQualityRating(currentRatings.qualityRating);
-      setQualityDescription(currentRatings.qualityDescription);
+    if (open) {
+      if (currentRatings) {
+        setProductivityRating(currentRatings.productivityRating);
+        setProductivityDescription(currentRatings.productivityDescription);
+        setQualityRating(currentRatings.qualityRating);
+        setQualityDescription(currentRatings.qualityDescription);
+      } else {
+        // Reset to default values for a new rating session
+        setProductivityRating(0);
+        setProductivityDescription('');
+        setQualityRating(0);
+        setQualityDescription('');
+      }
     }
-  }, [currentRatings]);
+  }, [currentRatings, open, employeeId]);
 
   const handleSave = () => {
     if (productivityRating === 0 || qualityRating === 0) {
@@ -110,11 +118,10 @@ export default function RatingDialog({
             className="focus:outline-none transition-transform hover:scale-110"
           >
             <Star
-              className={`h-8 w-8 transition-colors ${
-                star <= (hoveredStar || rating)
+              className={`h-8 w-8 transition-colors ${star <= (hoveredStar || rating)
                   ? 'fill-yellow-400 text-yellow-400'
                   : 'text-gray-300'
-              }`}
+                }`}
             />
           </button>
         ))}

@@ -354,6 +354,7 @@ const HRDashboard: React.FC = () => {
                 <TruncatedText
                   text={formatActivityDescription(activity)}
                   maxLength={60}
+                  showToggle={false}
                 />
               </div>
             </div>
@@ -580,7 +581,7 @@ const HRDashboard: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate('/hr/wfh')}
+                onClick={() => navigate('/hr/attendance?tab=wfh_requests')}
                 className="h-8"
               >
                 View All
@@ -614,6 +615,7 @@ const HRDashboard: React.FC = () => {
                           <TruncatedText
                             text={req.reason}
                             maxLength={80}
+                            showToggle={false}
                           />
                         </div>
                       ) : null}

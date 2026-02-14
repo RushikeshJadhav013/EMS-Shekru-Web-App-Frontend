@@ -23,7 +23,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
-import { Search, Plus, Eye, Edit, Trash2, FileText, TrendingUp, Download, AlertCircle, DollarSign, RefreshCw, Users, Building2 } from 'lucide-react';
+import { Search, Plus, Eye, Edit, Trash2, FileText, TrendingUp, Download, AlertCircle, DollarSign, RefreshCw, Users, Building2, Ban, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole } from '@/types';
 import SalaryDetails from '@/pages/salary/SalaryDetails';
@@ -177,6 +177,29 @@ const SalaryDashboard = () => {
             toast({
                 title: 'Error',
                 description: 'Failed to delete salary record',
+                variant: 'destructive',
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleToggleSalaryStatus = async (userId: string, currentStatus: boolean) => {
+        try {
+            setLoading(true);
+            await apiService.updateSalaryDetails(userId, { is_active: !currentStatus });
+
+            toast({
+                title: 'Success',
+                description: `Salary record set to ${!currentStatus ? 'Active' : 'Inactive'}`,
+                variant: 'success',
+            });
+            loadDashboardData();
+        } catch (error) {
+            console.error('Failed to toggle salary status:', error);
+            toast({
+                title: 'Error',
+                description: 'Failed to update salary status',
                 variant: 'destructive',
             });
         } finally {
@@ -509,6 +532,18 @@ const SalaryDashboard = () => {
                                                             title={item.salary ? "Update Salary" : "Create Salary"}
                                                         >
                                                             {item.salary ? <Edit className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                                                        </Button>
+                                                    )}
+
+                                                    {isAdminOrHr && item.salary && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className={`h-8 w-8 p-0 ${item.salary.is_active !== false ? 'text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 dark:border-emerald-900 dark:text-emerald-400 dark:hover:bg-emerald-900/20' : 'text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700 dark:border-amber-900 dark:text-amber-400 dark:hover:bg-amber-900/20'}`}
+                                                            onClick={() => handleToggleSalaryStatus(String(item.id), item.salary.is_active !== false)}
+                                                            title={item.salary.is_active !== false ? "Mark Inactive" : "Mark Active"}
+                                                        >
+                                                            {item.salary.is_active !== false ? <CheckCircle2 className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
                                                         </Button>
                                                     )}
 

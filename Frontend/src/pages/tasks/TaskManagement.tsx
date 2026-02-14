@@ -76,6 +76,23 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space
 
 const ROLE_ORDER: UserRole[] = ['admin', 'hr', 'manager', 'team_lead', 'employee'];
 
+const CORE_DEPARTMENTS = [
+  'Engineering',
+  'Product',
+  'Design',
+  'Marketing',
+  'Sales',
+  'HR',
+  'Human Resources',
+  'Finance',
+  'Operations',
+  'Legal',
+  'Customer Support',
+  'IT',
+  'Administration',
+  'Management'
+];
+
 type BackendTask = {
   task_id: number;
   title: string;
@@ -751,9 +768,11 @@ const TaskManagement: React.FC = () => {
 
       switch (user.role) {
         case 'admin':
-          return ['hr', 'manager'].includes(emp.role);
+          // Admin can assign tasks to anyone
+          return true;
         case 'hr':
-          return sameDepartment && ['manager', 'team_lead', 'employee'].includes(emp.role);
+          // HR can assign tasks to managers, team leads, and employees across all departments
+          return ['manager', 'team_lead', 'employee'].includes(emp.role);
         case 'manager':
           return sameDepartment && ['team_lead', 'employee'].includes(emp.role);
         case 'team_lead':
@@ -824,7 +843,8 @@ const TaskManagement: React.FC = () => {
 
   const assignableDepartments = useMemo(() => {
     if (!user || !userId) return departments;
-    if (user.role === 'admin') return departments;
+    // Admin and HR can select any department
+    if (user.role === 'admin' || user.role === 'hr') return departments;
     if (!user.department) return departments;
     return departments.filter((dept) => dept === user.department);
   }, [departments, user, userId]);
@@ -1044,7 +1064,13 @@ const TaskManagement: React.FC = () => {
     if (!user || !userId) return;
     const currentAssigneeId = newTask.assignedTo[0];
     const assignee = currentAssigneeId ? employeesById.get(currentAssigneeId) : null;
-    const nextDepartment = assignee?.department || user.department || '';
+
+    // Auto-update department only when an assignee is actually chosen
+    // Admin/HR can change department manually, so we don't force overwrite if no assignee is set
+    const nextDepartment = (assignee && assignee.userId !== userId)
+      ? (assignee.department || newTask.department || user.department || '')
+      : newTask.department;
+
     const nextEmployeeId = assignee?.employeeId || '';
 
     if (newTask.department !== nextDepartment || newTask.employeeId !== nextEmployeeId) {
@@ -1054,7 +1080,7 @@ const TaskManagement: React.FC = () => {
         employeeId: nextEmployeeId,
       }));
     }
-  }, [employeesById, newTask.assignedTo, newTask.department, newTask.employeeId, user, userId]);
+  }, [employeesById, newTask.assignedTo, user, userId]); // Removed department from dependency to avoid infinite loops and fight with user choice
 
   // Filter tasks based on search and status
   const filteredTasks = useMemo(() => {
@@ -2117,10 +2143,10 @@ const TaskManagement: React.FC = () => {
   // Get priority color
   const getPriorityColor = (priority: BaseTask['priority']) => {
     switch (priority) {
-      case 'low': return 'text-green-600 bg-white border border-green-200';
+      case 'low': return 'bg-gray-100 text-gray-800';
       case 'medium': return 'bg-gray-100 text-gray-800';
       case 'high': return 'bg-gray-100 text-gray-800';
-      case 'urgent': return 'text-red-600 bg-white border border-red-200';
+      case 'urgent': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -2531,27 +2557,54 @@ const TaskManagement: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="assignRoleFilter" className="text-sm font-semibold flex items-center gap-2">
-                      <Filter className="h-4 w-4 text-violet-600" />
-                      Filter Role
-                    </Label>
-                    <Select
-                      value={assignRoleFilter}
-                      onValueChange={(value: 'all' | UserRole) => setAssignRoleFilter(value)}
-                    >
-                      <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                        <SelectValue placeholder="All Roles" />
-                      </SelectTrigger>
-                      <SelectContent className="border-2 shadow-xl">
-                        <SelectItem value="all">All Roles</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="hr">HR</SelectItem>
-                        <SelectItem value="manager">Manager</SelectItem>
-                        <SelectItem value="team_lead">Team Lead</SelectItem>
-                        <SelectItem value="employee">Employee</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="assignRoleFilter" className="text-sm font-semibold flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-violet-600" />
+                        Filter Role
+                      </Label>
+                      <Select
+                        value={assignRoleFilter}
+                        onValueChange={(value: 'all' | UserRole) => setAssignRoleFilter(value)}
+                      >
+                        <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                          <SelectValue placeholder="All Roles" />
+                        </SelectTrigger>
+                        <SelectContent className="border-2 shadow-xl">
+                          <SelectItem value="all">All Roles</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="hr">HR</SelectItem>
+                          <SelectItem value="manager">Manager</SelectItem>
+                          <SelectItem value="team_lead">Team Lead</SelectItem>
+                          <SelectItem value="employee">Employee</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {(user?.role === 'admin' || user?.role === 'hr') && (
+                      <div className="space-y-2">
+                        <Label htmlFor="assignDeptFilter" className="text-sm font-semibold flex items-center gap-2">
+                          <Grid3x3 className="h-4 w-4 text-violet-600" />
+                          Filter Department
+                        </Label>
+                        <Select
+                          value={newTask.department || 'all'}
+                          onValueChange={(value) => setNewTask({ ...newTask, department: value === 'all' ? '' : value })}
+                        >
+                          <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                            <SelectValue placeholder="All Departments" />
+                          </SelectTrigger>
+                          <SelectContent className="border-2 shadow-xl">
+                            <SelectItem value="all">All Departments</SelectItem>
+                            {departments.map((dept) => (
+                              <SelectItem key={dept} value={dept}>
+                                {dept}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -2576,7 +2629,10 @@ const TaskManagement: React.FC = () => {
                         )}
                         {canAssignToSelection
                           .filter((emp) => emp.userId !== userId)
+                          // Filter by role if a role filter is active
                           .filter((emp) => assignRoleFilter === 'all' || emp.role === assignRoleFilter)
+                          // Filter by department if a department is selected (Admin/HR Choice)
+                          .filter((emp) => !newTask.department || emp.department === newTask.department)
                           .map((emp) => (
                             <SelectItem key={emp.userId} value={emp.userId} className="cursor-pointer">
                               {emp.name}
@@ -2980,12 +3036,14 @@ const TaskManagement: React.FC = () => {
                                   <TruncatedText
                                     text={task.title}
                                     maxLength={40}
+                                    showToggle={false}
                                     textClassName="font-semibold text-sm group-hover:text-violet-600 transition-colors"
                                   />
                                 </div>
                                 <TruncatedText
                                   text={task.description}
                                   maxLength={80}
+                                  showToggle={false}
                                   textClassName="text-xs text-muted-foreground leading-relaxed"
                                 />
                               </div>
@@ -3251,6 +3309,7 @@ const TaskManagement: React.FC = () => {
                               <TruncatedText
                                 text={task.title}
                                 maxLength={30}
+                                showToggle={false}
                                 textClassName="text-gray-900 dark:text-gray-100"
                               />
                             </div>
@@ -3274,6 +3333,7 @@ const TaskManagement: React.FC = () => {
                           <TruncatedText
                             text={task.description || "No description provided."}
                             maxLength={70}
+                            showToggle={false}
                           />
                         </div>
 
@@ -4437,11 +4497,13 @@ const TaskManagement: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent className="border-2 shadow-xl max-h-72 overflow-auto">
                   <SelectItem value="all">All Departments</SelectItem>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept} value={dept} className="cursor-pointer">
-                      {dept}
-                    </SelectItem>
-                  ))}
+                  {departments
+                    .filter(dept => CORE_DEPARTMENTS.some(core => core.toLowerCase() === dept.toLowerCase()))
+                    .map((dept) => (
+                      <SelectItem key={dept} value={dept} className="cursor-pointer">
+                        {dept}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

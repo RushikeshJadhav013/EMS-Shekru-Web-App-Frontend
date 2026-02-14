@@ -508,6 +508,7 @@ const ManagerDashboard: React.FC = () => {
                           <TruncatedText
                             text={activity.description || ''}
                             maxLength={50}
+                            showToggle={false}
                           />
                         </div>
                       </div>
@@ -635,6 +636,7 @@ const ManagerDashboard: React.FC = () => {
                         <TruncatedText
                           text={member.task}
                           maxLength={35}
+                          showToggle={false}
                         />
                       </div>
                     </div>

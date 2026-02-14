@@ -144,7 +144,8 @@ const ChatBox: React.FC = () => {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setMessageText(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''));
+    const sanitizedValue = e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
+    setMessageText(sanitizedValue);
     handleTyping();
   };
 

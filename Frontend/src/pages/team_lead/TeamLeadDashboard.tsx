@@ -789,6 +789,7 @@ const TeamLeadDashboard: React.FC = () => {
                                   <TruncatedText
                                     text={member.deadlineTaskTitle}
                                     maxLength={35}
+                                    showToggle={false}
                                   />
                                 </div>
                                 {member.deadlineTaskStatus && (
@@ -821,6 +822,7 @@ const TeamLeadDashboard: React.FC = () => {
                                 <TruncatedText
                                   text={member.task}
                                   maxLength={35}
+                                  showToggle={false}
                                 />
                               </div>
                               {member.taskStatus && member.task !== 'No task assigned today' && (
@@ -891,6 +893,7 @@ const TeamLeadDashboard: React.FC = () => {
                       <TruncatedText
                         text={activity.status}
                         maxLength={50}
+                        showToggle={false}
                       />
                     </div>
                     <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tight pt-1">

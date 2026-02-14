@@ -2536,11 +2536,7 @@ export default function EmployeeManagement() {
                       All Roles
                     </div>
                   </SelectItem>
-                  <SelectItem value="Admin" className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950 transition-colors">
-                    <div className="flex items-center gap-2">
-                      Admin
-                    </div>
-                  </SelectItem>
+
                   <SelectItem value="HR" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors">
                     <div className="flex items-center gap-2">
                       HR
@@ -2610,7 +2606,7 @@ export default function EmployeeManagement() {
                       <TableCell className="hidden sm:table-cell text-muted-foreground">{employee.email}</TableCell>
                       <TableCell>
                         <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 text-sm font-medium">
-                          {employee.role?.toLowerCase() === 'hr' || (employee.department && employee.department.includes(',')) || !employee.department
+                          {employee.role?.toLowerCase() === 'hr' || !employee.department
                             ? 'No Dept'
                             : employee.department}
                         </span>

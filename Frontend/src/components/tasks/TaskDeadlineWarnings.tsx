@@ -226,12 +226,14 @@ const TaskDeadlineWarnings: React.FC<TaskDeadlineWarningsProps> = ({
                             <TruncatedText
                               text={warning.title}
                               maxLength={40}
+                              showToggle={false}
                             />
                           </h4>
                           <div className="text-sm text-gray-600 mb-2">
                             <TruncatedText
                               text={warning.message}
                               maxLength={100}
+                              showToggle={false}
                             />
                           </div>
                           <div className="flex items-center gap-4 text-xs text-gray-500">

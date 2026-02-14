@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Calendar, CalendarDays, Clock, Users, Plus, Edit, Trash2, UserPlus, ArrowRight, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Calendar, CalendarDays, Clock, Users, Plus, Edit, Trash2, UserPlus, ArrowRight, AlertCircle, RefreshCw, Search } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { formatIST, formatDateIST, nowIST } from '@/utils/timezone';
 
@@ -118,7 +118,7 @@ export default function ShiftScheduleManagement() {
   const loadDepartments = async () => {
     try {
       const data = await apiService.getDepartments();
-      setDepartmentsList(data.map((d: any) => d.name));
+      setDepartmentsList((data || []).map((d: any) => d.name));
     } catch (error) {
       console.error('Failed to load departments:', error);
     }
@@ -132,7 +132,7 @@ export default function ShiftScheduleManagement() {
     try {
       setIsLoading(true);
       const data = await apiService.getShifts();
-      setShifts(data.filter((s: Shift) => s.is_active));
+      setShifts((data || []).filter((s: Shift) => s.is_active));
     } catch (error: any) {
       // Only show toast for non-network errors
       if (error.message && !error.message.includes('Cannot connect to backend')) {

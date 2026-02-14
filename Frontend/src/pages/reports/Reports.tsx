@@ -64,6 +64,23 @@ interface DepartmentMetrics {
   performanceScore: number;
 }
 
+const CORE_DEPARTMENTS = [
+  'Engineering',
+  'Product',
+  'Design',
+  'Marketing',
+  'Sales',
+  'HR',
+  'Human Resources',
+  'Finance',
+  'Operations',
+  'Legal',
+  'Customer Support',
+  'IT',
+  'Administration',
+  'Management'
+];
+
 export default function Reports() {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -150,18 +167,51 @@ export default function Reports() {
       // Handle employee performance response
       if (empResponse.ok) {
         const empData = await empResponse.json();
-        const employees = empData.employees || [];
+        const rawEmployees = empData.employees || [];
+
+        // Map raw API data to EmployeePerformance interface with robust fallbacks
+        const employees = rawEmployees.map((emp: any): EmployeePerformance => ({
+          id: emp.id || emp.user_id || emp.employeeId || '',
+          employeeId: emp.employeeId || emp.employee_id || emp.id || '',
+          name: emp.name || 'Unknown',
+          department: emp.department || emp.department_name || 'No Department',
+          role: emp.role || 'Staff',
+          attendanceScore: Math.round(emp.attendanceScore || emp.attendance_score || 0),
+          taskCompletionRate: Math.round(emp.taskCompletionRate || emp.task_completion_rate || emp.taskCompletionScore || emp.task_completion_score || 0),
+          productivity: emp.productivity || emp.productivity_score || 0,
+          qualityScore: emp.qualityScore || emp.quality_score || 0,
+          overallRating: emp.overallRating || emp.overall_rating || 0,
+          month: emp.month || selectedMonth,
+          completedTasks: emp.completedTasks || emp.completed_tasks || 0,
+          taskEfficiency: emp.taskEfficiency || emp.task_efficiency || 0
+        }));
+
         setEmployeePerformance(employees);
 
-        // Update departments list to only include those with employees
+        // Update departments list to only include those with employees AND are considered Core Departments
         const employeeDepts = Array.from(
+          new Set(
+            employees
+              .map((emp: EmployeePerformance) => emp.department)
+              .filter((dept: string) => {
+                if (!dept || dept.includes(',')) return false;
+                // Filter for Core Departments (case-insensitive)
+                return CORE_DEPARTMENTS.some(core => core.toLowerCase() === dept.toLowerCase());
+              })
+          )
+        ).sort() as string[];
+
+        // If filtering leaves nothing but we have employees, fallback to showing all non-empty departments
+        // This prevents showing an empty list if department naming conventions don't match standard Core names
+        const finalDepts = employeeDepts.length > 0 ? employeeDepts : Array.from(
           new Set(
             employees
               .map((emp: EmployeePerformance) => emp.department)
               .filter((dept: string) => dept && !dept.includes(','))
           )
         ).sort() as string[];
-        setDepartments(employeeDepts);
+
+        setDepartments(finalDepts);
 
         // Reset department filter if selected department has no employees
         if (selectedDepartment !== 'all' && !employeeDepts.includes(selectedDepartment)) {
@@ -333,18 +383,44 @@ export default function Reports() {
 
   const filteredPerformance = employeePerformance;
 
-  // Group employees by department
+  // Group employees by department - Filtering for Core Departments if applicable
   const employeesByDepartment = React.useMemo(() => {
     const grouped: Record<string, EmployeePerformance[]> = {};
+
+    // Check if we have any active Core Departments detected
+    const hasCoreDepts = departments.length > 0 && departments.every(d =>
+      CORE_DEPARTMENTS.some(core => core.toLowerCase() === d.toLowerCase())
+    );
+
     filteredPerformance.forEach(emp => {
       const dept = emp.department || 'No Department';
+
+      // If we are enforcing Core Departments, skip employees not in those departments
+      if (hasCoreDepts) {
+        const isCore = CORE_DEPARTMENTS.some(core => core.toLowerCase() === dept.toLowerCase());
+        if (!isCore) return;
+      }
+
       if (!grouped[dept]) {
         grouped[dept] = [];
       }
-      grouped[dept].push(emp);
+
+      // Merge with executive summary data to ensure we have the latest task metrics
+      // This matches the logic used in topPerformers to get accurate task counts
+      const summaryData = executiveSummary?.topPerformers?.find(
+        (p: any) => (p.employeeId || p.id) === emp.employeeId
+      );
+
+      const enrichedEmp = {
+        ...emp,
+        completedTasks: summaryData?.completedTasks || emp.completedTasks || 0,
+        taskEfficiency: summaryData?.taskEfficiency || emp.taskEfficiency || Math.round(emp.taskCompletionRate || 0)
+      };
+
+      grouped[dept].push(enrichedEmp);
     });
     return grouped;
-  }, [filteredPerformance]);
+  }, [filteredPerformance, departments]);
 
   const toggleDepartment = (department: string) => {
     setExpandedDepartments(prev => {
@@ -471,7 +547,7 @@ export default function Reports() {
 
           <div className="relative flex flex-wrap items-center gap-2 sm:gap-3">
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-[120px] h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+              <SelectTrigger className="w-[140px] h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
                 <Calendar className="h-4 w-4 mr-1.5 text-slate-400" />
                 <SelectValue placeholder="Month" />
               </SelectTrigger>
@@ -716,7 +792,7 @@ export default function Reports() {
                                           </Button>
                                         </div>
                                       </div>
-                                      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
                                           <div className="flex items-center gap-1.5 mb-1.5">
                                             <Clock className="h-4 w-4 text-blue-500" />
@@ -734,7 +810,7 @@ export default function Reports() {
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
                                           <div className="flex items-center gap-1.5 mb-1.5">
                                             <Target className="h-4 w-4 text-emerald-500" />
-                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Tasks</p>
+                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Tasks %</p>
                                           </div>
                                           <div className="flex items-baseline gap-1">
                                             <span className={`text-2xl font-black ${getPerformanceColor(employee.taskCompletionRate)}`}>
@@ -743,6 +819,30 @@ export default function Reports() {
                                             <span className="text-xs text-slate-400 font-medium">%</span>
                                           </div>
                                           <Progress value={employee.taskCompletionRate} className="h-1 mt-1.5 bg-slate-200 dark:bg-slate-700" />
+                                        </div>
+
+                                        <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
+                                          <div className="flex items-center gap-1.5 mb-1.5">
+                                            <Check className="h-4 w-4 text-orange-500" />
+                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Completed</p>
+                                          </div>
+                                          <div className="flex items-baseline gap-1">
+                                            <span className="text-2xl font-black text-slate-700 dark:text-slate-300">
+                                              {employee.completedTasks || 0}
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
+                                          <div className="flex items-center gap-1.5 mb-1.5">
+                                            <TrendingUp className="h-4 w-4 text-blue-500" />
+                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Efficiency</p>
+                                          </div>
+                                          <div className="flex items-baseline gap-1">
+                                            <span className="text-2xl font-black text-slate-700 dark:text-slate-300">
+                                              {employee.taskEfficiency || 0}
+                                            </span>
+                                          </div>
                                         </div>
 
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
@@ -805,7 +905,7 @@ export default function Reports() {
                                           )}
                                         </div>
 
-                                        <div className="bg-blue-600 rounded-lg p-2.5 shadow-sm col-span-2 md:col-span-1">
+                                        <div className="bg-blue-600 rounded-lg p-2.5 shadow-sm col-span-2 md:col-span-4 lg:col-span-1">
                                           <div className="flex items-center gap-1.5 mb-1.5">
                                             <BarChart3 className="h-4 w-4 text-white/80" />
                                             <p className="text-sm font-bold text-white/80 uppercase tracking-widest">Score</p>
@@ -826,14 +926,14 @@ export default function Reports() {
                                               <Activity className="h-3 w-3" />
                                               Productivity Feedback
                                             </p>
-                                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed italic">{rating.productivityDescription}</p>
+                                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed italic whitespace-pre-wrap">{rating.productivityDescription}</p>
                                           </div>
                                           <div className="bg-amber-50/30 dark:bg-amber-900/10 rounded-xl p-3 border border-amber-100/50 dark:border-amber-900/30">
                                             <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
                                               <Award className="h-3 w-3" />
                                               Quality Assessment
                                             </p>
-                                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed italic">{rating.qualityDescription}</p>
+                                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed italic whitespace-pre-wrap">{rating.qualityDescription}</p>
                                           </div>
                                         </div>
                                       )}
@@ -871,73 +971,78 @@ export default function Reports() {
               </div>
               <div className="p-4 pb-10">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {departmentMetrics.map((dept) => {
-                    const badge = getPerformanceBadge(dept.performanceScore);
-                    return (
-                      <div
-                        key={dept.department}
-                        className="bg-slate-50/50 dark:bg-slate-800/30 rounded-lg border border-slate-100 dark:border-slate-800/50 p-4 hover:border-blue-200 dark:hover:border-blue-800 transition-all"
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
-                              <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  {departmentMetrics
+                    .filter((dept) => {
+                      // Filter for Core Departments (case-insensitive)
+                      return CORE_DEPARTMENTS.some(core => core.toLowerCase() === dept.department.toLowerCase());
+                    })
+                    .map((dept) => {
+                      const badge = getPerformanceBadge(dept.performanceScore);
+                      return (
+                        <div
+                          key={dept.department}
+                          className="bg-slate-50/50 dark:bg-slate-800/30 rounded-lg border border-slate-100 dark:border-slate-800/50 p-4 hover:border-blue-200 dark:hover:border-blue-800 transition-all"
+                        >
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
+                                <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                              </div>
+                              <h3 className="text-lg font-black tracking-tight text-slate-800 dark:text-white truncate max-w-[150px]">{dept.department}</h3>
                             </div>
-                            <h3 className="text-lg font-black tracking-tight text-slate-800 dark:text-white truncate max-w-[150px]">{dept.department}</h3>
-                          </div>
-                          <Badge variant={badge.variant} className="h-6 text-xs shadow-none uppercase font-bold tracking-tighter">
-                            {badge.text}
-                          </Badge>
-                        </div>
-
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center px-3 py-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-100/50 dark:border-slate-800/50 shadow-sm">
-                            <span className="text-sm font-bold text-slate-500 flex items-center gap-2">
-                              <Users className="h-4 w-4" />
-                              Department Members
-                            </span>
-                            <span className="text-lg font-black text-slate-900 dark:text-white">{dept.totalEmployees}</span>
+                            <Badge variant={badge.variant} className="h-6 text-xs shadow-none uppercase font-bold tracking-tighter">
+                              {badge.text}
+                            </Badge>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="p-2.5 bg-purple-50/50 dark:bg-purple-900/10 rounded-md">
-                              <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Productivity</p>
-                              <p className={`text-lg font-black ${getPerformanceColor(dept.avgProductivity)}`}>
-                                {dept.avgProductivity}%
-                              </p>
-                            </div>
-                            <div className="p-2.5 bg-blue-50/50 dark:bg-blue-900/10 rounded-md">
-                              <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Attendance</p>
-                              <p className={`text-lg font-black ${getPerformanceColor(dept.avgAttendance)}`}>
-                                {dept.avgAttendance}%
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="p-2.5 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-md">
-                              <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Completed</p>
-                              <p className="text-lg font-black text-emerald-600">{dept.tasksCompleted}</p>
-                            </div>
-                            <div className="p-2.5 bg-amber-50/50 dark:bg-amber-900/10 rounded-md">
-                              <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Pending</p>
-                              <p className="text-lg font-black text-amber-600">{dept.tasksPending}</p>
-                            </div>
-                          </div>
-
-                          <div className="pt-2">
-                            <div className="flex justify-between items-center mb-1.5">
-                              <span className="text-sm font-black text-slate-500 uppercase tracking-widest">Efficiency Score</span>
-                              <span className={`text-xl font-black ${getPerformanceColor(dept.performanceScore)}`}>
-                                {dept.performanceScore}%
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center px-3 py-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-100/50 dark:border-slate-800/50 shadow-sm">
+                              <span className="text-sm font-bold text-slate-500 flex items-center gap-2">
+                                <Users className="h-4 w-4" />
+                                Department Members
                               </span>
+                              <span className="text-lg font-black text-slate-900 dark:text-white">{dept.totalEmployees}</span>
                             </div>
-                            <Progress value={dept.performanceScore} className="h-1 bg-slate-100 dark:bg-slate-800" />
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="p-2.5 bg-purple-50/50 dark:bg-purple-900/10 rounded-md">
+                                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Productivity</p>
+                                <p className={`text-lg font-black ${getPerformanceColor(dept.avgProductivity)}`}>
+                                  {dept.avgProductivity}%
+                                </p>
+                              </div>
+                              <div className="p-2.5 bg-blue-50/50 dark:bg-blue-900/10 rounded-md">
+                                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Attendance</p>
+                                <p className={`text-lg font-black ${getPerformanceColor(dept.avgAttendance)}`}>
+                                  {dept.avgAttendance}%
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="p-2.5 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-md">
+                                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Completed</p>
+                                <p className="text-lg font-black text-emerald-600">{dept.tasksCompleted}</p>
+                              </div>
+                              <div className="p-2.5 bg-amber-50/50 dark:bg-amber-900/10 rounded-md">
+                                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Pending</p>
+                                <p className="text-lg font-black text-amber-600">{dept.tasksPending}</p>
+                              </div>
+                            </div>
+
+                            <div className="pt-2">
+                              <div className="flex justify-between items-center mb-1.5">
+                                <span className="text-sm font-black text-slate-500 uppercase tracking-widest">Efficiency Score</span>
+                                <span className={`text-xl font-black ${getPerformanceColor(dept.performanceScore)}`}>
+                                  {dept.performanceScore}%
+                                </span>
+                              </div>
+                              <Progress value={dept.performanceScore} className="h-1 bg-slate-100 dark:bg-slate-800" />
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               </div>
             </div>
@@ -1147,6 +1252,7 @@ export default function Reports() {
 
         {selectedEmployee && (
           <RatingDialog
+            key={selectedEmployee.employeeId}
             open={ratingDialogOpen}
             onOpenChange={setRatingDialogOpen}
             employeeId={selectedEmployee.employeeId}

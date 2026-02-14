@@ -531,12 +531,12 @@ const AttendanceManager: React.FC = () => {
         const teamLeadIds = new Set<string>();
         data.forEach((emp: any) => {
           const uId = String(emp.user_id || emp.userId || emp.id);
-          const role = (emp.role || '').toLowerCase();
+          const role = (emp.role || '').replace(/[\s_]+/g, '').toLowerCase();
           const empDept = (emp.department || emp.department_name || '').trim().toLowerCase();
           const managerIdForEmp = emp.manager_id ? String(emp.manager_id) : null;
 
-          // Team Lead reporting to this Manager in same department
-          if (role === 'team_lead' && empDept === normalizedDept && managerIdForEmp === managerId) {
+          // Team Lead in same department (allow all Team Leads in department to be visible to Manager)
+          if (role === 'teamlead' && empDept === normalizedDept) {
             teamLeadIds.add(uId);
           }
         });
@@ -559,7 +559,7 @@ const AttendanceManager: React.FC = () => {
         data = data.filter((emp: any) => {
           const uId = String(emp.user_id || emp.userId || emp.id);
           const empDept = (emp.department || emp.department_name || '').trim().toLowerCase();
-          const role = (emp.role || '').toLowerCase();
+          const role = (emp.role || '').replace(/[\s_]+/g, '').toLowerCase();
 
           // 1. Always allow Self (Manager)
           if (uId === managerId) return true;
@@ -577,7 +577,7 @@ const AttendanceManager: React.FC = () => {
           }
 
           // 5. Exclude Team Leads not reporting to this Manager
-          if (role === 'team_lead' && !teamLeadIds.has(uId)) {
+          if (role === 'teamlead' && !teamLeadIds.has(uId)) {
             return false;
           }
 
@@ -870,7 +870,7 @@ const AttendanceManager: React.FC = () => {
 
         employeesData.forEach((emp: any) => {
           const uId = String(emp.user_id || emp.userId || emp.id);
-          userRoleMap[uId] = (emp.role || '').toLowerCase();
+          userRoleMap[uId] = (emp.role || '').replace(/[\s_]+/g, '').toLowerCase();
           userDepartmentMap[uId] = (emp.department || emp.department_name || '').trim().toLowerCase();
           userManagerMap[uId] = emp.manager_id ? String(emp.manager_id) : null;
           userTeamLeadMap[uId] = emp.team_lead_id || emp.teamLeadId ? String(emp.team_lead_id || emp.teamLeadId) : null;
@@ -890,8 +890,8 @@ const AttendanceManager: React.FC = () => {
             const dept = userDepartmentMap[uId];
             const managerIdForUser = userManagerMap[uId];
 
-            // Team Lead reporting to this Manager in same department
-            if (role === 'team_lead' && dept === normalizedDept && managerIdForUser === managerId) {
+            // Team Lead in same department (allow all Team Leads in department to be visible to Manager)
+            if (role === 'teamlead' && dept === normalizedDept) {
               teamLeadIds.add(uId);
             }
           });
@@ -935,7 +935,7 @@ const AttendanceManager: React.FC = () => {
             }
 
             // 5. If role is team_lead but not in our teamLeadIds set, exclude
-            if (recRole === 'team_lead' && !teamLeadIds.has(recUserId)) {
+            if (recRole === 'teamlead' && !teamLeadIds.has(recUserId)) {
               return false;
             }
 
@@ -1744,7 +1744,7 @@ const AttendanceManager: React.FC = () => {
                 <Input
                   placeholder={t.attendance.searchPlaceholder}
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => setSearchTerm(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                   className="pl-10 h-11 bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -2022,6 +2022,7 @@ const AttendanceManager: React.FC = () => {
                                 <TruncatedText
                                   text={record.taskDeadlineReason}
                                   maxLength={40}
+                                  showToggle={false}
                                 />
                               </div>
                             ) : (
@@ -3457,10 +3458,11 @@ const AttendanceManager: React.FC = () => {
                 <Textarea
                   id="admin-rejection-reason"
                   placeholder="Please provide a clear reason for rejecting this request."
+                  value={selectedWfhRequest?.rejectionReason || ''}
                   rows={3}
                   className="resize-none"
                   onChange={(e) => {
-                    setSelectedWfhRequest(prev => prev ? { ...prev, rejectionReason: e.target.value } : null);
+                    setSelectedWfhRequest(prev => prev ? { ...prev, rejectionReason: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') } : null);
                   }}
                 />
               </div>
