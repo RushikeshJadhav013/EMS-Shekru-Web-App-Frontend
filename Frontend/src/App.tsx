@@ -23,7 +23,7 @@ import AttendancePage from "@/pages/attendance/AttendancePage";
 import AttendanceWithToggle from "@/pages/attendance/AttendanceWithToggle";
 import AttendanceManager from "@/pages/attendance/AttendanceManager";
 import TaskManagement from "@/pages/tasks/TaskManagement";
-import EmployeeManagement from "@/pages/employees/EmployeeManagement";
+import EmployeeManagement from "@/pages/employees/EmployeeManagement/";
 import DepartmentManagement from "@/pages/departments/DepartmentManagement";
 import Reports from "@/pages/reports/Reports";
 import LeaveManagement from "@/pages/leaves/LeaveManagement";
@@ -117,7 +117,7 @@ const App = () => (
                                   <EmployeeManagement />
                                 </ProtectedRoute>
                               } />
-                              <Route path="/admin/employees/new" element={
+                              <Route path="/admin/employees/new/" element={
                                 <ProtectedRoute allowedRoles={['admin']}>
                                   <EmployeeManagement />
                                 </ProtectedRoute>
@@ -205,7 +205,7 @@ const App = () => (
                                   <EmployeeManagement />
                                 </ProtectedRoute>
                               } />
-                              <Route path="/hr/employees/new" element={
+                              <Route path="/hr/employees/new/" element={
                                 <ProtectedRoute allowedRoles={['hr']}>
                                   <EmployeeManagement />
                                 </ProtectedRoute>

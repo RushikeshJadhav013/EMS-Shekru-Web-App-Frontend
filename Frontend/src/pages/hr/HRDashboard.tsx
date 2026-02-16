@@ -434,7 +434,7 @@ const HRDashboard: React.FC = () => {
 
         <div className="relative flex gap-3">
           <Button
-            onClick={() => navigate('/hr/employees/new')}
+            onClick={() => navigate('/hr/employees/new/')}
             size="lg"
             className="rounded-xl px-6 h-12 bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-200 dark:shadow-none transition-all active:scale-95 gap-2"
           >
