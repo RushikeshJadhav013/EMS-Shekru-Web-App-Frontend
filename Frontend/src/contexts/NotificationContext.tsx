@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
 // Polling disabled - only fetch on app init/auth
 const FETCH_INTERVAL_MS = 0; // Disabled
 const POLLING_IDLE_TIMEOUT_MS = 10 * 60_000; // 10 minutes idle timeout

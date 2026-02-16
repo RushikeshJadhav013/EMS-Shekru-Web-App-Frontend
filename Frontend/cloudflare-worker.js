@@ -27,7 +27,7 @@ async function handleRequest(request) {
     const url = new URL(request.url)
 
     // Replace the host with your backend
-    const backendUrl = `staffly.space${url.pathname}${url.search}`
+    const backendUrl = `testing.staffly.space${url.pathname}${url.search}`
 
     // Create new request with same method, headers, and body
     const modifiedRequest = new Request(backendUrl, {

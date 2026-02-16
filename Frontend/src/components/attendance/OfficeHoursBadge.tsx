@@ -31,7 +31,7 @@ const OfficeHoursBadge: React.FC<OfficeHoursBadgeProps> = ({
 
   const fetchGlobalOfficeHours = async () => {
     try {
-      const response = await fetch('https://staffly.space/attendance/office-hours');
+      const response = await fetch('https://testing.staffly.space/attendance/office-hours');
       if (response.ok) {
         const officeTimings: OfficeTiming[] = await response.json();
         // Find global office hours (department is null or empty)

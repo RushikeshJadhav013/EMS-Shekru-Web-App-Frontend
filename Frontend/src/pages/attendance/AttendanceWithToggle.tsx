@@ -374,7 +374,7 @@ const AttendanceWithToggle: React.FC = () => {
       return url;
     }
     const normalized = url.startsWith('/') ? url : `/${url}`;
-    return `https://staffly.space${normalized}`;
+    return `https://testing.staffly.space${normalized}`;
   }, []);
 
   // Determine if user can view employee attendance (management roles including Team Lead)
@@ -791,7 +791,7 @@ const AttendanceWithToggle: React.FC = () => {
     try {
       if (!user?.id) return;
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://staffly.space/attendance/my-attendance/${user.id}`, {
+      const res = await fetch(`https://testing.staffly.space/attendance/my-attendance/${user.id}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -964,7 +964,7 @@ const AttendanceWithToggle: React.FC = () => {
             // Fetch actual work hours from backend
             try {
               const token = localStorage.getItem('token');
-              const workHoursResponse = await fetch(`https://staffly.space/attendance/working-hours/${attendance.id}`, {
+              const workHoursResponse = await fetch(`https://testing.staffly.space/attendance/working-hours/${attendance.id}`, {
                 headers: {
                   'Authorization': token ? `Bearer ${token}` : '',
                 },
@@ -1032,7 +1032,7 @@ const AttendanceWithToggle: React.FC = () => {
       const token = localStorage.getItem('token');
       const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
 
-      let url = 'https://staffly.space/attendance/all';
+      let url = 'https://testing.staffly.space/attendance/all';
       // Attempt backend enforcement by passing department scope
       if (user?.role === 'manager' && user?.department) {
         url += `?department=${encodeURIComponent(user.department)}`;
@@ -1044,7 +1044,7 @@ const AttendanceWithToggle: React.FC = () => {
       // Fetch attendance and employees in parallel to ensure we have role data
       const [attendanceRes, employeesRes] = await Promise.all([
         fetch(url, { headers }),
-        fetch('https://staffly.space/employees/', { headers })
+        fetch('https://testing.staffly.space/employees/', { headers })
       ]);
 
       if (!attendanceRes.ok) {
@@ -1276,7 +1276,7 @@ const AttendanceWithToggle: React.FC = () => {
       const token = localStorage.getItem('token');
       const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
 
-      const res = await fetch('https://staffly.space/employees/', { headers });
+      const res = await fetch('https://testing.staffly.space/employees/', { headers });
       if (!res.ok) {
         const errorText = await res.text().catch(() => '');
         console.error(`Failed to load employees: ${res.status}`, errorText);
@@ -1470,8 +1470,8 @@ const AttendanceWithToggle: React.FC = () => {
         }),
       };
       const endpoint = isCheckingIn
-        ? 'https://staffly.space/attendance/check-in/json'
-        : 'https://staffly.space/attendance/check-out/json';
+        ? 'https://testing.staffly.space/attendance/check-in/json'
+        : 'https://testing.staffly.space/attendance/check-out/json';
 
       // ✅ Get token from localStorage for authentication
       const token = localStorage.getItem('token');
@@ -1892,7 +1892,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     // Call API to update status
     const token = localStorage.getItem('token');
-    const response = await fetch('https://staffly.space/attendance/online-status', {
+    const response = await fetch('https://testing.staffly.space/attendance/online-status', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -2020,7 +2020,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://staffly.space/attendance/user-online-status/${user.id}`, {
+      const response = await fetch(`https://testing.staffly.space/attendance/user-online-status/${user.id}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -2161,7 +2161,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://staffly.space/attendance/current-online-status', {
+      const response = await fetch('https://testing.staffly.space/attendance/current-online-status', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -2196,7 +2196,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://staffly.space/attendance/current-online-status', {
+      const response = await fetch('https://testing.staffly.space/attendance/current-online-status', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -2756,7 +2756,7 @@ const AttendanceWithToggle: React.FC = () => {
                                     >
                                       {record.checkInSelfie ? (
                                         <img
-                                          src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${record.checkInSelfie}`}
+                                          src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}${record.checkInSelfie}`}
                                           alt={`${user?.name || 'Employee'}'s selfie`}
                                           className="w-full h-full object-cover"
                                           onError={(e) => {
@@ -3112,7 +3112,7 @@ const AttendanceWithToggle: React.FC = () => {
                                 >
                                   {record.checkInSelfie ? (
                                     <img
-                                      src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${record.checkInSelfie}`}
+                                      src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}${record.checkInSelfie}`}
                                       alt={`${record.name || 'Employee'}'s selfie`}
                                       className="w-full h-full object-cover"
                                       onError={(e) => {
@@ -4195,7 +4195,7 @@ const AttendanceWithToggle: React.FC = () => {
               <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                 {selectedRecord?.checkInSelfie ? (
                   <img
-                    src={selectedRecord.checkInSelfie.startsWith('http') ? selectedRecord.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${selectedRecord.checkInSelfie}`}
+                    src={selectedRecord.checkInSelfie.startsWith('http') ? selectedRecord.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}${selectedRecord.checkInSelfie}`}
                     alt="Check-in selfie"
                     className="w-full h-full object-cover"
                   />
@@ -4221,7 +4221,7 @@ const AttendanceWithToggle: React.FC = () => {
               <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                 {selectedRecord?.checkOutSelfie ? (
                   <img
-                    src={selectedRecord.checkOutSelfie.startsWith('http') ? selectedRecord.checkOutSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}${selectedRecord.checkOutSelfie}`}
+                    src={selectedRecord.checkOutSelfie.startsWith('http') ? selectedRecord.checkOutSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}${selectedRecord.checkOutSelfie}`}
                     alt="Check-out selfie"
                     className="w-full h-full object-cover"
                   />
