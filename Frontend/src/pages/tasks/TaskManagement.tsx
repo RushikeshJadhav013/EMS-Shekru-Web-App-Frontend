@@ -2558,28 +2558,50 @@ const TaskManagement: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="assignRoleFilter" className="text-sm font-semibold flex items-center gap-2">
-                        <Filter className="h-4 w-4 text-violet-600" />
-                        Filter Role
-                      </Label>
-                      <Select
-                        value={assignRoleFilter}
-                        onValueChange={(value: 'all' | UserRole) => setAssignRoleFilter(value)}
-                      >
-                        <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                          <SelectValue placeholder="All Roles" />
-                        </SelectTrigger>
-                        <SelectContent className="border-2 shadow-xl">
-                          <SelectItem value="all">All Roles</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="hr">HR</SelectItem>
-                          <SelectItem value="manager">Manager</SelectItem>
-                          <SelectItem value="team_lead">Team Lead</SelectItem>
-                          <SelectItem value="employee">Employee</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {/* Role Filter - Only for Admin, HR, Manager */}
+                    {['admin', 'hr', 'manager'].includes(user?.role || '') && (
+                      <div className="space-y-2">
+                        <Label htmlFor="assignRoleFilter" className="text-sm font-semibold flex items-center gap-2">
+                          <Filter className="h-4 w-4 text-violet-600" />
+                          Filter Role
+                        </Label>
+                        <Select
+                          value={assignRoleFilter}
+                          onValueChange={(value: 'all' | UserRole) => setAssignRoleFilter(value)}
+                        >
+                          <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                            <SelectValue placeholder="All Roles" />
+                          </SelectTrigger>
+                          <SelectContent className="border-2 shadow-xl">
+                            <SelectItem value="all">All Roles</SelectItem>
+                            {/* Admin sees all except Admin */}
+                            {user?.role === 'admin' && (
+                              <>
+                                <SelectItem value="hr">HR</SelectItem>
+                                <SelectItem value="manager">Manager</SelectItem>
+                                <SelectItem value="team_lead">Team Lead</SelectItem>
+                                <SelectItem value="employee">Employee</SelectItem>
+                              </>
+                            )}
+                            {/* HR sees Manager, Team Lead, Employee */}
+                            {user?.role === 'hr' && (
+                              <>
+                                <SelectItem value="manager">Manager</SelectItem>
+                                <SelectItem value="team_lead">Team Lead</SelectItem>
+                                <SelectItem value="employee">Employee</SelectItem>
+                              </>
+                            )}
+                            {/* Manager sees Team Lead, Employee */}
+                            {user?.role === 'manager' && (
+                              <>
+                                <SelectItem value="team_lead">Team Lead</SelectItem>
+                                <SelectItem value="employee">Employee</SelectItem>
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
 
                     {(user?.role === 'admin' || user?.role === 'hr') && (
                       <div className="space-y-2">
@@ -2644,44 +2666,7 @@ const TaskManagement: React.FC = () => {
                     </Select>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="department" className="text-sm font-semibold flex items-center gap-2">
-                        <Filter className="h-4 w-4 text-violet-600" />
-                        Department
-                      </Label>
-                      <Select
-                        value={newTask.department}
-                        onValueChange={(value) => setNewTask({ ...newTask, department: value })}
-                        disabled={!departmentOptions.length}
-                      >
-                        <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                          <SelectValue placeholder={departmentOptions.length ? 'Select department' : 'No department available'} />
-                        </SelectTrigger>
-                        <SelectContent className="border-2 shadow-xl">
-                          {departmentOptions.map((dept) => (
-                            <SelectItem key={dept} value={dept} className="cursor-pointer">
-                              {dept}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="employeeId" className="text-sm font-semibold flex items-center gap-2">
-                        <User className="h-4 w-4 text-violet-600" />
-                        Employee ID
-                      </Label>
-                      <Input
-                        id="employeeId"
-                        value={newTask.employeeId}
-                        readOnly
-                        placeholder="Auto populated"
-                        className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all bg-muted"
-                      />
-                    </div>
-                  </div>
 
                   <div className="flex justify-end gap-3 pt-6 border-t mt-6">
                     <Button

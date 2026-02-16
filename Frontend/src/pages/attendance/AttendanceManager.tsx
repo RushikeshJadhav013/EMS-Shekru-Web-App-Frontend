@@ -1763,12 +1763,12 @@ const AttendanceManager: React.FC = () => {
               </SelectContent>
             </Select>
             <Select value={timePeriodFilter} onValueChange={(value: any) => setTimePeriodFilter(value)}>
-              <SelectTrigger className={`${timePeriodFilter === 'custom' ? 'md:w-[320px]' : 'md:w-[180px]'} w-full h-11 bg-white dark:bg-gray-950 border-2 text-slate-700 dark:text-slate-200 transition-all duration-300`}>
-                <Calendar className="h-4 w-4 mr-2 text-blue-500" />
-                <SelectValue>
+              <SelectTrigger className={`${timePeriodFilter === 'custom' ? 'md:min-w-[320px]' : 'w-full md:w-[180px]'} h-11 bg-white dark:bg-gray-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl hover:border-blue-400 focus:ring-blue-500/20 transition-all duration-300`}>
+                <Calendar className={`h-4 w-4 mr-2 ${timePeriodFilter === 'custom' ? 'text-blue-500' : 'text-slate-400'}`} />
+                <SelectValue placeholder="Time Period">
                   {timePeriodFilter === 'custom'
                     ? (customStartDate && customEndDate
-                      ? `Custom: ${formatDateIST(customStartDate)} - ${formatDateIST(customEndDate)}`
+                      ? `${formatDateIST(customStartDate)} - ${formatDateIST(customEndDate)}`
                       : 'Custom Range')
                     : undefined}
                 </SelectValue>
@@ -1797,7 +1797,7 @@ const AttendanceManager: React.FC = () => {
                       onDateChange={setCustomStartDate}
                       toDate={new Date()}
                       placeholder="Start Date"
-                      className="w-full bg-white dark:bg-gray-950 border-blue-200"
+                      className="w-full bg-white dark:bg-gray-950 border-blue-200 h-11"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -1808,9 +1808,10 @@ const AttendanceManager: React.FC = () => {
                     <DatePicker
                       date={customEndDate}
                       onDateChange={setCustomEndDate}
+                      fromDate={customStartDate}
                       toDate={new Date()}
                       placeholder="End Date"
-                      className="w-full bg-white dark:bg-gray-950 border-indigo-200"
+                      className="w-full bg-white dark:bg-gray-950 border-indigo-200 h-11"
                     />
                   </div>
                 </div>
@@ -2353,9 +2354,16 @@ const AttendanceManager: React.FC = () => {
               <Select value={quickFilter} onValueChange={handleQuickFilter}>
                 <SelectTrigger
                   id="quick-filter"
-                  className="w-full h-10 border-2 border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                  className={`w-full h-11 bg-white dark:bg-gray-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl hover:border-blue-400 focus:ring-blue-500/20 transition-all duration-300 ${quickFilter === 'custom' ? 'md:min-w-[280px]' : ''}`}
                 >
-                  <SelectValue placeholder="Select time period" />
+                  <Calendar className={`h-4 w-4 mr-2 ${quickFilter === 'custom' ? 'text-blue-500' : 'text-slate-400'}`} />
+                  <SelectValue placeholder="Select time period">
+                    {quickFilter === 'custom'
+                      ? (startDate && endDate
+                        ? `${formatDateIST(startDate)} - ${formatDateIST(endDate)}`
+                        : 'Custom Range')
+                      : undefined}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent
                   position="popper"
@@ -2386,24 +2394,39 @@ const AttendanceManager: React.FC = () => {
             </div>
 
             {/* Date Range Selection */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="start-date">Start Date</Label>
-                <DatePicker
-                  date={startDate}
-                  onDateChange={setStartDate}
-                  placeholder="Select start date"
-                />
+            {quickFilter === 'custom' && (
+              <div className="p-4 border rounded-2xl bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-100 dark:border-blue-800 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
+                      <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                      From Date
+                    </Label>
+                    <DatePicker
+                      date={startDate}
+                      onDateChange={setStartDate}
+                      toDate={new Date()}
+                      placeholder="Start Date"
+                      className="w-full bg-white dark:bg-gray-950 border-blue-200 h-11"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
+                      <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                      To Date
+                    </Label>
+                    <DatePicker
+                      date={endDate}
+                      onDateChange={setEndDate}
+                      fromDate={startDate}
+                      toDate={new Date()}
+                      placeholder="End Date"
+                      className="w-full bg-white dark:bg-gray-950 border-indigo-200 h-11"
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="end-date">End Date</Label>
-                <DatePicker
-                  date={endDate}
-                  onDateChange={setEndDate}
-                  placeholder="Select end date"
-                />
-              </div>
-            </div>
+            )}
 
             {/* Employee Filter */}
             <div className="space-y-2">
@@ -3245,8 +3268,17 @@ const AttendanceManager: React.FC = () => {
                       <div className="flex-1 max-w-xs">
                         <Label htmlFor="decision-duration-filter">Duration</Label>
                         <Select value={wfhDecisionsDurationFilter} onValueChange={handleWfhDecisionsDurationFilter}>
-                          <SelectTrigger id="decision-duration-filter" className="mt-1">
-                            <SelectValue />
+                          <SelectTrigger id="decision-duration-filter" className={`${wfhDecisionsDurationFilter === 'custom' ? 'md:min-w-[280px]' : 'w-full'} mt-1 h-11 bg-white dark:bg-gray-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl hover:border-blue-400 focus:ring-blue-500/20 transition-all duration-300`}>
+                            <div className="flex items-center gap-2">
+                              <Calendar className={`h-4 w-4 ${wfhDecisionsDurationFilter === 'custom' ? 'text-blue-500' : 'text-slate-400'}`} />
+                              <SelectValue placeholder="Duration">
+                                {wfhDecisionsDurationFilter === 'custom'
+                                  ? (wfhDecisionsStartDate && wfhDecisionsEndDate
+                                    ? `${formatDateIST(wfhDecisionsStartDate)} - ${formatDateIST(wfhDecisionsEndDate)}`
+                                    : 'Custom Range')
+                                  : undefined}
+                              </SelectValue>
+                            </div>
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Time</SelectItem>
@@ -3282,7 +3314,7 @@ const AttendanceManager: React.FC = () => {
                       </div>
                     </div>
                     {wfhDecisionsDurationFilter === 'custom' && (
-                      <div className="p-4 border rounded-2xl bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-100 dark:border-blue-800 shadow-sm">
+                      <div className="w-full mt-2 p-4 border rounded-2xl bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-100 dark:border-blue-800 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-1.5">
                             <Label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
@@ -3293,8 +3325,8 @@ const AttendanceManager: React.FC = () => {
                               date={wfhDecisionsStartDate}
                               onDateChange={setWfhDecisionsStartDate}
                               toDate={new Date()}
-                              placeholder="Start Date"
-                              className="w-full bg-white dark:bg-gray-950 border-blue-200"
+                              placeholder="From Date"
+                              className="w-full bg-white dark:bg-gray-950 border-blue-200 h-11 shadow-sm"
                             />
                           </div>
                           <div className="space-y-1.5">
@@ -3307,8 +3339,8 @@ const AttendanceManager: React.FC = () => {
                               onDateChange={setWfhDecisionsEndDate}
                               fromDate={wfhDecisionsStartDate}
                               toDate={new Date()}
-                              placeholder="End Date"
-                              className="w-full bg-white dark:bg-gray-950 border-indigo-200"
+                              placeholder="To Date"
+                              className="w-full bg-white dark:bg-gray-950 border-indigo-200 h-11 shadow-sm"
                             />
                           </div>
                         </div>

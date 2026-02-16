@@ -38,10 +38,12 @@ import {
   User as UserIcon,
   FileText,
   Check,
-  ChevronsUpDown
+  ChevronsUpDown,
+  Activity
 } from 'lucide-react';
 import { User, type UserRole } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { formatDateIST } from '@/utils/timezone';
 import { apiService, type EmployeeData } from '@/lib/api';
 import { useFieldValidation } from '@/hooks/useFieldValidation';
@@ -336,6 +338,8 @@ export default function EmployeeManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [selectedRole, setSelectedRole] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const { user } = useAuth();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
@@ -397,7 +401,8 @@ export default function EmployeeManagement() {
   // Export filters
   const [exportFilters, setExportFilters] = useState({
     department: 'all',
-    role: 'all'
+    role: 'all',
+    status: 'all'
   });
 
   // API states
@@ -539,10 +544,13 @@ export default function EmployeeManagement() {
         emp.employeeId.toLowerCase().includes(query) ||
         emp.email.toLowerCase().includes(query);
       const matchesDepartment = selectedDepartment === 'all' || emp.department === selectedDepartment;
-      const matchesRole = selectedRole === 'all' || emp.role === selectedRole;
-      return matchesSearch && matchesDepartment && matchesRole;
+      const matchesRole = selectedRole === 'all' ||
+        (emp.role && emp.role.toLowerCase().replace(/[\s_]+/g, '') === selectedRole.toLowerCase().replace(/[\s_]+/g, ''));
+      const matchesStatus = selectedStatus === 'all' ||
+        (emp.status && emp.status.toLowerCase() === selectedStatus.toLowerCase());
+      return matchesSearch && matchesDepartment && matchesRole && matchesStatus;
     });
-  }, [employees, searchQuery, selectedDepartment, selectedRole]);
+  }, [employees, searchQuery, selectedDepartment, selectedRole, selectedStatus]);
 
   // Paginated employees
   const paginatedEmployees = useMemo(() => {
@@ -556,7 +564,7 @@ export default function EmployeeManagement() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedDepartment, selectedRole]);
+  }, [searchQuery, selectedDepartment, selectedRole, selectedStatus]);
 
   // Reset to first page when items per page changes
   useEffect(() => {
@@ -1690,7 +1698,8 @@ export default function EmployeeManagement() {
                 setExportFilters(prev => ({
                   ...prev,
                   department: selectedDepartment,
-                  role: selectedRole
+                  role: selectedRole,
+                  status: selectedStatus
                 }));
                 setIsExportDialogOpen(true);
               }}
@@ -2073,7 +2082,9 @@ export default function EmployeeManagement() {
                         )}
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
+                        {user?.role !== 'admin' && user?.role !== 'hr' && (
+                          <SelectItem value="admin">Admin</SelectItem>
+                        )}
                         <SelectItem value="hr">HR</SelectItem>
                         <SelectItem value="manager">Manager</SelectItem>
                         <SelectItem value="team_lead">TeamLead</SelectItem>
@@ -2536,12 +2547,20 @@ export default function EmployeeManagement() {
                       All Roles
                     </div>
                   </SelectItem>
-
-                  <SelectItem value="HR" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors">
-                    <div className="flex items-center gap-2">
-                      HR
-                    </div>
-                  </SelectItem>
+                  {user?.role === 'admin' || user?.role === 'hr' ? null : (
+                    <SelectItem value="Admin" className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950 transition-colors">
+                      <div className="flex items-center gap-2">
+                        Admin
+                      </div>
+                    </SelectItem>
+                  )}
+                  {user?.role === 'hr' ? null : (
+                    <SelectItem value="HR" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors">
+                      <div className="flex items-center gap-2">
+                        HR
+                      </div>
+                    </SelectItem>
+                  )}
                   <SelectItem value="Manager" className="cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors">
                     <div className="flex items-center gap-2">
                       Manager
@@ -2556,6 +2575,26 @@ export default function EmployeeManagement() {
                     <div className="flex items-center gap-2">
                       Employee
                     </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2 w-full sm:w-44">
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Status</Label>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-950 border-2 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
+                  <Activity className="h-4 w-4 mr-2 text-emerald-600" />
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent className="border-2 shadow-2xl">
+                  <SelectItem value="all" className="cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-950 transition-colors font-medium">
+                    All Status
+                  </SelectItem>
+                  <SelectItem value="active" className="cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-950 transition-colors">
+                    Active
+                  </SelectItem>
+                  <SelectItem value="inactive" className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950 transition-colors">
+                    Inactive
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -2836,7 +2875,9 @@ export default function EmployeeManagement() {
                   )}
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  {user?.role !== 'admin' && user?.role !== 'hr' && (
+                    <SelectItem value="admin">Admin</SelectItem>
+                  )}
                   <SelectItem value="hr">HR</SelectItem>
                   <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="team_lead">TeamLead</SelectItem>
@@ -3381,6 +3422,23 @@ export default function EmployeeManagement() {
             {/* Export Filters */}
             <div className="grid grid-cols-1 gap-4 mb-4">
               <div>
+                <Label htmlFor="export-status">Status</Label>
+                <Select
+                  value={exportFilters.status}
+                  onValueChange={(value) => setExportFilters(prev => ({ ...prev, status: value }))}
+                >
+                  <SelectTrigger id="export-status" className="mt-1">
+                    <SelectValue placeholder="Select Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
                 <Label htmlFor="export-department">Department</Label>
                 <Select
                   value={exportFilters.department}
@@ -3411,8 +3469,12 @@ export default function EmployeeManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Roles</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="hr">HR</SelectItem>
+                    {user?.role !== 'admin' && user?.role !== 'hr' && (
+                      <SelectItem value="admin">Admin</SelectItem>
+                    )}
+                    {user?.role !== 'hr' && (
+                      <SelectItem value="hr">HR</SelectItem>
+                    )}
                     <SelectItem value="manager">Manager</SelectItem>
                     <SelectItem value="team_lead">Team Lead</SelectItem>
                     <SelectItem value="employee">Employee</SelectItem>

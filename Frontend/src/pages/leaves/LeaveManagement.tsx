@@ -1646,39 +1646,57 @@ export default function LeaveManagement() {
                     value={leaveHistoryPeriod}
                     onValueChange={(value) => setLeaveHistoryPeriod(value)}
                   >
-                    <SelectTrigger className="w-[220px] bg-white dark:bg-slate-800 border-2 shadow-md hover:shadow-lg transition-all">
-                      <SelectValue placeholder="Select period" />
+                    <SelectTrigger className={`${leaveHistoryPeriod === 'custom' ? 'md:min-w-[320px]' : 'w-[220px]'} h-11 bg-white dark:bg-slate-800 border-2 shadow-md hover:shadow-lg transition-all rounded-xl`}>
+                      <div className="flex items-center gap-2">
+                        <CalendarIcon className={`h-4 w-4 ${leaveHistoryPeriod === 'custom' ? 'text-indigo-500' : 'text-slate-400'}`} />
+                        <SelectValue placeholder="Select period">
+                          {leaveHistoryPeriod === 'custom'
+                            ? (leaveHistoryCustomStartDate && leaveHistoryCustomEndDate
+                              ? `${format(leaveHistoryCustomStartDate, 'dd MMM yyyy')} - ${format(leaveHistoryCustomEndDate, 'dd MMM yyyy')}`
+                              : 'Custom Range')
+                            : undefined}
+                        </SelectValue>
+                      </div>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="border-2 shadow-xl rounded-xl">
+                      <SelectItem value="all">All History</SelectItem>
                       <SelectItem value="current_month">Current Month</SelectItem>
                       <SelectItem value="last_3_months">Last 3 Months</SelectItem>
                       <SelectItem value="last_6_months">Last 6 Months</SelectItem>
                       <SelectItem value="last_1_year">Last 1 Year</SelectItem>
-                      <SelectItem value="all">All History</SelectItem>
                       <SelectItem value="custom">Custom Range</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </CardHeader>
               {leaveHistoryPeriod === 'custom' && (
-                <div className="border-b bg-slate-50 dark:bg-slate-900 p-4">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex-1 min-w-[150px]">
-                      <Label className="text-xs mb-1 block">From Date</Label>
+                <div className="bg-gradient-to-br from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/20 dark:to-purple-950/20 p-6 border-b border-indigo-100 dark:border-indigo-900 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
+                        <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                        From Date
+                      </Label>
                       <DatePicker
                         date={leaveHistoryCustomStartDate}
                         onDateChange={setLeaveHistoryCustomStartDate}
-                        placeholder="Select start date"
-                        className="w-full"
+                        toDate={new Date()}
+                        placeholder="From Date"
+                        className="w-full bg-white dark:bg-slate-900 border-indigo-200 h-11 shadow-sm rounded-xl"
                       />
                     </div>
-                    <div className="flex-1 min-w-[150px]">
-                      <Label className="text-xs mb-1 block">To Date</Label>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
+                        <div className="h-1.5 w-1.5 rounded-full bg-purple-500" />
+                        To Date
+                      </Label>
                       <DatePicker
                         date={leaveHistoryCustomEndDate}
                         onDateChange={setLeaveHistoryCustomEndDate}
-                        placeholder="Select end date"
-                        className="w-full"
+                        fromDate={leaveHistoryCustomStartDate}
+                        toDate={new Date()}
+                        placeholder="To Date"
+                        className="w-full bg-white dark:bg-slate-900 border-purple-200 h-11 shadow-sm rounded-xl"
                       />
                     </div>
                   </div>
@@ -2493,10 +2511,19 @@ export default function LeaveManagement() {
                       <h3 className="font-semibold">Recent Decisions</h3>
                       <div className="flex items-center gap-2">
                         <Select value={historyFilter} onValueChange={setHistoryFilter}>
-                          <SelectTrigger className="w-[180px] h-9 bg-white dark:bg-gray-950">
-                            <SelectValue placeholder="Select period" />
+                          <SelectTrigger className={`${historyFilter === 'custom' ? 'md:min-w-[320px]' : 'w-[180px]'} h-11 bg-white dark:bg-gray-950 border-2 rounded-xl shadow-sm hover:border-blue-400 focus:ring-blue-500/20 transition-all`}>
+                            <div className="flex items-center gap-2">
+                              <CalendarIcon className={`h-4 w-4 ${historyFilter === 'custom' ? 'text-blue-500' : 'text-slate-400'}`} />
+                              <SelectValue placeholder="Select period">
+                                {historyFilter === 'custom'
+                                  ? (customHistoryStartDate && customHistoryEndDate
+                                    ? `${format(customHistoryStartDate, 'dd MMM yyyy')} - ${format(customHistoryEndDate, 'dd MMM yyyy')}`
+                                    : 'Custom Range')
+                                  : undefined}
+                              </SelectValue>
+                            </div>
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="border-2 shadow-xl rounded-xl">
                             <SelectItem value="all">All History</SelectItem>
                             <SelectItem value="current_month">Current Month</SelectItem>
                             <SelectItem value="last_3_months">Last 3 Months</SelectItem>
@@ -2520,8 +2547,8 @@ export default function LeaveManagement() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Roles</SelectItem>
-                            <SelectItem value="hr">HR</SelectItem>
-                            <SelectItem value="manager">Manager</SelectItem>
+                            {user?.role === 'admin' && <SelectItem value="hr">HR</SelectItem>}
+                            {['admin', 'hr'].includes(user?.role || '') && <SelectItem value="manager">Manager</SelectItem>}
                             <SelectItem value="team_lead">Team Lead</SelectItem>
                             <SelectItem value="employee">Employee</SelectItem>
                           </SelectContent>
@@ -2530,24 +2557,33 @@ export default function LeaveManagement() {
                     </div>
 
                     {historyFilter === 'custom' && (
-                      <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <div className="flex-1 min-w-[150px]">
-                            <Label className="text-xs mb-1">Start Date</Label>
+                      <div className="mb-6 p-6 bg-gradient-to-br from-slate-50/50 to-gray-50/50 dark:from-slate-950/20 dark:to-gray-950/20 rounded-2xl border-2 border-slate-100 dark:border-slate-900 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
+                              <div className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+                              Start Date
+                            </Label>
                             <DatePicker
                               date={customHistoryStartDate}
                               onDateChange={setCustomHistoryStartDate}
-                              placeholder="Select start date"
-                              className="w-full"
+                              toDate={new Date()}
+                              placeholder="Start Date"
+                              className="w-full bg-white dark:bg-slate-950 border-slate-200 h-11 shadow-sm rounded-xl hover:border-slate-300 focus:border-slate-400 focus:ring-slate-500/20"
                             />
                           </div>
-                          <div className="flex-1 min-w-[150px]">
-                            <Label className="text-xs mb-1">End Date</Label>
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
+                              <div className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+                              End Date
+                            </Label>
                             <DatePicker
                               date={customHistoryEndDate}
                               onDateChange={setCustomHistoryEndDate}
-                              placeholder="Select end date"
-                              className="w-full"
+                              fromDate={customHistoryStartDate}
+                              toDate={new Date()}
+                              placeholder="End Date"
+                              className="w-full bg-white dark:bg-slate-950 border-slate-200 h-11 shadow-sm rounded-xl hover:border-slate-300 focus:border-slate-400 focus:ring-slate-500/20"
                             />
                           </div>
                         </div>
@@ -2631,19 +2667,40 @@ export default function LeaveManagement() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Start Date</Label>
+            <div className="p-6 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/20 dark:to-purple-950/20 rounded-2xl border-2 border-indigo-100 dark:border-indigo-900 animate-in fade-in slide-in-from-top-2 duration-300 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
+                  <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                  Start Date
+                </Label>
                 <DatePicker
                   date={editFormData.startDate}
-                  onDateChange={(date) => date && setEditFormData(prev => ({ ...prev, startDate: date }))}
+                  onDateChange={(date) => {
+                    if (date) {
+                      setEditFormData(prev => {
+                        const newData = { ...prev, startDate: date };
+                        if (prev.endDate && date > prev.endDate) {
+                          newData.endDate = date;
+                        }
+                        return newData;
+                      });
+                    }
+                  }}
+                  placeholder="Select start date"
+                  className="w-full bg-white dark:bg-slate-950 border-indigo-200 h-11 shadow-sm rounded-xl hover:border-indigo-300 focus:border-indigo-400 focus:ring-indigo-500/20"
                 />
               </div>
-              <div>
-                <Label>End Date</Label>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
+                  <div className="h-1.5 w-1.5 rounded-full bg-purple-500" />
+                  End Date
+                </Label>
                 <DatePicker
                   date={editFormData.endDate}
                   onDateChange={(date) => date && setEditFormData(prev => ({ ...prev, endDate: date }))}
+                  fromDate={editFormData.startDate}
+                  placeholder="Select end date"
+                  className="w-full bg-white dark:bg-slate-950 border-purple-200 h-11 shadow-sm rounded-xl hover:border-purple-300 focus:border-purple-400 focus:ring-purple-500/20"
                 />
               </div>
             </div>
