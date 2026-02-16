@@ -2,7 +2,7 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { isTokenValid } from '@/utils/jwt';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
 
 const axiosInstance: AxiosInstance = axios.create({
     baseURL: API_BASE_URL,
@@ -15,7 +15,7 @@ const axiosInstance: AxiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
         const token = localStorage.getItem('token');
-        
+
         // Validate token before adding to request
         if (token) {
             if (!isTokenValid(token)) {
@@ -24,16 +24,16 @@ axiosInstance.interceptors.request.use(
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
                 localStorage.removeItem('userId');
-                
+
                 // Redirect to login if not already there
                 if (window.location.pathname !== '/login') {
                     window.location.href = '/login';
                 }
-                
+
                 // Reject the request
                 return Promise.reject(new Error('Token is invalid or expired'));
             }
-            
+
             // Token is valid, add to request
             if (config.headers) {
                 config.headers.Authorization = `Bearer ${token}`;
@@ -59,7 +59,7 @@ axiosInstance.interceptors.response.use(
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
                 localStorage.removeItem('userId');
-                
+
                 // Redirect to login if not already there
                 if (window.location.pathname !== '/login') {
                     window.location.href = '/login';

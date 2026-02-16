@@ -3,7 +3,7 @@
  * Handles authentication-related API calls including token verification
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
 
 export interface TokenVerificationResponse {
   valid: boolean;

@@ -159,9 +159,9 @@ export default function Reports() {
 
       // Fetch all data in parallel
       const [empResponse, deptResponse, summaryResponse] = await Promise.all([
-        fetch(`https://staffly.space/reports/employee-performance?${empParams}`, { headers }),
-        fetch(`https://staffly.space/reports/department-metrics?${deptParams}`, { headers }),
-        fetch(`https://staffly.space/reports/executive-summary?${summaryParams}`, { headers }),
+        fetch(`testing.staffly.space/reports/employee-performance?${empParams}`, { headers }),
+        fetch(`testing.staffly.space/reports/department-metrics?${deptParams}`, { headers }),
+        fetch(`testing.staffly.space/reports/executive-summary?${summaryParams}`, { headers }),
       ]);
 
       // Handle employee performance response
@@ -480,7 +480,7 @@ export default function Reports() {
       }
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://staffly.space/reports/export?${params}`, {
+      const response = await fetch(`testing.staffly.space/reports/export?${params}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
