@@ -72,7 +72,7 @@ import { format } from 'date-fns';
 import { formatIST, formatDateTimeIST, formatDateIST, todayIST, parseToIST, nowIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'testing.staffly.space';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
 
 const ROLE_ORDER: UserRole[] = ['admin', 'hr', 'manager', 'team_lead', 'employee'];
 
@@ -2642,45 +2642,6 @@ const TaskManagement: React.FC = () => {
                           ))}
                       </SelectContent>
                     </Select>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="department" className="text-sm font-semibold flex items-center gap-2">
-                        <Filter className="h-4 w-4 text-violet-600" />
-                        Department
-                      </Label>
-                      <Select
-                        value={newTask.department}
-                        onValueChange={(value) => setNewTask({ ...newTask, department: value })}
-                        disabled={!departmentOptions.length}
-                      >
-                        <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                          <SelectValue placeholder={departmentOptions.length ? 'Select department' : 'No department available'} />
-                        </SelectTrigger>
-                        <SelectContent className="border-2 shadow-xl">
-                          {departmentOptions.map((dept) => (
-                            <SelectItem key={dept} value={dept} className="cursor-pointer">
-                              {dept}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="employeeId" className="text-sm font-semibold flex items-center gap-2">
-                        <User className="h-4 w-4 text-violet-600" />
-                        Employee ID
-                      </Label>
-                      <Input
-                        id="employeeId"
-                        value={newTask.employeeId}
-                        readOnly
-                        placeholder="Auto populated"
-                        className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all bg-muted"
-                      />
-                    </div>
                   </div>
 
                   <div className="flex justify-end gap-3 pt-6 border-t mt-6">

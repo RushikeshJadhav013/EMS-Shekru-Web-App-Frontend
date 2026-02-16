@@ -34,8 +34,8 @@ export const useFieldValidation = (options: UseFieldValidationOptions) => {
       try {
         const encodedValue = encodeURIComponent(value.trim());
         const url = excludeUserId
-          ? `testing.staffly.space/${endpoint}/${encodedValue}?exclude_user_id=${excludeUserId}`
-          : `testing.staffly.space/${endpoint}/${encodedValue}`;
+          ? `https://testing.staffly.space/${endpoint}/${encodedValue}?exclude_user_id=${excludeUserId}`
+          : `https://testing.staffly.space/${endpoint}/${encodedValue}`;
 
         const response = await fetch(url);
 

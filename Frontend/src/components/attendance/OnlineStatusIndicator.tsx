@@ -51,7 +51,7 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
       const token = localStorage.getItem('token');
 
       // Load status history
-      const historyResponse = await fetch(`testing.staffly.space/attendance/online-status/${attendanceId}`, {
+      const historyResponse = await fetch(`https://testing.staffly.space/attendance/online-status/${attendanceId}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -63,7 +63,7 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
       }
 
       // Load working hours calculation
-      const hoursResponse = await fetch(`testing.staffly.space/attendance/working-hours/${attendanceId}`, {
+      const hoursResponse = await fetch(`https://testing.staffly.space/attendance/working-hours/${attendanceId}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },

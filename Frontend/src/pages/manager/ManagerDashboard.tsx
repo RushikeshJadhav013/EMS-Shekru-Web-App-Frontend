@@ -229,7 +229,7 @@ const ManagerDashboard: React.FC = () => {
         // Fetch all tasks and today's attendance in parallel
         const [tasks, attendanceRes] = await Promise.all([
           apiService.getMyTasks(),
-          fetch('testing.staffly.space/attendance/today', {
+          fetch('https://testing.staffly.space/attendance/today', {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`,
             }
