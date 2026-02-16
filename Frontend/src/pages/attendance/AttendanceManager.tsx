@@ -321,7 +321,7 @@ const AttendanceManager: React.FC = () => {
   const fetchAllOnlineStatus = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://testing.staffly.space/attendance/current-online-status', {
+      const response = await fetch('https://staffly.space/attendance/current-online-status', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -344,7 +344,7 @@ const AttendanceManager: React.FC = () => {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
     const normalized = url.startsWith('/') ? url : `/${url}`;
-    return `https://testing.staffly.space${normalized}`;
+    return `https://staffly.space${normalized}`;
   };
 
   // Helper function to determine if employee should show as absent
@@ -517,10 +517,15 @@ const AttendanceManager: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
-      const res = await fetch('https://testing.staffly.space/employees', { headers });
+      const res = await fetch('https://staffly.space/employees/', { headers });
 
       if (!res.ok) throw new Error(`Failed to load employees: ${res.status}`);
       let data = await res.json();
+      if (!Array.isArray(data) && data?.employees) {
+        data = data.employees;
+      } else if (!Array.isArray(data)) {
+        data = [];
+      }
 
       // Enforce strict visibility validation for Managers based on role hierarchy and department
       if (user?.role === 'manager' && user?.department) {
@@ -623,7 +628,7 @@ const AttendanceManager: React.FC = () => {
     if (!isAdmin) return;
     setOfficeFormLoading(true);
     try {
-      const res = await fetch('https://testing.staffly.space/attendance/office-hours', {
+      const res = await fetch('https://staffly.space/attendance/office-hours', {
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeaders(),
@@ -670,7 +675,7 @@ const AttendanceManager: React.FC = () => {
         check_in_grace_minutes: resolveGraceValue(globalTimingForm.checkInGrace),
         check_out_grace_minutes: resolveGraceValue(globalTimingForm.checkOutGrace),
       };
-      const res = await fetch('https://testing.staffly.space/attendance/office-hours', {
+      const res = await fetch('https://staffly.space/attendance/office-hours', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -712,7 +717,7 @@ const AttendanceManager: React.FC = () => {
         check_in_grace_minutes: resolveGraceValue(departmentTimingForm.checkInGrace),
         check_out_grace_minutes: resolveGraceValue(departmentTimingForm.checkOutGrace),
       };
-      const res = await fetch('https://testing.staffly.space/attendance/office-hours', {
+      const res = await fetch('https://staffly.space/attendance/office-hours', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -777,7 +782,7 @@ const AttendanceManager: React.FC = () => {
 
     try {
       setOfficeFormLoading(true);
-      const res = await fetch(`https://testing.staffly.space/attendance/office-hours/${timing.id}`, {
+      const res = await fetch(`https://staffly.space/attendance/office-hours/${timing.id}`, {
         method: 'DELETE',
         headers: {
           ...getAuthHeaders(),
@@ -812,7 +817,7 @@ const AttendanceManager: React.FC = () => {
 
   const fetchSummary = async () => {
     try {
-      const res = await fetch('https://testing.staffly.space/attendance/summary');
+      const res = await fetch('https://staffly.space/attendance/summary');
       if (!res.ok) throw new Error(`Failed to load summary: ${res.status}`);
       const data = await res.json();
       setSummary(data);
@@ -849,8 +854,8 @@ const AttendanceManager: React.FC = () => {
 
         // Fetch attendance and employees in parallel to ensure we have role data
         const [attendanceRes, employeesRes] = await Promise.all([
-          fetch(`https://testing.staffly.space/attendance/all${query}`, { headers }),
-          fetch('https://testing.staffly.space/employees', { headers })
+          fetch(`https://staffly.space/attendance/all${query}`, { headers }),
+          fetch('https://staffly.space/employees/', { headers })
         ]);
 
         if (!attendanceRes.ok) {
@@ -860,7 +865,12 @@ const AttendanceManager: React.FC = () => {
         }
 
         let data = await attendanceRes.json();
-        const employeesData = employeesRes.ok ? await employeesRes.json() : [];
+        let employeesData = employeesRes.ok ? await employeesRes.json() : [];
+        if (!Array.isArray(employeesData) && employeesData?.employees) {
+          employeesData = employeesData.employees;
+        } else if (!Array.isArray(employeesData)) {
+          employeesData = [];
+        }
 
         // Create comprehensive maps for role hierarchy validation
         const userRoleMap: Record<string, string> = {};

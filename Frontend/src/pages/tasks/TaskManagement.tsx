@@ -72,7 +72,7 @@ import { format } from 'date-fns';
 import { formatIST, formatDateTimeIST, formatDateIST, todayIST, parseToIST, nowIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
 
 const ROLE_ORDER: UserRole[] = ['admin', 'hr', 'manager', 'team_lead', 'employee'];
 
@@ -529,13 +529,18 @@ const TaskManagement: React.FC = () => {
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/employees`, {
+      const response = await fetch(`${API_BASE_URL}/employees/`, {
         headers: authorizedHeaders,
       });
       if (!response.ok) {
         throw new Error(`Failed to fetch employees: ${response.status}`);
       }
-      const data: BackendEmployee[] = await response.json();
+      let data = await response.json();
+      if (!Array.isArray(data) && data?.employees) {
+        data = data.employees;
+      } else if (!Array.isArray(data)) {
+        data = [];
+      }
       const formatted = data.map((emp) => ({
         userId: String(emp.user_id),
         employeeId: emp.employee_id ? String(emp.employee_id) : '',

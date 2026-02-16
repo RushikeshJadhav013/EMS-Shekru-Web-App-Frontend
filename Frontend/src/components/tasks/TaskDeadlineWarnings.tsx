@@ -15,7 +15,7 @@ import { AlertTriangle, Clock, Calendar, CheckCircle2 } from 'lucide-react';
 import { formatDateIST } from '@/utils/timezone';
 import TruncatedText from '@/components/ui/TruncatedText';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
 
 // Helper component for View Tasks button with proper role-based navigation
 const ViewTasksButton: React.FC = () => {

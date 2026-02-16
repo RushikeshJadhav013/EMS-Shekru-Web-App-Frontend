@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
 
 interface EmployeeData {
   name: string;
@@ -238,7 +238,8 @@ class ApiService {
 
   // Get all employees
   async getEmployees() {
-    return this.request('/employees');
+    const data = await this.request('/employees/');
+    return Array.isArray(data) ? data : (data?.employees || []);
   }
 
   // Get employee by ID
