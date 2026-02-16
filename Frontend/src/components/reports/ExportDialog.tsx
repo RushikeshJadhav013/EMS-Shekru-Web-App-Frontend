@@ -9,6 +9,7 @@ import { FileText, FileSpreadsheet, Calendar as CalendarIcon, Download, Loader2 
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { API_BASE_URL } from '@/lib/api';
 
 interface ExportDialogProps {
   open: boolean;
@@ -177,7 +178,7 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
       });
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://testing.staffly.space/reports/export?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/reports/export?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

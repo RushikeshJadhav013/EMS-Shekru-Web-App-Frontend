@@ -28,6 +28,7 @@ import {
   ChevronsUpDown
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { apiService, API_BASE_URL } from '@/lib/api';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -159,9 +160,9 @@ export default function Reports() {
 
       // Fetch all data in parallel
       const [empResponse, deptResponse, summaryResponse] = await Promise.all([
-        fetch(`https://testing.staffly.space/reports/employee-performance?${empParams}`, { headers }),
-        fetch(`https://testing.staffly.space/reports/department-metrics?${deptParams}`, { headers }),
-        fetch(`https://testing.staffly.space/reports/executive-summary?${summaryParams}`, { headers }),
+        fetch(`${API_BASE_URL}/reports/employee-performance?${empParams}`, { headers }),
+        fetch(`${API_BASE_URL}/reports/department-metrics?${deptParams}`, { headers }),
+        fetch(`${API_BASE_URL}/reports/executive-summary?${summaryParams}`, { headers }),
       ]);
 
       // Handle employee performance response
@@ -480,11 +481,10 @@ export default function Reports() {
       }
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://testing.staffly.space/reports/export/?${params}`, {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
-      });
+      const headers = {
+        'Authorization': token ? `Bearer ${token}` : '',
+      };
+      const response = await fetch(`${API_BASE_URL}/reports/export?${params}`, { headers });
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Unknown error');

@@ -24,7 +24,7 @@ import { formatIST, formatDateTimeIST, formatTimeIST, formatDateIST, todayIST, f
 import { getCurrentLocation as fetchPreciseLocation, getCurrentLocationFast } from '@/utils/geolocation';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Pagination } from '@/components/ui/pagination';
-import { apiService } from '@/lib/api';
+import { apiService, API_BASE_URL } from '@/lib/api';
 
 type GeoLocation = {
   latitude: number;
@@ -1032,7 +1032,7 @@ const AttendanceWithToggle: React.FC = () => {
       const token = localStorage.getItem('token');
       const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
 
-      let url = 'https://testing.staffly.space/attendance/all';
+      let url = `${API_BASE_URL}/attendance/all`;
       // Attempt backend enforcement by passing department scope
       if (user?.role === 'manager' && user?.department) {
         url += `?department=${encodeURIComponent(user.department)}`;
@@ -1044,7 +1044,7 @@ const AttendanceWithToggle: React.FC = () => {
       // Fetch attendance and employees in parallel to ensure we have role data
       const [attendanceRes, employeesRes] = await Promise.all([
         fetch(url, { headers }),
-        fetch('https://testing.staffly.space/employees/', { headers })
+        fetch(`${API_BASE_URL}/employees/`, { headers })
       ]);
 
       if (!attendanceRes.ok) {
@@ -1276,7 +1276,7 @@ const AttendanceWithToggle: React.FC = () => {
       const token = localStorage.getItem('token');
       const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
 
-      const res = await fetch('https://testing.staffly.space/employees/', { headers });
+      const res = await fetch(`${API_BASE_URL}/employees/`, { headers });
       if (!res.ok) {
         const errorText = await res.text().catch(() => '');
         console.error(`Failed to load employees: ${res.status}`, errorText);
