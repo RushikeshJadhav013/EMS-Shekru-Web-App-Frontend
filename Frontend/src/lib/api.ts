@@ -615,7 +615,7 @@ class ApiService {
     }
     const queryString = params.toString() ? `?${params.toString()}` : '';
 
-    const response = await fetch(`${this.baseURL}/employees/export/csv/${queryString}`, {
+    const response = await fetch(`${this.baseURL}/employees/export/csv${queryString}`, {
       method: 'GET',
       headers: {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -647,7 +647,7 @@ class ApiService {
     }
     const queryString = params.toString() ? `?${params.toString()}` : '';
 
-    const response = await fetch(`${this.baseURL}/employees/export/pdf/${queryString}`, {
+    const response = await fetch(`${this.baseURL}/employees/export/pdf${queryString}`, {
       method: 'GET',
       headers: {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),

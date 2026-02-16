@@ -159,9 +159,9 @@ export default function Reports() {
 
       // Fetch all data in parallel
       const [empResponse, deptResponse, summaryResponse] = await Promise.all([
-        fetch(`https://staffly.space/reports/employee-performance/?${empParams}`, { headers }),
-        fetch(`https://staffly.space/reports/department-metrics/?${deptParams}`, { headers }),
-        fetch(`https://staffly.space/reports/executive-summary/?${summaryParams}`, { headers }),
+        fetch(`https://staffly.space/reports/employee-performance?${empParams}`, { headers }),
+        fetch(`https://staffly.space/reports/department-metrics?${deptParams}`, { headers }),
+        fetch(`https://staffly.space/reports/executive-summary?${summaryParams}`, { headers }),
       ]);
 
       // Handle employee performance response
