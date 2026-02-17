@@ -399,16 +399,33 @@ export default function LeaveManagement() {
 
   const handleRemoveWeekOff = async (department: string) => {
     const config = weekOffConfig[department];
-    if (!config) return;
+    console.log('Attempting to remove week-off for department:', department);
+    console.log('Week-off config:', config);
+    console.log('All week-off configs:', weekOffConfig);
+
+    if (!config) {
+      console.error('No config found for department:', department);
+      toast({
+        title: 'Error',
+        description: `No week-off configuration found for ${department}.`,
+        variant: 'destructive',
+      });
+      return;
+    }
 
     try {
+      console.log('Calling API to delete week-off with ID:', config.id);
       await apiService.deleteWeekoff(config.id);
 
+      // Remove from local state
       setWeekOffConfig((prev) => {
         const updated = { ...prev };
         delete updated[department];
         return updated;
       });
+
+      // Refresh from API to ensure consistency
+      await fetchWeekOffs();
 
       toast({
         title: 'Week-off removed',
@@ -418,7 +435,7 @@ export default function LeaveManagement() {
       console.error('Failed to remove weekoff:', error);
       toast({
         title: 'Error',
-        description: 'Failed to remove week-off configuration.',
+        description: error instanceof Error ? error.message : 'Failed to remove week-off configuration.',
         variant: 'destructive',
       });
     }
