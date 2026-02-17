@@ -336,6 +336,7 @@ export default function EmployeeManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [selectedRole, setSelectedRole] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
@@ -540,7 +541,8 @@ export default function EmployeeManagement() {
         emp.email.toLowerCase().includes(query);
       const matchesDepartment = selectedDepartment === 'all' || emp.department === selectedDepartment;
       const matchesRole = selectedRole === 'all' || emp.role === selectedRole;
-      return matchesSearch && matchesDepartment && matchesRole;
+      const matchesStatus = selectedStatus === 'all' || emp.status === selectedStatus;
+      return matchesSearch && matchesDepartment && matchesRole && matchesStatus;
     });
   }, [employees, searchQuery, selectedDepartment, selectedRole]);
 
@@ -556,7 +558,7 @@ export default function EmployeeManagement() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedDepartment, selectedRole]);
+  }, [searchQuery, selectedDepartment, selectedRole, selectedStatus]);
 
   // Reset to first page when items per page changes
   useEffect(() => {
@@ -2556,6 +2558,28 @@ export default function EmployeeManagement() {
                     <div className="flex items-center gap-2">
                       Employee
                     </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2 w-full sm:w-44">
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Status</Label>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-950 border-2 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Check className={`h-4 w-4 ${selectedStatus === 'all' ? 'text-gray-500' : selectedStatus === 'active' ? 'text-emerald-500' : 'text-rose-500'}`} />
+                    <SelectValue placeholder="Status" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="border-2 shadow-2xl">
+                  <SelectItem value="all" className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-950 transition-colors font-medium">
+                    All Status
+                  </SelectItem>
+                  <SelectItem value="active" className="cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-950 transition-colors">
+                    Active
+                  </SelectItem>
+                  <SelectItem value="inactive" className="cursor-pointer hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors">
+                    Inactive
                   </SelectItem>
                 </SelectContent>
               </Select>
