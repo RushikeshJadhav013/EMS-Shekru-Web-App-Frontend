@@ -85,7 +85,7 @@ export default function LeaveManagement() {
   // Refresh holidays on mount to ensure we have the latest data
   useEffect(() => {
     refreshHolidays();
-  }, [refreshHolidays]);
+  }, []);
 
   // Initialize leave requests from localStorage or use default mock data
   const initializeLeaveRequests = (): LeaveRequest[] => {
@@ -2203,6 +2203,7 @@ export default function LeaveManagement() {
 
                     <div className="relative">
                       <CalendarWithSelect
+                        key={`calendar-${holidays.length}-${Object.keys(weekOffConfig).length}`}
                         mode="single"
                         selected={selectedDate}
                         onSelect={handleDayClick}
