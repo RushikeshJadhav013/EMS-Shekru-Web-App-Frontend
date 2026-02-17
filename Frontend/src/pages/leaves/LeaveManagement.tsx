@@ -485,12 +485,12 @@ export default function LeaveManagement() {
     }
     const existing = weekOffConfig[weekOffForm.department];
     if (existing) {
-      const sameLength = existing.length === weekOffForm.days.length;
-      const sameValues = sameLength && existing.every((day) => weekOffForm.days.includes(day));
+      const sameLength = existing.days.length === weekOffForm.days.length;
+      const sameValues = sameLength && existing.days.every((day) => weekOffForm.days.includes(day));
       if (!sameValues) {
         setWeekOffForm((prev) => ({
           ...prev,
-          days: existing,
+          days: existing.days,
         }));
       }
     } else if (weekOffForm.days.length === 0) {
@@ -499,8 +499,8 @@ export default function LeaveManagement() {
   }, [weekOffForm.department, weekOffConfig]);
 
   const userWeekOffDays = useMemo(() => {
-    // For management profiles (Admin, HR, Manager, Team Lead), show all week-offs or selected department
-    if (['admin', 'hr', 'manager', 'team_lead'].includes(user?.role || '')) {
+    // For management profiles (Admin, HR, Manager), show all week-offs or selected department
+    if (['admin', 'hr', 'manager'].includes(user?.role || '')) {
       if (weekOffForm.department && weekOffForm.days.length > 0) {
         return weekOffForm.days;
       }
@@ -513,8 +513,8 @@ export default function LeaveManagement() {
       return Array.from(allDays);
     }
 
-    // For regular employees, show only their department's week offs (case-insensitive match)
-    const userDept = user?.department?.toLowerCase();
+    // For regular employees and Team Leads, show only their department's week offs (case-insensitive match)
+    const userDept = user?.department?.trim().toLowerCase();
     if (!userDept) return [];
 
     // Find config that matches user's department (case-insensitive key search)
