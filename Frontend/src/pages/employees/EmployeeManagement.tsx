@@ -544,7 +544,7 @@ export default function EmployeeManagement() {
       const matchesStatus = selectedStatus === 'all' || emp.status === selectedStatus;
       return matchesSearch && matchesDepartment && matchesRole && matchesStatus;
     });
-  }, [employees, searchQuery, selectedDepartment, selectedRole]);
+  }, [employees, searchQuery, selectedDepartment, selectedRole, selectedStatus]);
 
   // Paginated employees
   const paginatedEmployees = useMemo(() => {
