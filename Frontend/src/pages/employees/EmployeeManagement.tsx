@@ -83,7 +83,7 @@ const mapEmployeeData = (emp: any): EmployeeRecord => {
   const mapped = toCamelCase(emp);
 
   // ✅ Fix photo URLs to include backend base URL
-  const baseUrl = API_BASE_URL;
+  const baseUrl = 'https://staffly.space';
   if (mapped.profilePhoto && !mapped.profilePhoto.startsWith('http')) {
     mapped.profilePhoto = `${baseUrl}/${mapped.profilePhoto}`;
   }
@@ -489,8 +489,22 @@ export default function EmployeeManagement() {
     const fetchEmployees = async () => {
       setIsLoading(true);
       try {
-        const data = await apiService.getEmployees();
-        const mappedData = data.map(mapEmployeeData);
+        // const data = await apiService.getEmployees();
+        const token = localStorage.getItem('token');
+        const response = await fetch('https://staffly.space/employees/', {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const list = Array.isArray(data) ? data : (data?.employees || []);
+        const mappedData = list.map(mapEmployeeData);
         console.log('Loaded employees:', mappedData); // ✅ Debug log
         console.log('First employee structure:', mappedData[0]); // ✅ Debug log
         setEmployees(mappedData);
