@@ -43,7 +43,7 @@ import {
 import { User, type UserRole } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDateIST } from '@/utils/timezone';
-import { apiService, type EmployeeData } from '@/lib/api';
+import { apiService, API_BASE_URL, type EmployeeData } from '@/lib/api';
 import { useFieldValidation } from '@/hooks/useFieldValidation';
 
 type ShiftType = 'general' | 'morning' | 'afternoon' | 'night' | 'rotational';
@@ -83,7 +83,7 @@ const mapEmployeeData = (emp: any): EmployeeRecord => {
   const mapped = toCamelCase(emp);
 
   // ✅ Fix photo URLs to include backend base URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
+  const baseUrl = API_BASE_URL;
   if (mapped.profilePhoto && !mapped.profilePhoto.startsWith('http')) {
     mapped.profilePhoto = `${baseUrl}/${mapped.profilePhoto}`;
   }
@@ -1568,7 +1568,7 @@ export default function EmployeeManagement() {
 
       let photoUrl = String(data['photoUrl'] ?? data['photo_url'] ?? data['profilePhoto'] ?? data['profile_photo'] ?? '');
       if (photoUrl && !photoUrl.startsWith('http')) {
-        photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}/${photoUrl}`;
+        photoUrl = `${API_BASE_URL}/${photoUrl}`;
       }
 
       const rawPhone = String(data['phone'] ?? '');

@@ -817,7 +817,12 @@ const AttendanceManager: React.FC = () => {
 
   const fetchSummary = async () => {
     try {
-      const res = await fetch('https://testing.staffly.space/attendance/summary');
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/attendance/summary`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
       if (!res.ok) throw new Error(`Failed to load summary: ${res.status}`);
       const data = await res.json();
       setSummary(data);
@@ -1371,7 +1376,7 @@ const AttendanceManager: React.FC = () => {
             year: exportYear,
             department: exportParams.department
           })
-          : await apiService.exportMonthlyGridDetailedPDF({
+          : await apiService.downloadMonthlyDetailedAttendanceGridPDF({
             month: exportMonth,
             year: exportYear,
             department: exportParams.department

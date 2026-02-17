@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Clock, Timer, History, User } from 'lucide-react';
 import { formatDateTimeIST } from '@/utils/timezone';
+import { API_BASE_URL } from '@/lib/api';
 
 interface OnlineStatusIndicatorProps {
   isOnline: boolean;
@@ -51,7 +52,7 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
       const token = localStorage.getItem('token');
 
       // Load status history
-      const historyResponse = await fetch(`https://testing.staffly.space/attendance/online-status/${attendanceId}`, {
+      const historyResponse = await fetch(`${API_BASE_URL}/attendance/online-status/${attendanceId}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -63,7 +64,7 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
       }
 
       // Load working hours calculation
-      const hoursResponse = await fetch(`https://testing.staffly.space/attendance/working-hours/${attendanceId}`, {
+      const hoursResponse = await fetch(`${API_BASE_URL}/attendance/working-hours/${attendanceId}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },

@@ -70,9 +70,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatIST, formatDateTimeIST, formatDateIST, todayIST, parseToIST, nowIST } from '@/utils/timezone';
-import { apiService } from '@/lib/api';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
+import { apiService, API_BASE_URL } from '@/lib/api';
 
 const ROLE_ORDER: UserRole[] = ['admin', 'hr', 'manager', 'team_lead', 'employee'];
 
@@ -2586,30 +2584,31 @@ const TaskManagement: React.FC = () => {
                       </Select>
                     </div>
 
-                    {(user?.role === 'admin' || user?.role === 'hr') && (
-                      <div className="space-y-2">
-                        <Label htmlFor="assignDeptFilter" className="text-sm font-semibold flex items-center gap-2">
-                          <Grid3x3 className="h-4 w-4 text-violet-600" />
-                          Filter Department
-                        </Label>
-                        <Select
-                          value={newTask.department || 'all'}
-                          onValueChange={(value) => setNewTask({ ...newTask, department: value === 'all' ? '' : value })}
-                        >
-                          <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                            <SelectValue placeholder="All Departments" />
-                          </SelectTrigger>
-                          <SelectContent className="border-2 shadow-xl">
-                            <SelectItem value="all">All Departments</SelectItem>
-                            {departments.map((dept) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="assignDeptFilter" className="text-sm font-semibold flex items-center gap-2">
+                        <Building2 className="h-4.4 w-4.5 text-violet-600" />
+                        Filter Department
+                      </Label>
+                      <Select
+                        value={newTask.department || 'all'}
+                        onValueChange={(value) => setNewTask({ ...newTask, department: value === 'all' ? '' : value })}
+                      >
+                        <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                          <SelectValue placeholder="All Departments" />
+                        </SelectTrigger>
+                        <SelectContent className="border-2 shadow-xl">
+                          <SelectItem value="all">All Departments</SelectItem>
+                          {CORE_DEPARTMENTS
+                            .slice()
+                            .sort((a, b) => a.localeCompare(b))
+                            .map((dept) => (
                               <SelectItem key={dept} value={dept}>
                                 {dept}
                               </SelectItem>
                             ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -2636,8 +2635,8 @@ const TaskManagement: React.FC = () => {
                           .filter((emp) => emp.userId !== userId)
                           // Filter by role if a role filter is active
                           .filter((emp) => assignRoleFilter === 'all' || emp.role === assignRoleFilter)
-                          // Filter by department if a department is selected (Admin/HR Choice)
-                          .filter((emp) => !newTask.department || emp.department === newTask.department)
+                          // Filter by department if a department is selected (Core Only)
+                          .filter((emp) => !newTask.department || (emp.department && emp.department.trim().toLowerCase() === newTask.department.trim().toLowerCase()))
                           .map((emp) => (
                             <SelectItem key={emp.userId} value={emp.userId} className="cursor-pointer">
                               {emp.name}

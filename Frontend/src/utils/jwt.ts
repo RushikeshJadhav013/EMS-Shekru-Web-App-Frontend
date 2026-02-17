@@ -28,9 +28,13 @@ export const decodeJWT = (token: string): JWTPayload | null => {
 
     // Decode the payload (second part)
     const payload = parts[1];
-    
-    // Base64 URL decode
-    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+
+    // Base64 URL decode with padding handling
+    let base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) {
+      base64 += '=';
+    }
+
     const jsonPayload = decodeURIComponent(
       atob(base64)
         .split('')
@@ -50,8 +54,13 @@ export const decodeJWT = (token: string): JWTPayload | null => {
  */
 export const isTokenExpired = (token: string): boolean => {
   const payload = decodeJWT(token);
-  if (!payload || !payload.exp) {
-    return true; // If no expiration, consider it expired for security
+  if (!payload) {
+    return true;
+  }
+
+  // If no expiration claim, consider it not expired (more lenient for different backend configurations)
+  if (!payload.exp) {
+    return false;
   }
 
   // exp is in seconds, Date.now() is in milliseconds
@@ -128,8 +137,8 @@ export const getUserFromToken = (token: string): { userId?: string; email?: stri
   }
 
   return {
-    userId: payload.user_id || payload.sub || payload.userId,
-    email: payload.email,
-    role: payload.role,
+    userId: (payload.user_id || payload.sub || payload.userId) as string | undefined,
+    email: payload.email as string | undefined,
+    role: payload.role as string | undefined,
   };
 };

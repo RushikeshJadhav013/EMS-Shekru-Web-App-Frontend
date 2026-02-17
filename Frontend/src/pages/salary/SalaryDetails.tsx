@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
@@ -106,6 +106,10 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         joining_date: '',
     });
     const [isDownloadingOfferLetter, setIsDownloadingOfferLetter] = useState(false);
+    const [selectedIncrementDetail, setSelectedIncrementDetail] = useState<Increment | null>(null);
+    const [isViewingIncrement, setIsViewingIncrement] = useState(false);
+    const [isLoadingIncrementDetail, setIsLoadingIncrementDetail] = useState(false);
+    const [isVerified, setIsVerified] = useState<boolean | null>(null);
 
     const userRole = user?.role?.toLowerCase();
     // HR viewing their own salary should behave like a regular employee/manager (no HR admin controls)
@@ -159,6 +163,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         incrementAmount: z.number().min(0, 'Amount must be positive'),
         incrementPercentage: z.number().min(0, 'Percentage must be positive'),
         newCtc: z.number().min(1, 'New CTC must be valid'),
+        variablePayType: z.enum(['none', 'percentage', 'fixed']),
+        variablePayValue: z.number().min(0).default(0),
         effectiveDate: z.string().min(1, 'Date is required'),
         reason: z.string().min(3, 'Reason is required'),
     });
@@ -171,6 +177,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             incrementAmount: 0,
             incrementPercentage: 0,
             newCtc: 0,
+            variablePayType: 'none',
+            variablePayValue: 0,
             effectiveDate: new Date().toISOString().split('T')[0],
             reason: '',
         }
@@ -183,6 +191,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 incrementAmount: 0,
                 incrementPercentage: 0,
                 newCtc: salaryData.annualCtc || 0,
+                variablePayType: salaryData.variablePayType || 'none',
+                variablePayValue: salaryData.variablePayValue || 0,
                 effectiveDate: new Date().toISOString().split('T')[0],
                 reason: '',
             });
@@ -227,16 +237,17 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
     };
 
     const handleCreateIncrement = async (data: IncrementFormValues) => {
-        if (!salaryData) {
-            toast({ title: "Error", description: "Cannot create increment without existing salary.", variant: "destructive" });
+        if (!targetUserId || !salaryData) {
+            toast({ title: "Error", description: "Incomplete data to process increment.", variant: "destructive" });
             return;
         }
 
         try {
             setIsCreatingIncrement(true);
 
+            // 1. Create increment record (Admin/HR Only)
             const response = await apiService.createIncrement({
-                userId: targetUserId!,
+                userId: targetUserId,
                 previousSalary: currentCtc,
                 incrementAmount: data.incrementAmount,
                 incrementPercentage: data.incrementPercentage,
@@ -246,22 +257,21 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             });
 
             if (response) {
-                toast({
-                    title: "Success",
-                    description: "Salary increment processed successfully.",
-                    variant: "success"
-                });
-
-                // Update salary structure with new CTC
+                // 2. Update the main salary structure CTC
                 try {
-                    await apiService.updateSalaryCtc(targetUserId!, {
+                    await apiService.updateSalaryCtc(targetUserId, {
                         annualCtc: data.newCtc,
-                        variablePayType: displaySalaryData.variablePayType || 'none',
-                        variablePayValue: displaySalaryData.variablePayValue || 0
+                        variablePayType: data.variablePayType,
+                        variablePayValue: data.variablePayValue
                     });
                 } catch (updateError) {
-                    console.warn("Failed to update salary CTC after increment:", updateError);
-                    // Don't show error to user as increment was created successfully
+                    console.error("Increment created but CTC update failed:", updateError);
+                    // We don't throw here as the increment record is already created
+                    toast({
+                        title: "Notice",
+                        description: "Increment recorded, but primary CTC update failed. Please update manually.",
+                        variant: "warning"
+                    });
                 }
 
                 // Reload increments data
@@ -290,8 +300,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         ifsc_code: '',
         working_days_per_month: 26,
         payment_mode: 'Bank Transfer',
-        variable_pay_type: 'none',
-        variable_pay_value: 0,
+        pf_no: '',
         other_deduction_annual: 0,
         pf_annual: 0
     });
@@ -332,6 +341,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 ifscCode: data.ifscCode || '',
                 panNumber: data.panNumber || '',
                 uanNumber: data.uanNumber || '',
+                pfNumber: data.pfNumber || data.pf_no || '',
                 workingDays: data.workingDays || 26,
 
                 // Monthly components (already calculated by API)
@@ -455,7 +465,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             if (userData && userData.name) {
                 setUserName(userData.name);
                 setUserEmail(userData.email);
-                console.log('User details loaded:', { name: userData.name, email: userData.email, pan: userData.pan_card });
+                setIsVerified(userData.is_verified || false);
+                console.log('User details loaded:', { name: userData.name, email: userData.email, pan: userData.pan_card, verified: userData.is_verified });
             }
         } catch (err: any) {
             console.error("Failed to load user details", err);
@@ -548,8 +559,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 ifsc_code: salaryData.ifscCode || '',
                 working_days_per_month: salaryData.workingDays || 26,
                 payment_mode: mode,
-                variable_pay_type: salaryData.variablePayType || 'none',
-                variable_pay_value: salaryData.variablePayValue || 0,
+                pf_no: salaryData.pfNumber || '',
                 other_deduction_annual: (salaryData.otherDeduction || 0) * 12,
                 pf_annual: ((salaryData.pfEmployee || 0) + (salaryData.pfEmployer || 0)) * 12
             });
@@ -578,8 +588,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                     ifscCode: response.ifsc_code || bankForm.ifsc_code,
                     workingDays: response.working_days_per_month || bankForm.working_days_per_month,
                     paymentMode: response.payment_mode?.toLowerCase().replace(' ', '_') || bankForm.payment_mode.toLowerCase().replace(' ', '_'),
-                    variablePayType: response.variable_pay_type || bankForm.variable_pay_type,
-                    variablePayValue: response.variable_pay_value || bankForm.variable_pay_value,
+                    pfNumber: response.pf_no || bankForm.pf_no,
                     // Recalculate monthly values from updated annual/config values
                     otherDeduction: (response.other_deduction_annual !== undefined ? response.other_deduction_annual : bankForm.other_deduction_annual) / 12,
                     pfEmployee: (response.pf_annual !== undefined ? response.pf_annual : bankForm.pf_annual) / 24,
@@ -644,6 +653,15 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
     };
 
     const handleSendSlip = async (month: number, year: number) => {
+        if (isVerified === false) {
+            toast({
+                title: "Email Not Verified",
+                description: "Cannot send salary slip. The employee's email must be verified first.",
+                variant: "destructive"
+            });
+            return;
+        }
+
         try {
             setIsSalarySlipSending(true);
             const response = await apiService.sendSalarySlip(targetUserId!, month, year);
@@ -859,6 +877,25 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             toast({ title: 'Error', description: err.message || 'Failed to download offer letter', variant: 'destructive' });
         } finally {
             setIsDownloadingOfferLetter(false);
+        }
+    };
+
+    const handleViewIncrementDetail = async (incrementId: string) => {
+        try {
+            setIsLoadingIncrementDetail(true);
+            setIsViewingIncrement(true);
+            const detail = await apiService.getIncrementById(incrementId);
+            setSelectedIncrementDetail(detail);
+        } catch (err: any) {
+            console.error("Failed to fetch increment details", err);
+            toast({
+                title: "Error",
+                description: "Failed to fetch detailed record.",
+                variant: "destructive"
+            });
+            setIsViewingIncrement(false);
+        } finally {
+            setIsLoadingIncrementDetail(false);
         }
     };
 
@@ -1281,11 +1318,30 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 {canViewAll && (
-                    <TabsList className="bg-white dark:bg-gray-800 p-1 border">
-                        <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
-                        <TabsTrigger value="documents">Documents</TabsTrigger>
-                        {isAdminOrHr && <TabsTrigger value="history">Increment</TabsTrigger>}
-                    </TabsList>
+                    <div className="flex justify-center mb-8">
+                        <TabsList className="h-14 p-1.5 bg-slate-100/50 dark:bg-slate-800/50 backdrop-blur-lg border border-slate-200/50 dark:border-slate-700/50 rounded-2xl shadow-inner w-fit">
+                            <TabsTrigger
+                                value="breakdown"
+                                className="px-8 h-full rounded-xl text-xs font-black uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-indigo-600 data-[state=active]:shadow-lg active:scale-95"
+                            >
+                                Breakdown
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="documents"
+                                className="px-8 h-full rounded-xl text-xs font-black uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-indigo-600 data-[state=active]:shadow-lg active:scale-95"
+                            >
+                                Documents
+                            </TabsTrigger>
+                            {isAdminOrHr && (
+                                <TabsTrigger
+                                    value="history"
+                                    className="px-8 h-full rounded-xl text-xs font-black uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-indigo-600 data-[state=active]:shadow-lg active:scale-95"
+                                >
+                                    Increment
+                                </TabsTrigger>
+                            )}
+                        </TabsList>
+                    </div>
                 )}
 
                 {canViewAll && (
@@ -1505,7 +1561,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                 { label: 'Primary Bank', value: displaySalaryData.bankName, icon: '🏦', color: 'blue' },
                                                 { label: 'Account Number', value: displaySalaryData.accountNumber, mask: 4, icon: '💳', color: 'indigo' },
                                                 { label: 'IFSC Protocol', value: displaySalaryData.ifscCode, icon: '📋', color: 'purple' },
-                                                { label: 'UAN Identity', value: displaySalaryData.uanNumber, icon: '🔖', color: 'slate' }
+                                                { label: 'UAN Identity', value: displaySalaryData.uanNumber, icon: '🔖', color: 'slate' },
+                                                { label: 'PF Identity', value: displaySalaryData.pfNumber, icon: '🆔', color: 'emerald' }
                                             ].map((item, idx) => (
                                                 <div key={idx} className="group relative">
                                                     <div className="relative z-10 p-5 rounded-3xl bg-slate-50/50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800 transition-all duration-300 hover:bg-white dark:hover:bg-slate-800 shadow-sm hover:shadow-xl">
@@ -1655,6 +1712,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     </div>
                                 </div>
                             </div>
+
                         </div>
 
                         {/* Increment Journey - Right Side */}
@@ -1685,7 +1743,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     )}
                                 </div>
 
-                                <div className="relative flex-1 space-y-4 max-h-[500px] overflow-y-auto pr-3 pt-4 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                                <div className="relative flex-1 space-y-4 max-h-[500px] overflow-y-auto px-8 pt-10 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent">
                                     {sortedIncrements.length > 0 ? (
                                         <div className="space-y-4">
                                             {sortedIncrements
@@ -1889,6 +1947,15 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                                     <Button
                                                                         variant="ghost"
                                                                         size="sm"
+                                                                        onClick={() => handleViewIncrementDetail(inc.id.toString())}
+                                                                        className="h-9 w-9 p-0 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 transition-all shadow-sm"
+                                                                        title="View Details"
+                                                                    >
+                                                                        <EyeIcon className="h-4 w-4 text-emerald-600" />
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
                                                                         onClick={() => handleDownloadIncrementLetter(inc.id.toString(), inc.effective_date)}
                                                                         className="h-9 w-9 p-0 rounded-xl hover:bg-slate-900 dark:hover:bg-slate-100 hover:text-white dark:hover:text-black border border-transparent hover:border-slate-800 transition-all shadow-sm"
                                                                         title="Download Official Letter"
@@ -2011,37 +2078,14 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="variable_pay_type">Variable Pay Type</Label>
-                                <Select
-                                    value={bankForm.variable_pay_type}
-                                    onValueChange={(value) => setBankForm(prev => ({ ...prev, variable_pay_type: value }))}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select variable pay type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">None</SelectItem>
-                                        <SelectItem value="fixed">Fixed Amount</SelectItem>
-                                        <SelectItem value="percentage">Percentage</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <Label htmlFor="pf_no">PF Number</Label>
+                                <Input
+                                    id="pf_no"
+                                    value={bankForm.pf_no}
+                                    onChange={(e) => setBankForm(prev => ({ ...prev, pf_no: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
+                                    placeholder="Enter PF number"
+                                />
                             </div>
-
-                            {bankForm.variable_pay_type !== 'none' && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="variable_pay_value">
-                                        Variable Pay Value {bankForm.variable_pay_type === 'percentage' ? '(%)' : '(Annual Amount)'}
-                                    </Label>
-                                    <Input
-                                        id="variable_pay_value"
-                                        type="number"
-                                        min="0"
-                                        value={bankForm.variable_pay_value}
-                                        onChange={(e) => setBankForm(prev => ({ ...prev, variable_pay_value: parseFloat(e.target.value) || 0 }))}
-                                        placeholder={bankForm.variable_pay_type === 'percentage' ? 'Enter percentage' : 'Enter annual amount'}
-                                    />
-                                </div>
-                            )}
                         </div>
                     </div>
 
@@ -2129,6 +2173,36 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     />
                                 </div>
 
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Variable Pay Type</Label>
+                                        <Controller
+                                            name="variablePayType"
+                                            control={incrementForm.control}
+                                            render={({ field }) => (
+                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select Type" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="none">No Variable Pay</SelectItem>
+                                                        <SelectItem value="fixed">Fixed Amount</SelectItem>
+                                                        <SelectItem value="percentage">Percentage</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Variable Pay</Label>
+                                        <Input
+                                            type="number"
+                                            {...incrementForm.register('variablePayValue', { valueAsNumber: true })}
+                                            placeholder="Enter variable pay"
+                                        />
+                                    </div>
+                                </div>
+
                                 <div className="space-y-2">
                                     <Label>Effective Date</Label>
                                     <Input
@@ -2193,6 +2267,83 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                     </p>
                 )}
             </div>
+
+            {/* Increment Detail Dialog */}
+            <Dialog open={isViewingIncrement} onOpenChange={setIsViewingIncrement}>
+                <DialogContent className="sm:max-w-[500px] border-none shadow-2xl p-0 overflow-hidden rounded-[2rem]">
+                    <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-8 text-white relative">
+                        <div className="absolute top-0 right-0 p-6 opacity-20">
+                            <TrendingUp className="h-24 w-24 rotate-12" />
+                        </div>
+                        <DialogHeader>
+                            <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-3">
+                                <History className="h-6 w-6" />
+                                Growth Details
+                            </DialogTitle>
+                            <DialogDescription className="text-indigo-100 font-bold uppercase tracking-widest text-[10px] mt-1">
+                                Official Increment Record
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+
+                    <div className="p-8 space-y-6 bg-white dark:bg-slate-900">
+                        {isLoadingIncrementDetail ? (
+                            <div className="py-12 flex flex-col items-center justify-center space-y-4">
+                                <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
+                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Retrieving Secure Data...</p>
+                            </div>
+                        ) : selectedIncrementDetail ? (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Previous CTC</p>
+                                        <p className="text-lg font-black text-slate-600 dark:text-slate-400">{formatCurrency(selectedIncrementDetail.previous_salary)}</p>
+                                    </div>
+                                    <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/50">
+                                        <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">New CTC</p>
+                                        <p className="text-lg font-black text-emerald-700 dark:text-emerald-400">{formatCurrency(selectedIncrementDetail.new_salary)}</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800">
+                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Hike Amount</span>
+                                        <span className="text-sm font-black text-indigo-600">{formatCurrency(selectedIncrementDetail.increment_amount)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800">
+                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Growth %</span>
+                                        <Badge className="bg-indigo-600 text-white font-black rounded-full px-3">{selectedIncrementDetail.increment_percentage}%</Badge>
+                                    </div>
+                                    <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800">
+                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Effective From</span>
+                                        <span className="text-sm font-black text-slate-800 dark:text-white">{new Date(selectedIncrementDetail.effective_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 rounded-2xl bg-slate-900 text-white shadow-xl shadow-slate-900/20">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Revision Reason</p>
+                                    <p className="text-sm font-medium leading-relaxed italic">"{selectedIncrementDetail.reason}"</p>
+                                </div>
+
+                                <div className="pt-2 text-[9px] text-center text-slate-400 font-bold uppercase tracking-[0.2em]">
+                                    System ID: {selectedIncrementDetail.id}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="py-8 text-center text-slate-500 italic">No record data found.</div>
+                        )}
+
+                        <DialogFooter className="pt-4 flex !justify-center">
+                            <Button
+                                onClick={() => setIsViewingIncrement(false)}
+                                className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700 h-10 transition-all border-none"
+                            >
+                                Close Details
+                            </Button>
+                        </DialogFooter>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {/* Offer Letter Download Dialog */}
             <Dialog open={isOfferLetterDialogOpen} onOpenChange={setIsOfferLetterDialogOpen}>

@@ -57,7 +57,7 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
     setIsLoadingDepts(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://testing.staffly.space/reports/departments', {
+      const response = await fetch(`${API_BASE_URL}/reports/departments`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -77,7 +77,7 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
     setIsLoadingEmps(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://testing.staffly.space/employees/?department=${department}`, {
+      const response = await fetch(`${API_BASE_URL}/employees/?department=${department}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -103,7 +103,7 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
     setIsLoadingEmps(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://testing.staffly.space/employees/', {
+      const response = await fetch(`${API_BASE_URL}/employees/`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },

@@ -109,7 +109,7 @@ const AttendanceWithToggle: React.FC = () => {
   const [exportDepartments, setExportDepartments] = useState<string[]>([]);
 
   const [isExporting, setIsExporting] = useState(false);
-  const [reportLayout, setReportLayout] = useState<'basic' | 'grid'>('basic');
+  const [reportLayout, setReportLayout] = useState<'basic' | 'grid' | 'detailed_grid'>('basic');
 
   // Online/Offline status state
   const [isOnline, setIsOnline] = useState(true);
@@ -374,7 +374,7 @@ const AttendanceWithToggle: React.FC = () => {
       return url;
     }
     const normalized = url.startsWith('/') ? url : `/${url}`;
-    return `https://testing.staffly.space${normalized}`;
+    return `${API_BASE_URL}${normalized}`;
   }, []);
 
   // Determine if user can view employee attendance (management roles including Team Lead)
@@ -715,6 +715,22 @@ const AttendanceWithToggle: React.FC = () => {
             department: params.department
           })
           : await apiService.exportMonthlyGridPDF({
+            month: exportMonth,
+            year: exportYear,
+            department: params.department
+          });
+      } else if (reportLayout === 'detailed_grid') {
+        // Detailed Grid export
+        const exportMonth = exportStartDate ? (exportStartDate.getMonth() + 1).toString() : (new Date().getMonth() + 1).toString();
+        const exportYear = exportStartDate ? exportStartDate.getFullYear().toString() : new Date().getFullYear().toString();
+
+        blob = exportType === 'csv'
+          ? await apiService.exportMonthlyGridDetailedCSV({
+            month: exportMonth,
+            year: exportYear,
+            department: params.department
+          })
+          : await apiService.downloadMonthlyDetailedAttendanceGridPDF({
             month: exportMonth,
             year: exportYear,
             department: params.department
@@ -2094,7 +2110,7 @@ const AttendanceWithToggle: React.FC = () => {
 
   // Real-time timer updates
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: any;
 
     interval = setInterval(() => {
       const now = new Date();
@@ -3112,7 +3128,7 @@ const AttendanceWithToggle: React.FC = () => {
                                 >
                                   {record.checkInSelfie ? (
                                     <img
-                                      src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}${record.checkInSelfie}`}
+                                      src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${API_BASE_URL}${record.checkInSelfie}`}
                                       alt={`${record.name || 'Employee'}'s selfie`}
                                       className="w-full h-full object-cover"
                                       onError={(e) => {
@@ -3915,6 +3931,26 @@ const AttendanceWithToggle: React.FC = () => {
                     </span>
                   </div>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setReportLayout('detailed_grid')}
+                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === 'detailed_grid'
+                    ? 'border-purple-600 bg-purple-50 dark:bg-purple-950'
+                    : 'border-gray-200 hover:border-purple-300 dark:border-gray-700'
+                    }`}
+                >
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${reportLayout === 'detailed_grid' ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-400'}`}>
+                      <History className="h-4.5 w-4.5" />
+                    </div>
+                    <span className={`text-xs font-bold ${reportLayout === 'detailed_grid' ? 'text-purple-600' : 'text-gray-600'}`}>
+                      Detailed Grid
+                    </span>
+                    <span className="text-[9px] text-muted-foreground text-center line-clamp-1">
+                      Full details
+                    </span>
+                  </div>
+                </button>
               </div>
             </div>
 
@@ -4195,7 +4231,7 @@ const AttendanceWithToggle: React.FC = () => {
               <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                 {selectedRecord?.checkInSelfie ? (
                   <img
-                    src={selectedRecord.checkInSelfie.startsWith('http') ? selectedRecord.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}${selectedRecord.checkInSelfie}`}
+                    src={selectedRecord.checkInSelfie.startsWith('http') ? selectedRecord.checkInSelfie : `${API_BASE_URL}${selectedRecord.checkInSelfie}`}
                     alt="Check-in selfie"
                     className="w-full h-full object-cover"
                   />
@@ -4221,7 +4257,7 @@ const AttendanceWithToggle: React.FC = () => {
               <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                 {selectedRecord?.checkOutSelfie ? (
                   <img
-                    src={selectedRecord.checkOutSelfie.startsWith('http') ? selectedRecord.checkOutSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}${selectedRecord.checkOutSelfie}`}
+                    src={selectedRecord.checkOutSelfie.startsWith('http') ? selectedRecord.checkOutSelfie : `${API_BASE_URL}${selectedRecord.checkOutSelfie}`}
                     alt="Check-out selfie"
                     className="w-full h-full object-cover"
                   />

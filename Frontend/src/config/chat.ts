@@ -1,10 +1,12 @@
+import { API_BASE_URL } from '@/lib/api';
+
 // Chat Configuration
 export const CHAT_CONFIG = {
   // Set to false when backend APIs are ready
   DEVELOPMENT_MODE: import.meta.env.DEV,
 
   // API Base URL
-  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space',
+  API_BASE_URL: API_BASE_URL,
 
   // Chat settings
   MESSAGE_LIMIT_PER_PAGE: 50,

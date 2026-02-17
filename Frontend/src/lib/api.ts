@@ -575,7 +575,7 @@ class ApiService {
     return this.request('/leave/approvals');
   }
 
-  // Get approvals decision history for current approver
+  // Get approvals decision history for current approver (leave approvals history list)
   async getLeaveApprovalsHistory(): Promise<(LeaveRequestResponse & {
     employee_id: string;
     name: string;
@@ -1184,8 +1184,10 @@ class ApiService {
     return await response.blob();
   }
 
-  // Export Monthly Attendance Detailed Grid as PDF
-  async exportMonthlyGridDetailedPDF(params: {
+
+
+  // Export Monthly Attendance Detailed Grid as PDF (New Endpoint)
+  async downloadMonthlyDetailedAttendanceGridPDF(params: {
     month: string;
     year: string;
     department?: string;
@@ -1198,7 +1200,7 @@ class ApiService {
     }
 
     const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/attendance/report/monthly-grid-detailed/download/pdf?${queryParams.toString()}`, {
+    const response = await fetch(`${this.baseURL}/attendance/report/monthly-detailed-grid/download/pdf?${queryParams.toString()}`, {
       method: 'GET',
       headers: {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -1301,6 +1303,12 @@ class ApiService {
       headers: {
         'Content-Type': 'application/json',
       },
+    });
+  }
+
+  async deleteWeekoff(ruleId: number): Promise<void> {
+    await this.request(`/calendar/weekoffs/${ruleId}`, {
+      method: 'DELETE',
     });
   }
 
@@ -1452,6 +1460,7 @@ class ApiService {
     ifsc_code: string;
     working_days_per_month?: number;
     payment_mode?: string;
+    pf_no?: string;
     variable_pay_type?: string;
     variable_pay_value?: number;
     other_deduction_annual?: number;
@@ -1549,7 +1558,7 @@ class ApiService {
     return await response.blob();
   }
 
-  // 8. Increment
+  // 8. Increment (Create salary increment record admin and hr only)
   async createIncrement(data: { userId: string; incrementAmount: number; incrementPercentage: number; effectiveDate: string; reason: string; newSalary: number; previousSalary: number }): Promise<any> {
     return this.request('/salary/increment', {
       method: 'POST',

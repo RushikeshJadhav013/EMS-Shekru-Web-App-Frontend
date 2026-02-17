@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatTimeIST, formatIST, nowIST } from '@/utils/timezone';
-import { apiService } from '@/lib/api';
+import { apiService, API_BASE_URL } from '@/lib/api';
 import TruncatedText from '@/components/ui/TruncatedText';
 
 interface TeamMemberStatus {
@@ -229,7 +229,7 @@ const ManagerDashboard: React.FC = () => {
         // Fetch all tasks and today's attendance in parallel
         const [tasks, attendanceRes] = await Promise.all([
           apiService.getMyTasks(),
-          fetch('https://testing.staffly.space/attendance/today', {
+          fetch(`${API_BASE_URL}/attendance/today`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`,
             }

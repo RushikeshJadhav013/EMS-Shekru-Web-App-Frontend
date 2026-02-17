@@ -156,8 +156,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Verify token payload matches stored user (optional extra check)
         const tokenUser = getUserFromToken(storedToken);
-        if (tokenUser && tokenUser.userId && user.id !== tokenUser.userId) {
-          console.warn('Token user ID does not match stored user ID');
+
+        // Use loose equality (or String conversion) to prevent type mismatch issues (string vs number)
+        if (tokenUser && tokenUser.userId && String(user.id) !== String(tokenUser.userId)) {
+          console.warn('Token user ID does not match stored user ID', {
+            tokenUserId: tokenUser.userId,
+            storedUserId: user.id
+          });
+          // Only clear if there's a definite mismatch of actual values
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           localStorage.removeItem('userId');

@@ -1,9 +1,4 @@
-/**
- * Authentication Service
- * Handles authentication-related API calls including token verification
- */
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
+import { API_BASE_URL } from '@/lib/api';
 
 export interface TokenVerificationResponse {
   valid: boolean;

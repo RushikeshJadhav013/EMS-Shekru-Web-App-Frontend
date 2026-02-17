@@ -226,6 +226,7 @@ export interface SalaryStructure {
   ifscCode: string;
   panNumber: string;
   uanNumber: string;
+  pfNumber?: string;
   effectiveDate: string;
   createdAt: string;
   updatedAt: string;

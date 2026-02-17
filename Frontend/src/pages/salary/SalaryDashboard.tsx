@@ -104,6 +104,23 @@ const SalaryDashboard = () => {
         setSearchQuery(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''));
     };
 
+    const CORE_DEPARTMENTS = [
+        'Engineering',
+        'Product',
+        'Design',
+        'Marketing',
+        'Sales',
+        'HR',
+        'Human Resources',
+        'Finance',
+        'Operations',
+        'Legal',
+        'Customer Support',
+        'IT',
+        'Administration',
+        'Management'
+    ];
+
     const filteredItems = items.filter(item => {
         const itemRole = (item.role || '').toLowerCase();
         const normalizedItemRole = itemRole.replace(/[\s_]/g, '');
@@ -131,7 +148,11 @@ const SalaryDashboard = () => {
             item.employee_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (item.department && item.department.toLowerCase().includes(searchQuery.toLowerCase()));
 
-        const matchesDept = deptFilter === 'all' || item.department === deptFilter;
+        // Filter for Core Departments only
+        const isCoreDept = item.department && CORE_DEPARTMENTS.some(core => core.toLowerCase() === item.department.toLowerCase());
+        if (!isCoreDept) return false;
+
+        const matchesDept = deptFilter === 'all' || (item.department && item.department.toLowerCase() === deptFilter.toLowerCase());
 
         // Normalize role selection for comparison
         const normalizedRoleFilter = roleFilter.toLowerCase().replace(/[\s_]/g, '');
@@ -140,7 +161,7 @@ const SalaryDashboard = () => {
         return isRoleVisible && matchesSearch && matchesDept && matchesRole;
     });
 
-    const uniqueDepts = Array.from(new Set(items.map(e => e.department).filter(Boolean)));
+    const uniqueDepts = [...CORE_DEPARTMENTS].sort();
 
     // Role filter options based on user access level
     const availableRoles = userRole === 'admin'

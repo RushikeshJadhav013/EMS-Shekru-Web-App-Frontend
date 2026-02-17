@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Building2 } from 'lucide-react';
 import { formatTimeIST } from '@/utils/timezone';
+import { API_BASE_URL } from '@/lib/api';
 
 interface OfficeTiming {
   id: number;
@@ -31,7 +32,7 @@ const OfficeHoursBadge: React.FC<OfficeHoursBadgeProps> = ({
 
   const fetchGlobalOfficeHours = async () => {
     try {
-      const response = await fetch('https://testing.staffly.space/attendance/office-hours');
+      const response = await fetch(`${API_BASE_URL}/attendance/office-hours`);
       if (response.ok) {
         const officeTimings: OfficeTiming[] = await response.json();
         // Find global office hours (department is null or empty)

@@ -20,8 +20,9 @@ import {
 import { Language } from '@/i18n/translations';
 import loginBackgroundImage from '@/components/asstes/empty-room-with-chairs-desks_23-2149008873.avif';
 
+import { API_BASE_URL } from '@/lib/api';
+
 // API endpoints
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
 const API_ENDPOINTS = {
   sendOtp: `${API_BASE_URL}/auth/send-otp`,
   verifyOtp: `${API_BASE_URL}/auth/verify-otp`

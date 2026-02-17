@@ -75,12 +75,17 @@ interface LeaveRequest {
 
 export default function LeaveManagement() {
   const { user } = useAuth();
-  const { holidays, addHoliday, removeHoliday, isHoliday, getHolidayName } = useHolidays();
+  const { holidays, addHoliday, removeHoliday, isHoliday, getHolidayName, refreshHolidays } = useHolidays();
   const { addNotification } = useNotifications();
   const [searchParams, setSearchParams] = useSearchParams();
   const locationState = useLocation();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [displayedMonth, setDisplayedMonth] = useState<Date>(new Date());
+
+  // Refresh holidays on mount to ensure we have the latest data
+  useEffect(() => {
+    refreshHolidays();
+  }, [refreshHolidays]);
 
   // Initialize leave requests from localStorage or use default mock data
   const initializeLeaveRequests = (): LeaveRequest[] => {
@@ -301,7 +306,7 @@ export default function LeaveManagement() {
     }
   };
 
-  const [weekOffConfig, setWeekOffConfig] = useState<Record<string, string[]>>({});
+  const [weekOffConfig, setWeekOffConfig] = useState<Record<string, { id: number; days: string[] }>>({});
   const [isLoadingWeekOffs, setIsLoadingWeekOffs] = useState(true);
   const [companyDepartments, setCompanyDepartments] = useState<string[]>([]);
   const [weekOffForm, setWeekOffForm] = useState<{ department: string; days: string[] }>({
@@ -314,11 +319,14 @@ export default function LeaveManagement() {
     try {
       setIsLoadingWeekOffs(true);
       const response = await apiService.getWeekoffs();
-      const weekOffMap: Record<string, string[]> = {};
+      const weekOffMap: Record<string, { id: number; days: string[] }> = {};
       response.forEach((item) => {
         if (item.is_active) {
           // Convert API day names (e.g., "Saturday", "Sunday") to lowercase format
-          weekOffMap[item.department] = item.days.map(day => day.toLowerCase());
+          weekOffMap[item.department] = {
+            id: item.id,
+            days: item.days.map(day => day.toLowerCase())
+          };
         }
       });
       setWeekOffConfig(weekOffMap);
@@ -370,11 +378,8 @@ export default function LeaveManagement() {
         days: capitalizedDays,
       });
 
-      // Update local state
-      setWeekOffConfig((prev) => ({
-        ...prev,
-        [department]: uniqueDays,
-      }));
+      // Refresh from API to get the correct IDs
+      await fetchWeekOffs();
 
       toast({
         title: 'Week-off saved',
@@ -392,18 +397,31 @@ export default function LeaveManagement() {
     }
   };
 
-  const handleRemoveWeekOff = (department: string) => {
-    // Note: API doesn't have DELETE endpoint, so we just remove from local state
-    // In a real scenario, you might want to set is_active to false via API
-    setWeekOffConfig((prev) => {
-      const updated = { ...prev };
-      delete updated[department];
-      return updated;
-    });
-    toast({
-      title: 'Week-off removed',
-      description: `${department} no longer has a dedicated weekly off set.`,
-    });
+  const handleRemoveWeekOff = async (department: string) => {
+    const config = weekOffConfig[department];
+    if (!config) return;
+
+    try {
+      await apiService.deleteWeekoff(config.id);
+
+      setWeekOffConfig((prev) => {
+        const updated = { ...prev };
+        delete updated[department];
+        return updated;
+      });
+
+      toast({
+        title: 'Week-off removed',
+        description: `${department} no longer has a dedicated weekly off set.`,
+      });
+    } catch (error) {
+      console.error('Failed to remove weekoff:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to remove week-off configuration.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const { leaveBalance, loadLeaveBalance } = useLeaveBalance();
@@ -481,22 +499,27 @@ export default function LeaveManagement() {
   }, [weekOffForm.department, weekOffConfig]);
 
   const userWeekOffDays = useMemo(() => {
-    // For management profiles, prioritize showing what's currently in the planner form
-    if (['admin', 'hr', 'manager'].includes(user?.role || '')) {
-      if (weekOffForm.department) {
+    // For management profiles (Admin, HR, Manager, Team Lead), show all week-offs or selected department
+    if (['admin', 'hr', 'manager', 'team_lead'].includes(user?.role || '')) {
+      if (weekOffForm.department && weekOffForm.days.length > 0) {
         return weekOffForm.days;
       }
 
+      // If no specific department selected in form, aggregate all unique week-off days across all departments
       const allDays = new Set<string>();
-      Object.values(weekOffConfig).forEach(days => {
-        days.forEach(d => allDays.add(d.toLowerCase()));
+      Object.values(weekOffConfig).forEach(config => {
+        config.days.forEach(d => allDays.add(d.toLowerCase()));
       });
       return Array.from(allDays);
     }
 
-    // For regular employees, show only their department's week offs
-    if (!user?.department) return [];
-    return weekOffConfig[user.department] || [];
+    // For regular employees, show only their department's week offs (case-insensitive match)
+    const userDept = user?.department?.toLowerCase();
+    if (!userDept) return [];
+
+    // Find config that matches user's department (case-insensitive key search)
+    const deptKey = Object.keys(weekOffConfig).find(k => k.toLowerCase() === userDept);
+    return deptKey ? weekOffConfig[deptKey].days : [];
   }, [user?.department, user?.role, weekOffConfig, weekOffForm.department, weekOffForm.days]);
 
   const canApproveLeaves = ['admin', 'hr', 'manager'].includes(user?.role || '');
@@ -1140,39 +1163,38 @@ export default function LeaveManagement() {
     }
   };
 
-  // Filter requests based on role
-  const getFilteredRequests = () => {
-    // Admin can see all leave requests
-    if (user?.role === 'admin') {
-      return leaveRequests;
-    }
-    // HR can see all leave requests (except admin requests if any)
-    else if (user?.role === 'hr') {
-      return leaveRequests.filter(req => req.employeeId !== user?.id);
-    }
-    // Manager can see requests from their department or team
-    else if (user?.role === 'manager') {
-      return leaveRequests.filter(req =>
-        req.employeeId !== user?.id && req.department === user?.department
-      );
-    }
-    // Team lead can see requests from their team
-    else if (user?.role === 'team_lead') {
-      return leaveRequests.filter(req =>
-        req.employeeId !== user?.id && req.department === user?.department
-      );
-    }
-    // Employees see only their own requests
-    return leaveRequests.filter(req => req.employeeId === user?.id);
-  };
 
   // Filter approval history based on date range and sort by most recent first
+  // Filter approval history based on visibility rules and date range
   const getFilteredApprovalHistory = useMemo(() => {
     if (approvalHistory.length === 0) return [];
 
+    // Helper to normalize roles for consistent comparison
+    const normalize = (r: string) => (r || '').toLowerCase().replace(/[\s_]+/g, '');
+    const userRole = normalize(user?.role || '');
+    const userDept = (user?.department || '').trim().toLowerCase();
+
+    // 1. Apply Visibility Rules (Admin: all, HR: manager/tl/emp, Manager: tl/emp in dept)
+    let visibleHistory = approvalHistory.filter(req => {
+      if (userRole === 'admin') return true;
+      const role = normalize(req.role || '');
+
+      if (userRole === 'hr') {
+        return ['manager', 'teamlead', 'team_lead', 'employee'].includes(role);
+      }
+
+      if (userRole === 'manager') {
+        const isAllowedRole = ['teamlead', 'team_lead', 'employee'].includes(role);
+        const isSameDept = (req.department || '').trim().toLowerCase() === userDept;
+        return isAllowedRole && isSameDept;
+      }
+
+      return false;
+    });
+
     const now = new Date();
     let startDate: Date;
-    let endDate: Date = new Date(now.getFullYear() + 2, 11, 31, 23, 59, 59); // 2 years in future
+    let endDate: Date = new Date(now.getFullYear() + 2, 11, 31, 23, 59, 59);
 
     switch (historyFilter) {
       case 'all':
@@ -1184,15 +1206,15 @@ export default function LeaveManagement() {
         break;
       case 'last_3_months':
         startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59); // End of previous month
+        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
         break;
       case 'last_6_months':
         startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59); // End of previous month
+        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
         break;
       case 'custom':
         if (!customHistoryStartDate || !customHistoryEndDate) {
-          return [...approvalHistory].sort((a, b) => {
+          return [...visibleHistory].sort((a, b) => {
             const timeA = new Date(a.requestDate).getTime();
             const timeB = new Date(b.requestDate).getTime();
             return timeB - timeA;
@@ -1202,31 +1224,27 @@ export default function LeaveManagement() {
         endDate = new Date(customHistoryEndDate.getFullYear(), customHistoryEndDate.getMonth(), customHistoryEndDate.getDate(), 23, 59, 59);
         break;
       default:
-        return [...approvalHistory].sort((a, b) => {
+        return [...visibleHistory].sort((a, b) => {
           const timeA = new Date(a.requestDate).getTime();
           const timeB = new Date(b.requestDate).getTime();
           return timeB - timeA;
         });
     }
 
-    let filtered = approvalHistory.filter(request => {
+    let filtered = visibleHistory.filter(request => {
       const requestDate = new Date(request.startDate);
       return requestDate >= startDate && requestDate <= endDate;
     });
 
-    // Apply Status Filter
+    // 2. Apply Status Filter
     if (historyStatusFilter !== 'all') {
       filtered = filtered.filter(req => req.status === historyStatusFilter);
     }
 
-    // Apply Role Filter
+    // 3. Apply User Selected Role Filter
     if (historyRoleFilter !== 'all') {
-      filtered = filtered.filter(req => {
-        // Map role names if necessary, ensuring case-insensitivity
-        const reqRole = (req.role || '').toLowerCase();
-        const filterRole = historyRoleFilter.toLowerCase();
-        return reqRole === filterRole;
-      });
+      const filterRole = normalize(historyRoleFilter);
+      filtered = filtered.filter(req => normalize(req.role || '') === filterRole);
     }
 
     return filtered.sort((a, b) => {
@@ -1234,21 +1252,45 @@ export default function LeaveManagement() {
       const timeB = new Date(b.requestDate).getTime();
       return timeB - timeA;
     });
-  }, [approvalHistory, historyFilter, customHistoryStartDate, customHistoryEndDate, historyStatusFilter, historyRoleFilter]);
+  }, [approvalHistory, historyFilter, customHistoryStartDate, customHistoryEndDate, historyStatusFilter, historyRoleFilter, user]);
 
-  // Paginated approval requests - sorted by most recent first
-  const paginatedApprovalRequests = useMemo(() => {
-    // Sort by request date in descending order (most recent first)
-    const sorted = [...approvalRequests].sort((a, b) => {
+  // Filter pending approval requests based on same visibility rules
+  const getFilteredApprovalRequests = useMemo(() => {
+    if (approvalRequests.length === 0) return [];
+
+    // Helper to normalize roles for consistent comparison
+    const normalize = (r: string) => (r || '').toLowerCase().replace(/[\s_]+/g, '');
+    const userRole = normalize(user?.role || '');
+    const userDept = (user?.department || '').trim().toLowerCase();
+
+    return approvalRequests.filter(req => {
+      if (userRole === 'admin') return true;
+      const role = normalize(req.role || '');
+
+      if (userRole === 'hr') {
+        return ['manager', 'teamlead', 'team_lead', 'employee'].includes(role);
+      }
+
+      if (userRole === 'manager') {
+        const isAllowedRole = ['teamlead', 'team_lead', 'employee'].includes(role);
+        const isSameDept = (req.department || '').trim().toLowerCase() === userDept;
+        return isAllowedRole && isSameDept;
+      }
+
+      return false;
+    }).sort((a, b) => {
       const timeA = new Date(a.requestDate).getTime();
       const timeB = new Date(b.requestDate).getTime();
-      return timeB - timeA; // Descending order (most recent first)
+      return timeB - timeA;
     });
+  }, [approvalRequests, user]);
 
+  // Paginated and filtered approval requests
+  const paginatedApprovalRequests = useMemo(() => {
     const startIndex = (approvalCurrentPage - 1) * approvalItemsPerPage;
     const endIndex = startIndex + approvalItemsPerPage;
-    return sorted.slice(startIndex, endIndex);
-  }, [approvalRequests, approvalCurrentPage, approvalItemsPerPage]);
+    return getFilteredApprovalRequests.slice(startIndex, endIndex);
+  }, [getFilteredApprovalRequests, approvalCurrentPage, approvalItemsPerPage]);
 
   // Paginated approval history
   const paginatedApprovalHistory = useMemo(() => {
@@ -1257,7 +1299,7 @@ export default function LeaveManagement() {
     return getFilteredApprovalHistory.slice(startIndex, endIndex);
   }, [getFilteredApprovalHistory, historyCurrentPage, historyItemsPerPage]);
 
-  const approvalTotalPages = Math.ceil(approvalRequests.length / approvalItemsPerPage);
+  const approvalTotalPages = Math.ceil(getFilteredApprovalRequests.length / approvalItemsPerPage);
   const historyTotalPages = Math.ceil(getFilteredApprovalHistory.length / historyItemsPerPage);
 
   // Reset pagination when filters change
@@ -2121,7 +2163,7 @@ export default function LeaveManagement() {
                         </p>
                       ) : (
                         <div className="space-y-2">
-                          {Object.entries(weekOffConfig).map(([dept, days]) => (
+                          {Object.entries(weekOffConfig).map(([dept, config]) => (
                             <div
                               key={dept}
                               className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/60 px-3 py-2 text-sm"
@@ -2131,7 +2173,7 @@ export default function LeaveManagement() {
                                   {dept}
                                 </p>
                                 <p className="text-muted-foreground text-xs">
-                                  Weekly off: {days.map((day) => weekDayLabels[day.toLowerCase()] || day).join(', ')}
+                                  Weekly off: {config.days.map((day) => weekDayLabels[day.toLowerCase()] || day).join(', ')}
                                 </p>
                               </div>
                               <Button
@@ -2515,15 +2557,21 @@ export default function LeaveManagement() {
                           </SelectContent>
                         </Select>
                         <Select value={historyRoleFilter} onValueChange={(val: any) => setHistoryRoleFilter(val)}>
-                          <SelectTrigger className="w-[140px] h-9 bg-white dark:bg-gray-950">
+                          <SelectTrigger className="w-[140px] h-9 bg-white dark:bg-gray-950 text-xs">
                             <SelectValue placeholder="Role" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Roles</SelectItem>
-                            <SelectItem value="hr">HR</SelectItem>
-                            <SelectItem value="manager">Manager</SelectItem>
-                            <SelectItem value="team_lead">Team Lead</SelectItem>
-                            <SelectItem value="employee">Employee</SelectItem>
+                            {user?.role === 'admin' && <SelectItem value="hr">HR</SelectItem>}
+                            {(user?.role === 'admin' || user?.role === 'hr') && (
+                              <SelectItem value="manager">Manager</SelectItem>
+                            )}
+                            {(user?.role === 'admin' || user?.role === 'hr' || user?.role === 'manager') && (
+                              <SelectItem value="team_lead">Team Lead</SelectItem>
+                            )}
+                            {(user?.role === 'admin' || user?.role === 'hr' || user?.role === 'manager') && (
+                              <SelectItem value="employee">Employee</SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
