@@ -2561,30 +2561,48 @@ const TaskManagement: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="assignRoleFilter" className="text-sm font-semibold flex items-center gap-2">
-                        <Filter className="h-4 w-4 text-violet-600" />
-                        Filter Role
-                      </Label>
-                      <Select
-                        value={assignRoleFilter}
-                        onValueChange={(value: 'all' | UserRole) => setAssignRoleFilter(value)}
-                      >
-                        <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                          <SelectValue placeholder="All Roles" />
-                        </SelectTrigger>
-                        <SelectContent className="border-2 shadow-xl">
-                          <SelectItem value="all">All Roles</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="hr">HR</SelectItem>
-                          <SelectItem value="manager">Manager</SelectItem>
-                          <SelectItem value="team_lead">Team Lead</SelectItem>
-                          <SelectItem value="employee">Employee</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {['admin', 'hr', 'manager'].includes(user?.role || '') && (
+                      <div className="space-y-2">
+                        <Label htmlFor="assignRoleFilter" className="text-sm font-semibold flex items-center gap-2">
+                          <Filter className="h-4 w-4 text-violet-600" />
+                          Filter Role
+                        </Label>
+                        <Select
+                          value={assignRoleFilter}
+                          onValueChange={(value: 'all' | UserRole) => setAssignRoleFilter(value)}
+                        >
+                          <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                            <SelectValue placeholder="All Roles" />
+                          </SelectTrigger>
+                          <SelectContent className="border-2 shadow-xl">
+                            <SelectItem value="all">All Roles</SelectItem>
+                            {user?.role === 'admin' && (
+                              <>
+                                <SelectItem value="hr">HR</SelectItem>
+                                <SelectItem value="manager">Manager</SelectItem>
+                                <SelectItem value="team_lead">Team Lead</SelectItem>
+                                <SelectItem value="employee">Employee</SelectItem>
+                              </>
+                            )}
+                            {user?.role === 'hr' && (
+                              <>
+                                <SelectItem value="manager">Manager</SelectItem>
+                                <SelectItem value="team_lead">Team Lead</SelectItem>
+                                <SelectItem value="employee">Employee</SelectItem>
+                              </>
+                            )}
+                            {user?.role === 'manager' && (
+                              <>
+                                <SelectItem value="team_lead">Team Lead</SelectItem>
+                                <SelectItem value="employee">Employee</SelectItem>
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
 
-                    <div className="space-y-2">
+                    <div className={['admin', 'hr', 'manager'].includes(user?.role || '') ? "space-y-2" : "space-y-2 col-span-full"}>
                       <Label htmlFor="assignDeptFilter" className="text-sm font-semibold flex items-center gap-2">
                         <Building2 className="h-4.4 w-4.5 text-violet-600" />
                         Filter Department

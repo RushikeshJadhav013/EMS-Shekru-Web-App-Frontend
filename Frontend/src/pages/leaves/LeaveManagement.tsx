@@ -306,7 +306,8 @@ export default function LeaveManagement() {
     }
   };
 
-  const [weekOffConfig, setWeekOffConfig] = useState<Record<string, { id: number; days: string[] }>>({});
+  /* Updated to handle potential multiple rules per department (duplicates) */
+  const [weekOffConfig, setWeekOffConfig] = useState<Record<string, { id: number; ids: number[]; days: string[] }>>({});
   const [isLoadingWeekOffs, setIsLoadingWeekOffs] = useState(true);
   const [companyDepartments, setCompanyDepartments] = useState<string[]>([]);
   const [weekOffForm, setWeekOffForm] = useState<{ department: string; days: string[] }>({
@@ -319,14 +320,28 @@ export default function LeaveManagement() {
     try {
       setIsLoadingWeekOffs(true);
       const response = await apiService.getWeekoffs();
-      const weekOffMap: Record<string, { id: number; days: string[] }> = {};
+      const weekOffMap: Record<string, { id: number; ids: number[]; days: string[] }> = {};
+
       response.forEach((item) => {
         if (item.is_active) {
+          const dept = item.department;
           // Convert API day names (e.g., "Saturday", "Sunday") to lowercase format
-          weekOffMap[item.department] = {
-            id: item.id,
-            days: item.days.map(day => day.toLowerCase())
-          };
+          const days = item.days.map(day => day.toLowerCase());
+
+          if (weekOffMap[dept]) {
+            // If department already exists, append ID and merge days
+            weekOffMap[dept].ids.push(item.id);
+            // Union of days
+            const existingDays = new Set(weekOffMap[dept].days);
+            days.forEach(d => existingDays.add(d));
+            weekOffMap[dept].days = Array.from(existingDays);
+          } else {
+            weekOffMap[dept] = {
+              id: item.id, // Keep one ID as main reference
+              ids: [item.id], // Store all IDs to ensure we can delete all
+              days: days
+            };
+          }
         }
       });
       setWeekOffConfig(weekOffMap);
@@ -414,8 +429,11 @@ export default function LeaveManagement() {
     }
 
     try {
-      console.log('Calling API to delete week-off with ID:', config.id);
-      await apiService.deleteWeekoff(config.id);
+      // Delete all rules associated with this department (handling duplicates)
+      const idsToDelete = config.ids && config.ids.length > 0 ? config.ids : [config.id];
+      console.log('Calling API to delete week-off IDs:', idsToDelete);
+
+      await Promise.all(idsToDelete.map(id => apiService.deleteWeekoff(id)));
 
       // Remove from local state
       setWeekOffConfig((prev) => {
@@ -1516,174 +1534,6 @@ export default function LeaveManagement() {
               ))}
             </div>
 
-            {/* Leave Request Form */}
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-                <CardTitle className="text-xl font-semibold">Request Leave</CardTitle>
-                <div className="mt-2 space-y-3">
-                  <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-                    <p className="text-sm text-blue-800 dark:text-blue-200">
-                      <strong>Note:</strong> Annual, Sick, and Casual leave requests will deduct from your <strong>Annual Leave</strong> balance.
-                      Only <strong>Unpaid Leave</strong> does not affect your Annual Leave balance.
-                    </p>
-                  </div>
-                  <div className="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
-                    <p className="text-sm text-amber-800 dark:text-amber-200">
-                      <strong>Leave Restrictions:</strong>
-                    </p>
-                    <ul className="text-sm text-amber-700 dark:text-amber-300 mt-1 space-y-1">
-                      <li>• <strong>Sick Leave:</strong> Can only be applied for 3 or more days (use Casual Leave for 1-2 days)</li>
-                      <li>• <strong>Sick Leave:</strong> Must be applied at least 2 hours in advance</li>
-                      <li>• <strong>Other Leaves:</strong> Must be applied at least 24 hours in advance</li>
-                    </ul>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Leave Type</Label>
-                    <Select
-                      value={formData.type}
-                      onValueChange={(value) => setFormData({ ...formData, type: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Leave Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="sick" disabled={isLeaveTypeDisabled('sick', leaveBalance)}>
-                          Sick Leave {leaveBalance.sick.remaining <= 0 ? '(No balance)' : `(${leaveBalance.sick.remaining} days)`}
-                        </SelectItem>
-                        <SelectItem value="casual" disabled={isLeaveTypeDisabled('casual', leaveBalance)}>
-                          Casual Leave {leaveBalance.casual.remaining <= 0 ? '(No balance)' : `(${leaveBalance.casual.remaining} days)`}
-                        </SelectItem>
-                        <SelectItem value="maternity">Maternity Leave</SelectItem>
-                        <SelectItem value="paternity">Paternity Leave</SelectItem>
-                        <SelectItem value="unpaid">Unpaid Leave</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Duration</Label>
-                    <div className="flex gap-2">
-                      <DatePicker
-                        date={formData.startDate}
-                        onDateChange={(date) => date && setFormData({ ...formData, startDate: date })}
-                        placeholder="Start date"
-                      />
-                      <DatePicker
-                        date={formData.endDate}
-                        onDateChange={(date) => date && setFormData({ ...formData, endDate: date })}
-                        placeholder="End date"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Dynamic validation feedback */}
-                {(() => {
-                  const leaveDays = Math.ceil((formData.endDate.getTime() - formData.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                  const now = new Date();
-                  const startDate = new Date(formData.startDate);
-                  const timeDifference = startDate.getTime() - now.getTime();
-                  const hoursDifference = timeDifference / (1000 * 60 * 60);
-
-                  const validationMessages = [];
-
-                  // Check sick leave duration
-                  if (formData.type === 'sick' && leaveDays < 3) {
-                    validationMessages.push({
-                      type: 'error',
-                      message: `Sick leave requires minimum 3 days. Current selection: ${leaveDays} day${leaveDays === 1 ? '' : 's'}. Consider using Casual Leave for shorter periods.`
-                    });
-                  }
-
-                  // Check advance notice requirements
-                  if (formData.type === 'sick') {
-                    // Sick leave requires 2 hours advance notice
-                    if (hoursDifference < 2 && hoursDifference >= 0) {
-                      const hoursRemaining = Math.ceil(2 - hoursDifference);
-                      const minutesRemaining = Math.ceil((2 - hoursDifference) * 60);
-                      validationMessages.push({
-                        type: 'error',
-                        message: `Sick leave must be applied 2 hours in advance. Please select a date at least ${hoursRemaining > 0 ? `${hoursRemaining} hour${hoursRemaining === 1 ? '' : 's'}` : `${minutesRemaining} minute${minutesRemaining === 1 ? '' : 's'}`} from now.`
-                      });
-                    }
-                  } else {
-                    // Other leaves require 24 hours advance notice
-                    if (hoursDifference < 24 && hoursDifference >= 0) {
-                      const hoursRemaining = Math.ceil(24 - hoursDifference);
-                      validationMessages.push({
-                        type: 'error',
-                        message: `Leave must be applied 24 hours in advance. Please select a date at least ${hoursRemaining} hours from now.`
-                      });
-                    }
-                  }
-
-                  // Show success message when valid
-                  if (validationMessages.length === 0 && leaveDays > 0) {
-                    if (formData.type === 'sick') {
-                      validationMessages.push({
-                        type: 'success',
-                        message: `✓ Valid sick leave request for ${leaveDays} day${leaveDays === 1 ? '' : 's'} with ${Math.floor(hoursDifference)} hours advance notice.`
-                      });
-                    } else if (hoursDifference >= 24) {
-                      validationMessages.push({
-                        type: 'success',
-                        message: `✓ Valid leave request with ${Math.floor(hoursDifference)} hours advance notice.`
-                      });
-                    }
-                  }
-
-                  return validationMessages.length > 0 ? (
-                    <div className="space-y-2">
-                      {validationMessages.map((msg, index) => (
-                        <div
-                          key={index}
-                          className={`p-3 rounded-lg border text-sm ${msg.type === 'error'
-                            ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
-                            : 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200'
-                            }`}
-                        >
-                          {msg.message}
-                        </div>
-                      ))}
-                    </div>
-                  ) : null;
-                })()}
-
-                <div className="space-y-2">
-                  <Label>Reason *</Label>
-                  <Textarea
-                    value={formData.reason}
-                    onChange={(e) => setFormData({ ...formData, reason: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
-                    placeholder="Please provide a reason for your leave request (minimum 10 characters)."
-                    rows={3}
-                    className={formData.reason.trim().length > 0 && formData.reason.trim().length < 10 ? 'border-red-500' : ''}
-                  />
-                  <div className="flex justify-between text-sm">
-                    <span className={`${formData.reason.trim().length < 10 ? 'text-red-500' : 'text-green-600'}`}>
-                      {formData.reason.trim().length < 10
-                        ? `${formData.reason.trim().length}/10 characters (minimum required)`
-                        : `${formData.reason.trim().length}/500 characters`
-                      }
-                    </span>
-                    {formData.reason.trim().length < 10 && formData.reason.trim().length > 0 && (
-                      <span className="text-red-500 text-xs">Minimum 10 characters required</span>
-                    )}
-                  </div>
-                </div>
-                <Button
-                  onClick={handleSubmitRequest}
-                  disabled={isSubmitting || formData.reason.trim().length < 10}
-                  className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md disabled:opacity-50"
-                >
-                  <CalendarIcon className="h-4 w-4" />
-                  {isSubmitting ? 'Submitting...' : 'Submit Request'}
-                </Button>
-              </CardContent>
-            </Card>
-
             {/* My Leave History - Premium UI */}
             <Card className="border-0 shadow-xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 overflow-hidden">
               <CardHeader className="border-b bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950 dark:via-purple-950 dark:to-pink-950">
@@ -1709,11 +1559,11 @@ export default function LeaveManagement() {
                       <SelectValue placeholder="Select period" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="all">All History</SelectItem>
                       <SelectItem value="current_month">Current Month</SelectItem>
                       <SelectItem value="last_3_months">Last 3 Months</SelectItem>
                       <SelectItem value="last_6_months">Last 6 Months</SelectItem>
                       <SelectItem value="last_1_year">Last 1 Year</SelectItem>
-                      <SelectItem value="all">All History</SelectItem>
                       <SelectItem value="custom">Custom Range</SelectItem>
                     </SelectContent>
                   </Select>
@@ -1869,6 +1719,176 @@ export default function LeaveManagement() {
                     )}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Leave Request Form */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+                <CardTitle className="text-xl font-semibold">Request Leave</CardTitle>
+                <div className="mt-2 space-y-3">
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      <strong>Note:</strong> Annual, Sick, and Casual leave requests will deduct from your <strong>Annual Leave</strong> balance.
+                      Only <strong>Unpaid Leave</strong> does not affect your Annual Leave balance.
+                    </p>
+                  </div>
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      <strong>Leave Restrictions:</strong>
+                    </p>
+                    <ul className="text-sm text-amber-700 dark:text-amber-300 mt-1 space-y-1">
+                      <li>• <strong>Sick Leave:</strong> Can only be applied for 3 or more days (use Casual Leave for 1-2 days)</li>
+                      <li>• <strong>Sick Leave:</strong> Must be applied at least 2 hours in advance</li>
+                      <li>• <strong>Other Leaves:</strong> Must be applied at least 24 hours in advance</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Leave Type</Label>
+                    <Select
+                      value={formData.type}
+                      onValueChange={(value) => setFormData({ ...formData, type: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Leave Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sick" disabled={isLeaveTypeDisabled('sick', leaveBalance)}>
+                          Sick Leave {leaveBalance.sick.remaining <= 0 ? '(No balance)' : `(${leaveBalance.sick.remaining} days)`}
+                        </SelectItem>
+                        <SelectItem value="casual" disabled={isLeaveTypeDisabled('casual', leaveBalance)}>
+                          Casual Leave {leaveBalance.casual.remaining <= 0 ? '(No balance)' : `(${leaveBalance.casual.remaining} days)`}
+                        </SelectItem>
+                        <SelectItem value="maternity">Maternity Leave</SelectItem>
+                        <SelectItem value="paternity">Paternity Leave</SelectItem>
+                        <SelectItem value="unpaid">Unpaid Leave</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Duration</Label>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <DatePicker
+                          date={formData.startDate}
+                          onDateChange={(date) => date && setFormData({ ...formData, startDate: date })}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <DatePicker
+                          date={formData.endDate}
+                          onDateChange={(date) => date && setFormData({ ...formData, endDate: date })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dynamic validation feedback */}
+                {(() => {
+                  const leaveDays = Math.ceil((formData.endDate.getTime() - formData.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                  const now = new Date();
+                  const startDate = new Date(formData.startDate);
+                  const timeDifference = startDate.getTime() - now.getTime();
+                  const hoursDifference = timeDifference / (1000 * 60 * 60);
+
+                  const validationMessages = [];
+
+                  // Check sick leave duration
+                  if (formData.type === 'sick' && leaveDays < 3) {
+                    validationMessages.push({
+                      type: 'error',
+                      message: `Sick leave requires minimum 3 days. Current selection: ${leaveDays} day${leaveDays === 1 ? '' : 's'}. Consider using Casual Leave for shorter periods.`
+                    });
+                  }
+
+                  // Check advance notice requirements
+                  if (formData.type === 'sick') {
+                    // Sick leave requires 2 hours advance notice
+                    if (hoursDifference < 2 && hoursDifference >= 0) {
+                      const hoursRemaining = Math.ceil(2 - hoursDifference);
+                      const minutesRemaining = Math.ceil((2 - hoursDifference) * 60);
+                      validationMessages.push({
+                        type: 'error',
+                        message: `Sick leave must be applied 2 hours in advance. Please select a date at least ${hoursRemaining > 0 ? `${hoursRemaining} hour${hoursRemaining === 1 ? '' : 's'}` : `${minutesRemaining} minute${minutesRemaining === 1 ? '' : 's'}`} from now.`
+                      });
+                    }
+                  } else {
+                    // Other leaves require 24 hours advance notice
+                    if (hoursDifference < 24 && hoursDifference >= 0) {
+                      const hoursRemaining = Math.ceil(24 - hoursDifference);
+                      validationMessages.push({
+                        type: 'error',
+                        message: `Leave must be applied 24 hours in advance. Please select a date at least ${hoursRemaining} hours from now.`
+                      });
+                    }
+                  }
+
+                  // Show success message when valid
+                  if (validationMessages.length === 0 && leaveDays > 0) {
+                    if (formData.type === 'sick') {
+                      validationMessages.push({
+                        type: 'success',
+                        message: `✓ Valid sick leave request for ${leaveDays} day${leaveDays === 1 ? '' : 's'} with ${Math.floor(hoursDifference)} hours advance notice.`
+                      });
+                    } else if (hoursDifference >= 24) {
+                      validationMessages.push({
+                        type: 'success',
+                        message: `✓ Valid leave request with ${Math.floor(hoursDifference)} hours advance notice.`
+                      });
+                    }
+                  }
+
+                  return validationMessages.length > 0 ? (
+                    <div className="space-y-2">
+                      {validationMessages.map((msg, index) => (
+                        <div
+                          key={index}
+                          className={`p-3 rounded-lg border text-sm ${msg.type === 'error'
+                            ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
+                            : 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200'
+                            }`}
+                        >
+                          {msg.message}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
+
+                <div className="space-y-2">
+                  <Label>Reason *</Label>
+                  <Textarea
+                    value={formData.reason}
+                    onChange={(e) => setFormData({ ...formData, reason: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
+                    placeholder="Please provide a reason for your leave request (minimum 10 characters)."
+                    rows={3}
+                    className={formData.reason.trim().length > 0 && formData.reason.trim().length < 10 ? 'border-red-500' : ''}
+                  />
+                  <div className="flex justify-between text-sm">
+                    <span className={`${formData.reason.trim().length < 10 ? 'text-red-500' : 'text-green-600'}`}>
+                      {formData.reason.trim().length < 10
+                        ? `${formData.reason.trim().length}/10 characters (minimum required)`
+                        : `${formData.reason.trim().length}/500 characters`
+                      }
+                    </span>
+                    {formData.reason.trim().length < 10 && formData.reason.trim().length > 0 && (
+                      <span className="text-red-500 text-xs">Minimum 10 characters required</span>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  onClick={handleSubmitRequest}
+                  disabled={isSubmitting || formData.reason.trim().length < 10}
+                  className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md disabled:opacity-50"
+                >
+                  <CalendarIcon className="h-4 w-4" />
+                  {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -2603,8 +2623,6 @@ export default function LeaveManagement() {
                             <DatePicker
                               date={customHistoryStartDate}
                               onDateChange={setCustomHistoryStartDate}
-                              placeholder="Select start date"
-                              className="w-full"
                             />
                           </div>
                           <div className="flex-1 min-w-[150px]">
@@ -2612,8 +2630,6 @@ export default function LeaveManagement() {
                             <DatePicker
                               date={customHistoryEndDate}
                               onDateChange={setCustomHistoryEndDate}
-                              placeholder="Select end date"
-                              className="w-full"
                             />
                           </div>
                         </div>
@@ -2698,18 +2714,20 @@ export default function LeaveManagement() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Start Date</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Start Date</Label>
                 <DatePicker
                   date={editFormData.startDate}
                   onDateChange={(date) => date && setEditFormData(prev => ({ ...prev, startDate: date }))}
+                  placeholder="Select start date"
                 />
               </div>
-              <div>
-                <Label>End Date</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">End Date</Label>
                 <DatePicker
                   date={editFormData.endDate}
                   onDateChange={(date) => date && setEditFormData(prev => ({ ...prev, endDate: date }))}
+                  placeholder="Select end date"
                 />
               </div>
             </div>

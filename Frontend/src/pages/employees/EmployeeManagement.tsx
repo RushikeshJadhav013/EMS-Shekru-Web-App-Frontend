@@ -398,7 +398,8 @@ export default function EmployeeManagement() {
   // Export filters
   const [exportFilters, setExportFilters] = useState({
     department: 'all',
-    role: 'all'
+    role: 'all',
+    status: 'all'
   });
 
   // API states
@@ -1692,7 +1693,8 @@ export default function EmployeeManagement() {
                 setExportFilters(prev => ({
                   ...prev,
                   department: selectedDepartment,
-                  role: selectedRole
+                  role: selectedRole,
+                  status: selectedStatus
                 }));
                 setIsExportDialogOpen(true);
               }}
@@ -2075,7 +2077,6 @@ export default function EmployeeManagement() {
                         )}
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="hr">HR</SelectItem>
                         <SelectItem value="manager">Manager</SelectItem>
                         <SelectItem value="team_lead">TeamLead</SelectItem>
@@ -2539,22 +2540,22 @@ export default function EmployeeManagement() {
                     </div>
                   </SelectItem>
 
-                  <SelectItem value="HR" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors">
+                  <SelectItem value="hr" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors">
                     <div className="flex items-center gap-2">
                       HR
                     </div>
                   </SelectItem>
-                  <SelectItem value="Manager" className="cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors">
+                  <SelectItem value="manager" className="cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors">
                     <div className="flex items-center gap-2">
                       Manager
                     </div>
                   </SelectItem>
-                  <SelectItem value="TeamLead" className="cursor-pointer hover:bg-cyan-50 dark:hover:bg-cyan-950 transition-colors">
+                  <SelectItem value="team_lead" className="cursor-pointer hover:bg-cyan-50 dark:hover:bg-cyan-950 transition-colors">
                     <div className="flex items-center gap-2">
                       TeamLead
                     </div>
                   </SelectItem>
-                  <SelectItem value="Employee" className="cursor-pointer hover:bg-green-50 dark:hover:bg-green-950 transition-colors">
+                  <SelectItem value="employee" className="cursor-pointer hover:bg-green-50 dark:hover:bg-green-950 transition-colors">
                     <div className="flex items-center gap-2">
                       Employee
                     </div>
@@ -2637,7 +2638,7 @@ export default function EmployeeManagement() {
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-0 shadow-sm rounded-full px-3 py-0.5 font-medium transition-all">
-                          {employee.role ? employee.role.charAt(0).toUpperCase() + employee.role.slice(1).replace('_', ' ') : '-'}
+                          {employee.role ? normalizeRole(employee.role) : '-'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -2860,7 +2861,6 @@ export default function EmployeeManagement() {
                   )}
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="hr">HR</SelectItem>
                   <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="team_lead">TeamLead</SelectItem>
@@ -3435,11 +3435,28 @@ export default function EmployeeManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Roles</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    {/* Admin role removed from export filter */}
                     <SelectItem value="hr">HR</SelectItem>
                     <SelectItem value="manager">Manager</SelectItem>
                     <SelectItem value="team_lead">Team Lead</SelectItem>
                     <SelectItem value="employee">Employee</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="export-status">Status</Label>
+                <Select
+                  value={exportFilters.status}
+                  onValueChange={(value) => setExportFilters(prev => ({ ...prev, status: value }))}
+                >
+                  <SelectTrigger id="export-status" className="mt-1">
+                    <SelectValue placeholder="Select Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
