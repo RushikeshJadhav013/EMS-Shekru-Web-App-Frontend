@@ -2515,7 +2515,7 @@ const TaskManagement: React.FC = () => {
                         <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="border-2 shadow-xl">
+                        <SelectContent className="border-2 shadow-xl" side="bottom">
                           <SelectItem value="low" className="cursor-pointer">
                             <div className="flex items-center gap-2">
                               <div className="h-2 w-2 rounded-full bg-green-500"></div>
@@ -2562,7 +2562,7 @@ const TaskManagement: React.FC = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {['admin', 'hr', 'manager'].includes(user?.role || '') && (
-                      <div className="space-y-2">
+                      <div className={['admin', 'hr'].includes(user?.role || '') ? "space-y-2" : "space-y-2 col-span-full"}>
                         <Label htmlFor="assignRoleFilter" className="text-sm font-semibold flex items-center gap-2">
                           <Filter className="h-4 w-4 text-violet-600" />
                           Filter Role
@@ -2574,7 +2574,7 @@ const TaskManagement: React.FC = () => {
                           <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
                             <SelectValue placeholder="All Roles" />
                           </SelectTrigger>
-                          <SelectContent className="border-2 shadow-xl">
+                          <SelectContent className="border-2 shadow-xl" side="bottom">
                             <SelectItem value="all">All Roles</SelectItem>
                             {user?.role === 'admin' && (
                               <>
@@ -2602,31 +2602,33 @@ const TaskManagement: React.FC = () => {
                       </div>
                     )}
 
-                    <div className={['admin', 'hr', 'manager'].includes(user?.role || '') ? "space-y-2" : "space-y-2 col-span-full"}>
-                      <Label htmlFor="assignDeptFilter" className="text-sm font-semibold flex items-center gap-2">
-                        <Building2 className="h-4.4 w-4.5 text-violet-600" />
-                        Filter Department
-                      </Label>
-                      <Select
-                        value={newTask.department || 'all'}
-                        onValueChange={(value) => setNewTask({ ...newTask, department: value === 'all' ? '' : value })}
-                      >
-                        <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                          <SelectValue placeholder="All Departments" />
-                        </SelectTrigger>
-                        <SelectContent className="border-2 shadow-xl">
-                          <SelectItem value="all">All Departments</SelectItem>
-                          {CORE_DEPARTMENTS
-                            .slice()
-                            .sort((a, b) => a.localeCompare(b))
-                            .map((dept) => (
-                              <SelectItem key={dept} value={dept}>
-                                {dept}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {['admin', 'hr'].includes(user?.role || '') && (
+                      <div className="space-y-2">
+                        <Label htmlFor="assignDeptFilter" className="text-sm font-semibold flex items-center gap-2">
+                          <Building2 className="h-4.4 w-4.5 text-violet-600" />
+                          Filter Department
+                        </Label>
+                        <Select
+                          value={newTask.department || 'all'}
+                          onValueChange={(value) => setNewTask({ ...newTask, department: value === 'all' ? '' : value })}
+                        >
+                          <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                            <SelectValue placeholder="All Departments" />
+                          </SelectTrigger>
+                          <SelectContent className="border-2 shadow-xl" side="bottom">
+                            <SelectItem value="all">All Departments</SelectItem>
+                            {CORE_DEPARTMENTS
+                              .slice()
+                              .sort((a, b) => a.localeCompare(b))
+                              .map((dept) => (
+                                <SelectItem key={dept} value={dept}>
+                                  {dept}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -2643,7 +2645,7 @@ const TaskManagement: React.FC = () => {
                       <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
                         <SelectValue placeholder="Select assignee" />
                       </SelectTrigger>
-                      <SelectContent className="border-2 shadow-xl">
+                      <SelectContent className="border-2 shadow-xl" side="bottom">
                         {userId && user && (
                           <SelectItem value={userId} className="cursor-pointer">
                             {user.name} (Self)
@@ -2913,11 +2915,14 @@ const TaskManagement: React.FC = () => {
                       {user?.role === 'admin' && (
                         <SelectItem value="all">All Departments</SelectItem>
                       )}
-                      {departments.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
+                      {departments
+                        .filter(dept => CORE_DEPARTMENTS.some(core => core.toLowerCase() === dept.toLowerCase()))
+                        .sort((a, b) => a.localeCompare(b))
+                        .map((dept) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>

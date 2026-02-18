@@ -67,10 +67,21 @@ export const isTokenExpired = (token: string): boolean => {
   const expirationTime = payload.exp * 1000;
   const currentTime = Date.now();
 
-  // Add a 5-minute buffer to account for clock skew
-  const bufferTime = 5 * 60 * 1000; // 5 minutes in milliseconds
+  // Use a small 30-second buffer only to account for clock skew between client and server.
+  // A large buffer (e.g. 5 minutes) was causing valid tokens to be rejected on page refresh.
+  const bufferTime = 30 * 1000; // 30 seconds in milliseconds
 
-  return currentTime >= (expirationTime - bufferTime);
+  const isExpired = currentTime >= (expirationTime - bufferTime);
+
+  if (isExpired) {
+    console.warn('JWT Token is expired or near expiration:', {
+      currentTime: new Date(currentTime).toISOString(),
+      expirationTime: new Date(expirationTime).toISOString(),
+      remainingMs: expirationTime - currentTime
+    });
+  }
+
+  return isExpired;
 };
 
 /**
@@ -137,7 +148,8 @@ export const getUserFromToken = (token: string): { userId?: string; email?: stri
   }
 
   return {
-    userId: (payload.user_id || payload.sub || payload.userId) as string | undefined,
+    // Check all common JWT user ID field names used by different backends
+    userId: (payload.user_id ?? payload.sub ?? payload.userId ?? payload.id) as string | undefined,
     email: payload.email as string | undefined,
     role: payload.role as string | undefined,
   };

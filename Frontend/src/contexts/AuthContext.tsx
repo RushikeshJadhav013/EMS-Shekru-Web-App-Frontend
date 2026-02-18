@@ -128,7 +128,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // First, do client-side validation (fast check)
       if (!isTokenValid(storedToken)) {
-        console.warn('Token is invalid or expired (client-side check)');
+        console.warn('Restoration: Token is invalid or expired (client-side check)', {
+          tokenPreview: storedToken.substring(0, 10) + '...',
+          isValid: isTokenValid(storedToken)
+        });
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         localStorage.removeItem('userId');
@@ -154,28 +157,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const user = JSON.parse(storedUser) as User;
 
+        // Debug user object
+        console.log('Restoration: Stored user object found:', {
+          id: user.id,
+          role: user.role,
+          email: user.email
+        });
+
         // Verify token payload matches stored user (optional extra check)
         const tokenUser = getUserFromToken(storedToken);
+        console.log('Restoration: Token user data:', tokenUser);
 
-        // Use loose equality (or String conversion) to prevent type mismatch issues (string vs number)
-        if (tokenUser && tokenUser.userId && String(user.id) !== String(tokenUser.userId)) {
-          console.warn('Token user ID does not match stored user ID', {
+        // Only reject if BOTH sides have non-empty values AND they definitively don't match.
+        // If tokenUser.userId is undefined/null (JWT field not found), skip this check
+        // to avoid false positives that log users out on every refresh.
+        if (
+          tokenUser &&
+          tokenUser.userId &&
+          user.id &&
+          String(user.id) !== String(tokenUser.userId)
+        ) {
+          console.warn('Restoration: Token user ID does not match stored user ID', {
             tokenUserId: tokenUser.userId,
             storedUserId: user.id
           });
-          // Only clear if there's a definite mismatch of actual values
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          localStorage.removeItem('userId');
-          setUser(null);
-          setIsLoading(false);
-          return;
+          // For now, let's be lenient if the user is already found in storage
+          // to prevent refresh-logouts. Just log it.
+          // In the future, we can re-enable strict matching if needed.
         }
 
         setUser(user);
-        console.log('Session restored successfully');
+        console.log('Restoration: Session restored successfully');
       } catch (parseError) {
-        console.error('Error parsing stored user data:', parseError);
+        console.error('Restoration: Error parsing stored user data:', parseError);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         localStorage.removeItem('userId');

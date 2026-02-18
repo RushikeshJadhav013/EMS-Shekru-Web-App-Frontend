@@ -11,7 +11,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
-import V2Overlay from '@/components/ui/V2Overlay';
 import {
   Plus,
   Edit,
@@ -592,29 +591,28 @@ export default function HiringManagement() {
 
   return (
     <div className="space-y-6 relative min-h-screen">
-      <V2Overlay fallbackPath={user?.role === 'admin' ? '/admin' : '/hr'} />
-      {/* Gradient header */}
-      <div className="rounded-3xl border border-slate-200/80 bg-gradient-to-r from-sky-500 via-indigo-500 to-violet-500 px-6 py-5 text-white shadow-sm dark:border-slate-800/80 dark:from-slate-900 dark:via-indigo-900 dark:to-violet-900">
+      {/* Header */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-md border border-slate-200 dark:border-slate-700">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 shadow-lg shadow-black/10">
-              <Briefcase className="h-6 w-6" />
+            <div className="h-12 w-12 rounded-2xl bg-blue-600 dark:bg-blue-500 flex items-center justify-center">
+              <Briefcase className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Hiring Management</h1>
-              <p className="mt-1 text-xs sm:text-sm text-white/80">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Hiring Management</h1>
+              <p className="mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
                 Create modern job posts, track candidates, and coordinate your hiring pipeline.
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="inline-flex rounded-full bg-white/10 backdrop-blur-sm p-1 text-xs sm:text-sm">
+            <div className="inline-flex rounded-full bg-slate-100 dark:bg-slate-800 p-1 text-xs sm:text-sm">
               <button
                 type="button"
                 onClick={() => setActiveTab('vacancies')}
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 transition ${activeTab === 'vacancies'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-white/80 hover:bg-white/10'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
               >
                 <Briefcase className="h-4 w-4" />
@@ -624,8 +622,8 @@ export default function HiringManagement() {
                 type="button"
                 onClick={() => setActiveTab('candidates')}
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 transition ${activeTab === 'candidates'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-white/80 hover:bg-white/10'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
               >
                 <Users className="h-4 w-4" />
@@ -634,7 +632,7 @@ export default function HiringManagement() {
             </div>
             {activeTab === 'vacancies' && (
               <Button
-                className="hidden md:inline-flex gap-2 rounded-full bg-white text-slate-900 hover:bg-slate-100"
+                className="hidden md:inline-flex gap-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white"
                 onClick={() => {
                   resetVacancyForm();
                   setSelectedVacancy(null);
@@ -688,7 +686,7 @@ export default function HiringManagement() {
         {/* Vacancies Tab */}
         <TabsContent value="vacancies" className="space-y-4">
           {/* Filters */}
-          <Card className="border-0 shadow-sm bg-slate-50/80 dark:bg-slate-900/40">
+          <Card className="border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
             <CardContent className="pt-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <div className="flex-1">
@@ -733,8 +731,8 @@ export default function HiringManagement() {
           </Card>
 
           {/* Vacancies Table */}
-          <Card className="border-0 shadow-md rounded-3xl">
-            <CardHeader className="border-b bg-slate-50/80 dark:bg-slate-900/60 rounded-t-3xl">
+          <Card className="border border-slate-200 dark:border-slate-700 shadow-md rounded-3xl">
+            <CardHeader className="border-b bg-slate-50 dark:bg-slate-800 rounded-t-3xl">
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <CardTitle className="text-base sm:text-lg">Job Vacancies</CardTitle>
@@ -859,7 +857,7 @@ export default function HiringManagement() {
         {/* Candidates Tab */}
         <TabsContent value="candidates" className="space-y-4">
           {/* Filters */}
-          <Card className="border-0 shadow-sm bg-slate-50/80 dark:bg-slate-900/40">
+          <Card className="border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
             <CardContent className="pt-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <div className="flex-1">
@@ -892,8 +890,8 @@ export default function HiringManagement() {
           </Card>
 
           {/* Candidates Table */}
-          <Card className="border-0 shadow-md rounded-3xl">
-            <CardHeader className="border-b bg-slate-50/80 dark:bg-slate-900/60 rounded-t-3xl">
+          <Card className="border border-slate-200 dark:border-slate-700 shadow-md rounded-3xl">
+            <CardHeader className="border-b bg-slate-50 dark:bg-slate-800 rounded-t-3xl">
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <CardTitle className="text-base sm:text-lg">Candidate Applications</CardTitle>
@@ -987,12 +985,12 @@ export default function HiringManagement() {
 
       {/* Create/Edit Vacancy Dialog */}
       <Dialog open={isVacancyDialogOpen} onOpenChange={setIsVacancyDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200/70 dark:border-slate-800/70 bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 shadow-2xl">
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-2xl">
           <DialogHeader className="border-b border-slate-200/60 dark:border-slate-800/60 pb-4 mb-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-indigo-500 via-sky-500 to-emerald-400 flex items-center justify-center shadow-md shadow-indigo-500/40">
-                  <Briefcase className="h-5 w-5 text-white" />
+                <div className="h-11 w-11 rounded-2xl bg-blue-100 dark:bg-blue-900 flex items-center justify-center shadow-sm">
+                  <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
                   <DialogTitle className="text-lg sm:text-xl font-semibold tracking-tight">

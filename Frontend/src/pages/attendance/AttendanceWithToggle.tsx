@@ -161,29 +161,30 @@ const AttendanceWithToggle: React.FC = () => {
     if (wfhHistoryTimeFilter !== 'all') {
       const today = new Date();
       let startDate: Date | undefined;
-      let endDate: Date = new Date();
+      let endDate: Date = new Date(today.getFullYear() + 2, 11, 31, 23, 59, 59); // Default to future to see upcoming WFH
 
       switch (wfhHistoryTimeFilter) {
         case 'current_month':
           startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
           break;
         case 'last_month':
           startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
           endDate = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59);
           break;
         case 'last_3_months':
-          startDate = subMonths(today, 3);
+          startDate = new Date(today.getFullYear(), today.getMonth() - 3, 1);
           break;
         case 'last_6_months':
-          startDate = subMonths(today, 6);
+          startDate = new Date(today.getFullYear(), today.getMonth() - 6, 1);
           break;
         case 'last_year':
-          startDate = subMonths(today, 12);
+          startDate = new Date(today.getFullYear() - 1, today.getMonth(), 1);
           break;
         case 'custom':
           startDate = wfhHistoryStartDate;
           endDate = wfhHistoryEndDate || new Date();
-          endDate.setHours(23, 59, 59, 999);
+          if (endDate) endDate.setHours(23, 59, 59, 999);
           break;
       }
 
@@ -240,47 +241,53 @@ const AttendanceWithToggle: React.FC = () => {
 
     // Apply Role Filter
     if (wfhRoleFilter !== 'all') {
-      filtered = filtered.filter(req => (req.role || 'employee').toLowerCase() === wfhRoleFilter);
+      filtered = filtered.filter(req => {
+        const reqRoleStr = (req.role || 'employee').toLowerCase().replace(/[\s_]+/g, '');
+        const filterRoleStr = wfhRoleFilter.toLowerCase().replace(/[\s_]+/g, '');
+        return reqRoleStr === filterRoleStr;
+      });
     }
 
     // Apply Duration Filter
     if (wfhRequestTimeFilter !== 'all') {
       const today = new Date();
       let startDate: Date | undefined;
-      let endDate: Date = new Date();
+      let endDate: Date = new Date(today.getFullYear() + 2, 11, 31, 23, 59, 59); // Default to future to see upcoming WFH
 
       switch (wfhRequestTimeFilter) {
         case 'current_month':
           startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
           break;
         case 'last_month':
           startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
           endDate = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59);
           break;
         case 'last_3_months':
-          startDate = subMonths(today, 3);
+          startDate = new Date(today.getFullYear(), today.getMonth() - 3, 1);
           break;
         case 'last_6_months':
-          startDate = subMonths(today, 6);
+          startDate = new Date(today.getFullYear(), today.getMonth() - 6, 1);
           break;
         case 'last_year':
-          startDate = subMonths(today, 12);
+          startDate = new Date(today.getFullYear() - 1, today.getMonth(), 1);
           break;
         case 'custom':
           startDate = wfhRequestStartDate;
           endDate = wfhRequestEndDate || new Date();
+          if (endDate) endDate.setHours(23, 59, 59, 999);
           break;
       }
 
       if (startDate) {
         filtered = filtered.filter(req => {
           const reqDate = new Date(req.processedAt || req.submittedAt || req.startDate);
-          return reqDate >= startDate! && (endDate ? reqDate <= endDate : true);
+          return reqDate >= startDate! && reqDate <= endDate;
         });
       }
     }
 
-    return filtered.sort((a, b) => new Date(b.processedAt || b.submittedAt).getTime() - new Date(a.processedAt || a.submittedAt).getTime());
+    return filtered.sort((a, b) => new Date(b.processedAt || b.submittedAt || b.startDate).getTime() - new Date(a.processedAt || a.submittedAt || a.startDate).getTime());
   }, [allWfhRequests, wfhRequestFilter, wfhRoleFilter, wfhRequestTimeFilter, wfhRequestStartDate, wfhRequestEndDate]);
 
   // Helper function to format role for display
@@ -291,6 +298,7 @@ const AttendanceWithToggle: React.FC = () => {
       'hr': 'HR',
       'manager': 'Manager',
       'team_lead': 'Team Lead',
+      'teamlead': 'Team Lead',
       'employee': 'Employee',
     };
     return roleMap[role.toLowerCase()] || role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -478,24 +486,44 @@ const AttendanceWithToggle: React.FC = () => {
 
     setIsLoadingWfhRequests(true);
     try {
-      const response = await apiService.getAllWFHRequests();
-      const mappedRequests = Array.isArray(response) ? response.map((req: any) => ({
-        id: req.id?.toString() || req.wfh_id?.toString(),
-        wfhId: req.id || req.wfh_id,
-        user_id: req.user_id,
-        submittedBy: req.employee_name || req.user_name || req.name || 'Unknown User',
-        role: req.role || req.user_role || req.requester_role || 'employee',
-        department: req.department || '',
-        startDate: req.start_date,
-        endDate: req.end_date,
-        reason: req.reason,
-        type: ((req.wfh_type || 'Full Day').toLowerCase().includes('full') ? 'full_day' : 'half_day'),
-        status: (req.status || 'pending').toLowerCase(),
-        submittedAt: req.created_at,
-        submittedById: req.user_id,
-        rejectionReason: req.rejection_reason,
-        approvedBy: req.approved_by,
-      })) : [];
+      // Fetch WFH requests and employees in parallel to ensure accurate roles
+      const [wfhResponse, employeesResponse] = await Promise.all([
+        apiService.getAllWFHRequests(),
+        apiService.getEmployees()
+      ]);
+
+      // Create a map of userId -> role for quick lookup to fix the "Manager" display issue
+      const userRoleMap: Record<string, string> = {};
+      const employeesData = Array.isArray(employeesResponse) ? employeesResponse : (employeesResponse as any)?.employees || [];
+      if (Array.isArray(employeesData)) {
+        employeesData.forEach((emp: any) => {
+          const uId = String(emp.user_id || emp.userId || emp.id);
+          userRoleMap[uId] = emp.role || '';
+        });
+      }
+
+      const mappedRequests = Array.isArray(wfhResponse) ? wfhResponse.map((req: any) => {
+        const userIdForMapping = String(req.user_id || req.userId || req.submittedById);
+        return {
+          id: req.id?.toString() || req.wfh_id?.toString(),
+          wfhId: req.id || req.wfh_id,
+          user_id: req.user_id,
+          submittedBy: req.employee_name || req.user_name || req.name || 'Unknown User',
+          // Prioritize role from employee list to overcome incorrect Backend role assignments
+          role: userRoleMap[userIdForMapping] || req.role || req.user_role || req.requester_role || 'employee',
+          department: req.department || '',
+          startDate: req.start_date,
+          endDate: req.end_date,
+          reason: req.reason,
+          type: ((req.wfh_type || 'Full Day').toLowerCase().includes('full') ? 'full_day' : 'half_day'),
+          status: (req.status || 'pending').toLowerCase(),
+          submittedAt: req.created_at,
+          submittedById: req.user_id,
+          rejectionReason: req.rejection_reason,
+          processedAt: req.processed_at || req.updated_at,
+          approvedBy: req.approved_by,
+        };
+      }) : [];
 
       setAllWfhRequests(mappedRequests);
     } catch (error) {
@@ -3419,8 +3447,8 @@ const AttendanceWithToggle: React.FC = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Roles</SelectItem>
-                          <SelectItem value="hr">HR</SelectItem>
-                          <SelectItem value="manager">Manager</SelectItem>
+                          {user?.role === 'admin' && <SelectItem value="hr">HR</SelectItem>}
+                          {(user?.role === 'admin' || user?.role === 'hr') && <SelectItem value="manager">Manager</SelectItem>}
                           <SelectItem value="team_lead">Team Lead</SelectItem>
                           <SelectItem value="employee">Employee</SelectItem>
                         </SelectContent>

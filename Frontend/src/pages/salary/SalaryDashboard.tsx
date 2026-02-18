@@ -427,7 +427,7 @@ const SalaryDashboard = () => {
                                         <SelectTrigger className="w-[180px] h-10 bg-white dark:bg-gray-800 border-2 transition-all duration-300 hover:shadow-md">
                                             <SelectValue placeholder="All Departments" />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent side="bottom">
                                             <SelectItem value="all">All Departments</SelectItem>
                                             {uniqueDepts.map(dept => (
                                                 <SelectItem key={dept} value={dept}>{dept}</SelectItem>
@@ -442,7 +442,7 @@ const SalaryDashboard = () => {
                                         <SelectTrigger className="w-[160px] h-10 bg-white dark:bg-gray-800 border-2 transition-all duration-300 hover:shadow-md">
                                             <SelectValue placeholder="All Roles" />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent side="bottom">
                                             <SelectItem value="all">All Roles</SelectItem>
                                             {availableRoles.map(role => (
                                                 <SelectItem key={role} value={role}>

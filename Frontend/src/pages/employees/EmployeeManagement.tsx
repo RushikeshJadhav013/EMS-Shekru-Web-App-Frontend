@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,7 +38,8 @@ import {
   User as UserIcon,
   FileText,
   Check,
-  ChevronsUpDown
+  ChevronsUpDown,
+  RefreshCcw
 } from 'lucide-react';
 import { User, type UserRole } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -486,47 +487,45 @@ export default function EmployeeManagement() {
     { code: '+81', flag: '🇯🇵', name: 'Japan' },
   ];
 
+  const fetchEmployees = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await apiService.getEmployees();
+      const mappedData = data.map(mapEmployeeData);
+      setEmployees(mappedData);
+    } catch (error) {
+      console.error('Failed to fetch employees:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load employees. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const fetchDepartments = useCallback(async () => {
+    try {
+      const departmentData = await apiService.getDepartmentNames();
+      const departmentNames = departmentData
+        .map(dept => dept.name)
+        .sort();
+      setDepartments(departmentNames);
+    } catch (error) {
+      console.error('Failed to fetch departments:', error);
+      toast({
+        title: 'Warning',
+        description: 'Failed to load departments. Some features may be limited.',
+        variant: 'destructive'
+      });
+    }
+  }, []);
+
   useEffect(() => {
-    const fetchEmployees = async () => {
-      setIsLoading(true);
-      try {
-        const data = await apiService.getEmployees();
-        const mappedData = data.map(mapEmployeeData);
-        console.log('Loaded employees:', mappedData); // ✅ Debug log
-        console.log('First employee structure:', mappedData[0]); // ✅ Debug log
-        setEmployees(mappedData);
-      } catch (error) {
-        console.error('Failed to fetch employees:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load employees. Please try again.',
-          variant: 'destructive'
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    const fetchDepartments = async () => {
-      try {
-        const departmentData = await apiService.getDepartmentNames();
-        const departmentNames = departmentData
-          .map(dept => dept.name)
-          .sort();
-        setDepartments(departmentNames);
-      } catch (error) {
-        console.error('Failed to fetch departments:', error);
-        toast({
-          title: 'Warning',
-          description: 'Failed to load departments. Please create departments first.',
-          variant: 'destructive'
-        });
-      }
-    };
-
     fetchEmployees();
     fetchDepartments();
-  }, []);
+  }, [fetchEmployees, fetchDepartments]);
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(emp => {
@@ -540,7 +539,8 @@ export default function EmployeeManagement() {
         emp.name.toLowerCase().includes(query) ||
         emp.employeeId.toLowerCase().includes(query) ||
         emp.email.toLowerCase().includes(query);
-      const matchesDepartment = selectedDepartment === 'all' || emp.department === selectedDepartment;
+      const matchesDepartment = selectedDepartment === 'all' ||
+        (emp.department && emp.department.split(',').map(d => d.trim().toLowerCase()).includes(selectedDepartment.toLowerCase()));
       const matchesRole = selectedRole === 'all' || emp.role === selectedRole;
       const matchesStatus = selectedStatus === 'all' || emp.status === selectedStatus;
       return matchesSearch && matchesDepartment && matchesRole && matchesStatus;
@@ -1690,6 +1690,22 @@ export default function EmployeeManagement() {
           <div className="flex flex-wrap gap-2">
             <Button
               onClick={() => {
+                fetchEmployees();
+                fetchDepartments();
+                toast({
+                  title: 'Refreshing...',
+                  description: 'Connecting to server to get latest data'
+                });
+              }}
+              variant="outline"
+              className="group gap-2 border-slate-200 text-slate-700 bg-white/70 hover:bg-slate-100 shadow-sm transition-all dark:bg-slate-900/60 dark:border-slate-700 dark:text-slate-100"
+              disabled={isLoading}
+            >
+              <RefreshCcw className={cn("h-4 w-4 text-slate-600 transition-all group-hover:rotate-180 dark:text-slate-400", isLoading && "animate-spin")} />
+              Refresh
+            </Button>
+            <Button
+              onClick={() => {
                 setExportFilters(prev => ({
                   ...prev,
                   department: selectedDepartment,
@@ -2497,7 +2513,15 @@ export default function EmployeeManagement() {
             </div>
             <div className="flex flex-col gap-2 w-full sm:w-44">
               <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Department</Label>
-              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+              <Select
+                value={selectedDepartment}
+                onValueChange={setSelectedDepartment}
+                onOpenChange={(open) => {
+                  if (open) {
+                    fetchDepartments();
+                  }
+                }}
+              >
                 <SelectTrigger className={`w-full h-11 bg-white dark:bg-gray-950 border-2 transition-all duration-300 hover:shadow-md flex-shrink-0 ${selectedDepartment === 'all'
                   ? 'border-blue-400 dark:border-blue-600 hover:border-blue-400 dark:hover:border-blue-600'
                   : 'hover:border-blue-300 dark:hover:border-blue-700 border-gray-200 dark:border-gray-800'
@@ -3409,6 +3433,11 @@ export default function EmployeeManagement() {
                 <Select
                   value={exportFilters.department}
                   onValueChange={(value) => setExportFilters(prev => ({ ...prev, department: value }))}
+                  onOpenChange={(open) => {
+                    if (open) {
+                      fetchDepartments();
+                    }
+                  }}
                 >
                   <SelectTrigger id="export-department" className="mt-1">
                     <SelectValue placeholder="Select Department" />
