@@ -3608,19 +3608,8 @@ const AttendanceWithToggle: React.FC = () => {
             </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-6">
-                {/* WFH Request Form */}
-                <div className="space-y-2">
-                  <Label htmlFor="wfh-type">Work From Home Type</Label>
-                  <Select value={wfhType} onValueChange={(value: 'full_day' | 'half_day') => setWfhType(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="full_day">Full Day</SelectItem>
-                      <SelectItem value="half_day">Half Day</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* WFH Type removed as per request */}
+
 
                 <div className={wfhType === 'half_day' ? 'space-y-2' : 'grid grid-cols-1 md:grid-cols-2 gap-6'}>
                   <div className="space-y-2">
@@ -4711,18 +4700,8 @@ const AttendanceWithToggle: React.FC = () => {
                 </div>
               )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-wfh-type">WFH Type *</Label>
-              <Select value={wfhType} onValueChange={(value: any) => setWfhType(value)}>
-                <SelectTrigger id="edit-wfh-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="full_day">Full Day</SelectItem>
-                  <SelectItem value="half_day">Half Day</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* edit-wfh-type removed as per request */}
+
             <div className="space-y-2">
               <Label htmlFor="edit-wfh-reason">Reason *</Label>
               <Textarea

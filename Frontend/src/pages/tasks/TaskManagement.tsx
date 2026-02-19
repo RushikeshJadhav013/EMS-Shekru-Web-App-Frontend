@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -369,6 +370,7 @@ const TaskManagement: React.FC = () => {
     department: '',
     employeeId: '',
   });
+  const [assigneeSearchQuery, setAssigneeSearchQuery] = useState('');
   const [assignRoleFilter, setAssignRoleFilter] = useState<'all' | UserRole>('all');
   const [departments, setDepartments] = useState<string[]>([]);
   const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
@@ -1278,104 +1280,125 @@ const TaskManagement: React.FC = () => {
       return;
     }
 
-    const assignedEmployee = newTask.assignedTo[0] || userId;
-    const selectedEmployee = assignableEmployees.find((emp) => emp.userId === assignedEmployee || emp.email === assignedEmployee);
-    const assignedToIdRaw = selectedEmployee?.userId ?? userId;
-    const assignedByIdRaw = userId;
-
-    const assignedToBackend = Number(assignedToIdRaw);
-    const assignedByBackend = Number(assignedByIdRaw);
-
-    if (!Number.isFinite(assignedToBackend) || !Number.isFinite(assignedByBackend)) {
-      toast({
-        title: 'Invalid assignee',
-        description: 'Unable to determine assignee identifiers. Please ensure the selected user exists and try again.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const payload = {
-      title: newTask.title,
-      description: newTask.description,
-      priority: frontendToBackendPriority[newTask.priority],
-      due_date: newTask.deadline || null,
-      assigned_to: assignedToBackend,
-      assigned_by: assignedByBackend,
-    };
+    const assignees = newTask.assignedTo.length > 0 ? newTask.assignedTo : [userId];
 
     setIsSubmitting(true);
+    let successCount = 0;
+    let failedCount = 0;
+    const errors: string[] = [];
+
     try {
-      const response = await fetch(`${API_BASE_URL}/tasks`, {
-        method: 'POST',
-        headers: authorizedHeaders,
-        body: JSON.stringify(payload),
-      });
+      for (const assigneeIdIdRaw of assignees) {
+        if (!assigneeIdIdRaw) continue;
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const detail = Array.isArray(errorData?.detail)
-          ? errorData.detail.map((item) => (typeof item === 'string' ? item : item.msg || JSON.stringify(item))).join(', ')
-          : typeof errorData?.detail === 'string'
-            ? errorData.detail
-            : JSON.stringify(errorData || {});
-        throw new Error(detail || `Failed to create task (${response.status})`);
-      }
+        const selectedEmployee = assignableEmployees.find((emp) => emp.userId === assigneeIdIdRaw || emp.email === assigneeIdIdRaw);
+        const assignedToIdRaw = selectedEmployee?.userId ?? assigneeIdIdRaw;
+        const assignedByIdRaw = userId;
 
-      const createdTask: BackendTask = await response.json();
-      const convertedTask = mapBackendTaskToFrontend(createdTask);
+        const assignedToBackend = Number(assignedToIdRaw);
+        const assignedByBackend = Number(assignedByIdRaw);
 
-      // Add new task at the beginning of the list (newest first)
-      setTasks((prev) => [convertedTask, ...prev]);
+        if (!Number.isFinite(assignedToBackend) || !Number.isFinite(assignedByBackend)) {
+          errors.push(`Invalid identifier for ${selectedEmployee?.name || assigneeIdIdRaw}`);
+          failedCount++;
+          continue;
+        }
 
-      // ✅ Trigger notification for the assigned user (will be fetched by backend polling)
-      // The backend will create the notification, and the assigned user will see it when they poll
-      if (convertedTask.assignedTo[0] && userId) {
-        if (convertedTask.assignedTo[0] !== userId) {
-          // Task assigned to someone else
-          addNotification({
-            title: 'New Task Assigned',
-            message: `${user.name} assigned you a new task: "${convertedTask.title}"`,
-            type: 'task',
-            metadata: {
-              taskId: convertedTask.id,
-              requesterId: user.id,
-              requesterName: user.name,
-            }
+        const payload = {
+          title: newTask.title,
+          description: newTask.description,
+          priority: frontendToBackendPriority[newTask.priority],
+          due_date: newTask.deadline || null,
+          assigned_to: assignedToBackend,
+          assigned_by: assignedByBackend,
+        };
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/tasks`, {
+            method: 'POST',
+            headers: authorizedHeaders,
+            body: JSON.stringify(payload),
           });
-        } else {
-          // Task created for self
-          addNotification({
-            title: 'Task Created',
-            message: `You created a new task: "${convertedTask.title}" - Due: ${convertedTask.deadline || 'No deadline'}`,
-            type: 'task',
-            metadata: {
-              taskId: convertedTask.id,
-              requesterId: user.id,
-              requesterName: user.name,
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const detail = Array.isArray(errorData?.detail)
+              ? errorData.detail.map((item: any) => (typeof item === 'string' ? item : item.msg || JSON.stringify(item))).join(', ')
+              : typeof errorData?.detail === 'string'
+                ? errorData.detail
+                : JSON.stringify(errorData || {});
+            throw new Error(detail || `Failed (${response.status})`);
+          }
+
+          const createdTask: BackendTask = await response.json();
+          const convertedTask = mapBackendTaskToFrontend(createdTask);
+
+          // Add to local state
+          setTasks((prev) => [convertedTask, ...prev]);
+
+          // Trigger notification
+          if (convertedTask.assignedTo[0] && userId) {
+            if (convertedTask.assignedTo[0] !== userId) {
+              addNotification({
+                title: 'New Task Assigned',
+                message: `${user.name} assigned you a new task: "${convertedTask.title}"`,
+                type: 'task',
+                metadata: {
+                  taskId: convertedTask.id,
+                  requesterId: user.id,
+                  requesterName: user.name,
+                }
+              });
+            } else {
+              addNotification({
+                title: 'Task Created',
+                message: `You created a new task: "${convertedTask.title}" - Due: ${convertedTask.deadline || 'No deadline'}`,
+                type: 'task',
+                metadata: {
+                  taskId: convertedTask.id,
+                  requesterId: user.id,
+                  requesterName: user.name,
+                }
+              });
             }
-          });
+          }
+          successCount++;
+        } catch (err: any) {
+          failedCount++;
+          errors.push(`${selectedEmployee?.name || assigneeIdIdRaw}: ${err.message}`);
         }
       }
 
-      toast({
-        title: 'Task Created',
-        description: `Task "${convertedTask.title}" has been created successfully.`,
-      });
+      if (successCount > 0) {
+        toast({
+          title: 'Tasks Created',
+          description: `Successfully created ${successCount} task(s).${failedCount > 0 ? ` (${failedCount} failed)` : ''}`,
+        });
 
-      setIsCreateDialogOpen(false);
-      setNewTask({
-        title: '',
-        description: '',
-        assignedTo: [],
-        priority: 'medium',
-        deadline: '',
-        department: '',
-        employeeId: ''
-      });
+        setIsCreateDialogOpen(false);
+        setNewTask({
+          title: '',
+          description: '',
+          assignedTo: [],
+          priority: 'medium',
+          deadline: '',
+          department: '',
+          employeeId: ''
+        });
+        setAssigneeSearchQuery('');
+      }
+
+      if (failedCount > 0) {
+        toast({
+          title: 'Some tasks failed',
+          description: errors.join('\n'),
+          variant: 'destructive',
+        });
+      }
+
     } catch (err: unknown) {
-      console.error('Failed to create task', err);
-      const message = err instanceof Error ? err.message : 'Unable to create task. Please try again.';
+      console.error('Failed to create tasks', err);
+      const message = err instanceof Error ? err.message : 'Unable to create tasks. Please try again.';
       toast({
         title: 'Task creation failed',
         description: message,
@@ -2631,41 +2654,149 @@ const TaskManagement: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label htmlFor="assignTo" className="text-sm font-semibold flex items-center gap-2">
                       <User className="h-4 w-4 text-violet-600" />
-                      Assign To
+                      Assign To <span className="text-red-500">*</span>
                     </Label>
-                    <Select
-                      value={newTask.assignedTo[0] || ''}
-                      onValueChange={(value) =>
-                        setNewTask({ ...newTask, assignedTo: value ? [value] : [] })
-                      }
-                    >
-                      <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                        <SelectValue placeholder="Select assignee" />
-                      </SelectTrigger>
-                      <SelectContent className="border-2 shadow-xl" side="bottom">
-                        {userId && user && (
-                          <SelectItem value={userId} className="cursor-pointer">
-                            {user.name} (Self)
-                          </SelectItem>
-                        )}
-                        {canAssignToSelection
-                          .filter((emp) => emp.userId !== userId)
-                          // Filter by role if a role filter is active
-                          .filter((emp) => assignRoleFilter === 'all' || emp.role === assignRoleFilter)
-                          // Filter by department if a department is selected (Core Only)
-                          .filter((emp) => !newTask.department || (emp.department && emp.department.trim().toLowerCase() === newTask.department.trim().toLowerCase()))
-                          .map((emp) => (
-                            <SelectItem key={emp.userId} value={emp.userId} className="cursor-pointer">
-                              {emp.name}
-                              {emp.department ? ` • ${emp.department}` : ''}
-                              {emp.employeeId ? ` (${emp.employeeId})` : ''}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+
+                    {/* Assign To Filter / Search */}
+                    <div className="relative mb-2">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search employees by name, ID or email..."
+                        className="pl-9 h-10 border-2 border-violet-100 focus:border-violet-500 transition-all text-sm rounded-xl"
+                        value={assigneeSearchQuery}
+                        onChange={(e) => setAssigneeSearchQuery(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="border-2 rounded-xl p-4 max-h-[250px] overflow-y-auto space-y-2.5 bg-white dark:bg-gray-950 shadow-inner custom-scrollbar border-violet-50">
+                      {/* Select All Option */}
+                      <div className="flex items-center space-x-3 pb-3 mb-1 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-gray-950 z-10">
+                        <Checkbox
+                          id="select-all-employees"
+                          checked={
+                            canAssignToSelection
+                              .filter((emp) => emp.userId !== userId)
+                              .filter((emp) => assignRoleFilter === 'all' || emp.role === assignRoleFilter)
+                              .filter((emp) => !newTask.department || (emp.department && emp.department.trim().toLowerCase() === newTask.department.trim().toLowerCase()))
+                              .filter((emp) => {
+                                const search = assigneeSearchQuery.toLowerCase();
+                                return emp.name.toLowerCase().includes(search) ||
+                                  emp.email.toLowerCase().includes(search) ||
+                                  emp.employeeId.toLowerCase().includes(search);
+                              })
+                              .every(emp => newTask.assignedTo.includes(emp.userId)) &&
+                            canAssignToSelection
+                              .filter((emp) => emp.userId !== userId)
+                              .filter((emp) => assignRoleFilter === 'all' || emp.role === assignRoleFilter)
+                              .filter((emp) => !newTask.department || (emp.department && emp.department.trim().toLowerCase() === newTask.department.trim().toLowerCase()))
+                              .filter((emp) => {
+                                const search = assigneeSearchQuery.toLowerCase();
+                                return emp.name.toLowerCase().includes(search) ||
+                                  emp.email.toLowerCase().includes(search) ||
+                                  emp.employeeId.toLowerCase().includes(search);
+                              }).length > 0
+                          }
+                          onCheckedChange={(checked) => {
+                            const filteredEmps = canAssignToSelection
+                              .filter((emp) => emp.userId !== userId)
+                              .filter((emp) => assignRoleFilter === 'all' || emp.role === assignRoleFilter)
+                              .filter((emp) => !newTask.department || (emp.department && emp.department.trim().toLowerCase() === newTask.department.trim().toLowerCase()))
+                              .filter((emp) => {
+                                const search = assigneeSearchQuery.toLowerCase();
+                                return emp.name.toLowerCase().includes(search) ||
+                                  emp.email.toLowerCase().includes(search) ||
+                                  emp.employeeId.toLowerCase().includes(search);
+                              });
+
+                            if (checked) {
+                              const newIds = Array.from(new Set([...newTask.assignedTo, ...filteredEmps.map(e => e.userId)]));
+                              setNewTask(prev => ({ ...prev, assignedTo: newIds }));
+                            } else {
+                              const idsToRemove = filteredEmps.map(e => e.userId);
+                              setNewTask(prev => ({ ...prev, assignedTo: prev.assignedTo.filter(id => !idsToRemove.includes(id)) }));
+                            }
+                          }}
+                        />
+                        <Label htmlFor="select-all-employees" className="text-sm cursor-pointer font-bold text-violet-600 dark:text-violet-400">
+                          Select All Visible
+                        </Label>
+                        <span className="text-[10px] bg-violet-100 dark:bg-violet-900 text-violet-600 dark:text-violet-300 px-2 py-0.5 rounded-full font-bold ml-auto">
+                          {newTask.assignedTo.length} Selected
+                        </span>
+                      </div>
+
+                      {/* Current User (Self) */}
+                      {userId && user && (
+                        (!assigneeSearchQuery || user.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()) || user.email.toLowerCase().includes(assigneeSearchQuery.toLowerCase())) && (
+                          <div className="flex items-center space-x-3 py-2 px-2 hover:bg-slate-50 dark:hover:bg-slate-900/50 rounded-lg transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
+                            <Checkbox
+                              id={`emp-${userId}`}
+                              checked={newTask.assignedTo.includes(userId)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setNewTask(prev => ({ ...prev, assignedTo: [...prev.assignedTo, userId] }));
+                                } else {
+                                  setNewTask(prev => ({ ...prev, assignedTo: prev.assignedTo.filter(id => id !== userId) }));
+                                }
+                              }}
+                            />
+                            <Label htmlFor={`emp-${userId}`} className="text-sm cursor-pointer font-semibold flex-1 flex items-center justify-between">
+                              <span>{user.name} <span className="text-violet-500 font-bold ml-1">(Self)</span></span>
+                              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">{formatRoleLabel(user.role)}</span>
+                            </Label>
+                          </div>
+                        )
+                      )}
+
+                      {/* Filtered Employees List */}
+                      {canAssignToSelection
+                        .filter((emp) => emp.userId !== userId)
+                        .filter((emp) => assignRoleFilter === 'all' || emp.role === assignRoleFilter)
+                        .filter((emp) => !newTask.department || (emp.department && emp.department.trim().toLowerCase() === newTask.department.trim().toLowerCase()))
+                        .filter((emp) => {
+                          const search = assigneeSearchQuery.toLowerCase();
+                          return emp.name.toLowerCase().includes(search) ||
+                            emp.email.toLowerCase().includes(search) ||
+                            emp.employeeId.toLowerCase().includes(search);
+                        })
+                        .map((emp) => (
+                          <div key={emp.userId} className="flex items-center space-x-3 py-2 px-2 hover:bg-slate-50 dark:hover:bg-slate-900/50 rounded-lg transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
+                            <Checkbox
+                              id={`emp-${emp.userId}`}
+                              checked={newTask.assignedTo.includes(emp.userId)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setNewTask(prev => ({ ...prev, assignedTo: [...prev.assignedTo, emp.userId] }));
+                                } else {
+                                  setNewTask(prev => ({ ...prev, assignedTo: prev.assignedTo.filter(id => id !== emp.userId) }));
+                                }
+                              }}
+                            />
+                            <Label htmlFor={`emp-${emp.userId}`} className="text-sm cursor-pointer flex-1">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-slate-800 dark:text-slate-200">{emp.name}</span>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-muted-foreground uppercase tracking-widest font-semibold">{formatRoleLabel(emp.role)}</span>
+                              </div>
+                              <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-0.5">
+                                {emp.department && (
+                                  <span className="flex items-center gap-1">
+                                    <Building2 className="h-2.5 w-2.5 text-violet-400" />
+                                    {emp.department}
+                                  </span>
+                                )}
+                                {emp.employeeId && (
+                                  <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded italic border border-slate-200 dark:border-slate-700">
+                                    ID: {emp.employeeId}
+                                  </span>
+                                )}
+                              </div>
+                            </Label>
+                          </div>
+                        ))}
+                    </div>
                   </div>
 
                   <div className="flex justify-end gap-3 pt-6 border-t mt-6">

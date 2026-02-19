@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Pagination } from '@/components/ui/pagination';
 import { toast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -43,6 +44,7 @@ import {
 } from 'lucide-react';
 import { User, type UserRole } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { formatDateIST } from '@/utils/timezone';
 import { apiService, API_BASE_URL, type EmployeeData } from '@/lib/api';
 import { useFieldValidation } from '@/hooks/useFieldValidation';
@@ -332,6 +334,7 @@ const formatDuplicateErrorMessage = (message: string, employeeId?: string, email
 
 export default function EmployeeManagement() {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -341,6 +344,8 @@ export default function EmployeeManagement() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRecord | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [viewEmployee, setViewEmployee] = useState<EmployeeRecord | null>(null);
@@ -1130,6 +1135,62 @@ export default function EmployeeManagement() {
     }
   };
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(filteredEmployees.map(emp => emp.id.toString()));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectEmployee = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIds(prev => [...prev, id.toString()]);
+    } else {
+      setSelectedIds(prev => prev.filter(selectedId => selectedId !== id.toString()));
+    }
+  };
+
+  const handleBulkStatusUpdate = async (newStatus: 'active' | 'inactive') => {
+    if (selectedIds.length === 0) return;
+
+    setIsBulkProcessing(true);
+    const isActive = newStatus === 'active';
+    let successCount = 0;
+
+    try {
+      toast({
+        title: 'Bulk Update Started',
+        description: `Processing ${selectedIds.length} employees...`,
+      });
+
+      for (const id of selectedIds) {
+        try {
+          await apiService.updateEmployeeStatus(id, isActive);
+          successCount++;
+        } catch (err) {
+          console.error(`Failed to update status for ${id}:`, err);
+        }
+      }
+
+      await fetchEmployees();
+      setSelectedIds([]);
+
+      toast({
+        title: 'Update Complete',
+        description: `Successfully updated ${successCount} employees.`
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to complete bulk update',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
   const openViewDialog = (employee: EmployeeRecord) => {
     setViewEmployee(employee);
     setIsViewDialogOpen(true);
@@ -1200,7 +1261,7 @@ export default function EmployeeManagement() {
 
     for (const row of parsedRows) {
       const data = row.data;
-      const employeeId = (data.employeeid || `EMP${Date.now()}${row.rowNumber}`).trim();
+      const employeeId = (data.employeeid || '').trim();
       const employeeIdKey = employeeId.toLowerCase();
       const name = (data.name || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       const email = (data.email || '').trim();
@@ -1209,8 +1270,8 @@ export default function EmployeeManagement() {
       const role = normalizeRole(data.role);
       const designation = (data.designation || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       const address = (data.address || '').trim();
-      const joiningDate = data.joiningdate || new Date().toISOString().split('T')[0];
-      const status = data.status || 'active';
+      const joiningDate = data.joiningdate || '';
+      const status = data.status || '';
       const gender = (data.gender || '').trim();
       const employeeType = normalizeEmployeeType(data.employeetype);
       const resignationDate = data.resignationdate || '';
@@ -1226,12 +1287,30 @@ export default function EmployeeManagement() {
       const errors: string[] = [];
 
       // REQUIRED FIELDS - Must be present and valid
+      if (!employeeId) errors.push('EmployeeID is required');
       if (!name) errors.push('Name is required');
       if (!email) errors.push('Email is required');
       if (email && !isValidEmail(email)) errors.push('Email format is invalid');
-      if (!department) errors.push('Department is required');
+      if (!data.role) errors.push('Role is required');
+      if (!designation) errors.push('Designation is required');
+      if (!phoneDigits) errors.push('Phone is required');
+      if (phoneDigits && !isValidPhone(phoneDigits, countryCode)) errors.push('Phone number format is invalid');
+      if (!address) errors.push('Address is required');
+      if (!joiningDate) errors.push('JoiningDate is required');
+      if (!status) errors.push('Status is required');
+      if (!gender) errors.push('Gender is required');
+      if (!employeeType) errors.push('EmployeeType is required');
+      if (!panCard) errors.push('PANCard is required');
+      if (panCard && !isValidPan(panCard)) {
+        errors.push('PAN card format is invalid (must be like ABCDE1234F)');
+      }
+      if (!aadharCard) errors.push('AadharCard is required');
+      if (aadharCard && !isValidAadhar(aadharCard)) {
+        errors.push('Aadhar card format is invalid (must be like 1234-5678-9012)');
+      }
+      if (!shift) errors.push('Shift is required');
 
-      // Check for duplicates only if provided
+      // Check for duplicates
       if (employeeId && (existingEmployeeIds.has(employeeIdKey) || batchEmployeeIds.has(employeeIdKey))) {
         errors.push('Duplicate employee ID found');
       }
@@ -1239,36 +1318,20 @@ export default function EmployeeManagement() {
         errors.push('Duplicate email found');
       }
 
-      // OPTIONAL FIELDS - Only validate if provided (not empty)
-      // PAN Card - optional, but if provided must be valid
-      if (panCard && !isValidPan(panCard.toUpperCase())) {
-        errors.push('PAN card format is invalid (must be like ABCDE1234F)');
-      }
-
-      // Aadhar Card - optional, but if provided must be valid
-      if (aadharCard && !isValidAadhar(aadharCard)) {
-        errors.push('Aadhar card format is invalid (must be like 1234-5678-9012)');
-      }
-
-      // Shift - optional, but if provided must be valid
+      // Shift validation
       if (shift && !['general', 'morning', 'afternoon', 'night', 'rotational'].includes(shift.toLowerCase())) {
         errors.push('Shift must be general, morning, afternoon, night, or rotational');
       }
 
-      // Employee Type - optional, but if provided must be valid
+      // Employee Type validation
       if (employeeType && !['contract', 'permanent'].includes(employeeType.toLowerCase())) {
         errors.push('Employee type must be contract or permanent');
-      }
-
-      // Phone - optional, but if provided must be valid
-      if (phoneDigits && !isValidPhone(phoneDigits, countryCode)) {
-        errors.push('Phone number format is invalid');
       }
 
       if (errors.length > 0) {
         summary.push({
           row: row.rowNumber,
-          employeeId,
+          employeeId: employeeId || '-',
           name: name || '-',
           status: 'failed',
           message: errors.join('; '),
@@ -1391,7 +1454,6 @@ export default function EmployeeManagement() {
       'EmployeeID',
       'Name',
       'Email',
-      'Department',
       'Role',
       'Designation',
       'Phone',
@@ -1400,29 +1462,28 @@ export default function EmployeeManagement() {
       'Status',
       'Gender',
       'EmployeeType',
-      'ResignationDate',
       'PANCard',
       'AadharCard',
-      'Shift'
+      'Shift',
+      'Department'
     ];
 
     const sampleData = [
       'EMP001',
       'John Doe',
       'john.doe@example.com',
-      'Engineering',
       'Employee',
       'Software Engineer',
-      '+91-98765-43210',
-      '123 Main St, City',
+      '9876543210',
+      '123 Street Name, City, State, 123456',
       '2024-01-15',
       'active',
       'male',
       'permanent',
-      '',
       'ABCDE1234F',
       '1234-5678-9012',
-      'general'
+      'general',
+      'Engineering'
     ];
 
     const csvContent = [
@@ -1766,7 +1827,7 @@ export default function EmployeeManagement() {
                           </div>
                           <div className="flex items-start gap-2">
                             <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-gray-300 text-white text-xs font-bold flex-shrink-0 mt-0.5">○</span>
-                            <span><strong>Optional:</strong> Role, Designation, Phone, Address, JoiningDate, Status, Gender, EmployeeType, ResignationDate, PANCard, AadharCard, Shift</span>
+                            <span><strong>Optional:</strong> Role, Designation, Phone, Address, JoiningDate, Status, Gender, EmployeeType, PANCard, AadharCard, Shift</span>
                           </div>
                         </div>
                         <div className="mt-3 p-3 bg-white rounded-lg border border-blue-200">
@@ -1927,7 +1988,44 @@ export default function EmployeeManagement() {
       <Card className="border-0 shadow-lg">
         <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold">Employee Directory</CardTitle>
+            <div className="flex items-center gap-4">
+              <CardTitle className="text-lg font-semibold">Employee Directory</CardTitle>
+              {selectedIds.length > 0 && (
+                <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/40 px-3 py-1.5 rounded-lg border border-blue-100 dark:border-blue-900 animate-in fade-in slide-in-from-left-2 transition-all">
+                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300 mr-2">
+                    {selectedIds.length} selected
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleBulkStatusUpdate('active')}
+                    disabled={isBulkProcessing}
+                    className="h-8 gap-1.5 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    Activate
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleBulkStatusUpdate('inactive')}
+                    disabled={isBulkProcessing}
+                    className="h-8 gap-1.5 border-rose-200 text-rose-700 hover:bg-rose-50"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Deactivate
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setSelectedIds([])}
+                    className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={openCreateDialog} className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
@@ -2522,10 +2620,7 @@ export default function EmployeeManagement() {
                   }
                 }}
               >
-                <SelectTrigger className={`w-full h-11 bg-white dark:bg-gray-950 border-2 transition-all duration-300 hover:shadow-md flex-shrink-0 ${selectedDepartment === 'all'
-                  ? 'border-blue-400 dark:border-blue-600 hover:border-blue-400 dark:hover:border-blue-600'
-                  : 'hover:border-blue-300 dark:hover:border-blue-700 border-gray-200 dark:border-gray-800'
-                  }`}>
+                <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-950 border-2 border-gray-200 dark:border-gray-800 transition-all duration-300 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md flex-shrink-0">
                   <Filter className={`h-4 w-4 mr-2 ${selectedDepartment === 'all'
                     ? 'text-blue-600'
                     : 'text-gray-600 dark:text-gray-400'
@@ -2564,11 +2659,13 @@ export default function EmployeeManagement() {
                     </div>
                   </SelectItem>
 
-                  <SelectItem value="hr" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors">
-                    <div className="flex items-center gap-2">
-                      HR
-                    </div>
-                  </SelectItem>
+                  {user?.role !== 'hr' && (
+                    <SelectItem value="hr" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors">
+                      <div className="flex items-center gap-2">
+                        HR
+                      </div>
+                    </SelectItem>
+                  )}
                   <SelectItem value="manager" className="cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors">
                     <div className="flex items-center gap-2">
                       Manager
@@ -2615,6 +2712,13 @@ export default function EmployeeManagement() {
             <Table>
               <TableHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
                 <TableRow className="hover:bg-transparent border-b-2">
+                  <TableHead className="w-[50px] px-4">
+                    <Checkbox
+                      checked={selectedIds.length === filteredEmployees.length && filteredEmployees.length > 0}
+                      onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
                   <TableHead className="w-[60px] hidden sm:table-cell font-semibold">Photo</TableHead>
                   <TableHead className="font-semibold">Employee ID</TableHead>
                   <TableHead className="font-semibold">Name</TableHead>
@@ -2644,6 +2748,13 @@ export default function EmployeeManagement() {
                 ) : (
                   paginatedEmployees.map((employee) => (
                     <TableRow key={employee.employeeId} className="hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors border-b">
+                      <TableCell className="px-4">
+                        <Checkbox
+                          checked={selectedIds.includes(employee.id.toString())}
+                          onCheckedChange={(checked) => handleSelectEmployee(employee.id, !!checked)}
+                          aria-label={`Select ${employee.name}`}
+                        />
+                      </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Avatar className="h-10 w-10 border-2 border-blue-200 dark:border-blue-800">
                           <AvatarImage src={employee.photoUrl} alt={employee.name} />
@@ -2693,22 +2804,24 @@ export default function EmployeeManagement() {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setEmployeeToDelete(employee);
-                              setIsDeleteDialogOpen(true);
-                            }}
-                            disabled={isDeleting === employee.id}
-                            className="h-9 w-9 p-0 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900 transition-all hover:scale-110 rounded-lg"
-                          >
-                            {isDeleting === employee.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
+                          {!(user?.role === 'admin' || user?.role === 'hr') && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEmployeeToDelete(employee);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                              disabled={isDeleting === employee.id}
+                              className="h-9 w-9 p-0 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900 transition-all hover:scale-110 rounded-lg"
+                            >
+                              {isDeleting === employee.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"
@@ -3465,7 +3578,7 @@ export default function EmployeeManagement() {
                   <SelectContent>
                     <SelectItem value="all">All Roles</SelectItem>
                     {/* Admin role removed from export filter */}
-                    <SelectItem value="hr">HR</SelectItem>
+                    {user?.role !== 'hr' && <SelectItem value="hr">HR</SelectItem>}
                     <SelectItem value="manager">Manager</SelectItem>
                     <SelectItem value="team_lead">Team Lead</SelectItem>
                     <SelectItem value="employee">Employee</SelectItem>

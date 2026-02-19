@@ -23,7 +23,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
-import { Search, Plus, Eye, Edit, Trash2, FileText, TrendingUp, Download, AlertCircle, DollarSign, RefreshCw, Users, Building2, Ban, CheckCircle2 } from 'lucide-react';
+import { Search, Plus, Eye, Edit, FileText, TrendingUp, Download, AlertCircle, DollarSign, RefreshCw, Users, Building2, Ban, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole } from '@/types';
 import SalaryDetails from '@/pages/salary/SalaryDetails';
@@ -181,29 +181,7 @@ const SalaryDashboard = () => {
         setSalaryCurrentPage(1);
     }, [searchQuery, deptFilter, roleFilter]);
 
-    const handleDeleteSalary = async (userId: string) => {
-        if (!confirm('Are you sure you want to delete the salary record for this employee? This action cannot be undone.')) return;
 
-        try {
-            setLoading(true);
-            await apiService.deleteSalary(userId);
-
-            toast({
-                title: 'Success',
-                description: 'Salary record deleted successfully',
-                variant: 'success',
-            });
-            loadDashboardData();
-        } catch (error) {
-            toast({
-                title: 'Error',
-                description: 'Failed to delete salary record',
-                variant: 'destructive',
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleToggleSalaryStatus = async (userId: string, currentStatus: boolean) => {
         try {
@@ -568,17 +546,7 @@ const SalaryDashboard = () => {
                                                         </Button>
                                                     )}
 
-                                                    {userRole === 'admin' && item.salary && (
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="h-8 w-8 p-0 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20"
-                                                            onClick={() => handleDeleteSalary(String(item.id))}
-                                                            title="Delete Salary Record"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
+
                                                 </div>
                                             </TableCell>
                                         </TableRow>

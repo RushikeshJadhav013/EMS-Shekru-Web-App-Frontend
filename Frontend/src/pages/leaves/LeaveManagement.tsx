@@ -835,12 +835,44 @@ export default function LeaveManagement() {
     );
 
     if (!validation.valid) {
-      toast({
-        title: 'Request Invalid',
-        description: validation.error,
-        variant: 'destructive'
-      });
-      return;
+      if (formData.type === 'sick' && (
+        validation.error === 'Sick leave must be applied at least 2 hours before the start date.' ||
+        validation.error?.includes('3 or more days')
+      )) {
+        // Carry on to custom sick leave timing check and allow < 3 days
+      } else {
+        toast({
+          title: 'Request Invalid',
+          description: validation.error,
+          variant: 'destructive'
+        });
+        return;
+      }
+    }
+
+    // Custom Sick Leave Timing Validation
+    if (formData.type === 'sick') {
+      const now = new Date();
+      const officeStartTime = new Date(formData.startDate);
+      officeStartTime.setHours(9, 30, 0, 0);
+      const diffToOfficeHours = (officeStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      if (diffToOfficeHours < 2) {
+        toast({
+          title: 'Request Invalid',
+          description: 'Sick leave must be applied in between 2 hours and 24 hours before office working hours.',
+          variant: 'destructive'
+        });
+        return;
+      }
+      if (diffToOfficeHours > 24) {
+        toast({
+          title: 'Request Invalid',
+          description: 'Sick leave must be applied in between 2 hours and 24 hours before office working hours.',
+          variant: 'destructive'
+        });
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -1086,12 +1118,44 @@ export default function LeaveManagement() {
     );
 
     if (!validation.valid) {
-      toast({
-        title: 'Update Invalid',
-        description: validation.error,
-        variant: 'destructive'
-      });
-      return;
+      if (editingLeave.type === 'sick' && (
+        validation.error === 'Sick leave must be applied at least 2 hours before the start date.' ||
+        validation.error?.includes('3 or more days')
+      )) {
+        // Carry on to custom sick leave timing check and allow < 3 days
+      } else {
+        toast({
+          title: 'Update Invalid',
+          description: validation.error,
+          variant: 'destructive'
+        });
+        return;
+      }
+    }
+
+    // Custom Sick Leave Timing Validation
+    if (editingLeave.type === 'sick') {
+      const now = new Date();
+      const officeStartTime = new Date(editFormData.startDate);
+      officeStartTime.setHours(9, 30, 0, 0);
+      const diffToOfficeHours = (officeStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      if (diffToOfficeHours < 2) {
+        toast({
+          title: 'Update Invalid',
+          description: 'Sick leave must be applied in between 2 hours and 24 hours before office working hours.',
+          variant: 'destructive'
+        });
+        return;
+      }
+      if (diffToOfficeHours > 24) {
+        toast({
+          title: 'Update Invalid',
+          description: 'Sick leave must be applied in between 2 hours and 24 hours before office working hours.',
+          variant: 'destructive'
+        });
+        return;
+      }
     }
 
     setIsUpdatingLeave(true);
@@ -1548,7 +1612,7 @@ export default function LeaveManagement() {
                 <div className="mt-2 space-y-3">
                   <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
                     <p className="text-sm text-blue-800 dark:text-blue-200">
-                      <strong>Note:</strong> Annual, Sick, and Casual leave requests will deduct from your <strong>Annual Leave</strong> balance.
+                      <strong>Note:</strong> Sick and Casual leave requests will deduct from your <strong>Annual Leave</strong> balance.
                       Only <strong>Unpaid Leave</strong> does not affect your Annual Leave balance.
                     </p>
                   </div>
@@ -1557,9 +1621,8 @@ export default function LeaveManagement() {
                       <strong>Leave Restrictions:</strong>
                     </p>
                     <ul className="text-sm text-amber-700 dark:text-amber-300 mt-1 space-y-1">
-                      <li>â€¢ <strong>Sick Leave:</strong> Can only be applied for 3 or more days (use Casual Leave for 1-2 days)</li>
-                      <li>â€¢ <strong>Sick Leave:</strong> Must be applied at least 2 hours in advance</li>
-                      <li>â€¢ <strong>Other Leaves:</strong> Must be applied at least 24 hours in advance</li>
+
+                      <li>• <strong>Sick Leave:</strong> Must be applied in between 2 hours and 24 hours before office working hours.</li>
                     </ul>
                   </div>
                 </div>
@@ -1618,22 +1681,18 @@ export default function LeaveManagement() {
                   const validationMessages = [];
 
                   // Check sick leave duration
-                  if (formData.type === 'sick' && leaveDays < 3) {
-                    validationMessages.push({
-                      type: 'error',
-                      message: `Sick leave requires minimum 3 days. Current selection: ${leaveDays} day${leaveDays === 1 ? '' : 's'}. Consider using Casual Leave for shorter periods.`
-                    });
-                  }
+
 
                   // Check advance notice requirements
                   if (formData.type === 'sick') {
-                    // Sick leave requires 2 hours advance notice
-                    if (hoursDifference < 2 && hoursDifference >= 0) {
-                      const hoursRemaining = Math.ceil(2 - hoursDifference);
-                      const minutesRemaining = Math.ceil((2 - hoursDifference) * 60);
+                    const officeStartTime = new Date(formData.startDate);
+                    officeStartTime.setHours(9, 30, 0, 0);
+                    const diffToOfficeHours = (officeStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+                    if (diffToOfficeHours < 2 || diffToOfficeHours > 24) {
                       validationMessages.push({
                         type: 'error',
-                        message: `Sick leave must be applied 2 hours in advance. Please select a date at least ${hoursRemaining > 0 ? `${hoursRemaining} hour${hoursRemaining === 1 ? '' : 's'}` : `${minutesRemaining} minute${minutesRemaining === 1 ? '' : 's'}`} from now.`
+                        message: 'Sick leave must be applied in between 2 hours and 24 hours before office working hours.'
                       });
                     }
                   } else {
@@ -1650,9 +1709,12 @@ export default function LeaveManagement() {
                   // Show success message when valid
                   if (validationMessages.length === 0 && leaveDays > 0) {
                     if (formData.type === 'sick') {
+                      const officeStartTime = new Date(formData.startDate);
+                      officeStartTime.setHours(9, 30, 0, 0);
+                      const diffToOfficeHours = (officeStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
                       validationMessages.push({
                         type: 'success',
-                        message: `âœ“ Valid sick leave request for ${leaveDays} day${leaveDays === 1 ? '' : 's'} with ${Math.floor(hoursDifference)} hours advance notice.`
+                        message: `âœ“ Valid sick leave request for ${leaveDays} day${leaveDays === 1 ? '' : 's'}. Applied ${diffToOfficeHours.toFixed(1)} hours before office hours.`
                       });
                     } else if (hoursDifference >= 24) {
                       validationMessages.push({
@@ -1682,6 +1744,7 @@ export default function LeaveManagement() {
                 <div className="space-y-2">
                   <Label>Reason *</Label>
                   <Textarea
+                    maxLength={200}
                     value={formData.reason}
                     onChange={(e) => setFormData({ ...formData, reason: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
                     placeholder="Please provide a reason for your leave request (minimum 10 characters)."
@@ -1692,7 +1755,7 @@ export default function LeaveManagement() {
                     <span className={`${formData.reason.trim().length < 10 ? 'text-red-500' : 'text-green-600'}`}>
                       {formData.reason.trim().length < 10
                         ? `${formData.reason.trim().length}/10 characters (minimum required)`
-                        : `${formData.reason.trim().length}/500 characters`
+                        : `${formData.reason.trim().length}/200 characters`
                       }
                     </span>
                     {formData.reason.trim().length < 10 && formData.reason.trim().length > 0 && (
@@ -2009,7 +2072,7 @@ export default function LeaveManagement() {
 
                     <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
                       <p className="text-sm text-blue-800 dark:text-blue-200">
-                        <strong>Note:</strong> Annual, Sick, and Casual leave requests will deduct from the <strong>Total Annual Leave</strong> balance.
+                        <strong>Note:</strong> Sick and Casual leave requests will deduct from the <strong>Annual Leave</strong> balance.
                         The individual allocations (Sick, Casual, Other) are for reference and tracking purposes.
                       </p>
                     </div>
@@ -2743,6 +2806,7 @@ export default function LeaveManagement() {
             <div>
               <Label>Reason *</Label>
               <Textarea
+                maxLength={200}
                 value={editFormData.reason}
                 onChange={(e) => setEditFormData(prev => ({ ...prev, reason: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                 rows={4}
@@ -2753,7 +2817,7 @@ export default function LeaveManagement() {
                 <span className={`${editFormData.reason.trim().length < 10 ? 'text-red-500' : 'text-green-600'}`}>
                   {editFormData.reason.trim().length < 10
                     ? `${editFormData.reason.trim().length}/10 characters (minimum required)`
-                    : `${editFormData.reason.trim().length}/500 characters`
+                    : `${editFormData.reason.trim().length}/200 characters`
                   }
                 </span>
                 {editFormData.reason.trim().length < 10 && editFormData.reason.trim().length > 0 && (
