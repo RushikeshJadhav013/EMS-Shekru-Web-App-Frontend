@@ -1283,121 +1283,117 @@ const TaskManagement: React.FC = () => {
     const assignees = newTask.assignedTo.length > 0 ? newTask.assignedTo : [userId];
 
     setIsSubmitting(true);
-    let successCount = 0;
-    let failedCount = 0;
-    const errors: string[] = [];
 
     try {
-      for (const assigneeIdIdRaw of assignees) {
-        if (!assigneeIdIdRaw) continue;
+      // Build the bulk payload — one entry per assignee
+      const bulkPayloads: {
+        title: string;
+        description?: string;
+        priority?: string;
+        due_date: string | null;
+        assigned_to: number;
+        assigned_by: number;
+      }[] = [];
 
-        const selectedEmployee = assignableEmployees.find((emp) => emp.userId === assigneeIdIdRaw || emp.email === assigneeIdIdRaw);
-        const assignedToIdRaw = selectedEmployee?.userId ?? assigneeIdIdRaw;
-        const assignedByIdRaw = userId;
+      const assigneeMap: Map<number, { name: string; userId: string }> = new Map();
 
+      for (const assigneeIdRaw of assignees) {
+        if (!assigneeIdRaw) continue;
+
+        const selectedEmployee = assignableEmployees.find(
+          (emp) => emp.userId === assigneeIdRaw || emp.email === assigneeIdRaw
+        );
+        const assignedToIdRaw = selectedEmployee?.userId ?? assigneeIdRaw;
         const assignedToBackend = Number(assignedToIdRaw);
-        const assignedByBackend = Number(assignedByIdRaw);
+        const assignedByBackend = Number(userId);
 
         if (!Number.isFinite(assignedToBackend) || !Number.isFinite(assignedByBackend)) {
-          errors.push(`Invalid identifier for ${selectedEmployee?.name || assigneeIdIdRaw}`);
-          failedCount++;
+          console.warn(`Skipping invalid assignee: ${selectedEmployee?.name || assigneeIdRaw}`);
           continue;
         }
 
-        const payload = {
+        bulkPayloads.push({
           title: newTask.title,
           description: newTask.description,
           priority: frontendToBackendPriority[newTask.priority],
           due_date: newTask.deadline || null,
           assigned_to: assignedToBackend,
           assigned_by: assignedByBackend,
-        };
-
-        try {
-          const response = await fetch(`${API_BASE_URL}/tasks`, {
-            method: 'POST',
-            headers: authorizedHeaders,
-            body: JSON.stringify(payload),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            const detail = Array.isArray(errorData?.detail)
-              ? errorData.detail.map((item: any) => (typeof item === 'string' ? item : item.msg || JSON.stringify(item))).join(', ')
-              : typeof errorData?.detail === 'string'
-                ? errorData.detail
-                : JSON.stringify(errorData || {});
-            throw new Error(detail || `Failed (${response.status})`);
-          }
-
-          const createdTask: BackendTask = await response.json();
-          const convertedTask = mapBackendTaskToFrontend(createdTask);
-
-          // Add to local state
-          setTasks((prev) => [convertedTask, ...prev]);
-
-          // Trigger notification
-          if (convertedTask.assignedTo[0] && userId) {
-            if (convertedTask.assignedTo[0] !== userId) {
-              addNotification({
-                title: 'New Task Assigned',
-                message: `${user.name} assigned you a new task: "${convertedTask.title}"`,
-                type: 'task',
-                metadata: {
-                  taskId: convertedTask.id,
-                  requesterId: user.id,
-                  requesterName: user.name,
-                }
-              });
-            } else {
-              addNotification({
-                title: 'Task Created',
-                message: `You created a new task: "${convertedTask.title}" - Due: ${convertedTask.deadline || 'No deadline'}`,
-                type: 'task',
-                metadata: {
-                  taskId: convertedTask.id,
-                  requesterId: user.id,
-                  requesterName: user.name,
-                }
-              });
-            }
-          }
-          successCount++;
-        } catch (err: any) {
-          failedCount++;
-          errors.push(`${selectedEmployee?.name || assigneeIdIdRaw}: ${err.message}`);
-        }
-      }
-
-      if (successCount > 0) {
-        toast({
-          title: 'Tasks Created',
-          description: `Successfully created ${successCount} task(s).${failedCount > 0 ? ` (${failedCount} failed)` : ''}`,
         });
 
-        setIsCreateDialogOpen(false);
-        setNewTask({
-          title: '',
-          description: '',
-          assignedTo: [],
-          priority: 'medium',
-          deadline: '',
-          department: '',
-          employeeId: ''
+        assigneeMap.set(assignedToBackend, {
+          name: selectedEmployee?.name || assigneeIdRaw,
+          userId: String(assignedToIdRaw),
         });
-        setAssigneeSearchQuery('');
       }
 
-      if (failedCount > 0) {
+      if (bulkPayloads.length === 0) {
         toast({
-          title: 'Some tasks failed',
-          description: errors.join('\n'),
+          title: 'No valid assignees',
+          description: 'None of the selected assignees are valid.',
           variant: 'destructive',
         });
+        return;
       }
 
+      // Call PUT /tasks/bulk with all payloads in one request
+      const createdTasks: BackendTask[] = await apiService.createTasksBulk(bulkPayloads);
+
+      const convertedTasks = (Array.isArray(createdTasks) ? createdTasks : []).map(
+        mapBackendTaskToFrontend
+      );
+
+      // Add all newly created tasks to local state
+      setTasks((prev) => [...convertedTasks, ...prev]);
+
+      // Send notifications for each created task
+      convertedTasks.forEach((convertedTask) => {
+        if (convertedTask.assignedTo[0] && userId) {
+          if (convertedTask.assignedTo[0] !== userId) {
+            addNotification({
+              title: 'New Task Assigned',
+              message: `${user.name} assigned you a new task: "${convertedTask.title}"`,
+              type: 'task',
+              metadata: {
+                taskId: convertedTask.id,
+                requesterId: user.id,
+                requesterName: user.name,
+              },
+            });
+          } else {
+            addNotification({
+              title: 'Task Created',
+              message: `You created a new task: "${convertedTask.title}" - Due: ${convertedTask.deadline || 'No deadline'}`,
+              type: 'task',
+              metadata: {
+                taskId: convertedTask.id,
+                requesterId: user.id,
+                requesterName: user.name,
+              },
+            });
+          }
+        }
+      });
+
+      toast({
+        title: 'Tasks Created',
+        description: `Successfully created ${convertedTasks.length} task(s).`,
+      });
+
+      setIsCreateDialogOpen(false);
+      setNewTask({
+        title: '',
+        description: '',
+        assignedTo: [],
+        priority: 'medium',
+        deadline: '',
+        department: '',
+        employeeId: '',
+      });
+      setAssigneeSearchQuery('');
+
     } catch (err: unknown) {
-      console.error('Failed to create tasks', err);
+      console.error('Failed to create tasks via bulk endpoint', err);
       const message = err instanceof Error ? err.message : 'Unable to create tasks. Please try again.';
       toast({
         title: 'Task creation failed',

@@ -345,6 +345,21 @@ class ApiService {
     return this.request('/tasks/');
   }
 
+  // Bulk create tasks (PUT /tasks/bulk)
+  async createTasksBulk(tasks: {
+    title: string;
+    description?: string;
+    priority?: string;
+    due_date?: string | null;
+    assigned_to: number;
+    assigned_by: number;
+  }[]) {
+    return this.request('/tasks/bulk', {
+      method: 'PUT',
+      body: JSON.stringify(tasks),
+    });
+  }
+
   // Create a new employee
   async createEmployee(employeeData: EmployeeData): Promise<Employee> {
     const formData = new FormData();

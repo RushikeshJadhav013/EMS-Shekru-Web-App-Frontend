@@ -325,8 +325,8 @@ export default function LeaveManagement() {
       response.forEach((item) => {
         if (item.is_active) {
           const dept = item.department;
-          // Convert API day names (e.g., "Saturday", "Sunday") to lowercase format
-          const days = item.days.map(day => day.toLowerCase());
+          // Convert API day names (e.g., "Saturday", "Sunday") to lowercase format, stripping symbols/emojis
+          const days = item.days.map(day => day.replace(/[^a-zA-Z]/g, '').toLowerCase());
 
           if (weekOffMap[dept]) {
             // If department already exists, append ID and merge days
@@ -471,13 +471,13 @@ export default function LeaveManagement() {
   const [isSavingLeaveConfig, setIsSavingLeaveConfig] = useState(false);
 
   const weekDayOptions = [
-    { value: 'sunday', label: 'Sunday', emoji: 'â˜€ï¸' },
-    { value: 'monday', label: 'Monday', emoji: 'ðŸŒ¤ï¸' },
-    { value: 'tuesday', label: 'Tuesday', emoji: 'ðŸŒ¥ï¸' },
-    { value: 'wednesday', label: 'Wednesday', emoji: 'â›…' },
-    { value: 'thursday', label: 'Thursday', emoji: 'ðŸŒ¦ï¸' },
-    { value: 'friday', label: 'Friday', emoji: 'ðŸŒˆ' },
-    { value: 'saturday', label: 'Saturday', emoji: 'ðŸ’«' },
+    { value: 'sunday', label: 'Sunday' },
+    { value: 'monday', label: 'Monday' },
+    { value: 'tuesday', label: 'Tuesday' },
+    { value: 'wednesday', label: 'Wednesday' },
+    { value: 'thursday', label: 'Thursday' },
+    { value: 'friday', label: 'Friday' },
+    { value: 'saturday', label: 'Saturday' },
   ];
 
   const weekDayLabels = weekDayOptions.reduce<Record<string, string>>((acc, day) => {
@@ -1620,9 +1620,8 @@ export default function LeaveManagement() {
                     <p className="text-sm text-amber-800 dark:text-amber-200">
                       <strong>Leave Restrictions:</strong>
                     </p>
-                    <ul className="text-sm text-amber-700 dark:text-amber-300 mt-1 space-y-1">
-
-                      <li>• <strong>Sick Leave:</strong> Must be applied in between 2 hours and 24 hours before office working hours.</li>
+                    <ul className="text-sm text-amber-700 dark:text-amber-300 mt-1 space-y-1 list-disc pl-5">
+                      <li><strong>Sick Leave:</strong> Must be applied in between 2 hours and 24 hours before office working hours.</li>
                     </ul>
                   </div>
                 </div>
@@ -1814,20 +1813,35 @@ export default function LeaveManagement() {
                   <div className="flex items-center gap-3 flex-wrap">
                     <div className="flex-1 min-w-[150px]">
                       <Label className="text-xs mb-1 block">From Date</Label>
-                      <DatePicker
-                        date={leaveHistoryCustomStartDate}
-                        onDateChange={setLeaveHistoryCustomStartDate}
-                        placeholder="Select start date"
-                        className="w-full"
+                      <Input
+                        type="date"
+                        value={leaveHistoryCustomStartDate ? format(leaveHistoryCustomStartDate, 'yyyy-MM-dd') : ''}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            const [y, m, d] = e.target.value.split('-').map(Number);
+                            setLeaveHistoryCustomStartDate(new Date(y, m - 1, d));
+                          } else {
+                            setLeaveHistoryCustomStartDate(undefined);
+                          }
+                        }}
+                        className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all w-full"
                       />
                     </div>
                     <div className="flex-1 min-w-[150px]">
                       <Label className="text-xs mb-1 block">To Date</Label>
-                      <DatePicker
-                        date={leaveHistoryCustomEndDate}
-                        onDateChange={setLeaveHistoryCustomEndDate}
-                        placeholder="Select end date"
-                        className="w-full"
+                      <Input
+                        type="date"
+                        value={leaveHistoryCustomEndDate ? format(leaveHistoryCustomEndDate, 'yyyy-MM-dd') : ''}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            const [y, m, d] = e.target.value.split('-').map(Number);
+                            setLeaveHistoryCustomEndDate(new Date(y, m - 1, d));
+                          } else {
+                            setLeaveHistoryCustomEndDate(undefined);
+                          }
+                        }}
+                        min={leaveHistoryCustomStartDate ? format(leaveHistoryCustomStartDate, 'yyyy-MM-dd') : undefined}
+                        className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all w-full"
                       />
                     </div>
                   </div>
@@ -2059,9 +2073,18 @@ export default function LeaveManagement() {
                           Other Leave
                         </Label>
                         <Input
-                          disabled
+                          type="number"
+                          min="0"
+                          max="365"
                           value={leaveAllocationConfig.other_leave_allocation}
-                          className="border-2 border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800 opacity-80 cursor-not-allowed font-bold"
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 0;
+                            setLeaveAllocationConfig((prev) => ({
+                              ...prev,
+                              other_leave_allocation: val,
+                            }));
+                          }}
+                          className="border-2 border-gray-200 dark:border-gray-800 focus:border-gray-500"
                           placeholder="e.g., 0"
                         />
                         <p className="text-xs text-muted-foreground">
@@ -2072,8 +2095,8 @@ export default function LeaveManagement() {
 
                     <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
                       <p className="text-sm text-blue-800 dark:text-blue-200">
-                        <strong>Note:</strong> Sick and Casual leave requests will deduct from the <strong>Annual Leave</strong> balance.
-                        The individual allocations (Sick, Casual, Other) are for reference and tracking purposes.
+                        <strong>Note:</strong> Sick and Casual leave requests will deduct from the Total Annual Leave balance.
+                        The individual allocations (Sick and Casual) are for reference and tracking purposes.
                       </p>
                     </div>
 
@@ -2245,7 +2268,7 @@ export default function LeaveManagement() {
                                   : 'border-slate-300 text-slate-600 hover:bg-white'
                                   }`}
                               >
-                                {day.emoji} {day.label}
+                                {day.label}
                               </button>
                             );
                           })}

@@ -546,7 +546,7 @@ export default function EmployeeManagement() {
         emp.email.toLowerCase().includes(query);
       const matchesDepartment = selectedDepartment === 'all' ||
         (emp.department && emp.department.split(',').map(d => d.trim().toLowerCase()).includes(selectedDepartment.toLowerCase()));
-      const matchesRole = selectedRole === 'all' || emp.role === selectedRole;
+      const matchesRole = selectedRole === 'all' || getInternalRole(emp.role || '') === selectedRole;
       const matchesStatus = selectedStatus === 'all' || emp.status === selectedStatus;
       return matchesSearch && matchesDepartment && matchesRole && matchesStatus;
     });
@@ -1767,6 +1767,7 @@ export default function EmployeeManagement() {
             </Button>
             <Button
               onClick={() => {
+                fetchEmployees();
                 setExportFilters(prev => ({
                   ...prev,
                   department: selectedDepartment,
@@ -2659,7 +2660,7 @@ export default function EmployeeManagement() {
                     </div>
                   </SelectItem>
 
-                  {user?.role !== 'hr' && (
+                  {getInternalRole(user?.role || '') !== 'hr' && (
                     <SelectItem value="hr" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors">
                       <div className="flex items-center gap-2">
                         HR
