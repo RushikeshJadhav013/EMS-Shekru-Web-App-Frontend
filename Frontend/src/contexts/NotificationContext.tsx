@@ -13,7 +13,7 @@ export interface Notification {
   userId: string;
   title: string;
   message: string;
-  type: 'leave' | 'task' | 'info' | 'warning' | 'shift' | 'salary';
+  type: 'leave' | 'task' | 'info' | 'warning' | 'shift';
   read: boolean;
   actionUrl?: string;
   createdAt: string;
@@ -82,16 +82,7 @@ type BackendLeaveNotification = {
   created_at: string;
 };
 
-type BackendSalaryNotification = {
-  notification_id: number;
-  user_id: number;
-  salary_id: number;
-  notification_type: string;
-  title: string;
-  message: string;
-  is_read: boolean;
-  created_at: string;
-};
+
 
 type BackendShiftNotification = {
   notification_id: number;
@@ -122,7 +113,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const retryTimeoutRef = useRef<number | null>(null);
   const lastFetchRef = useRef<number>(0);
   const previousUnreadCountRef = useRef<number>(0);
-  const salaryUnreadCountRef = useRef<number>(0);
   const isFetchingRef = useRef<boolean>(false); // Prevent concurrent fetches
   const initialFetchDoneRef = useRef<boolean>(false); // Track if initial fetch is done
 
@@ -408,7 +398,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     debugLog('Fetching notifications from API...');
 
     try {
-      const [taskResult, leaveResult, shiftResult, salaryResult, salaryUnreadResult] = await Promise.allSettled([
+      const [taskResult, leaveResult, shiftResult] = await Promise.allSettled([
         fetch(`${API_BASE_URL}/tasks/notifications`, {
           headers: {
             Authorization: authHeader,
@@ -445,30 +435,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           }
           return { ok: false, status: 0 } as Response;
         }),
-        fetch(`${API_BASE_URL}/salary/notifications`, {
-          headers: {
-            Authorization: authHeader,
-          },
-          signal,
-        }).catch(err => {
-          // Silently handle network errors and aborts
-          if (import.meta.env.DEV && err.name !== 'AbortError') {
-            console.warn('Salary notifications fetch failed:', err.message);
-          }
-          return { ok: false, status: 0 } as Response;
-        }),
-        fetch(`${API_BASE_URL}/salary/notifications/unread/count`, {
-          headers: {
-            Authorization: authHeader,
-          },
-          signal,
-        }).catch(err => {
-          // Silently handle network errors and aborts
-          if (import.meta.env.DEV && err.name !== 'AbortError') {
-            console.warn('Salary unread count fetch failed:', err.message);
-          }
-          return { ok: false, status: 0 } as Response;
-        }),
       ]);
 
       // Check for 401 errors - if any endpoint returns 401, stop polling and clear auth
@@ -480,12 +446,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         hasUnauthorized = true;
       }
       if (shiftResult.status === 'fulfilled' && shiftResult.value.status === 401) {
-        hasUnauthorized = true;
-      }
-      if (salaryResult.status === 'fulfilled' && salaryResult.value.status === 401) {
-        hasUnauthorized = true;
-      }
-      if (salaryUnreadResult.status === 'fulfilled' && salaryUnreadResult.value.status === 401) {
         hasUnauthorized = true;
       }
 
@@ -509,7 +469,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const taskData: BackendTaskNotification[] = [];
       const leaveData: BackendLeaveNotification[] = [];
       const shiftData: BackendShiftNotification[] = [];
-      const salaryData: BackendSalaryNotification[] = [];
 
       // Handle task notifications
       if (taskResult.status === 'fulfilled' && taskResult.value.ok) {
@@ -626,83 +585,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         debugLog('Shift notifications API returned non-OK status:', shiftResult.value.status);
       }
 
-      // Handle salary notifications
-      if (salaryResult.status === 'fulfilled' && salaryResult.value.ok) {
-        try {
-          const data = await salaryResult.value.json();
-          debugLog('Salary notifications API response:', data);
-          if (Array.isArray(data)) {
-            salaryData.push(...data);
-          } else if (data && typeof data === 'object') {
-            if (Array.isArray(data.notifications)) {
-              salaryData.push(...data.notifications);
-            } else if (Array.isArray(data.data)) {
-              salaryData.push(...data.data);
-            }
-          }
-          debugLog('Parsed salary notifications:', salaryData);
-        } catch (error) {
-          if (import.meta.env.DEV && !(error instanceof Error && error.name === 'AbortError')) {
-            console.error('Failed to parse salary notifications', error);
-          }
-        }
-      } else if (salaryResult.status === 'rejected') {
-        if (import.meta.env.DEV && salaryResult.reason?.name !== 'AbortError' && !salaryResult.reason?.message?.includes('fetch')) {
-          console.error('Failed to fetch salary notifications:', salaryResult.reason);
-        }
-      } else if (salaryResult.status === 'fulfilled') {
-        debugLog('Salary notifications API returned non-OK status:', salaryResult.value.status);
-      }
-
-      // Handle salary unread count
-      if (salaryUnreadResult.status === 'fulfilled' && salaryUnreadResult.value.ok) {
-        try {
-          const data = await salaryUnreadResult.value.json();
-          const backendCount = typeof data === 'number'
-            ? data
-            : typeof data?.count === 'number'
-              ? data.count
-              : Array.isArray(data?.data)
-                ? data.data.length
-                : 0;
-          salaryUnreadCountRef.current = backendCount;
-          debugLog('Salary unread count:', backendCount);
-        } catch (error) {
-          if (import.meta.env.DEV && !(error instanceof Error && error.name === 'AbortError')) {
-            console.error('Failed to parse salary unread count', error);
-          }
-        }
-      }
-
-      // Filter out read notifications - only show unread ones
+      // Map all notifications (including read ones for history)
       const backendNotifications = [
         ...taskData
-          .filter(n => !n.is_read) // Only unread notifications
           .map(n => mapBackendTaskNotification(n, user.id))
           .filter((n): n is Notification => n !== null),
         ...leaveData
-          .filter(n => !n.is_read) // Only unread notifications
           .map(n => mapBackendLeaveNotification(n, user.id))
           .filter((n): n is Notification => n !== null),
         ...shiftData
-          .filter(n => !n.is_read) // Only unread notifications
           .map(n => mapBackendShiftNotification(n, user.role, user.id))
           .filter((n): n is Notification => n !== null),
-        ...salaryData
-          .filter(n => !n.is_read) // Only unread notifications
-          .map(n => ({
-            id: `backend-salary-${n.notification_id}`,
-            backendId: n.notification_id,
-            userId: String(n.user_id),
-            title: n.title,
-            message: n.message,
-            type: 'salary' as const,
-            read: n.is_read,
-            createdAt: n.created_at,
-            metadata: {
-              // keep flexible for future salary-specific routing if needed
-            },
-          } satisfies Notification)),
       ];
 
       // Get dismissed notification IDs from localStorage to filter them out
@@ -967,8 +860,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         endpoint = `${API_BASE_URL}/leave/notifications/${backendId}/read`;
       } else if (backendType === 'shift') {
         endpoint = `${API_BASE_URL}/shift/notifications/${backendId}/read`;
-      } else if (backendType === 'salary') {
-        endpoint = `${API_BASE_URL}/salary/notifications/${backendId}/read`;
       } else {
         return;
       }
@@ -1013,7 +904,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const taskIds: number[] = [];
     const leaveIds: number[] = [];
     const shiftIds: number[] = [];
-    const salaryIds: number[] = [];
     const notificationIdsToRemove: string[] = [];
 
     setNotifications((prev) =>
@@ -1027,8 +917,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
               taskIds.push(notif.backendId);
             } else if (notif.type === 'shift') {
               shiftIds.push(notif.backendId);
-            } else if (notif.type === 'salary') {
-              salaryIds.push(notif.backendId);
             }
           }
         }
@@ -1037,7 +925,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       })
     );
 
-    if (!user || (taskIds.length === 0 && leaveIds.length === 0 && shiftIds.length === 0 && salaryIds.length === 0)) {
+    if (!user || (taskIds.length === 0 && leaveIds.length === 0 && shiftIds.length === 0)) {
       // Still remove local notifications even if no backend IDs
       setTimeout(() => {
         setNotifications((prev) => prev.filter((notif) => !notificationIdsToRemove.includes(notif.id)));
@@ -1078,18 +966,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         ),
         ...shiftIds.map((id) =>
           fetch(`${API_BASE_URL}/shift/notifications/${id}/read`, {
-            method: 'PUT',
-            headers: {
-              'Authorization': authHeader,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              notification_id: id,
-            }),
-          })
-        ),
-        ...salaryIds.map((id) =>
-          fetch(`${API_BASE_URL}/salary/notifications/${id}/read`, {
             method: 'PUT',
             headers: {
               'Authorization': authHeader,
@@ -1149,8 +1025,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             endpoint = `${API_BASE_URL}/leave/notifications/${backendId}/read`;
           } else if (backendType === 'shift') {
             endpoint = `${API_BASE_URL}/shift/notifications/${backendId}/read`;
-          } else if (backendType === 'salary') {
-            endpoint = `${API_BASE_URL}/salary/notifications/${backendId}/read`;
           }
 
           if (endpoint) {

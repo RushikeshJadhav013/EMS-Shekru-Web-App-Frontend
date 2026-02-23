@@ -39,9 +39,8 @@ export default function Inbox() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState('all');
 
-  // Filter out salary notifications and apply user search/tabs
+  // apply user search/tabs
   const displayNotifications = notifications
-    .filter(n => n.type !== 'salary')
     .filter(n => {
       const matchesSearch = n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         n.message.toLowerCase().includes(searchQuery.toLowerCase());

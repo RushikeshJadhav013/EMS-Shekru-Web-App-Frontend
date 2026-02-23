@@ -87,6 +87,7 @@ const MainLayout: React.FC = () => {
       { icon: Clock, label: t.navigation.attendance, path: `/${user.role}/attendance` },
       { icon: CalendarDays, label: t.navigation.leaves, path: `/${user.role}/leaves` },
       { icon: ClipboardList, label: t.navigation.tasks, path: `/${user.role}/tasks` },
+      { icon: Bell, label: t.navigation.notifications, path: `/${user.role}/inbox` },
       { icon: Banknote, label: t.navigation.salary, path: '/salary' },
       { icon: MessageCircle, label: t.navigation.chat, path: `/${user.role}/chat` },
     ];
@@ -428,11 +429,10 @@ const MainLayout: React.FC = () => {
 
         {/* Main Content */}
         <main
-          className={`flex-1 min-w-0 w-full overflow-x-hidden transition-all duration-500 ${
-            location.pathname.includes('/chat')
+          className={`flex-1 min-w-0 w-full overflow-x-hidden transition-all duration-500 ${location.pathname.includes('/chat')
               ? 'overflow-hidden'
               : 'overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent'
-          }`}
+            }`}
         >
           <div
             className={
