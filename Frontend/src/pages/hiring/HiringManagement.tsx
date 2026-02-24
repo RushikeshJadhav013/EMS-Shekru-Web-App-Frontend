@@ -392,10 +392,42 @@ export default function HiringManagement() {
   };
 
   const handleCreateCandidate = async () => {
-    if (!candidateFormData.first_name || !candidateFormData.last_name || !candidateFormData.email || !candidateFormData.vacancy_id) {
+    if (!candidateFormData.first_name || !candidateFormData.last_name || !candidateFormData.email || !candidateFormData.vacancy_id || !candidateFormData.phone) {
       toast({
         title: 'Error',
-        description: 'Please fill in all required fields',
+        description: 'Please fill in all required fields, including phone number',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Mobile number validation (Starting with 7,8,9 and exactly 10 digits)
+    const mobileRegex = /^[7,8,9]\d{9}$/;
+    if (!mobileRegex.test(candidateFormData.phone)) {
+      toast({
+        title: 'Invalid Mobile Number',
+        description: 'Mobile number must be 10 digits and start with 7, 8, or 9',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Email validation (Must be @gmail.com)
+    if (!candidateFormData.email.toLowerCase().endsWith('@gmail.com')) {
+      toast({
+        title: 'Invalid Email',
+        description: 'Only @gmail.com email addresses are allowed',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Duplicate mobile number check
+    const isDuplicatePhone = candidates.some(c => c.phone === candidateFormData.phone);
+    if (isDuplicatePhone) {
+      toast({
+        title: 'Duplicate Mobile Number',
+        description: 'A candidate with this mobile number already exists',
         variant: 'destructive',
       });
       return;
@@ -1987,17 +2019,23 @@ export default function HiringManagement() {
                   type="email"
                   value={candidateFormData.email}
                   onChange={(e) => setCandidateFormData({ ...candidateFormData, email: e.target.value })}
-                  placeholder="john.doe@example.com"
+                  placeholder="example@gmail.com"
                 />
+                <p className="text-[10px] text-muted-foreground italic">Must be a @gmail.com address</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="c_phone">Phone Number *</Label>
                 <Input
                   id="c_phone"
                   value={candidateFormData.phone}
-                  onChange={(e) => setCandidateFormData({ ...candidateFormData, phone: e.target.value })}
-                  placeholder="+91 XXXXX XXXXX"
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setCandidateFormData({ ...candidateFormData, phone: val });
+                  }}
+                  placeholder="10-digit number (starts with 7, 8, or 9)"
+                  maxLength={10}
                 />
+                <p className="text-[10px] text-muted-foreground italic">Starts with 7, 8, or 9</p>
               </div>
             </div>
             <div className="space-y-2">
