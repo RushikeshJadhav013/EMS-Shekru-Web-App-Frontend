@@ -18,9 +18,11 @@ import {
   Users,
   Search,
   ChevronRight,
-  SlidersHorizontal,
   Eye,
   Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Filter,
 } from 'lucide-react';
 import { Department } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -257,8 +259,8 @@ export default function DepartmentManagement() {
   };
 
   const handleDeleteDepartment = (id: string) => {
-    const dept = departments.find(d => d.id === id);
-    if (dept && dept.employeeCount && dept.employeeCount > 0) {
+    const dept = departments.find(d => String(d.id) === id);
+    if (dept && (dept.employeeCount || 0) > 0) {
       toast({
         title: 'Error',
         description: 'Cannot delete department with active employees',
@@ -270,10 +272,11 @@ export default function DepartmentManagement() {
     apiService
       .deleteDepartment(Number(id))
       .then(() => {
-        setDepartments((prev) => prev.filter((dept) => dept.id !== id));
+        setDepartments((prev) => prev.filter((dept) => String(dept.id) !== id));
         toast({
           title: 'Success',
           description: 'Department deleted successfully',
+          variant: 'success',
         });
       })
       .catch((error) => {
@@ -770,7 +773,7 @@ export default function DepartmentManagement() {
                 ) : (
                   paginatedDepartments.map((department) => {
                     const manager = managers.find(
-                      (m) => m.id === String(department.managerId ?? ''),
+                      (m) => String(m.id) === String(department.managerId ?? ''),
                     );
                     const isActive = department.status === 'active';
                     return (
@@ -1011,15 +1014,15 @@ export default function DepartmentManagement() {
                   <div>
                     <Label className="text-sm font-medium text-slate-600 dark:text-slate-400">Manager</Label>
                     <div className="flex items-center gap-2 mt-1 bg-slate-50 dark:bg-slate-800 px-3 py-2 rounded border border-slate-200 dark:border-slate-700">
-                      {managers.find(m => m.id === viewDepartment.managerId) ? (
+                      {managers.find(m => String(m.id) === String(viewDepartment.managerId)) ? (
                         <>
                           <div className="h-8 w-8 rounded-full bg-green-600 flex items-center justify-center">
                             <span className="text-sm font-bold text-white">
-                              {managers.find(m => m.id === viewDepartment.managerId)?.name.charAt(0).toUpperCase()}
+                              {managers.find(m => String(m.id) === String(viewDepartment.managerId))?.name.charAt(0).toUpperCase()}
                             </span>
                           </div>
                           <span className="text-base font-medium text-slate-900 dark:text-white">
-                            {managers.find(m => m.id === viewDepartment.managerId)?.name}
+                            {managers.find(m => String(m.id) === String(viewDepartment.managerId))?.name}
                           </span>
                         </>
                       ) : (

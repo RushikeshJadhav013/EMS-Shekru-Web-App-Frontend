@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -161,6 +161,56 @@ const AttendanceManager: React.FC = () => {
   const [openTimePicker, setOpenTimePicker] = useState<'globalStart' | 'globalEnd' | 'deptStart' | 'deptEnd' | null>(null);
   const HOURS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
   const MINUTES = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
+
+  const formatRoleDisplay = (role: string): string => {
+    if (!role) return 'Employee';
+    const roleMap: Record<string, string> = {
+      'admin': 'Admin',
+      'hr': 'HR',
+      'manager': 'Manager',
+      'team_lead': 'Team Lead',
+      'teamlead': 'Team Lead',
+      'employee': 'Employee',
+    };
+    return roleMap[role.toLowerCase()] || role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  const filteredRecentDecisions = useMemo(() => {
+    let filtered = allWfhRequests.filter(req => req.status !== 'pending');
+
+    // Apply Status Filter
+    if (wfhRequestFilter !== 'all') {
+      filtered = filtered.filter(req => req.status === wfhRequestFilter);
+    }
+
+    // Apply Role Filter
+    if (wfhRoleFilter !== 'all') {
+      filtered = filtered.filter(req => {
+        const reqRoleStr = (req.role || 'employee').toLowerCase().replace(/[\s_\-]+/g, '');
+        const filterRoleStr = wfhRoleFilter.toLowerCase().replace(/[\s_\-]+/g, '');
+        return reqRoleStr === filterRoleStr;
+      });
+    }
+
+    // Apply Duration Filter
+    if (wfhDecisionsDurationFilter !== 'all') {
+      let startDate = wfhDecisionsStartDate;
+      let endDate = wfhDecisionsEndDate ? new Date(wfhDecisionsEndDate) : new Date();
+      endDate.setHours(23, 59, 59, 999);
+
+      filtered = filtered.filter(req => {
+        const reqDate = new Date(req.processedAt || req.submittedAt || req.startDate);
+        if (startDate) {
+          const sDate = new Date(startDate);
+          sDate.setHours(0, 0, 0, 0);
+          return reqDate >= sDate && reqDate <= endDate;
+        }
+        return reqDate <= endDate;
+      });
+    }
+
+    return filtered.sort((a, b) => new Date(b.processedAt || b.submittedAt || b.startDate).getTime() - new Date(a.processedAt || a.submittedAt || a.startDate).getTime());
+  }, [allWfhRequests, wfhRequestFilter, wfhRoleFilter, wfhDecisionsDurationFilter, wfhDecisionsStartDate, wfhDecisionsEndDate]);
 
   useEffect(() => {
     setWfhCurrentPage(1);
@@ -1519,36 +1569,54 @@ const AttendanceManager: React.FC = () => {
 
     setIsLoadingWfhRequests(true);
     try {
-      // Call API to get all WFH requests for admin/hr/manager approval
-      const response = await apiService.getAllWFHRequests();
+      // Fetch WFH requests and employees in parallel to ensure accurate roles
+      const [response, employeesResponse] = await Promise.all([
+        apiService.getAllWFHRequests(),
+        apiService.getEmployees()
+      ]);
+
+      // Create a map of userId -> role for quick lookup
+      const userRoleMap: Record<string, string> = {};
+      const employeesData = Array.isArray(employeesResponse) ? employeesResponse : (employeesResponse as any)?.employees || [];
+      if (Array.isArray(employeesData)) {
+        employeesData.forEach((emp: any) => {
+          const uId = String(emp.user_id || emp.userId || emp.id);
+          userRoleMap[uId] = emp.role || '';
+        });
+      }
 
       // Handle response - it might be wrapped in an object or be an array directly
       let requests = Array.isArray(response) ? response : (response?.data || response?.requests || []);
 
       // Transform API response to match our UI format
-      // The API returns requests with fields like: wfh_id, user_id, start_date, end_date, wfh_type, reason, status, employee_id, name, department, role, approver_name
-      const formattedRequests = requests.map((req: any) => ({
-        id: String(req.wfh_id || req.id),
-        startDate: req.start_date,
-        endDate: req.end_date,
-        reason: req.reason,
-        type: (req.wfh_type || 'Full Day').toLowerCase().includes('full') ? 'full_day' : 'half_day',
-        status: (req.status || 'Pending').toLowerCase(),
-        submittedAt: req.created_at,
-        submittedBy: req.name || req.employee_name || 'Unknown',
-        submittedById: String(req.user_id),
-        employeeId: req.employee_id || '',
-        department: req.department || 'Unknown',
-        role: (req.role || 'employee').toLowerCase(),
-        processedAt: req.updated_at,
-        processedBy: req.approver_name || req.approved_by || 'Pending',
-        rejectionReason: req.rejection_reason,
-      }));
+      const formattedRequests = requests.map((req: any) => {
+        const userIdForMapping = String(req.user_id || req.userId || '');
+        let resolvedRole = userRoleMap[userIdForMapping];
+        if (!resolvedRole) {
+          resolvedRole = req.role || req.user_role || 'employee';
+        }
+
+        return {
+          id: String(req.wfh_id || req.id),
+          startDate: req.start_date,
+          endDate: req.end_date,
+          reason: req.reason,
+          type: (req.wfh_type || 'Full Day').toLowerCase().includes('full') ? 'full_day' : 'half_day',
+          status: (req.status || 'Pending').toLowerCase(),
+          submittedAt: req.created_at,
+          submittedBy: req.name || req.employee_name || 'Unknown',
+          submittedById: String(req.user_id),
+          employeeId: req.employee_id || '',
+          department: req.department || 'Unknown',
+          role: resolvedRole.toLowerCase(),
+          processedAt: req.processed_at || req.updated_at,
+          processedBy: req.approver_name || req.approved_by || 'Pending',
+          rejectionReason: req.rejection_reason,
+        };
+      });
 
       setAllWfhRequests(formattedRequests);
     } catch (error: any) {
-      // Silently fail - endpoint may not be implemented yet
-      // The API method already handles errors gracefully
       setAllWfhRequests([]);
     } finally {
       setIsLoadingWfhRequests(false);
@@ -1753,7 +1821,8 @@ const AttendanceManager: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row md:flex-wrap gap-3 mb-6">
-            <div className="w-full md:w-[260px] lg:w-[320px]">
+            <div className="w-full md:w-[260px] lg:w-[320px] flex flex-col gap-2">
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1">Search</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -1764,40 +1833,40 @@ const AttendanceManager: React.FC = () => {
                 />
               </div>
             </div>
-            <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
-              <SelectTrigger className="w-[160px] h-11 bg-white dark:bg-gray-950 border-2">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="present">Present</SelectItem>
-                <SelectItem value="late">Late</SelectItem>
-                <SelectItem value="early">Early Departure</SelectItem>
-                <SelectItem value="absent">Absent</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={timePeriodFilter} onValueChange={(value: any) => setTimePeriodFilter(value)}>
-              <SelectTrigger className={`${timePeriodFilter === 'custom' ? 'md:w-[320px]' : 'md:w-[180px]'} w-full h-11 bg-white dark:bg-gray-950 border-2 text-slate-700 dark:text-slate-200 transition-all duration-300`}>
-                <Calendar className="h-4 w-4 mr-2 text-blue-500" />
-                <SelectValue>
-                  {timePeriodFilter === 'custom'
-                    ? (customStartDate && customEndDate
-                      ? `Custom: ${formatDateIST(customStartDate)} - ${formatDateIST(customEndDate)}`
-                      : 'Custom Range')
-                    : undefined}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="current_month">Current Month</SelectItem>
-                <SelectItem value="last_month">Last Month</SelectItem>
-                <SelectItem value="last_3_months">Last 3 Months</SelectItem>
-                <SelectItem value="last_6_months">Last 6 Months</SelectItem>
-                <SelectItem value="last_12_months">Last 1 Year</SelectItem>
-                <SelectItem value="custom">Custom Range</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-2">
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1">Status</Label>
+              <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
+                <SelectTrigger className="w-[160px] h-11 bg-white dark:bg-gray-950 border-2">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="present">Present</SelectItem>
+                  <SelectItem value="late">Late</SelectItem>
+                  <SelectItem value="early">Early Departure</SelectItem>
+                  <SelectItem value="absent">Absent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1">Duration Filter</Label>
+              <Select value={timePeriodFilter} onValueChange={(value: any) => setTimePeriodFilter(value)}>
+                <SelectTrigger className={`${timePeriodFilter === 'custom' ? 'md:w-[320px]' : 'md:w-[180px]'} w-full h-11 bg-white dark:bg-gray-950 border-2 text-slate-700 dark:text-slate-200 transition-all duration-300`}>
+                  <Calendar className="h-4 w-4 mr-2 text-blue-500" />
+                  <SelectValue placeholder="Select Duration" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="current_month">Current Month</SelectItem>
+                  <SelectItem value="last_month">Last Month</SelectItem>
+                  <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                  <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                  <SelectItem value="last_12_months">Last 1 Year</SelectItem>
+                  <SelectItem value="custom">Custom Range</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             {timePeriodFilter === 'custom' && (
               <div className="w-full mt-2 p-4 border rounded-2xl bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-100 dark:border-blue-800 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
@@ -3151,7 +3220,7 @@ const AttendanceManager: React.FC = () => {
                                         : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
                                         }`}
                                     >
-                                      {request.role === 'hr' ? 'HR' : 'Manager'}
+                                      {formatRoleDisplay(request.role)}
                                     </Badge>
                                   </div>
                                   <div className="flex items-center gap-2">
@@ -3243,12 +3312,12 @@ const AttendanceManager: React.FC = () => {
                 <div className="space-y-4">
                   {/* Filter Controls for Recent Decisions */}
                   <div className="space-y-3">
-                    <div className="flex gap-3">
-                      <div className="flex-1 max-w-xs">
-                        <Label htmlFor="decision-status-filter">Decision Status</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="decision-status-filter" className="text-sm font-medium ml-1">Decision Status</Label>
                         <Select value={wfhRequestFilter} onValueChange={(value: any) => setWfhRequestFilter(value)}>
-                          <SelectTrigger id="decision-status-filter" className="mt-1">
-                            <SelectValue />
+                          <SelectTrigger id="decision-status-filter" className="w-full h-11 bg-white dark:bg-gray-950 border-2">
+                            <SelectValue placeholder="Select Status" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Decisions</SelectItem>
@@ -3257,11 +3326,12 @@ const AttendanceManager: React.FC = () => {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="flex-1 max-w-xs">
-                        <Label htmlFor="decision-duration-filter">Duration</Label>
+
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="decision-duration-filter" className="text-sm font-medium ml-1">Duration Filter</Label>
                         <Select value={wfhDecisionsDurationFilter} onValueChange={handleWfhDecisionsDurationFilter}>
-                          <SelectTrigger id="decision-duration-filter" className="mt-1">
-                            <SelectValue />
+                          <SelectTrigger id="decision-duration-filter" className="w-full h-11 bg-white dark:bg-gray-950 border-2">
+                            <SelectValue placeholder="Select Duration" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Time</SelectItem>
@@ -3273,12 +3343,39 @@ const AttendanceManager: React.FC = () => {
                             <SelectItem value="custom">Custom Range</SelectItem>
                           </SelectContent>
                         </Select>
+
+                        {wfhDecisionsDurationFilter === 'custom' && (
+                          <div className="flex flex-col gap-3 mt-2 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-bold text-slate-500 uppercase ml-1">From Date</Label>
+                              <DatePicker
+                                date={wfhDecisionsStartDate}
+                                onDateChange={setWfhDecisionsStartDate}
+                                toDate={new Date()}
+                                placeholder="Start Date"
+                                className="h-10 w-full"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-bold text-slate-500 uppercase ml-1">To Date</Label>
+                              <DatePicker
+                                date={wfhDecisionsEndDate}
+                                onDateChange={setWfhDecisionsEndDate}
+                                fromDate={wfhDecisionsStartDate}
+                                toDate={new Date()}
+                                placeholder="End Date"
+                                className="h-10 w-full"
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex-1 max-w-xs">
-                        <Label htmlFor="decision-role-filter">Role</Label>
+
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="decision-role-filter" className="text-sm font-medium ml-1">Role Filter</Label>
                         <Select value={wfhRoleFilter} onValueChange={(value: any) => setWfhRoleFilter(value)}>
-                          <SelectTrigger id="decision-role-filter" className="mt-1">
-                            <SelectValue />
+                          <SelectTrigger id="decision-role-filter" className="w-full h-11 bg-white dark:bg-gray-950 border-2">
+                            <SelectValue placeholder="Select Role" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Roles</SelectItem>
@@ -3289,60 +3386,25 @@ const AttendanceManager: React.FC = () => {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="flex-1">
-                        <Label>Total Decisions</Label>
-                        <div className="mt-1 px-3 py-2 bg-muted rounded-md text-sm flex items-center justify-between">
-                          <span>{allWfhRequests.filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter) && (wfhRoleFilter === 'all' || (req.role || 'employee').toLowerCase() === wfhRoleFilter)).length} of {allWfhRequests.filter(req => req.status !== 'pending').length} decisions</span>
+
+                      <div className="flex flex-col gap-2">
+                        <Label className="text-sm font-medium ml-1">Summary</Label>
+                        <div className="h-11 px-3 py-2 bg-muted rounded-md text-sm flex items-center justify-between">
+                          <span>{filteredRecentDecisions.length} of {allWfhRequests.filter(req => req.status !== 'pending').length} decisions</span>
                         </div>
                       </div>
                     </div>
-                    {wfhDecisionsDurationFilter === 'custom' && (
-                      <div className="p-4 border rounded-2xl bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-100 dark:border-blue-800 shadow-sm">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1.5">
-                            <Label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
-                              <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                              From Date
-                            </Label>
-                            <DatePicker
-                              date={wfhDecisionsStartDate}
-                              onDateChange={setWfhDecisionsStartDate}
-                              toDate={new Date()}
-                              placeholder="Start Date"
-                              className="w-full bg-white dark:bg-gray-950 border-blue-200"
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
-                              <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                              To Date
-                            </Label>
-                            <DatePicker
-                              date={wfhDecisionsEndDate}
-                              onDateChange={setWfhDecisionsEndDate}
-                              fromDate={wfhDecisionsStartDate}
-                              toDate={new Date()}
-                              placeholder="End Date"
-                              className="w-full bg-white dark:bg-gray-950 border-indigo-200"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
 
-                  {/* Recent Decisions Table */}
                   {isLoadingWfhRequests ? (
                     <div className="flex items-center justify-center py-8">
                       <Timer className="h-8 w-8 animate-spin text-blue-600" />
                       <span className="ml-2 text-muted-foreground">Loading decisions...</span>
                     </div>
-                  ) : allWfhRequests.filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter) && (wfhRoleFilter === 'all' || (req.role || 'employee').toLowerCase() === wfhRoleFilter)).length > 0 ? (
+                  ) : filteredRecentDecisions.length > 0 ? (
                     <>
                       <div className="space-y-3">
-                        {allWfhRequests
-                          .filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter) && (wfhRoleFilter === 'all' || (req.role || 'employee').toLowerCase() === wfhRoleFilter))
-                          .sort((a, b) => new Date(b.processedAt || b.submittedAt).getTime() - new Date(a.processedAt || a.submittedAt).getTime())
+                        {filteredRecentDecisions
                           .slice((wfhCurrentPage - 1) * wfhItemsPerPage, wfhCurrentPage * wfhItemsPerPage)
                           .map((request) => (
                             <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
@@ -3359,7 +3421,7 @@ const AttendanceManager: React.FC = () => {
                                           : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
                                           }`}
                                       >
-                                        {request.role === 'hr' ? 'HR' : 'Manager'}
+                                        {formatRoleDisplay(request.role)}
                                       </Badge>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -3401,8 +3463,8 @@ const AttendanceManager: React.FC = () => {
                       <div className="mt-4">
                         <Pagination
                           currentPage={wfhCurrentPage}
-                          totalPages={Math.ceil(allWfhRequests.filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter)).length / wfhItemsPerPage)}
-                          totalItems={allWfhRequests.filter(req => req.status !== 'pending' && (wfhRequestFilter === 'all' || req.status === wfhRequestFilter)).length}
+                          totalPages={Math.ceil(filteredRecentDecisions.length / wfhItemsPerPage)}
+                          totalItems={filteredRecentDecisions.length}
                           itemsPerPage={wfhItemsPerPage}
                           onPageChange={setWfhCurrentPage}
                           onItemsPerPageChange={setWfhItemsPerPage}
@@ -3455,7 +3517,7 @@ const AttendanceManager: React.FC = () => {
                         : 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950'
                         }`}
                     >
-                      {selectedWfhRequest.role === 'hr' ? 'HR' : 'Manager'}
+                      {formatRoleDisplay(selectedWfhRequest.role)}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2">

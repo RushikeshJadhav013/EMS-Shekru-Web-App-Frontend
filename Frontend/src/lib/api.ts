@@ -49,7 +49,7 @@ interface Employee {
 }
 
 interface LeaveRequestData {
-  employee_id: string;
+  user_id: string;
   start_date: string;
   end_date: string;
   reason: string;
@@ -502,7 +502,7 @@ class ApiService {
     return await response.json();
   }
 
-  // Submit a leave request
+  // Submit a leave request (Matches SR.NO 4)
   async submitLeaveRequest(leaveData: LeaveRequestData): Promise<LeaveRequestResponse> {
     return this.request('/leave/', {
       method: 'POST',
@@ -555,29 +555,23 @@ class ApiService {
     });
   }
 
-  // Update a leave request
+  // Update a leave request (Matches SR.NO 5)
   async updateLeaveRequest(leaveId: string, data: LeaveUpdateData): Promise<LeaveRequestResponse> {
     return this.request(`/leave/${leaveId}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        leave_id: Number(leaveId),
+        ...data
+      }),
     });
   }
 
-  // Delete a leave request
+  // Delete a leave request (Matches SR.NO 6)
   async deleteLeaveRequest(leaveId: string): Promise<void> {
-    const url = `${this.baseURL}/leave/${leaveId}`;
-    const token = localStorage.getItem('token');
-    const response = await fetch(url, {
+    return this.request(`/leave/${leaveId}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
+      body: JSON.stringify({ leave_id: Number(leaveId) }),
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
   }
 
   // Get approvals inbox for current approver
@@ -590,14 +584,24 @@ class ApiService {
     return this.request('/leave/approvals');
   }
 
-  // Get approvals decision history for current approver (leave approvals history list)
-  async getLeaveApprovalsHistory(): Promise<(LeaveRequestResponse & {
+  // Get approvals decision history for current approver (Matches SR.NO 7)
+  async getLeaveApprovalsHistory(params?: {
+    period?: string;
+    start_date?: string;
+    end_date?: string;
+  }): Promise<(LeaveRequestResponse & {
     employee_id: string;
     name: string;
     department?: string;
     role?: string;
   })[]> {
-    return this.request('/leave/approvals/history');
+    const query = new URLSearchParams();
+    if (params?.period) query.append('period', params.period);
+    if (params?.start_date) query.append('start_date', params.start_date);
+    if (params?.end_date) query.append('end_date', params.end_date);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+
+    return this.request(`/leave/approvals/history${queryString}`);
   }
 
   // Get leave requests by employee
@@ -605,11 +609,19 @@ class ApiService {
     return this.request(`/leave/employee/${employeeId}`);
   }
 
-  // Approve or reject a leave request
+  // Approve or reject a leave request (Matches SR.NO 9)
   async approveLeaveRequest(leaveId: string, approved: boolean): Promise<LeaveRequestResponse> {
     return this.request(`/leave/${leaveId}/approve`, {
       method: 'PUT',
       body: JSON.stringify({ approved }),
+    });
+  }
+
+  // Mark Leave Notification As Read (Matches SR.NO 12)
+  async markLeaveNotificationAsRead(notificationId: number) {
+    return this.request(`/leave/notifications/${notificationId}/read`, {
+      method: 'PUT',
+      body: JSON.stringify({ notification_id: notificationId }),
     });
   }
 
@@ -677,7 +689,7 @@ class ApiService {
     return await response.blob();
   }
 
-  // Hiring Management APIs
+  // Hiring Management APIs (Matches SR.NO 1-6)
   async getVacancies(department?: string, status?: string) {
     const params = new URLSearchParams();
     if (department) params.append('department', department);
@@ -700,22 +712,18 @@ class ApiService {
   async updateVacancy(vacancyId: number, vacancyData: any) {
     return this.request(`/hiring/vacancies/${vacancyId}`, {
       method: 'PUT',
-      body: JSON.stringify(vacancyData),
+      body: JSON.stringify({
+        vacancy_id: vacancyId,
+        ...vacancyData
+      }),
     });
   }
 
   async deleteVacancy(vacancyId: number) {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/hiring/vacancies/${vacancyId}`, {
+    return this.request(`/hiring/vacancies/${vacancyId}`, {
       method: 'DELETE',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
+      body: JSON.stringify({ vacancy_id: vacancyId }),
     });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-    }
   }
 
   async postVacancyToSocialMedia(vacancyId: number, platforms: string[], links?: Record<string, string>) {
@@ -725,6 +733,7 @@ class ApiService {
     });
   }
 
+  // Candidate Management APIs (Matches SR.NO 7-13)
   async getCandidates(vacancyId?: number, status?: string) {
     const params = new URLSearchParams();
     if (vacancyId) params.append('vacancy_id', vacancyId.toString());
@@ -770,22 +779,76 @@ class ApiService {
   async updateCandidate(candidateId: number, candidateData: any) {
     return this.request(`/hiring/candidates/${candidateId}`, {
       method: 'PUT',
-      body: JSON.stringify(candidateData),
+      body: JSON.stringify({
+        candidate_id: candidateId,
+        ...candidateData
+      }),
+    });
+  }
+
+  async updateCandidateStatus(candidateId: number, status: string) {
+    return this.request(`/hiring/candidates/${candidateId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        candidate_id: candidateId,
+        status: status
+      }),
+    });
+  }
+
+  async shortlistCandidate(candidateId: number, interviewData: {
+    interview_date: string;
+    interview_time?: string;
+    interview_mode: string;
+    location_or_link: string;
+    interviewer_name: string;
+  }) {
+    return this.request(`/hiring/candidates/${candidateId}/shortlist`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        candidate_id: candidateId,
+        ...interviewData
+      }),
     });
   }
 
   async deleteCandidate(candidateId: number) {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/hiring/candidates/${candidateId}`, {
+    return this.request(`/hiring/candidates/${candidateId}`, {
       method: 'DELETE',
+      body: JSON.stringify({ candidate_id: candidateId }),
+    });
+  }
+
+  async updateCandidateResume(candidateId: number, resumeFile?: File, resumeUrl?: string) {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+
+    formData.append('candidate_id', String(candidateId));
+    if (resumeFile) {
+      formData.append('resume', resumeFile);
+    }
+    if (resumeUrl) {
+      formData.append('resume_external_url', resumeUrl);
+    }
+
+    const response = await fetch(`${this.baseURL}/hiring/candidates/${candidateId}/resume`, {
+      method: 'PUT',
       headers: {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       },
+      body: formData,
     });
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
     }
+
+    return await response.json();
+  }
+
+  async getCandidateResume(candidateId: number) {
+    return this.request(`/hiring/candidates/${candidateId}/resume`);
   }
 
   // Shift Management APIs

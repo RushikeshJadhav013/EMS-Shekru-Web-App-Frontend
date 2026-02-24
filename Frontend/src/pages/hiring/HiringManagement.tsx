@@ -64,12 +64,23 @@ interface Candidate {
   vacancy_id: number;
   vacancy_title?: string;
   vacancy_department?: string;
+  first_name?: string;
+  last_name?: string;
   name: string;
   email: string;
   phone?: string;
+  address?: string;
+  linkedin_url?: string;
+  portfolio_url?: string;
   resume_url?: string;
+  resume_external_url?: string;
   cover_letter?: string;
   status: string;
+  interview_date?: string;
+  interview_time?: string;
+  interview_mode?: string;
+  location_or_link?: string;
+  interviewer_name?: string;
   applied_at: string;
   updated_at: string;
 }
@@ -117,6 +128,36 @@ export default function HiringManagement() {
     platforms: [] as string[],
     links: {} as Record<string, string>,
   });
+
+  const [isCandidateDialogOpen, setIsCandidateDialogOpen] = useState(false);
+  const [candidateFormData, setCandidateFormData] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    address: '',
+    linkedin_url: '',
+    portfolio_url: '',
+    vacancy_id: '',
+    resume_external_url: '',
+    status: 'applied',
+  });
+  const [candidateResumeFile, setCandidateResumeFile] = useState<File | null>(null);
+
+  const [isShortlistDialogOpen, setIsShortlistDialogOpen] = useState(false);
+  const [shortlistFormData, setShortlistFormData] = useState({
+    interview_date: '',
+    interview_time: '',
+    interview_mode: 'online',
+    location_or_link: '',
+    interviewer_name: '',
+  });
+
+  const [isUpdateResumeDialogOpen, setIsUpdateResumeDialogOpen] = useState(false);
+  const [resumeUpdateData, setResumeUpdateData] = useState({
+    resume_external_url: '',
+  });
+  const [newResumeFile, setNewResumeFile] = useState<File | null>(null);
 
   type RichTextField =
     | 'description'
@@ -335,7 +376,7 @@ export default function HiringManagement() {
 
   const handleUpdateCandidateStatus = async (candidateId: number, newStatus: string) => {
     try {
-      await apiService.updateCandidate(candidateId, { status: newStatus });
+      await apiService.updateCandidateStatus(candidateId, newStatus);
       toast({
         title: 'Success',
         description: 'Candidate status updated',
@@ -348,6 +389,145 @@ export default function HiringManagement() {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleCreateCandidate = async () => {
+    if (!candidateFormData.first_name || !candidateFormData.last_name || !candidateFormData.email || !candidateFormData.vacancy_id) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const payload = {
+        ...candidateFormData,
+        name: `${candidateFormData.first_name} ${candidateFormData.last_name}`,
+      };
+      await apiService.createCandidate(payload, candidateResumeFile || undefined);
+      toast({
+        title: 'Success',
+        description: 'Candidate created successfully',
+      });
+      setIsCandidateDialogOpen(false);
+      resetCandidateForm();
+      fetchCandidates();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create candidate',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleShortlistCandidate = async () => {
+    if (!selectedCandidate || !shortlistFormData.interview_date || !shortlistFormData.interviewer_name) {
+      toast({
+        title: 'Error',
+        description: 'Please provide interview date and interviewer name',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      await apiService.shortlistCandidate(selectedCandidate.candidate_id, shortlistFormData);
+      toast({
+        title: 'Success',
+        description: 'Candidate shortlisted for interview',
+      });
+      setIsShortlistDialogOpen(false);
+      fetchCandidates();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to shortlist candidate',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleUpdateResume = async () => {
+    if (!selectedCandidate || (!newResumeFile && !resumeUpdateData.resume_external_url)) {
+      toast({
+        title: 'Error',
+        description: 'Please provide a file or an external URL',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      await apiService.updateCandidateResume(
+        selectedCandidate.candidate_id,
+        newResumeFile || undefined,
+        resumeUpdateData.resume_external_url
+      );
+      toast({
+        title: 'Success',
+        description: 'Resume updated successfully',
+      });
+      setIsUpdateResumeDialogOpen(false);
+      setNewResumeFile(null);
+      setResumeUpdateData({ resume_external_url: '' });
+      fetchCandidates();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update resume',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteCandidate = async (candidateId: number) => {
+    if (!confirm('Are you sure you want to delete this candidate?')) return;
+
+    setIsDeleting(candidateId);
+    try {
+      await apiService.deleteCandidate(candidateId);
+      toast({
+        title: 'Success',
+        description: 'Candidate deleted successfully',
+      });
+      fetchCandidates();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete candidate',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const resetCandidateForm = () => {
+    setCandidateFormData({
+      first_name: '',
+      last_name: '',
+      email: '',
+      phone: '',
+      address: '',
+      linkedin_url: '',
+      portfolio_url: '',
+      vacancy_id: '',
+      resume_external_url: '',
+      status: 'applied',
+    });
+    setCandidateResumeFile(null);
   };
 
   const resetVacancyForm = () => {
@@ -640,7 +820,20 @@ export default function HiringManagement() {
                 }}
               >
                 <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">New Vacancy</span>
+                <span className="hidden sm:inline">{t.hiring.createVacancy}</span>
+                <span className="sm:hidden">{t.common.add}</span>
+              </Button>
+            )}
+            {activeTab === 'candidates' && (
+              <Button
+                className="hidden md:inline-flex gap-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => {
+                  resetCandidateForm();
+                  setIsCandidateDialogOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">New Candidate</span>
                 <span className="sm:hidden">New</span>
               </Button>
             )}
@@ -878,11 +1071,12 @@ export default function HiringManagement() {
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="applied">Applied</SelectItem>
+                    <SelectItem value="screening">Screening</SelectItem>
+                    <SelectItem value="interview">Interview</SelectItem>
                     <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                    <SelectItem value="interviewed">Interviewed</SelectItem>
-                    <SelectItem value="offered">Offered</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
                     <SelectItem value="hired">Hired</SelectItem>
+                    <SelectItem value="on_hold">On Hold</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -961,16 +1155,64 @@ export default function HiringManagement() {
                             </Select>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setSelectedCandidate(candidate);
-                                setIsViewCandidateDialogOpen(true);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setSelectedCandidate(candidate);
+                                  setIsViewCandidateDialogOpen(true);
+                                }}
+                                title="View Details"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setSelectedCandidate(candidate);
+                                  setShortlistFormData({
+                                    interview_date: '',
+                                    interview_time: '',
+                                    interview_mode: 'online',
+                                    location_or_link: '',
+                                    interviewer_name: '',
+                                  });
+                                  setIsShortlistDialogOpen(true);
+                                }}
+                                title="Shortlist for Interview"
+                              >
+                                <Calendar className="h-4 w-4 text-blue-600" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setSelectedCandidate(candidate);
+                                  setResumeUpdateData({
+                                    resume_external_url: candidate.resume_external_url || '',
+                                  });
+                                  setIsUpdateResumeDialogOpen(true);
+                                }}
+                                title="Update Resume"
+                              >
+                                <FileText className="h-4 w-4 text-green-600" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteCandidate(candidate.candidate_id)}
+                                disabled={isDeleting === candidate.candidate_id}
+                                title="Delete Candidate"
+                              >
+                                {isDeleting === candidate.candidate_id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                )}
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1559,61 +1801,403 @@ export default function HiringManagement() {
 
       {/* View Candidate Dialog */}
       <Dialog open={isViewCandidateDialogOpen} onOpenChange={setIsViewCandidateDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedCandidate?.name}</DialogTitle>
+            <DialogTitle>Candidate Profile: {selectedCandidate?.name}</DialogTitle>
             <DialogDescription>{selectedCandidate?.email}</DialogDescription>
           </DialogHeader>
           {selectedCandidate && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Phone</Label>
-                  <p>{selectedCandidate.phone || '-'}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Status</Label>
-                  <div className="mt-1">{getStatusBadge(selectedCandidate.status)}</div>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Position</Label>
-                  <p>{selectedCandidate.vacancy_title || '-'}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Department</Label>
-                  <p>{selectedCandidate.vacancy_department || '-'}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Applied Date</Label>
-                  <p>{formatDateTimeIST(selectedCandidate.applied_at, 'MMM dd, yyyy HH:mm')}</p>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">Status</Label>
+                    {getStatusBadge(selectedCandidate.status)}
+                  </div>
                 </div>
               </div>
-              {selectedCandidate.cover_letter && (
-                <div>
-                  <Label className="text-muted-foreground">Cover Letter</Label>
-                  <p className="mt-1 whitespace-pre-wrap">{selectedCandidate.cover_letter}</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold flex items-center gap-2">
+                    <Briefcase className="h-4 w-4 text-blue-500" />
+                    Applied Position
+                  </h4>
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <p className="text-sm font-medium">{selectedCandidate.vacancy_title || '-'}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{selectedCandidate.vacancy_department || '-'}</p>
+                    <p className="text-xs text-muted-foreground mt-3">Applied on {formatDateTimeIST(selectedCandidate.applied_at, 'MMM dd, yyyy')}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-orange-500" />
+                    Contact Information
+                  </h4>
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2">
+                    {selectedCandidate.phone && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-muted-foreground">Phone:</span>
+                        <span>{selectedCandidate.phone}</span>
+                      </div>
+                    )}
+                    {selectedCandidate.address && (
+                      <div className="flex items-start gap-2 text-xs">
+                        <span className="text-muted-foreground">Address:</span>
+                        <span className="flex-1">{selectedCandidate.address}</span>
+                      </div>
+                    )}
+                    {(selectedCandidate.linkedin_url || selectedCandidate.portfolio_url) && (
+                      <div className="flex gap-3 pt-2">
+                        {selectedCandidate.linkedin_url && (
+                          <a href={selectedCandidate.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:opacity-80 transition-opacity">
+                            <Linkedin className="h-4 w-4" />
+                          </a>
+                        )}
+                        {selectedCandidate.portfolio_url && (
+                          <a href={selectedCandidate.portfolio_url} target="_blank" rel="noopener noreferrer" className="text-slate-600 dark:text-slate-400 hover:opacity-80 transition-opacity">
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {selectedCandidate.status === 'interview' && selectedCandidate.interview_date && (
+                <div className="bg-blue-50/50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800/50 space-y-3">
+                  <h4 className="text-sm font-semibold flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                    <Calendar className="h-4 w-4" />
+                    Scheduled Interview
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                    <div>
+                      <span className="text-muted-foreground block mb-1">Date</span>
+                      <span className="font-medium">{formatDateIST(selectedCandidate.interview_date, 'MMM dd, yyyy')}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block mb-1">Time</span>
+                      <span className="font-medium">{selectedCandidate.interview_time || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block mb-1">Mode</span>
+                      <Badge variant="secondary" className="capitalize text-[10px] py-0">{selectedCandidate.interview_mode || '-'}</Badge>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block mb-1">Interviewer</span>
+                      <span className="font-medium text-blue-600 dark:text-blue-400">{selectedCandidate.interviewer_name || '-'}</span>
+                    </div>
+                  </div>
+                  {selectedCandidate.location_or_link && (
+                    <div className="pt-2 border-t border-blue-100 dark:border-blue-800/50">
+                      <span className="text-muted-foreground text-xs block mb-1">Location / Join Link</span>
+                      <p className="text-xs break-all text-blue-600 underline">
+                        {selectedCandidate.location_or_link.startsWith('http') ? (
+                          <a href={selectedCandidate.location_or_link} target="_blank" rel="noopener noreferrer">{selectedCandidate.location_or_link}</a>
+                        ) : selectedCandidate.location_or_link}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
-              {selectedCandidate.resume_url && (
-                <div>
-                  <Label className="text-muted-foreground">Resume</Label>
-                  <div className="mt-2">
+
+              {selectedCandidate.cover_letter && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cover Letter</Label>
+                  <p className="text-sm bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 whitespace-pre-wrap">
+                    {selectedCandidate.cover_letter}
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Resume</Label>
+                <div className="flex flex-wrap gap-2">
+                  {selectedCandidate.resume_url && (
                     <Button
                       variant="outline"
+                      className="h-9 px-4 rounded-lg bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-800/50 text-green-700 dark:text-green-400 hover:bg-green-100"
                       onClick={() => window.open(selectedCandidate.resume_url, '_blank')}
                     >
                       <FileText className="mr-2 h-4 w-4" />
-                      View Resume
-                      <ExternalLink className="ml-2 h-4 w-4" />
+                      View Uploaded Resume
+                      <ExternalLink className="ml-2 h-3 w-3" />
                     </Button>
-                  </div>
+                  )}
+                  {selectedCandidate.resume_external_url && (
+                    <Button
+                      variant="outline"
+                      className="h-9 px-4 rounded-lg bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100"
+                      onClick={() => window.open(selectedCandidate.resume_external_url, '_blank')}
+                    >
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      View Portfolio/External Resume
+                    </Button>
+                  )}
+                  {!selectedCandidate.resume_url && !selectedCandidate.resume_external_url && (
+                    <p className="text-xs text-muted-foreground italic">No resume provided</p>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsViewCandidateDialogOpen(false)}>
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Candidate Dialog */}
+      <Dialog open={isCandidateDialogOpen} onOpenChange={setIsCandidateDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add New Candidate</DialogTitle>
+            <DialogDescription>Enter candidate information and link them to a vacancy.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-6 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="c_first_name">First Name *</Label>
+                <Input
+                  id="c_first_name"
+                  value={candidateFormData.first_name}
+                  onChange={(e) => setCandidateFormData({ ...candidateFormData, first_name: e.target.value })}
+                  placeholder="John"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="c_last_name">Last Name *</Label>
+                <Input
+                  id="c_last_name"
+                  value={candidateFormData.last_name}
+                  onChange={(e) => setCandidateFormData({ ...candidateFormData, last_name: e.target.value })}
+                  placeholder="Doe"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="c_email">Email *</Label>
+                <Input
+                  id="c_email"
+                  type="email"
+                  value={candidateFormData.email}
+                  onChange={(e) => setCandidateFormData({ ...candidateFormData, email: e.target.value })}
+                  placeholder="john.doe@example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="c_phone">Phone Number *</Label>
+                <Input
+                  id="c_phone"
+                  value={candidateFormData.phone}
+                  onChange={(e) => setCandidateFormData({ ...candidateFormData, phone: e.target.value })}
+                  placeholder="+91 XXXXX XXXXX"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="c_vacancy">Vacancy *</Label>
+              <Select
+                value={candidateFormData.vacancy_id}
+                onValueChange={(value) => setCandidateFormData({ ...candidateFormData, vacancy_id: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a job opening" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vacancies.filter(v => v.status === 'open').map((v) => (
+                    <SelectItem key={v.vacancy_id} value={String(v.vacancy_id)}>
+                      {v.title} ({v.department})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="c_address">Address</Label>
+              <Input
+                id="c_address"
+                value={candidateFormData.address}
+                onChange={(e) => setCandidateFormData({ ...candidateFormData, address: e.target.value })}
+                placeholder="State, City, Country"
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="c_linkedin">LinkedIn Profile URL</Label>
+                <Input
+                  id="c_linkedin"
+                  value={candidateFormData.linkedin_url}
+                  onChange={(e) => setCandidateFormData({ ...candidateFormData, linkedin_url: e.target.value })}
+                  placeholder="https://linkedin.com/in/..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="c_portfolio">Portfolio URL</Label>
+                <Input
+                  id="c_portfolio"
+                  value={candidateFormData.portfolio_url}
+                  onChange={(e) => setCandidateFormData({ ...candidateFormData, portfolio_url: e.target.value })}
+                  placeholder="https://github.com/..."
+                />
+              </div>
+            </div>
+            <div className="border-t pt-4 space-y-4">
+              <h4 className="text-sm font-semibold">Resume Submission</h4>
+              <div className="space-y-2">
+                <Label htmlFor="c_resume_file">Upload Resume (PDF/DOCX)</Label>
+                <Input
+                  id="c_resume_file"
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={(e) => setCandidateResumeFile(e.target.files?.[0] || null)}
+                />
+              </div>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-muted-foreground">Or provide link</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="c_resume_url">External Resume/Google Drive Link</Label>
+                <Input
+                  id="c_resume_url"
+                  value={candidateFormData.resume_external_url}
+                  onChange={(e) => setCandidateFormData({ ...candidateFormData, resume_external_url: e.target.value })}
+                  placeholder="https://drive.google.com/..."
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCandidateDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateCandidate} disabled={isCreating}>
+              {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Candidate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Shortlist Dialog */}
+      <Dialog open={isShortlistDialogOpen} onOpenChange={setIsShortlistDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Shortlist for Interview</DialogTitle>
+            <DialogDescription>Schedule an interview for {selectedCandidate?.name}.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="int_date">Interview Date *</Label>
+              <Input
+                id="int_date"
+                type="date"
+                value={shortlistFormData.interview_date}
+                onChange={(e) => setShortlistFormData({ ...shortlistFormData, interview_date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="int_time">Interview Time</Label>
+              <Input
+                id="int_time"
+                type="time"
+                value={shortlistFormData.interview_time}
+                onChange={(e) => setShortlistFormData({ ...shortlistFormData, interview_time: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="int_mode">Interview Mode *</Label>
+              <Select
+                value={shortlistFormData.interview_mode}
+                onValueChange={(value) => setShortlistFormData({ ...shortlistFormData, interview_mode: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="online">Online</SelectItem>
+                  <SelectItem value="offline">Offline</SelectItem>
+                  <SelectItem value="phone">Phone Call</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="int_location">Meeting Link / Location</Label>
+              <Input
+                id="int_location"
+                value={shortlistFormData.location_or_link}
+                onChange={(e) => setShortlistFormData({ ...shortlistFormData, location_or_link: e.target.value })}
+                placeholder="Zoom link or Office Address"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="int_interviewer">Interviewer Name *</Label>
+              <Input
+                id="int_interviewer"
+                value={shortlistFormData.interviewer_name}
+                onChange={(e) => setShortlistFormData({ ...shortlistFormData, interviewer_name: e.target.value })}
+                placeholder="Name of the person conducting interview"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsShortlistDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleShortlistCandidate} disabled={isUpdating}>
+              {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirm Shortlist
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Resume Dialog */}
+      <Dialog open={isUpdateResumeDialogOpen} onOpenChange={setIsUpdateResumeDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update Resume</DialogTitle>
+            <DialogDescription>Update the resume or portfolio link for {selectedCandidate?.name}.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="up_resume_file">Upload New Resume (File)</Label>
+              <Input
+                id="up_resume_file"
+                type="file"
+                accept=".pdf,.doc,.docx"
+                onChange={(e) => setNewResumeFile(e.target.files?.[0] || null)}
+              />
+            </div>
+            <div className="relative my-2">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="up_resume_url">Update External Link</Label>
+              <Input
+                id="up_resume_url"
+                value={resumeUpdateData.resume_external_url}
+                onChange={(e) => setResumeUpdateData({ ...resumeUpdateData, resume_external_url: e.target.value })}
+                placeholder="https://drive.google.com/..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsUpdateResumeDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdateResume} disabled={isUpdating}>
+              {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Update Resume
             </Button>
           </DialogFooter>
         </DialogContent>

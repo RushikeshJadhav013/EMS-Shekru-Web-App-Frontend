@@ -119,6 +119,6 @@ declare module "@/components/ui/toast" {
     title?: React.ReactNode;
     description?: React.ReactNode;
     action?: React.ReactElement<typeof ToastAction>;
-    variant?: "default" | "destructive" | "warning";
+    variant?: "default" | "destructive" | "warning" | "success";
   }
 }

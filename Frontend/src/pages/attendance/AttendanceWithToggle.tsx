@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AttendanceCamera from '@/components/attendance/AttendanceCamera';
 import OnlineStatusToggle from '@/components/attendance/OnlineStatusToggle';
 import OnlineStatusIndicator from '@/components/attendance/OnlineStatusIndicator';
-import { Clock, MapPin, Calendar, LogIn, LogOut, FileText, CheckCircle, AlertCircle, Users, Filter, User, X, Download, Search, Loader2, Home, Send, Edit, Trash2, History, FileSpreadsheet, Timer } from 'lucide-react';
+import { Clock, MapPin, Calendar, LogIn, LogOut, FileText, CheckCircle, AlertCircle, Users, Filter, User, X, Download, Search, Loader2, Home, Send, Edit, Trash2, History, FileSpreadsheet, Timer, ArrowRight } from 'lucide-react';
 import { AttendanceRecord, UserRole } from '@/types';
 import { format, subMonths, isAfter } from 'date-fns';
 import { formatIST, formatDateTimeIST, formatTimeIST, formatDateIST, todayIST, formatDateTimeComponentsIST, parseToIST, nowIST } from '@/utils/timezone';
@@ -578,7 +578,7 @@ const AttendanceWithToggle: React.FC = () => {
       loadEmployeeAttendance();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, canViewEmployeeAttendance]);
+  }, [viewMode, canViewEmployeeAttendance, timePeriodFilter, customStartDate, customEndDate]);
 
   // Separate useEffect for WFH requests to ensure proper loading
   useEffect(() => {
@@ -666,10 +666,14 @@ const AttendanceWithToggle: React.FC = () => {
     }
   };
 
-  const openExportModal = () => {
+  const openExportModal = async () => {
     if (!canExportAttendance) {
       return;
     }
+
+    // Re-fetch data to ensure latest is available for export
+    await loadExportEmployees();
+
     setExportType('csv'); // Default to CSV
     setReportLayout('basic');
     setExportModalOpen(true);
@@ -679,6 +683,7 @@ const AttendanceWithToggle: React.FC = () => {
     setEmployeeExportFilter('all');
     setSelectedExportEmployee(null);
     setEmployeeExportSearch('');
+
     if (exportDepartments.length === 1) {
       setSelectedExportDepartment(exportDepartments[0]);
     } else if (user?.department) {
@@ -2682,20 +2687,29 @@ const AttendanceWithToggle: React.FC = () => {
                       </Button>
 
                       {historyQuickFilter === 'date' && (
-                        <div className="flex flex-col sm:flex-row items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
-                          <DatePicker
-                            date={historyCustomDateRange.startDate || undefined}
-                            onDateChange={(date) => setHistoryCustomDateRange({ ...historyCustomDateRange, startDate: date || null })}
-                            placeholder="From Date"
-                            className="w-[160px] h-10 border-2 border-slate-200 dark:border-slate-800 rounded-xl"
-                          />
-                          <DatePicker
-                            date={historyCustomDateRange.endDate || undefined}
-                            onDateChange={(date) => setHistoryCustomDateRange({ ...historyCustomDateRange, endDate: date || null })}
-                            placeholder="To Date"
-                            fromDate={historyCustomDateRange.startDate || undefined}
-                            className="w-[160px] h-10 border-2 border-slate-200 dark:border-slate-800 rounded-xl"
-                          />
+                        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 mt-4 animate-in fade-in slide-in-from-left-2 duration-300 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 w-full sm:w-auto">
+                          <div className="space-y-1 w-full sm:w-[160px]">
+                            <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">From Date</Label>
+                            <DatePicker
+                              date={historyCustomDateRange.startDate || undefined}
+                              onDateChange={(date) => setHistoryCustomDateRange({ ...historyCustomDateRange, startDate: date || null })}
+                              placeholder="From Date"
+                              className="w-full h-10 border-2 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm"
+                            />
+                          </div>
+                          <div className="flex items-center justify-center h-10 px-1 text-slate-400 hidden sm:flex">
+                            <History className="h-4 w-4 opacity-30" />
+                          </div>
+                          <div className="space-y-1 w-full sm:w-[160px]">
+                            <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">To Date</Label>
+                            <DatePicker
+                              date={historyCustomDateRange.endDate || undefined}
+                              onDateChange={(date) => setHistoryCustomDateRange({ ...historyCustomDateRange, endDate: date || null })}
+                              placeholder="To Date"
+                              fromDate={historyCustomDateRange.startDate || undefined}
+                              className="w-full h-10 border-2 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm"
+                            />
+                          </div>
                         </div>
                       )}
                     </div>
@@ -2991,16 +3005,18 @@ const AttendanceWithToggle: React.FC = () => {
                   </Select>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Time Period</Label>
+                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Duration Filter</Label>
                   <Select
-                    value={timePeriodFilter || 'today'}
+                    value={timePeriodFilter}
                     onValueChange={(value: any) => {
                       setTimePeriodFilter(value);
                     }}
                   >
-                    <SelectTrigger className="w-[190px] h-11 bg-white dark:bg-gray-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl hover:border-blue-400 focus:ring-blue-500/20 transition-all duration-300">
-                      <Calendar className="h-4 w-4 text-blue-500 mr-2" />
-                      <SelectValue placeholder="Time Period" />
+                    <SelectTrigger className="w-full sm:w-[220px] h-11 bg-white dark:bg-gray-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl hover:border-blue-400 focus:ring-blue-500/20 transition-all duration-300">
+                      <div className="flex items-center gap-2 truncate">
+                        <Calendar className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        <SelectValue placeholder="Select Duration" />
+                      </div>
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 shadow-xl">
                       <SelectItem value="today" className="rounded-lg">Today</SelectItem>
@@ -3016,40 +3032,29 @@ const AttendanceWithToggle: React.FC = () => {
 
               </div>
               {timePeriodFilter === 'custom' && (
-                <div className="flex flex-col sm:flex-row items-end gap-3 mb-6 animate-in fade-in slide-in-from-left-2 duration-300 w-full">
-                  <div className="flex flex-col gap-2 w-full sm:flex-1">
-                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">From Date</Label>
-                    <Input
-                      type="date"
-                      value={customStartDate ? format(customStartDate, 'yyyy-MM-dd') : ''}
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          const [y, m, d] = e.target.value.split('-').map(Number);
-                          setCustomStartDate(new Date(y, m - 1, d));
-                        } else {
-                          setCustomStartDate(undefined);
-                        }
-                      }}
-                      max={getTodayISTDate ? format(getTodayISTDate(), 'yyyy-MM-dd') : undefined}
-                      className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all w-full"
+                <div className="flex flex-col md:flex-row items-center md:items-end gap-4 mb-6 animate-in fade-in slide-in-from-top-2 duration-300 w-full bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="flex flex-col gap-2 w-full md:flex-1">
+                    <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">From Date</Label>
+                    <DatePicker
+                      date={customStartDate || undefined}
+                      onDateChange={(date) => setCustomStartDate(date)}
+                      placeholder="Select from date"
+                      toDate={getTodayISTDate ? getTodayISTDate() : new Date()}
+                      className="h-11 border-2 border-slate-200 dark:border-slate-800 rounded-xl w-full shadow-sm"
                     />
                   </div>
-                  <div className="flex flex-col gap-2 w-full sm:flex-1">
-                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">To Date</Label>
-                    <Input
-                      type="date"
-                      value={customEndDate ? format(customEndDate, 'yyyy-MM-dd') : ''}
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          const [y, m, d] = e.target.value.split('-').map(Number);
-                          setCustomEndDate(new Date(y, m - 1, d));
-                        } else {
-                          setCustomEndDate(undefined);
-                        }
-                      }}
-                      min={customStartDate ? format(customStartDate, 'yyyy-MM-dd') : undefined}
-                      max={getTodayISTDate ? format(getTodayISTDate(), 'yyyy-MM-dd') : undefined}
-                      className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all w-full"
+                  <div className="flex items-center justify-center h-11 text-slate-400 hidden md:flex">
+                    <ArrowRight className="h-5 w-5 opacity-40" />
+                  </div>
+                  <div className="flex flex-col gap-2 w-full md:flex-1">
+                    <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">To Date</Label>
+                    <DatePicker
+                      date={customEndDate || undefined}
+                      onDateChange={(date) => setCustomEndDate(date)}
+                      placeholder="Select to date"
+                      fromDate={customStartDate || undefined}
+                      toDate={getTodayISTDate ? getTodayISTDate() : new Date()}
+                      className="h-11 border-2 border-slate-200 dark:border-slate-800 rounded-xl w-full shadow-sm"
                     />
                   </div>
                 </div>
@@ -3448,12 +3453,12 @@ const AttendanceWithToggle: React.FC = () => {
               <div className="space-y-4">
                 {/* Filter Controls for Recent Decisions */}
                 <div className="space-y-4">
-                  <div className="flex flex-wrap items-end gap-3">
-                    <div className="flex-1 min-w-[150px]">
-                      <Label htmlFor="decision-status-filter">Decision Status</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="decision-status-filter" className="text-sm font-medium ml-1">Decision Status</Label>
                       <Select value={wfhRequestFilter} onValueChange={(value: any) => setWfhRequestFilter(value)}>
-                        <SelectTrigger id="decision-status-filter" className="mt-1">
-                          <SelectValue />
+                        <SelectTrigger id="decision-status-filter" className="w-full h-11 bg-white dark:bg-gray-950 border-2">
+                          <SelectValue placeholder="Select Status" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Decisions</SelectItem>
@@ -3462,11 +3467,11 @@ const AttendanceWithToggle: React.FC = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex-1 min-w-[150px]">
-                      <Label htmlFor="role-filter">Role</Label>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="role-filter" className="text-sm font-medium ml-1">Role Filter</Label>
                       <Select value={wfhRoleFilter} onValueChange={(value: any) => setWfhRoleFilter(value)}>
-                        <SelectTrigger id="role-filter" className="mt-1">
-                          <SelectValue />
+                        <SelectTrigger id="role-filter" className="w-full h-11 bg-white dark:bg-gray-950 border-2">
+                          <SelectValue placeholder="Select Role" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Roles</SelectItem>
@@ -3477,14 +3482,12 @@ const AttendanceWithToggle: React.FC = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex-1 min-w-[150px]">
-                      <Label htmlFor="decision-time-filter">Duration</Label>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="decision-time-filter" className="text-sm font-medium ml-1">Duration Filter</Label>
                       <Select value={wfhRequestTimeFilter} onValueChange={(value: any) => setWfhRequestTimeFilter(value)}>
-                        <SelectTrigger id="decision-time-filter" className="mt-1">
+                        <SelectTrigger id="decision-time-filter" className="w-full h-11 bg-white dark:bg-gray-950 border-2">
                           <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
-                          <SelectValue placeholder="Filter by time">
-                            {wfhRequestTimeFilter === 'custom' ? 'Custom Range' : undefined}
-                          </SelectValue>
+                          <SelectValue placeholder="Select Duration" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Time</SelectItem>
@@ -3496,41 +3499,40 @@ const AttendanceWithToggle: React.FC = () => {
                           <SelectItem value="custom">Custom Range</SelectItem>
                         </SelectContent>
                       </Select>
+
+                      {wfhRequestTimeFilter === 'custom' && (
+                        <div className="flex flex-col gap-3 mt-2 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-bold text-slate-500 uppercase ml-1">From Date</Label>
+                            <DatePicker
+                              date={wfhRequestStartDate || undefined}
+                              onDateChange={setWfhRequestStartDate}
+                              placeholder="From date"
+                              toDate={getTodayISTDate()}
+                              className="h-10 w-full"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-bold text-slate-500 uppercase ml-1">To Date</Label>
+                            <DatePicker
+                              date={wfhRequestEndDate || undefined}
+                              onDateChange={setWfhRequestEndDate}
+                              placeholder="To date"
+                              toDate={getTodayISTDate()}
+                              fromDate={wfhRequestStartDate || undefined}
+                              className="h-10 w-full"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex-1 min-w-[150px]">
-                      <Label>Summary</Label>
-                      <div className="mt-1 px-3 py-2 bg-muted rounded-md text-sm flex items-center justify-between">
+                    <div className="flex flex-col gap-2">
+                      <Label className="text-sm font-medium ml-1">Summary</Label>
+                      <div className="h-11 px-3 py-2 bg-muted rounded-md text-sm flex items-center justify-between">
                         <span>{filteredRecentDecisions.length} of {allWfhRequests.filter(req => req.status !== 'pending').length} decisions</span>
                       </div>
                     </div>
                   </div>
-
-                  {wfhRequestTimeFilter === 'custom' && (
-                    <div className="flex flex-col sm:flex-row items-end gap-3 mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                      <div className="space-y-1 w-full sm:flex-1">
-                        <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">From Date</Label>
-                        <DatePicker
-                          date={wfhRequestStartDate || undefined}
-                          onDateChange={setWfhRequestStartDate}
-                          placeholder="Select from date"
-                          toDate={getTodayISTDate()}
-                          className="border-2 border-slate-200 dark:border-slate-800 rounded-xl h-10 w-full"
-                        />
-                      </div>
-                      <div className="self-center mb-3 text-muted-foreground hidden sm:block">to</div>
-                      <div className="space-y-1 w-full sm:flex-1">
-                        <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">To Date</Label>
-                        <DatePicker
-                          date={wfhRequestEndDate || undefined}
-                          onDateChange={setWfhRequestEndDate}
-                          placeholder="Select to date"
-                          toDate={getTodayISTDate()}
-                          fromDate={wfhRequestStartDate || undefined}
-                          className="border-2 border-slate-200 dark:border-slate-800 rounded-xl h-10 w-full"
-                        />
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 {/* Recent Decisions Table */}
@@ -3635,11 +3637,10 @@ const AttendanceWithToggle: React.FC = () => {
               <div className="space-y-6">
                 {/* WFH Type removed as per request */}
 
-
-                <div className={wfhType === 'half_day' ? 'space-y-2' : 'grid grid-cols-1 md:grid-cols-2 gap-6'}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="wfh-start-date">
-                      {wfhType === 'half_day' ? 'Date' : 'Start Date'} <span className="text-red-500">*</span>
+                      Start Date <span className="text-red-500">*</span>
                     </Label>
                     <DatePicker
                       date={wfhStartDate}
@@ -3657,25 +3658,24 @@ const AttendanceWithToggle: React.FC = () => {
                       <p className="text-xs text-red-500 mt-1">Date must be today or later</p>
                     )}
                   </div>
-                  {wfhType === 'full_day' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="wfh-end-date">End Date <span className="text-red-500">*</span></Label>
-                      <DatePicker
-                        date={wfhEndDate}
-                        onDateChange={setWfhEndDate}
-                        placeholder="Select end date"
-                        disablePastDates={true}
-                        fromDate={wfhStartDate || getTodayISTDate()}
-                      />
-                      {wfhEndDate && !isValidWfhDate(wfhEndDate) && (
-                        <p className="text-xs text-red-500 mt-1">Date must be today or later</p>
-                      )}
-                      {wfhStartDate && wfhEndDate && wfhEndDate < wfhStartDate && (
-                        <p className="text-xs text-red-500 mt-1">End date must be on or after start date</p>
-                      )}
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="wfh-end-date">End Date <span className="text-red-500">*</span></Label>
+                    <DatePicker
+                      date={wfhEndDate}
+                      onDateChange={setWfhEndDate}
+                      placeholder="Select end date"
+                      disablePastDates={true}
+                      fromDate={wfhStartDate || getTodayISTDate()}
+                    />
+                    {wfhEndDate && !isValidWfhDate(wfhEndDate) && (
+                      <p className="text-xs text-red-500 mt-1">Date must be today or later</p>
+                    )}
+                    {wfhStartDate && wfhEndDate && wfhEndDate < wfhStartDate && (
+                      <p className="text-xs text-red-500 mt-1">End date must be on or after start date</p>
+                    )}
+                  </div>
                 </div>
+
 
                 <div className="space-y-2">
                   <Label htmlFor="wfh-reason">Reason for WFH Request <span className="text-red-500">*</span></Label>
@@ -3735,51 +3735,68 @@ const AttendanceWithToggle: React.FC = () => {
           {/* WFH Request History */}
           <Card className="border-0 shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
+                  <History className="h-5 w-5 text-white" />
+                </div>
                 <div>
                   <CardTitle className="text-xl font-semibold">Your WFH Requests</CardTitle>
                   <CardDescription>Track the status of your work from home requests</CardDescription>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Select value={wfhHistoryTimeFilter} onValueChange={(value: any) => setWfhHistoryTimeFilter(value)}>
-                    <SelectTrigger className="w-[180px] bg-white dark:bg-slate-950">
-                      <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <SelectValue placeholder="Filter by time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Requests</SelectItem>
-                      <SelectItem value="current_month">Current Month</SelectItem>
-                      <SelectItem value="last_month">Last Month</SelectItem>
-                      <SelectItem value="last_3_months">Last 3 Months</SelectItem>
-                      <SelectItem value="last_6_months">Last 6 Months</SelectItem>
-                      <SelectItem value="last_year">Last 1 Year</SelectItem>
-                      <SelectItem value="custom">Custom Range</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  {wfhHistoryTimeFilter === 'custom' && (
-                    <div className="flex flex-col sm:flex-row items-center gap-2 animate-in fade-in slide-in-from-right-2 duration-200 w-full sm:w-auto">
-                      <DatePicker
-                        date={wfhHistoryStartDate}
-                        onDateChange={setWfhHistoryStartDate}
-                        className="w-full sm:w-[160px] border-2 border-slate-200 dark:border-slate-800 rounded-xl"
-                        placeholder="From Date"
-                      />
-                      <span className="text-muted-foreground text-xs font-medium">to</span>
-                      <DatePicker
-                        date={wfhHistoryEndDate}
-                        onDateChange={setWfhHistoryEndDate}
-                        className="w-full sm:w-[160px] border-2 border-slate-200 dark:border-slate-800 rounded-xl"
-                        placeholder="To Date"
-                        fromDate={wfhHistoryStartDate}
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-4">
+                <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+                  <div className="w-full md:w-auto">
+                    <Label className="text-sm font-medium mb-1.5 block">Time Period</Label>
+                    <Select value={wfhHistoryTimeFilter} onValueChange={(value: any) => setWfhHistoryTimeFilter(value)}>
+                      <SelectTrigger className="w-full md:w-[200px] h-11 bg-white dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
+                        <Filter className="h-4 w-4 mr-2 text-blue-500" />
+                        <SelectValue placeholder="Select Duration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Requests</SelectItem>
+                        <SelectItem value="current_month">Current Month</SelectItem>
+                        <SelectItem value="last_month">Last Month</SelectItem>
+                        <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                        <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                        <SelectItem value="last_year">Last 1 Year</SelectItem>
+                        <SelectItem value="custom">Custom Range</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="text-sm text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-lg font-medium">
+                    Showing {filteredWfhHistory.length} requests
+                  </div>
+                </div>
+
+                {wfhHistoryTimeFilter === 'custom' && (
+                  <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 animate-in fade-in slide-in-from-top-2 duration-300 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <div className="flex-1 w-full space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">From Date</Label>
+                      <DatePicker
+                        date={wfhHistoryStartDate}
+                        onDateChange={setWfhHistoryStartDate}
+                        className="w-full border-2 border-slate-200 dark:border-slate-800 rounded-xl h-10 shadow-sm"
+                        placeholder="From Date"
+                      />
+                    </div>
+                    <div className="flex items-center justify-center h-10 px-2 text-slate-400 hidden sm:flex">
+                      <History className="h-4 w-4 opacity-50" />
+                    </div>
+                    <div className="flex-1 w-full space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">To Date</Label>
+                      <DatePicker
+                        date={wfhHistoryEndDate}
+                        onDateChange={setWfhHistoryEndDate}
+                        className="w-full border-2 border-slate-200 dark:border-slate-800 rounded-xl h-10 shadow-sm"
+                        placeholder="To Date"
+                        fromDate={wfhHistoryStartDate}
+                      />
+                    </div>
+                  </div>
+                )}
                 {filteredWfhHistory.length > 0 ? (
                   <div className="space-y-3">
                     {paginatedWfhHistory.map((request) => (
@@ -4061,9 +4078,7 @@ const AttendanceWithToggle: React.FC = () => {
                   id="quick-filter"
                   className="w-full h-10 border-2 border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                 >
-                  <SelectValue placeholder="Select time period">
-                    {quickFilter === 'custom' ? 'Custom Range' : undefined}
-                  </SelectValue>
+                  <SelectValue placeholder="Select Duration" />
                 </SelectTrigger>
                 <SelectContent
                   position="popper"

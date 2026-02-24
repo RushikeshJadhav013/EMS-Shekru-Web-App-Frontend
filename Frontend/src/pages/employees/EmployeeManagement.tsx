@@ -534,8 +534,9 @@ export default function EmployeeManagement() {
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(emp => {
+      const empInternalRole = getInternalRole(emp.role || '');
       // ✅ Exclude Admin users - Admin is the boss and should not appear in employee lists
-      if (emp.role === 'admin') {
+      if (empInternalRole === 'admin') {
         return false;
       }
 
@@ -546,7 +547,7 @@ export default function EmployeeManagement() {
         emp.email.toLowerCase().includes(query);
       const matchesDepartment = selectedDepartment === 'all' ||
         (emp.department && emp.department.split(',').map(d => d.trim().toLowerCase()).includes(selectedDepartment.toLowerCase()));
-      const matchesRole = selectedRole === 'all' || getInternalRole(emp.role || '') === selectedRole;
+      const matchesRole = selectedRole === 'all' || empInternalRole === selectedRole;
       const matchesStatus = selectedStatus === 'all' || emp.status === selectedStatus;
       return matchesSearch && matchesDepartment && matchesRole && matchesStatus;
     });
@@ -1135,6 +1136,58 @@ export default function EmployeeManagement() {
     }
   };
 
+  const handleBulkToggleStatus = async (activate: boolean) => {
+    if (selectedIds.length === 0) return;
+
+    setIsBulkProcessing(true);
+    const newStatus = activate ? 'active' : 'inactive';
+    const successIds: string[] = [];
+    const failedIds: string[] = [];
+
+    try {
+      // Process all selected employees in parallel
+      await Promise.all(
+        selectedIds.map(async (id) => {
+          try {
+            await apiService.updateEmployeeStatus(id, activate);
+            successIds.push(id);
+          } catch (error) {
+            console.error(`Failed to update status for employee ${id}:`, error);
+            failedIds.push(id);
+          }
+        })
+      );
+
+      // Refresh data
+      await fetchEmployees();
+
+      // Clear selection
+      setSelectedIds([]);
+
+      if (failedIds.length === 0) {
+        toast({
+          title: 'Bulk Action Successful',
+          description: `Successfully ${activate ? 'activated' : 'deactivated'} ${successIds.length} employees.`,
+        });
+      } else {
+        toast({
+          title: 'Bulk Action Partial Success',
+          description: `Successfully updated ${successIds.length} employees, but ${failedIds.length} failed.`,
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Bulk status update error:', error);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred during bulk update.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       setSelectedIds(filteredEmployees.map(emp => emp.id.toString()));
@@ -1454,6 +1507,7 @@ export default function EmployeeManagement() {
       'EmployeeID',
       'Name',
       'Email',
+      'Department',
       'Role',
       'Designation',
       'Phone',
@@ -1464,14 +1518,14 @@ export default function EmployeeManagement() {
       'EmployeeType',
       'PANCard',
       'AadharCard',
-      'Shift',
-      'Department'
+      'Shift'
     ];
 
     const sampleData = [
       'EMP001',
       'John Doe',
       'john.doe@example.com',
+      'Engineering',
       'Employee',
       'Software Engineer',
       '9876543210',
@@ -1482,8 +1536,7 @@ export default function EmployeeManagement() {
       'permanent',
       'ABCDE1234F',
       '1234-5678-9012',
-      'general',
-      'Engineering'
+      'general'
     ];
 
     const csvContent = [
@@ -1749,6 +1802,28 @@ export default function EmployeeManagement() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            {selectedIds.length > 0 && (
+              <>
+                <Button
+                  onClick={() => handleBulkToggleStatus(true)}
+                  disabled={isBulkProcessing || isLoading}
+                  variant="outline"
+                  className="gap-2 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-400"
+                >
+                  {isBulkProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  Bulk Activate ({selectedIds.length})
+                </Button>
+                <Button
+                  onClick={() => handleBulkToggleStatus(false)}
+                  disabled={isBulkProcessing || isLoading}
+                  variant="outline"
+                  className="gap-2 border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:border-rose-800 dark:text-rose-400"
+                >
+                  {isBulkProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                  Bulk Deactivate ({selectedIds.length})
+                </Button>
+              </>
+            )}
             <Button
               onClick={() => {
                 fetchEmployees();
@@ -1766,14 +1841,13 @@ export default function EmployeeManagement() {
               Refresh
             </Button>
             <Button
-              onClick={() => {
-                fetchEmployees();
-                setExportFilters(prev => ({
-                  ...prev,
+              onClick={async () => {
+                await Promise.all([fetchEmployees(), fetchDepartments()]);
+                setExportFilters({
                   department: selectedDepartment,
                   role: selectedRole,
                   status: selectedStatus
-                }));
+                });
                 setIsExportDialogOpen(true);
               }}
               variant="outline"
@@ -1823,12 +1897,11 @@ export default function EmployeeManagement() {
                         <p className="font-semibold text-gray-900 text-sm">CSV Format Guide</p>
                         <div className="text-sm text-gray-700 mt-2 space-y-1.5">
                           <div className="flex items-start gap-2">
-                            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold flex-shrink-0 mt-0.5">*</span>
-                            <span><strong>Required:</strong> EmployeeID, Name, Email, Department</span>
+                            <span><strong>Required:</strong> EmployeeID, Name, Email, Role, Designation, Phone, Address, JoiningDate, Status, Gender, EmployeeType, PANCard, AadharCard, Shift</span>
                           </div>
                           <div className="flex items-start gap-2">
                             <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-gray-300 text-white text-xs font-bold flex-shrink-0 mt-0.5">○</span>
-                            <span><strong>Optional:</strong> Role, Designation, Phone, Address, JoiningDate, Status, Gender, EmployeeType, PANCard, AadharCard, Shift</span>
+                            <span><strong>Optional:</strong> Department</span>
                           </div>
                         </div>
                         <div className="mt-3 p-3 bg-white rounded-lg border border-blue-200">
@@ -2621,7 +2694,7 @@ export default function EmployeeManagement() {
                   }
                 }}
               >
-                <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-950 border-2 border-gray-200 dark:border-gray-800 transition-all duration-300 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md flex-shrink-0">
+                <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 transition-all duration-300 hover:shadow-md flex-shrink-0">
                   <Filter className={`h-4 w-4 mr-2 ${selectedDepartment === 'all'
                     ? 'text-blue-600'
                     : 'text-gray-600 dark:text-gray-400'
@@ -2660,6 +2733,7 @@ export default function EmployeeManagement() {
                     </div>
                   </SelectItem>
 
+                  {/* HR role is removed from filter for HR profile as requested */}
                   {getInternalRole(user?.role || '') !== 'hr' && (
                     <SelectItem value="hr" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors">
                       <div className="flex items-center gap-2">
@@ -2805,7 +2879,8 @@ export default function EmployeeManagement() {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          {!(user?.role === 'admin' || user?.role === 'hr') && (
+                          {/* Removed Delete button for Admin and HR profiles */}
+                          {getInternalRole(user?.role || '') !== 'admin' && getInternalRole(user?.role || '') !== 'hr' && (
                             <Button
                               size="sm"
                               variant="ghost"

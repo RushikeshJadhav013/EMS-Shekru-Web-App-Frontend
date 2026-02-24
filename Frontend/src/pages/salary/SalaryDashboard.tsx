@@ -534,7 +534,7 @@ const SalaryDashboard = () => {
                                                         </Button>
                                                     )}
 
-                                                    {isAdminOrHr && item.salary && (
+                                                    {userRole === 'hr' && item.salary && (
                                                         <Button
                                                             variant="outline"
                                                             size="sm"

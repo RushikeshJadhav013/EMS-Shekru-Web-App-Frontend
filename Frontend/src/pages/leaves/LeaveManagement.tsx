@@ -326,7 +326,9 @@ export default function LeaveManagement() {
         if (item.is_active) {
           const dept = item.department;
           // Convert API day names (e.g., "Saturday", "Sunday") to lowercase format, stripping symbols/emojis
-          const days = item.days.map(day => day.replace(/[^a-zA-Z]/g, '').toLowerCase());
+          const days = item.days.map(day =>
+            day.replace(/[^\p{L}]/gu, '').toLowerCase()
+          );
 
           if (weekOffMap[dept]) {
             // If department already exists, append ID and merge days
@@ -399,7 +401,10 @@ export default function LeaveManagement() {
       toast({
         title: 'Week-off saved',
         description: `${department} will now have days off on ${uniqueDays
-          .map((day) => weekDayLabels[day] || day)
+          .map((day) => {
+            const cleanDayKey = day.toLowerCase().replace(/[^\p{L}]/gu, '');
+            return weekDayLabels[cleanDayKey] || day.replace(/[^\p{L}]/gu, '');
+          })
           .join(', ')}.`,
       });
     } catch (error) {
@@ -481,7 +486,8 @@ export default function LeaveManagement() {
   ];
 
   const weekDayLabels = weekDayOptions.reduce<Record<string, string>>((acc, day) => {
-    acc[day.value] = `${day.label}`;
+    // Ensure labels are clean strings without symbols
+    acc[day.value] = day.label.replace(/[^\p{L}]/gu, '');
     return acc;
   }, {});
 
@@ -497,13 +503,13 @@ export default function LeaveManagement() {
 
   const departmentOptions = useMemo(() => {
     const deptSet = new Set<string>();
-    companyDepartments.forEach((dept) => dept && deptSet.add(dept));
-    leaveRequests.forEach((req) => req.department && deptSet.add(req.department));
-    approvalRequests.forEach((req) => req.department && deptSet.add(req.department));
+    companyDepartments.forEach((dept) => dept && deptSet.add(dept.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '')));
+    leaveRequests.forEach((req) => req.department && deptSet.add(req.department.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '')));
+    approvalRequests.forEach((req) => req.department && deptSet.add(req.department.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '')));
     if (user?.department) {
-      deptSet.add(user.department);
+      deptSet.add(user.department.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''));
     }
-    Object.keys(weekOffConfig).forEach((dept) => dept && deptSet.add(dept));
+    Object.keys(weekOffConfig).forEach((dept) => dept && deptSet.add(dept.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '')));
     return Array.from(deptSet).filter(Boolean).sort((a, b) => a.localeCompare(b));
   }, [companyDepartments, leaveRequests, approvalRequests, user?.department, weekOffConfig]);
 
@@ -663,9 +669,9 @@ export default function LeaveManagement() {
     // Validation
     const sick = leaveAllocationConfig.sick_leave_allocation;
     const casual = leaveAllocationConfig.casual_leave_allocation;
-    // Enforce Total = Sick + Casual
-    const total = sick + casual;
     const other = leaveAllocationConfig.other_leave_allocation;
+    // Enforce Total = Sick + Casual + Other
+    const total = sick + casual + other;
 
     if (total < 1) {
       toast({
@@ -751,7 +757,18 @@ export default function LeaveManagement() {
       const fetchApprovalHistory = async () => {
         try {
           if (!canApproveLeaves) return;
-          const history = await apiService.getLeaveApprovalsHistory();
+
+          // Prepare parameters based on historyFilter
+          const params: { period?: string; start_date?: string; end_date?: string } = {
+            period: historyFilter
+          };
+
+          if (historyFilter === 'custom' && customHistoryStartDate && customHistoryEndDate) {
+            params.start_date = format(customHistoryStartDate, 'yyyy-MM-dd');
+            params.end_date = format(customHistoryEndDate, 'yyyy-MM-dd');
+          }
+
+          const history = await apiService.getLeaveApprovalsHistory(params);
           const formatted: LeaveRequest[] = history.map((req) => ({
             id: String(req.leave_id),
             employeeId: String(req.user_id),
@@ -787,7 +804,7 @@ export default function LeaveManagement() {
       loadLeaveBalance();
       loadLeaveAllocationConfig();
     }
-  }, [user, leaveHistoryPeriod, leaveHistoryCustomStartDate, leaveHistoryCustomEndDate, loadLeaveRequests, loadLeaveBalance, loadLeaveAllocationConfig, canApproveLeaves, canViewTeamLeaves]);
+  }, [user, leaveHistoryPeriod, leaveHistoryCustomStartDate, leaveHistoryCustomEndDate, historyFilter, customHistoryStartDate, customHistoryEndDate, loadLeaveRequests, loadLeaveBalance, loadLeaveAllocationConfig, canApproveLeaves, canViewTeamLeaves]);
 
   // Handle URL parameters for tab navigation and leave highlighting
   useEffect(() => {
@@ -837,9 +854,10 @@ export default function LeaveManagement() {
     if (!validation.valid) {
       if (formData.type === 'sick' && (
         validation.error === 'Sick leave must be applied at least 2 hours before the start date.' ||
-        validation.error?.includes('3 or more days')
+        validation.error?.includes('3 or more days') ||
+        (user?.role !== 'admin' && validation.error?.toLowerCase().includes('sick leave'))
       )) {
-        // Carry on to custom sick leave timing check and allow < 3 days
+        // Carry on to custom sick leave timing check and allow < 3 days for non-admin roles
       } else {
         toast({
           title: 'Request Invalid',
@@ -878,9 +896,9 @@ export default function LeaveManagement() {
     setIsSubmitting(true);
 
     try {
-      // Prepare data for API
+      // Prepare data for API (Matches SR.NO 4)
       const leaveRequestData = {
-        employee_id: String(user.id),
+        user_id: String(user.id),
         start_date: format(formData.startDate, 'yyyy-MM-dd'),
         end_date: format(formData.endDate, 'yyyy-MM-dd'),
         reason: formData.reason,
@@ -1120,9 +1138,10 @@ export default function LeaveManagement() {
     if (!validation.valid) {
       if (editingLeave.type === 'sick' && (
         validation.error === 'Sick leave must be applied at least 2 hours before the start date.' ||
-        validation.error?.includes('3 or more days')
+        validation.error?.includes('3 or more days') ||
+        (user?.role !== 'admin' && validation.error?.toLowerCase().includes('sick leave'))
       )) {
-        // Carry on to custom sick leave timing check and allow < 3 days
+        // Carry on to custom sick leave timing check and allow < 3 days for non-admin roles
       } else {
         toast({
           title: 'Update Invalid',
@@ -1612,17 +1631,28 @@ export default function LeaveManagement() {
                 <div className="mt-2 space-y-3">
                   <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
                     <p className="text-sm text-blue-800 dark:text-blue-200">
-                      <strong>Note:</strong> Sick and Casual leave requests will deduct from your <strong>Annual Leave</strong> balance.
-                      Only <strong>Unpaid Leave</strong> does not affect your Annual Leave balance.
+                      <strong>Note:</strong> Sick and Casual leave requests will deduct from your Annual Leave balance. Only Unpaid Leave does not affect your Annual Leave balance.
                     </p>
                   </div>
                   <div className="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
-                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                    <p className="text-sm text-amber-800 dark:text-amber-200 flex items-center gap-2 mb-2">
+                      <AlertCircle className="h-4 w-4" />
                       <strong>Leave Restrictions:</strong>
                     </p>
-                    <ul className="text-sm text-amber-700 dark:text-amber-300 mt-1 space-y-1 list-disc pl-5">
-                      <li><strong>Sick Leave:</strong> Must be applied in between 2 hours and 24 hours before office working hours.</li>
-                    </ul>
+                    <div className="text-xs text-amber-700 dark:text-amber-300 space-y-2 pl-1">
+                      <div className="flex items-start gap-2">
+                        <div className="h-1 w-1 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
+                        <p><strong>Sick Leave:</strong> {user?.role === 'admin' && "Must be for 3 or more days. "}Must be applied in between 2 hours and 24 hours before office working hours.</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="h-1 w-1 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
+                        <p><strong>Casual Leave:</strong> For shorter durations (1-2 days). Must be applied at least 24 hours in advance.</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="h-1 w-1 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
+                        <p><strong>Other Leaves:</strong> Annual, Maternity, Paternity must be applied at least 24 hours in advance.</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardHeader>
@@ -1677,18 +1707,22 @@ export default function LeaveManagement() {
                   const timeDifference = startDate.getTime() - now.getTime();
                   const hoursDifference = timeDifference / (1000 * 60 * 60);
 
-                  const validationMessages = [];
-
-                  // Check sick leave duration
-
+                  const validationMessages: { type: 'error' | 'success'; message: string }[] = [];
 
                   // Check advance notice requirements
                   if (formData.type === 'sick') {
+                    // For non-admin roles, skip the minimum 3 days requirement check entirely
                     const officeStartTime = new Date(formData.startDate);
                     officeStartTime.setHours(9, 30, 0, 0);
                     const diffToOfficeHours = (officeStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-                    if (diffToOfficeHours < 2 || diffToOfficeHours > 24) {
+                    // Admin: enforce 3-day minimum; HR/Manager/TeamLead/Employee: skip this check
+                    if (user?.role === 'admin' && leaveDays < 3) {
+                      validationMessages.push({
+                        type: 'error',
+                        message: `Sick leave requires minimum 3 days. Current selection: ${leaveDays} day${leaveDays === 1 ? '' : 's'}. Consider using Casual Leave for shorter periods.`
+                      });
+                    } else if (diffToOfficeHours < 2 || diffToOfficeHours > 24) {
                       validationMessages.push({
                         type: 'error',
                         message: 'Sick leave must be applied in between 2 hours and 24 hours before office working hours.'
@@ -1713,12 +1747,12 @@ export default function LeaveManagement() {
                       const diffToOfficeHours = (officeStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
                       validationMessages.push({
                         type: 'success',
-                        message: `âœ“ Valid sick leave request for ${leaveDays} day${leaveDays === 1 ? '' : 's'}. Applied ${diffToOfficeHours.toFixed(1)} hours before office hours.`
+                        message: `Valid sick leave request for ${leaveDays} day${leaveDays === 1 ? '' : 's'}. Applied ${diffToOfficeHours.toFixed(1)} hours before office hours.`
                       });
                     } else if (hoursDifference >= 24) {
                       validationMessages.push({
                         type: 'success',
-                        message: `âœ“ Valid leave request with ${Math.floor(hoursDifference)} hours advance notice.`
+                        message: `Valid leave request with ${Math.floor(hoursDifference)} hours advance notice.`
                       });
                     }
                   }
@@ -1728,11 +1762,16 @@ export default function LeaveManagement() {
                       {validationMessages.map((msg, index) => (
                         <div
                           key={index}
-                          className={`p-3 rounded-lg border text-sm ${msg.type === 'error'
+                          className={`p-3 rounded-lg border text-sm flex items-center gap-2 ${msg.type === 'error'
                             ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
                             : 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200'
                             }`}
                         >
+                          {msg.type === 'error' ? (
+                            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                          ) : (
+                            <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                          )}
                           {msg.message}
                         </div>
                       ))}
@@ -2014,7 +2053,7 @@ export default function LeaveManagement() {
                           placeholder="Calculated automatically"
                         />
                         <p className="text-xs text-muted-foreground">
-                          Total days (Sick + Casual)
+                          Total days (Sick + Casual + Other)
                         </p>
                       </div>
 
@@ -2032,7 +2071,7 @@ export default function LeaveManagement() {
                             setLeaveAllocationConfig((prev) => ({
                               ...prev,
                               sick_leave_allocation: val,
-                              total_annual_leave: val + prev.casual_leave_allocation,
+                              total_annual_leave: val + prev.casual_leave_allocation + prev.other_leave_allocation,
                             }));
                           }}
                           className="border-2 border-red-200 dark:border-red-800 focus:border-red-500"
@@ -2057,7 +2096,7 @@ export default function LeaveManagement() {
                             setLeaveAllocationConfig((prev) => ({
                               ...prev,
                               casual_leave_allocation: val,
-                              total_annual_leave: prev.sick_leave_allocation + val,
+                              total_annual_leave: prev.sick_leave_allocation + val + prev.other_leave_allocation,
                             }));
                           }}
                           className="border-2 border-green-200 dark:border-green-800 focus:border-green-500"
@@ -2082,6 +2121,7 @@ export default function LeaveManagement() {
                             setLeaveAllocationConfig((prev) => ({
                               ...prev,
                               other_leave_allocation: val,
+                              total_annual_leave: prev.sick_leave_allocation + prev.casual_leave_allocation + val,
                             }));
                           }}
                           className="border-2 border-gray-200 dark:border-gray-800 focus:border-gray-500"
@@ -2094,9 +2134,8 @@ export default function LeaveManagement() {
                     </div>
 
                     <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-                      <p className="text-sm text-blue-800 dark:text-blue-200">
-                        <strong>Note:</strong> Sick and Casual leave requests will deduct from the Total Annual Leave balance.
-                        The individual allocations (Sick and Casual) are for reference and tracking purposes.
+                      <p className="text-sm text-blue-800 dark:text-blue-200 text-center">
+                        Note: Sick and Casual leave requests will deduct from the Total Annual Leave balance. The individual allocations (Sick and Casual) are for reference and tracking purposes.
                       </p>
                     </div>
 
@@ -2118,7 +2157,6 @@ export default function LeaveManagement() {
                   {user?.role === 'admin' && (
                     <div className="p-4 border rounded-lg bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950">
                       <h3 className="font-semibold mb-3 flex items-center gap-2">
-                        <CalendarIcon className="h-5 w-5 text-amber-600" />
                         Set Company Holidays
                       </h3>
                       <div className="space-y-3">
@@ -2155,7 +2193,6 @@ export default function LeaveManagement() {
                               onClick={handleAddHoliday}
                               className="w-full gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-md"
                             >
-                              <CalendarIcon className="h-4 w-4" />
                               Add Holiday
                             </Button>
                           </div>
@@ -2192,7 +2229,6 @@ export default function LeaveManagement() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h3 className="font-semibold mb-1 flex items-center gap-2">
-                          <Clock className="h-5 w-5 text-sky-600" />
                           Department Week-off Planner
                         </h3>
                         <p className="text-sm text-muted-foreground">
@@ -2304,7 +2340,10 @@ export default function LeaveManagement() {
                                   {dept}
                                 </p>
                                 <p className="text-muted-foreground text-xs">
-                                  Weekly off: {config.days.map((day) => weekDayLabels[day.toLowerCase()] || day).join(', ')}
+                                  Weekly off: {config.days.map((day) => {
+                                    const cleanDay = day.replace(/[^\p{L}]/gu, '').toLowerCase();
+                                    return weekDayLabels[cleanDay] || day.replace(/[^\p{L}]/gu, '');
+                                  }).join(', ')}
                                 </p>
                               </div>
                               <Button
@@ -2595,7 +2634,7 @@ export default function LeaveManagement() {
                                   <div className="text-slate-700 dark:text-slate-300 text-sm">
                                     <TruncatedText
                                       text={request.reason}
-                                      maxLength={150}
+                                      maxLength={200}
                                       textClassName="whitespace-pre-wrap break-words"
                                     />
                                   </div>
