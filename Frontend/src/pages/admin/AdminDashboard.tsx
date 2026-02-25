@@ -24,6 +24,23 @@ import { useNavigate } from 'react-router-dom';
 import { formatIST, formatDateTimeIST, formatTimeIST, todayIST, parseToIST, nowIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
 
+const CORE_DEPARTMENTS = [
+  'Engineering',
+  'Product',
+  'Design',
+  'Marketing',
+  'Sales',
+  'HR',
+  'Human Resources',
+  'Finance',
+  'Operations',
+  'Legal',
+  'Customer Support',
+  'IT',
+  'Administration',
+  'Management'
+];
+
 const AdminDashboard: React.FC = () => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
@@ -82,11 +99,16 @@ const AdminDashboard: React.FC = () => {
           });
 
           if (metricsData && metricsData.departments && Array.isArray(metricsData.departments)) {
-            const formattedPerformance = metricsData.departments.map((dept: any) => ({
-              name: dept.department,
-              employees: dept.totalEmployees,
-              performance: dept.performanceScore || 0
-            }));
+            const formattedPerformance = metricsData.departments
+              .filter((dept: any) => {
+                const deptName = dept.department || '';
+                return CORE_DEPARTMENTS.some(core => core.toLowerCase() === deptName.toLowerCase());
+              })
+              .map((dept: any) => ({
+                name: dept.department,
+                employees: dept.totalEmployees,
+                performance: dept.performanceScore || 0
+              }));
 
             // Sort by performance (descending)
             formattedPerformance.sort((a: any, b: any) => b.performance - a.performance);
@@ -94,11 +116,19 @@ const AdminDashboard: React.FC = () => {
             setDepartmentPerformance(formattedPerformance);
           } else {
             // Fallback to dashboard data if metrics fail
-            setDepartmentPerformance(data.departmentPerformance || []);
+            const fallbackDepts = (data.departmentPerformance || []).filter((dept: any) => {
+              const deptName = dept.name || '';
+              return CORE_DEPARTMENTS.some(core => core.toLowerCase() === deptName.toLowerCase());
+            });
+            setDepartmentPerformance(fallbackDepts);
           }
         } catch (metricsError) {
           console.error('Failed to load department metrics:', metricsError);
-          setDepartmentPerformance(data.departmentPerformance || []);
+          const fallbackDepts = (data.departmentPerformance || []).filter((dept: any) => {
+            const deptName = dept.name || '';
+            return CORE_DEPARTMENTS.some(core => core.toLowerCase() === deptName.toLowerCase());
+          });
+          setDepartmentPerformance(fallbackDepts);
         }
 
         // Enhanced Recent Activities Logic - Strictly Today

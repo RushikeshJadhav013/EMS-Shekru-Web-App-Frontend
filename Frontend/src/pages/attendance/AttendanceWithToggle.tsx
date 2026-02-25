@@ -853,7 +853,7 @@ const AttendanceWithToggle: React.FC = () => {
     try {
       if (!user?.id) return;
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://testing.staffly.space/attendance/my-attendance/${user.id}`, {
+      const res = await fetch(`https://testing.testing.staffly.space/attendance/my-attendance/${user.id}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -1026,7 +1026,7 @@ const AttendanceWithToggle: React.FC = () => {
             // Fetch actual work hours from backend
             try {
               const token = localStorage.getItem('token');
-              const workHoursResponse = await fetch(`https://testing.staffly.space/attendance/working-hours/${attendance.id}`, {
+              const workHoursResponse = await fetch(`https://testing.testing.staffly.space/attendance/working-hours/${attendance.id}`, {
                 headers: {
                   'Authorization': token ? `Bearer ${token}` : '',
                 },
@@ -1532,8 +1532,8 @@ const AttendanceWithToggle: React.FC = () => {
         }),
       };
       const endpoint = isCheckingIn
-        ? 'https://testing.staffly.space/attendance/check-in/json'
-        : 'https://testing.staffly.space/attendance/check-out/json';
+        ? 'https://testing.testing.staffly.space/attendance/check-in/json'
+        : 'https://testing.testing.staffly.space/attendance/check-out/json';
 
       // ✅ Get token from localStorage for authentication
       const token = localStorage.getItem('token');
@@ -1954,7 +1954,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     // Call API to update status
     const token = localStorage.getItem('token');
-    const response = await fetch('https://testing.staffly.space/attendance/online-status', {
+    const response = await fetch('https://testing.testing.staffly.space/attendance/online-status', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -2082,7 +2082,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://testing.staffly.space/attendance/user-online-status/${user.id}`, {
+      const response = await fetch(`https://testing.testing.staffly.space/attendance/user-online-status/${user.id}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -2223,7 +2223,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://testing.staffly.space/attendance/current-online-status', {
+      const response = await fetch('https://testing.testing.staffly.space/attendance/current-online-status', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -2258,7 +2258,7 @@ const AttendanceWithToggle: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://testing.staffly.space/attendance/current-online-status', {
+      const response = await fetch('https://testing.testing.staffly.space/attendance/current-online-status', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
         },
@@ -2367,8 +2367,8 @@ const AttendanceWithToggle: React.FC = () => {
 
     if (recordDateObj < todayDateObj) {
       if (!checkOutTime) {
-        // Forgotten checkout - show as absent
-        return { isOnline: false, label: 'Absent', showAbsent: true };
+        // Forgotten checkout - show as offline instead of absent as per user request
+        return { isOnline: false, label: 'Offline', showAbsent: false };
       } else {
         // Checked out on past date - show as checked out
         return { isOnline: false, label: 'Checked Out', showAbsent: false };
@@ -2828,7 +2828,7 @@ const AttendanceWithToggle: React.FC = () => {
                                     >
                                       {record.checkInSelfie ? (
                                         <img
-                                          src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}${record.checkInSelfie}`}
+                                          src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${import.meta.env.VITE_API_BASE_URL || 'https://testing.testing.staffly.space'}${record.checkInSelfie}`}
                                           alt={`${user?.name || 'Employee'}'s selfie`}
                                           className="w-full h-full object-cover"
                                           onError={(e) => {

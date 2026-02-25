@@ -50,6 +50,7 @@ import {
     CalendarDays,
     LayoutGrid,
     ListIcon,
+    AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
@@ -73,7 +74,7 @@ interface ProjectTask {
     assigned_to?: number;
     assigned_to_name?: string;
     due_date?: string;
-    status: 'pending' | 'completed' | 'cancelled';
+    status: 'todo' | 'in-progress' | 'overdue' | 'completed' | 'cancelled';
 }
 
 
@@ -97,7 +98,7 @@ interface Employee {
     department?: string;
 }
 
-const TASK_STATUSES = ['pending', 'completed', 'cancelled'] as const;
+const TASK_STATUSES = ['todo', 'in-progress', 'overdue', 'completed', 'cancelled'] as const;
 type TaskStatus = typeof TASK_STATUSES[number];
 
 // Form-only type: supports multiple assignees per task row
@@ -114,13 +115,19 @@ const emptyTask = (): TaskFormRow => ({
     description: '',
     assigned_to_ids: [],
     due_date: '',
-    status: 'pending',
+    status: 'todo',
 });
 
 // ─────────────────────────────────────────
 // Status helpers
 // ─────────────────────────────────────────
 function TaskStatusBadge({ status }: { status: string }) {
+    if (status === 'todo')
+        return <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-0 gap-1 text-[11px]"><Clock className="h-3 w-3" />To Do</Badge>;
+    if (status === 'in-progress')
+        return <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0 gap-1 text-[11px]"><Clock className="h-3 w-3" />In Progress</Badge>;
+    if (status === 'overdue')
+        return <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-0 gap-1 text-[11px]"><AlertCircle className="h-3 w-3" />Overdue</Badge>;
     if (status === 'completed')
         return <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-0 gap-1 text-[11px]"><CheckCircle2 className="h-3 w-3" />Completed</Badge>;
     if (status === 'cancelled')
@@ -132,6 +139,7 @@ function statusColor(s?: string) {
     if (s === 'completed') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
     if (s === 'cancelled') return 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400';
     if (s === 'on-hold') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+    if (s === 'archived') return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
     return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
 }
 
@@ -140,11 +148,11 @@ function statusColor(s?: string) {
 // ─────────────────────────────────────────
 function TaskRow({
     task,
-    isAdminOrHR,
+    canManageProjects,
     onStatusChange,
 }: {
     task: ProjectTask;
-    isAdminOrHR: boolean;
+    canManageProjects: boolean;
     onStatusChange: (taskId: number, status: string) => void;
 }) {
     const id = task.task_id ?? task.id ?? 0;
@@ -166,7 +174,7 @@ function TaskRow({
                 {task.due_date ? formatDateIST(task.due_date, 'MMM dd, yyyy') : '—'}
             </TableCell>
             <TableCell>
-                {isAdminOrHR ? (
+                {canManageProjects ? (
                     <Select
                         value={task.status}
                         onValueChange={(v) => onStatusChange(id, v)}
@@ -174,15 +182,21 @@ function TaskRow({
                         <SelectTrigger className="h-7 w-32 text-xs border-slate-200 dark:border-slate-700">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="pending">
-                                <span className="flex items-center gap-1.5 text-amber-600"><Clock className="h-3 w-3" />Pending</span>
+                        <SelectContent side="bottom">
+                            <SelectItem value="todo">
+                                <span className="flex items-center gap-1.5 text-slate-600 font-medium"><Clock className="h-3 w-3" />To Do</span>
+                            </SelectItem>
+                            <SelectItem value="in-progress">
+                                <span className="flex items-center gap-1.5 text-blue-600 font-medium"><Clock className="h-3 w-3" />In Progress</span>
+                            </SelectItem>
+                            <SelectItem value="overdue">
+                                <span className="flex items-center gap-1.5 text-orange-600 font-medium"><AlertCircle className="h-3 w-3" />Overdue</span>
                             </SelectItem>
                             <SelectItem value="completed">
-                                <span className="flex items-center gap-1.5 text-emerald-600"><CheckCircle2 className="h-3 w-3" />Completed</span>
+                                <span className="flex items-center gap-1.5 text-emerald-600 font-medium"><CheckCircle2 className="h-3 w-3" />Completed</span>
                             </SelectItem>
                             <SelectItem value="cancelled">
-                                <span className="flex items-center gap-1.5 text-red-500"><XCircle className="h-3 w-3" />Cancelled</span>
+                                <span className="flex items-center gap-1.5 text-red-500 font-medium"><XCircle className="h-3 w-3" />Cancelled</span>
                             </SelectItem>
                         </SelectContent>
                     </Select>
@@ -199,7 +213,7 @@ function TaskRow({
 // ─────────────────────────────────────────
 function ProjectCard({
     project,
-    isAdminOrHR,
+    canManageProjects,
     isDeleting,
     onEdit,
     onDelete,
@@ -208,7 +222,7 @@ function ProjectCard({
     onTaskStatusChange,
 }: {
     project: Project;
-    isAdminOrHR: boolean;
+    canManageProjects: boolean;
     isDeleting: number | null;
     onEdit: () => void;
     onDelete: () => void;
@@ -219,7 +233,7 @@ function ProjectCard({
     const [expanded, setExpanded] = useState(false);
     const tasks = project.tasks || [];
     const members = project.members || [];
-    const pendingCount = tasks.filter(t => t.status === 'pending').length;
+    const todoCount = tasks.filter(t => t.status === 'todo').length;
     const completedCount = tasks.filter(t => t.status === 'completed').length;
     const cancelledCount = tasks.filter(t => t.status === 'cancelled').length;
 
@@ -253,7 +267,7 @@ function ProjectCard({
 
                         {/* Actions */}
                         <div className="flex items-center gap-1 flex-shrink-0">
-                            {isAdminOrHR && (
+                            {canManageProjects && (
                                 <>
                                     <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600" title="Manage Team Members" onClick={onManageMembers}>
                                         <UserPlus className="h-4 w-4" />
@@ -295,7 +309,7 @@ function ProjectCard({
                             <>
                                 <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-full">
                                     <Clock className="h-3.5 w-3.5 text-amber-500" />
-                                    <span className="text-xs font-medium text-amber-600 dark:text-amber-400">{pendingCount} Pending</span>
+                                    <span className="text-xs font-medium text-amber-600 dark:text-amber-400">{todoCount} To Do</span>
                                 </div>
                                 <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-full">
                                     <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
@@ -366,7 +380,7 @@ function ProjectCard({
                                                 <TaskRow
                                                     key={task.task_id ?? task.id ?? idx}
                                                     task={task}
-                                                    isAdminOrHR={isAdminOrHR}
+                                                    canManageProjects={canManageProjects}
                                                     onStatusChange={(taskId, status) =>
                                                         onTaskStatusChange(project.project_id, taskId, status)
                                                     }
@@ -397,6 +411,7 @@ export default function ProjectManagement() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
     const [isLoading, setIsLoading] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
@@ -448,10 +463,12 @@ export default function ProjectManagement() {
     useEffect(() => { fetchProjects(); fetchEmployees(); }, []);
 
     const filteredProjects = useMemo(() =>
-        projects.filter(p =>
-            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.description?.toLowerCase().includes(searchQuery.toLowerCase())
-        ), [projects, searchQuery]);
+        projects.filter(p => {
+            const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                p.description?.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesStatus = statusFilter === 'all' || (p.status || 'active') === statusFilter;
+            return matchesSearch && matchesStatus;
+        }), [projects, searchQuery, statusFilter]);
 
     // ── Helpers ──
     const resetForm = () => {
@@ -631,7 +648,7 @@ export default function ProjectManagement() {
         }
     };
 
-    const isAdminOrHR = user?.role === 'admin' || user?.role === 'hr';
+    const canManageProjects = user?.role === 'admin' || user?.role === 'hr' || user?.role === 'manager';
 
     // ─────────────────────────────────────────
     // Task form — Admin/HR only, multi-assignee
@@ -753,7 +770,7 @@ export default function ProjectManagement() {
                             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Build teams, assign tasks, and track progress.</p>
                         </div>
                     </div>
-                    {isAdminOrHR && (
+                    {canManageProjects && (
                         <Button
                             className="gap-2 rounded-full bg-violet-600 hover:bg-violet-700 text-white shadow-md shadow-violet-200 dark:shadow-violet-900"
                             onClick={() => { resetForm(); setIsCreateDialogOpen(true); }}
@@ -764,24 +781,39 @@ export default function ProjectManagement() {
                         </Button>
                     )}
                 </div>
-                {/* Search */}
-                <div className="relative max-w-sm mt-4">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search projects..."
-                        className="pl-9 rounded-xl"
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                    />
+                <div className="flex flex-col sm:flex-row gap-3 mt-4">
+                    <div className="relative max-w-sm flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search projects..."
+                            className="pl-9 rounded-xl"
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-[160px] rounded-xl h-10">
+                            <SelectValue placeholder="Filter by status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Projects</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="on-hold">On Hold</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                            <SelectItem value="archived">Archived</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 
             {/* ── Stats ── */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 {[
                     { label: 'Total Projects', value: projects.length, color: 'from-violet-500 to-purple-600', icon: FolderKanban },
                     { label: 'Active', value: projects.filter(p => !p.status || p.status === 'active').length, color: 'from-blue-500 to-indigo-600', icon: Clock },
                     { label: 'Completed', value: projects.filter(p => p.status === 'completed').length, color: 'from-emerald-500 to-teal-600', icon: CheckCircle2 },
+                    { label: 'Archived', value: projects.filter(p => p.status === 'archived').length, color: 'from-slate-500 to-slate-600', icon: Trash2 },
                     { label: 'Total Tasks', value: projects.reduce((a, p) => a + (p.tasks?.length || 0), 0), color: 'from-amber-500 to-orange-600', icon: ClipboardList },
                 ].map(s => (
                     <Card key={s.label} className="border-0 shadow-md rounded-2xl overflow-hidden">
@@ -807,7 +839,7 @@ export default function ProjectManagement() {
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400">
                     <FolderKanban className="h-14 w-14 mb-3 opacity-20" />
                     <p className="text-sm font-medium">No projects found</p>
-                    {isAdminOrHR && (
+                    {canManageProjects && (
                         <Button variant="outline" className="mt-4 gap-1" onClick={() => { resetForm(); setIsCreateDialogOpen(true); }}>
                             <Plus className="h-4 w-4" /> Create your first project
                         </Button>
@@ -819,7 +851,7 @@ export default function ProjectManagement() {
                         <ProjectCard
                             key={project.project_id}
                             project={project}
-                            isAdminOrHR={isAdminOrHR}
+                            canManageProjects={canManageProjects}
                             isDeleting={isDeleting}
                             onEdit={() => {
                                 setSelectedProject(project);
@@ -888,6 +920,7 @@ export default function ProjectManagement() {
                                                 <SelectItem value="on-hold">On Hold</SelectItem>
                                                 <SelectItem value="completed">Completed</SelectItem>
                                                 <SelectItem value="cancelled">Cancelled</SelectItem>
+                                                <SelectItem value="archived">Archived</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -1007,6 +1040,7 @@ export default function ProjectManagement() {
                                     <SelectItem value="on-hold">On Hold</SelectItem>
                                     <SelectItem value="completed">Completed</SelectItem>
                                     <SelectItem value="cancelled">Cancelled</SelectItem>
+                                    <SelectItem value="archived">Archived</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

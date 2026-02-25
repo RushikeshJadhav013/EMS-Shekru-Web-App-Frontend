@@ -744,7 +744,11 @@ const TaskManagement: React.FC = () => {
   }, [fetchTasks]);
 
   // Check if user can assign tasks to others
-  const canAssignTasks = () => Boolean(userId);
+  const canAssignTasks = () => {
+    if (!user?.role) return false;
+    // Only Admin, HR, Manager, and Team Lead can assign tasks
+    return ['admin', 'hr', 'manager', 'team_lead'].includes(user.role);
+  };
 
   const extendedEmployees = useMemo(() => {
     if (!userId || !user) return employees;

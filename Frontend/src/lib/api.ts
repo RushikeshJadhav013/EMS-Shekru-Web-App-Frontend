@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.testing.staffly.space';
 
 interface EmployeeData {
   name: string;
@@ -849,6 +849,85 @@ class ApiService {
 
   async getCandidateResume(candidateId: number) {
     return this.request(`/hiring/candidates/${candidateId}/resume`);
+  }
+
+  // Interview Management APIs
+  async getInterviews(candidateId?: number, vacancyId?: number) {
+    const params = new URLSearchParams();
+    if (candidateId) params.append('candidate_id', candidateId.toString());
+    if (vacancyId) params.append('vacancy_id', vacancyId.toString());
+    const query = params.toString();
+    return this.request(`/hiring/interviews${query ? `?${query}` : ''}`);
+  }
+
+  async getInterview(interviewId: number) {
+    return this.request(`/hiring/interviews/${interviewId}`);
+  }
+
+  async createInterview(interviewData: any) {
+    return this.request('/hiring/interviews', {
+      method: 'POST',
+      body: JSON.stringify(interviewData),
+    });
+  }
+
+  async updateInterview(interviewId: number, interviewData: any) {
+    return this.request(`/hiring/interviews/${interviewId}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        interview_id: interviewId,
+        ...interviewData
+      }),
+    });
+  }
+
+  async deleteInterview(interviewId: number) {
+    return this.request(`/hiring/interviews/${interviewId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ interview_id: interviewId }),
+    });
+  }
+
+  async updateInterviewStatus(interviewId: number, status: string) {
+    return this.request(`/hiring/interviews/${interviewId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        interview_id: interviewId,
+        status: status
+      }),
+    });
+  }
+
+  // Interview Feedback APIs
+  async getInterviewFeedback(interviewId: number) {
+    return this.request(`/hiring/interviews/${interviewId}/feedback`);
+  }
+
+  async createInterviewFeedback(interviewId: number, feedbackData: any) {
+    return this.request(`/hiring/interviews/${interviewId}/feedback`, {
+      method: 'POST',
+      body: JSON.stringify({
+        interview_id: interviewId,
+        ...feedbackData
+      }),
+    });
+  }
+
+  async updateInterviewFeedback(feedbackId: number, feedbackData: any) {
+    return this.request(`/hiring/feedback/${feedbackId}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        feedback_id: feedbackId,
+        ...feedbackData
+      }),
+    });
+  }
+
+  async deleteInterviewFeedback(feedbackId: number) {
+    return this.request(`/hiring/feedback/${feedbackId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ feedback_id: feedbackId }),
+    });
   }
 
   // Shift Management APIs

@@ -144,7 +144,7 @@ export default function TeamShifts() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl flex items-center gap-3">
             <CalendarDays className="h-8 w-8 text-blue-600" />
-            My Shift Schedule
+            Shift Schedule
           </h1>
           <p className="text-muted-foreground mt-1">
             View your assigned shifts and schedule

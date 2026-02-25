@@ -20,6 +20,7 @@ import {
   Eye,
   Share2,
   Linkedin,
+  Star,
   FileText,
   Users,
   Briefcase,
@@ -85,12 +86,47 @@ interface Candidate {
   updated_at: string;
 }
 
+interface Interview {
+  interview_id: number;
+  candidate_id: number;
+  candidate_name?: string;
+  vacancy_id: number;
+  vacancy_title?: string;
+  date: string;
+  time: string;
+  type: 'online' | 'offline';
+  location_or_link: string;
+  interviewer_name: string;
+  status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled' | 'no-show' | 'selected' | 'rejected';
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface InterviewFeedback {
+  feedback_id: number;
+  interview_id: number;
+  interviewer_id?: number;
+  interviewer_name?: string;
+  rating: number;
+  technical_rating?: number;
+  communication_rating?: number;
+  strengths?: string;
+  weaknesses?: string;
+  recommendation: 'hire' | 'reject' | 'hold';
+  comments?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export default function HiringManagement() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('vacancies');
   const [vacancies, setVacancies] = useState<Vacancy[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [feedback, setFeedback] = useState<InterviewFeedback[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -107,8 +143,13 @@ export default function HiringManagement() {
   const [isViewVacancyDialogOpen, setIsViewVacancyDialogOpen] = useState(false);
   const [isSocialMediaDialogOpen, setIsSocialMediaDialogOpen] = useState(false);
   const [isViewCandidateDialogOpen, setIsViewCandidateDialogOpen] = useState(false);
+  const [isInterviewDialogOpen, setIsInterviewDialogOpen] = useState(false);
+  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
+  const [isViewInterviewDialogOpen, setIsViewInterviewDialogOpen] = useState(false);
   const [selectedVacancy, setSelectedVacancy] = useState<Vacancy | null>(null);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
+  const [selectedFeedback, setSelectedFeedback] = useState<InterviewFeedback | null>(null);
 
   // Form data
   const [vacancyFormData, setVacancyFormData] = useState({
@@ -143,6 +184,28 @@ export default function HiringManagement() {
     status: 'applied',
   });
   const [candidateResumeFile, setCandidateResumeFile] = useState<File | null>(null);
+
+  const [interviewFormData, setInterviewFormData] = useState({
+    candidate_id: '',
+    vacancy_id: '',
+    date: '',
+    time: '',
+    type: 'online' as Interview['type'],
+    location_or_link: '',
+    interviewer_name: '',
+    status: 'scheduled' as Interview['status'],
+    notes: '',
+  });
+
+  const [feedbackFormData, setFeedbackFormData] = useState({
+    rating: 3,
+    technical_rating: 3,
+    communication_rating: 3,
+    strengths: '',
+    weaknesses: '',
+    recommendation: 'hold' as InterviewFeedback['recommendation'],
+    comments: '',
+  });
 
   const [isShortlistDialogOpen, setIsShortlistDialogOpen] = useState(false);
   const [shortlistFormData, setShortlistFormData] = useState({
@@ -236,11 +299,31 @@ export default function HiringManagement() {
     }
   };
 
+  // Fetch interviews
+  const fetchInterviews = async () => {
+    setIsLoading(true);
+    try {
+      const data = await apiService.getInterviews();
+      setInterviews(data);
+    } catch (error: any) {
+      console.error('Failed to fetch interviews:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to load interviews',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'vacancies') {
       fetchVacancies();
-    } else {
+    } else if (activeTab === 'candidates') {
       fetchCandidates();
+    } else if (activeTab === 'interviews') {
+      fetchInterviews();
     }
   }, [activeTab, selectedDepartment, selectedStatus]);
 
@@ -261,6 +344,15 @@ export default function HiringManagement() {
       candidate.email.toLowerCase().includes(query) ||
       candidate.vacancy_title?.toLowerCase().includes(query) ||
       candidate.phone?.toLowerCase().includes(query)
+    );
+  });
+
+  const filteredInterviews = interviews.filter((interview) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      interview.candidate_name?.toLowerCase().includes(query) ||
+      interview.vacancy_title?.toLowerCase().includes(query) ||
+      interview.interviewer_name.toLowerCase().includes(query)
     );
   });
 
@@ -544,6 +636,205 @@ export default function HiringManagement() {
     } finally {
       setIsDeleting(null);
     }
+  };
+
+  const handleCreateInterview = async () => {
+    if (!interviewFormData.candidate_id || !interviewFormData.vacancy_id || !interviewFormData.date || !interviewFormData.interviewer_name) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      await apiService.createInterview(interviewFormData);
+      toast({
+        title: 'Success',
+        description: 'Interview scheduled successfully',
+      });
+      setIsInterviewDialogOpen(false);
+      resetInterviewForm();
+      fetchInterviews();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to schedule interview',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleUpdateInterview = async () => {
+    if (!selectedInterview) return;
+
+    setIsUpdating(true);
+    try {
+      await apiService.updateInterview(selectedInterview.interview_id, interviewFormData);
+      toast({
+        title: 'Success',
+        description: 'Interview updated successfully',
+      });
+      setIsInterviewDialogOpen(false);
+      setSelectedInterview(null);
+      resetInterviewForm();
+      fetchInterviews();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update interview',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteInterview = async (interviewId: number) => {
+    if (!confirm('Are you sure you want to delete this interview?')) return;
+
+    setIsDeleting(interviewId);
+    try {
+      await apiService.deleteInterview(interviewId);
+      toast({
+        title: 'Success',
+        description: 'Interview deleted successfully',
+      });
+      fetchInterviews();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete interview',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const handleUpdateInterviewStatus = async (interviewId: number, newStatus: string) => {
+    try {
+      await apiService.updateInterviewStatus(interviewId, newStatus);
+      toast({
+        title: 'Success',
+        description: 'Interview status updated',
+      });
+      fetchInterviews();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update interview status',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const fetchFeedbackList = async (interviewId: number) => {
+    try {
+      const data = await apiService.getInterviewFeedback(interviewId);
+      setFeedback(data);
+    } catch (error: any) {
+      console.error('Failed to fetch feedback:', error);
+    }
+  };
+
+  const handleCreateFeedback = async () => {
+    if (!selectedInterview) return;
+
+    setIsCreating(true);
+    try {
+      await apiService.createInterviewFeedback(selectedInterview.interview_id, feedbackFormData);
+      toast({
+        title: 'Success',
+        description: 'Feedback submitted successfully',
+      });
+      setIsFeedbackDialogOpen(false);
+      resetFeedbackForm();
+      fetchFeedbackList(selectedInterview.interview_id);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to submit feedback',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleUpdateFeedback = async () => {
+    if (!selectedFeedback || !selectedInterview) return;
+
+    setIsUpdating(true);
+    try {
+      await apiService.updateInterviewFeedback(selectedFeedback.feedback_id, feedbackFormData);
+      toast({
+        title: 'Success',
+        description: 'Feedback updated successfully',
+      });
+      setIsFeedbackDialogOpen(false);
+      setSelectedFeedback(null);
+      resetFeedbackForm();
+      fetchFeedbackList(selectedInterview.interview_id);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update feedback',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteFeedback = async (feedbackId: number) => {
+    if (!confirm('Are you sure you want to delete this feedback?')) return;
+    if (!selectedInterview) return;
+
+    try {
+      await apiService.deleteInterviewFeedback(feedbackId);
+      toast({
+        title: 'Success',
+        description: 'Feedback deleted successfully',
+      });
+      fetchFeedbackList(selectedInterview.interview_id);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete feedback',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const resetInterviewForm = () => {
+    setInterviewFormData({
+      candidate_id: '',
+      vacancy_id: '',
+      date: '',
+      time: '',
+      type: 'online',
+      location_or_link: '',
+      interviewer_name: '',
+      status: 'scheduled',
+      notes: '',
+    });
+  };
+
+  const resetFeedbackForm = () => {
+    setFeedbackFormData({
+      rating: 3,
+      technical_rating: 3,
+      communication_rating: 3,
+      strengths: '',
+      weaknesses: '',
+      recommendation: 'hold',
+      comments: '',
+    });
   };
 
   const resetCandidateForm = () => {
@@ -841,6 +1132,17 @@ export default function HiringManagement() {
                 <Users className="h-4 w-4" />
                 Candidates
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('interviews')}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 transition ${activeTab === 'interviews'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+              >
+                <Calendar className="h-4 w-4" />
+                Interviews
+              </button>
             </div>
             {activeTab === 'vacancies' && (
               <Button
@@ -866,7 +1168,21 @@ export default function HiringManagement() {
               >
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">New Candidate</span>
-                <span className="sm:hidden">New</span>
+                <span className="sm:hidden">Add</span>
+              </Button>
+            )}
+            {activeTab === 'interviews' && (
+              <Button
+                className="hidden md:inline-flex gap-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => {
+                  resetInterviewForm();
+                  setSelectedInterview(null);
+                  setIsInterviewDialogOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Schedule Interview</span>
+                <span className="sm:hidden">Schedule</span>
               </Button>
             )}
           </div>
@@ -874,24 +1190,33 @@ export default function HiringManagement() {
       </div>
 
       {/* Mobile create button */}
-      {activeTab === 'vacancies' && (
+      {(activeTab === 'vacancies' || activeTab === 'candidates' || activeTab === 'interviews') && (
         <div className="md:hidden">
           <Button
             className="w-full rounded-full"
             onClick={() => {
-              resetVacancyForm();
-              setSelectedVacancy(null);
-              setIsVacancyDialogOpen(true);
+              if (activeTab === 'vacancies') {
+                resetVacancyForm();
+                setSelectedVacancy(null);
+                setIsVacancyDialogOpen(true);
+              } else if (activeTab === 'candidates') {
+                resetCandidateForm();
+                setIsCandidateDialogOpen(true);
+              } else {
+                resetInterviewForm();
+                setSelectedInterview(null);
+                setIsInterviewDialogOpen(true);
+              }
             }}
           >
             <Plus className="mr-2 h-4 w-4" />
-            New Vacancy
+            {activeTab === 'vacancies' ? 'New Vacancy' : activeTab === 'candidates' ? 'New Candidate' : 'Schedule Interview'}
           </Button>
         </div>
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full max-w-md grid-cols-2 rounded-full bg-slate-100/80 dark:bg-slate-900/80 p-1 mx-auto">
+        <TabsList className="grid w-full max-w-lg grid-cols-3 rounded-full bg-slate-100/80 dark:bg-slate-900/80 p-1 mx-auto">
           <TabsTrigger
             value="vacancies"
             className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm rounded-full text-xs sm:text-sm"
@@ -905,6 +1230,13 @@ export default function HiringManagement() {
           >
             <Users className="mr-1.5 h-4 w-4" />
             Candidates
+          </TabsTrigger>
+          <TabsTrigger
+            value="interviews"
+            className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm rounded-full text-xs sm:text-sm"
+          >
+            <Calendar className="mr-1.5 h-4 w-4" />
+            Interviews
           </TabsTrigger>
         </TabsList>
 
@@ -1242,6 +1574,188 @@ export default function HiringManagement() {
                                   <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
                                   <Trash2 className="h-4 w-4 text-destructive" />
+                                )}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Interviews Tab */}
+        <TabsContent value="interviews" className="space-y-4">
+          {/* Filters */}
+          <Card className="border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
+            <CardContent className="pt-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search interviews by candidate, vacancy or interviewer..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                  <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-slate-950">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="rescheduled">Rescheduled</SelectItem>
+                    <SelectItem value="no-show">No Show</SelectItem>
+                    <SelectItem value="selected">Selected</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Interviews Table */}
+          <Card className="border border-slate-200 dark:border-slate-700 shadow-md rounded-3xl">
+            <CardHeader className="border-b bg-slate-50 dark:bg-slate-800 rounded-t-3xl">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-base sm:text-lg">Interview Schedule</CardTitle>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Coordinate and monitor all candidate interviews.
+                  </p>
+                </div>
+                <Badge variant="outline" className="hidden sm:inline-flex gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {filteredInterviews.length} interviews
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredInterviews.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No interviews found
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Candidate</TableHead>
+                        <TableHead>Vacancy</TableHead>
+                        <TableHead>Date & Time</TableHead>
+                        <TableHead>Mode/Location</TableHead>
+                        <TableHead>Interviewer</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredInterviews.map((interview) => (
+                        <TableRow key={interview.interview_id}>
+                          <TableCell className="font-medium">{interview.candidate_name}</TableCell>
+                          <TableCell>{interview.vacancy_title}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="text-sm">{formatDateIST(interview.date, 'MMM dd, yyyy')}</span>
+                              <span className="text-xs text-muted-foreground">{interview.time}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col max-w-[150px]">
+                              <Badge variant="secondary" className="w-fit text-[10px] capitalize mb-1">
+                                {interview.type}
+                              </Badge>
+                              <span className="text-xs truncate" title={interview.location_or_link}>
+                                {interview.location_or_link}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{interview.interviewer_name}</TableCell>
+                          <TableCell>
+                            <Select
+                              value={interview.status}
+                              onValueChange={(value) =>
+                                handleUpdateInterviewStatus(interview.interview_id, value)
+                              }
+                            >
+                              <SelectTrigger className="w-[130px] h-8 text-xs capitalize">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="scheduled">Scheduled</SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                                <SelectItem value="rescheduled">Rescheduled</SelectItem>
+                                <SelectItem value="no-show">No Show</SelectItem>
+                                <SelectItem value="selected">Selected</SelectItem>
+                                <SelectItem value="rejected">Rejected</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-violet-600 hover:text-violet-700 hover:bg-violet-50"
+                                onClick={() => {
+                                  setSelectedInterview(interview);
+                                  fetchFeedbackList(interview.interview_id);
+                                  setIsViewInterviewDialogOpen(true);
+                                }}
+                                title="View Details & Feedback"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                onClick={() => {
+                                  setSelectedInterview(interview);
+                                  setInterviewFormData({
+                                    candidate_id: String(interview.candidate_id),
+                                    vacancy_id: String(interview.vacancy_id),
+                                    date: interview.date,
+                                    time: interview.time,
+                                    type: interview.type,
+                                    location_or_link: interview.location_or_link,
+                                    interviewer_name: interview.interviewer_name,
+                                    status: interview.status,
+                                    notes: interview.notes || '',
+                                  });
+                                  setIsInterviewDialogOpen(true);
+                                }}
+                                title="Edit Interview"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:bg-red-50"
+                                onClick={() => handleDeleteInterview(interview.interview_id)}
+                                disabled={isDeleting === interview.interview_id}
+                                title="Delete Interview"
+                              >
+                                {isDeleting === interview.interview_id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
                                 )}
                               </Button>
                             </div>
@@ -2236,6 +2750,436 @@ export default function HiringManagement() {
             <Button onClick={handleUpdateResume} disabled={isUpdating}>
               {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Update Resume
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Schedule/Edit Interview Dialog */}
+      <Dialog open={isInterviewDialogOpen} onOpenChange={setIsInterviewDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{selectedInterview ? 'Edit Interview' : 'Schedule Interview'}</DialogTitle>
+            <DialogDescription>
+              {selectedInterview ? 'Update the details for this interview.' : 'Schedule a new interview for a candidate.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="i_candidate">Candidate *</Label>
+              <Select
+                value={interviewFormData.candidate_id}
+                onValueChange={(value) => {
+                  const candidate = candidates.find(c => String(c.candidate_id) === value);
+                  setInterviewFormData({
+                    ...interviewFormData,
+                    candidate_id: value,
+                    vacancy_id: candidate ? String(candidate.vacancy_id) : '',
+                  });
+                }}
+                disabled={!!selectedInterview}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select candidate" />
+                </SelectTrigger>
+                <SelectContent>
+                  {candidates.map((c) => (
+                    <SelectItem key={c.candidate_id} value={String(c.candidate_id)}>
+                      {c.name} ({c.vacancy_title})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="i_date">Date *</Label>
+                <Input
+                  id="i_date"
+                  type="date"
+                  value={interviewFormData.date}
+                  onChange={(e) => setInterviewFormData({ ...interviewFormData, date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="i_time">Time *</Label>
+                <Input
+                  id="i_time"
+                  type="time"
+                  value={interviewFormData.time}
+                  onChange={(e) => setInterviewFormData({ ...interviewFormData, time: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="i_type">Type *</Label>
+                <Select
+                  value={interviewFormData.type}
+                  onValueChange={(value: any) => setInterviewFormData({ ...interviewFormData, type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="online">Online</SelectItem>
+                    <SelectItem value="offline">Offline</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="i_status">Status</Label>
+                <Select
+                  value={interviewFormData.status}
+                  onValueChange={(value: any) => setInterviewFormData({ ...interviewFormData, status: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="rescheduled">Rescheduled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="i_location">Location / Meeting Link</Label>
+              <Input
+                id="i_location"
+                value={interviewFormData.location_or_link}
+                onChange={(e) => setInterviewFormData({ ...interviewFormData, location_or_link: e.target.value })}
+                placeholder="Zoom link or Office Address"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="i_interviewer">Interviewer Name *</Label>
+              <Input
+                id="i_interviewer"
+                value={interviewFormData.interviewer_name}
+                onChange={(e) => setInterviewFormData({ ...interviewFormData, interviewer_name: e.target.value })}
+                placeholder="Name of the interviewer"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="i_notes">Additional Notes</Label>
+              <Textarea
+                id="i_notes"
+                value={interviewFormData.notes}
+                onChange={(e) => setInterviewFormData({ ...interviewFormData, notes: e.target.value })}
+                placeholder="Any special instructions or notes..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsInterviewDialogOpen(false)}>Cancel</Button>
+            <Button onClick={selectedInterview ? handleUpdateInterview : handleCreateInterview} disabled={isCreating || isUpdating}>
+              {isCreating || isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {selectedInterview ? 'Update Interview' : 'Schedule Interview'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Interview & Feedback Dialog */}
+      <Dialog open={isViewInterviewDialogOpen} onOpenChange={setIsViewInterviewDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <DialogTitle>Interview Details</DialogTitle>
+                <DialogDescription>
+                  {selectedInterview?.candidate_name} • {selectedInterview?.vacancy_title}
+                </DialogDescription>
+              </div>
+              <Badge className="capitalize">
+                {selectedInterview?.status.replace('-', ' ')}
+              </Badge>
+            </div>
+          </DialogHeader>
+
+          {selectedInterview && (
+            <div className="space-y-6 py-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Date</span>
+                  <p className="text-sm font-medium">{formatDateIST(selectedInterview.date, 'MMM dd, yyyy')}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Time</span>
+                  <p className="text-sm font-medium">{selectedInterview.time}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Type</span>
+                  <p className="text-sm font-medium capitalize">{selectedInterview.type}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Interviewer</span>
+                  <p className="text-sm font-medium">{selectedInterview.interviewer_name}</p>
+                </div>
+              </div>
+
+              {selectedInterview.location_or_link && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Location / Link</Label>
+                  <p className="text-sm">
+                    {selectedInterview.location_or_link.startsWith('http') ? (
+                      <a href={selectedInterview.location_or_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline break-all">
+                        {selectedInterview.location_or_link}
+                      </a>
+                    ) : selectedInterview.location_or_link}
+                  </p>
+                </div>
+              )}
+
+              {selectedInterview.notes && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notes</Label>
+                  <p className="text-sm bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800 whitespace-pre-wrap italic">
+                    {selectedInterview.notes}
+                  </p>
+                </div>
+              )}
+
+              <div className="border-t pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Star className="h-5 w-5 text-yellow-500" />
+                    Interview Feedback
+                  </h3>
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      resetFeedbackForm();
+                      setSelectedFeedback(null);
+                      setIsFeedbackDialogOpen(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    {feedback.length > 0 ? 'Add Another Feedback' : 'Submit Feedback'}
+                  </Button>
+                </div>
+
+                {isLoading ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : feedback.length === 0 ? (
+                  <div className="text-center py-10 bg-slate-50 dark:bg-slate-900/20 rounded-xl border border-dashed">
+                    <p className="text-sm text-muted-foreground">No feedback submitted yet for this interview.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {feedback.map((f) => (
+                      <Card key={f.feedback_id} className="overflow-hidden border-slate-200 dark:border-slate-800">
+                        <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            By {f.interviewer_name || 'Interviewer'}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-blue-600"
+                              onClick={() => {
+                                setSelectedFeedback(f);
+                                setFeedbackFormData({
+                                  rating: f.rating,
+                                  technical_rating: f.technical_rating || 3,
+                                  communication_rating: f.communication_rating || 3,
+                                  strengths: f.strengths || '',
+                                  weaknesses: f.weaknesses || '',
+                                  recommendation: f.recommendation,
+                                  comments: f.comments || '',
+                                });
+                                setIsFeedbackDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive"
+                              onClick={() => handleDeleteFeedback(f.feedback_id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                        <CardContent className="pt-4 space-y-4">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div>
+                              <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Overall Rating</span>
+                              <div className="flex items-center gap-1">
+                                <span className="font-bold">{f.rating}/5</span>
+                                <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                              </div>
+                            </div>
+                            <div>
+                              <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Recommendation</span>
+                              <Badge className={
+                                f.recommendation === 'hire' ? 'bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400' :
+                                  f.recommendation === 'reject' ? 'bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400' :
+                                    'bg-yellow-100 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400'
+                              }>
+                                {f.recommendation}
+                              </Badge>
+                            </div>
+                            <div>
+                              <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Technical</span>
+                              <span className="text-sm font-medium">{f.technical_rating}/5</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Communication</span>
+                              <span className="text-sm font-medium">{f.communication_rating}/5</span>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {f.strengths && (
+                              <div className="space-y-1">
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground">Strengths</span>
+                                <p className="text-xs text-slate-600 dark:text-slate-400">{f.strengths}</p>
+                              </div>
+                            )}
+                            {f.weaknesses && (
+                              <div className="space-y-1">
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground">Areas for Improvement</span>
+                                <p className="text-xs text-slate-600 dark:text-slate-400">{f.weaknesses}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {f.comments && (
+                            <div className="space-y-1">
+                              <span className="text-[10px] uppercase font-bold text-muted-foreground">Detailed Comments</span>
+                              <p className="text-xs text-slate-600 dark:text-slate-400 italic">"{f.comments}"</p>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsViewInterviewDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Submit/Edit Feedback Dialog */}
+      <Dialog open={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedFeedback ? 'Edit Feedback' : 'Submit Interview Feedback'}</DialogTitle>
+            <DialogDescription>
+              Evaluate the candidate based on their performance in the interview.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-6 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="f_rating">Overall Rating (1-5) *</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="f_rating"
+                    type="number"
+                    min="1"
+                    max="5"
+                    value={feedbackFormData.rating}
+                    onChange={(e) => setFeedbackFormData({ ...feedbackFormData, rating: parseInt(e.target.value) })}
+                  />
+                  <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="f_tech_rating">Technical Rating (1-5)</Label>
+                <Input
+                  id="f_tech_rating"
+                  type="number"
+                  min="1"
+                  max="5"
+                  value={feedbackFormData.technical_rating}
+                  onChange={(e) => setFeedbackFormData({ ...feedbackFormData, technical_rating: parseInt(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="f_comm_rating">Communication (1-5)</Label>
+                <Input
+                  id="f_comm_rating"
+                  type="number"
+                  min="1"
+                  max="5"
+                  value={feedbackFormData.communication_rating}
+                  onChange={(e) => setFeedbackFormData({ ...feedbackFormData, communication_rating: parseInt(e.target.value) })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="f_recommendation">Final Recommendation *</Label>
+              <Select
+                value={feedbackFormData.recommendation}
+                onValueChange={(value: any) => setFeedbackFormData({ ...feedbackFormData, recommendation: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hire">Hire</SelectItem>
+                  <SelectItem value="reject">Reject</SelectItem>
+                  <SelectItem value="hold">On Hold</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="f_strengths">Strengths</Label>
+                <Textarea
+                  id="f_strengths"
+                  value={feedbackFormData.strengths}
+                  onChange={(e) => setFeedbackFormData({ ...feedbackFormData, strengths: e.target.value })}
+                  placeholder="What did the candidate do well?"
+                  rows={4}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="f_weaknesses">Weaknesses / Areas for Improvement</Label>
+                <Textarea
+                  id="f_weaknesses"
+                  value={feedbackFormData.weaknesses}
+                  onChange={(e) => setFeedbackFormData({ ...feedbackFormData, weaknesses: e.target.value })}
+                  placeholder="Where did the candidate fall short?"
+                  rows={4}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="f_comments">Additional Comments</Label>
+              <Textarea
+                id="f_comments"
+                value={feedbackFormData.comments}
+                onChange={(e) => setFeedbackFormData({ ...feedbackFormData, comments: e.target.value })}
+                placeholder="Overall impression and any other feedback..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsFeedbackDialogOpen(false)}>Cancel</Button>
+            <Button onClick={selectedFeedback ? handleUpdateFeedback : handleCreateFeedback} disabled={isCreating || isUpdating}>
+              {isCreating || isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {selectedFeedback ? 'Update Feedback' : 'Submit Feedback'}
             </Button>
           </DialogFooter>
         </DialogContent>

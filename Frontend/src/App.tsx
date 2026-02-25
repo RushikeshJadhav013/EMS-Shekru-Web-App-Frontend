@@ -305,6 +305,11 @@ const App = () => (
                                   <WFHRequests />
                                 </ProtectedRoute>
                               } />
+                              <Route path="/manager/projects" element={
+                                <ProtectedRoute allowedRoles={['manager']}>
+                                  <ProjectManagement />
+                                </ProtectedRoute>
+                              } />
                               <Route path="/manager/reports" element={
                                 <ProtectedRoute allowedRoles={['manager']}>
                                   <Reports />

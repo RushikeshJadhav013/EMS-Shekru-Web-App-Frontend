@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
@@ -36,6 +37,7 @@ interface Team {
   createdAt: Date;
   description: string;
   department: string;
+  status: 'todo' | 'in-progress' | 'overdue' | 'completed';
 }
 
 interface TeamMember {
@@ -99,7 +101,8 @@ export default function TeamManagement() {
       ],
       createdAt: new Date(2024, 0, 1),
       description: 'Main development team for Product A',
-      department: 'Engineering'
+      department: 'Engineering',
+      status: 'in-progress'
     }
   ]);
 
@@ -127,7 +130,9 @@ export default function TeamManagement() {
   const [newTeamData, setNewTeamData] = useState({
     name: '',
     description: '',
-    department: ''
+    department: '',
+    leadId: '',
+    status: 'todo' as 'todo' | 'in-progress' | 'overdue' | 'completed'
   });
 
   const [availableEmployees] = useState([
@@ -147,20 +152,23 @@ export default function TeamManagement() {
       return;
     }
 
+    const lead = availableEmployees.find(e => e.id === newTeamData.leadId);
+
     const newTeam: Team = {
       id: Date.now().toString(),
       name: newTeamData.name,
-      leadId: user?.id || '',
-      leadName: user?.name || '',
+      leadId: newTeamData.leadId || user?.id || '',
+      leadName: lead?.name || user?.name || '',
       members: [],
       createdAt: new Date(),
       description: newTeamData.description,
-      department: newTeamData.department
+      department: newTeamData.department,
+      status: newTeamData.status
     };
 
     setTeams([...teams, newTeam]);
     setIsCreateTeamOpen(false);
-    setNewTeamData({ name: '', description: '', department: '' });
+    setNewTeamData({ name: '', description: '', department: '', leadId: '', status: 'todo' });
     toast({
       title: 'Success',
       description: 'Team created successfully'
@@ -230,8 +238,8 @@ export default function TeamManagement() {
     }
   };
 
-  // Only Team Leads and Managers can access this module
-  if (!['team_lead', 'manager'].includes(user?.role || '')) {
+  // Only Admins, HR, Team Leads and Managers can access this module
+  if (!['admin', 'hr', 'team_lead', 'manager'].includes(user?.role || '')) {
     return (
       <div className="w-full">
         <Card>
@@ -252,7 +260,7 @@ export default function TeamManagement() {
     <div className="relative min-h-screen">
       {user?.role === 'manager' && <V2Overlay fallbackPath="/manager" />}
       <div className="w-full space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Team Management</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Shift Schedule</h1>
         {/* Team Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
@@ -305,14 +313,14 @@ export default function TeamManagement() {
 
         <Tabs defaultValue="teams" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="teams">My Teams</TabsTrigger>
+            <TabsTrigger value="teams">Shift Schedule</TabsTrigger>
             <TabsTrigger value="chat">Team Chat</TabsTrigger>
             <TabsTrigger value="updates">Work Updates</TabsTrigger>
           </TabsList>
 
           <TabsContent value="teams" className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Team Management</h2>
+              <h2 className="text-xl font-semibold">Shift Schedule</h2>
               <Dialog open={isCreateTeamOpen} onOpenChange={setIsCreateTeamOpen}>
                 <DialogTrigger asChild>
                   <Button>
@@ -342,6 +350,39 @@ export default function TeamManagement() {
                       />
                     </div>
                     <div>
+                      <Label>Team Lead</Label>
+                      <Select
+                        value={newTeamData.leadId}
+                        onValueChange={(val) => setNewTeamData({ ...newTeamData, leadId: val })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Team Lead" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableEmployees.map(emp => (
+                            <SelectItem key={emp.id} value={emp.id}>{emp.name} ({emp.role})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Status</Label>
+                      <Select
+                        value={newTeamData.status}
+                        onValueChange={(val: any) => setNewTeamData({ ...newTeamData, status: val })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todo">To Do</SelectItem>
+                          <SelectItem value="in-progress">In Progress</SelectItem>
+                          <SelectItem value="overdue">Overdue</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
                       <Label>Description</Label>
                       <Textarea
                         value={newTeamData.description}
@@ -366,8 +407,22 @@ export default function TeamManagement() {
                 <Card key={team.id}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{team.name}</CardTitle>
-                      <Badge>{team.department}</Badge>
+                      <div className="flex flex-col gap-1">
+                        <CardTitle className="text-lg">{team.name}</CardTitle>
+                        <p className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                          Lead: <span className="text-primary">{team.leadName}</span>
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <Badge variant="outline">{team.department}</Badge>
+                        <Badge className={`${team.status === 'completed' ? 'bg-green-100 text-green-700' :
+                          team.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                            team.status === 'in-progress' ? 'bg-blue-100 text-blue-700' :
+                              'bg-slate-100 text-slate-700'
+                          } border-0 capitalize text-[10px]`}>
+                          {team.status?.replace('-', ' ') || 'Pending'}
+                        </Badge>
+                      </div>
                     </div>
                     <p className="text-sm text-muted-foreground">{team.description}</p>
                   </CardHeader>

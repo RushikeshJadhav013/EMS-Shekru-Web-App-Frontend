@@ -10,7 +10,7 @@ var vite_config_default = defineConfig(({ mode }) => ({
     port: 8080,
     proxy: {
       "/api": {
-        target: "testing.staffly.space",
+        target: "testing.testing.staffly.space",
         changeOrigin: true,
         rewrite: (path2) => path2.replace(/^\/api/, ""),
         secure: false
