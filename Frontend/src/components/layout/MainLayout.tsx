@@ -51,7 +51,8 @@ import {
   UserPlus,
   MessageCircle,
   ChevronRight,
-  Banknote
+  Banknote,
+  FolderKanban,
 } from 'lucide-react';
 import { UserRole } from '@/types';
 import { Language } from '@/i18n/translations';
@@ -98,12 +99,14 @@ const MainLayout: React.FC = () => {
         { icon: Users, label: t.navigation.employees, path: '/admin/employees' },
         { icon: Briefcase, label: t.navigation.departments, path: '/admin/departments' },
         { icon: UserPlus, label: t.navigation.hiring, path: '/admin/hiring' },
+        { icon: FolderKanban, label: 'Projects', path: '/admin/projects' },
         { icon: BarChart3, label: t.navigation.reports, path: '/admin/reports' },
       ],
       hr: [
         ...commonItems,
         { icon: Users, label: t.navigation.employees, path: '/hr/employees' },
         { icon: UserPlus, label: t.navigation.hiring, path: '/hr/hiring' },
+        { icon: FolderKanban, label: 'Projects', path: '/hr/projects' },
         { icon: BarChart3, label: t.navigation.reports, path: '/hr/reports' },
       ],
       manager: [
@@ -430,8 +433,8 @@ const MainLayout: React.FC = () => {
         {/* Main Content */}
         <main
           className={`flex-1 min-w-0 w-full overflow-x-hidden transition-all duration-500 ${location.pathname.includes('/chat')
-              ? 'overflow-hidden'
-              : 'overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent'
+            ? 'overflow-hidden'
+            : 'overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent'
             }`}
         >
           <div

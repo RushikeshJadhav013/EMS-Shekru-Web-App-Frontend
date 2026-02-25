@@ -1681,7 +1681,69 @@ class ApiService {
       body: JSON.stringify({ increment_id: parseInt(incrementId) }),
     });
   }
+
+  // ─────────────────────────────────────────────
+  // Project Management APIs
+  // ─────────────────────────────────────────────
+
+  async getProjects(): Promise<any> {
+    return this.request('/projects/');
+  }
+
+  async getProject(projectId: number): Promise<any> {
+    return this.request(`/projects/${projectId}`);
+  }
+
+  async createProject(projectData: any): Promise<any> {
+    return this.request('/projects/', {
+      method: 'POST',
+      body: JSON.stringify(projectData),
+    });
+  }
+
+  async updateProject(projectId: number, projectData: any): Promise<any> {
+    return this.request(`/projects/${projectId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ project_id: projectId, ...projectData }),
+    });
+  }
+
+  async deleteProject(projectId: number): Promise<any> {
+    return this.request(`/projects/${projectId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ project_id: projectId }),
+    });
+  }
+
+  async addProjectMember(projectId: number, userId: number): Promise<any> {
+    return this.request(`/projects/${projectId}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ project_id: projectId, user_id: userId }),
+    });
+  }
+
+  async removeProjectMember(projectId: number, userId: number): Promise<any> {
+    return this.request(`/projects/${projectId}/members/${userId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ project_id: projectId, user_id: userId }),
+    });
+  }
+
+  async createProjectTask(projectId: number, taskData: any): Promise<any> {
+    return this.request(`/projects/${projectId}/tasks`, {
+      method: 'POST',
+      body: JSON.stringify({ project_id: projectId, ...taskData }),
+    });
+  }
+
+  async updateProjectTaskStatus(projectId: number, taskId: number, status: string): Promise<any> {
+    return this.request(`/projects/${projectId}/tasks/${taskId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ project_id: projectId, task_id: taskId, status }),
+    });
+  }
 }
+
 
 export const apiService = new ApiService(API_BASE_URL);
 export type { Employee, EmployeeData, LeaveRequestData, LeaveRequestResponse };

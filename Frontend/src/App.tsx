@@ -44,6 +44,7 @@ import AddEditSalary from "@/pages/salary/AddEditSalary";
 import SalaryDetails from "@/pages/salary/SalaryDetails";
 import AddIncrement from "@/pages/salary/AddIncrement";
 import { WFHProvider } from "@/contexts/WFHContext";
+import ProjectManagement from "@/pages/projects/ProjectManagement";
 
 const queryClient = new QueryClient();
 
@@ -157,6 +158,11 @@ const App = () => (
                                   <HiringManagement />
                                 </ProtectedRoute>
                               } />
+                              <Route path="/admin/projects" element={
+                                <ProtectedRoute allowedRoles={['admin']}>
+                                  <ProjectManagement />
+                                </ProtectedRoute>
+                              } />
                               <Route path="/admin/profile" element={
                                 <ProtectedRoute allowedRoles={['admin']}>
                                   <Profile />
@@ -233,6 +239,11 @@ const App = () => (
                               <Route path="/hr/hiring" element={
                                 <ProtectedRoute allowedRoles={['hr']}>
                                   <HiringManagement />
+                                </ProtectedRoute>
+                              } />
+                              <Route path="/hr/projects" element={
+                                <ProtectedRoute allowedRoles={['hr']}>
+                                  <ProjectManagement />
                                 </ProtectedRoute>
                               } />
                               <Route path="/hr/profile" element={
