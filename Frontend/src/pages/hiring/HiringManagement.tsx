@@ -168,6 +168,10 @@ export default function HiringManagement() {
     employment_type: 'full-time',
     salary_range: '',
     status: 'open',
+    posted_on_linkedin: false,
+    posted_on_naukri: false,
+    posted_on_indeed: false,
+    posted_on_other: false,
   });
 
   const [socialMediaData, setSocialMediaData] = useState({
@@ -878,6 +882,10 @@ export default function HiringManagement() {
       employment_type: 'full-time',
       salary_range: '',
       status: 'open',
+      posted_on_linkedin: false,
+      posted_on_naukri: false,
+      posted_on_indeed: false,
+      posted_on_other: false,
     });
   };
 
@@ -1059,6 +1067,10 @@ export default function HiringManagement() {
       employment_type: vacancy.employment_type,
       salary_range: vacancy.salary_range || '',
       status: vacancy.status,
+      posted_on_linkedin: vacancy.posted_on_linkedin ?? false,
+      posted_on_naukri: vacancy.posted_on_naukri ?? false,
+      posted_on_indeed: vacancy.posted_on_indeed ?? false,
+      posted_on_other: vacancy.posted_on_other ?? false,
     });
     setIsVacancyDialogOpen(true);
   };
@@ -2003,6 +2015,45 @@ export default function HiringManagement() {
                 </div>
               </div>
             </div>
+
+            {/* Social Media */}
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 p-4 sm:p-5 space-y-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  📢 Post on Social Media
+                </p>
+                <p className="text-[12px] text-muted-foreground">
+                  Select platforms where you want this vacancy to be posted.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {([
+                  { key: 'posted_on_linkedin' as const, label: 'LinkedIn', icon: <Linkedin className="h-4 w-4 text-blue-600" /> },
+                  { key: 'posted_on_naukri' as const, label: 'Naukri', icon: <FileText className="h-4 w-4 text-green-600" /> },
+                  { key: 'posted_on_indeed' as const, label: 'Indeed', icon: <FileText className="h-4 w-4 text-blue-500" /> },
+                  { key: 'posted_on_other' as const, label: 'Other', icon: <Share2 className="h-4 w-4 text-purple-600" /> },
+                ] as const).map(({ key, label, icon }) => (
+                  <label
+                    key={key}
+                    htmlFor={key}
+                    className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-colors ${vacancyFormData[key]
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40'
+                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900'
+                      }`}
+                  >
+                    <Checkbox
+                      id={key}
+                      checked={vacancyFormData[key]}
+                      onCheckedChange={(checked) =>
+                        setVacancyFormData({ ...vacancyFormData, [key]: !!checked })
+                      }
+                    />
+                    {icon}
+                    <span className="text-sm font-medium">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
@@ -2168,7 +2219,7 @@ export default function HiringManagement() {
                       links: { ...socialMediaData.links, linkedin: e.target.value },
                     })
                   }
-                  className="ml-6"
+                  className="ml-6 w-[calc(100%-1.5rem)]"
                 />
               )}
 
@@ -2206,7 +2257,7 @@ export default function HiringManagement() {
                       links: { ...socialMediaData.links, naukri: e.target.value },
                     })
                   }
-                  className="ml-6"
+                  className="ml-6 w-[calc(100%-1.5rem)]"
                 />
               )}
 
@@ -2244,7 +2295,7 @@ export default function HiringManagement() {
                       links: { ...socialMediaData.links, indeed: e.target.value },
                     })
                   }
-                  className="ml-6"
+                  className="ml-6 w-[calc(100%-1.5rem)]"
                 />
               )}
 
@@ -2282,7 +2333,7 @@ export default function HiringManagement() {
                       links: { ...socialMediaData.links, other: e.target.value },
                     })
                   }
-                  className="ml-6"
+                  className="ml-6 w-[calc(100%-1.5rem)]"
                 />
               )}
             </div>

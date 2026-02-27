@@ -125,13 +125,20 @@ class ApiService {
   private async request(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseURL}${endpoint}`;
 
+    const headers: Record<string, string> = {
+      ...this.getAuthHeader(),
+      ...(options.headers as Record<string, string>),
+    };
+
+    // Only set Content-Type to application/json if it's not already set
+    // and the body is NOT FormData
+    if (!(options.body instanceof FormData) && !headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
+
     const config: RequestInit = {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...this.getAuthHeader(),
-        ...options.headers,
-      },
+      headers,
     };
 
     try {
@@ -1057,6 +1064,29 @@ class ApiService {
     return this.download(`/reports/leave?${query.toString()}`);
   }
 
+  async exportTaskManagementReport(params: {
+    department?: string;
+    period_type?: string;
+    month?: number;
+    quarter?: number;
+    year?: number;
+    start_date?: string;
+    end_date?: string;
+    status?: string;
+  }): Promise<Blob> {
+    const query = new URLSearchParams();
+    if (params.department && params.department !== 'all') query.append('department', params.department);
+    if (params.period_type) query.append('period_type', params.period_type);
+    if (params.month) query.append('month', params.month.toString());
+    if (params.quarter) query.append('quarter', params.quarter.toString());
+    if (params.year) query.append('year', params.year.toString());
+    if (params.start_date) query.append('start_date', params.start_date);
+    if (params.end_date) query.append('end_date', params.end_date);
+    if (params.status) query.append('status', params.status);
+
+    return this.download(`/reports/task-management?${query.toString()}`);
+  }
+
   // Task Comments
   async getTaskComments(taskId: number) {
     return this.request(`/tasks/${taskId}/comments`);
@@ -1706,25 +1736,33 @@ class ApiService {
   }
 
   // Meeting Management APIs
-  async getMeetings(params?: { type?: string; team_id?: number; project_id?: number }): Promise<any> {
+  async getMeetings(params?: {
+    type?: string;
+    team_id?: number;
+    project_id?: number;
+    as_creator?: 'all' | 'true' | 'false';
+  }): Promise<any> {
     const query = new URLSearchParams();
     if (params?.type) query.append('type', params.type);
     if (params?.team_id) query.append('team_id', params.team_id.toString());
     if (params?.project_id) query.append('project_id', params.project_id.toString());
+    if (params?.as_creator) query.append('as_creator', params.as_creator);
     const queryString = query.toString() ? `?${query.toString()}` : '';
 
     return this.request(`/meetings/${queryString}`);
   }
 
+  async getMeeting(meetingId: number): Promise<any> {
+    return this.request(`/meetings/${meetingId}`);
+  }
+
   async createMeeting(meetingData: {
     title: string;
     description?: string;
-    meeting_link: string;
-    scheduled_at: string;
-    duration_minutes?: number;
-    type: 'company' | 'team' | 'project';
-    team_id?: number;
-    project_id?: number;
+    start_time: string;
+    end_time: string;
+    meeting_url: string;
+    participant_ids?: number[];
   }): Promise<any> {
     return this.request('/meetings/', {
       method: 'POST',
@@ -1732,7 +1770,64 @@ class ApiService {
     });
   }
 
-  async updateMeeting(meetingId: number, meetingData: any): Promise<any> {
+  async createProjectMeeting(projectId: number, meetingData: {
+    title: string;
+    description: string;
+    start_time: string;
+    end_time: string;
+    meeting_url: string;
+    participant_ids?: number[];
+  }): Promise<any> {
+    return this.request(`/projects/${projectId}/meetings/`, {
+      method: 'POST',
+      body: JSON.stringify(meetingData),
+    });
+  }
+
+  async getProjectMeetings(projectId: number): Promise<any[]> {
+    return this.request(`/projects/${projectId}/meetings/`);
+  }
+
+  async getProjectInvitedMeetings(projectId: number): Promise<any[]> {
+    return this.request(`/projects/${projectId}/meetings/invited`);
+  }
+
+  async getProjectMeeting(projectId: number, meetingId: number): Promise<any> {
+    return this.request(`/projects/${projectId}/meetings/${meetingId}`);
+  }
+
+  async updateProjectMeeting(projectId: number, meetingId: number, meetingData: {
+    title: string;
+    description?: string;
+    start_time: string;
+    end_time: string;
+    meeting_url: string;
+    participant_ids?: number[];
+  }): Promise<any> {
+    return this.request(`/projects/${projectId}/meetings/${meetingId}`, {
+      method: 'PUT',
+      body: JSON.stringify(meetingData),
+    });
+  }
+
+  async getProjectMeetingParticipants(projectId: number, meetingId: number): Promise<any[]> {
+    return this.request(`/projects/${projectId}/meetings/${meetingId}/participants`);
+  }
+
+  async deleteProjectMeeting(projectId: number, meetingId: number): Promise<any> {
+    return this.request(`/projects/${projectId}/meetings/${meetingId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async updateMeeting(meetingId: number, meetingData: {
+    title: string;
+    description?: string;
+    start_time: string;
+    end_time: string;
+    meeting_url: string;
+    participant_ids?: number[];
+  }): Promise<any> {
     return this.request(`/meetings/${meetingId}`, {
       method: 'PUT',
       body: JSON.stringify(meetingData),
@@ -1744,8 +1839,20 @@ class ApiService {
       method: 'DELETE',
     });
   }
-}
 
+  async addMeetingParticipants(meetingId: number, userIds: number[]): Promise<any[]> {
+    return this.request(`/meetings/${meetingId}/participants`, {
+      method: 'POST',
+      body: JSON.stringify({ user_ids: userIds }),
+    });
+  }
+
+  async removeMeetingParticipant(meetingId: number, userId: number): Promise<any> {
+    return this.request(`/meetings/${meetingId}/participants/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+}
 
 export const apiService = new ApiService(API_BASE_URL);
 export type { Employee, EmployeeData, LeaveRequestData, LeaveRequestResponse };

@@ -860,9 +860,9 @@ export default function EmployeeManagement() {
         designation: formData.designation,
         phone: formData.phone ? (formData.countryCode === '+91' ? formData.phone.replace(/[^0-9]/g, '') : `${formData.countryCode}-${formData.phone.replace(/[^0-9]/g, '')}`) : '',
         address: fullAddress,
-        role: normalizeRole(formData.role || 'employee'),
+        role: getInternalRole(formData.role || 'employee'),
         gender: formData.gender,
-        resignation_date: formData.resignationDate || null,
+        resignation_date: formData.resignationDate || undefined,
         pan_card: formData.panCard,
         aadhar_card: formData.aadharCard,
         shift_type: formData.shift,
@@ -1023,7 +1023,7 @@ export default function EmployeeManagement() {
         designation: formData.designation,
         phone: formData.phone ? (formData.countryCode === '+91' ? formData.phone.replace(/[^0-9]/g, '') : `${formData.countryCode}-${formData.phone.replace(/[^0-9]/g, '')}`) : '',
         address: fullAddress,
-        role: normalizeRole(formData.role || 'employee'),
+        role: getInternalRole(formData.role || 'employee'),
         gender: formData.gender,
         resignation_date: formData.resignationDate || undefined,
         pan_card: formData.panCard,
@@ -1320,7 +1320,7 @@ export default function EmployeeManagement() {
       const email = (data.email || '').trim();
       const emailKey = email.toLowerCase();
       const department = (data.department || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
-      const role = normalizeRole(data.role);
+      const role = getInternalRole(data.role);
       const designation = (data.designation || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       const address = (data.address || '').trim();
       const joiningDate = data.joiningdate || '';

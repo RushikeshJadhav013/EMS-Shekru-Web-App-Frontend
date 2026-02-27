@@ -49,13 +49,16 @@ interface Meeting {
     id: number;
     title: string;
     description: string;
-    meeting_link: string;
-    scheduled_at: string;
-    duration_minutes: number;
-    type: 'company' | 'team' | 'project';
-    team_id?: number;
-    project_id?: number;
-    creator_name: string;
+    start_time: string;
+    end_time: string;
+    meeting_url: string;
+    created_by_name: string;
+    participants?: {
+        id: number;
+        user_id: number;
+        user_name: string;
+    }[];
+    type?: 'company' | 'team' | 'project';
     team_name?: string;
     project_name?: string;
 }
@@ -76,9 +79,10 @@ const MeetingsPage: React.FC = () => {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
-        meeting_link: '',
-        scheduled_at: '',
-        duration_minutes: 30,
+        meeting_url: '',
+        start_time: '',
+        end_time: '',
+        participant_ids: [] as number[],
         type: 'company' as 'company' | 'team' | 'project',
         team_id: undefined as number | undefined,
         project_id: undefined as number | undefined,
@@ -98,33 +102,33 @@ const MeetingsPage: React.FC = () => {
                         id: 1,
                         title: 'Weekly Sync-up',
                         description: 'Regular weekly sync to discuss progress and blockers.',
-                        meeting_link: 'https://meet.google.com/abc-defg-hij',
-                        scheduled_at: new Date(Date.now() + 3600000).toISOString(),
-                        duration_minutes: 45,
+                        meeting_url: 'https://meet.google.com/abc-defg-hij',
+                        start_time: new Date(Date.now() + 3600000).toISOString(),
+                        end_time: new Date(Date.now() + 7200000).toISOString(),
                         type: 'team',
                         team_name: 'Engineering',
-                        creator_name: 'Darshan Patil'
+                        created_by_name: 'Darshan Patil'
                     },
                     {
                         id: 2,
                         title: 'Project Alpha Kickoff',
                         description: 'Initial discussion for the new Project Alpha architecture.',
-                        meeting_link: 'https://zoom.us/j/123456789',
-                        scheduled_at: new Date(Date.now() + 86400000).toISOString(),
-                        duration_minutes: 60,
+                        meeting_url: 'https://zoom.us/j/123456789',
+                        start_time: new Date(Date.now() + 86400000).toISOString(),
+                        end_time: new Date(Date.now() + 90000000).toISOString(),
                         type: 'project',
                         project_name: 'Staffly System',
-                        creator_name: 'Abhijit Gujar'
+                        created_by_name: 'Abhijit Gujar'
                     },
                     {
                         id: 3,
                         title: 'Company Town Hall',
                         description: 'Monthly company-wide updates and Q&A session.',
-                        meeting_link: 'https://teams.microsoft.com/l/meetup-join/xyz',
-                        scheduled_at: new Date(Date.now() + 172800000).toISOString(),
-                        duration_minutes: 90,
+                        meeting_url: 'https://teams.microsoft.com/l/meetup-join/xyz',
+                        start_time: new Date(Date.now() + 172800000).toISOString(),
+                        end_time: new Date(Date.now() + 176400000).toISOString(),
                         type: 'company',
-                        creator_name: 'HR Team'
+                        created_by_name: 'HR Team'
                     }
                 ]);
             }
@@ -148,7 +152,7 @@ const MeetingsPage: React.FC = () => {
     }, []);
 
     const handleCreateMeeting = async () => {
-        if (!formData.title || !formData.meeting_link || !formData.scheduled_at) {
+        if (!formData.title || !formData.meeting_url || !formData.start_time || !formData.end_time) {
             toast({
                 title: "Missing Fields",
                 description: "Please fill in all required fields.",
@@ -158,7 +162,25 @@ const MeetingsPage: React.FC = () => {
         }
 
         try {
-            await apiService.createMeeting(formData);
+            if (formData.type === 'project' && formData.project_id) {
+                await apiService.createProjectMeeting(formData.project_id, {
+                    title: formData.title,
+                    description: formData.description,
+                    start_time: formData.start_time,
+                    end_time: formData.end_time,
+                    meeting_url: formData.meeting_url,
+                    participant_ids: formData.participant_ids
+                });
+            } else {
+                await apiService.createMeeting({
+                    title: formData.title,
+                    description: formData.description,
+                    start_time: formData.start_time,
+                    end_time: formData.end_time,
+                    meeting_url: formData.meeting_url,
+                    participant_ids: formData.participant_ids
+                });
+            }
             toast({
                 title: "Success",
                 description: "Meeting scheduled successfully.",
@@ -244,12 +266,21 @@ const MeetingsPage: React.FC = () => {
                                             </Select>
                                         </div>
                                         <div className="grid gap-2">
-                                            <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Scheduled At</Label>
+                                            <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Start Time</Label>
                                             <Input
                                                 type="datetime-local"
                                                 className="rounded-xl"
-                                                value={formData.scheduled_at}
-                                                onChange={e => setFormData({ ...formData, scheduled_at: e.target.value })}
+                                                value={formData.start_time}
+                                                onChange={e => setFormData({ ...formData, start_time: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">End Time</Label>
+                                            <Input
+                                                type="datetime-local"
+                                                className="rounded-xl"
+                                                value={formData.end_time}
+                                                onChange={e => setFormData({ ...formData, end_time: e.target.value })}
                                             />
                                         </div>
                                     </div>
@@ -297,8 +328,8 @@ const MeetingsPage: React.FC = () => {
                                         <Input
                                             placeholder="https://meet.google.com/..."
                                             className="rounded-xl"
-                                            value={formData.meeting_link}
-                                            onChange={e => setFormData({ ...formData, meeting_link: e.target.value })}
+                                            value={formData.meeting_url}
+                                            onChange={e => setFormData({ ...formData, meeting_url: e.target.value })}
                                         />
                                     </div>
 
@@ -382,8 +413,8 @@ const MeetingsPage: React.FC = () => {
                                 <Card key={meeting.id} className="group relative border-none shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 dark:hover:shadow-blue-900/10 transition-all duration-500 border-t-4 border-blue-500">
                                     <CardHeader className="p-8 pb-4">
                                         <div className="flex justify-between items-start mb-4">
-                                            <Badge className={`rounded-full px-4 py-1.5 font-black text-[9px] uppercase tracking-widest border-none ${getBadgeColor(meeting.type)}`}>
-                                                {meeting.type} Sync
+                                            <Badge className={`rounded-full px-4 py-1.5 font-black text-[9px] uppercase tracking-widest border-none ${getBadgeColor(meeting.type || 'company')}`}>
+                                                {(meeting.type || 'Sync')}
                                             </Badge>
                                             <div className="h-10 w-10 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                                                 <MoreVertical className="h-4 w-4" />
@@ -401,11 +432,11 @@ const MeetingsPage: React.FC = () => {
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
                                                 <Calendar className="h-4 w-4 text-blue-500" />
-                                                <span className="text-xs font-bold">{meeting.scheduled_at && isValid(new Date(meeting.scheduled_at)) ? format(new Date(meeting.scheduled_at), 'EEEE, MMM do') : 'TBD'}</span>
+                                                <span className="text-xs font-bold">{meeting.start_time && isValid(new Date(meeting.start_time)) ? format(new Date(meeting.start_time), 'EEEE, MMM do') : 'TBD'}</span>
                                             </div>
                                             <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
                                                 <Clock className="h-4 w-4 text-blue-500" />
-                                                <span className="text-xs font-bold">{meeting.scheduled_at && isValid(new Date(meeting.scheduled_at)) ? format(new Date(meeting.scheduled_at), 'hh:mm a') : '--:--'} • {meeting.duration_minutes}m</span>
+                                                <span className="text-xs font-bold">{meeting.start_time && isValid(new Date(meeting.start_time)) ? format(new Date(meeting.start_time), 'hh:mm a') : '--:--'} - {meeting.end_time && isValid(new Date(meeting.end_time)) ? format(new Date(meeting.end_time), 'hh:mm a') : '--:--'}</span>
                                             </div>
                                             {meeting.project_name && (
                                                 <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
@@ -437,7 +468,7 @@ const MeetingsPage: React.FC = () => {
                                                 asChild
                                                 className="rounded-full bg-slate-900 hover:bg-slate-800 text-white font-black text-[10px] uppercase tracking-widest px-6 h-10 transition-all duration-300 transform hover:scale-105"
                                             >
-                                                <a href={meeting.meeting_link} target="_blank" rel="noopener noreferrer">
+                                                <a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer">
                                                     Join Link
                                                     <ExternalLink className="ml-2 h-3 w-3" />
                                                 </a>
