@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.testing.staffly.space';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 interface EmployeeData {
   name: string;
@@ -114,17 +114,22 @@ class ApiService {
     this.baseURL = baseURL;
   }
 
+  private getAuthHeader() {
+    let token = localStorage.getItem('token');
+    if (token && !token.startsWith('Bearer ')) {
+      token = `Bearer ${token}`;
+    }
+    return token ? { 'Authorization': token } : {};
+  }
+
   private async request(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseURL}${endpoint}`;
-
-    // Get auth token from localStorage
-    const token = localStorage.getItem('token');
 
     const config: RequestInit = {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}), // ✅ Add auth token
+        ...this.getAuthHeader(),
         ...options.headers,
       },
     };
@@ -156,29 +161,14 @@ class ApiService {
         }
 
         if (response.status === 401) {
-          // Token is invalid or expired - clear auth data and redirect to login
-          console.error('Authentication failed - token invalid or expired');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          localStorage.removeItem('userId');
-          // Redirect to login page
-          if (window.location.pathname !== '/login') {
-            window.location.href = '/login';
-          }
-          throw new Error(errorMessage || 'Invalid or expired token - please log in again');
+          // Just log and throw — never auto-redirect from an API call.
+          // Route guards in AuthContext handle session expiry redirects.
+          console.warn('API returned 401:', errorMessage);
+          throw new Error(errorMessage || 'Unauthorized');
         }
         if (response.status === 403) {
-          // Check if it's an authentication issue
-          if (errorMessage && errorMessage.toLowerCase().includes('not authenticated')) {
-            console.error('Authentication required but token missing or invalid');
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            localStorage.removeItem('userId');
-            if (window.location.pathname !== '/login') {
-              window.location.href = '/login';
-            }
-            throw new Error('Not authenticated - please log in again');
-          }
+          // Just throw — do not redirect.
+          console.warn('API returned 403:', errorMessage);
           throw new Error(errorMessage || 'Access denied');
         }
         throw new Error(errorMessage);
@@ -236,10 +226,55 @@ class ApiService {
     }
   }
 
-  // Get all employees
-  async getEmployees() {
-    const data = await this.request('/employees/');
+  private async download(endpoint: string, options: RequestInit = {}): Promise<Blob> {
+    const url = `${this.baseURL}${endpoint}`;
+
+    const config: RequestInit = {
+      ...options,
+      headers: {
+        ...this.getAuthHeader(),
+        ...options.headers,
+      },
+    };
+
+    try {
+      const response = await fetch(url, config);
+
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.message || errorMessage;
+        } catch {
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.blob();
+    } catch (error: any) {
+      if (error instanceof TypeError && (error.message.includes('fetch') || error.message.includes('NetworkError'))) {
+        throw new Error(`Cannot connect to backend server at ${this.baseURL}.`);
+      }
+      throw error;
+    }
+  }
+
+  // Get employees with optional department filter
+  async getEmployees(department?: string) {
+    const query = department && department !== 'all' ? `?department=${department}` : '';
+    const data = await this.request(`/employees/${query}`);
     return Array.isArray(data) ? data : (data?.employees || []);
+  }
+
+  // Alias for getEmployees to satisfy various component imports
+  async getAllEmployees() {
+    return this.getEmployees();
+  }
+
+  // Backwards compatibility for exact department filter
+  async getEmployeesByDepartment(department: string) {
+    return this.getEmployees(department);
   }
 
   // Get employee by ID
@@ -378,29 +413,17 @@ class ApiService {
       }
     });
 
-    const token = localStorage.getItem('token');
-
-    const response = await fetch(`${this.baseURL}/employees/register/`, {
+    const response = await this.request('/employees/register/', {
       method: 'POST',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
       body: formData,
+      // No standard 'Content-Type' header here, FormData handles it
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
+    return response;
   }
 
   // Update an employee - Updated to use user_id instead of employee_id
   async updateEmployee(userId: string, employeeData: Partial<EmployeeData>): Promise<Employee> {
-    // Get auth token from localStorage
-    const token = localStorage.getItem('token');
-
     // Backend expects FormData, so always use FormData
     const formData = new FormData();
 
@@ -421,85 +444,35 @@ class ApiService {
       }
     });
 
-    const headers: Record<string, string> = {
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-    };
-    // Don't set Content-Type for FormData - browser will set it with boundary
-
-    const response = await fetch(`${this.baseURL}/employees/${userId}`, {
+    const response = await this.request(`/employees/${userId}`, {
       method: 'PUT',
-      headers,
       body: formData,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const detail = typeof errorData.detail === 'object' ? JSON.stringify(errorData.detail) : errorData.detail;
-      throw new Error(detail || `HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
+    return response;
   }
 
   // Delete an employee
   async deleteEmployee(userId: string): Promise<void> {
-    // Get auth token from localStorage
-    const token = localStorage.getItem('token');
-
-    const response = await fetch(`${this.baseURL}/employees/${userId}`, {
+    await this.request(`/employees/${userId}`, {
       method: 'DELETE',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
     });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const detail = typeof errorData.detail === 'object' ? JSON.stringify(errorData.detail) : errorData.detail;
-      throw new Error(detail || `HTTP error! status: ${response.status}`);
-    }
   }
 
   // Update employee status (activate/deactivate)
   async updateEmployeeStatus(userId: string, isActive: boolean): Promise<Employee> {
-    const token = localStorage.getItem('token');
-
-    const response = await fetch(`${this.baseURL}/employees/${userId}/status`, {
+    return this.request(`/employees/${userId}/status`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
       body: JSON.stringify({ is_active: isActive }),
     });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
   }
 
   // Update employee role
   async updateEmployeeRole(userId: string, role: string): Promise<Employee> {
-    const token = localStorage.getItem('token');
-
-    const response = await fetch(`${this.baseURL}/employees/${userId}/role`, {
+    return this.request(`/employees/${userId}/role`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
       body: JSON.stringify({ role }),
     });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
   }
 
   // Submit a leave request (Matches SR.NO 4)
@@ -632,7 +605,6 @@ class ApiService {
     department?: string;
     role?: string;
   }): Promise<Blob> {
-    const token = localStorage.getItem('token');
     const params = new URLSearchParams();
     if (filters) {
       if (filters.status && filters.status !== 'all') params.append('status', filters.status);
@@ -642,19 +614,7 @@ class ApiService {
     }
     const queryString = params.toString() ? `?${params.toString()}` : '';
 
-    const response = await fetch(`${this.baseURL}/employees/export/csv${queryString}`, {
-      method: 'GET',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-    }
-
-    return await response.blob();
+    return this.download(`/employees/export/csv${queryString}`);
   }
 
   // Export employees as PDF
@@ -664,7 +624,6 @@ class ApiService {
     department?: string;
     role?: string;
   }): Promise<Blob> {
-    const token = localStorage.getItem('token');
     const params = new URLSearchParams();
     if (filters) {
       if (filters.status && filters.status !== 'all') params.append('status', filters.status);
@@ -674,19 +633,7 @@ class ApiService {
     }
     const queryString = params.toString() ? `?${params.toString()}` : '';
 
-    const response = await fetch(`${this.baseURL}/employees/export/pdf${queryString}`, {
-      method: 'GET',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-    }
-
-    return await response.blob();
+    return this.download(`/employees/export/pdf${queryString}`);
   }
 
   // Hiring Management APIs (Matches SR.NO 1-6)
@@ -747,7 +694,6 @@ class ApiService {
   }
 
   async createCandidate(candidateData: any, resumeFile?: File) {
-    const token = localStorage.getItem('token');
     const formData = new FormData();
 
     Object.entries(candidateData).forEach(([key, value]) => {
@@ -763,7 +709,7 @@ class ApiService {
     const response = await fetch(`${this.baseURL}/hiring/candidates`, {
       method: 'POST',
       headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...this.getAuthHeader(),
       },
       body: formData,
     });
@@ -820,7 +766,6 @@ class ApiService {
   }
 
   async updateCandidateResume(candidateId: number, resumeFile?: File, resumeUrl?: string) {
-    const token = localStorage.getItem('token');
     const formData = new FormData();
 
     formData.append('candidate_id', String(candidateId));
@@ -834,7 +779,7 @@ class ApiService {
     const response = await fetch(`${this.baseURL}/hiring/candidates/${candidateId}/resume`, {
       method: 'PUT',
       headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...this.getAuthHeader(),
       },
       body: formData,
     });
@@ -848,31 +793,47 @@ class ApiService {
   }
 
   async getCandidateResume(candidateId: number) {
+    // Returns { resume_url: "..." } if it's an external link
     return this.request(`/hiring/candidates/${candidateId}/resume`);
   }
 
+  async downloadCandidateResume(candidateId: number): Promise<Blob> {
+    // Returns the file blob if it's a stored file
+    return this.download(`/hiring/candidates/${candidateId}/resume`);
+  }
+
   // Interview Management APIs
-  async getInterviews(candidateId?: number, vacancyId?: number) {
-    const params = new URLSearchParams();
-    if (candidateId) params.append('candidate_id', candidateId.toString());
-    if (vacancyId) params.append('vacancy_id', vacancyId.toString());
-    const query = params.toString();
-    return this.request(`/hiring/interviews${query ? `?${query}` : ''}`);
+  async getInterviews(params?: {
+    candidate_id?: number;
+    vacancy_id?: number;
+    status_filter?: string;
+    from_date?: string;
+    to_date?: string;
+  }) {
+    const query = new URLSearchParams();
+    if (params?.candidate_id) query.append('candidate_id', params.candidate_id.toString());
+    if (params?.vacancy_id) query.append('vacancy_id', params.vacancy_id.toString());
+    if (params?.status_filter) query.append('status_filter', params.status_filter);
+    if (params?.from_date) query.append('from_date', params.from_date);
+    if (params?.to_date) query.append('to_date', params.to_date);
+
+    const queryString = query.toString();
+    return this.request(`/interviews/${queryString ? `?${queryString}` : ''}`);
   }
 
   async getInterview(interviewId: number) {
-    return this.request(`/hiring/interviews/${interviewId}`);
+    return this.request(`/interviews/${interviewId}`);
   }
 
   async createInterview(interviewData: any) {
-    return this.request('/hiring/interviews', {
+    return this.request('/interviews/', {
       method: 'POST',
       body: JSON.stringify(interviewData),
     });
   }
 
   async updateInterview(interviewId: number, interviewData: any) {
-    return this.request(`/hiring/interviews/${interviewId}`, {
+    return this.request(`/interviews/${interviewId}`, {
       method: 'PUT',
       body: JSON.stringify({
         interview_id: interviewId,
@@ -882,14 +843,14 @@ class ApiService {
   }
 
   async deleteInterview(interviewId: number) {
-    return this.request(`/hiring/interviews/${interviewId}`, {
+    return this.request(`/interviews/${interviewId}`, {
       method: 'DELETE',
       body: JSON.stringify({ interview_id: interviewId }),
     });
   }
 
   async updateInterviewStatus(interviewId: number, status: string) {
-    return this.request(`/hiring/interviews/${interviewId}/status`, {
+    return this.request(`/interviews/${interviewId}/status`, {
       method: 'PUT',
       body: JSON.stringify({
         interview_id: interviewId,
@@ -900,11 +861,11 @@ class ApiService {
 
   // Interview Feedback APIs
   async getInterviewFeedback(interviewId: number) {
-    return this.request(`/hiring/interviews/${interviewId}/feedback`);
+    return this.request(`/interviews/${interviewId}/feedback`);
   }
 
   async createInterviewFeedback(interviewId: number, feedbackData: any) {
-    return this.request(`/hiring/interviews/${interviewId}/feedback`, {
+    return this.request(`/interviews/${interviewId}/feedback`, {
       method: 'POST',
       body: JSON.stringify({
         interview_id: interviewId,
@@ -989,13 +950,6 @@ class ApiService {
     if (endDate) params.append('end_date', endDate);
     const query = params.toString();
 
-    // Debug authentication for shift schedule
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.error('No authentication token found for shift schedule request');
-      throw new Error('Not authenticated - please log in again');
-    }
-
     return this.request(`/shift/schedule/my${query ? `?${query}` : ''}`);
   }
 
@@ -1069,13 +1023,46 @@ class ApiService {
     return this.request('/reports/departments');
   }
 
+  async exportPerformanceReport(params: {
+    format: 'pdf' | 'csv';
+    start_date: string;
+    end_date: string;
+    employee_id?: string;
+    department?: string;
+  }) {
+    const query = new URLSearchParams({
+      format: params.format,
+      start_date: params.start_date,
+      end_date: params.end_date,
+      ...(params.employee_id && { employee_id: params.employee_id }),
+      ...(params.department && params.department !== 'all' && { department: params.department }),
+    });
+
+    return this.download(`/reports/export?${query.toString()}`);
+  }
+
+  async exportLeaveReport(params: {
+    format: 'pdf' | 'csv';
+    start_date?: string;
+    end_date?: string;
+    department?: string;
+  }) {
+    const query = new URLSearchParams({
+      format: params.format,
+      ...(params.start_date && { start_date: params.start_date }),
+      ...(params.end_date && { end_date: params.end_date }),
+      ...(params.department && params.department !== 'all' && { department: params.department }),
+    });
+
+    return this.download(`/reports/leave?${query.toString()}`);
+  }
+
   // Task Comments
   async getTaskComments(taskId: number) {
     return this.request(`/tasks/${taskId}/comments`);
   }
 
   async addTaskComment(taskId: number, comment?: string, file?: File) {
-    const token = localStorage.getItem('token');
     const formData = new FormData();
 
     if (comment) {
@@ -1088,7 +1075,7 @@ class ApiService {
     const response = await fetch(`${this.baseURL}/tasks/${taskId}/comments`, {
       method: 'POST',
       headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...this.getAuthHeader(),
       },
       body: formData,
     });
@@ -1238,20 +1225,7 @@ class ApiService {
     if (params.start_date) queryParams.append('start_date', params.start_date);
     if (params.end_date) queryParams.append('end_date', params.end_date);
 
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/attendance/download/csv?${queryParams.toString()}`, {
-      method: 'GET',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-    }
-
-    return await response.blob();
+    return this.download(`/attendance/download/csv?${queryParams.toString()}`);
   }
 
   // Export attendance as PDF
@@ -1267,20 +1241,7 @@ class ApiService {
     if (params.start_date) queryParams.append('start_date', params.start_date);
     if (params.end_date) queryParams.append('end_date', params.end_date);
 
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/attendance/download/pdf?${queryParams.toString()}`, {
-      method: 'GET',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-    }
-
-    return await response.blob();
+    return this.download(`/attendance/download/pdf?${queryParams.toString()}`);
   }
 
   // Export Monthly Attendance Grid as PDF
@@ -1296,20 +1257,7 @@ class ApiService {
       queryParams.append('department', params.department);
     }
 
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/attendance/report/monthly-grid/download/pdf?${queryParams.toString()}`, {
-      method: 'GET',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-    }
-
-    return await response.blob();
+    return this.download(`/attendance/report/monthly-grid/download/pdf?${queryParams.toString()}`);
   }
 
   // Export Monthly Attendance Grid as CSV
@@ -1325,20 +1273,7 @@ class ApiService {
       queryParams.append('department', params.department);
     }
 
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/attendance/report/monthly-grid/download/csv?${queryParams.toString()}`, {
-      method: 'GET',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-    }
-
-    return await response.blob();
+    return this.download(`/attendance/report/monthly-grid/download/csv?${queryParams.toString()}`);
   }
 
 
@@ -1356,20 +1291,7 @@ class ApiService {
       queryParams.append('department', params.department);
     }
 
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/attendance/report/monthly-detailed-grid/download/pdf?${queryParams.toString()}`, {
-      method: 'GET',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-    }
-
-    return await response.blob();
+    return this.download(`/attendance/report/monthly-detailed-grid/download/pdf?${queryParams.toString()}`);
   }
 
   // Export Monthly Attendance Detailed Grid as CSV
@@ -1385,20 +1307,7 @@ class ApiService {
       queryParams.append('department', params.department);
     }
 
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/attendance/report/monthly-grid-detailed/download/csv?${queryParams.toString()}`, {
-      method: 'GET',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-    }
-
-    return await response.blob();
+    return this.download(`/attendance/report/monthly-grid-detailed/download/csv?${queryParams.toString()}`);
   }
 
   // Holiday Management APIs
@@ -1638,19 +1547,7 @@ class ApiService {
 
   // 6. Salary Slips
   async downloadSalarySlip(userId: string, month: number, year: number): Promise<Blob> {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/salary/slip/download/${userId}?month=${month}&year=${year}`, {
-      method: 'GET',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-    }
-    return await response.blob();
+    return this.download(`/salary/slip/download/${userId}?month=${month}&year=${year}`);
   }
 
   async sendSalarySlip(userId: string, month: number, year: number): Promise<any> {
@@ -1669,18 +1566,7 @@ class ApiService {
 
   // 7. Annexure & Offer Letter
   async downloadAnnexure(userId: string): Promise<Blob> {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/salary/annexure/download/${userId}`, {
-      method: 'GET',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Failed to download annexure`);
-    }
-    return await response.blob();
+    return this.download(`/salary/annexure/download/${userId}`);
   }
 
   async sendAnnexureEmail(userId: string): Promise<any> {
@@ -1691,7 +1577,6 @@ class ApiService {
   }
 
   async downloadOfferLetter(userId: string, params?: { letter_date?: string; joining_date?: string }): Promise<Blob> {
-    const token = localStorage.getItem('token');
     const queryParams = new URLSearchParams();
     if (params?.letter_date) {
       queryParams.append('letter_date', params.letter_date);
@@ -1700,19 +1585,7 @@ class ApiService {
       queryParams.append('joining_date', params.joining_date);
     }
     const queryString = queryParams.toString();
-    const url = `${this.baseURL}/salary/offer-letter/download/${userId}${queryString ? `?${queryString}` : ''}`;
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Failed to download offer letter`);
-    }
-    return await response.blob();
+    return this.download(`/salary/offer-letter/download/${userId}${queryString ? `?${queryString}` : ''}`);
   }
 
   // 8. Increment (Create salary increment record admin and hr only)
@@ -1740,18 +1613,7 @@ class ApiService {
   }
 
   async downloadIncrementLetter(incrementId: string): Promise<Blob> {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/salary/increment-letter/download/${incrementId}`, {
-      method: 'GET',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Failed to download increment letter`);
-    }
-    return await response.blob();
+    return this.download(`/salary/increment-letter/download/${incrementId}`);
   }
 
   async sendIncrementLetter(incrementId: string): Promise<any> {
@@ -1765,8 +1627,11 @@ class ApiService {
   // Project Management APIs
   // ─────────────────────────────────────────────
 
-  async getProjects(): Promise<any> {
-    return this.request('/projects/');
+  async getProjects(status?: string): Promise<any> {
+    const params = new URLSearchParams();
+    if (status) params.append('status_filter', status);
+    const query = params.toString();
+    return this.request(`/projects/${query ? `?${query}` : ''}`);
   }
 
   async getProject(projectId: number): Promise<any> {
@@ -1787,6 +1652,13 @@ class ApiService {
     });
   }
 
+  async updateProjectStatus(projectId: number, isActive: boolean): Promise<any> {
+    return this.request(`/projects/${projectId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ project_id: projectId, is_active: isActive }),
+    });
+  }
+
   async deleteProject(projectId: number): Promise<any> {
     return this.request(`/projects/${projectId}`, {
       method: 'DELETE',
@@ -1794,11 +1666,22 @@ class ApiService {
     });
   }
 
-  async addProjectMember(projectId: number, userId: number): Promise<any> {
+  async addProjectMember(projectId: number, userId: number, role: string = 'member'): Promise<any> {
     return this.request(`/projects/${projectId}/members`, {
       method: 'POST',
-      body: JSON.stringify({ project_id: projectId, user_id: userId }),
+      body: JSON.stringify({ project_id: projectId, user_id: userId, role }),
     });
+  }
+
+  async addProjectMembersBulk(projectId: number, userIds: number[], role: string = 'member'): Promise<any> {
+    return this.request(`/projects/${projectId}/members/bulk`, {
+      method: 'POST',
+      body: JSON.stringify({ project_id: projectId, user_ids: userIds, role }),
+    });
+  }
+
+  async getProjectMembers(projectId: number): Promise<any> {
+    return this.request(`/projects/${projectId}/members`);
   }
 
   async removeProjectMember(projectId: number, userId: number): Promise<any> {
@@ -1819,6 +1702,46 @@ class ApiService {
     return this.request(`/projects/${projectId}/tasks/${taskId}/status`, {
       method: 'PUT',
       body: JSON.stringify({ project_id: projectId, task_id: taskId, status }),
+    });
+  }
+
+  // Meeting Management APIs
+  async getMeetings(params?: { type?: string; team_id?: number; project_id?: number }): Promise<any> {
+    const query = new URLSearchParams();
+    if (params?.type) query.append('type', params.type);
+    if (params?.team_id) query.append('team_id', params.team_id.toString());
+    if (params?.project_id) query.append('project_id', params.project_id.toString());
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+
+    return this.request(`/meetings/${queryString}`);
+  }
+
+  async createMeeting(meetingData: {
+    title: string;
+    description?: string;
+    meeting_link: string;
+    scheduled_at: string;
+    duration_minutes?: number;
+    type: 'company' | 'team' | 'project';
+    team_id?: number;
+    project_id?: number;
+  }): Promise<any> {
+    return this.request('/meetings/', {
+      method: 'POST',
+      body: JSON.stringify(meetingData),
+    });
+  }
+
+  async updateMeeting(meetingId: number, meetingData: any): Promise<any> {
+    return this.request(`/meetings/${meetingId}`, {
+      method: 'PUT',
+      body: JSON.stringify(meetingData),
+    });
+  }
+
+  async deleteMeeting(meetingId: number): Promise<any> {
+    return this.request(`/meetings/${meetingId}`, {
+      method: 'DELETE',
     });
   }
 }

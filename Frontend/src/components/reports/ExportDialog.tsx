@@ -9,7 +9,7 @@ import { FileText, FileSpreadsheet, Calendar as CalendarIcon, Download, Loader2 
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { API_BASE_URL } from '@/lib/api';
+import { apiService } from '@/lib/api';
 
 interface ExportDialogProps {
   open: boolean;
@@ -56,15 +56,9 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
   const loadDepartments = async () => {
     setIsLoadingDepts(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/reports/departments`, {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setDepartments(data.departments || []);
+      const data = await apiService.getReportDepartments();
+      if (data && data.departments) {
+        setDepartments(data.departments);
       }
     } catch (error) {
       console.error('Failed to load departments:', error);
@@ -76,21 +70,13 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
   const loadEmployees = async (department: string) => {
     setIsLoadingEmps(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/employees/?department=${department}`, {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const emps = Array.isArray(data) ? data : data.employees || [];
-        setEmployees(emps.map((emp: any) => ({
-          id: emp.id || emp.user_id,
-          name: emp.name,
-          department: emp.department,
-        })));
-      }
+      const data = await apiService.getEmployeesByDepartment(department);
+      const emps = Array.isArray(data) ? data : data.employees || [];
+      setEmployees(emps.map((emp: any) => ({
+        id: emp.id || emp.user_id,
+        name: emp.name,
+        department: emp.department,
+      })));
     } catch (error) {
       console.error('Failed to load employees:', error);
       setEmployees([]);
@@ -102,21 +88,13 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
   const loadAllEmployees = async () => {
     setIsLoadingEmps(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/employees/`, {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const emps = Array.isArray(data) ? data : data.employees || [];
-        setEmployees(emps.map((emp: any) => ({
-          id: emp.id || emp.user_id,
-          name: emp.name,
-          department: emp.department,
-        })));
-      }
+      const data = await apiService.getAllEmployees();
+      const emps = Array.isArray(data) ? data : data.employees || [];
+      setEmployees(emps.map((emp: any) => ({
+        id: emp.id || emp.user_id,
+        name: emp.name,
+        department: emp.department,
+      })));
     } catch (error) {
       console.error('Failed to load employees:', error);
       setEmployees([]);
@@ -167,31 +145,13 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
           startDate.setMonth(startDate.getMonth() - 1);
       }
 
-      // Build query parameters
-      const params = new URLSearchParams({
+      const blob = await apiService.exportPerformanceReport({
         format: exportFormat,
         start_date: format(startDate, 'yyyy-MM-dd'),
         end_date: format(endDate, 'yyyy-MM-dd'),
-        ...(selectedEmployee && { employee_id: selectedEmployee.id }),
-        ...(selectedDepartment !== 'all' && { department: selectedDepartment }),
-        ...(selectedUser !== 'all' && { employee_id: selectedUser }),
+        employee_id: selectedEmployee?.id || (selectedUser !== 'all' ? selectedUser : undefined),
+        department: selectedDepartment !== 'all' ? selectedDepartment : undefined,
       });
-
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/reports/export?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => 'Unknown error');
-        console.error('Export failed:', response.status, errorText);
-        throw new Error(`Export failed: ${response.status} - ${errorText || 'Server error'}`);
-      }
-
-      // Download the file
-      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

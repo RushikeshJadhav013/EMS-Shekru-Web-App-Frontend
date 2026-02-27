@@ -25,7 +25,9 @@ import {
   Star,
   Edit,
   Check,
-  ChevronsUpDown
+  ChevronsUpDown,
+  Loader2,
+  Calendar as CalendarIcon
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { apiService, API_BASE_URL } from '@/lib/api';
@@ -52,6 +54,9 @@ interface EmployeePerformance {
   overallRating: number;
   month: string;
   completedTasks?: number;
+  totalTasks?: number;
+  attendanceDays?: number;
+  workingDays?: number;
   taskEfficiency?: number;
 }
 
@@ -109,6 +114,12 @@ export default function Reports() {
   const [departments, setDepartments] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Leave report states
+  const [leaveStartDate, setLeaveStartDate] = useState(formatIST(new Date(parseInt(selectedYear), parseInt(selectedMonth), 1), 'yyyy-MM-dd'));
+  const [leaveEndDate, setLeaveEndDate] = useState(formatIST(new Date(parseInt(selectedYear), parseInt(selectedMonth) + 1, 0), 'yyyy-MM-dd'));
+  const [leaveDepartment, setLeaveDepartment] = useState('all');
+  const [leaveFormat, setLeaveFormat] = useState<'pdf' | 'csv'>('pdf');
+
   // Load ratings from localStorage on mount
   useEffect(() => {
     const savedRatings = localStorage.getItem('employeeRatings');
@@ -124,50 +135,51 @@ export default function Reports() {
     }
   }, [employeeRatings]);
 
+  // Load departments list once on mount
+  useEffect(() => {
+    loadDepartments();
+  }, []);
+
   // Load report data when filters change
   useEffect(() => {
     loadReportData();
   }, [selectedMonth, selectedYear, selectedDepartment]);
 
+  const loadDepartments = async () => {
+    try {
+      const data = await apiService.getReportDepartments();
+      if (data && data.departments) {
+        // Unique and sorted departments
+        const deptList = Array.from(new Set(data.departments))
+          .filter(Boolean)
+          .sort() as string[];
+        setDepartments(deptList);
+      }
+    } catch (error) {
+      console.error('Failed to load departments list:', error);
+    }
+  };
+
   const loadReportData = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Authorization': token ? `Bearer ${token}` : '',
-      };
-
-      const month = parseInt(selectedMonth);
+      const month = parseInt(selectedMonth) + 1; // Convert to 1-indexed for API
       const year = parseInt(selectedYear);
-      const dept = selectedDepartment !== 'all' ? selectedDepartment : undefined;
+      const departmentParam = selectedDepartment !== 'all' ? selectedDepartment : undefined;
 
-      // Build query parameters
-      const empParams = new URLSearchParams({
-        month: month.toString(),
-        year: year.toString(),
-        ...(dept && { department: dept }),
-      });
-
-      const deptParams = new URLSearchParams({
-        month: month.toString(),
-        year: year.toString(),
-      });
-
-      const summaryParams = new URLSearchParams({
-        month: month.toString(),
-        year: year.toString(),
-      });
-
-      // Fetch all data in parallel
-      const [empResponse, deptResponse, summaryResponse] = await Promise.all([
-        fetch(`${API_BASE_URL}/reports/employee-performance?${empParams}`, { headers }),
-        fetch(`${API_BASE_URL}/reports/department-metrics?${deptParams}`, { headers }),
-        fetch(`${API_BASE_URL}/reports/executive-summary?${summaryParams}`, { headers }),
+      // Fetch all data in parallel using apiService
+      const [empData, deptData, summaryData] = await Promise.all([
+        apiService.getEmployeePerformance({
+          month,
+          year,
+          department: departmentParam
+        }),
+        apiService.getDepartmentMetrics({ month, year }),
+        apiService.getExecutiveSummary({ month, year }),
       ]);
 
-      // Handle employee performance response
-      if (empResponse.ok) {
-        const empData = await empResponse.json();
+      // Handle employee performance
+      if (empData && empData.employees) {
         const rawEmployees = empData.employees || [];
 
         // Map raw API data to EmployeePerformance interface with robust fallbacks
@@ -184,70 +196,41 @@ export default function Reports() {
           overallRating: emp.overallRating || emp.overall_rating || 0,
           month: emp.month || selectedMonth,
           completedTasks: emp.completedTasks || emp.completed_tasks || 0,
+          totalTasks: emp.totalTasks || emp.total_tasks || 0,
+          attendanceDays: emp.attendanceDays || emp.attendance_days || 0,
+          workingDays: emp.workingDays || emp.working_days || 0,
           taskEfficiency: emp.taskEfficiency || emp.task_efficiency || 0
         }));
 
         setEmployeePerformance(employees);
-
-        // Update departments list to only include those with employees AND are considered Core Departments
-        const employeeDepts = Array.from(
-          new Set(
-            employees
-              .map((emp: EmployeePerformance) => emp.department)
-              .filter((dept: string) => {
-                if (!dept || dept.includes(',')) return false;
-                // Filter for Core Departments (case-insensitive)
-                return CORE_DEPARTMENTS.some(core => core.toLowerCase() === dept.toLowerCase());
-              })
-          )
-        ).sort() as string[];
-
-        // If filtering leaves nothing but we have employees, fallback to showing all non-empty departments
-        // This prevents showing an empty list if department naming conventions don't match standard Core names
-        const finalDepts = employeeDepts.length > 0 ? employeeDepts : Array.from(
-          new Set(
-            employees
-              .map((emp: EmployeePerformance) => emp.department)
-              .filter((dept: string) => dept && !dept.includes(','))
-          )
-        ).sort() as string[];
-
-        setDepartments(finalDepts);
-
-        // Reset department filter if selected department has no employees
-        if (selectedDepartment !== 'all' && !employeeDepts.includes(selectedDepartment)) {
-          setSelectedDepartment('all');
-        }
       } else {
-        console.error('Employee performance error:', empResponse.status, await empResponse.text());
         setEmployeePerformance([]);
       }
 
-      // Handle department metrics response
-      if (deptResponse.ok) {
-        const deptData = await deptResponse.json();
-        setDepartmentMetrics(deptData.departments || []);
+      // Handle department metrics
+      if (deptData && deptData.departments) {
+        setDepartmentMetrics(deptData.departments);
+
+        // Update departments list if it's still empty or to ensure we have any new ones from metrics
+        if (departments.length === 0) {
+          const metricsDepts = deptData.departments.map((d: any) => d.department).filter(Boolean);
+          const employeeDepts = empData?.employees?.map((e: any) => e.department || e.department_name).filter(Boolean) || [];
+
+          const allDepts = Array.from(new Set([...metricsDepts, ...employeeDepts]))
+            .filter(dept => dept && !dept.includes(','))
+            .sort() as string[];
+
+          setDepartments(allDepts);
+        }
       } else {
-        console.error('Department metrics error:', deptResponse.status, await deptResponse.text());
         setDepartmentMetrics([]);
       }
 
-      // Handle executive summary response
-      if (summaryResponse.ok) {
-        const summaryData = await summaryResponse.json();
+      // Handle executive summary
+      if (summaryData) {
         setExecutiveSummary(summaryData);
       } else {
-        console.error('Executive summary error:', summaryResponse.status, await summaryResponse.text());
         setExecutiveSummary(null);
-      }
-
-      // Show error toast if any request failed
-      if (!empResponse.ok || !deptResponse.ok || !summaryResponse.ok) {
-        toast({
-          title: 'Partial Data Load',
-          description: 'Some report data could not be loaded. Check console for details.',
-          variant: 'destructive',
-        });
       }
     } catch (error) {
       console.error('Failed to load report data:', error);
@@ -482,7 +465,7 @@ export default function Reports() {
 
       const token = localStorage.getItem('token');
       const headers = {
-        'Authorization': token ? `Bearer ${token}` : '',
+        'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
       };
       const response = await fetch(`${API_BASE_URL}/reports/export?${params}`, { headers });
 
@@ -642,6 +625,13 @@ export default function Reports() {
             >
               <BarChart3 className="h-4 w-4 mr-1.5" />
               Executive Summary
+            </TabsTrigger>
+            <TabsTrigger
+              value="leave"
+              className="h-9 text-sm font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:shadow-sm transition-all"
+            >
+              <CalendarIcon className="h-4 w-4 mr-1.5" />
+              Leave Reports
             </TabsTrigger>
           </TabsList>
 
@@ -824,24 +814,26 @@ export default function Reports() {
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
                                           <div className="flex items-center gap-1.5 mb-1.5">
                                             <Check className="h-4 w-4 text-orange-500" />
-                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Completed</p>
+                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Tasks</p>
                                           </div>
                                           <div className="flex items-baseline gap-1">
                                             <span className="text-2xl font-black text-slate-700 dark:text-slate-300">
                                               {employee.completedTasks || 0}
                                             </span>
+                                            <span className="text-xs text-slate-400 font-medium">/ {employee.totalTasks || 0}</span>
                                           </div>
                                         </div>
 
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
                                           <div className="flex items-center gap-1.5 mb-1.5">
-                                            <TrendingUp className="h-4 w-4 text-blue-500" />
-                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Efficiency</p>
+                                            <Calendar className="h-4 w-4 text-indigo-500" />
+                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Days</p>
                                           </div>
                                           <div className="flex items-baseline gap-1">
                                             <span className="text-2xl font-black text-slate-700 dark:text-slate-300">
-                                              {employee.taskEfficiency || 0}
+                                              {employee.attendanceDays || 0}
                                             </span>
+                                            <span className="text-xs text-slate-400 font-medium">/ {employee.workingDays || 0}</span>
                                           </div>
                                         </div>
 
@@ -1247,6 +1239,126 @@ export default function Reports() {
                 </div>
               </div>
             )}
+          </TabsContent>
+          <TabsContent value="leave" className="mt-0 outline-none">
+            <Card className="border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+              <CardHeader className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
+                    <Calendar className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <CardTitle className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Export Leave Report</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Start Date</Label>
+                    <Input
+                      type="date"
+                      value={leaveStartDate}
+                      onChange={(e) => setLeaveStartDate(e.target.value)}
+                      className="bg-white dark:bg-slate-950"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">End Date</Label>
+                    <Input
+                      type="date"
+                      value={leaveEndDate}
+                      onChange={(e) => setLeaveEndDate(e.target.value)}
+                      className="bg-white dark:bg-slate-950"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Department</Label>
+                    <Select value={leaveDepartment} onValueChange={setLeaveDepartment}>
+                      <SelectTrigger className="bg-white dark:bg-slate-950">
+                        <SelectValue placeholder="All Departments" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Departments</SelectItem>
+                        {departments.map(dept => (
+                          <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Format</Label>
+                    <Select value={leaveFormat} onValueChange={(val: 'pdf' | 'csv') => setLeaveFormat(val)}>
+                      <SelectTrigger className="bg-white dark:bg-slate-950">
+                        <SelectValue placeholder="PDF" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pdf">PDF Document</SelectItem>
+                        <SelectItem value="csv">CSV Spreadsheet</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="mt-8 flex flex-wrap gap-4">
+                  <Button
+                    onClick={async () => {
+                      try {
+                        setIsLoading(true);
+                        const blob = await apiService.exportLeaveReport({
+                          format: leaveFormat,
+                          start_date: leaveStartDate,
+                          end_date: leaveEndDate,
+                          department: leaveDepartment === 'all' ? undefined : leaveDepartment
+                        });
+
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `leave_report_${leaveStartDate}_to_${leaveEndDate}.${leaveFormat}`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+
+                        toast({
+                          title: 'Success',
+                          description: 'Leave report generated successfully.',
+                        });
+                      } catch (error: any) {
+                        console.error('Leave report error:', error);
+                        toast({
+                          title: 'Error',
+                          description: error.message || 'Failed to generate leave report.',
+                          variant: 'destructive',
+                        });
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }}
+                    className="bg-orange-600 hover:bg-orange-700 text-white font-bold h-11 px-8 rounded-xl shadow-lg shadow-orange-200 dark:shadow-none transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download Leave Report
+                      </>
+                    )}
+                  </Button>
+
+                  <div className="flex-1 flex items-center gap-3 p-4 bg-orange-50/50 dark:bg-orange-950/20 rounded-xl border border-orange-100 dark:border-orange-900/30">
+                    <Activity className="h-5 w-5 text-orange-500 shrink-0" />
+                    <p className="text-xs text-orange-800 dark:text-orange-300 font-medium">
+                      Report includes leave counts, types, and approval status across the selected period and departments.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
