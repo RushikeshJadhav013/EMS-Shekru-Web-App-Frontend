@@ -184,10 +184,11 @@ export default function LeaveManagement() {
   const [selectedHoliday, setSelectedHoliday] = useState<typeof holidays[0] | null>(null);
   const [isHolidayDialogOpen, setIsHolidayDialogOpen] = useState(false);
 
-  const [holidayForm, setHolidayForm] = useState<{ date: Date; name: string; description?: string }>({
+  const [holidayForm, setHolidayForm] = useState<{ date: Date; name: string; description?: string; is_recurring: boolean }>({
     date: new Date(),
     name: '',
-    description: ''
+    description: '',
+    is_recurring: false
   });
 
   const handleAddHoliday = async () => {
@@ -234,9 +235,10 @@ export default function LeaveManagement() {
       await addHoliday({
         date: normalizedDate,
         name: holidayForm.name,
-        description: holidayForm.description
+        description: holidayForm.description,
+        is_recurring: holidayForm.is_recurring
       });
-      setHolidayForm({ date: new Date(), name: '', description: '' });
+      setHolidayForm({ date: new Date(), name: '', description: '', is_recurring: false });
       toast({
         title: 'Holiday added',
         description: `${holidayForm.name} has been added to the calendar.`
@@ -2189,6 +2191,21 @@ export default function LeaveManagement() {
                                 className="resize-none bg-white dark:bg-slate-900"
                               />
                             </div>
+                            <div className="space-y-2">
+                              <Label>Recurring</Label>
+                              <Select
+                                value={holidayForm.is_recurring ? 'yes' : 'no'}
+                                onValueChange={(value) => setHolidayForm({ ...holidayForm, is_recurring: value === 'yes' })}
+                              >
+                                <SelectTrigger className="bg-white dark:bg-slate-900">
+                                  <SelectValue placeholder="Is Recurring?" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="no">No</SelectItem>
+                                  <SelectItem value="yes">Yes</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                             <Button
                               onClick={handleAddHoliday}
                               className="w-full gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-md"
@@ -2209,6 +2226,7 @@ export default function LeaveManagement() {
                                 <span className="flex-1">
                                   <strong>{h.name}</strong> - {format(h.date, 'MMMM dd, yyyy')}
                                   {h.description && <span className="text-sm text-muted-foreground ml-2">({h.description})</span>}
+                                  {h.is_recurring && <Badge variant="secondary" className="ml-2 text-[10px]">Recurring</Badge>}
                                 </span>
                                 <Button
                                   size="sm"

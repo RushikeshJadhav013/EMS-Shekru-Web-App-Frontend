@@ -350,7 +350,10 @@ const AttendanceManager: React.FC = () => {
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
-    return token ? { Authorization: token } : {};
+    return {
+      'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
+      'Content-Type': 'application/json',
+    };
   };
 
   const loadCoreDepartments = async () => {
@@ -370,11 +373,8 @@ const AttendanceManager: React.FC = () => {
 
   const fetchAllOnlineStatus = async () => {
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE_URL}/attendance/current-online-status`, {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
@@ -565,8 +565,7 @@ const AttendanceManager: React.FC = () => {
 
   const loadEmployees = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+      const headers = getAuthHeaders();
       const res = await fetch(`${API_BASE_URL}/employees/`, { headers });
 
       if (!res.ok) throw new Error(`Failed to load employees: ${res.status}`);
@@ -679,10 +678,7 @@ const AttendanceManager: React.FC = () => {
     setOfficeFormLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/attendance/office-hours`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
+        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error(`Failed to load office timings: ${res.status}`);
       const data: OfficeTiming[] = await res.json();
@@ -727,10 +723,7 @@ const AttendanceManager: React.FC = () => {
       };
       const res = await fetch(`${API_BASE_URL}/attendance/office-hours`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`Failed to save office timing: ${res.status}`);
@@ -769,10 +762,7 @@ const AttendanceManager: React.FC = () => {
       };
       const res = await fetch(`${API_BASE_URL}/attendance/office-hours`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`Failed to save department office timing: ${res.status}`);
@@ -834,9 +824,7 @@ const AttendanceManager: React.FC = () => {
       setOfficeFormLoading(true);
       const res = await fetch(`${API_BASE_URL}/attendance/office-hours/${timing.id}`, {
         method: 'DELETE',
-        headers: {
-          ...getAuthHeaders(),
-        },
+        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error(`Failed to delete office timing: ${res.status}`);
       await loadOfficeTimings();
@@ -869,9 +857,7 @@ const AttendanceManager: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_BASE_URL}/attendance/summary`, {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
+        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error(`Failed to load summary: ${res.status}`);
       const data = await res.json();
@@ -907,10 +893,9 @@ const AttendanceManager: React.FC = () => {
           query += `&manager_id=${encodeURIComponent(user.id)}`;
         }
 
-        // Fetch attendance and employees in parallel to ensure we have role data
         const [attendanceRes, employeesRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/attendance/all${query}`, { headers }),
-          fetch(`${API_BASE_URL}/employees/`, { headers })
+          fetch(`${API_BASE_URL}/attendance/all${query}`, { headers: getAuthHeaders() }),
+          fetch(`${API_BASE_URL}/employees/`, { headers: getAuthHeaders() })
         ]);
 
         if (!attendanceRes.ok) {

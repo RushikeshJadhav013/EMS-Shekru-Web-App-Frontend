@@ -293,16 +293,16 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
     const [activeTab, setActiveTab] = useState(canViewAll ? "breakdown" : "documents");
     const [isBankEditDialogOpen, setIsBankEditDialogOpen] = useState(false);
     const [isUpdatingBank, setIsUpdatingBank] = useState(false);
-    const [bankForm, setBankForm] = useState({
+    const [bankForm, setBankForm] = useState<any>({
         uan_number: '',
         bank_name: '',
         bank_account: '',
         ifsc_code: '',
-        working_days_per_month: 26,
+        working_days_per_month: '',
         payment_mode: 'Bank Transfer',
         pf_no: '',
-        other_deduction_annual: 0,
-        pf_annual: 0
+        other_deduction_annual: '',
+        pf_annual: ''
     });
 
 
@@ -557,11 +557,11 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 bank_name: salaryData.bankName || '',
                 bank_account: salaryData.accountNumber || '',
                 ifsc_code: salaryData.ifscCode || '',
-                working_days_per_month: salaryData.workingDays || 26,
+                working_days_per_month: salaryData.workingDays || '',
                 payment_mode: mode,
                 pf_no: salaryData.pfNumber || '',
-                other_deduction_annual: (salaryData.otherDeduction || 0) * 12,
-                pf_annual: ((salaryData.pfEmployee || 0) + (salaryData.pfEmployer || 0)) * 12
+                other_deduction_annual: salaryData.otherDeduction ? (salaryData.otherDeduction * 12) : '',
+                pf_annual: (salaryData.pfEmployee || salaryData.pfEmployer) ? ((salaryData.pfEmployee || 0) + (salaryData.pfEmployer || 0)) * 12 : ''
             });
         }
         setIsBankEditDialogOpen(true);
@@ -573,7 +573,16 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
 
             const payload = {
                 user_id: parseInt(targetUserId!),
-                ...bankForm
+                ...bankForm,
+                // Ensure numeric fields are correctly formatted or null
+                working_days_per_month: bankForm.working_days_per_month === '' ? null : Number(bankForm.working_days_per_month),
+                other_deduction_annual: bankForm.other_deduction_annual === '' ? null : Number(bankForm.other_deduction_annual),
+                pf_annual: bankForm.pf_annual === '' ? null : Number(bankForm.pf_annual),
+                uan_number: bankForm.uan_number || null,
+                bank_name: bankForm.bank_name || null,
+                bank_account: bankForm.bank_account || null,
+                ifsc_code: bankForm.ifsc_code || null,
+                pf_no: bankForm.pf_no || null
             };
 
             const response = await apiService.updateBankDetails(targetUserId!, payload);
@@ -1594,9 +1603,12 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                     <p className="text-lg font-black text-slate-900 dark:text-white leading-none">{displaySalaryData.workingDays} Days</p>
                                                 </div>
                                                 <div className="h-10 w-px bg-indigo-100 dark:bg-indigo-800 mx-2 hidden sm:block" />
-                                                <div className="h-12 px-6 rounded-2xl bg-indigo-600 text-white flex items-center gap-3 shadow-lg shadow-indigo-200 dark:shadow-none font-black text-xs uppercase tracking-widest">
-                                                    <CheckCircle2 className="h-4 w-4" />
-                                                    Active Structure
+                                                <div className={`h-12 px-6 rounded-2xl flex items-center gap-3 shadow-lg font-black text-xs uppercase tracking-widest transition-all duration-300 ${displaySalaryData.is_active !== false
+                                                    ? 'bg-emerald-600 text-white shadow-emerald-200/50 dark:shadow-none'
+                                                    : 'bg-amber-600 text-white shadow-amber-200/50 dark:shadow-none'
+                                                    }`}>
+                                                    {displaySalaryData.is_active !== false ? <CheckCircle2 className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                                                    {displaySalaryData.is_active !== false ? 'Active Structure' : 'Inactive Structure'}
                                                 </div>
                                             </div>
                                         </div>
@@ -2070,10 +2082,32 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 <Input
                                     id="working_days_per_month"
                                     type="number"
-                                    min="1"
                                     max="31"
                                     value={bankForm.working_days_per_month}
-                                    onChange={(e) => setBankForm(prev => ({ ...prev, working_days_per_month: parseInt(e.target.value) || 26 }))}
+                                    onChange={(e) => setBankForm(prev => ({ ...prev, working_days_per_month: e.target.value === '' ? '' : parseInt(e.target.value) }))}
+                                    placeholder="e.g. 26"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="other_deduction_annual">Other Deduction (Annual ₹)</Label>
+                                <Input
+                                    id="other_deduction_annual"
+                                    type="number"
+                                    value={bankForm.other_deduction_annual}
+                                    onChange={(e) => setBankForm(prev => ({ ...prev, other_deduction_annual: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
+                                    placeholder="Annual deduction amount"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="pf_annual">PF (Annual ₹)</Label>
+                                <Input
+                                    id="pf_annual"
+                                    type="number"
+                                    value={bankForm.pf_annual}
+                                    onChange={(e) => setBankForm(prev => ({ ...prev, pf_annual: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
+                                    placeholder="Annual PF amount"
                                 />
                             </div>
 

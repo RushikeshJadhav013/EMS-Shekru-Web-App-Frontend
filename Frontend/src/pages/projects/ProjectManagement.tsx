@@ -74,7 +74,7 @@ interface ProjectTask {
     assigned_to?: number;
     assigned_to_name?: string;
     due_date?: string;
-    status: 'todo' | 'in-progress' | 'overdue' | 'completed' | 'cancelled';
+    status: 'pending' | 'in-progress' | 'overdue' | 'completed' | 'cancelled' | 'todo';
 }
 
 
@@ -98,7 +98,7 @@ interface Employee {
     department?: string;
 }
 
-const TASK_STATUSES = ['todo', 'in-progress', 'overdue', 'completed', 'cancelled'] as const;
+const TASK_STATUSES = ['pending', 'in-progress', 'overdue', 'completed', 'cancelled', 'todo'] as const;
 type TaskStatus = typeof TASK_STATUSES[number];
 
 // Form-only type: supports multiple assignees per task row
@@ -115,23 +115,23 @@ const emptyTask = (): TaskFormRow => ({
     description: '',
     assigned_to_ids: [],
     due_date: '',
-    status: 'todo',
+    status: 'pending',
 });
 
 // ─────────────────────────────────────────
 // Status helpers
 // ─────────────────────────────────────────
 function TaskStatusBadge({ status }: { status: string }) {
-    if (status === 'todo')
-        return <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-0 gap-1 text-[11px]"><Clock className="h-3 w-3" />To Do</Badge>;
+    if (status === 'todo' || status === 'pending')
+        return <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-0 gap-1 text-[11px]"><Clock className="h-3 w-3" />Pending</Badge>;
     if (status === 'in-progress')
         return <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0 gap-1 text-[11px]"><Clock className="h-3 w-3" />In Progress</Badge>;
     if (status === 'overdue')
-        return <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-0 gap-1 text-[11px]"><AlertCircle className="h-3 w-3" />Overdue</Badge>;
+        return <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0 gap-1 text-[11px]"><AlertCircle className="h-3 w-3" />Overdue</Badge>;
     if (status === 'completed')
         return <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-0 gap-1 text-[11px]"><CheckCircle2 className="h-3 w-3" />Completed</Badge>;
     if (status === 'cancelled')
-        return <Badge className="bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 border-0 gap-1 text-[11px]"><XCircle className="h-3 w-3" />Cancelled</Badge>;
+        return <Badge className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-0 gap-1 text-[11px]"><XCircle className="h-3 w-3" />Cancelled</Badge>;
     return <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-0 gap-1 text-[11px]"><Clock className="h-3 w-3" />Pending</Badge>;
 }
 
@@ -156,6 +156,19 @@ function TaskRow({
     onStatusChange: (taskId: number, status: string) => void;
 }) {
     const id = task.task_id ?? task.id ?? 0;
+
+    // Detect overdue automatically
+    const isOverdue = useMemo(() => {
+        if (task.status === 'completed' || task.status === 'cancelled') return false;
+        if (!task.due_date) return false;
+        const due = new Date(task.due_date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return due < today;
+    }, [task.due_date, task.status]);
+
+    const effectiveStatus = isOverdue ? 'overdue' : (task.status === 'todo' ? 'pending' : task.status);
+
     return (
         <TableRow className="hover:bg-slate-50/60 dark:hover:bg-slate-900/30 transition-colors">
             <TableCell className="pl-4">
@@ -176,32 +189,37 @@ function TaskRow({
             <TableCell>
                 {canManageProjects ? (
                     <Select
-                        value={task.status}
+                        value={task.status === 'todo' ? 'pending' : task.status}
                         onValueChange={(v) => onStatusChange(id, v)}
                     >
                         <SelectTrigger className="h-7 w-32 text-xs border-slate-200 dark:border-slate-700">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent side="bottom">
-                            <SelectItem value="todo">
-                                <span className="flex items-center gap-1.5 text-slate-600 font-medium"><Clock className="h-3 w-3" />To Do</span>
+                            <SelectItem value="pending">
+                                <span className="flex items-center gap-1.5 text-amber-600 font-medium"><Clock className="h-3 w-3" />Pending</span>
                             </SelectItem>
                             <SelectItem value="in-progress">
                                 <span className="flex items-center gap-1.5 text-blue-600 font-medium"><Clock className="h-3 w-3" />In Progress</span>
                             </SelectItem>
                             <SelectItem value="overdue">
-                                <span className="flex items-center gap-1.5 text-orange-600 font-medium"><AlertCircle className="h-3 w-3" />Overdue</span>
+                                <span className="flex items-center gap-1.5 text-red-600 font-medium"><AlertCircle className="h-3 w-3" />Overdue</span>
                             </SelectItem>
                             <SelectItem value="completed">
                                 <span className="flex items-center gap-1.5 text-emerald-600 font-medium"><CheckCircle2 className="h-3 w-3" />Completed</span>
                             </SelectItem>
                             <SelectItem value="cancelled">
-                                <span className="flex items-center gap-1.5 text-red-500 font-medium"><XCircle className="h-3 w-3" />Cancelled</span>
+                                <span className="flex items-center gap-1.5 text-slate-500 font-medium"><XCircle className="h-3 w-3" />Cancelled</span>
                             </SelectItem>
                         </SelectContent>
                     </Select>
                 ) : (
-                    <TaskStatusBadge status={task.status} />
+                    <TaskStatusBadge status={effectiveStatus} />
+                )}
+                {isOverdue && task.status !== 'completed' && task.status !== 'cancelled' && !canManageProjects && (
+                    <div className="mt-1">
+                        <Badge className="bg-red-50 text-red-600 dark:bg-red-900/20 border-0 text-[9px] height-auto py-0 px-1">AUTO OVERDUE</Badge>
+                    </div>
                 )}
             </TableCell>
         </TableRow>
@@ -309,7 +327,7 @@ function ProjectCard({
                             <>
                                 <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-full">
                                     <Clock className="h-3.5 w-3.5 text-amber-500" />
-                                    <span className="text-xs font-medium text-amber-600 dark:text-amber-400">{todoCount} To Do</span>
+                                    <span className="text-xs font-medium text-amber-600 dark:text-amber-400">{tasks.filter(t => t.status === 'todo' || t.status === 'pending').length} Pending</span>
                                 </div>
                                 <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-full">
                                     <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
@@ -498,9 +516,20 @@ export default function ProjectManagement() {
         setTaskList(prev => prev.filter((_, i) => i !== index));
     };
 
+    const assignableEmployees = useMemo(() => {
+        if (!user) return [];
+        return employees.filter(e => {
+            if (String(e.user_id) === String(user.id)) return true; // Can always assign to self
+            if (user.role === 'admin' || user.role === 'hr') return true; // Admin/HR to everyone
+            if (user.role === 'manager') return ['team_lead', 'employee'].includes(e.role || ''); // Manager to TL/Emp
+            if (user.role === 'team_lead') return e.role === 'employee'; // TL to Emp
+            return false; // Employee to no one
+        });
+    }, [employees, user]);
+
     const filteredMemberOptions = useMemo(() =>
-        employees.filter(e => e.name.toLowerCase().includes(memberSearch.toLowerCase())),
-        [employees, memberSearch]);
+        assignableEmployees.filter(e => e.name.toLowerCase().includes(memberSearch.toLowerCase())),
+        [assignableEmployees, memberSearch]);
 
     // ── Handlers ──
     const handleCreate = async () => {
@@ -655,8 +684,8 @@ export default function ProjectManagement() {
     // ─────────────────────────────────────────
     const TaskFormSection = ({ teamOnly = false }: { teamOnly?: boolean }) => {
         const assignOptions = teamOnly && selectedMemberIds.length > 0
-            ? employees.filter(e => selectedMemberIds.includes(e.user_id))
-            : employees;
+            ? assignableEmployees.filter(e => selectedMemberIds.includes(e.user_id))
+            : assignableEmployees;
 
         return (
             <div className="space-y-3">
@@ -684,11 +713,17 @@ export default function ProjectManagement() {
                                         <SelectItem value="pending">
                                             <span className="flex items-center gap-1.5 text-amber-600"><Clock className="h-3 w-3" />Pending</span>
                                         </SelectItem>
+                                        <SelectItem value="in-progress">
+                                            <span className="flex items-center gap-1.5 text-blue-600"><Clock className="h-3 w-3" />In Progress</span>
+                                        </SelectItem>
+                                        <SelectItem value="overdue">
+                                            <span className="flex items-center gap-1.5 text-red-600"><AlertCircle className="h-3 w-3" />Overdue</span>
+                                        </SelectItem>
                                         <SelectItem value="completed">
                                             <span className="flex items-center gap-1.5 text-emerald-600"><CheckCircle2 className="h-3 w-3" />Completed</span>
                                         </SelectItem>
                                         <SelectItem value="cancelled">
-                                            <span className="flex items-center gap-1.5 text-red-500"><XCircle className="h-3 w-3" />Cancelled</span>
+                                            <span className="flex items-center gap-1.5 text-slate-500"><XCircle className="h-3 w-3" />Cancelled</span>
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
@@ -1073,7 +1108,7 @@ export default function ProjectManagement() {
                                     <SelectValue placeholder="Select employee to add..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {employees
+                                    {assignableEmployees
                                         .filter(e => !selectedProject?.members?.some(m => m.user_id === e.user_id))
                                         .map(e => (
                                             <SelectItem key={e.user_id} value={String(e.user_id)}>

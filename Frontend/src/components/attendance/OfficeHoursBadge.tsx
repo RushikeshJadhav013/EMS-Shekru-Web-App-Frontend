@@ -32,7 +32,13 @@ const OfficeHoursBadge: React.FC<OfficeHoursBadgeProps> = ({
 
   const fetchGlobalOfficeHours = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/attendance/office-hours`);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/attendance/office-hours`, {
+        headers: {
+          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
+          'Content-Type': 'application/json',
+        },
+      });
       if (response.ok) {
         const officeTimings: OfficeTiming[] = await response.json();
         // Find global office hours (department is null or empty)

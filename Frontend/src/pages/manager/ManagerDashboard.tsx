@@ -231,7 +231,12 @@ const ManagerDashboard: React.FC = () => {
           apiService.getMyTasks(),
           fetch(`${API_BASE_URL}/attendance/today`, {
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Authorization': (() => {
+                const token = localStorage.getItem('token');
+                if (!token) return '';
+                return token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+              })(),
+              'Content-Type': 'application/json',
             }
           })
         ]);

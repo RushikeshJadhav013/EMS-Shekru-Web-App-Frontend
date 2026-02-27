@@ -780,8 +780,8 @@ const TaskManagement: React.FC = () => {
           // Admin can assign tasks to anyone
           return true;
         case 'hr':
-          // HR can assign tasks to managers, team leads, and employees across all departments
-          return ['manager', 'team_lead', 'employee'].includes(emp.role);
+          // HR can assign tasks to everyone
+          return true;
         case 'manager':
           return sameDepartment && ['team_lead', 'employee'].includes(emp.role);
         case 'team_lead':

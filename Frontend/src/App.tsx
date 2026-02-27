@@ -45,6 +45,8 @@ import SalaryDetails from "@/pages/salary/SalaryDetails";
 import AddIncrement from "@/pages/salary/AddIncrement";
 import { WFHProvider } from "@/contexts/WFHContext";
 import ProjectManagement from "@/pages/projects/ProjectManagement";
+import MeetingsPage from "@/pages/meetings/MeetingsPage";
+import { Video } from 'lucide-react';
 
 const queryClient = new QueryClient();
 
@@ -94,6 +96,13 @@ const App = () => (
                               <Route path="/salary/increment/add" element={
                                 <ProtectedRoute allowedRoles={['admin', 'hr']}>
                                   <AddIncrement />
+                                </ProtectedRoute>
+                              } />
+
+                              {/* Meetings Route - Universal */}
+                              <Route path="/meetings" element={
+                                <ProtectedRoute allowedRoles={['admin', 'hr', 'employee', 'manager', 'team_lead']}>
+                                  <MeetingsPage />
                                 </ProtectedRoute>
                               } />
 
@@ -382,6 +391,11 @@ const App = () => (
                                   <Inbox />
                                 </ProtectedRoute>
                               } />
+                              <Route path="/team_lead/projects" element={
+                                <ProtectedRoute allowedRoles={['team_lead']}>
+                                  <ProjectManagement />
+                                </ProtectedRoute>
+                              } />
                               <Route path="/team_lead/profile" element={
                                 <ProtectedRoute allowedRoles={['team_lead']}>
                                   <Profile />
@@ -432,6 +446,11 @@ const App = () => (
                               <Route path="/employee/inbox" element={
                                 <ProtectedRoute allowedRoles={['employee']}>
                                   <Inbox />
+                                </ProtectedRoute>
+                              } />
+                              <Route path="/employee/projects" element={
+                                <ProtectedRoute allowedRoles={['employee']}>
+                                  <ProjectManagement />
                                 </ProtectedRoute>
                               } />
                               <Route path="/employee/profile" element={

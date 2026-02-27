@@ -17,7 +17,7 @@ export const verifyTokenWithBackend = async (token: string): Promise<TokenVerifi
     const response = await fetch(`${API_BASE_URL}/auth/verify-token`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
         'Content-Type': 'application/json',
       },
     });

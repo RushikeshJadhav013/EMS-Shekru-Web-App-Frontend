@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { isTokenValid, decodeJWT, getUserFromToken } from '@/utils/jwt';
 import { verifyTokenWithBackend } from '@/services/authService';
+import { API_BASE_URL } from '@/lib/api';
 
 interface LoginResponse {
   user_id: string;
@@ -254,7 +255,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         department: userData.department || '',
         designation: userData.designation || '',
         joiningDate: userData.joining_date || new Date().toISOString(),
-        profilePhoto: userData.profile_photo ? `https://testing.testing.staffly.space/${userData.profile_photo}` : undefined,
+        profilePhoto: userData.profile_photo ? `${API_BASE_URL}/${userData.profile_photo}` : undefined,
         status: 'active',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -310,11 +311,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Call login resume endpoint to handle pause/resume functionality
       try {
-        await fetch('https://testing.testing.staffly.space/attendance/login-resume', {
+        await fetch(`${API_BASE_URL}/attendance/login-resume`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${userData.access_token}`,
+            'Authorization': userData.access_token ? (userData.access_token.startsWith('Bearer ') ? userData.access_token : `Bearer ${userData.access_token}`) : '',
           },
           body: JSON.stringify({
             user_id: parseInt(user.id),
@@ -351,11 +352,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const token = localStorage.getItem('token');
       if (token && isTokenValid(token) && user?.id) {
         // Call the logout endpoint to record pause timestamp
-        await fetch('https://testing.testing.staffly.space/attendance/logout', {
+        await fetch(`${API_BASE_URL}/attendance/logout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
+            'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
           },
           body: JSON.stringify({
             user_id: parseInt(user.id),

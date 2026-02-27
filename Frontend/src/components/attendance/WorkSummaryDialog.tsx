@@ -60,7 +60,7 @@ const WorkSummaryDialog: React.FC<WorkSummaryDialogProps> = ({
     try {
       const response = await fetch(`${API_BASE_URL}/tasks/deadline-warnings/${user.id}`, {
         headers: {
-          'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`,
+          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
           'Content-Type': 'application/json',
         },
       });

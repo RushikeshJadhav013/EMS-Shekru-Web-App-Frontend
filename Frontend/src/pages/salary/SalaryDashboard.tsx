@@ -534,13 +534,17 @@ const SalaryDashboard = () => {
                                                         </Button>
                                                     )}
 
-                                                    {userRole === 'hr' && item.salary && (
+                                                    {isAdminOrHr && item.salary && (
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            className={`h-8 w-8 p-0 ${item.salary.is_active !== false ? 'text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 dark:border-emerald-900 dark:text-emerald-400 dark:hover:bg-emerald-900/20' : 'text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700 dark:border-amber-900 dark:text-amber-400 dark:hover:bg-amber-900/20'}`}
+                                                            className={`h-8 w-8 p-0 transition-all duration-300 ${item.salary.is_active !== false
+                                                                ? 'text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-900 dark:text-emerald-400 dark:bg-emerald-900/10'
+                                                                : 'text-rose-600 border-rose-200 bg-rose-50 hover:bg-rose-100 dark:border-rose-900 dark:text-rose-400 dark:bg-rose-900/10'
+                                                                }`}
                                                             onClick={() => handleToggleSalaryStatus(String(item.id), item.salary.is_active !== false)}
-                                                            title={item.salary.is_active !== false ? "Mark Inactive" : "Mark Active"}
+                                                            title={item.salary.is_active !== false ? "Click to Deactivate" : "Click to Activate"}
+                                                            disabled={loading}
                                                         >
                                                             {item.salary.is_active !== false ? <CheckCircle2 className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
                                                         </Button>

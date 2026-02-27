@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { debounce } from 'lodash';
+import { API_BASE_URL } from '@/lib/api';
 
 interface ValidationResult {
   available: boolean;
@@ -34,10 +35,16 @@ export const useFieldValidation = (options: UseFieldValidationOptions) => {
       try {
         const encodedValue = encodeURIComponent(value.trim());
         const url = excludeUserId
-          ? `https://testing.testing.staffly.space/${endpoint}/${encodedValue}?exclude_user_id=${excludeUserId}`
-          : `https://testing.testing.staffly.space/${endpoint}/${encodedValue}`;
+          ? `${API_BASE_URL}/${endpoint}/${encodedValue}?exclude_user_id=${excludeUserId}`
+          : `${API_BASE_URL}/${endpoint}/${encodedValue}`;
 
-        const response = await fetch(url);
+        const token = localStorage.getItem('token');
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
+            'Content-Type': 'application/json',
+          },
+        });
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

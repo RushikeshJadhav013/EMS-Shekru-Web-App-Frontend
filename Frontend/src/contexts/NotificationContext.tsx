@@ -437,34 +437,19 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }),
       ]);
 
-      // Check for 401 errors - if any endpoint returns 401, stop polling and clear auth
-      let hasUnauthorized = false;
-      if (taskResult.status === 'fulfilled' && taskResult.value.status === 401) {
-        hasUnauthorized = true;
-      }
-      if (leaveResult.status === 'fulfilled' && leaveResult.value.status === 401) {
-        hasUnauthorized = true;
-      }
-      if (shiftResult.status === 'fulfilled' && shiftResult.value.status === 401) {
-        hasUnauthorized = true;
-      }
+      // Check for 401 errors — just stop polling, never redirect.
+      // Route guards in AuthContext handle session expiry redirects.
+      const has401 =
+        (taskResult.status === 'fulfilled' && taskResult.value.status === 401) ||
+        (leaveResult.status === 'fulfilled' && leaveResult.value.status === 401) ||
+        (shiftResult.status === 'fulfilled' && shiftResult.value.status === 401);
 
-      if (hasUnauthorized) {
-        // ✅ Token is invalid - clear auth and stop polling
-        if (import.meta.env.DEV) {
-          console.warn('Token expired or invalid - stopping notification polling');
-        }
+      if (has401) {
+        console.warn('Notification polling: received 401, stopping polling silently');
         stopPolling();
-        // Clear auth data to prevent further unauthorized requests
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('userId');
-        // Redirect to login if not already there
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
         return;
       }
+
 
       const taskData: BackendTaskNotification[] = [];
       const leaveData: BackendLeaveNotification[] = [];

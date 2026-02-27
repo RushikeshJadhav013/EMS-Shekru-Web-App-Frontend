@@ -99,7 +99,13 @@ const AttendancePage: React.FC = () => {
   const fetchTodayAttendance = async () => {
     if (!user?.id) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/attendance/my-attendance/${user.id}`);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/attendance/my-attendance/${user.id}`, {
+        headers: {
+          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
+          'Content-Type': 'application/json',
+        },
+      });
       if (!res.ok) throw new Error('Failed to fetch attendance');
       const data = await res.json();
 
@@ -525,8 +531,12 @@ const AttendancePage: React.FC = () => {
 
       // For now, we'll skip the selfie requirement for checkout
       // In a real implementation, you might want to add selfie capture here
+      const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE_URL}/attendance/check-out`, {
         method: 'POST',
+        headers: {
+          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
+        },
         body: formData
       });
 
@@ -602,7 +612,9 @@ const AttendancePage: React.FC = () => {
       const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData,
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        headers: {
+          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
+        }
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));

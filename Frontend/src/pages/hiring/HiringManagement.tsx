@@ -92,15 +92,18 @@ interface Interview {
   candidate_name?: string;
   vacancy_id: number;
   vacancy_title?: string;
-  date: string;
-  time: string;
-  type: 'online' | 'offline';
-  location_or_link: string;
-  interviewer_name: string;
+  vacancy_department?: string;
+  start_time: string;
+  end_time: string;
+  mode: 'online' | 'onsite' | 'phone';
+  location: string;
+  round_type: string;
+  panel_members: number[];
   status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled' | 'no-show' | 'selected' | 'rejected';
+  scheduled_by?: number;
+  scheduled_at: string;
+  updated_at: string | null;
   notes?: string;
-  created_at: string;
-  updated_at: string;
 }
 
 interface InterviewFeedback {
@@ -188,11 +191,12 @@ export default function HiringManagement() {
   const [interviewFormData, setInterviewFormData] = useState({
     candidate_id: '',
     vacancy_id: '',
-    date: '',
-    time: '',
-    type: 'online' as Interview['type'],
-    location_or_link: '',
-    interviewer_name: '',
+    start_time: '',
+    end_time: '',
+    mode: 'online' as Interview['mode'],
+    location: '',
+    round_type: 'Technical',
+    panel_members: [] as number[],
     status: 'scheduled' as Interview['status'],
     notes: '',
   });
@@ -304,9 +308,10 @@ export default function HiringManagement() {
     setIsLoading(true);
     try {
       const data = await apiService.getInterviews();
-      setInterviews(data);
+      setInterviews(Array.isArray(data) ? data : []);
     } catch (error: any) {
       console.error('Failed to fetch interviews:', error);
+      setInterviews([]);
       toast({
         title: 'Error',
         description: error.message || 'Failed to load interviews',
@@ -352,7 +357,8 @@ export default function HiringManagement() {
     return (
       interview.candidate_name?.toLowerCase().includes(query) ||
       interview.vacancy_title?.toLowerCase().includes(query) ||
-      interview.interviewer_name.toLowerCase().includes(query)
+      interview.round_type?.toLowerCase().includes(query) ||
+      interview.location?.toLowerCase().includes(query)
     );
   });
 
@@ -639,7 +645,7 @@ export default function HiringManagement() {
   };
 
   const handleCreateInterview = async () => {
-    if (!interviewFormData.candidate_id || !interviewFormData.vacancy_id || !interviewFormData.date || !interviewFormData.interviewer_name) {
+    if (!interviewFormData.candidate_id || !interviewFormData.vacancy_id || !interviewFormData.start_time || !interviewFormData.round_type) {
       toast({
         title: 'Error',
         description: 'Please fill in all required fields',
@@ -815,11 +821,12 @@ export default function HiringManagement() {
     setInterviewFormData({
       candidate_id: '',
       vacancy_id: '',
-      date: '',
-      time: '',
-      type: 'online',
-      location_or_link: '',
-      interviewer_name: '',
+      start_time: '',
+      end_time: '',
+      mode: 'online',
+      location: '',
+      round_type: 'Technical',
+      panel_members: [],
       status: 'scheduled',
       notes: '',
     });
@@ -1108,45 +1115,10 @@ export default function HiringManagement() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="inline-flex rounded-full bg-slate-100 dark:bg-slate-800 p-1 text-xs sm:text-sm">
-              <button
-                type="button"
-                onClick={() => setActiveTab('vacancies')}
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 transition ${activeTab === 'vacancies'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                  }`}
-              >
-                <Briefcase className="h-4 w-4" />
-                Vacancies
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('candidates')}
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 transition ${activeTab === 'candidates'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                  }`}
-              >
-                <Users className="h-4 w-4" />
-                Candidates
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('interviews')}
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 transition ${activeTab === 'interviews'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                  }`}
-              >
-                <Calendar className="h-4 w-4" />
-                Interviews
-              </button>
-            </div>
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {activeTab === 'vacancies' && (
               <Button
-                className="hidden md:inline-flex gap-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white"
+                className="gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200 dark:shadow-none transition-all hover:scale-[1.02]"
                 onClick={() => {
                   resetVacancyForm();
                   setSelectedVacancy(null);
@@ -1154,66 +1126,40 @@ export default function HiringManagement() {
                 }}
               >
                 <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">{t.hiring.createVacancy}</span>
-                <span className="sm:hidden">{t.common.add}</span>
+                <span className="text-xs sm:text-sm">New Vacancy</span>
               </Button>
             )}
+
             {activeTab === 'candidates' && (
               <Button
-                className="hidden md:inline-flex gap-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white"
+                className="gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 dark:shadow-none transition-all hover:scale-[1.02]"
                 onClick={() => {
                   resetCandidateForm();
                   setIsCandidateDialogOpen(true);
                 }}
               >
                 <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">New Candidate</span>
-                <span className="sm:hidden">Add</span>
+                <span className="text-xs sm:text-sm">New Candidate</span>
               </Button>
             )}
+
             {activeTab === 'interviews' && (
               <Button
-                className="hidden md:inline-flex gap-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white"
+                className="gap-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white shadow-md shadow-violet-200 dark:shadow-none transition-all hover:scale-[1.02]"
                 onClick={() => {
                   resetInterviewForm();
                   setSelectedInterview(null);
                   setIsInterviewDialogOpen(true);
                 }}
               >
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Schedule Interview</span>
-                <span className="sm:hidden">Schedule</span>
+                <Calendar className="h-4 w-4" />
+                <span className="text-xs sm:text-sm">Schedule Interview</span>
               </Button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Mobile create button */}
-      {(activeTab === 'vacancies' || activeTab === 'candidates' || activeTab === 'interviews') && (
-        <div className="md:hidden">
-          <Button
-            className="w-full rounded-full"
-            onClick={() => {
-              if (activeTab === 'vacancies') {
-                resetVacancyForm();
-                setSelectedVacancy(null);
-                setIsVacancyDialogOpen(true);
-              } else if (activeTab === 'candidates') {
-                resetCandidateForm();
-                setIsCandidateDialogOpen(true);
-              } else {
-                resetInterviewForm();
-                setSelectedInterview(null);
-                setIsInterviewDialogOpen(true);
-              }
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            {activeTab === 'vacancies' ? 'New Vacancy' : activeTab === 'candidates' ? 'New Candidate' : 'Schedule Interview'}
-          </Button>
-        </div>
-      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full max-w-lg grid-cols-3 rounded-full bg-slate-100/80 dark:bg-slate-900/80 p-1 mx-auto">
@@ -1670,21 +1616,23 @@ export default function HiringManagement() {
                           <TableCell>{interview.vacancy_title}</TableCell>
                           <TableCell>
                             <div className="flex flex-col">
-                              <span className="text-sm">{formatDateIST(interview.date, 'MMM dd, yyyy')}</span>
-                              <span className="text-xs text-muted-foreground">{interview.time}</span>
+                              <span className="text-sm font-medium">{formatDateIST(interview.start_time, 'MMM dd, yyyy')}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {formatDateIST(interview.start_time, 'hh:mm a')} - {formatDateIST(interview.end_time, 'hh:mm a')}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col max-w-[150px]">
                               <Badge variant="secondary" className="w-fit text-[10px] capitalize mb-1">
-                                {interview.type}
+                                {interview.mode}
                               </Badge>
-                              <span className="text-xs truncate" title={interview.location_or_link}>
-                                {interview.location_or_link}
+                              <span className="text-xs truncate" title={interview.location}>
+                                {interview.location}
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell>{interview.interviewer_name}</TableCell>
+                          <TableCell>{interview.round_type}</TableCell>
                           <TableCell>
                             <Select
                               value={interview.status}
@@ -1730,11 +1678,12 @@ export default function HiringManagement() {
                                   setInterviewFormData({
                                     candidate_id: String(interview.candidate_id),
                                     vacancy_id: String(interview.vacancy_id),
-                                    date: interview.date,
-                                    time: interview.time,
-                                    type: interview.type,
-                                    location_or_link: interview.location_or_link,
-                                    interviewer_name: interview.interviewer_name,
+                                    start_time: interview.start_time.slice(0, 16), // datetime-local format
+                                    end_time: interview.end_time.slice(0, 16),
+                                    mode: interview.mode,
+                                    location: interview.location,
+                                    round_type: interview.round_type,
+                                    panel_members: interview.panel_members,
                                     status: interview.status,
                                     notes: interview.notes || '',
                                   });
@@ -2790,39 +2739,40 @@ export default function HiringManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="i_date">Date *</Label>
+                <Label htmlFor="i_start_time">Start Time *</Label>
                 <Input
-                  id="i_date"
-                  type="date"
-                  value={interviewFormData.date}
-                  onChange={(e) => setInterviewFormData({ ...interviewFormData, date: e.target.value })}
+                  id="i_start_time"
+                  type="datetime-local"
+                  value={interviewFormData.start_time}
+                  onChange={(e) => setInterviewFormData({ ...interviewFormData, start_time: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="i_time">Time *</Label>
+                <Label htmlFor="i_end_time">End Time *</Label>
                 <Input
-                  id="i_time"
-                  type="time"
-                  value={interviewFormData.time}
-                  onChange={(e) => setInterviewFormData({ ...interviewFormData, time: e.target.value })}
+                  id="i_end_time"
+                  type="datetime-local"
+                  value={interviewFormData.end_time}
+                  onChange={(e) => setInterviewFormData({ ...interviewFormData, end_time: e.target.value })}
                 />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="i_type">Type *</Label>
+                <Label htmlFor="i_mode">Mode *</Label>
                 <Select
-                  value={interviewFormData.type}
-                  onValueChange={(value: any) => setInterviewFormData({ ...interviewFormData, type: value })}
+                  value={interviewFormData.mode}
+                  onValueChange={(value: any) => setInterviewFormData({ ...interviewFormData, mode: value })}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="online">Online</SelectItem>
-                    <SelectItem value="offline">Offline</SelectItem>
+                    <SelectItem value="onsite">On-site</SelectItem>
+                    <SelectItem value="phone">Phone Call</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -2848,18 +2798,18 @@ export default function HiringManagement() {
               <Label htmlFor="i_location">Location / Meeting Link</Label>
               <Input
                 id="i_location"
-                value={interviewFormData.location_or_link}
-                onChange={(e) => setInterviewFormData({ ...interviewFormData, location_or_link: e.target.value })}
+                value={interviewFormData.location}
+                onChange={(e) => setInterviewFormData({ ...interviewFormData, location: e.target.value })}
                 placeholder="Zoom link or Office Address"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="i_interviewer">Interviewer Name *</Label>
+              <Label htmlFor="i_round">Round Type *</Label>
               <Input
-                id="i_interviewer"
-                value={interviewFormData.interviewer_name}
-                onChange={(e) => setInterviewFormData({ ...interviewFormData, interviewer_name: e.target.value })}
-                placeholder="Name of the interviewer"
+                id="i_round"
+                value={interviewFormData.round_type}
+                onChange={(e) => setInterviewFormData({ ...interviewFormData, round_type: e.target.value })}
+                placeholder="e.g. Technical, HR, Management"
               />
             </div>
             <div className="space-y-2">
@@ -2903,33 +2853,31 @@ export default function HiringManagement() {
           {selectedInterview && (
             <div className="space-y-6 py-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Date</span>
-                  <p className="text-sm font-medium">{formatDateIST(selectedInterview.date, 'MMM dd, yyyy')}</p>
+                <div className="col-span-2">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Schedule</span>
+                  <p className="text-sm font-medium">
+                    {formatDateIST(selectedInterview.start_time, 'MMM dd, yyyy')} | {formatDateIST(selectedInterview.start_time, 'hh:mm a')} - {formatDateIST(selectedInterview.end_time, 'hh:mm a')}
+                  </p>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Time</span>
-                  <p className="text-sm font-medium">{selectedInterview.time}</p>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Mode</span>
+                  <p className="text-sm font-medium capitalize">{selectedInterview.mode}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Type</span>
-                  <p className="text-sm font-medium capitalize">{selectedInterview.type}</p>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Interviewer</span>
-                  <p className="text-sm font-medium">{selectedInterview.interviewer_name}</p>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Round</span>
+                  <p className="text-sm font-medium">{selectedInterview.round_type}</p>
                 </div>
               </div>
 
-              {selectedInterview.location_or_link && (
+              {selectedInterview.location && (
                 <div className="space-y-2">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Location / Link</Label>
                   <p className="text-sm">
-                    {selectedInterview.location_or_link.startsWith('http') ? (
-                      <a href={selectedInterview.location_or_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline break-all">
-                        {selectedInterview.location_or_link}
+                    {selectedInterview.location.startsWith('http') ? (
+                      <a href={selectedInterview.location} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline break-all">
+                        {selectedInterview.location}
                       </a>
-                    ) : selectedInterview.location_or_link}
+                    ) : selectedInterview.location}
                   </p>
                 </div>
               )}

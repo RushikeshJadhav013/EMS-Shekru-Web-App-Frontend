@@ -53,6 +53,7 @@ import {
   ChevronRight,
   Banknote,
   FolderKanban,
+  Video,
 } from 'lucide-react';
 import { UserRole } from '@/types';
 import { Language } from '@/i18n/translations';
@@ -91,6 +92,7 @@ const MainLayout: React.FC = () => {
       { icon: Bell, label: t.navigation.notifications, path: `/${user.role}/inbox` },
       { icon: Banknote, label: t.navigation.salary, path: '/salary' },
       { icon: MessageCircle, label: t.navigation.chat, path: `/${user.role}/chat` },
+      { icon: Video, label: t.navigation.meetings, path: '/meetings' },
     ];
 
     const roleSpecificItems: Record<UserRole, typeof commonItems> = {
@@ -117,10 +119,12 @@ const MainLayout: React.FC = () => {
       team_lead: [
         ...commonItems,
         { icon: Clock, label: t.navigation.shiftSchedule, path: '/team_lead/team' },
+        { icon: FolderKanban, label: 'Projects', path: '/team_lead/projects' },
       ],
       employee: [
         ...commonItems,
         { icon: Clock, label: t.navigation.shiftSchedule, path: '/employee/team' },
+        { icon: FolderKanban, label: 'Projects', path: '/employee/projects' },
       ],
     };
 

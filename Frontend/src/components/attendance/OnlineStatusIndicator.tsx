@@ -54,7 +54,8 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
       // Load status history
       const historyResponse = await fetch(`${API_BASE_URL}/attendance/online-status/${attendanceId}`, {
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
+          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
+          'Content-Type': 'application/json',
         },
       });
 
@@ -66,7 +67,8 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
       // Load working hours calculation
       const hoursResponse = await fetch(`${API_BASE_URL}/attendance/working-hours/${attendanceId}`, {
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
+          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
+          'Content-Type': 'application/json',
         },
       });
 
