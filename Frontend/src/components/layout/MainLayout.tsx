@@ -115,11 +115,13 @@ const MainLayout: React.FC = () => {
         ...commonItems,
         { icon: Clock, label: t.navigation.shiftSchedule, path: '/manager/shift-schedule' },
         { icon: FolderKanban, label: 'Projects', path: '/manager/projects' },
+        { icon: BarChart3, label: t.navigation.reports, path: '/manager/reports' },
       ],
       team_lead: [
         ...commonItems,
         { icon: Clock, label: t.navigation.shiftSchedule, path: '/team_lead/team' },
         { icon: FolderKanban, label: 'Projects', path: '/team_lead/projects' },
+        { icon: BarChart3, label: t.navigation.reports, path: '/team_lead/reports' },
       ],
       employee: [
         ...commonItems,
