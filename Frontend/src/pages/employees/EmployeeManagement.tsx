@@ -860,7 +860,7 @@ export default function EmployeeManagement() {
         designation: formData.designation,
         phone: formData.phone ? (formData.countryCode === '+91' ? formData.phone.replace(/[^0-9]/g, '') : `${formData.countryCode}-${formData.phone.replace(/[^0-9]/g, '')}`) : '',
         address: fullAddress,
-        role: getInternalRole(formData.role || 'employee'),
+        role: normalizeRole(formData.role || 'employee'),
         gender: formData.gender,
         resignation_date: formData.resignationDate || undefined,
         pan_card: formData.panCard,
@@ -1023,7 +1023,7 @@ export default function EmployeeManagement() {
         designation: formData.designation,
         phone: formData.phone ? (formData.countryCode === '+91' ? formData.phone.replace(/[^0-9]/g, '') : `${formData.countryCode}-${formData.phone.replace(/[^0-9]/g, '')}`) : '',
         address: fullAddress,
-        role: getInternalRole(formData.role || 'employee'),
+        role: normalizeRole(formData.role || 'employee'),
         gender: formData.gender,
         resignation_date: formData.resignationDate || undefined,
         pan_card: formData.panCard,
@@ -1320,7 +1320,7 @@ export default function EmployeeManagement() {
       const email = (data.email || '').trim();
       const emailKey = email.toLowerCase();
       const department = (data.department || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
-      const role = getInternalRole(data.role);
+      const role = normalizeRole(data.role);
       const designation = (data.designation || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       const address = (data.address || '').trim();
       const joiningDate = data.joiningdate || '';
@@ -2265,6 +2265,9 @@ export default function EmployeeManagement() {
                         )}
                       </SelectTrigger>
                       <SelectContent>
+                        {getInternalRole(user?.role || '') === 'admin' && (
+                          <SelectItem value="admin">Admin</SelectItem>
+                        )}
                         <SelectItem value="hr">HR</SelectItem>
                         <SelectItem value="manager">Manager</SelectItem>
                         <SelectItem value="team_lead">TeamLead</SelectItem>
@@ -3074,6 +3077,9 @@ export default function EmployeeManagement() {
                   )}
                 </SelectTrigger>
                 <SelectContent>
+                  {(getInternalRole(user?.role || '') === 'admin' || formData.role === 'admin') && (
+                    <SelectItem value="admin">Admin</SelectItem>
+                  )}
                   <SelectItem value="hr">HR</SelectItem>
                   <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="team_lead">TeamLead</SelectItem>
