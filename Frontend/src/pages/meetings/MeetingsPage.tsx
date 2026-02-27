@@ -43,7 +43,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { toast } from '@/components/ui/use-toast';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 
 interface Meeting {
     id: number;
@@ -401,11 +401,11 @@ const MeetingsPage: React.FC = () => {
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
                                                 <Calendar className="h-4 w-4 text-blue-500" />
-                                                <span className="text-xs font-bold">{format(new Date(meeting.scheduled_at), 'EEEE, MMM do')}</span>
+                                                <span className="text-xs font-bold">{meeting.scheduled_at && isValid(new Date(meeting.scheduled_at)) ? format(new Date(meeting.scheduled_at), 'EEEE, MMM do') : 'TBD'}</span>
                                             </div>
                                             <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
                                                 <Clock className="h-4 w-4 text-blue-500" />
-                                                <span className="text-xs font-bold">{format(new Date(meeting.scheduled_at), 'hh:mm a')} • {meeting.duration_minutes}m</span>
+                                                <span className="text-xs font-bold">{meeting.scheduled_at && isValid(new Date(meeting.scheduled_at)) ? format(new Date(meeting.scheduled_at), 'hh:mm a') : '--:--'} • {meeting.duration_minutes}m</span>
                                             </div>
                                             {meeting.project_name && (
                                                 <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">

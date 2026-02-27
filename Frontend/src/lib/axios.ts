@@ -1,7 +1,7 @@
 
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.testing.testing.staffly.space';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
 
 const axiosInstance: AxiosInstance = axios.create({
     baseURL: API_BASE_URL,

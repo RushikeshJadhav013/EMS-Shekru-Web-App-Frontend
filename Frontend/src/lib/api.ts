@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.testing.testing.staffly.space';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
 
 interface EmployeeData {
   name: string;
@@ -818,22 +818,22 @@ class ApiService {
     if (params?.to_date) query.append('to_date', params.to_date);
 
     const queryString = query.toString();
-    return this.request(`/interviews/${queryString ? `?${queryString}` : ''}`);
+    return this.request(`/hiring/interviews/${queryString ? `?${queryString}` : ''}`);
   }
 
   async getInterview(interviewId: number) {
-    return this.request(`/interviews/${interviewId}`);
+    return this.request(`/hiring/interviews/${interviewId}`);
   }
 
   async createInterview(interviewData: any) {
-    return this.request('/interviews/', {
+    return this.request('/hiring/interviews/', {
       method: 'POST',
       body: JSON.stringify(interviewData),
     });
   }
 
   async updateInterview(interviewId: number, interviewData: any) {
-    return this.request(`/interviews/${interviewId}`, {
+    return this.request(`/hiring/interviews/${interviewId}`, {
       method: 'PUT',
       body: JSON.stringify({
         interview_id: interviewId,
@@ -843,14 +843,14 @@ class ApiService {
   }
 
   async deleteInterview(interviewId: number) {
-    return this.request(`/interviews/${interviewId}`, {
+    return this.request(`/hiring/interviews/${interviewId}`, {
       method: 'DELETE',
       body: JSON.stringify({ interview_id: interviewId }),
     });
   }
 
   async updateInterviewStatus(interviewId: number, status: string) {
-    return this.request(`/interviews/${interviewId}/status`, {
+    return this.request(`/hiring/interviews/${interviewId}/status`, {
       method: 'PUT',
       body: JSON.stringify({
         interview_id: interviewId,
@@ -861,11 +861,11 @@ class ApiService {
 
   // Interview Feedback APIs
   async getInterviewFeedback(interviewId: number) {
-    return this.request(`/interviews/${interviewId}/feedback`);
+    return this.request(`/hiring/interviews/${interviewId}/feedback`);
   }
 
   async createInterviewFeedback(interviewId: number, feedbackData: any) {
-    return this.request(`/interviews/${interviewId}/feedback`, {
+    return this.request(`/hiring/interviews/${interviewId}/feedback`, {
       method: 'POST',
       body: JSON.stringify({
         interview_id: interviewId,
@@ -875,7 +875,7 @@ class ApiService {
   }
 
   async updateInterviewFeedback(feedbackId: number, feedbackData: any) {
-    return this.request(`/hiring/feedback/${feedbackId}`, {
+    return this.request(`/hiring/interviews/feedback/${feedbackId}`, {
       method: 'PUT',
       body: JSON.stringify({
         feedback_id: feedbackId,
@@ -885,7 +885,7 @@ class ApiService {
   }
 
   async deleteInterviewFeedback(feedbackId: number) {
-    return this.request(`/hiring/feedback/${feedbackId}`, {
+    return this.request(`/hiring/interviews/feedback/${feedbackId}`, {
       method: 'DELETE',
       body: JSON.stringify({ feedback_id: feedbackId }),
     });

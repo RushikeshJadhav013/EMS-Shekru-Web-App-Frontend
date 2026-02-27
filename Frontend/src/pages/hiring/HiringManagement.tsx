@@ -104,6 +104,8 @@ interface Interview {
   scheduled_at: string;
   updated_at: string | null;
   notes?: string;
+  interviewer_name?: string;
+  duration_minutes?: number;
 }
 
 interface InterviewFeedback {
@@ -828,6 +830,8 @@ export default function HiringManagement() {
       mode: 'online',
       location: '',
       round_type: 'Technical',
+      interviewer_name: '',
+      duration_minutes: 60,
       panel_members: [],
       status: 'scheduled',
       notes: '',
@@ -1685,6 +1689,8 @@ export default function HiringManagement() {
                                     mode: interview.mode,
                                     location: interview.location,
                                     round_type: interview.round_type,
+                                    interviewer_name: interview.interviewer_name || '',
+                                    duration_minutes: interview.duration_minutes || 60,
                                     panel_members: interview.panel_members,
                                     status: interview.status,
                                     notes: interview.notes || '',
