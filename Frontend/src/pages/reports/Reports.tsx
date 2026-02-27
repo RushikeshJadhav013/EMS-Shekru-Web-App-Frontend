@@ -506,7 +506,7 @@ export default function Reports() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 relative">
-      {!['admin', 'hr', 'manager', 'team_lead'].includes(user?.role || '') && <V2Overlay fallbackPath="/dashboard" />}
+      {!['admin', 'hr', 'manager', 'team_lead', 'employee'].includes(user?.role || '') && <V2Overlay fallbackPath="/dashboard" />}
       <div className="w-full space-y-6 pb-20">
         {/* Header Section - aligned with other modern pages */}
         <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-sm mt-1">

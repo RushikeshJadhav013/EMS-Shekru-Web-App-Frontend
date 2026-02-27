@@ -468,6 +468,11 @@ const App = () => (
                                   <Chat />
                                 </ProtectedRoute>
                               } />
+                              <Route path="/employee/reports" element={
+                                <ProtectedRoute allowedRoles={['employee']}>
+                                  <Reports />
+                                </ProtectedRoute>
+                              } />
                             </Route>
 
                             {/* 404 Route */}

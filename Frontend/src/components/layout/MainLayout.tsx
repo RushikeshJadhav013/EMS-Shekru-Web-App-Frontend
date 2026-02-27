@@ -127,6 +127,7 @@ const MainLayout: React.FC = () => {
         ...commonItems,
         { icon: Clock, label: t.navigation.shiftSchedule, path: '/employee/team' },
         { icon: FolderKanban, label: 'Projects', path: '/employee/projects' },
+        { icon: BarChart3, label: t.navigation.reports, path: '/employee/reports' },
       ],
     };
 
