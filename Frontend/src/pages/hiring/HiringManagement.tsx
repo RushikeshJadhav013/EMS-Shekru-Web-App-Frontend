@@ -196,6 +196,8 @@ export default function HiringManagement() {
     mode: 'online' as Interview['mode'],
     location: '',
     round_type: 'Technical',
+    interviewer_name: '',
+    duration_minutes: 60,
     panel_members: [] as number[],
     status: 'scheduled' as Interview['status'],
     notes: '',
@@ -2811,6 +2813,29 @@ export default function HiringManagement() {
                 onChange={(e) => setInterviewFormData({ ...interviewFormData, round_type: e.target.value })}
                 placeholder="e.g. Technical, HR, Management"
               />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="i_interviewer">Interviewer Name *</Label>
+                <Input
+                  id="i_interviewer"
+                  value={interviewFormData.interviewer_name}
+                  onChange={(e) => setInterviewFormData({ ...interviewFormData, interviewer_name: e.target.value })}
+                  placeholder="Name of the interviewer"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="i_duration">Duration (minutes)</Label>
+                <Input
+                  id="i_duration"
+                  type="number"
+                  min="15"
+                  max="240"
+                  step="15"
+                  value={interviewFormData.duration_minutes}
+                  onChange={(e) => setInterviewFormData({ ...interviewFormData, duration_minutes: parseInt(e.target.value) || 60 })}
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="i_notes">Additional Notes</Label>
