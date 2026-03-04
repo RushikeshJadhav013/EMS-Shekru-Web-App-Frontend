@@ -24,7 +24,7 @@ import AttendanceWithToggle from "@/pages/attendance/AttendanceWithToggle";
 import AttendanceManager from "@/pages/attendance/AttendanceManager";
 import TaskManagement from "@/pages/tasks/TaskManagement";
 import EmployeeManagement from "@/pages/employees/EmployeeManagement";
-import DepartmentManagement from "@/pages/departments/DepartmentManagement";
+import BranchManagement from "@/pages/departments/DepartmentManagement";
 import Reports from "@/pages/reports/Reports";
 import LeaveManagement from "@/pages/leaves/LeaveManagement";
 import HiringManagement from "@/pages/hiring/HiringManagement";
@@ -132,9 +132,9 @@ const App = () => (
                                   <EmployeeManagement />
                                 </ProtectedRoute>
                               } />
-                              <Route path="/admin/departments" element={
+                              <Route path="/admin/branches" element={
                                 <ProtectedRoute allowedRoles={['admin']}>
-                                  <DepartmentManagement />
+                                  <BranchManagement />
                                 </ProtectedRoute>
                               } />
                               <Route path="/admin/reports" element={
@@ -225,9 +225,9 @@ const App = () => (
                                   <EmployeeManagement />
                                 </ProtectedRoute>
                               } />
-                              <Route path="/hr/departments" element={
+                              <Route path="/hr/branches" element={
                                 <ProtectedRoute allowedRoles={['hr']}>
-                                  <DepartmentManagement />
+                                  <BranchManagement />
                                 </ProtectedRoute>
                               } />
                               <Route path="/hr/employees" element={

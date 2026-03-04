@@ -314,7 +314,7 @@ const SalaryDashboard = () => {
                             ]
                             : [
                                 {
-                                    label: 'Total Departments',
+                                    label: 'Total Branches',
                                     value: uniqueDepts.length,
                                     sub: 'Active Business Units',
                                     icon: Building2,
@@ -400,13 +400,13 @@ const SalaryDashboard = () => {
                         <div className="flex flex-wrap items-center gap-4">
                             <div className="flex items-center gap-2">
                                 <div className="flex flex-col gap-2">
-                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">Department</Label>
+                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">Branch</Label>
                                     <Select value={deptFilter} onValueChange={setDeptFilter}>
                                         <SelectTrigger className="w-[180px] h-10 bg-white dark:bg-gray-800 border-2 transition-all duration-300 hover:shadow-md">
-                                            <SelectValue placeholder="All Departments" />
+                                            <SelectValue placeholder="All Branches" />
                                         </SelectTrigger>
                                         <SelectContent side="bottom">
-                                            <SelectItem value="all">All Departments</SelectItem>
+                                            <SelectItem value="all">All Branches</SelectItem>
                                             {uniqueDepts.map(dept => (
                                                 <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                                             ))}

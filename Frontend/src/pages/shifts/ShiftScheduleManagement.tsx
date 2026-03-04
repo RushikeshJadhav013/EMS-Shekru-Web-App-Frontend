@@ -727,13 +727,13 @@ export default function ShiftScheduleManagement() {
                 </div>
                 {(user?.role === 'admin' || user?.role === 'hr') && (
                   <div className="flex flex-col gap-2">
-                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Department</Label>
+                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Branch</Label>
                     <Select value={selectedDepartmentFilter} onValueChange={setSelectedDepartmentFilter}>
                       <SelectTrigger className="w-[180px] h-11">
-                        <SelectValue placeholder="All Departments" />
+                        <SelectValue placeholder="All Branches" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Departments</SelectItem>
+                        <SelectItem value="all">All Branches</SelectItem>
                         {departmentsList.map(dept => (
                           <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                         ))}

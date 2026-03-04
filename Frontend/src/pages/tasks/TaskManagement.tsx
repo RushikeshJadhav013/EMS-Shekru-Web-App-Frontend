@@ -2262,7 +2262,7 @@ const TaskManagement: React.FC = () => {
       'Created Date',
       'Due Date',
       'Completed Date',
-      'Department',
+      'Branch',
       'Last Passed By',
       'Last Passed To',
       'Last Pass Note'
@@ -2401,7 +2401,7 @@ const TaskManagement: React.FC = () => {
                 <th>Created</th>
                 <th>Due Date</th>
                 <th>Completed</th>
-                <th>Department</th>
+                <th>Branch</th>
                 <th>Last Passed By</th>
                 <th>Last Passed To</th>
                 <th>Pass Note</th>
@@ -2629,17 +2629,17 @@ const TaskManagement: React.FC = () => {
                       <div className="space-y-2">
                         <Label htmlFor="assignDeptFilter" className="text-sm font-semibold flex items-center gap-2">
                           <Building2 className="h-4.4 w-4.5 text-violet-600" />
-                          Filter Department
+                          Filter Branch
                         </Label>
                         <Select
                           value={newTask.department || 'all'}
                           onValueChange={(value) => setNewTask({ ...newTask, department: value === 'all' ? '' : value })}
                         >
                           <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                            <SelectValue placeholder="All Departments" />
+                            <SelectValue placeholder="All Branches" />
                           </SelectTrigger>
                           <SelectContent className="border-2 shadow-xl" side="bottom">
-                            <SelectItem value="all">All Departments</SelectItem>
+                            <SelectItem value="all">All Branches</SelectItem>
                             {CORE_DEPARTMENTS
                               .slice()
                               .sort((a, b) => a.localeCompare(b))
@@ -3031,20 +3031,20 @@ const TaskManagement: React.FC = () => {
                 </div>
               </div>
 
-              {/* Department Filter - Show when viewing All Tasks for Admin only */}
+              {/* Branch Filter - Show when viewing All Tasks for Admin only */}
               {taskOwnershipFilter === 'all' && user?.role === 'admin' && (
                 <div className="flex flex-col gap-2">
-                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Department</Label>
+                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Branch</Label>
                   <Select
                     value={selectedDepartmentFilter}
                     onValueChange={setSelectedDepartmentFilter}
                   >
                     <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white dark:bg-gray-950">
-                      <SelectValue placeholder="Select Department" />
+                      <SelectValue placeholder="Select Branch" />
                     </SelectTrigger>
                     <SelectContent>
                       {user?.role === 'admin' && (
-                        <SelectItem value="all">All Departments</SelectItem>
+                        <SelectItem value="all">All Branches</SelectItem>
                       )}
                       {departments
                         .filter(dept => CORE_DEPARTMENTS.some(core => core.toLowerCase() === dept.toLowerCase()))
@@ -4604,18 +4604,18 @@ const TaskManagement: React.FC = () => {
               )}
             </div>
 
-            {/* Department Filter */}
+            {/* Branch Filter */}
             <div className="space-y-3">
               <Label className="text-sm font-semibold flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-emerald-600" />
-                Department Filter
+                Branch Filter
               </Label>
               <Select value={exportDepartmentFilter} onValueChange={setExportDepartmentFilter}>
                 <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="border-2 shadow-xl max-h-72 overflow-auto">
-                  <SelectItem value="all">All Departments</SelectItem>
+                  <SelectItem value="all">All Branches</SelectItem>
                   {departments
                     .filter(dept => CORE_DEPARTMENTS.some(core => core.toLowerCase() === dept.toLowerCase()))
                     .map((dept) => (
@@ -4660,8 +4660,8 @@ const TaskManagement: React.FC = () => {
                     exportDateRange === 'custom' ? `${exportStartDate || 'Not set'} - ${exportEndDate || 'Not set'}` :
                       `Last ${exportDateRange.replace('months', ' Months').replace('1month', '1 Month')}`}
                 </span></p>
-                <p>• Department Filter: <span className="font-medium text-foreground">
-                  {exportDepartmentFilter === 'all' ? 'All Departments' : exportDepartmentFilter}
+                <p>• Branch Filter: <span className="font-medium text-foreground">
+                  {exportDepartmentFilter === 'all' ? 'All Branches' : exportDepartmentFilter}
                 </span></p>
                 <p>• User Filter: <span className="font-medium text-foreground">
                   {exportUserFilter === 'all' ? 'All Users' :
