@@ -214,6 +214,38 @@ const EmployeeDashboard: React.FC = () => {
           console.error("Error fetching leave activity", e);
         }
 
+        // 4. Interviews (Scheduled for Today)
+        try {
+          const empId = user?.id;
+          if (empId) {
+            // Convert to number for API compatibility
+            const memberId = typeof empId === 'string' ? parseInt(empId) : empId;
+
+            // Using a simple check to see if we have interview records
+            const data = await apiService.getInterviews({ panel_member_id: memberId });
+            const interviews = Array.isArray(data) ? data : (data?.interviews || []);
+
+            // Filter for interviews today
+            const todaysInterviews = interviews.filter((i: any) =>
+              i.start_time && i.start_time.startsWith(today)
+            );
+
+            todaysInterviews.forEach((i: any) => {
+              const timeObj = new Date(i.start_time);
+              activities.push({
+                id: `interview-${i.id || i.interview_id}`,
+                action: 'Interview Schedule',
+                description: `${i.candidate_name || 'Candidate'} - ${i.round_type || 'Technical'}`,
+                time: formatIST(timeObj, 'hh:mm a'),
+                type: 'info',
+                timestamp: timeObj.getTime()
+              });
+            });
+          }
+        } catch (e) {
+          console.error("Error fetching interview activity", e);
+        }
+
         // Sort by timestamp descending
         activities.sort((a, b) => b.timestamp - a.timestamp);
         setRecentActivities(activities);

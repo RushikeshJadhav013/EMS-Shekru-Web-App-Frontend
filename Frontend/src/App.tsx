@@ -32,7 +32,6 @@ import TeamManagement from "@/pages/teams/TeamManagement";
 import ShiftScheduleManagement from "@/pages/shifts/ShiftScheduleManagement";
 import TeamShifts from "@/pages/shifts/TeamShifts";
 import AccessControl from "@/pages/access/AccessControl";
-import Inbox from "@/pages/inbox/Inbox";
 import Profile from "@/pages/profile/Profile";
 import SettingsPage from "@/pages/settings/SettingsPage";
 import ContactSupport from "@/pages/ContactSupport";
@@ -147,11 +146,6 @@ const App = () => (
                                   <AccessControl />
                                 </ProtectedRoute>
                               } />
-                              <Route path="/admin/inbox" element={
-                                <ProtectedRoute allowedRoles={['admin']}>
-                                  <Inbox />
-                                </ProtectedRoute>
-                              } />
                               <Route path="/admin/employees" element={
                                 <ProtectedRoute allowedRoles={['admin']}>
                                   <EmployeeManagement />
@@ -240,11 +234,6 @@ const App = () => (
                                   <Reports />
                                 </ProtectedRoute>
                               } />
-                              <Route path="/hr/inbox" element={
-                                <ProtectedRoute allowedRoles={['hr']}>
-                                  <Inbox />
-                                </ProtectedRoute>
-                              } />
                               <Route path="/hr/hiring" element={
                                 <ProtectedRoute allowedRoles={['hr']}>
                                   <HiringManagement />
@@ -324,11 +313,6 @@ const App = () => (
                                   <Reports />
                                 </ProtectedRoute>
                               } />
-                              <Route path="/manager/inbox" element={
-                                <ProtectedRoute allowedRoles={['manager']}>
-                                  <Inbox />
-                                </ProtectedRoute>
-                              } />
                               <Route path="/manager/profile" element={
                                 <ProtectedRoute allowedRoles={['manager']}>
                                   <Profile />
@@ -386,11 +370,6 @@ const App = () => (
                                   <Reports />
                                 </ProtectedRoute>
                               } />
-                              <Route path="/team_lead/inbox" element={
-                                <ProtectedRoute allowedRoles={['team_lead']}>
-                                  <Inbox />
-                                </ProtectedRoute>
-                              } />
                               <Route path="/team_lead/projects" element={
                                 <ProtectedRoute allowedRoles={['team_lead']}>
                                   <ProjectManagement />
@@ -441,11 +420,6 @@ const App = () => (
                               <Route path="/employee/wfh" element={
                                 <ProtectedRoute allowedRoles={['employee', 'hr', 'manager', 'team_lead']}>
                                   <WFHRequests />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/employee/inbox" element={
-                                <ProtectedRoute allowedRoles={['employee']}>
-                                  <Inbox />
                                 </ProtectedRoute>
                               } />
                               <Route path="/employee/projects" element={

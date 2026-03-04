@@ -933,76 +933,32 @@ const AttendanceManager: React.FC = () => {
           const managerId = String(user.id);
           const normalizedDept = user.department.trim().toLowerCase();
 
-          // Step 1: Find all Team Leads reporting to this Manager (within same department)
-          const teamLeadIds = new Set<string>();
-          Object.keys(userRoleMap).forEach((uId) => {
-            const role = userRoleMap[uId];
-            const dept = userDepartmentMap[uId];
-            const managerIdForUser = userManagerMap[uId];
-
-            // Team Lead in same department (allow all Team Leads in department to be visible to Manager)
-            if (role === 'teamlead' && dept === normalizedDept) {
-              teamLeadIds.add(uId);
-            }
-          });
-
-          // Step 2: Find all Employees reporting to those Team Leads (within same department)
-          const allowedEmployeeIds = new Set<string>();
-          Object.keys(userRoleMap).forEach((uId) => {
-            const role = userRoleMap[uId];
-            const dept = userDepartmentMap[uId];
-            const teamLeadIdForUser = userTeamLeadMap[uId];
-
-            // Employee reporting to a Team Lead that reports to this Manager, in same department
-            if (role === 'employee' && dept === normalizedDept && teamLeadIdForUser && teamLeadIds.has(teamLeadIdForUser)) {
-              allowedEmployeeIds.add(uId);
-            }
-          });
-
-          // Step 3: Filter attendance records based on allowed users
+          // Step 1: Filter attendance records based on roles and department
           data = data.filter((rec: any) => {
             const recUserId = String(rec.user_id || rec.userId);
-            const recDept = (rec.department || '').trim().toLowerCase();
+            let recDept = (rec.department || '').trim().toLowerCase();
 
             // 1. Always show Self (Manager)
             if (recUserId === managerId) return true;
 
-            // 2. Department must match (mandatory)
+            // 2. Use department from employee map as fallback
+            if (!recDept && userDepartmentMap[recUserId]) {
+              recDept = userDepartmentMap[recUserId];
+            }
+
+            // 3. Department must match (mandatory)
             if (recDept !== normalizedDept) return false;
 
-            // 3. Check if user is in allowed set (Team Lead or Employee in reporting chain)
-            if (teamLeadIds.has(recUserId)) return true; // Team Lead reporting to Manager
-            if (allowedEmployeeIds.has(recUserId)) return true; // Employee reporting to Team Lead
+            // 4. Role lookup
+            const role = userRoleMap[recUserId];
 
-            // 4. Explicitly exclude:
-            //    - Other Managers (even in same department)
-            //    - Admins
-            //    - HR
-            //    - Users outside reporting chain
-            const recRole = userRoleMap[recUserId];
-            if (recRole === 'admin' || recRole === 'hr' || recRole === 'manager') {
-              return false;
-            }
-
-            // 5. If role is team_lead but not in our teamLeadIds set, exclude
-            if (recRole === 'teamlead' && !teamLeadIds.has(recUserId)) {
-              return false;
-            }
-
-            // 6. If role is employee but not in our allowedEmployeeIds set, exclude
-            if (recRole === 'employee' && !allowedEmployeeIds.has(recUserId)) {
-              return false;
-            }
-
-            // Default: exclude unknown users
-            return false;
+            // Allow all Employees and Team Leads in the same department
+            return role === 'employee' || role === 'teamlead' || role === 'team_lead';
           });
 
-          console.log('Manager attendance filtering:', {
+          console.log('Manager attendance filtering simplified:', {
             managerId,
             department: normalizedDept,
-            teamLeadIds: Array.from(teamLeadIds),
-            allowedEmployeeIds: Array.from(allowedEmployeeIds),
             filteredRecordsCount: data.length
           });
         }
@@ -1898,6 +1854,7 @@ const AttendanceManager: React.FC = () => {
               <table className="w-full">
                 <thead className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
                   <tr className="hover:bg-transparent">
+                    <th className="text-left p-3 font-medium">Date</th>
                     <th className="text-left p-3 font-medium">{t.attendance.employeeId}</th>
                     <th className="text-left p-3 font-medium">{t.attendance.employee}</th>
                     <th className="text-left p-3 font-medium">{t.attendance.department}</th>
@@ -1920,6 +1877,9 @@ const AttendanceManager: React.FC = () => {
                       .slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage)
                       .map((record) => (
                         <tr key={record.id} className="border-t hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                          <td className="p-3">
+                            <span className="text-xs font-medium text-slate-900 dark:text-white">{formatDateIST(record.date, 'dd MMM yyyy')}</span>
+                          </td>
                           <td className="p-3">
                             <div>
                               <p className="font-medium text-sm">{record.employeeId || record.userId || 'N/A'}</p>

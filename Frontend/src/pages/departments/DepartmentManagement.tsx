@@ -77,8 +77,10 @@ export default function DepartmentManagement() {
 
   const managerName = (managerId?: string) => {
     if (!managerId) return undefined;
-    const found = managers.find((mgr) => mgr.id === String(managerId));
-    return found?.name;
+    const found = allEmployees.find((emp) =>
+      String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(managerId)
+    );
+    return found?.name || found?.full_name;
   };
 
   const filteredDepartments = useMemo(() => {
@@ -327,7 +329,14 @@ export default function DepartmentManagement() {
     setIsViewDialogOpen(true);
   };
 
-  const totalEmployees = departments.reduce((sum, dept) => sum + (dept.employeeCount || 0), 0);
+  // Compute real employee count from actual employee records (not stale DB field)
+  const totalEmployees = allEmployees.length;
+
+  // Per-department live count: match employees whose department name equals dept name
+  const getEmployeeCountForDept = (deptName: string) =>
+    allEmployees.filter((emp: any) =>
+      (emp.department || '').toLowerCase().trim() === deptName.toLowerCase().trim()
+    ).length;
 
   const activeDepartments = departments.filter(dept => dept.status === 'active').length;
 
@@ -470,8 +479,24 @@ export default function DepartmentManagement() {
 
       const normalizedManagers: ManagerOption[] = (managerSource || [])
         .filter((entry: any) => {
-          const role = (entry.role || '').toString().toLowerCase();
-          return role === 'manager' || role === 'teamlead' || role === 'team_lead';
+          const role = (entry.role || '').toString().toLowerCase().trim();
+          const designation = (entry.designation || '').toString().toLowerCase().trim();
+
+          // Aggressive exclusion of Team Leads/TLs/Leads
+          const isLeadOrTeam =
+            role.includes('team') ||
+            role.includes('lead') ||
+            role === 'tl' ||
+            designation.includes('team') ||
+            designation.includes('lead') ||
+            designation === 'tl';
+
+          if (isLeadOrTeam) {
+            return false;
+          }
+
+          // Must be exactly 'manager' or have 'manager' in the designation/role
+          return role === 'manager' || role.includes('manager') || designation.includes('manager');
         })
         .map((entry: any) => {
           const idCandidate =
@@ -772,9 +797,10 @@ export default function DepartmentManagement() {
                   </TableRow>
                 ) : (
                   paginatedDepartments.map((department) => {
-                    const manager = managers.find(
-                      (m) => String(m.id) === String(department.managerId ?? ''),
+                    const manager = allEmployees.find(
+                      (emp) => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(department.managerId ?? ''),
                     );
+                    const managerNameStr = manager ? (manager.name || manager.full_name || '') : '';
                     const isActive = department.status === 'active';
                     return (
                       <TableRow
@@ -798,15 +824,15 @@ export default function DepartmentManagement() {
                         </TableCell>
                         <TableCell className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            {manager ? (
+                            {managerNameStr ? (
                               <>
                                 <div className="h-6 w-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
                                   <span className="text-xs font-semibold text-green-700 dark:text-green-300">
-                                    {manager.name.charAt(0).toUpperCase()}
+                                    {managerNameStr.charAt(0).toUpperCase()}
                                   </span>
                                 </div>
                                 <span className="text-sm text-slate-700 dark:text-slate-300">
-                                  {manager.name}
+                                  {managerNameStr}
                                 </span>
                               </>
                             ) : (
@@ -816,7 +842,7 @@ export default function DepartmentManagement() {
                         </TableCell>
                         <TableCell className="px-6 py-4">
                           <Badge variant="secondary">
-                            {department.employeeCount || 0}
+                            {getEmployeeCountForDept(department.name)}
                           </Badge>
                         </TableCell>
                         <TableCell className="px-6 py-4">
@@ -1014,15 +1040,17 @@ export default function DepartmentManagement() {
                   <div>
                     <Label className="text-sm font-medium text-slate-600 dark:text-slate-400">Manager</Label>
                     <div className="flex items-center gap-2 mt-1 bg-slate-50 dark:bg-slate-800 px-3 py-2 rounded border border-slate-200 dark:border-slate-700">
-                      {managers.find(m => String(m.id) === String(viewDepartment.managerId)) ? (
+                      {allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewDepartment.managerId)) ? (
                         <>
                           <div className="h-8 w-8 rounded-full bg-green-600 flex items-center justify-center">
                             <span className="text-sm font-bold text-white">
-                              {managers.find(m => String(m.id) === String(viewDepartment.managerId))?.name.charAt(0).toUpperCase()}
+                              {(allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewDepartment.managerId))?.name ||
+                                allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewDepartment.managerId))?.full_name || '').charAt(0).toUpperCase()}
                             </span>
                           </div>
                           <span className="text-base font-medium text-slate-900 dark:text-white">
-                            {managers.find(m => String(m.id) === String(viewDepartment.managerId))?.name}
+                            {allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewDepartment.managerId))?.name ||
+                              allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewDepartment.managerId))?.full_name}
                           </span>
                         </>
                       ) : (
