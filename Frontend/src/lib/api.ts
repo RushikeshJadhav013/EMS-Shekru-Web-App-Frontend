@@ -84,6 +84,32 @@ interface LeaveBalanceResponse {
   balances: LeaveBalanceItem[];
 }
 
+export interface LeaveAllocationConfig {
+  id?: number;
+  total_annual_leave: number;
+  sick_leave_allocation: number;
+  casual_leave_allocation: number;
+  other_leave_allocation: number;
+  is_configured?: boolean;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string | null;
+  updated_by?: number;
+}
+
+export interface LeaveAllocationConfig {
+  id?: number;
+  total_annual_leave: number;
+  sick_leave_allocation: number;
+  casual_leave_allocation: number;
+  other_leave_allocation: number;
+  is_configured?: boolean;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string | null;
+  updated_by?: number;
+}
+
 export interface BranchData {
   name: string;
   code: string;
@@ -529,20 +555,20 @@ class ApiService {
   }
 
   // Leave Allocation Configuration (Admin only)
-  async getLeaveAllocationConfig(): Promise<any> {
+  async getLeaveAllocationConfig(): Promise<LeaveAllocationConfig> {
     return this.request('/leave/config/allocation');
   }
 
-  async getCurrentLeaveAllocation(): Promise<any> {
+  async getCurrentLeaveAllocationConfig(): Promise<LeaveAllocationConfig> {
     return this.request('/leave/config/allocation/current');
   }
 
   async createLeaveAllocationConfig(data: {
-    total_annual_leave: number;
+    total_annual_leave?: number;
     sick_leave_allocation: number;
     casual_leave_allocation: number;
     other_leave_allocation: number;
-  }): Promise<any> {
+  }): Promise<LeaveAllocationConfig> {
     return this.request('/leave/config/allocation', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -554,12 +580,16 @@ class ApiService {
     sick_leave_allocation?: number;
     casual_leave_allocation?: number;
     other_leave_allocation?: number;
-  }): Promise<any> {
+  }): Promise<LeaveAllocationConfig> {
     return this.request(`/leave/config/allocation/${configId}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        config_id: configId,
+        ...data
+      }),
     });
   }
+
 
   // Update a leave request (Matches SR.NO 5)
   async updateLeaveRequest(leaveId: string, data: LeaveUpdateData): Promise<LeaveRequestResponse> {
@@ -758,10 +788,7 @@ class ApiService {
   async updateCandidate(candidateId: number, candidateData: any) {
     return this.request(`/hiring/candidates/${candidateId}`, {
       method: 'PUT',
-      body: JSON.stringify({
-        candidate_id: candidateId,
-        ...candidateData
-      }),
+      body: JSON.stringify(candidateData),
     });
   }
 
@@ -769,7 +796,6 @@ class ApiService {
     return this.request(`/hiring/candidates/${candidateId}/status`, {
       method: 'PUT',
       body: JSON.stringify({
-        candidate_id: candidateId,
         status: status
       }),
     });
@@ -839,6 +865,7 @@ class ApiService {
   async getInterviews(params?: {
     candidate_id?: number;
     vacancy_id?: number;
+    panel_member_id?: number;
     status_filter?: string;
     from_date?: string;
     to_date?: string;
@@ -846,27 +873,42 @@ class ApiService {
     const query = new URLSearchParams();
     if (params?.candidate_id) query.append('candidate_id', params.candidate_id.toString());
     if (params?.vacancy_id) query.append('vacancy_id', params.vacancy_id.toString());
+    if (params?.panel_member_id) query.append('panel_member_id', params.panel_member_id.toString());
     if (params?.status_filter) query.append('status_filter', params.status_filter);
     if (params?.from_date) query.append('from_date', params.from_date);
     if (params?.to_date) query.append('to_date', params.to_date);
 
     const queryString = query.toString();
-    return this.request(`/hiring/interviews/${queryString ? `?${queryString}` : ''}`);
+    return this.request(`/interviews/${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getCandidateInterviews(candidateId: number, statusFilter?: string) {
+    const query = new URLSearchParams();
+    if (statusFilter) query.append('status_filter', statusFilter);
+    const queryString = query.toString();
+    return this.request(`/interviews/candidates/${candidateId}/interviews${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getVacancyInterviews(vacancyId: number, statusFilter?: string) {
+    const query = new URLSearchParams();
+    if (statusFilter) query.append('status_filter', statusFilter);
+    const queryString = query.toString();
+    return this.request(`/interviews/vacancies/${vacancyId}/interviews${queryString ? `?${queryString}` : ''}`);
   }
 
   async getInterview(interviewId: number) {
-    return this.request(`/hiring/interviews/${interviewId}`);
+    return this.request(`/interviews/${interviewId}`);
   }
 
   async createInterview(interviewData: any) {
-    return this.request('/hiring/interviews/', {
+    return this.request('/interviews/', {
       method: 'POST',
       body: JSON.stringify(interviewData),
     });
   }
 
   async updateInterview(interviewId: number, interviewData: any) {
-    return this.request(`/hiring/interviews/${interviewId}`, {
+    return this.request(`/interviews/${interviewId}`, {
       method: 'PUT',
       body: JSON.stringify({
         interview_id: interviewId,
@@ -876,14 +918,14 @@ class ApiService {
   }
 
   async deleteInterview(interviewId: number) {
-    return this.request(`/hiring/interviews/${interviewId}`, {
+    return this.request(`/interviews/${interviewId}`, {
       method: 'DELETE',
       body: JSON.stringify({ interview_id: interviewId }),
     });
   }
 
   async updateInterviewStatus(interviewId: number, status: string) {
-    return this.request(`/hiring/interviews/${interviewId}/status`, {
+    return this.request(`/interviews/${interviewId}/status`, {
       method: 'PUT',
       body: JSON.stringify({
         interview_id: interviewId,
@@ -894,11 +936,15 @@ class ApiService {
 
   // Interview Feedback APIs
   async getInterviewFeedback(interviewId: number) {
-    return this.request(`/hiring/interviews/${interviewId}/feedback`);
+    return this.request(`/interviews/${interviewId}/feedback`);
+  }
+
+  async getSingleInterviewFeedback(interviewId: number, feedbackId: number) {
+    return this.request(`/interviews/${interviewId}/feedback/${feedbackId}`);
   }
 
   async createInterviewFeedback(interviewId: number, feedbackData: any) {
-    return this.request(`/hiring/interviews/${interviewId}/feedback`, {
+    return this.request(`/interviews/${interviewId}/feedback`, {
       method: 'POST',
       body: JSON.stringify({
         interview_id: interviewId,
@@ -907,20 +953,24 @@ class ApiService {
     });
   }
 
-  async updateInterviewFeedback(feedbackId: number, feedbackData: any) {
-    return this.request(`/hiring/interviews/feedback/${feedbackId}`, {
+  async updateInterviewFeedback(interviewId: number, feedbackId: number, feedbackData: any) {
+    return this.request(`/interviews/${interviewId}/feedback/${feedbackId}`, {
       method: 'PUT',
       body: JSON.stringify({
+        interview_id: interviewId,
         feedback_id: feedbackId,
         ...feedbackData
       }),
     });
   }
 
-  async deleteInterviewFeedback(feedbackId: number) {
-    return this.request(`/hiring/interviews/feedback/${feedbackId}`, {
+  async deleteInterviewFeedback(interviewId: number, feedbackId: number) {
+    return this.request(`/interviews/${interviewId}/feedback/${feedbackId}`, {
       method: 'DELETE',
-      body: JSON.stringify({ feedback_id: feedbackId }),
+      body: JSON.stringify({
+        interview_id: interviewId,
+        feedback_id: feedbackId
+      }),
     });
   }
 
@@ -1792,6 +1842,8 @@ class ApiService {
     team_id?: number;
     project_id?: number;
     participant_ids?: number[];
+    team_id?: number;
+    type?: string;
   }): Promise<any> {
     return this.request('/meetings/', {
       method: 'POST',
@@ -1799,17 +1851,10 @@ class ApiService {
     });
   }
 
-  async createProjectMeeting(projectId: number, meetingData: {
-    title: string;
-    description: string;
-    start_time: string;
-    end_time: string;
-    meeting_url: string;
-    participant_ids?: number[];
-  }): Promise<any> {
+  async createProjectMeeting(projectId: number, meetingData: any): Promise<any> {
     return this.request(`/projects/${projectId}/meetings/`, {
       method: 'POST',
-      body: JSON.stringify(meetingData),
+      body: JSON.stringify({ project_id: projectId, ...meetingData }),
     });
   }
 
@@ -1825,17 +1870,10 @@ class ApiService {
     return this.request(`/projects/${projectId}/meetings/${meetingId}`);
   }
 
-  async updateProjectMeeting(projectId: number, meetingId: number, meetingData: {
-    title: string;
-    description?: string;
-    start_time: string;
-    end_time: string;
-    meeting_url: string;
-    participant_ids?: number[];
-  }): Promise<any> {
+  async updateProjectMeeting(projectId: number, meetingId: number, meetingData: any): Promise<any> {
     return this.request(`/projects/${projectId}/meetings/${meetingId}`, {
       method: 'PUT',
-      body: JSON.stringify(meetingData),
+      body: JSON.stringify({ project_id: projectId, meeting_id: meetingId, ...meetingData }),
     });
   }
 
@@ -1846,6 +1884,7 @@ class ApiService {
   async deleteProjectMeeting(projectId: number, meetingId: number): Promise<any> {
     return this.request(`/projects/${projectId}/meetings/${meetingId}`, {
       method: 'DELETE',
+      body: JSON.stringify({ project_id: projectId, meeting_id: meetingId }),
     });
   }
 
@@ -1859,10 +1898,15 @@ class ApiService {
     team_id?: number;
     project_id?: number;
     participant_ids?: number[];
+    team_id?: number;
+    type?: string;
   }): Promise<any> {
     return this.request(`/meetings/${meetingId}`, {
       method: 'PUT',
-      body: JSON.stringify(meetingData),
+      body: JSON.stringify({
+        meeting_id: meetingId,
+        ...meetingData
+      }),
     });
   }
 

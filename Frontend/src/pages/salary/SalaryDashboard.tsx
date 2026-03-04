@@ -144,24 +144,31 @@ const SalaryDashboard = () => {
             return false;
         }
 
+        const itemDepts = (item.department || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+
         const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.employee_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (item.department && item.department.toLowerCase().includes(searchQuery.toLowerCase()));
+            itemDepts.some(d => d.includes(searchQuery.toLowerCase()));
 
-        // Filter for Core Departments only
-        const isCoreDept = item.department && CORE_DEPARTMENTS.some(core => core.toLowerCase() === item.department.toLowerCase());
-        if (!isCoreDept) return false;
-
-        const matchesDept = deptFilter === 'all' || (item.department && item.department.toLowerCase() === deptFilter.toLowerCase());
-
-        // Normalize role selection for comparison
+        const matchesDept = deptFilter === 'all' || itemDepts.includes(deptFilter.toLowerCase());
         const normalizedRoleFilter = roleFilter.toLowerCase().replace(/[\s_]/g, '');
         const matchesRole = roleFilter === 'all' || normalizedItemRole === normalizedRoleFilter;
 
         return isRoleVisible && matchesSearch && matchesDept && matchesRole;
     });
 
-    const uniqueDepts = [...CORE_DEPARTMENTS].sort();
+    const uniqueDepts = React.useMemo(() => {
+        const depts = new Set<string>();
+        items.forEach(item => {
+            if (item.department) {
+                item.department.split(',').forEach(d => {
+                    const trimmed = d.trim();
+                    if (trimmed) depts.add(trimmed);
+                });
+            }
+        });
+        return Array.from(depts).sort();
+    }, [items]);
 
     // Role filter options based on user access level
     const availableRoles = userRole === 'admin'

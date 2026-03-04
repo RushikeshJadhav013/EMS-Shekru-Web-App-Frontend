@@ -161,30 +161,37 @@ const AttendanceWithToggle: React.FC = () => {
     if (wfhHistoryTimeFilter !== 'all') {
       const today = new Date();
       let startDate: Date | undefined;
-      let endDate: Date = new Date(today.getFullYear() + 2, 11, 31, 23, 59, 59); // Default to future to see upcoming WFH
+      let endDate: Date = new Date(today);
+      endDate.setHours(23, 59, 59, 999);
 
       switch (wfhHistoryTimeFilter) {
         case 'current_month':
           startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          startDate.setHours(0, 0, 0, 0);
           endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
           break;
         case 'last_month':
           startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+          startDate.setHours(0, 0, 0, 0);
           endDate = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59);
           break;
         case 'last_3_months':
-          startDate = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+          startDate = subMonths(today, 3);
+          startDate.setHours(0, 0, 0, 0);
           break;
         case 'last_6_months':
-          startDate = new Date(today.getFullYear(), today.getMonth() - 6, 1);
+          startDate = subMonths(today, 6);
+          startDate.setHours(0, 0, 0, 0);
           break;
         case 'last_year':
-          startDate = new Date(today.getFullYear() - 1, today.getMonth(), 1);
+          startDate = subMonths(today, 12);
+          startDate.setHours(0, 0, 0, 0);
           break;
         case 'custom':
-          startDate = wfhHistoryStartDate;
-          endDate = wfhHistoryEndDate || new Date();
-          if (endDate) endDate.setHours(23, 59, 59, 999);
+          startDate = wfhHistoryStartDate ? new Date(wfhHistoryStartDate) : undefined;
+          if (startDate) startDate.setHours(0, 0, 0, 0);
+          endDate = wfhHistoryEndDate ? new Date(wfhHistoryEndDate) : new Date();
+          endDate.setHours(23, 59, 59, 999);
           break;
       }
 
@@ -252,30 +259,37 @@ const AttendanceWithToggle: React.FC = () => {
     if (wfhRequestTimeFilter !== 'all') {
       const today = new Date();
       let startDate: Date | undefined;
-      let endDate: Date = new Date(today.getFullYear() + 2, 11, 31, 23, 59, 59); // Default to future to see upcoming WFH
+      let endDate: Date = new Date(today);
+      endDate.setHours(23, 59, 59, 999);
 
       switch (wfhRequestTimeFilter) {
         case 'current_month':
           startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          startDate.setHours(0, 0, 0, 0);
           endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
           break;
         case 'last_month':
           startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+          startDate.setHours(0, 0, 0, 0);
           endDate = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59);
           break;
         case 'last_3_months':
-          startDate = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+          startDate = subMonths(today, 3);
+          startDate.setHours(0, 0, 0, 0);
           break;
         case 'last_6_months':
-          startDate = new Date(today.getFullYear(), today.getMonth() - 6, 1);
+          startDate = subMonths(today, 6);
+          startDate.setHours(0, 0, 0, 0);
           break;
         case 'last_year':
-          startDate = new Date(today.getFullYear() - 1, today.getMonth(), 1);
+          startDate = subMonths(today, 12);
+          startDate.setHours(0, 0, 0, 0);
           break;
         case 'custom':
           startDate = wfhRequestStartDate ? new Date(wfhRequestStartDate) : undefined;
+          if (startDate) startDate.setHours(0, 0, 0, 0);
           endDate = wfhRequestEndDate ? new Date(wfhRequestEndDate) : new Date();
-          if (endDate) endDate.setHours(23, 59, 59, 999);
+          endDate.setHours(23, 59, 59, 999);
           break;
       }
 
@@ -1139,11 +1153,13 @@ const AttendanceWithToggle: React.FC = () => {
         employeesData = [];
       }
 
-      // Create a map of userId -> role for quick lookup
+      // Create maps of userId -> role and department for quick lookup
       const userRoleMap: Record<string, string> = {};
+      const userDepartmentMap: Record<string, string> = {};
       employeesData.forEach((emp: any) => {
         const uId = String(emp.user_id || emp.userId || emp.id);
-        userRoleMap[uId] = (emp.role || '').toLowerCase();
+        userRoleMap[uId] = (emp.role || '').replace(/[\s_]+/g, '').toLowerCase();
+        userDepartmentMap[uId] = (emp.department || emp.department_name || '').trim().toLowerCase();
       });
 
       // Enforce strict visibility rules (Client-side fail-safe)
@@ -1152,24 +1168,31 @@ const AttendanceWithToggle: React.FC = () => {
         const userDept = user.department?.trim().toLowerCase();
 
         data = data.filter((rec: any) => {
-          const recUserId = String(rec.user_id || rec.employee_id);
-          const recDept = (rec.department || '').trim().toLowerCase();
+          const recUserId = String(rec.user_id || rec.userId || rec.employee_id);
 
           // 1. Always show Self
           if (recUserId === userId) return true;
 
-          // 2. Manager view: Same department + (employees or team leads)
-          if (user.role === 'manager') {
-            if (recDept !== userDept) return false;
-            const recRole = (userRoleMap[recUserId] || '').replace(/[\s_]+/g, '').toLowerCase();
-            return recRole === 'employee' || recRole === 'teamlead' || recRole === 'team_lead';
+          // 2. Determine department (prefer attendance record, fallback to employee map)
+          let recDept = (rec.department || '').trim().toLowerCase();
+          if (!recDept && userDepartmentMap[recUserId]) {
+            recDept = userDepartmentMap[recUserId];
           }
 
-          // 3. Team Lead view: Only those reporting to them (matching on backend normally, but fail-safe here)
+          // 3. Department must match (mandatory for manager/team_lead)
+          if (recDept !== userDept) return false;
+
+          // 4. Role lookup
+          const role = userRoleMap[recUserId];
+
+          // Managers can see employees and team leads in their department
+          if (user.role === 'manager') {
+            return role === 'employee' || role === 'teamlead';
+          }
+
+          // Team leads can see employees in their department
           if (user.role === 'team_lead') {
-            const recRole = (userRoleMap[recUserId] || '').replace(/[\s_]+/g, '').toLowerCase();
-            // Team leads can see employees in their department
-            return recDept === userDept && (recRole === 'employee');
+            return role === 'employee';
           }
 
           return false;
@@ -2739,6 +2762,7 @@ const AttendanceWithToggle: React.FC = () => {
                         <table className="w-full table-auto min-w-[1800px]" style={{ tableLayout: 'auto' }}>
                           <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
                             <tr>
+                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Date</th>
                               <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.department}</th>
                               <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Work Location</th>
                               <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Online Status</th>
@@ -2758,6 +2782,9 @@ const AttendanceWithToggle: React.FC = () => {
                               .slice((selfCurrentPage - 1) * selfItemsPerPage, (selfCurrentPage - 1) * selfItemsPerPage + selfItemsPerPage)
                               .map((record) => (
                                 <tr key={record.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900">
+                                  <td className="p-3 whitespace-nowrap">
+                                    <span className="text-xs font-medium text-slate-900 dark:text-white">{formatDateIST(record.date, 'dd MMM yyyy')}</span>
+                                  </td>
                                   <td className="p-3 whitespace-nowrap">
                                     <Badge variant="outline" className="text-xs">{user?.department || '-'}</Badge>
                                   </td>
@@ -3086,6 +3113,7 @@ const AttendanceWithToggle: React.FC = () => {
                     <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20">
                       <tr>
                         <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700">{t.attendance.employee}</th>
+                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Date</th>
                         <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.department}</th>
                         <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Work Location</th>
                         <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Online Status</th>
@@ -3109,11 +3137,10 @@ const AttendanceWithToggle: React.FC = () => {
                               <td className="p-3 sticky left-0 z-10 bg-white dark:bg-slate-950 border-r border-slate-100 dark:border-slate-800">
                                 <div className="min-w-[150px]">
                                   <p className="font-medium text-sm text-slate-900 dark:text-white truncate" title={record.name || '-'}>{record.name || '-'}</p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    {formatDateIST(record.date, 'dd MMM yyyy')}
-                                  </p>
                                 </div>
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                <span className="text-xs font-medium text-slate-900 dark:text-white">{formatDateIST(record.date, 'dd MMM yyyy')}</span>
                               </td>
                               <td className="p-3 whitespace-nowrap">
                                 <Badge variant="outline" className="text-xs">{record.department || '-'}</Badge>

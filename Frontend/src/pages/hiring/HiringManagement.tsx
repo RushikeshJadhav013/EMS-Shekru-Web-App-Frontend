@@ -36,7 +36,8 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDateIST, formatDateTimeIST } from '@/utils/timezone';
-import { apiService } from '@/lib/api';
+import { apiService, API_BASE_URL } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 interface Vacancy {
   vacancy_id: number;
@@ -95,11 +96,11 @@ interface Interview {
   vacancy_department?: string;
   start_time: string;
   end_time: string;
-  mode: 'online' | 'onsite' | 'phone';
+  mode: 'remote' | 'onsite' | 'phone';
   location: string;
   round_type: string;
   panel_members: number[];
-  status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled' | 'no-show' | 'selected' | 'rejected';
+  status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled' | 'no_show' | 'selected' | 'rejected';
   scheduled_by?: number;
   scheduled_at: string;
   updated_at: string | null;
@@ -109,10 +110,15 @@ interface Interview {
 }
 
 interface InterviewFeedback {
-  feedback_id: number;
+  id: number; // API field
+  feedback_id?: number; // Keep for compatibility if needed elsewhere
   interview_id: number;
+  panel_member_id?: number;
+  panel_member_name?: string;
+  panel_member_role?: string;
   interviewer_id?: number;
   interviewer_name?: string;
+  feedback_summary?: string;
   rating: number;
   technical_rating?: number;
   communication_rating?: number;
@@ -131,12 +137,15 @@ export default function HiringManagement() {
   const [vacancies, setVacancies] = useState<Vacancy[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [candidateInterviews, setCandidateInterviews] = useState<Interview[]>([]);
+  const [vacancyInterviews, setVacancyInterviews] = useState<Interview[]>([]);
   const [feedback, setFeedback] = useState<InterviewFeedback[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [allEmployees, setAllEmployees] = useState<any[]>([]);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -199,7 +208,7 @@ export default function HiringManagement() {
     vacancy_id: '',
     start_time: '',
     end_time: '',
-    mode: 'online' as Interview['mode'],
+    mode: 'remote' as Interview['mode'],
     location: '',
     round_type: 'Technical',
     interviewer_name: '',
@@ -211,6 +220,7 @@ export default function HiringManagement() {
 
   const [feedbackFormData, setFeedbackFormData] = useState({
     rating: 3,
+    feedback_summary: '',
     technical_rating: 3,
     communication_rating: 3,
     strengths: '',
@@ -223,7 +233,7 @@ export default function HiringManagement() {
   const [shortlistFormData, setShortlistFormData] = useState({
     interview_date: '',
     interview_time: '',
-    interview_mode: 'online',
+    interview_mode: 'remote',
     location_or_link: '',
     interviewer_name: '',
   });
@@ -255,22 +265,23 @@ export default function HiringManagement() {
     [],
   );
 
-  // Fetch departments from employees
+  // Fetch core departments from the Departments API (not scraped from employees)
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const employees = await apiService.getEmployees();
-        const uniqueDepartments = new Set<string>();
-        employees.forEach((emp: any) => {
-          if (emp.department) uniqueDepartments.add(emp.department);
-        });
-        setDepartments(Array.from(uniqueDepartments).sort());
+        const data = await apiService.getDepartments();
+        const activeDeptNames = (data || [])
+          .filter((dept: any) => dept.status === 'active')
+          .map((dept: any) => dept.name as string)
+          .sort();
+        setDepartments(activeDeptNames);
       } catch (error) {
         console.error('Failed to fetch departments:', error);
       }
     };
     fetchDepartments();
   }, []);
+
 
   // Fetch vacancies
   const fetchVacancies = async () => {
@@ -279,7 +290,7 @@ export default function HiringManagement() {
       const dept = selectedDepartment !== 'all' ? selectedDepartment : undefined;
       const status = selectedStatus !== 'all' ? selectedStatus : undefined;
       const data = await apiService.getVacancies(dept, status);
-      setVacancies(data);
+      setVacancies(Array.isArray(data) ? data : data?.vacancies || []);
     } catch (error: any) {
       console.error('Failed to fetch vacancies:', error);
       toast({
@@ -298,7 +309,7 @@ export default function HiringManagement() {
     try {
       const status = selectedStatus !== 'all' ? selectedStatus : undefined;
       const data = await apiService.getCandidates(undefined, status);
-      setCandidates(data);
+      setCandidates(Array.isArray(data) ? data : data?.candidates || []);
     } catch (error: any) {
       console.error('Failed to fetch candidates:', error);
       toast({
@@ -315,8 +326,9 @@ export default function HiringManagement() {
   const fetchInterviews = async () => {
     setIsLoading(true);
     try {
-      const data = await apiService.getInterviews();
-      setInterviews(Array.isArray(data) ? data : []);
+      const status = selectedStatus !== 'all' ? selectedStatus : undefined;
+      const data = await apiService.getInterviews({ status_filter: status });
+      setInterviews(Array.isArray(data) ? data : data?.interviews || []);
     } catch (error: any) {
       console.error('Failed to fetch interviews:', error);
       setInterviews([]);
@@ -330,43 +342,95 @@ export default function HiringManagement() {
     }
   };
 
+  // Fetch employees for interviewer selection
+  const fetchEmployees = async () => {
+    try {
+      const data = await apiService.getAllEmployees();
+      const employees = Array.isArray(data) ? data : [];
+      // Ensure each employee has an id field (mapping from user_id if necessary)
+      const mappedData = employees.map((emp: any) => ({
+        ...emp,
+        id: emp.id || emp.user_id
+      }));
+      setAllEmployees(mappedData);
+    } catch (error) {
+      console.error('Failed to fetch employees:', error);
+      setAllEmployees([]);
+    }
+  };
+
+  // Fetch candidate's interview history
+  const fetchCandidateInterviews = async (candidateId: number) => {
+    try {
+      const data = await apiService.getCandidateInterviews(candidateId);
+      setCandidateInterviews(Array.isArray(data) ? data : data?.interviews || []);
+    } catch (error) {
+      console.error('Failed to fetch candidate interviews:', error);
+      setCandidateInterviews([]);
+    }
+  };
+
+  // Fetch vacancy's interviews
+  const fetchVacancyInterviews = async (vacancyId: number) => {
+    try {
+      const data = await apiService.getVacancyInterviews(vacancyId);
+      setVacancyInterviews(Array.isArray(data) ? data : data?.interviews || []);
+    } catch (error) {
+      console.error('Failed to fetch vacancy interviews:', error);
+      setVacancyInterviews([]);
+    }
+  };
+
   useEffect(() => {
+    // Initial fetch of all necessary data
+    fetchVacancies();
+    fetchCandidates();
+    fetchInterviews();
+    fetchEmployees();
+  }, [selectedDepartment, selectedStatus]);
+
+  useEffect(() => {
+    // Refresh data when switching tabs as a fallback
     if (activeTab === 'vacancies') {
       fetchVacancies();
     } else if (activeTab === 'candidates') {
       fetchCandidates();
     } else if (activeTab === 'interviews') {
       fetchInterviews();
+      fetchEmployees();
     }
-  }, [activeTab, selectedDepartment, selectedStatus]);
+  }, [activeTab]);
 
   const filteredVacancies = vacancies.filter((vacancy) => {
-    const query = searchQuery.toLowerCase();
+    if (!vacancy) return false;
+    const query = (searchQuery || '').toLowerCase();
     return (
-      vacancy.title.toLowerCase().includes(query) ||
-      vacancy.department.toLowerCase().includes(query) ||
-      vacancy.location.toLowerCase().includes(query) ||
-      vacancy.description.toLowerCase().includes(query)
+      (vacancy.title || '').toLowerCase().includes(query) ||
+      (vacancy.department || '').toLowerCase().includes(query) ||
+      (vacancy.location || '').toLowerCase().includes(query) ||
+      (vacancy.description || '').toLowerCase().includes(query)
     );
   });
 
   const filteredCandidates = candidates.filter((candidate) => {
-    const query = searchQuery.toLowerCase();
+    if (!candidate) return false;
+    const query = (searchQuery || '').toLowerCase();
     return (
-      candidate.name.toLowerCase().includes(query) ||
-      candidate.email.toLowerCase().includes(query) ||
-      candidate.vacancy_title?.toLowerCase().includes(query) ||
-      candidate.phone?.toLowerCase().includes(query)
+      (candidate.name || '').toLowerCase().includes(query) ||
+      (candidate.email || '').toLowerCase().includes(query) ||
+      (candidate.vacancy_title || '').toLowerCase().includes(query) ||
+      (candidate.phone || '').toLowerCase().includes(query)
     );
   });
 
   const filteredInterviews = interviews.filter((interview) => {
-    const query = searchQuery.toLowerCase();
+    if (!interview) return false;
+    const query = (searchQuery || '').toLowerCase();
     return (
-      interview.candidate_name?.toLowerCase().includes(query) ||
-      interview.vacancy_title?.toLowerCase().includes(query) ||
-      interview.round_type?.toLowerCase().includes(query) ||
-      interview.location?.toLowerCase().includes(query)
+      (interview.candidate_name || '').toLowerCase().includes(query) ||
+      (interview.vacancy_title || '').toLowerCase().includes(query) ||
+      (interview.round_type || '').toLowerCase().includes(query) ||
+      (interview.location || '').toLowerCase().includes(query)
     );
   });
 
@@ -507,12 +571,12 @@ export default function HiringManagement() {
       return;
     }
 
-    // Mobile number validation (Starting with 7,8,9 and exactly 10 digits)
-    const mobileRegex = /^[7,8,9]\d{9}$/;
+    // Mobile number validation (Starting with 6, 7, 8, 9 and exactly 10 digits)
+    const mobileRegex = /^[6-9]\d{9}$/;
     if (!mobileRegex.test(candidateFormData.phone)) {
       toast({
         title: 'Invalid Mobile Number',
-        description: 'Mobile number must be 10 digits and start with 7, 8, or 9',
+        description: 'Mobile number must be 10 digits and start with 6, 7, 8, or 9',
         variant: 'destructive',
       });
       return;
@@ -653,10 +717,33 @@ export default function HiringManagement() {
   };
 
   const handleCreateInterview = async () => {
-    if (!interviewFormData.candidate_id || !interviewFormData.vacancy_id || !interviewFormData.start_time || !interviewFormData.round_type) {
+    const { candidate_id, vacancy_id, start_time, end_time, mode, location, round_type, interviewer_name, duration_minutes, notes, status } = interviewFormData;
+
+    if (!candidate_id || !vacancy_id || !start_time || !end_time || !round_type || !interviewer_name) {
       toast({
         title: 'Error',
-        description: 'Please fill in all required fields',
+        description: 'Please fill in all required fields (Candidate, Start Time, End Time, Round, Interviewer)',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const startDate = new Date(start_time);
+    const endDate = new Date(end_time);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      toast({
+        title: 'Error',
+        description: 'Invalid dates selected',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (startDate >= endDate) {
+      toast({
+        title: 'Error',
+        description: 'End time must be after start time',
         variant: 'destructive',
       });
       return;
@@ -664,7 +751,19 @@ export default function HiringManagement() {
 
     setIsCreating(true);
     try {
-      await apiService.createInterview(interviewFormData);
+      // Precise payload as per USER spec
+      const payload = {
+        candidate_id: parseInt(candidate_id),
+        vacancy_id: parseInt(vacancy_id),
+        start_time: startDate.toISOString(),
+        end_time: endDate.toISOString(),
+        mode,
+        location,
+        round_type,
+        panel_members: interviewFormData.panel_members,
+      };
+
+      await apiService.createInterview(payload);
       toast({
         title: 'Success',
         description: 'Interview scheduled successfully',
@@ -686,9 +785,53 @@ export default function HiringManagement() {
   const handleUpdateInterview = async () => {
     if (!selectedInterview) return;
 
+    const { candidate_id, vacancy_id, start_time, end_time, mode, location, round_type, interviewer_name, duration_minutes, notes, status } = interviewFormData;
+
+    if (!start_time || !end_time || !round_type || !interviewer_name) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const startDate = new Date(start_time);
+    const endDate = new Date(end_time);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      toast({
+        title: 'Error',
+        description: 'Invalid dates selected',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (startDate >= endDate) {
+      toast({
+        title: 'Error',
+        description: 'End time must be after start time',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsUpdating(true);
     try {
-      await apiService.updateInterview(selectedInterview.interview_id, interviewFormData);
+      // Precise payload as per USER spec
+      const payload = {
+        start_time: startDate.toISOString(),
+        end_time: endDate.toISOString(),
+        mode,
+        location,
+        round_type,
+        status,
+        notes,
+        panel_members: interviewFormData.panel_members,
+      };
+
+      await apiService.updateInterview(selectedInterview.interview_id, payload);
       toast({
         title: 'Success',
         description: 'Interview updated successfully',
@@ -750,14 +893,32 @@ export default function HiringManagement() {
   const fetchFeedbackList = async (interviewId: number) => {
     try {
       const data = await apiService.getInterviewFeedback(interviewId);
-      setFeedback(data);
+      const feedbackData = Array.isArray(data) ? data : (data?.feedback || []);
+
+      const mappedFeedback = feedbackData.map((f: any) => ({
+        ...f,
+        feedback_id: f.id || f.feedback_id,
+        interviewer_name: f.panel_member_name || f.interviewer_name
+      }));
+
+      setFeedback(mappedFeedback);
     } catch (error: any) {
       console.error('Failed to fetch feedback:', error);
+      setFeedback([]);
     }
   };
 
   const handleCreateFeedback = async () => {
     if (!selectedInterview) return;
+
+    if (!feedbackFormData.feedback_summary) {
+      toast({
+        title: 'Error',
+        description: 'Feedback summary is required',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setIsCreating(true);
     try {
@@ -783,9 +944,18 @@ export default function HiringManagement() {
   const handleUpdateFeedback = async () => {
     if (!selectedFeedback || !selectedInterview) return;
 
+    if (!feedbackFormData.feedback_summary) {
+      toast({
+        title: 'Error',
+        description: 'Feedback summary is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsUpdating(true);
     try {
-      await apiService.updateInterviewFeedback(selectedFeedback.feedback_id, feedbackFormData);
+      await apiService.updateInterviewFeedback(selectedInterview.interview_id, selectedFeedback.feedback_id, feedbackFormData);
       toast({
         title: 'Success',
         description: 'Feedback updated successfully',
@@ -810,7 +980,7 @@ export default function HiringManagement() {
     if (!selectedInterview) return;
 
     try {
-      await apiService.deleteInterviewFeedback(feedbackId);
+      await apiService.deleteInterviewFeedback(selectedInterview.interview_id, feedbackId);
       toast({
         title: 'Success',
         description: 'Feedback deleted successfully',
@@ -831,7 +1001,7 @@ export default function HiringManagement() {
       vacancy_id: '',
       start_time: '',
       end_time: '',
-      mode: 'online',
+      mode: 'remote',
       location: '',
       round_type: 'Technical',
       interviewer_name: '',
@@ -845,6 +1015,7 @@ export default function HiringManagement() {
   const resetFeedbackForm = () => {
     setFeedbackFormData({
       rating: 3,
+      feedback_summary: '',
       technical_rating: 3,
       communication_rating: 3,
       strengths: '',
@@ -1077,6 +1248,7 @@ export default function HiringManagement() {
 
   const openViewDialog = (vacancy: Vacancy) => {
     setSelectedVacancy(vacancy);
+    fetchVacancyInterviews(vacancy.vacancy_id);
     setIsViewVacancyDialogOpen(true);
   };
 
@@ -1086,13 +1258,16 @@ export default function HiringManagement() {
   };
 
   const getStatusBadge = (status: string) => {
+    if (!status) return <Badge variant="outline">Unknown</Badge>;
+
     const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-      open: 'default',
+      open: 'outline',
       closed: 'secondary',
       'on-hold': 'outline',
       applied: 'default',
+      screening: 'secondary',
       'shortlisted': 'default',
-      'interviewed': 'default',
+      'interview': 'default',
       'offered': 'default',
       'rejected': 'destructive',
       'hired': 'default',
@@ -1287,13 +1462,12 @@ export default function HiringManagement() {
                         <TableHead>Type</TableHead>
                         <TableHead>Candidates</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Social Media</TableHead>
+
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredVacancies.map((vacancy) => {
-                        const socialLinks = getSocialMediaLinks(vacancy);
                         return (
                           <TableRow key={vacancy.vacancy_id}>
                             <TableCell className="font-medium">{vacancy.title}</TableCell>
@@ -1305,28 +1479,12 @@ export default function HiringManagement() {
                               </div>
                             </TableCell>
                             <TableCell className="capitalize">
-                              {vacancy.employment_type.replace('-', ' ')}
+                              {(vacancy.employment_type || '').replace('-', ' ')}
                             </TableCell>
                             <TableCell>
                               <Badge variant="outline">{vacancy.candidates_count}</Badge>
                             </TableCell>
                             <TableCell>{getStatusBadge(vacancy.status)}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {vacancy.posted_on_linkedin && (
-                                  <Linkedin className="h-4 w-4 text-blue-600" />
-                                )}
-                                {vacancy.posted_on_naukri && (
-                                  <FileText className="h-4 w-4 text-green-600" />
-                                )}
-                                {vacancy.posted_on_indeed && (
-                                  <FileText className="h-4 w-4 text-blue-500" />
-                                )}
-                                {vacancy.posted_on_other && (
-                                  <Share2 className="h-4 w-4 text-purple-600" />
-                                )}
-                              </div>
-                            </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-2">
                                 <Button
@@ -1336,13 +1494,7 @@ export default function HiringManagement() {
                                 >
                                   <Eye className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => openSocialMediaDialog(vacancy)}
-                                >
-                                  <Share2 className="h-4 w-4" />
-                                </Button>
+
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -1404,7 +1556,7 @@ export default function HiringManagement() {
                     <SelectItem value="shortlisted">Shortlisted</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
                     <SelectItem value="hired">Hired</SelectItem>
-                    <SelectItem value="on_hold">On Hold</SelectItem>
+                    <SelectItem value="on-hold">On Hold</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1460,7 +1612,7 @@ export default function HiringManagement() {
                           <TableCell>{candidate.vacancy_title || '-'}</TableCell>
                           <TableCell>{candidate.vacancy_department || '-'}</TableCell>
                           <TableCell>
-                            {formatDateIST(candidate.applied_at, 'MMM dd, yyyy')}
+                            {candidate.applied_at ? formatDateIST(candidate.applied_at, 'MMM dd, yyyy') : 'N/A'}
                           </TableCell>
                           <TableCell>
                             <Select
@@ -1474,11 +1626,13 @@ export default function HiringManagement() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="applied">Applied</SelectItem>
+                                <SelectItem value="screening">Screening</SelectItem>
                                 <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                                <SelectItem value="interviewed">Interviewed</SelectItem>
+                                <SelectItem value="interview">Interview</SelectItem>
                                 <SelectItem value="offered">Offered</SelectItem>
                                 <SelectItem value="rejected">Rejected</SelectItem>
                                 <SelectItem value="hired">Hired</SelectItem>
+                                <SelectItem value="on-hold">On Hold</SelectItem>
                               </SelectContent>
                             </Select>
                           </TableCell>
@@ -1489,6 +1643,7 @@ export default function HiringManagement() {
                                 size="icon"
                                 onClick={() => {
                                   setSelectedCandidate(candidate);
+                                  fetchCandidateInterviews(candidate.candidate_id);
                                   setIsViewCandidateDialogOpen(true);
                                 }}
                                 title="View Details"
@@ -1503,7 +1658,7 @@ export default function HiringManagement() {
                                   setShortlistFormData({
                                     interview_date: '',
                                     interview_time: '',
-                                    interview_mode: 'online',
+                                    interview_mode: 'remote',
                                     location_or_link: '',
                                     interviewer_name: '',
                                   });
@@ -1579,7 +1734,7 @@ export default function HiringManagement() {
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
                     <SelectItem value="rescheduled">Rescheduled</SelectItem>
-                    <SelectItem value="no-show">No Show</SelectItem>
+                    <SelectItem value="no_show">No Show</SelectItem>
                     <SelectItem value="selected">Selected</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
                   </SelectContent>
@@ -1634,9 +1789,12 @@ export default function HiringManagement() {
                           <TableCell>{interview.vacancy_title}</TableCell>
                           <TableCell>
                             <div className="flex flex-col">
-                              <span className="text-sm font-medium">{formatDateIST(interview.start_time, 'MMM dd, yyyy')}</span>
+                              <span className="text-sm font-medium">
+                                {interview.start_time ? formatDateIST(interview.start_time, 'MMM dd, yyyy') : 'N/A'}
+                              </span>
                               <span className="text-xs text-muted-foreground">
-                                {formatDateIST(interview.start_time, 'hh:mm a')} - {formatDateIST(interview.end_time, 'hh:mm a')}
+                                {interview.start_time ? formatDateIST(interview.start_time, 'hh:mm a') : ''}
+                                {interview.end_time ? ` - ${formatDateIST(interview.end_time, 'hh:mm a')}` : ''}
                               </span>
                             </div>
                           </TableCell>
@@ -1650,7 +1808,18 @@ export default function HiringManagement() {
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell>{interview.round_type}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              {interview.interviewer_name ? (
+                                <span className="text-sm font-medium">{interview.interviewer_name}</span>
+                              ) : interview.panel_members && interview.panel_members.length > 0 ? (
+                                <span className="text-xs text-muted-foreground">ID: {interview.panel_members.join(', ')}</span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic">Not assigned</span>
+                              )}
+                              <span className="text-[10px] text-muted-foreground opacity-70 serif">{interview.round_type}</span>
+                            </div>
+                          </TableCell>
                           <TableCell>
                             <Select
                               value={interview.status}
@@ -1666,7 +1835,7 @@ export default function HiringManagement() {
                                 <SelectItem value="completed">Completed</SelectItem>
                                 <SelectItem value="cancelled">Cancelled</SelectItem>
                                 <SelectItem value="rescheduled">Rescheduled</SelectItem>
-                                <SelectItem value="no-show">No Show</SelectItem>
+                                <SelectItem value="no_show">No Show</SelectItem>
                                 <SelectItem value="selected">Selected</SelectItem>
                                 <SelectItem value="rejected">Rejected</SelectItem>
                               </SelectContent>
@@ -1678,10 +1847,22 @@ export default function HiringManagement() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 text-violet-600 hover:text-violet-700 hover:bg-violet-50"
-                                onClick={() => {
-                                  setSelectedInterview(interview);
-                                  fetchFeedbackList(interview.interview_id);
-                                  setIsViewInterviewDialogOpen(true);
+                                onClick={async () => {
+                                  try {
+                                    setIsLoading(true);
+                                    const freshInterview = await apiService.getInterview(interview.interview_id);
+                                    setSelectedInterview(freshInterview);
+                                    await fetchFeedbackList(interview.interview_id);
+                                    setIsViewInterviewDialogOpen(true);
+                                  } catch (error) {
+                                    console.error('Failed to fetch interview details:', error);
+                                    // Fallback to existing data if fetch fails
+                                    setSelectedInterview(interview);
+                                    fetchFeedbackList(interview.interview_id);
+                                    setIsViewInterviewDialogOpen(true);
+                                  } finally {
+                                    setIsLoading(false);
+                                  }
                                 }}
                                 title="View Details & Feedback"
                               >
@@ -2016,44 +2197,6 @@ export default function HiringManagement() {
               </div>
             </div>
 
-            {/* Social Media */}
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 p-4 sm:p-5 space-y-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  📢 Post on Social Media
-                </p>
-                <p className="text-[12px] text-muted-foreground">
-                  Select platforms where you want this vacancy to be posted.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {([
-                  { key: 'posted_on_linkedin' as const, label: 'LinkedIn', icon: <Linkedin className="h-4 w-4 text-blue-600" /> },
-                  { key: 'posted_on_naukri' as const, label: 'Naukri', icon: <FileText className="h-4 w-4 text-green-600" /> },
-                  { key: 'posted_on_indeed' as const, label: 'Indeed', icon: <FileText className="h-4 w-4 text-blue-500" /> },
-                  { key: 'posted_on_other' as const, label: 'Other', icon: <Share2 className="h-4 w-4 text-purple-600" /> },
-                ] as const).map(({ key, label, icon }) => (
-                  <label
-                    key={key}
-                    htmlFor={key}
-                    className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-colors ${vacancyFormData[key]
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40'
-                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900'
-                      }`}
-                  >
-                    <Checkbox
-                      id={key}
-                      checked={vacancyFormData[key]}
-                      onCheckedChange={(checked) =>
-                        setVacancyFormData({ ...vacancyFormData, [key]: !!checked })
-                      }
-                    />
-                    {icon}
-                    <span className="text-sm font-medium">{label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
@@ -2094,7 +2237,7 @@ export default function HiringManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Employment Type</Label>
-                  <p className="capitalize">{selectedVacancy.employment_type.replace('-', ' ')}</p>
+                  <p className="capitalize">{(selectedVacancy.employment_type || '').replace('-', ' ')}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Status</Label>
@@ -2135,36 +2278,44 @@ export default function HiringManagement() {
                   {renderRichText(selectedVacancy.nice_to_have_skills)}
                 </div>
               )}
-              <div>
-                <Label className="text-muted-foreground">Social Media Posts</Label>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedVacancy.posted_on_linkedin && (
-                    <Badge variant="outline" className="gap-1">
-                      <Linkedin className="h-3 w-3" />
-                      LinkedIn
-                    </Badge>
-                  )}
-                  {selectedVacancy.posted_on_naukri && (
-                    <Badge variant="outline" className="gap-1">
-                      <FileText className="h-3 w-3" />
-                      Naukri
-                    </Badge>
-                  )}
-                  {selectedVacancy.posted_on_indeed && (
-                    <Badge variant="outline" className="gap-1">
-                      <FileText className="h-3 w-3" />
-                      Indeed
-                    </Badge>
-                  )}
-                  {selectedVacancy.posted_on_other && (
-                    <Badge variant="outline" className="gap-1">
-                      <Share2 className="h-3 w-3" />
-                      Other
-                    </Badge>
-                  )}
-                </div>
+
+              {/* Vacancy Interview History */}
+              <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Calendar className="h-3 w-3" />
+                  Recent Interviews for this Role
+                </Label>
+                {vacancyInterviews.length > 0 ? (
+                  <div className="space-y-2">
+                    {vacancyInterviews.map((int) => (
+                      <div key={int.interview_id} className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between text-xs">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-semibold">{int.candidate_name} • {int.round_type}</span>
+                          <span className="text-muted-foreground">
+                            {formatDateTimeIST(int.start_time, 'MMM dd, yyyy')} • {formatDateTimeIST(int.start_time, 'hh:mm a')}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className={cn(
+                            "capitalize text-[10px] py-1 border-opacity-50",
+                            int.status === 'scheduled' && "bg-blue-50 text-blue-700 border-blue-200",
+                            int.status === 'completed' && "bg-emerald-50 text-emerald-700 border-emerald-200",
+                            int.status === 'cancelled' && "bg-red-50 text-red-700 border-red-200",
+                            int.status === 'rescheduled' && "bg-amber-50 text-amber-700 border-amber-200",
+                            int.status === 'no_show' && "bg-slate-50 text-slate-700 border-slate-200"
+                          )}>
+                            {int.status.replace('_', ' ')}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">No interview records found for this vacancy.</p>
+                )}
               </div>
             </div>
+
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsViewVacancyDialogOpen(false)}>
@@ -2174,187 +2325,10 @@ export default function HiringManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Social Media Posting Dialog */}
-      <Dialog open={isSocialMediaDialogOpen} onOpenChange={setIsSocialMediaDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Post to Social Media</DialogTitle>
-            <DialogDescription>
-              Select platforms to post the vacancy: {selectedVacancy?.title}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="linkedin"
-                  checked={socialMediaData.platforms.includes('linkedin')}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setSocialMediaData({
-                        ...socialMediaData,
-                        platforms: [...socialMediaData.platforms, 'linkedin'],
-                      });
-                    } else {
-                      setSocialMediaData({
-                        ...socialMediaData,
-                        platforms: socialMediaData.platforms.filter((p) => p !== 'linkedin'),
-                        links: { ...socialMediaData.links, linkedin: undefined },
-                      });
-                    }
-                  }}
-                />
-                <Label htmlFor="linkedin" className="flex items-center gap-2 cursor-pointer">
-                  <Linkedin className="h-4 w-4 text-blue-600" />
-                  LinkedIn
-                </Label>
-              </div>
-              {socialMediaData.platforms.includes('linkedin') && (
-                <Input
-                  placeholder="LinkedIn post URL (optional)"
-                  value={socialMediaData.links.linkedin || ''}
-                  onChange={(e) =>
-                    setSocialMediaData({
-                      ...socialMediaData,
-                      links: { ...socialMediaData.links, linkedin: e.target.value },
-                    })
-                  }
-                  className="ml-6 w-[calc(100%-1.5rem)]"
-                />
-              )}
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="naukri"
-                  checked={socialMediaData.platforms.includes('naukri')}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setSocialMediaData({
-                        ...socialMediaData,
-                        platforms: [...socialMediaData.platforms, 'naukri'],
-                      });
-                    } else {
-                      setSocialMediaData({
-                        ...socialMediaData,
-                        platforms: socialMediaData.platforms.filter((p) => p !== 'naukri'),
-                        links: { ...socialMediaData.links, naukri: undefined },
-                      });
-                    }
-                  }}
-                />
-                <Label htmlFor="naukri" className="flex items-center gap-2 cursor-pointer">
-                  <FileText className="h-4 w-4 text-green-600" />
-                  Naukri
-                </Label>
-              </div>
-              {socialMediaData.platforms.includes('naukri') && (
-                <Input
-                  placeholder="Naukri post URL (optional)"
-                  value={socialMediaData.links.naukri || ''}
-                  onChange={(e) =>
-                    setSocialMediaData({
-                      ...socialMediaData,
-                      links: { ...socialMediaData.links, naukri: e.target.value },
-                    })
-                  }
-                  className="ml-6 w-[calc(100%-1.5rem)]"
-                />
-              )}
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="indeed"
-                  checked={socialMediaData.platforms.includes('indeed')}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setSocialMediaData({
-                        ...socialMediaData,
-                        platforms: [...socialMediaData.platforms, 'indeed'],
-                      });
-                    } else {
-                      setSocialMediaData({
-                        ...socialMediaData,
-                        platforms: socialMediaData.platforms.filter((p) => p !== 'indeed'),
-                        links: { ...socialMediaData.links, indeed: undefined },
-                      });
-                    }
-                  }}
-                />
-                <Label htmlFor="indeed" className="flex items-center gap-2 cursor-pointer">
-                  <FileText className="h-4 w-4 text-blue-500" />
-                  Indeed
-                </Label>
-              </div>
-              {socialMediaData.platforms.includes('indeed') && (
-                <Input
-                  placeholder="Indeed post URL (optional)"
-                  value={socialMediaData.links.indeed || ''}
-                  onChange={(e) =>
-                    setSocialMediaData({
-                      ...socialMediaData,
-                      links: { ...socialMediaData.links, indeed: e.target.value },
-                    })
-                  }
-                  className="ml-6 w-[calc(100%-1.5rem)]"
-                />
-              )}
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="other"
-                  checked={socialMediaData.platforms.includes('other')}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setSocialMediaData({
-                        ...socialMediaData,
-                        platforms: [...socialMediaData.platforms, 'other'],
-                      });
-                    } else {
-                      setSocialMediaData({
-                        ...socialMediaData,
-                        platforms: socialMediaData.platforms.filter((p) => p !== 'other'),
-                        links: { ...socialMediaData.links, other: undefined },
-                      });
-                    }
-                  }}
-                />
-                <Label htmlFor="other" className="flex items-center gap-2 cursor-pointer">
-                  <Share2 className="h-4 w-4 text-purple-600" />
-                  Other Platforms
-                </Label>
-              </div>
-              {socialMediaData.platforms.includes('other') && (
-                <Input
-                  placeholder="Other platform post URL (optional)"
-                  value={socialMediaData.links.other || ''}
-                  onChange={(e) =>
-                    setSocialMediaData({
-                      ...socialMediaData,
-                      links: { ...socialMediaData.links, other: e.target.value },
-                    })
-                  }
-                  className="ml-6 w-[calc(100%-1.5rem)]"
-                />
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setIsSocialMediaDialogOpen(false);
-              setSocialMediaData({ platforms: [], links: {} });
-            }}>
-              Cancel
-            </Button>
-            <Button onClick={handlePostToSocialMedia}>
-              <Share2 className="mr-2 h-4 w-4" />
-              Post to Selected Platforms
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* View Candidate Dialog */}
-      <Dialog open={isViewCandidateDialogOpen} onOpenChange={setIsViewCandidateDialogOpen}>
+      < Dialog open={isViewCandidateDialogOpen} onOpenChange={setIsViewCandidateDialogOpen} >
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Candidate Profile: {selectedCandidate?.name}</DialogTitle>
@@ -2366,7 +2340,28 @@ export default function HiringManagement() {
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
                   <div className="flex items-center justify-between">
                     <Label className="text-muted-foreground">Status</Label>
-                    {getStatusBadge(selectedCandidate.status)}
+                    <Select
+                      value={selectedCandidate.status}
+                      onValueChange={(value) => {
+                        handleUpdateCandidateStatus(selectedCandidate.candidate_id, value);
+                        setSelectedCandidate({ ...selectedCandidate, status: value });
+                        fetchCandidateInterviews(selectedCandidate.candidate_id);
+                      }}
+                    >
+                      <SelectTrigger className="w-[140px] h-8 text-xs">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="applied">Applied</SelectItem>
+                        <SelectItem value="screening">Screening</SelectItem>
+                        <SelectItem value="shortlisted">Shortlisted</SelectItem>
+                        <SelectItem value="interview">Interview</SelectItem>
+                        <SelectItem value="offered">Offered</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                        <SelectItem value="hired">Hired</SelectItem>
+                        <SelectItem value="on-hold">On Hold</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
@@ -2380,7 +2375,9 @@ export default function HiringManagement() {
                   <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
                     <p className="text-sm font-medium">{selectedCandidate.vacancy_title || '-'}</p>
                     <p className="text-xs text-muted-foreground mt-1">{selectedCandidate.vacancy_department || '-'}</p>
-                    <p className="text-xs text-muted-foreground mt-3">Applied on {formatDateTimeIST(selectedCandidate.applied_at, 'MMM dd, yyyy')}</p>
+                    <p className="text-xs text-muted-foreground mt-3">
+                      Applied on {selectedCandidate.applied_at ? formatDateTimeIST(selectedCandidate.applied_at, 'MMM dd, yyyy') : 'N/A'}
+                    </p>
                   </div>
                 </div>
 
@@ -2429,7 +2426,9 @@ export default function HiringManagement() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
                     <div>
                       <span className="text-muted-foreground block mb-1">Date</span>
-                      <span className="font-medium">{formatDateIST(selectedCandidate.interview_date, 'MMM dd, yyyy')}</span>
+                      <span className="font-medium">
+                        {selectedCandidate.interview_date ? formatDateIST(selectedCandidate.interview_date, 'MMM dd, yyyy') : 'N/A'}
+                      </span>
                     </div>
                     <div>
                       <span className="text-muted-foreground block mb-1">Time</span>
@@ -2473,7 +2472,11 @@ export default function HiringManagement() {
                     <Button
                       variant="outline"
                       className="h-9 px-4 rounded-lg bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-800/50 text-green-700 dark:text-green-400 hover:bg-green-100"
-                      onClick={() => window.open(selectedCandidate.resume_url, '_blank')}
+                      onClick={() => {
+                        const url = selectedCandidate.resume_url!;
+                        const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+                        window.open(fullUrl, '_blank');
+                      }}
                     >
                       <FileText className="mr-2 h-4 w-4" />
                       View Uploaded Resume
@@ -2495,6 +2498,46 @@ export default function HiringManagement() {
                   )}
                 </div>
               </div>
+
+              {/* Candidate Interview History */}
+              <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Calendar className="h-3 w-3" />
+                  Interview History
+                </Label>
+                {candidateInterviews.length > 0 ? (
+                  <div className="space-y-2">
+                    {candidateInterviews.map((int) => (
+                      <div key={int.interview_id} className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between text-xs">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-semibold">{int.round_type}</span>
+                          <span className="text-muted-foreground">
+                            {formatDateTimeIST(int.start_time, 'MMM dd, yyyy')} • {formatDateTimeIST(int.start_time, 'hh:mm a')}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right flex flex-col gap-1">
+                            <span className="text-muted-foreground">Interviewer</span>
+                            <span className="font-medium">{int.interviewer_name || '-'}</span>
+                          </div>
+                          <Badge variant="outline" className={cn(
+                            "capitalize text-[10px] py-1 border-opacity-50",
+                            int.status === 'scheduled' && "bg-blue-50 text-blue-700 border-blue-200",
+                            int.status === 'completed' && "bg-emerald-50 text-emerald-700 border-emerald-200",
+                            int.status === 'cancelled' && "bg-red-50 text-red-700 border-red-200",
+                            int.status === 'rescheduled' && "bg-amber-50 text-amber-700 border-amber-200",
+                            int.status === 'no_show' && "bg-slate-50 text-slate-700 border-slate-200"
+                          )}>
+                            {int.status.replace('_', ' ')}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">No interview history found for this candidate.</p>
+                )}
+              </div>
             </div>
           )}
           <DialogFooter>
@@ -2503,10 +2546,10 @@ export default function HiringManagement() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Create Candidate Dialog */}
-      <Dialog open={isCandidateDialogOpen} onOpenChange={setIsCandidateDialogOpen}>
+      < Dialog open={isCandidateDialogOpen} onOpenChange={setIsCandidateDialogOpen} >
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Candidate</DialogTitle>
@@ -2554,10 +2597,10 @@ export default function HiringManagement() {
                     const val = e.target.value.replace(/\D/g, '').slice(0, 10);
                     setCandidateFormData({ ...candidateFormData, phone: val });
                   }}
-                  placeholder="10-digit number (starts with 7, 8, or 9)"
+                  placeholder="10-digit number (starts with 6, 7, 8, or 9)"
                   maxLength={10}
                 />
-                <p className="text-[10px] text-muted-foreground italic">Starts with 7, 8, or 9</p>
+                <p className="text-[10px] text-muted-foreground italic">Starts with 6, 7, 8, or 9</p>
               </div>
             </div>
             <div className="space-y-2">
@@ -2570,11 +2613,15 @@ export default function HiringManagement() {
                   <SelectValue placeholder="Select a job opening" />
                 </SelectTrigger>
                 <SelectContent>
-                  {vacancies.filter(v => v.status === 'open').map((v) => (
-                    <SelectItem key={v.vacancy_id} value={String(v.vacancy_id)}>
-                      {v.title} ({v.department})
-                    </SelectItem>
-                  ))}
+                  {vacancies.filter(v => v.status === 'open').length > 0 ? (
+                    vacancies.filter(v => v.status === 'open').map((v) => (
+                      <SelectItem key={v.vacancy_id} value={String(v.vacancy_id)}>
+                        {v.title} ({v.department})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" disabled>No open vacancies found</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -2645,10 +2692,10 @@ export default function HiringManagement() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Shortlist Dialog */}
-      <Dialog open={isShortlistDialogOpen} onOpenChange={setIsShortlistDialogOpen}>
+      < Dialog open={isShortlistDialogOpen} onOpenChange={setIsShortlistDialogOpen} >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Shortlist for Interview</DialogTitle>
@@ -2683,8 +2730,8 @@ export default function HiringManagement() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="online">Online</SelectItem>
-                  <SelectItem value="offline">Offline</SelectItem>
+                  <SelectItem value="remote">Remote (Online)</SelectItem>
+                  <SelectItem value="onsite">On-site (Office)</SelectItem>
                   <SelectItem value="phone">Phone Call</SelectItem>
                 </SelectContent>
               </Select>
@@ -2700,12 +2747,36 @@ export default function HiringManagement() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="int_interviewer">Interviewer Name *</Label>
-              <Input
-                id="int_interviewer"
+              <Select
                 value={shortlistFormData.interviewer_name}
-                onChange={(e) => setShortlistFormData({ ...shortlistFormData, interviewer_name: e.target.value })}
-                placeholder="Name of the person conducting interview"
-              />
+                onValueChange={(value) => {
+                  const emp = allEmployees.find(e => e.name === value);
+                  setShortlistFormData({ ...shortlistFormData, interviewer_name: value });
+                  // If we wanted to sync this to a common state, we could, 
+                  // but shortlistFormData is separate.
+                }}
+              >
+                <SelectTrigger id="int_interviewer">
+                  <SelectValue placeholder="Select interviewer from employees" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {allEmployees.length > 0 ? (
+                    allEmployees.map((emp) => {
+                      const empId = emp.id || emp.user_id;
+                      return (
+                        <SelectItem key={empId || emp.name} value={emp.name}>
+                          <div className="flex flex-col">
+                            <span className="font-medium text-sm">{emp.name}</span>
+                            <span className="text-[10px] text-muted-foreground">{emp.department} • {emp.designation}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })
+                  ) : (
+                    <div className="p-2 text-xs text-muted-foreground text-center">No employees found</div>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
@@ -2716,10 +2787,10 @@ export default function HiringManagement() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Update Resume Dialog */}
-      <Dialog open={isUpdateResumeDialogOpen} onOpenChange={setIsUpdateResumeDialogOpen}>
+      < Dialog open={isUpdateResumeDialogOpen} onOpenChange={setIsUpdateResumeDialogOpen} >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Update Resume</DialogTitle>
@@ -2761,9 +2832,9 @@ export default function HiringManagement() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog >
       {/* Schedule/Edit Interview Dialog */}
-      <Dialog open={isInterviewDialogOpen} onOpenChange={setIsInterviewDialogOpen}>
+      < Dialog open={isInterviewDialogOpen} onOpenChange={setIsInterviewDialogOpen} >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{selectedInterview ? 'Edit Interview' : 'Schedule Interview'}</DialogTitle>
@@ -2790,11 +2861,15 @@ export default function HiringManagement() {
                   <SelectValue placeholder="Select candidate" />
                 </SelectTrigger>
                 <SelectContent>
-                  {candidates.map((c) => (
-                    <SelectItem key={c.candidate_id} value={String(c.candidate_id)}>
-                      {c.name} ({c.vacancy_title})
-                    </SelectItem>
-                  ))}
+                  {candidates.length > 0 ? (
+                    candidates.map((c) => (
+                      <SelectItem key={c.candidate_id} value={String(c.candidate_id)}>
+                        {c.name} ({c.vacancy_title || 'No Vacancy'})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" disabled>No candidates found</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -2829,7 +2904,7 @@ export default function HiringManagement() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="online">Online</SelectItem>
+                    <SelectItem value="remote">Remote</SelectItem>
                     <SelectItem value="onsite">On-site</SelectItem>
                     <SelectItem value="phone">Phone Call</SelectItem>
                   </SelectContent>
@@ -2874,12 +2949,41 @@ export default function HiringManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="i_interviewer">Interviewer Name *</Label>
-                <Input
-                  id="i_interviewer"
-                  value={interviewFormData.interviewer_name}
-                  onChange={(e) => setInterviewFormData({ ...interviewFormData, interviewer_name: e.target.value })}
-                  placeholder="Name of the interviewer"
-                />
+                <Select
+                  value={interviewFormData.panel_members[0]?.toString() || ''}
+                  onValueChange={(value) => {
+                    const emp = allEmployees.find(e => {
+                      const id = e.id || e.user_id;
+                      return id?.toString() === value;
+                    });
+                    setInterviewFormData({
+                      ...interviewFormData,
+                      interviewer_name: emp ? emp.name : '',
+                      panel_members: emp ? [parseInt(emp.id || emp.user_id)] : []
+                    });
+                  }}
+                >
+                  <SelectTrigger id="i_interviewer">
+                    <SelectValue placeholder="Select interviewer" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[250px]">
+                    {allEmployees.length > 0 ? (
+                      allEmployees.map((emp) => {
+                        const empId = emp.id || emp.user_id;
+                        return (
+                          <SelectItem key={empId || Math.random()} value={empId?.toString() || ''}>
+                            <div className="flex flex-col">
+                              <span className="font-medium text-xs">{emp.name}</span>
+                              <span className="text-[10px] text-muted-foreground">{emp.department} • {emp.designation}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })
+                    ) : (
+                      <div className="p-2 text-xs text-muted-foreground text-center">No employees found</div>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="i_duration">Duration (minutes)</Label>
@@ -2913,10 +3017,10 @@ export default function HiringManagement() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* View Interview & Feedback Dialog */}
-      <Dialog open={isViewInterviewDialogOpen} onOpenChange={setIsViewInterviewDialogOpen}>
+      < Dialog open={isViewInterviewDialogOpen} onOpenChange={setIsViewInterviewDialogOpen} >
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between gap-4">
@@ -2927,7 +3031,7 @@ export default function HiringManagement() {
                 </DialogDescription>
               </div>
               <Badge className="capitalize">
-                {selectedInterview?.status.replace('-', ' ')}
+                {selectedInterview?.status ? selectedInterview.status.replace('-', ' ') : 'Unknown'}
               </Badge>
             </div>
           </DialogHeader>
@@ -2938,7 +3042,9 @@ export default function HiringManagement() {
                 <div className="col-span-2">
                   <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Schedule</span>
                   <p className="text-sm font-medium">
-                    {formatDateIST(selectedInterview.start_time, 'MMM dd, yyyy')} | {formatDateIST(selectedInterview.start_time, 'hh:mm a')} - {formatDateIST(selectedInterview.end_time, 'hh:mm a')}
+                    {selectedInterview.start_time ? formatDateIST(selectedInterview.start_time, 'MMM dd, yyyy') : 'N/A'} |
+                    {selectedInterview.start_time ? formatDateIST(selectedInterview.start_time, 'hh:mm a') : ''}
+                    {selectedInterview.end_time ? ` - ${formatDateIST(selectedInterview.end_time, 'hh:mm a')}` : ''}
                   </p>
                 </div>
                 <div>
@@ -3018,6 +3124,7 @@ export default function HiringManagement() {
                                 setSelectedFeedback(f);
                                 setFeedbackFormData({
                                   rating: f.rating,
+                                  feedback_summary: f.feedback_summary || '',
                                   technical_rating: f.technical_rating || 3,
                                   communication_rating: f.communication_rating || 3,
                                   strengths: f.strengths || '',
@@ -3041,55 +3148,68 @@ export default function HiringManagement() {
                           </div>
                         </div>
                         <CardContent className="pt-4 space-y-4">
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div>
-                              <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Overall Rating</span>
-                              <div className="flex items-center gap-1">
-                                <span className="font-bold">{f.rating}/5</span>
-                                <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                              </div>
-                            </div>
-                            <div>
-                              <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Recommendation</span>
-                              <Badge className={
-                                f.recommendation === 'hire' ? 'bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400' :
-                                  f.recommendation === 'reject' ? 'bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400' :
-                                    'bg-yellow-100 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400'
-                              }>
-                                {f.recommendation}
-                              </Badge>
-                            </div>
-                            <div>
-                              <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Technical</span>
-                              <span className="text-sm font-medium">{f.technical_rating}/5</span>
-                            </div>
-                            <div>
-                              <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Communication</span>
-                              <span className="text-sm font-medium">{f.communication_rating}/5</span>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {f.strengths && (
-                              <div className="space-y-1">
-                                <span className="text-[10px] uppercase font-bold text-muted-foreground">Strengths</span>
-                                <p className="text-xs text-slate-600 dark:text-slate-400">{f.strengths}</p>
+                          <div className="space-y-3">
+                            {f.feedback_summary && (
+                              <div className="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-100 dark:border-blue-800/50">
+                                <span className="text-[10px] uppercase font-bold text-blue-700 dark:text-blue-400 block mb-1">Feedback Summary</span>
+                                <p className="text-sm font-medium">{f.feedback_summary}</p>
                               </div>
                             )}
-                            {f.weaknesses && (
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div>
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Overall Rating</span>
+                                <div className="flex items-center gap-1">
+                                  <span className="font-bold">{f.rating}/5</span>
+                                  <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Recommendation</span>
+                                <Badge className={
+                                  f.recommendation === 'hire' ? 'bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400' :
+                                    f.recommendation === 'reject' ? 'bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400' :
+                                      'bg-yellow-100 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                }>
+                                  {f.recommendation}
+                                </Badge>
+                              </div>
+                              {f.technical_rating !== undefined && f.technical_rating !== null && (
+                                <div>
+                                  <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Technical</span>
+                                  <span className="text-sm font-medium">{f.technical_rating}/5</span>
+                                </div>
+                              )}
+                              {f.communication_rating !== undefined && f.communication_rating !== null && (
+                                <div>
+                                  <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Communication</span>
+                                  <span className="text-sm font-medium">{f.communication_rating}/5</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {f.strengths && (
+                                <div className="space-y-1">
+                                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Strengths</span>
+                                  <p className="text-xs text-slate-600 dark:text-slate-400">{f.strengths}</p>
+                                </div>
+                              )}
+                              {f.weaknesses && (
+                                <div className="space-y-1">
+                                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Areas for Improvement</span>
+                                  <p className="text-xs text-slate-600 dark:text-slate-400">{f.weaknesses}</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {f.comments && (
                               <div className="space-y-1">
-                                <span className="text-[10px] uppercase font-bold text-muted-foreground">Areas for Improvement</span>
-                                <p className="text-xs text-slate-600 dark:text-slate-400">{f.weaknesses}</p>
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground">Detailed Comments</span>
+                                <p className="text-xs text-slate-600 dark:text-slate-400 italic">"{f.comments}"</p>
                               </div>
                             )}
                           </div>
-
-                          {f.comments && (
-                            <div className="space-y-1">
-                              <span className="text-[10px] uppercase font-bold text-muted-foreground">Detailed Comments</span>
-                              <p className="text-xs text-slate-600 dark:text-slate-400 italic">"{f.comments}"</p>
-                            </div>
-                          )}
                         </CardContent>
                       </Card>
                     ))}
@@ -3103,10 +3223,10 @@ export default function HiringManagement() {
             <Button variant="outline" onClick={() => setIsViewInterviewDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Submit/Edit Feedback Dialog */}
-      <Dialog open={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen}>
+      < Dialog open={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen} >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{selectedFeedback ? 'Edit Feedback' : 'Submit Interview Feedback'}</DialogTitle>
@@ -3152,6 +3272,16 @@ export default function HiringManagement() {
                   onChange={(e) => setFeedbackFormData({ ...feedbackFormData, communication_rating: parseInt(e.target.value) })}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="f_summary">Feedback Summary *</Label>
+              <Input
+                id="f_summary"
+                value={feedbackFormData.feedback_summary}
+                onChange={(e) => setFeedbackFormData({ ...feedbackFormData, feedback_summary: e.target.value })}
+                placeholder="e.g. Cleared HR phone round"
+              />
             </div>
 
             <div className="space-y-2">
@@ -3213,8 +3343,8 @@ export default function HiringManagement() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
-    </div>
+      </Dialog >
+    </div >
   );
 }
 

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import TaskDeadlineWarnings from '@/components/tasks/TaskDeadlineWarnings';
 import { Button } from '@/components/ui/button';
@@ -89,7 +88,6 @@ const MainLayout: React.FC = () => {
       { icon: Clock, label: t.navigation.attendance, path: `/${user.role}/attendance` },
       { icon: CalendarDays, label: t.navigation.leaves, path: `/${user.role}/leaves` },
       { icon: ClipboardList, label: t.navigation.tasks, path: `/${user.role}/tasks` },
-      { icon: Bell, label: t.navigation.notifications, path: `/${user.role}/inbox` },
       { icon: Banknote, label: t.navigation.salary, path: '/salary' },
       { icon: MessageCircle, label: t.navigation.chat, path: `/${user.role}/chat` },
       { icon: Video, label: t.navigation.meetings, path: '/meetings' },
@@ -214,8 +212,6 @@ const MainLayout: React.FC = () => {
             </SelectContent>
           </Select>
 
-          {/* Notifications */}
-          <NotificationBell />
 
           {/* User Menu */}
           <DropdownMenu>

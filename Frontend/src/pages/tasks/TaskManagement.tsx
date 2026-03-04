@@ -445,6 +445,8 @@ const TaskManagement: React.FC = () => {
     return String(user.id);
   }, [user?.id]);
 
+  const normalizedUserRole = useMemo(() => normalizeRole(user?.role), [user?.role]);
+
   const [authToken, setAuthToken] = useState<string>(() => {
     const storedToken = localStorage.getItem('token') || '';
     if (!storedToken) return '';
@@ -452,18 +454,18 @@ const TaskManagement: React.FC = () => {
   });
 
   useEffect(() => {
-    if (user?.role === 'admin') {
+    if (normalizedUserRole === 'admin') {
       // Admin defaults to "created" section and has "all tasks" section
       setTaskOwnershipFilter('created');
     } else {
       // All other roles (hr, manager, team_lead, employee) default to "received" section
       setTaskOwnershipFilter('received');
       // Set manager's department as default filter if applicable
-      if (user?.role === 'manager' && user?.department) {
+      if (normalizedUserRole === 'manager' && user?.department) {
         setSelectedDepartmentFilter(user.department);
       }
     }
-  }, [user?.role, user?.department]);
+  }, [normalizedUserRole, user?.department]);
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token') || '';
@@ -523,7 +525,7 @@ const TaskManagement: React.FC = () => {
 
     try {
       // Only fetch all employees if user has a management role
-      if (user?.role === 'employee') {
+      if (normalizedUserRole === 'employee') {
         console.log('Skipping employee list fetch - current user is an employee');
         setEmployees([]);
         return;
@@ -566,7 +568,7 @@ const TaskManagement: React.FC = () => {
         variant: 'destructive',
       });
     }
-  }, [authToken, authorizedHeaders, toast, user?.department]);
+  }, [authToken, authorizedHeaders, toast, user?.department, normalizedUserRole]);
 
 
 
@@ -745,9 +747,10 @@ const TaskManagement: React.FC = () => {
 
   // Check if user can assign tasks to others
   const canAssignTasks = () => {
-    if (!user?.role) return false;
+    if (!normalizedUserRole) return false;
     // Only Admin, HR, Manager, and Team Lead can assign tasks
-    return ['admin', 'hr', 'manager', 'team_lead'].includes(user.role);
+    // Explicitly exclude 'employee' to follow user requirement
+    return ['admin', 'hr', 'manager', 'team_lead'].includes(normalizedUserRole);
   };
 
   const extendedEmployees = useMemo(() => {
@@ -762,10 +765,10 @@ const TaskManagement: React.FC = () => {
         name: user.name,
         email: user.email,
         department: user.department || undefined,
-        role: user.role,
+        role: normalizedUserRole,
       },
     ];
-  }, [employees, user, userId]);
+  }, [employees, user, userId, normalizedUserRole]);
 
   const assignableEmployees = useMemo(() => {
     if (!user || !userId) return [];
@@ -775,7 +778,7 @@ const TaskManagement: React.FC = () => {
 
       const sameDepartment = !user.department || !emp.department || emp.department === user.department;
 
-      switch (user.role) {
+      switch (normalizedUserRole) {
         case 'admin':
           // Admin can assign tasks to anyone
           return true;
@@ -792,11 +795,11 @@ const TaskManagement: React.FC = () => {
           return false;
       }
     });
-  }, [extendedEmployees, user, userId]);
+  }, [extendedEmployees, user, userId, normalizedUserRole]);
 
   const passEligibleEmployees = useMemo(() => {
     if (!user || !userId) return [] as EmployeeSummary[];
-    const currentIndex = ROLE_ORDER.indexOf(user.role);
+    const currentIndex = ROLE_ORDER.indexOf(normalizedUserRole);
     return extendedEmployees.filter((emp) => {
       // Filter out current user (self)
       if (emp.userId === userId || String(emp.userId) === String(userId)) return false;
@@ -808,12 +811,12 @@ const TaskManagement: React.FC = () => {
       if (targetIndex <= currentIndex) return false;
 
       // Non-admin users can only pass within their department
-      if (user.role !== 'admin' && user.department && emp.department && emp.department !== user.department) {
+      if (normalizedUserRole !== 'admin' && user.department && emp.department && emp.department !== user.department) {
         return false;
       }
       return true;
     });
-  }, [extendedEmployees, user, userId]);
+  }, [extendedEmployees, user, userId, normalizedUserRole]);
 
   // Group pass eligible employees by department with role hierarchy
   const passEligibleByDepartment = useMemo(() => {
@@ -853,10 +856,10 @@ const TaskManagement: React.FC = () => {
   const assignableDepartments = useMemo(() => {
     if (!user || !userId) return departments;
     // Admin and HR can select any department
-    if (user.role === 'admin' || user.role === 'hr') return departments;
+    if (normalizedUserRole === 'admin' || normalizedUserRole === 'hr') return departments;
     if (!user.department) return departments;
     return departments.filter((dept) => dept === user.department);
-  }, [departments, user, userId]);
+  }, [departments, user, userId, normalizedUserRole]);
 
   const employeesById = useMemo(() => {
     const map = new Map<string, EmployeeSummary>();
@@ -876,11 +879,11 @@ const TaskManagement: React.FC = () => {
         name: user.name,
         email: user.email,
         department: user.department || undefined,
-        role: user.role,
+        role: normalizedUserRole,
       });
     }
     return map;
-  }, [employees, user, userId, userCache]);
+  }, [employees, user, userId, userCache, normalizedUserRole]);
 
   const getAssigneeLabel = useCallback((assigneeId: string) => {
     if (!assigneeId) return 'Self';
@@ -925,7 +928,7 @@ const TaskManagement: React.FC = () => {
     if (userId && assignedById === userId) {
       return {
         name: user?.name || 'Self',
-        roleLabel: formatRoleLabel(user?.role),
+        roleLabel: formatRoleLabel(normalizedUserRole),
       };
     }
 
@@ -944,7 +947,7 @@ const TaskManagement: React.FC = () => {
       name: cachedUser?.name || `User #${assignedById}`,
       roleLabel: undefined,
     };
-  }, [employeesById, user?.name, user?.role, userId, userCache]);
+  }, [employeesById, user?.name, userId, userCache, normalizedUserRole]);
 
   const getAssignedToInfo = useCallback((assignedToId: string, role?: UserRole) => {
     if (!assignedToId) {
@@ -976,7 +979,7 @@ const TaskManagement: React.FC = () => {
     if (userId && assignedToId === userId) {
       return {
         name: user?.name || 'Self',
-        roleLabel: formatRoleLabel(user?.role),
+        roleLabel: formatRoleLabel(normalizedUserRole),
       };
     }
 
@@ -995,7 +998,7 @@ const TaskManagement: React.FC = () => {
       name: cachedUser?.name || `User #${assignedToId}`,
       roleLabel: undefined,
     };
-  }, [employeesById, user?.name, user?.role, userId, userCache]);
+  }, [employeesById, user?.name, userId, userCache, normalizedUserRole]);
 
   // Add current user to cache if they're an admin or not in employees list
   useEffect(() => {
@@ -1006,10 +1009,10 @@ const TaskManagement: React.FC = () => {
         name: user.name,
         email: user.email,
         department: user.department || undefined,
-        role: user.role,
+        role: normalizedUserRole,
       }));
     }
-  }, [user, userId, userCache]);
+  }, [user, userId, userCache, normalizedUserRole]);
 
   // Update user cache with correct roles from employees list when employees are loaded
   useEffect(() => {
@@ -1101,12 +1104,12 @@ const TaskManagement: React.FC = () => {
       const isVisible = userId && user ? (
         task.assignedBy === userId ||
         task.assignedTo.includes(userId) ||
-        user.role === 'admin'
+        normalizedUserRole === 'admin'
       ) : false;
 
       return matchesSearch && matchesStatus && Boolean(isVisible);
     });
-  }, [filterStatus, searchQuery, tasks, user, userId]);
+  }, [filterStatus, searchQuery, tasks, user, userId, normalizedUserRole]);
 
   // Get task counts by status (for stat cards) - without status filter
   const taskCountsByStatus = useMemo(() => {
@@ -1117,7 +1120,7 @@ const TaskManagement: React.FC = () => {
       const isVisible = userId && user ? (
         task.assignedBy === userId ||
         task.assignedTo.includes(userId) ||
-        user.role === 'admin'
+        normalizedUserRole === 'admin'
       ) : false;
 
       return matchesSearch && Boolean(isVisible);
@@ -1130,7 +1133,7 @@ const TaskManagement: React.FC = () => {
       overdue: searchFiltered.filter(t => t.status === 'overdue').length,
       cancelled: searchFiltered.filter(t => t.status === 'cancelled').length,
     };
-  }, [searchQuery, tasks, user, userId]);
+  }, [searchQuery, tasks, user, userId, normalizedUserRole]);
 
   const filteredReceivedTasks = useMemo(() => {
     if (!userId) return [] as TaskWithPassMeta[];
@@ -1508,7 +1511,7 @@ const TaskManagement: React.FC = () => {
     } finally {
       setIsPassingTask(false);
     }
-  }, [authToken, authorizedHeaders, closePassDialog, fetchAndStoreHistory, getAssigneeLabel, passAssignee, passNote, passTaskTarget, toast]);
+  }, [authToken, authorizedHeaders, closePassDialog, fetchAndStoreHistory, getAssigneeLabel, passAssignee, passNote, passTaskTarget, toast, user, addNotification]);
 
   // Task Comments Functions
   const loadTaskComments = useCallback(async (taskId: number) => {
@@ -2211,10 +2214,13 @@ const TaskManagement: React.FC = () => {
         default:
           startDate = new Date(now.getFullYear(), 0, 1);
       }
+      startDate.setHours(0, 0, 0, 0);
 
       const endDate = exportEndDate ? new Date(exportEndDate) : new Date();
+      endDate.setHours(23, 59, 59, 999);
+
       filteredTasks = filteredTasks.filter(task => {
-        const taskDate = new Date(task.createdAt);
+        const taskDate = parseToIST(task.createdAt) || new Date(task.createdAt);
         return taskDate >= startDate && taskDate <= endDate;
       });
     }
@@ -2236,17 +2242,8 @@ const TaskManagement: React.FC = () => {
       );
     }
 
-    // Apply department filter for non-admin users
-    if (user?.role !== 'admin' && user?.department) {
-      filteredTasks = filteredTasks.filter(task => {
-        const assignee = employeesById.get(task.assignedTo[0] || '');
-        const assigner = employeesById.get(task.assignedBy);
-        return (assignee?.department === user.department) || (assigner?.department === user.department);
-      });
-    }
-
     return filteredTasks;
-  }, [tasks, exportDateRange, exportStartDate, exportEndDate, exportDepartmentFilter, exportUserFilter, user, employeesById]);
+  }, [tasks, exportDateRange, exportStartDate, exportEndDate, exportDepartmentFilter, exportUserFilter, employeesById]);
 
   const exportToCSV = useCallback(() => {
     const filteredTasks = getFilteredTasksForExport();
@@ -2283,7 +2280,7 @@ const TaskManagement: React.FC = () => {
         assigner?.name || 'Unknown',
         assignee?.name || 'Unknown',
         task.createdAt ? formatDateTimeIST(task.createdAt, 'MMM dd, yyyy HH:mm') : '',
-        task.deadline ? formatDateIST(parseToIST(task.deadline) || new Date(), 'MMM dd, yyyy') : '',
+        task.deadline ? formatDateIST(parseToIST(task.deadline) || task.deadline, 'MMM dd, yyyy') : '',
         task.completedDate ? formatDateTimeIST(task.completedDate, 'MMM dd, yyyy HH:mm') : '',
         assignee?.department || assigner?.department || 'Unknown',
         lastPassedBy?.name || '',
@@ -2584,8 +2581,8 @@ const TaskManagement: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {['admin', 'hr', 'manager'].includes(user?.role || '') && (
-                      <div className={['admin', 'hr'].includes(user?.role || '') ? "space-y-2" : "space-y-2 col-span-full"}>
+                    {['admin', 'hr', 'manager'].includes(normalizedUserRole || '') && (
+                      <div className={['admin', 'hr'].includes(normalizedUserRole || '') ? "space-y-2" : "space-y-2 col-span-full"}>
                         <Label htmlFor="assignRoleFilter" className="text-sm font-semibold flex items-center gap-2">
                           <Filter className="h-4 w-4 text-violet-600" />
                           Filter Role
@@ -2599,7 +2596,7 @@ const TaskManagement: React.FC = () => {
                           </SelectTrigger>
                           <SelectContent className="border-2 shadow-xl" side="bottom">
                             <SelectItem value="all">All Roles</SelectItem>
-                            {user?.role === 'admin' && (
+                            {normalizedUserRole === 'admin' && (
                               <>
                                 <SelectItem value="hr">HR</SelectItem>
                                 <SelectItem value="manager">Manager</SelectItem>
@@ -2607,14 +2604,14 @@ const TaskManagement: React.FC = () => {
                                 <SelectItem value="employee">Employee</SelectItem>
                               </>
                             )}
-                            {user?.role === 'hr' && (
+                            {normalizedUserRole === 'hr' && (
                               <>
                                 <SelectItem value="manager">Manager</SelectItem>
                                 <SelectItem value="team_lead">Team Lead</SelectItem>
                                 <SelectItem value="employee">Employee</SelectItem>
                               </>
                             )}
-                            {user?.role === 'manager' && (
+                            {normalizedUserRole === 'manager' && (
                               <>
                                 <SelectItem value="team_lead">Team Lead</SelectItem>
                                 <SelectItem value="employee">Employee</SelectItem>
@@ -2625,7 +2622,7 @@ const TaskManagement: React.FC = () => {
                       </div>
                     )}
 
-                    {['admin', 'hr'].includes(user?.role || '') && (
+                    {['admin', 'hr'].includes(normalizedUserRole || '') && (
                       <div className="space-y-2">
                         <Label htmlFor="assignDeptFilter" className="text-sm font-semibold flex items-center gap-2">
                           <Building2 className="h-4.4 w-4.5 text-violet-600" />
@@ -2673,7 +2670,7 @@ const TaskManagement: React.FC = () => {
 
                     <div className="border-2 rounded-xl p-4 max-h-[250px] overflow-y-auto space-y-2.5 bg-white dark:bg-gray-950 shadow-inner custom-scrollbar border-violet-50">
                       {/* Select All Option */}
-                      <div className="flex items-center space-x-3 pb-3 mb-1 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-gray-950 z-10">
+                      <div className="flex items-center space-x-3 pb-2 mb-0.5 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-gray-950 z-10">
                         <Checkbox
                           id="select-all-employees"
                           checked={
@@ -2745,7 +2742,7 @@ const TaskManagement: React.FC = () => {
                             />
                             <Label htmlFor={`emp-${userId}`} className="text-sm cursor-pointer font-semibold flex-1 flex items-center justify-between">
                               <span>{user.name} <span className="text-violet-500 font-bold ml-1">(Self)</span></span>
-                              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">{formatRoleLabel(user.role)}</span>
+                              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">{formatRoleLabel(normalizedUserRole)}</span>
                             </Label>
                           </div>
                         )
@@ -2986,7 +2983,7 @@ const TaskManagement: React.FC = () => {
               <div className="flex flex-col gap-2">
                 <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Filter</Label>
                 <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1 h-10">
-                  {user?.role === 'admin' ? (
+                  {normalizedUserRole === 'admin' ? (
                     <>
                       <Button
                         size="sm"
@@ -3031,8 +3028,8 @@ const TaskManagement: React.FC = () => {
                 </div>
               </div>
 
-              {/* Branch Filter - Show when viewing All Tasks for Admin only */}
-              {taskOwnershipFilter === 'all' && user?.role === 'admin' && (
+              {/* Department Filter - Show when viewing All Tasks for Admin only */}
+              {taskOwnershipFilter === 'all' && normalizedUserRole === 'admin' && (
                 <div className="flex flex-col gap-2">
                   <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Branch</Label>
                   <Select
@@ -3043,8 +3040,8 @@ const TaskManagement: React.FC = () => {
                       <SelectValue placeholder="Select Branch" />
                     </SelectTrigger>
                     <SelectContent>
-                      {user?.role === 'admin' && (
-                        <SelectItem value="all">All Branches</SelectItem>
+                      {normalizedUserRole === 'admin' && (
+                        <SelectItem value="all">All Departments</SelectItem>
                       )}
                       {departments
                         .filter(dept => CORE_DEPARTMENTS.some(core => core.toLowerCase() === dept.toLowerCase()))
@@ -3079,7 +3076,7 @@ const TaskManagement: React.FC = () => {
               </div>
 
               {/* Export Buttons */}
-              {canAssignTasks() && (
+              {user && (
                 <div className="flex items-center gap-2 border-l border-gray-200 dark:border-gray-800 pl-2">
                   <Button
                     variant="outline"
@@ -3126,7 +3123,7 @@ const TaskManagement: React.FC = () => {
                           {taskOwnershipFilter === 'all'
                             ? 'No tasks found in the system'
                             : taskOwnershipFilter === 'created'
-                              ? user?.role === 'admin'
+                              ? normalizedUserRole === 'admin'
                                 ? 'No tasks created yet. Create your first task to get started.'
                                 : 'No tasks created by you yet'
                               : 'No tasks assigned to you yet'}
