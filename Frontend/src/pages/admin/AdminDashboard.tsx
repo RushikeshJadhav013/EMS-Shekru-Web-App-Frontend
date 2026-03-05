@@ -54,9 +54,9 @@ const AdminDashboard: React.FC = () => {
     pendingLeaves: 0,
     activeTasks: 0,
     completedTasks: 0,
-    departments: 0,
+    branches: 0,
   });
-  const [departmentPerformance, setDepartmentPerformance] = useState<{ name: string; employees: number; performance: number; }[]>([]);
+  const [branchPerformance, setBranchPerformance] = useState<{ name: string; employees: number; performance: number; }[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [activitiesPage, setActivitiesPage] = useState(1);
   const ACTIVITIES_PER_PAGE = 10;
@@ -68,7 +68,7 @@ const AdminDashboard: React.FC = () => {
 
         // If activeTasks is 0, try to get actual count from tasks API
         let activeTasks = data.activeTasks || 0;
-        let pendingLeaves = data.pendingLeaves || 0;
+        const pendingLeaves = data.pendingLeaves || 0;
 
         if (activeTasks === 0) {
           try {
@@ -88,6 +88,7 @@ const AdminDashboard: React.FC = () => {
           ...data,
           activeTasks,
           pendingLeaves,
+          branches: data.departments || 0
         });
 
         // Fetch detailed department metrics for performance
@@ -113,22 +114,22 @@ const AdminDashboard: React.FC = () => {
             // Sort by performance (descending)
             formattedPerformance.sort((a: any, b: any) => b.performance - a.performance);
 
-            setDepartmentPerformance(formattedPerformance);
+            setBranchPerformance(formattedPerformance);
           } else {
             // Fallback to dashboard data if metrics fail
             const fallbackDepts = (data.departmentPerformance || []).filter((dept: any) => {
               const deptName = dept.name || '';
               return CORE_DEPARTMENTS.some(core => core.toLowerCase() === deptName.toLowerCase());
             });
-            setDepartmentPerformance(fallbackDepts);
+            setBranchPerformance(fallbackDepts);
           }
         } catch (metricsError) {
-          console.error('Failed to load department metrics:', metricsError);
+          console.error('Failed to load branch metrics:', metricsError);
           const fallbackDepts = (data.departmentPerformance || []).filter((dept: any) => {
             const deptName = dept.name || '';
             return CORE_DEPARTMENTS.some(core => core.toLowerCase() === deptName.toLowerCase());
           });
-          setDepartmentPerformance(fallbackDepts);
+          setBranchPerformance(fallbackDepts);
         }
 
         // Enhanced Recent Activities Logic - Strictly Today
@@ -382,7 +383,7 @@ const AdminDashboard: React.FC = () => {
                 variant="ghost"
                 size="sm"
                 className="h-8 px-3 rounded-lg text-blue-600 hover:bg-blue-50 font-bold text-[11px]"
-                onClick={() => navigate('/admin/reports?tab=department')}
+                onClick={() => navigate('/admin/reports?tab=branch')}
               >
                 VIEW ALL
               </Button>
@@ -390,11 +391,11 @@ const AdminDashboard: React.FC = () => {
           </CardHeader>
           <CardContent className="p-4 flex-1">
             <div className="grid gap-3">
-              {departmentPerformance.map((dept) => (
+              {branchPerformance.map((dept) => (
                 <div
                   key={dept.name}
                   className="group relative p-3.5 rounded-lg border border-slate-100 hover:border-blue-200 hover:bg-blue-50/20 transition-all duration-300 cursor-pointer"
-                  onClick={() => navigate('/admin/reports?tab=department')}
+                  onClick={() => navigate('/admin/reports?tab=branch')}
                 >
                   <div className="flex justify-between items-center mb-3">
                     <div className="flex items-center gap-3">

@@ -1163,7 +1163,7 @@ export default function LeaveManagement() {
     if (!editingLeave) return;
     // Adjust balance to account for the days currently locked by this pending request
     // This allows users to reschedule leave even if they have 0 remaining balance (because this request is consuming it)
-    let adjustedBalance = { ...leaveBalance };
+    const adjustedBalance = { ...leaveBalance };
 
     // Deep clone the specific balance objects we might modify to avoid mutating state
     if (editingLeave.type !== 'unpaid') {
@@ -1349,7 +1349,7 @@ export default function LeaveManagement() {
     const userDept = (user?.department || '').trim().toLowerCase();
 
     // 1. Apply Visibility Rules (Admin: all, HR: manager/tl/emp, Manager: tl/emp in dept)
-    let visibleHistory = approvalHistory.filter(req => {
+    const visibleHistory = approvalHistory.filter(req => {
       if (userRole === 'admin') return true;
       const role = normalize(req.role || '');
 

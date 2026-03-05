@@ -391,6 +391,7 @@ const TaskManagement: React.FC = () => {
 
   const [assignRoleFilter, setAssignRoleFilter] = useState<'all' | UserRole>('all');
   const [departments, setDepartments] = useState<string[]>([]);
+  const [showAllDepartments, setShowAllDepartments] = useState(false);
   const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
   const [userCache, setUserCache] = useState<Map<string, EmployeeSummary>>(new Map());
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
@@ -813,7 +814,7 @@ const TaskManagement: React.FC = () => {
           return true;
       }
     });
-  }, [extendedEmployees, user, userId, normalizedUserRole]);
+  }, [extendedEmployees, user, userId, normalizedUserRole, showAllDepartments]);
 
   const passEligibleEmployees = useMemo(() => {
     if (!user || !userId) return [] as EmployeeSummary[];
@@ -2391,17 +2392,17 @@ const TaskManagement: React.FC = () => {
                       <div className="space-y-2">
                         <Label htmlFor="assignDeptFilter" className="text-sm font-semibold flex items-center gap-2">
                           <Building2 className="h-4.4 w-4.5 text-violet-600" />
-                          Filter Department
+                          Filter Branch
                         </Label>
                         <Select
                           value={newTask.department || 'all'}
                           onValueChange={(value) => setNewTask({ ...newTask, department: value === 'all' ? '' : value })}
                         >
                           <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                            <SelectValue placeholder="All Departments" />
+                            <SelectValue placeholder="All Branches" />
                           </SelectTrigger>
                           <SelectContent className="border-2 shadow-xl" side="bottom">
-                            <SelectItem value="all">All Departments</SelectItem>
+                            <SelectItem value="all">All Branches</SelectItem>
                             {CORE_DEPARTMENTS
                               .slice()
                               .sort((a, b) => a.localeCompare(b))
@@ -2417,10 +2418,25 @@ const TaskManagement: React.FC = () => {
                   </div>
 
                   <div className="space-y-3">
-                    <Label htmlFor="assignTo" className="text-sm font-semibold flex items-center gap-2">
-                      <User className="h-4 w-4 text-violet-600" />
-                      Assign To <span className="text-red-500">*</span>
-                    </Label>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="assignTo" className="text-sm font-semibold flex items-center gap-2">
+                        <User className="h-4 w-4 text-violet-600" />
+                        Assign To <span className="text-red-500">*</span>
+                      </Label>
+                      {['manager', 'team_lead'].includes(normalizedUserRole || '') && (
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="show-all-depts"
+                            checked={showAllDepartments}
+                            onCheckedChange={(checked) => setShowAllDepartments(!!checked)}
+                            className="data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
+                          />
+                          <Label htmlFor="show-all-depts" className="text-[10px] font-medium text-slate-500 cursor-pointer">
+                            Show All Departments
+                          </Label>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Assign To Filter / Search */}
                     <div className="relative mb-2">
@@ -2798,13 +2814,13 @@ const TaskManagement: React.FC = () => {
               {/* Department Filter - Show when viewing All Tasks for Admin only */}
               {taskOwnershipFilter === 'all' && normalizedUserRole === 'admin' && (
                 <div className="flex flex-col gap-2">
-                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Department</Label>
+                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Branch</Label>
                   <Select
                     value={selectedDepartmentFilter}
                     onValueChange={setSelectedDepartmentFilter}
                   >
                     <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white dark:bg-gray-950">
-                      <SelectValue placeholder="Select Department" />
+                      <SelectValue placeholder="Select Branch" />
                     </SelectTrigger>
                     <SelectContent>
                       {normalizedUserRole === 'admin' && (

@@ -5,12 +5,13 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
-  department: string;
+  branch?: string;
   designation: string;
   joiningDate: string;
   profilePhoto?: string;
   phone?: string;
   address?: string;
+  department?: string;
   managerId?: string;
   teamLeadId?: string;
   status: 'active' | 'inactive';
@@ -98,7 +99,7 @@ export interface TaskComment {
   createdAt: string;
 }
 
-export interface Department {
+export interface Branch {
   id: number | string;
   name: string;
   code: string;
@@ -131,7 +132,7 @@ export interface DashboardStats {
   completedTasks: number;
   pendingLeaveRequests: number;
   upcomingHolidays: number;
-  totalDepartments: number;
+  totalBranches: number;
 }
 
 // Chat Types
@@ -171,7 +172,7 @@ export interface ChatParticipant {
   userId: string;
   userName: string;
   userRole: UserRole;
-  department: string;
+  branch: string;
   joinedAt: string;
   isAdmin?: boolean; // For group chats
   lastSeen?: string;

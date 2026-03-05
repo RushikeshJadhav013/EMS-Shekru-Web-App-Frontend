@@ -97,9 +97,9 @@ const MainLayout: React.FC = () => {
       admin: [
         ...commonItems,
         { icon: Users, label: t.navigation.employees, path: '/admin/employees' },
-        { icon: Briefcase, label: t.navigation.departments, path: '/admin/departments' },
+        { icon: Briefcase, label: t.navigation.departments, path: '/admin/branches' },
         { icon: UserPlus, label: t.navigation.hiring, path: '/admin/hiring' },
-        { icon: FolderKanban, label: 'Projects', path: '/admin/projects' },
+        { icon: FolderKanban, label: t.navigation.projects, path: '/admin/projects' },
         { icon: BarChart3, label: t.navigation.reports, path: '/admin/reports' },
       ],
       hr: [

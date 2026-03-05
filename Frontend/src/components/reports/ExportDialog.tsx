@@ -283,13 +283,13 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
 
             {/* Department Selection */}
             <div className="space-y-2">
-              <Label className="text-sm font-semibold">Select Department</Label>
+              <Label className="text-sm font-semibold">Select Branch</Label>
               <Select value={selectedDepartment} onValueChange={setSelectedDepartment} disabled={isLoadingDepts}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
+                  <SelectItem value="all">All Branches</SelectItem>
                   {departments.map(dept => (
                     <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                   ))}

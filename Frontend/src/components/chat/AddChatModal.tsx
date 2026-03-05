@@ -177,7 +177,7 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
                 searchTerm ? "text-green-500" : "text-slate-400"
               )} />
               <Input
-                placeholder="Search by name, role or department..."
+                placeholder="Search by name, role or branch..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                 className={cn(

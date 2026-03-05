@@ -342,11 +342,11 @@ export default function TeamManagement() {
                       />
                     </div>
                     <div>
-                      <Label>Department</Label>
+                      <Label>Branch</Label>
                       <Input
                         value={newTeamData.department}
                         onChange={(e) => setNewTeamData({ ...newTeamData, department: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
-                        placeholder="Enter department"
+                        placeholder="Enter branch"
                       />
                     </div>
                     <div>

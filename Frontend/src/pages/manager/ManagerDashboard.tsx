@@ -66,7 +66,7 @@ const ManagerDashboard: React.FC = () => {
 
         // If activeTasks is 0, try to get actual count from tasks API
         let activeTasks = data.activeTasks || 0;
-        let pendingApprovals = data.pendingApprovals || 0;
+        const pendingApprovals = data.pendingApprovals || 0;
 
         if (activeTasks === 0) {
           try {
