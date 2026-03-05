@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,10 +10,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Pagination } from '@/components/ui/pagination';
 import { toast } from '@/hooks/use-toast';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Command,
@@ -41,14 +39,13 @@ import {
   FileText,
   Check,
   ChevronsUpDown,
-  RefreshCcw,
-  ClipboardList
+  Activity
 } from 'lucide-react';
 import { User, type UserRole } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDateIST } from '@/utils/timezone';
-import { apiService, API_BASE_URL, type EmployeeData } from '@/lib/api';
+import { apiService, type EmployeeData } from '@/lib/api';
 import { useFieldValidation } from '@/hooks/useFieldValidation';
 
 type ShiftType = 'general' | 'morning' | 'afternoon' | 'night' | 'rotational';
@@ -88,7 +85,7 @@ const mapEmployeeData = (emp: any): EmployeeRecord => {
   const mapped = toCamelCase(emp);
 
   // ✅ Fix photo URLs to include backend base URL
-  const baseUrl = API_BASE_URL;
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
   if (mapped.profilePhoto && !mapped.profilePhoto.startsWith('http')) {
     mapped.profilePhoto = `${baseUrl}/${mapped.profilePhoto}`;
   }
@@ -336,20 +333,16 @@ const formatDuplicateErrorMessage = (message: string, employeeId?: string, email
 
 export default function EmployeeManagement() {
   const { t } = useLanguage();
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
-  const [branchs, setDepartments] = useState<string[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [selectedRole, setSelectedRole] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const { user } = useAuth();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRecord | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [viewEmployee, setViewEmployee] = useState<EmployeeRecord | null>(null);
@@ -357,7 +350,7 @@ export default function EmployeeManagement() {
     name: '',
     email: '',
     employeeId: '',
-    branch: '',
+    department: '',
     role: 'employee',
     designation: '',
     phone: '',
@@ -373,7 +366,7 @@ export default function EmployeeManagement() {
     shift: undefined
   });
 
-  // For multiple branch assignment (HR and Manager roles)
+  // For multiple department assignment (HR and Manager roles)
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
 
   // Address fields
@@ -407,11 +400,10 @@ export default function EmployeeManagement() {
 
   // Export filters
   const [exportFilters, setExportFilters] = useState({
+    department: 'all',
+    role: 'all',
     status: 'all'
   });
-
-  // State for highlighting the Add Employee form
-  const [shouldHighlight, setShouldHighlight] = useState(false);
 
   // API states
   const [isLoading, setIsLoading] = useState(false);
@@ -422,14 +414,14 @@ export default function EmployeeManagement() {
   const [deptSearchValue, setDeptSearchValue] = useState('');
   const [isDeptPopoverOpen, setIsDeptPopoverOpen] = useState(false);
 
-  const handleCreateBranch = async (deptName: string) => {
+  const handleCreateDepartment = async (deptName: string) => {
     if (!deptName.trim()) return;
 
     // Check if already exists (case-insensitive)
-    const exists = branchs.some(d => d.toLowerCase() === deptName.trim().toLowerCase());
+    const exists = departments.some(d => d.toLowerCase() === deptName.trim().toLowerCase());
     if (exists) {
-      const existingName = branchs.find(d => d.toLowerCase() === deptName.trim().toLowerCase());
-      setFormData(prev => ({ ...prev, branch: existingName }));
+      const existingName = departments.find(d => d.toLowerCase() === deptName.trim().toLowerCase());
+      setFormData(prev => ({ ...prev, department: existingName }));
       setIsDeptPopoverOpen(false);
       setDeptSearchValue('');
       return existingName;
@@ -437,7 +429,7 @@ export default function EmployeeManagement() {
 
     setIsCreatingDepartment(true);
     try {
-      // Sanitize branch name
+      // Sanitize department name
       const sanitizedDeptName = deptName.trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       if (!sanitizedDeptName) {
         toast({ title: 'Invalid Name', description: 'Department name cannot be empty or only emojis', variant: 'destructive' });
@@ -455,17 +447,17 @@ export default function EmployeeManagement() {
 
       if (newDept) {
         setDepartments(prev => [...prev, newDept.name].sort());
-        setFormData(prev => ({ ...prev, branch: newDept.name }));
+        setFormData(prev => ({ ...prev, department: newDept.name }));
         setIsDeptPopoverOpen(false);
         setDeptSearchValue('');
-        toast({ title: 'Success', description: `Branch "${newDept.name}" created successfully` });
+        toast({ title: 'Success', description: `Department "${newDept.name}" created successfully` });
         return newDept.name;
       }
     } catch (error: any) {
-      console.error('Failed to create branch:', error);
+      console.error('Failed to create department:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to create branch',
+        description: error.message || 'Failed to create department',
         variant: 'destructive'
       });
     } finally {
@@ -497,74 +489,52 @@ export default function EmployeeManagement() {
     { code: '+81', flag: '🇯🇵', name: 'Japan' },
   ];
 
-  const fetchEmployees = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await apiService.getEmployees();
-      const mappedData = data.map(mapEmployeeData);
-      setEmployees(mappedData);
-    } catch (error) {
-      console.error('Failed to fetch employees:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load employees. Please try again.',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const fetchDepartments = useCallback(async () => {
-    try {
-      const branchData = await apiService.getDepartmentNames();
-      const branchNames = branchData
-        .map(dept => dept.name)
-        .sort();
-      setDepartments(branchNames);
-    } catch (error) {
-      console.error('Failed to fetch branchs:', error);
-      toast({
-        title: 'Warning',
-        description: 'Failed to load branchs. Some features may be limited.',
-        variant: 'destructive'
-      });
-    }
-  }, []);
-
   useEffect(() => {
+    const fetchEmployees = async () => {
+      setIsLoading(true);
+      try {
+        const data = await apiService.getEmployees();
+        const mappedData = data.map(mapEmployeeData);
+        console.log('Loaded employees:', mappedData); // ✅ Debug log
+        console.log('First employee structure:', mappedData[0]); // ✅ Debug log
+        setEmployees(mappedData);
+      } catch (error) {
+        console.error('Failed to fetch employees:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load employees. Please try again.',
+          variant: 'destructive'
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const fetchDepartments = async () => {
+      try {
+        const departmentData = await apiService.getDepartmentNames();
+        const departmentNames = departmentData
+          .map(dept => dept.name)
+          .sort();
+        setDepartments(departmentNames);
+      } catch (error) {
+        console.error('Failed to fetch departments:', error);
+        toast({
+          title: 'Warning',
+          description: 'Failed to load departments. Please create departments first.',
+          variant: 'destructive'
+        });
+      }
+    };
+
     fetchEmployees();
     fetchDepartments();
-  }, [fetchEmployees, fetchDepartments]);
-
-  // Auto-open create dialog when navigated from "Add Employee" button on dashboard
-  useEffect(() => {
-    if (location.pathname.endsWith('/new') || location.pathname.endsWith('/new/')) {
-      setIsCreateDialogOpen(true);
-
-      // If navigated from dashboard Add Employee button, trigger highlight
-      if (location.state?.highlight) {
-        setShouldHighlight(true);
-        // Clear the highlight after 3 seconds
-        const timer = setTimeout(() => {
-          setShouldHighlight(false);
-        }, 3000);
-
-        // Clear the location state to prevent flickering on reload
-        navigate(location.pathname, { replace: true, state: {} });
-
-        return () => clearTimeout(timer);
-      }
-    } else {
-      setShouldHighlight(false);
-    }
-  }, [location.pathname, location.state, navigate]);
+  }, []);
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(emp => {
-      const empInternalRole = getInternalRole(emp.role || '');
       // ✅ Exclude Admin users - Admin is the boss and should not appear in employee lists
-      if (empInternalRole === 'admin') {
+      if (emp.role === 'admin') {
         return false;
       }
 
@@ -573,10 +543,11 @@ export default function EmployeeManagement() {
         emp.name.toLowerCase().includes(query) ||
         emp.employeeId.toLowerCase().includes(query) ||
         emp.email.toLowerCase().includes(query);
-      const matchesDepartment = selectedDepartment === 'all' ||
-        (emp.branch && emp.branch.split(',').map(d => d.trim().toLowerCase()).includes(selectedDepartment.toLowerCase()));
-      const matchesRole = selectedRole === 'all' || empInternalRole === selectedRole;
-      const matchesStatus = selectedStatus === 'all' || emp.status === selectedStatus;
+      const matchesDepartment = selectedDepartment === 'all' || emp.department === selectedDepartment;
+      const matchesRole = selectedRole === 'all' ||
+        (emp.role && emp.role.toLowerCase().replace(/[\s_]+/g, '') === selectedRole.toLowerCase().replace(/[\s_]+/g, ''));
+      const matchesStatus = selectedStatus === 'all' ||
+        (emp.status && emp.status.toLowerCase() === selectedStatus.toLowerCase());
       return matchesSearch && matchesDepartment && matchesRole && matchesStatus;
     });
   }, [employees, searchQuery, selectedDepartment, selectedRole, selectedStatus]);
@@ -801,16 +772,16 @@ export default function EmployeeManagement() {
 
     // Validate required fields based on role
     const isHROrManager = formData.role === 'hr' || formData.role === 'manager';
-    const branchValid = isHROrManager ? selectedDepartments.length > 0 : formData.branch;
+    const departmentValid = isHROrManager ? selectedDepartments.length > 0 : formData.department;
 
-    if (!formData.name || !formData.email || !formData.employeeId || !branchValid || !formData.panCard || !formData.aadharCard || !formData.shift || !formData.employeeType || !formData.gender) {
+    if (!formData.name || !formData.email || !formData.employeeId || !departmentValid || !formData.panCard || !formData.aadharCard || !formData.shift || !formData.employeeType || !formData.gender) {
       if (!formData.gender) {
         setGenderError('Gender is required');
       }
       toast({
         title: 'Error',
         description: isHROrManager
-          ? 'Please fill in all required fields and select at least one branch'
+          ? 'Please fill in all required fields and select at least one department'
           : 'Please fill in all required fields',
         variant: 'destructive'
       });
@@ -866,9 +837,9 @@ export default function EmployeeManagement() {
 
     setIsCreating(true);
     try {
-      // Handle branch assignment based on role
+      // Handle department assignment based on role
       const isHROrManager = formData.role === 'hr' || formData.role === 'manager';
-      const branchValue = isHROrManager ? selectedDepartments.join(',') : formData.branch;
+      const departmentValue = isHROrManager ? selectedDepartments.join(',') : formData.department;
 
       // Combine address fields
       const fullAddress = [
@@ -884,13 +855,13 @@ export default function EmployeeManagement() {
         name: formData.name,
         email: formData.email,
         employee_id: formData.employeeId,
-        branch: branchValue,
+        department: departmentValue,
         designation: formData.designation,
         phone: formData.phone ? (formData.countryCode === '+91' ? formData.phone.replace(/[^0-9]/g, '') : `${formData.countryCode}-${formData.phone.replace(/[^0-9]/g, '')}`) : '',
         address: fullAddress,
         role: normalizeRole(formData.role || 'employee'),
         gender: formData.gender,
-        resignation_date: formData.resignationDate || undefined,
+        resignation_date: formData.resignationDate || null,
         pan_card: formData.panCard,
         aadhar_card: formData.aadharCard,
         shift_type: formData.shift,
@@ -947,13 +918,13 @@ export default function EmployeeManagement() {
 
     // Validate required fields based on role
     const isHROrManager = formData.role === 'hr' || formData.role === 'manager';
-    const branchValid = isHROrManager ? selectedDepartments.length > 0 : formData.branch;
+    const departmentValid = isHROrManager ? selectedDepartments.length > 0 : formData.department;
 
-    if (!formData.name || !formData.email || !formData.employeeId || !branchValid || !formData.panCard || !formData.aadharCard || !formData.shift) {
+    if (!formData.name || !formData.email || !formData.employeeId || !departmentValid || !formData.panCard || !formData.aadharCard || !formData.shift) {
       toast({
         title: 'Error',
         description: isHROrManager
-          ? 'Please fill in all required fields and select at least one branch'
+          ? 'Please fill in all required fields and select at least one department'
           : 'Please fill in all required fields',
         variant: 'destructive'
       });
@@ -1029,9 +1000,9 @@ export default function EmployeeManagement() {
         return;
       }
 
-      // Handle branch assignment based on role
+      // Handle department assignment based on role
       const isHROrManager = formData.role === 'hr' || formData.role === 'manager';
-      const branchValue = isHROrManager ? selectedDepartments.join(',') : formData.branch;
+      const departmentValue = isHROrManager ? selectedDepartments.join(',') : formData.department;
 
       // Combine address fields
       const fullAddress = [
@@ -1047,7 +1018,7 @@ export default function EmployeeManagement() {
         name: formData.name,
         email: formData.email,
         employee_id: formData.employeeId,
-        branch: branchValue,
+        department: departmentValue,
         designation: formData.designation,
         phone: formData.phone ? (formData.countryCode === '+91' ? formData.phone.replace(/[^0-9]/g, '') : `${formData.countryCode}-${formData.phone.replace(/[^0-9]/g, '')}`) : '',
         address: fullAddress,
@@ -1164,109 +1135,6 @@ export default function EmployeeManagement() {
     }
   };
 
-  const handleBulkToggleStatus = async (activate: boolean) => {
-    if (selectedIds.length === 0) return;
-
-    setIsBulkProcessing(true);
-    const newStatus = activate ? 'active' : 'inactive';
-    const successIds: string[] = [];
-    const failedIds: string[] = [];
-
-    try {
-      // Process all selected employees in parallel
-      await Promise.all(
-        selectedIds.map(async (id) => {
-          try {
-            await apiService.updateEmployeeStatus(id, activate);
-            successIds.push(id);
-          } catch (error) {
-            console.error(`Failed to update status for employee ${id}:`, error);
-            failedIds.push(id);
-          }
-        })
-      );
-
-      // Refresh data
-      await fetchEmployees();
-
-      // Clear selection
-      setSelectedIds([]);
-
-      if (failedIds.length === 0) {
-        toast({
-          title: 'Bulk Action Successful',
-          description: `Successfully ${activate ? 'activated' : 'deactivated'} ${successIds.length} employees.`,
-        });
-      } else {
-        toast({
-          title: 'Bulk Action Partial Success',
-          description: `Successfully updated ${successIds.length} employees, but ${failedIds.length} failed.`,
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('Bulk status update error:', error);
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred during bulk update.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsBulkProcessing(false);
-    }
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedIds(filteredEmployees.map(emp => emp.id.toString()));
-    } else {
-      setSelectedIds([]);
-    }
-  };
-
-  const handleSelectEmployee = (id: string, checked: boolean) => {
-    if (checked) {
-      setSelectedIds(prev => [...prev, id.toString()]);
-    } else {
-      setSelectedIds(prev => prev.filter(selectedId => selectedId !== id.toString()));
-    }
-  };
-
-  const handleBulkStatusUpdate = async (newStatus: 'active' | 'inactive') => {
-    if (selectedIds.length === 0) return;
-
-    setIsBulkProcessing(true);
-    const isActive = newStatus === 'active';
-
-    try {
-      toast({
-        title: 'Bulk Update Started',
-        description: `Processing ${selectedIds.length} employees...`,
-      });
-
-      await apiService.updateBulkEmployeeStatus(
-        selectedIds.map(id => parseInt(id)),
-        isActive
-      );
-
-      await fetchEmployees();
-      setSelectedIds([]);
-
-      toast({
-        title: 'Update Complete',
-        description: `Successfully updated ${selectedIds.length} employees.`
-      });
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to complete bulk update',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsBulkProcessing(false);
-    }
-  };
-
   const openViewDialog = (employee: EmployeeRecord) => {
     setViewEmployee(employee);
     setIsViewDialogOpen(true);
@@ -1337,19 +1205,19 @@ export default function EmployeeManagement() {
 
     for (const row of parsedRows) {
       const data = row.data;
-      const employeeId = (data.employeeid || '').trim();
+      const employeeId = (data.employeeid || `EMP${Date.now()}${row.rowNumber}`).trim();
       const employeeIdKey = employeeId.toLowerCase();
       const name = (data.name || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       const email = (data.email || '').trim();
       const emailKey = email.toLowerCase();
-      const branch = (data.department || data.branch || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
+      const department = (data.department || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       const role = normalizeRole(data.role);
       const designation = (data.designation || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       const address = (data.address || '').trim();
-      const joiningDate = data.joiningdate || '';
-      const status = data.status || '';
+      const joiningDate = data.joiningdate || new Date().toISOString().split('T')[0];
+      const status = data.status || 'active';
       const gender = (data.gender || '').trim();
-      const employeeType = normalizeEmployeeType(data.employee || data.employeetype);
+      const employeeType = normalizeEmployeeType(data.employeetype);
       const resignationDate = data.resignationdate || '';
       const panCard = (data.pancard || '').toUpperCase();
       const aadharCard = (data.aadharcard || '').trim();
@@ -1363,30 +1231,12 @@ export default function EmployeeManagement() {
       const errors: string[] = [];
 
       // REQUIRED FIELDS - Must be present and valid
-      if (!employeeId) errors.push('EmployeeID is required');
       if (!name) errors.push('Name is required');
       if (!email) errors.push('Email is required');
       if (email && !isValidEmail(email)) errors.push('Email format is invalid');
-      if (!data.role) errors.push('Role is required');
-      if (!designation) errors.push('Designation is required');
-      if (!phoneDigits) errors.push('Phone is required');
-      if (phoneDigits && !isValidPhone(phoneDigits, countryCode)) errors.push('Phone number format is invalid');
-      if (!address) errors.push('Address is required');
-      if (!joiningDate) errors.push('JoiningDate is required');
-      if (!status) errors.push('Status is required');
-      if (!gender) errors.push('Gender is required');
-      if (!employeeType) errors.push('Employee (Type) is required');
-      if (!panCard) errors.push('PANCard is required');
-      if (panCard && !isValidPan(panCard)) {
-        errors.push('PAN card format is invalid (must be like ABCDE1234F)');
-      }
-      if (!aadharCard) errors.push('AadharCard is required');
-      if (aadharCard && !isValidAadhar(aadharCard)) {
-        errors.push('Aadhar card format is invalid (must be like 1234-5678-9012)');
-      }
-      if (!shift) errors.push('Shift is required');
+      if (!department) errors.push('Department is required');
 
-      // Check for duplicates
+      // Check for duplicates only if provided
       if (employeeId && (existingEmployeeIds.has(employeeIdKey) || batchEmployeeIds.has(employeeIdKey))) {
         errors.push('Duplicate employee ID found');
       }
@@ -1394,20 +1244,36 @@ export default function EmployeeManagement() {
         errors.push('Duplicate email found');
       }
 
-      // Shift validation
+      // OPTIONAL FIELDS - Only validate if provided (not empty)
+      // PAN Card - optional, but if provided must be valid
+      if (panCard && !isValidPan(panCard.toUpperCase())) {
+        errors.push('PAN card format is invalid (must be like ABCDE1234F)');
+      }
+
+      // Aadhar Card - optional, but if provided must be valid
+      if (aadharCard && !isValidAadhar(aadharCard)) {
+        errors.push('Aadhar card format is invalid (must be like 1234-5678-9012)');
+      }
+
+      // Shift - optional, but if provided must be valid
       if (shift && !['general', 'morning', 'afternoon', 'night', 'rotational'].includes(shift.toLowerCase())) {
         errors.push('Shift must be general, morning, afternoon, night, or rotational');
       }
 
-      // Employee Type validation
+      // Employee Type - optional, but if provided must be valid
       if (employeeType && !['contract', 'permanent'].includes(employeeType.toLowerCase())) {
         errors.push('Employee type must be contract or permanent');
+      }
+
+      // Phone - optional, but if provided must be valid
+      if (phoneDigits && !isValidPhone(phoneDigits, countryCode)) {
+        errors.push('Phone number format is invalid');
       }
 
       if (errors.length > 0) {
         summary.push({
           row: row.rowNumber,
-          employeeId: employeeId || '-',
+          employeeId,
           name: name || '-',
           status: 'failed',
           message: errors.join('; '),
@@ -1419,7 +1285,7 @@ export default function EmployeeManagement() {
         name,
         email,
         employee_id: employeeId,
-        branch,
+        department,
         designation: designation || undefined,
         phone: phoneFormatted || undefined,
         address: address || undefined,
@@ -1538,7 +1404,8 @@ export default function EmployeeManagement() {
       'JoiningDate',
       'Status',
       'Gender',
-      'Employee',
+      'EmployeeType',
+      'ResignationDate',
       'PANCard',
       'AadharCard',
       'Shift'
@@ -1551,12 +1418,13 @@ export default function EmployeeManagement() {
       'Engineering',
       'Employee',
       'Software Engineer',
-      '9876543210',
-      '123 Main Street, City Name, State, 123456',
+      '+91-98765-43210',
+      '123 Main St, City',
       '2024-01-15',
       'active',
       'male',
       'permanent',
+      '',
       'ABCDE1234F',
       '1234-5678-9012',
       'general'
@@ -1620,7 +1488,7 @@ export default function EmployeeManagement() {
       name: '',
       email: '',
       employeeId: '',
-      branch: '',
+      department: '',
       role: 'employee',
       designation: '',
       phone: '',
@@ -1671,7 +1539,7 @@ export default function EmployeeManagement() {
       const employeeId = String(data['employeeId'] ?? data['employee_id'] ?? '');
       const name = String(data['name'] ?? '');
       const email = String(data['email'] ?? '');
-      const branch = String(data['branch'] ?? '');
+      const department = String(data['department'] ?? '');
       const role = getInternalRole(String(data['role'] ?? ''));
       const designation = String(data['designation'] ?? '');
       const address = String(data['address'] ?? '');
@@ -1708,7 +1576,7 @@ export default function EmployeeManagement() {
 
       let photoUrl = String(data['photoUrl'] ?? data['photo_url'] ?? data['profilePhoto'] ?? data['profile_photo'] ?? '');
       if (photoUrl && !photoUrl.startsWith('http')) {
-        photoUrl = `${API_BASE_URL}/${photoUrl}`;
+        photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}/${photoUrl}`;
       }
 
       const rawPhone = String(data['phone'] ?? '');
@@ -1732,7 +1600,7 @@ export default function EmployeeManagement() {
       }
 
       const isHROrManager = role.toLowerCase() === 'hr' || role.toLowerCase() === 'manager';
-      const branchList = isHROrManager && branch ? branch.split(',').map(d => d.trim()) : [];
+      const departmentList = isHROrManager && department ? department.split(',').map(d => d.trim()) : [];
       const addressParts = address.split(',').map(part => part.trim());
       const parsedAddress = {
         houseNo: addressParts[0] || '',
@@ -1748,7 +1616,7 @@ export default function EmployeeManagement() {
         employeeId,
         name,
         email,
-        branch: isHROrManager ? '' : branch,
+        department: isHROrManager ? '' : department,
         role,
         designation,
         address,
@@ -1765,7 +1633,7 @@ export default function EmployeeManagement() {
         photoUrl
       });
 
-      setSelectedDepartments(branchList);
+      setSelectedDepartments(departmentList);
       setAddressFields(parsedAddress);
       setImagePreview(photoUrl);
       setIsEditDialogOpen(true);
@@ -1827,28 +1695,12 @@ export default function EmployeeManagement() {
           <div className="flex flex-wrap gap-2">
             <Button
               onClick={() => {
-                fetchEmployees();
-                fetchDepartments();
-                toast({
-                  title: 'Refreshing...',
-                  description: 'Connecting to server to get latest data'
-                });
-              }}
-              variant="outline"
-              className="group gap-2 border-slate-200 text-slate-700 bg-white/70 hover:bg-slate-100 shadow-sm transition-all dark:bg-slate-900/60 dark:border-slate-700 dark:text-slate-100"
-              disabled={isLoading}
-            >
-              <RefreshCcw className={cn("h-4 w-4 text-slate-600 transition-all group-hover:rotate-180 dark:text-slate-400", isLoading && "animate-spin")} />
-              Refresh
-            </Button>
-            <Button
-              onClick={async () => {
-                await Promise.all([fetchEmployees(), fetchDepartments()]);
-                setExportFilters({
-                  branch: selectedDepartment,
+                setExportFilters(prev => ({
+                  ...prev,
+                  department: selectedDepartment,
                   role: selectedRole,
                   status: selectedStatus
-                });
+                }));
                 setIsExportDialogOpen(true);
               }}
               variant="outline"
@@ -1898,11 +1750,12 @@ export default function EmployeeManagement() {
                         <p className="font-semibold text-gray-900 text-sm">CSV Format Guide</p>
                         <div className="text-sm text-gray-700 mt-2 space-y-1.5">
                           <div className="flex items-start gap-2">
-                            <span><strong>Required:</strong> EmployeeID, Name, Email, Role, Designation, Phone, Address, JoiningDate, Status, Gender, EmployeeType, PANCard, AadharCard, Shift</span>
+                            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold flex-shrink-0 mt-0.5">*</span>
+                            <span><strong>Required:</strong> EmployeeID, Name, Email, Department</span>
                           </div>
                           <div className="flex items-start gap-2">
                             <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-gray-300 text-white text-xs font-bold flex-shrink-0 mt-0.5">○</span>
-                            <span><strong>Optional:</strong> Branch</span>
+                            <span><strong>Optional:</strong> Role, Designation, Phone, Address, JoiningDate, Status, Gender, EmployeeType, ResignationDate, PANCard, AadharCard, Shift</span>
                           </div>
                         </div>
                         <div className="mt-3 p-3 bg-white rounded-lg border border-blue-200">
@@ -1955,7 +1808,7 @@ export default function EmployeeManagement() {
                     </div>
                     <Textarea
                       id="bulk-textarea"
-                      placeholder="Paste your CSV data here (EmployeeID,Name,Email,Branch,...)"
+                      placeholder="Paste your CSV data here (EmployeeID,Name,Email,Department,...)"
                       value={bulkData}
                       onChange={(e) => setBulkData(e.target.value)}
                       rows={8}
@@ -2063,44 +1916,7 @@ export default function EmployeeManagement() {
       <Card className="border-0 shadow-lg">
         <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <CardTitle className="text-lg font-semibold">Employee Directory</CardTitle>
-              {selectedIds.length > 0 && getInternalRole(user?.role || '') !== 'hr' && (
-                <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/40 px-3 py-1.5 rounded-lg border border-blue-100 dark:border-blue-900 animate-in fade-in slide-in-from-left-2 transition-all">
-                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300 mr-2">
-                    {selectedIds.length} selected
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleBulkStatusUpdate('active')}
-                    disabled={isBulkProcessing}
-                    className="h-8 gap-1.5 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                    Activate
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleBulkStatusUpdate('inactive')}
-                    disabled={isBulkProcessing}
-                    className="h-8 gap-1.5 border-rose-200 text-rose-700 hover:bg-rose-50"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    Deactivate
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setSelectedIds([])}
-                    className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
+            <CardTitle className="text-lg font-semibold">Employee Directory</CardTitle>
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={openCreateDialog} className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
@@ -2108,12 +1924,7 @@ export default function EmployeeManagement() {
                   Add User
                 </Button>
               </DialogTrigger>
-              <DialogContent
-                className={cn(
-                  "w-[95vw] max-w-[500px] max-h-[90vh] border-2 shadow-2xl flex flex-col transition-all duration-500",
-                  shouldHighlight && "ring-4 ring-blue-400 ring-opacity-70 border-blue-500 shadow-[0_0_25px_rgba(59,130,246,0.6)] scale-[1.01] animate-pulse"
-                )}
-              >
+              <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] border-2 shadow-2xl flex flex-col">
                 <DialogHeader className="pb-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 -m-6 mb-0 p-6 rounded-t-lg flex-shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
@@ -2177,7 +1988,7 @@ export default function EmployeeManagement() {
                       value={formData.employeeId || ''}
                       onChange={(e) => {
                         // Convert to uppercase and remove all non-alphanumeric characters
-                        const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                        let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
                         setFormData((prev) => ({ ...prev, employeeId: value }));
                       }}
                       required
@@ -2241,17 +2052,17 @@ export default function EmployeeManagement() {
                           }
                         }
 
-                        // If role is HR, automatically select ALL branchs
+                        // If role is HR, automatically select ALL departments
                         if (roleValue === 'hr') {
-                          setSelectedDepartments([...branchs]);
-                        } else if (roleValue === 'manager' && formData.branch && selectedDepartments.length === 0) {
-                          // If switching TO manager, migrate single branch TO multi-select list
-                          setSelectedDepartments([formData.branch]);
+                          setSelectedDepartments([...departments]);
+                        } else if (roleValue === 'manager' && formData.department && selectedDepartments.length === 0) {
+                          // If switching TO manager, migrate single department TO multi-select list
+                          setSelectedDepartments([formData.department]);
                         }
 
-                        // If switching FROM hr/manager, migrate first selected branch TO single select
+                        // If switching FROM hr/manager, migrate first selected department TO single select
                         if (roleValue !== 'hr' && roleValue !== 'manager' && selectedDepartments.length > 0) {
-                          setFormData(prev => ({ ...prev, role: roleValue, designation: newDesignation, branch: selectedDepartments[0] }));
+                          setFormData(prev => ({ ...prev, role: roleValue, designation: newDesignation, department: selectedDepartments[0] }));
                         } else {
                           setFormData((prev) => ({ ...prev, role: roleValue, designation: newDesignation }));
                         }
@@ -2271,7 +2082,7 @@ export default function EmployeeManagement() {
                         )}
                       </SelectTrigger>
                       <SelectContent>
-                        {getInternalRole(user?.role || '') === 'admin' && (
+                        {user?.role !== 'admin' && user?.role !== 'hr' && (
                           <SelectItem value="admin">Admin</SelectItem>
                         )}
                         <SelectItem value="hr">HR</SelectItem>
@@ -2282,13 +2093,13 @@ export default function EmployeeManagement() {
                     </Select>
                   </div>
 
-                  {/* Single Branch Selection or "All Branches" for HR */}
+                  {/* Single Department Selection or "All Departments" for HR */}
                   {!isManager && (
                     <div>
-                      <Label htmlFor="create-branch">Branch *</Label>
+                      <Label htmlFor="create-department">Department *</Label>
                       {isHR ? (
                         <Input
-                          value="All Branches"
+                          value="All Departments"
                           readOnly
                           className="mt-1 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 font-medium text-blue-700 dark:text-blue-300"
                         />
@@ -2302,9 +2113,9 @@ export default function EmployeeManagement() {
                               className="w-full justify-between mt-1 h-10 px-3 font-normal"
                               disabled={isCreatingDepartment}
                             >
-                              {formData.branch
-                                ? branchs.find((d) => d.toLowerCase() === formData.branch?.toLowerCase()) || formData.branch
-                                : "Select or type branch"}
+                              {formData.department
+                                ? departments.find((d) => d.toLowerCase() === formData.department?.toLowerCase()) || formData.department
+                                : "Select or type department"}
                               {isCreatingDepartment ? (
                                 <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
                               ) : (
@@ -2315,16 +2126,16 @@ export default function EmployeeManagement() {
                           <PopoverContent className="w-[400px] p-0" align="start">
                             <Command>
                               <CommandInput
-                                placeholder="Search branch..."
+                                placeholder="Search department..."
                                 value={deptSearchValue}
                                 onValueChange={(val) => setDeptSearchValue(val.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                               />
                               <CommandList className="max-h-[300px]">
-                                {deptSearchValue.trim().length > 0 && !branchs.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
-                                  <CommandGroup heading="New Branch">
+                                {deptSearchValue.trim().length > 0 && !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
+                                  <CommandGroup heading="New Department">
                                     <CommandItem
                                       value={deptSearchValue}
-                                      onSelect={() => handleCreateBranch(deptSearchValue)}
+                                      onSelect={() => handleCreateDepartment(deptSearchValue)}
                                       className="cursor-pointer text-blue-600 font-medium"
                                     >
                                       <Plus className="mr-2 h-4 w-4" />
@@ -2333,15 +2144,15 @@ export default function EmployeeManagement() {
                                   </CommandGroup>
                                 )}
                                 <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
-                                  {deptSearchValue.trim().length === 0 ? "No branchs available." : "No matching branchs found."}
+                                  {deptSearchValue.trim().length === 0 ? "No departments available." : "No matching departments found."}
                                 </CommandEmpty>
-                                <CommandGroup heading="Existing Branches">
-                                  {branchs.map((dept) => (
+                                <CommandGroup heading="Existing Departments">
+                                  {departments.map((dept) => (
                                     <CommandItem
                                       key={dept}
                                       value={dept}
                                       onSelect={(currentValue) => {
-                                        setFormData(prev => ({ ...prev, branch: currentValue }));
+                                        setFormData(prev => ({ ...prev, department: currentValue }));
                                         setIsDeptPopoverOpen(false);
                                         setDeptSearchValue('');
                                       }}
@@ -2350,7 +2161,7 @@ export default function EmployeeManagement() {
                                       <Check
                                         className={cn(
                                           "mr-2 h-4 w-4",
-                                          formData.branch?.toLowerCase() === dept.toLowerCase() ? "opacity-100" : "opacity-0"
+                                          formData.department?.toLowerCase() === dept.toLowerCase() ? "opacity-100" : "opacity-0"
                                         )}
                                       />
                                       {dept}
@@ -2362,40 +2173,40 @@ export default function EmployeeManagement() {
                           </PopoverContent>
                         </Popover>
                       )}
-                      {!isHR && branchs.length === 0 && (
+                      {!isHR && departments.length === 0 && (
                         <p className="text-sm text-amber-600 mt-1">
-                          ⚠️ No branches available. Please go to Branch Management to create branches first.
+                          ⚠️ No departments available. Please go to Department Management to create departments first.
                         </p>
                       )}
                     </div>
                   )}
 
-                  {/* Multiple Branch Selection for Manager */}
+                  {/* Multiple Department Selection for Manager */}
                   {isManager && (
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <Label>Assigned Branches *</Label>
-                        {branchs.length > 0 && (
+                        <Label>Assigned Departments *</Label>
+                        {departments.length > 0 && (
                           <button
                             type="button"
                             onClick={() => {
-                              if (selectedDepartments.length === branchs.length) {
+                              if (selectedDepartments.length === departments.length) {
                                 setSelectedDepartments([]);
                               } else {
-                                setSelectedDepartments([...branchs]);
+                                setSelectedDepartments([...departments]);
                               }
                             }}
                             className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                           >
-                            {selectedDepartments.length === branchs.length ? 'Deselect All' : 'Select All'}
+                            {selectedDepartments.length === departments.length ? 'Deselect All' : 'Select All'}
                           </button>
                         )}
                       </div>
                       <div className="mt-2 space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
-                        {branchs.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">No branchs available</p>
+                        {departments.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No departments available</p>
                         ) : (
-                          branchs.map((dept) => (
+                          departments.map((dept) => (
                             <div key={dept} className="flex items-center space-x-2">
                               <input
                                 type="checkbox"
@@ -2419,7 +2230,7 @@ export default function EmployeeManagement() {
                       </div>
                       {selectedDepartments.length > 0 && (
                         <p className="text-sm text-muted-foreground mt-1">
-                          Selected: {selectedDepartments.length === branchs.length ? 'All Branches' : selectedDepartments.join(', ')}
+                          Selected: {selectedDepartments.length === departments.length ? 'All Departments' : selectedDepartments.join(', ')}
                         </p>
                       )}
                     </div>
@@ -2693,30 +2504,25 @@ export default function EmployeeManagement() {
               </div>
             </div>
             <div className="flex flex-col gap-2 w-full sm:w-44">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Branch</Label>
-              <Select
-                value={selectedDepartment}
-                onValueChange={setSelectedDepartment}
-                onOpenChange={(open) => {
-                  if (open) {
-                    fetchDepartments();
-                  }
-                }}
-              >
-                <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 transition-all duration-300 hover:shadow-md flex-shrink-0">
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Department</Label>
+              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                <SelectTrigger className={`w-full h-11 bg-white dark:bg-gray-950 border-2 transition-all duration-300 hover:shadow-md flex-shrink-0 ${selectedDepartment === 'all'
+                  ? 'border-blue-400 dark:border-blue-600 hover:border-blue-400 dark:hover:border-blue-600'
+                  : 'hover:border-blue-300 dark:hover:border-blue-700 border-gray-200 dark:border-gray-800'
+                  }`}>
                   <Filter className={`h-4 w-4 mr-2 ${selectedDepartment === 'all'
                     ? 'text-blue-600'
                     : 'text-gray-600 dark:text-gray-400'
                     }`} />
-                  <SelectValue placeholder="Branch" />
+                  <SelectValue placeholder="Department" />
                 </SelectTrigger>
                 <SelectContent className="border-2 shadow-2xl">
                   <SelectItem value="all" className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors font-medium">
                     <div className="flex items-center gap-2">
-                      All Branches
+                      All Departments
                     </div>
                   </SelectItem>
-                  {branchs.map((dept, index) => {
+                  {departments.map((dept, index) => {
                     return (
                       <SelectItem key={dept} value={dept} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
                         <div className="flex items-center gap-2">
@@ -2741,26 +2547,31 @@ export default function EmployeeManagement() {
                       All Roles
                     </div>
                   </SelectItem>
-
-                  {/* HR role is removed from filter for HR profile as requested */}
-                  {getInternalRole(user?.role || '') !== 'hr' && (
-                    <SelectItem value="hr" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors">
+                  {user?.role === 'admin' || user?.role === 'hr' ? null : (
+                    <SelectItem value="Admin" className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950 transition-colors">
+                      <div className="flex items-center gap-2">
+                        Admin
+                      </div>
+                    </SelectItem>
+                  )}
+                  {user?.role === 'hr' ? null : (
+                    <SelectItem value="HR" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors">
                       <div className="flex items-center gap-2">
                         HR
                       </div>
                     </SelectItem>
                   )}
-                  <SelectItem value="manager" className="cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors">
+                  <SelectItem value="Manager" className="cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors">
                     <div className="flex items-center gap-2">
                       Manager
                     </div>
                   </SelectItem>
-                  <SelectItem value="team_lead" className="cursor-pointer hover:bg-cyan-50 dark:hover:bg-cyan-950 transition-colors">
+                  <SelectItem value="TeamLead" className="cursor-pointer hover:bg-cyan-50 dark:hover:bg-cyan-950 transition-colors">
                     <div className="flex items-center gap-2">
                       TeamLead
                     </div>
                   </SelectItem>
-                  <SelectItem value="employee" className="cursor-pointer hover:bg-green-50 dark:hover:bg-green-950 transition-colors">
+                  <SelectItem value="Employee" className="cursor-pointer hover:bg-green-50 dark:hover:bg-green-950 transition-colors">
                     <div className="flex items-center gap-2">
                       Employee
                     </div>
@@ -2772,19 +2583,17 @@ export default function EmployeeManagement() {
               <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Status</Label>
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                 <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-950 border-2 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
-                  <div className="flex items-center gap-2">
-                    <Check className={`h-4 w-4 ${selectedStatus === 'all' ? 'text-gray-500' : selectedStatus === 'active' ? 'text-emerald-500' : 'text-rose-500'}`} />
-                    <SelectValue placeholder="Status" />
-                  </div>
+                  <Activity className="h-4 w-4 mr-2 text-emerald-600" />
+                  <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent className="border-2 shadow-2xl">
-                  <SelectItem value="all" className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-950 transition-colors font-medium">
+                  <SelectItem value="all" className="cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-950 transition-colors font-medium">
                     All Status
                   </SelectItem>
                   <SelectItem value="active" className="cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-950 transition-colors">
                     Active
                   </SelectItem>
-                  <SelectItem value="inactive" className="cursor-pointer hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors">
+                  <SelectItem value="inactive" className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950 transition-colors">
                     Inactive
                   </SelectItem>
                 </SelectContent>
@@ -2796,20 +2605,11 @@ export default function EmployeeManagement() {
             <Table>
               <TableHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
                 <TableRow className="hover:bg-transparent border-b-2">
-                  {getInternalRole(user?.role || '') !== 'hr' && (
-                    <TableHead className="w-[50px] px-4">
-                      <Checkbox
-                        checked={selectedIds.length === filteredEmployees.length && filteredEmployees.length > 0}
-                        onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                        aria-label="Select all"
-                      />
-                    </TableHead>
-                  )}
                   <TableHead className="w-[60px] hidden sm:table-cell font-semibold">Photo</TableHead>
                   <TableHead className="font-semibold">Employee ID</TableHead>
                   <TableHead className="font-semibold">Name</TableHead>
                   <TableHead className="hidden sm:table-cell font-semibold">Email</TableHead>
-                  <TableHead className="font-semibold">Branch</TableHead>
+                  <TableHead className="font-semibold">Department</TableHead>
                   <TableHead className="hidden md:table-cell font-semibold">Role</TableHead>
                   <TableHead className="font-semibold">Status</TableHead>
                   <TableHead className="text-right font-semibold">Actions</TableHead>
@@ -2834,15 +2634,6 @@ export default function EmployeeManagement() {
                 ) : (
                   paginatedEmployees.map((employee) => (
                     <TableRow key={employee.employeeId} className="hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors border-b">
-                      {getInternalRole(user?.role || '') !== 'hr' && (
-                        <TableCell className="px-4">
-                          <Checkbox
-                            checked={selectedIds.includes(employee.id.toString())}
-                            onCheckedChange={(checked) => handleSelectEmployee(employee.id, !!checked)}
-                            aria-label={`Select ${employee.name}`}
-                          />
-                        </TableCell>
-                      )}
                       <TableCell className="hidden sm:table-cell">
                         <Avatar className="h-10 w-10 border-2 border-blue-200 dark:border-blue-800">
                           <AvatarImage src={employee.photoUrl} alt={employee.name} />
@@ -2854,14 +2645,14 @@ export default function EmployeeManagement() {
                       <TableCell className="hidden sm:table-cell text-muted-foreground">{employee.email}</TableCell>
                       <TableCell>
                         <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 text-sm font-medium">
-                          {employee.role?.toLowerCase() === 'hr' || !employee.branch
+                          {employee.role?.toLowerCase() === 'hr' || !employee.department
                             ? 'No Dept'
-                            : employee.branch}
+                            : employee.department}
                         </span>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-0 shadow-sm rounded-full px-3 py-0.5 font-medium transition-all">
-                          {employee.role ? normalizeRole(employee.role) : '-'}
+                          {employee.role ? employee.role.charAt(0).toUpperCase() + employee.role.slice(1).replace('_', ' ') : '-'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -2892,25 +2683,22 @@ export default function EmployeeManagement() {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          {/* Delete button available for Admin and HR to manage other employees */}
-                          {(getInternalRole(user?.role || '') === 'admin' || getInternalRole(user?.role || '') === 'hr') && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setEmployeeToDelete(employee);
-                                setIsDeleteDialogOpen(true);
-                              }}
-                              disabled={isDeleting === employee.id}
-                              className="h-9 w-9 p-0 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900 transition-all hover:scale-110 rounded-lg"
-                            >
-                              {isDeleting === employee.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEmployeeToDelete(employee);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                            disabled={isDeleting === employee.id}
+                            className="h-9 w-9 p-0 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900 transition-all hover:scale-110 rounded-lg"
+                          >
+                            {isDeleting === employee.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"
@@ -3057,17 +2845,17 @@ export default function EmployeeManagement() {
                     }
                   }
 
-                  // If role is HR, automatically select ALL branchs
+                  // If role is HR, automatically select ALL departments
                   if (roleValue === 'hr') {
-                    setSelectedDepartments([...branchs]);
-                  } else if (roleValue === 'manager' && formData.branch && selectedDepartments.length === 0) {
-                    // If switching TO manager, migrate single branch TO multi-select list
-                    setSelectedDepartments([formData.branch]);
+                    setSelectedDepartments([...departments]);
+                  } else if (roleValue === 'manager' && formData.department && selectedDepartments.length === 0) {
+                    // If switching TO manager, migrate single department TO multi-select list
+                    setSelectedDepartments([formData.department]);
                   }
 
-                  // If switching FROM hr/manager, migrate first selected branch TO single select
+                  // If switching FROM hr/manager, migrate first selected department TO single select
                   if (roleValue !== 'hr' && roleValue !== 'manager' && selectedDepartments.length > 0) {
-                    setFormData(prev => ({ ...prev, role: roleValue, designation: newDesignation, branch: selectedDepartments[0] }));
+                    setFormData(prev => ({ ...prev, role: roleValue, designation: newDesignation, department: selectedDepartments[0] }));
                   } else {
                     setFormData((prev) => ({ ...prev, role: roleValue, designation: newDesignation }));
                   }
@@ -3087,7 +2875,7 @@ export default function EmployeeManagement() {
                   )}
                 </SelectTrigger>
                 <SelectContent>
-                  {(getInternalRole(user?.role || '') === 'admin' || formData.role === 'admin') && (
+                  {user?.role !== 'admin' && user?.role !== 'hr' && (
                     <SelectItem value="admin">Admin</SelectItem>
                   )}
                   <SelectItem value="hr">HR</SelectItem>
@@ -3101,10 +2889,10 @@ export default function EmployeeManagement() {
             {/* Single Department Selection or "All Departments" for HR in Edit */}
             {!isManager && (
               <div>
-                <Label htmlFor="edit-branch">Branch *</Label>
+                <Label htmlFor="edit-department">Department *</Label>
                 {isHR ? (
                   <Input
-                    value="All Branches"
+                    value="All Departments"
                     readOnly
                     className="mt-1 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 font-medium text-blue-700 dark:text-blue-300"
                   />
@@ -3118,9 +2906,9 @@ export default function EmployeeManagement() {
                         className="w-full justify-between mt-1 h-10 px-3 font-normal"
                         disabled={isCreatingDepartment}
                       >
-                        {formData.branch
-                          ? branchs.find((d) => d.toLowerCase() === formData.branch?.toLowerCase()) || formData.branch
-                          : "Select or type branch"}
+                        {formData.department
+                          ? departments.find((d) => d.toLowerCase() === formData.department?.toLowerCase()) || formData.department
+                          : "Select or type department"}
                         {isCreatingDepartment ? (
                           <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
                         ) : (
@@ -3131,16 +2919,16 @@ export default function EmployeeManagement() {
                     <PopoverContent className="w-[400px] p-0" align="start">
                       <Command>
                         <CommandInput
-                          placeholder="Search branch..."
+                          placeholder="Search department..."
                           value={deptSearchValue}
                           onValueChange={(val) => setDeptSearchValue(val.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                         />
                         <CommandList className="max-h-[300px]">
-                          {deptSearchValue.trim().length > 0 && !branchs.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
-                            <CommandGroup heading="New Branch">
+                          {deptSearchValue.trim().length > 0 && !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
+                            <CommandGroup heading="New Department">
                               <CommandItem
                                 value={deptSearchValue}
-                                onSelect={() => handleCreateBranch(deptSearchValue)}
+                                onSelect={() => handleCreateDepartment(deptSearchValue)}
                                 className="cursor-pointer text-blue-600 font-medium"
                               >
                                 <Plus className="mr-2 h-4 w-4" />
@@ -3149,15 +2937,15 @@ export default function EmployeeManagement() {
                             </CommandGroup>
                           )}
                           <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
-                            {deptSearchValue.trim().length === 0 ? "No branches available." : "No matching branches found."}
+                            {deptSearchValue.trim().length === 0 ? "No departments available." : "No matching departments found."}
                           </CommandEmpty>
-                          <CommandGroup heading="Existing Branches">
-                            {branchs.map((dept) => (
+                          <CommandGroup heading="Existing Departments">
+                            {departments.map((dept) => (
                               <CommandItem
                                 key={dept}
                                 value={dept}
                                 onSelect={(currentValue) => {
-                                  setFormData(prev => ({ ...prev, branch: currentValue }));
+                                  setFormData(prev => ({ ...prev, department: currentValue }));
                                   setIsDeptPopoverOpen(false);
                                   setDeptSearchValue('');
                                 }}
@@ -3166,7 +2954,7 @@ export default function EmployeeManagement() {
                                 <Check
                                   className={cn(
                                     "mr-2 h-4 w-4",
-                                    formData.branch?.toLowerCase() === dept.toLowerCase() ? "opacity-100" : "opacity-0"
+                                    formData.department?.toLowerCase() === dept.toLowerCase() ? "opacity-100" : "opacity-0"
                                   )}
                                 />
                                 {dept}
@@ -3181,32 +2969,32 @@ export default function EmployeeManagement() {
               </div>
             )}
 
-            {/* Multiple Branch Selection for Manager in Edit */}
+            {/* Multiple Department Selection for Manager in Edit */}
             {isManager && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Assigned Branches *</Label>
-                  {branchs.length > 0 && (
+                  <Label>Assigned Departments *</Label>
+                  {departments.length > 0 && (
                     <button
                       type="button"
                       onClick={() => {
-                        if (selectedDepartments.length === branchs.length) {
+                        if (selectedDepartments.length === departments.length) {
                           setSelectedDepartments([]);
                         } else {
-                          setSelectedDepartments([...branchs]);
+                          setSelectedDepartments([...departments]);
                         }
                       }}
                       className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                     >
-                      {selectedDepartments.length === branchs.length ? 'Deselect All' : 'Select All'}
+                      {selectedDepartments.length === departments.length ? 'Deselect All' : 'Select All'}
                     </button>
                   )}
                 </div>
                 <div className="mt-2 space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
-                  {branchs.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No branchs available</p>
+                  {departments.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No departments available</p>
                   ) : (
-                    branchs.map((dept) => (
+                    departments.map((dept) => (
                       <div key={dept} className="flex items-center space-x-2">
                         <input
                           type="checkbox"
@@ -3230,7 +3018,7 @@ export default function EmployeeManagement() {
                 </div>
                 {selectedDepartments.length > 0 && (
                   <p className="text-sm text-muted-foreground mt-1">
-                    Selected: {selectedDepartments.length === branchs.length ? 'All Branches' : selectedDepartments.join(', ')}
+                    Selected: {selectedDepartments.length === departments.length ? 'All Departments' : selectedDepartments.join(', ')}
                   </p>
                 )}
               </div>
@@ -3537,14 +3325,14 @@ export default function EmployeeManagement() {
                     <span className="font-medium">{viewEmployee.email}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Branch</span>
+                    <span className="text-muted-foreground">Department</span>
                     <div className="font-medium">
-                      {viewEmployee.role?.toLowerCase() === 'hr' || (viewEmployee.branch && viewEmployee.branch.includes(',')) || !viewEmployee.branch ? (
+                      {viewEmployee.role?.toLowerCase() === 'hr' || (viewEmployee.department && viewEmployee.department.includes(',')) || !viewEmployee.department ? (
                         <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-sm font-semibold border border-blue-200 dark:border-blue-800">
                           No Dept
                         </span>
                       ) : (
-                        <span>{viewEmployee.branch}</span>
+                        <span>{viewEmployee.department}</span>
                       )}
                     </div>
                   </div>
@@ -3590,17 +3378,6 @@ export default function EmployeeManagement() {
               </div>
             </div>
           )}
-          {viewEmployee && ['admin', 'hr', 'manager', 'team_lead', 'employee'].includes(user?.role?.toLowerCase() || '') && (
-            <DialogFooter className="px-6 py-4 border-t bg-slate-50/50 dark:bg-slate-900/50 flex-shrink-0">
-              <Button
-                onClick={() => navigate(`/${user.role}/tasks`, { state: { createFor: viewEmployee.id } })}
-                className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white shadow-md flex items-center justify-center gap-2 h-11 rounded-xl transition-all active:scale-[0.98]"
-              >
-                <ClipboardList className="h-4 w-4" />
-                Create Task for {viewEmployee.name.split(' ')[0]}
-              </Button>
-            </DialogFooter>
-          )}
         </DialogContent>
       </Dialog>
 
@@ -3645,22 +3422,34 @@ export default function EmployeeManagement() {
             {/* Export Filters */}
             <div className="grid grid-cols-1 gap-4 mb-4">
               <div>
-                <Label htmlFor="export-branch">Branch</Label>
+                <Label htmlFor="export-status">Status</Label>
                 <Select
-                  value={exportFilters.branch}
-                  onValueChange={(value) => setExportFilters(prev => ({ ...prev, branch: value }))}
-                  onOpenChange={(open) => {
-                    if (open) {
-                      fetchDepartments();
-                    }
-                  }}
+                  value={exportFilters.status}
+                  onValueChange={(value) => setExportFilters(prev => ({ ...prev, status: value }))}
                 >
-                  <SelectTrigger id="export-branch" className="mt-1">
-                    <SelectValue placeholder="Select Branch" />
+                  <SelectTrigger id="export-status" className="mt-1">
+                    <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Branches</SelectItem>
-                    {branchs.map((dept) => (
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="export-department">Department</Label>
+                <Select
+                  value={exportFilters.department}
+                  onValueChange={(value) => setExportFilters(prev => ({ ...prev, department: value }))}
+                >
+                  <SelectTrigger id="export-department" className="mt-1">
+                    <SelectValue placeholder="Select Department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.map((dept) => (
                       <SelectItem key={dept} value={dept}>
                         {dept}
                       </SelectItem>
@@ -3680,28 +3469,15 @@ export default function EmployeeManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Roles</SelectItem>
-                    {/* Admin role removed from export filter */}
-                    {user?.role !== 'hr' && <SelectItem value="hr">HR</SelectItem>}
+                    {user?.role !== 'admin' && user?.role !== 'hr' && (
+                      <SelectItem value="admin">Admin</SelectItem>
+                    )}
+                    {user?.role !== 'hr' && (
+                      <SelectItem value="hr">HR</SelectItem>
+                    )}
                     <SelectItem value="manager">Manager</SelectItem>
                     <SelectItem value="team_lead">Team Lead</SelectItem>
                     <SelectItem value="employee">Employee</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="export-status">Status</Label>
-                <Select
-                  value={exportFilters.status}
-                  onValueChange={(value) => setExportFilters(prev => ({ ...prev, status: value }))}
-                >
-                  <SelectTrigger id="export-status" className="mt-1">
-                    <SelectValue placeholder="Select Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

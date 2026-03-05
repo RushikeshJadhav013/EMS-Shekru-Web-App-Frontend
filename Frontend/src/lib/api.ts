@@ -22,6 +22,7 @@ interface EmployeeData {
   user_id?: number;
   is_active?: boolean;
   status?: string;
+  department?: string;
 }
 
 interface Employee {
@@ -46,6 +47,7 @@ interface Employee {
   aadhar_card?: string;
   shift_type?: string;
   managerId?: number;  // ✅ Added for reporting manager
+  department?: string;
 }
 
 interface LeaveRequestData {

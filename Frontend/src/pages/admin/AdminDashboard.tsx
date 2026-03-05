@@ -280,7 +280,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
         <Button
-          onClick={() => navigate('/admin/employees/new/', { state: { highlight: true } })}
+          onClick={() => navigate('/admin/employees/', { state: { highlight: true } })}
           className="h-10 px-6 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200/50 transition-all duration-300 hover:-translate-y-0.5 text-[13px] font-bold gap-2"
         >
           <UserPlus className="h-4 w-4" />

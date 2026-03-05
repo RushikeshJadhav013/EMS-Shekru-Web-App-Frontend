@@ -81,7 +81,8 @@ const SalaryDashboard = () => {
                     salary = { ...salary, annualCtc, monthlyCtc, monthlyInHand };
                 }
 
-                return { ...emp, id, salary };
+                const department = (emp.department || emp.branch || '').trim();
+                return { ...emp, id, department, salary };
             });
 
             setItems(merged);
@@ -144,7 +145,7 @@ const SalaryDashboard = () => {
             return false;
         }
 
-        const itemDepts = (item.department || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+        const itemDepts = (item.department || item.branch || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
 
         const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.employee_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -160,8 +161,9 @@ const SalaryDashboard = () => {
     const uniqueDepts = React.useMemo(() => {
         const depts = new Set<string>();
         items.forEach(item => {
-            if (item.department) {
-                item.department.split(',').forEach(d => {
+            const deptField = item.department || item.branch;
+            if (deptField) {
+                deptField.split(',').forEach(d => {
                     const trimmed = d.trim();
                     if (trimmed) depts.add(trimmed);
                 });
@@ -330,7 +332,7 @@ const SalaryDashboard = () => {
                             ]
                             : [
                                 {
-                                    label: 'Total Branches',
+                                    label: 'Total Departments',
                                     value: uniqueDepts.length,
                                     sub: 'Active Business Units',
                                     icon: Building2,
@@ -416,13 +418,13 @@ const SalaryDashboard = () => {
                         <div className="flex flex-wrap items-center gap-4">
                             <div className="flex items-center gap-2">
                                 <div className="flex flex-col gap-2">
-                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">Branch</Label>
+                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">Department</Label>
                                     <Select value={deptFilter} onValueChange={setDeptFilter}>
                                         <SelectTrigger className="w-[180px] h-10 bg-white dark:bg-gray-800 border-2 transition-all duration-300 hover:shadow-md">
-                                            <SelectValue placeholder="All Branches" />
+                                            <SelectValue placeholder="All Departments" />
                                         </SelectTrigger>
                                         <SelectContent side="bottom">
-                                            <SelectItem value="all">All Branches</SelectItem>
+                                            <SelectItem value="all">All Departments</SelectItem>
                                             {uniqueDepts.map(dept => (
                                                 <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                                             ))}
@@ -507,7 +509,7 @@ const SalaryDashboard = () => {
                                             <TableCell>
                                                 <div className="flex flex-col">
                                                     <span className="capitalize text-xs font-semibold">{item.role?.replace('_', ' ')}</span>
-                                                    <span className="text-[10px] text-muted-foreground">{item.department || '-'}</span>
+                                                    <span className="text-[10px] text-muted-foreground">{item.department || item.branch || '-'}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400">
