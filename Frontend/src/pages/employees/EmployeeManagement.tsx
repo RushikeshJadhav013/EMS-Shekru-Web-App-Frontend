@@ -339,7 +339,7 @@ export default function EmployeeManagement() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
-  const [departments, setDepartments] = useState<string[]>([]);
+  const [branchs, setDepartments] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [selectedRole, setSelectedRole] = useState('all');
@@ -356,7 +356,7 @@ export default function EmployeeManagement() {
     name: '',
     email: '',
     employeeId: '',
-    department: '',
+    branch: '',
     role: 'employee',
     designation: '',
     phone: '',
@@ -372,7 +372,7 @@ export default function EmployeeManagement() {
     shift: undefined
   });
 
-  // For multiple department assignment (HR and Manager roles)
+  // For multiple branch assignment (HR and Manager roles)
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
 
   // Address fields
@@ -406,7 +406,7 @@ export default function EmployeeManagement() {
 
   // Export filters
   const [exportFilters, setExportFilters] = useState({
-    department: 'all',
+    branch: 'all',
     role: 'all',
     status: 'all'
   });
@@ -420,14 +420,14 @@ export default function EmployeeManagement() {
   const [deptSearchValue, setDeptSearchValue] = useState('');
   const [isDeptPopoverOpen, setIsDeptPopoverOpen] = useState(false);
 
-  const handleCreateDepartment = async (deptName: string) => {
+  const handleCreateBranch = async (deptName: string) => {
     if (!deptName.trim()) return;
 
     // Check if already exists (case-insensitive)
-    const exists = departments.some(d => d.toLowerCase() === deptName.trim().toLowerCase());
+    const exists = branchs.some(d => d.toLowerCase() === deptName.trim().toLowerCase());
     if (exists) {
-      const existingName = departments.find(d => d.toLowerCase() === deptName.trim().toLowerCase());
-      setFormData(prev => ({ ...prev, department: existingName }));
+      const existingName = branchs.find(d => d.toLowerCase() === deptName.trim().toLowerCase());
+      setFormData(prev => ({ ...prev, branch: existingName }));
       setIsDeptPopoverOpen(false);
       setDeptSearchValue('');
       return existingName;
@@ -435,7 +435,7 @@ export default function EmployeeManagement() {
 
     setIsCreatingDepartment(true);
     try {
-      // Sanitize department name
+      // Sanitize branch name
       const sanitizedDeptName = deptName.trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       if (!sanitizedDeptName) {
         toast({ title: 'Invalid Name', description: 'Department name cannot be empty or only emojis', variant: 'destructive' });
@@ -453,17 +453,17 @@ export default function EmployeeManagement() {
 
       if (newDept) {
         setDepartments(prev => [...prev, newDept.name].sort());
-        setFormData(prev => ({ ...prev, department: newDept.name }));
+        setFormData(prev => ({ ...prev, branch: newDept.name }));
         setIsDeptPopoverOpen(false);
         setDeptSearchValue('');
-        toast({ title: 'Success', description: `Department "${newDept.name}" created successfully` });
+        toast({ title: 'Success', description: `Branch "${newDept.name}" created successfully` });
         return newDept.name;
       }
     } catch (error: any) {
-      console.error('Failed to create department:', error);
+      console.error('Failed to create branch:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to create department',
+        description: error.message || 'Failed to create branch',
         variant: 'destructive'
       });
     } finally {
@@ -515,16 +515,16 @@ export default function EmployeeManagement() {
 
   const fetchDepartments = useCallback(async () => {
     try {
-      const departmentData = await apiService.getDepartmentNames();
-      const departmentNames = departmentData
+      const branchData = await apiService.getDepartmentNames();
+      const branchNames = branchData
         .map(dept => dept.name)
         .sort();
-      setDepartments(departmentNames);
+      setDepartments(branchNames);
     } catch (error) {
-      console.error('Failed to fetch departments:', error);
+      console.error('Failed to fetch branchs:', error);
       toast({
         title: 'Warning',
-        description: 'Failed to load departments. Some features may be limited.',
+        description: 'Failed to load branchs. Some features may be limited.',
         variant: 'destructive'
       });
     }
@@ -549,7 +549,7 @@ export default function EmployeeManagement() {
         emp.employeeId.toLowerCase().includes(query) ||
         emp.email.toLowerCase().includes(query);
       const matchesDepartment = selectedDepartment === 'all' ||
-        (emp.department && emp.department.split(',').map(d => d.trim().toLowerCase()).includes(selectedDepartment.toLowerCase()));
+        (emp.branch && emp.branch.split(',').map(d => d.trim().toLowerCase()).includes(selectedDepartment.toLowerCase()));
       const matchesRole = selectedRole === 'all' || empInternalRole === selectedRole;
       const matchesStatus = selectedStatus === 'all' || emp.status === selectedStatus;
       return matchesSearch && matchesDepartment && matchesRole && matchesStatus;
@@ -776,16 +776,16 @@ export default function EmployeeManagement() {
 
     // Validate required fields based on role
     const isHROrManager = formData.role === 'hr' || formData.role === 'manager';
-    const departmentValid = isHROrManager ? selectedDepartments.length > 0 : formData.department;
+    const branchValid = isHROrManager ? selectedDepartments.length > 0 : formData.branch;
 
-    if (!formData.name || !formData.email || !formData.employeeId || !departmentValid || !formData.panCard || !formData.aadharCard || !formData.shift || !formData.employeeType || !formData.gender) {
+    if (!formData.name || !formData.email || !formData.employeeId || !branchValid || !formData.panCard || !formData.aadharCard || !formData.shift || !formData.employeeType || !formData.gender) {
       if (!formData.gender) {
         setGenderError('Gender is required');
       }
       toast({
         title: 'Error',
         description: isHROrManager
-          ? 'Please fill in all required fields and select at least one department'
+          ? 'Please fill in all required fields and select at least one branch'
           : 'Please fill in all required fields',
         variant: 'destructive'
       });
@@ -841,9 +841,9 @@ export default function EmployeeManagement() {
 
     setIsCreating(true);
     try {
-      // Handle department assignment based on role
+      // Handle branch assignment based on role
       const isHROrManager = formData.role === 'hr' || formData.role === 'manager';
-      const departmentValue = isHROrManager ? selectedDepartments.join(',') : formData.department;
+      const branchValue = isHROrManager ? selectedDepartments.join(',') : formData.branch;
 
       // Combine address fields
       const fullAddress = [
@@ -859,7 +859,7 @@ export default function EmployeeManagement() {
         name: formData.name,
         email: formData.email,
         employee_id: formData.employeeId,
-        department: departmentValue,
+        branch: branchValue,
         designation: formData.designation,
         phone: formData.phone ? (formData.countryCode === '+91' ? formData.phone.replace(/[^0-9]/g, '') : `${formData.countryCode}-${formData.phone.replace(/[^0-9]/g, '')}`) : '',
         address: fullAddress,
@@ -922,13 +922,13 @@ export default function EmployeeManagement() {
 
     // Validate required fields based on role
     const isHROrManager = formData.role === 'hr' || formData.role === 'manager';
-    const departmentValid = isHROrManager ? selectedDepartments.length > 0 : formData.department;
+    const branchValid = isHROrManager ? selectedDepartments.length > 0 : formData.branch;
 
-    if (!formData.name || !formData.email || !formData.employeeId || !departmentValid || !formData.panCard || !formData.aadharCard || !formData.shift) {
+    if (!formData.name || !formData.email || !formData.employeeId || !branchValid || !formData.panCard || !formData.aadharCard || !formData.shift) {
       toast({
         title: 'Error',
         description: isHROrManager
-          ? 'Please fill in all required fields and select at least one department'
+          ? 'Please fill in all required fields and select at least one branch'
           : 'Please fill in all required fields',
         variant: 'destructive'
       });
@@ -1004,9 +1004,9 @@ export default function EmployeeManagement() {
         return;
       }
 
-      // Handle department assignment based on role
+      // Handle branch assignment based on role
       const isHROrManager = formData.role === 'hr' || formData.role === 'manager';
-      const departmentValue = isHROrManager ? selectedDepartments.join(',') : formData.department;
+      const branchValue = isHROrManager ? selectedDepartments.join(',') : formData.branch;
 
       // Combine address fields
       const fullAddress = [
@@ -1022,7 +1022,7 @@ export default function EmployeeManagement() {
         name: formData.name,
         email: formData.email,
         employee_id: formData.employeeId,
-        department: departmentValue,
+        branch: branchValue,
         designation: formData.designation,
         phone: formData.phone ? (formData.countryCode === '+91' ? formData.phone.replace(/[^0-9]/g, '') : `${formData.countryCode}-${formData.phone.replace(/[^0-9]/g, '')}`) : '',
         address: fullAddress,
@@ -1322,7 +1322,7 @@ export default function EmployeeManagement() {
       const name = (data.name || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       const email = (data.email || '').trim();
       const emailKey = email.toLowerCase();
-      const department = (data.department || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
+      const branch = (data.branch || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       const role = normalizeRole(data.role);
       const designation = (data.designation || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       const address = (data.address || '').trim();
@@ -1399,7 +1399,7 @@ export default function EmployeeManagement() {
         name,
         email,
         employee_id: employeeId,
-        department,
+        branch,
         designation: designation || undefined,
         phone: phoneFormatted || undefined,
         address: address || undefined,
@@ -1510,7 +1510,7 @@ export default function EmployeeManagement() {
       'EmployeeID',
       'Name',
       'Email',
-      'Department',
+      'Branch',
       'Role',
       'Designation',
       'Phone',
@@ -1600,7 +1600,7 @@ export default function EmployeeManagement() {
       name: '',
       email: '',
       employeeId: '',
-      department: '',
+      branch: '',
       role: 'employee',
       designation: '',
       phone: '',
@@ -1651,7 +1651,7 @@ export default function EmployeeManagement() {
       const employeeId = String(data['employeeId'] ?? data['employee_id'] ?? '');
       const name = String(data['name'] ?? '');
       const email = String(data['email'] ?? '');
-      const department = String(data['department'] ?? '');
+      const branch = String(data['branch'] ?? '');
       const role = getInternalRole(String(data['role'] ?? ''));
       const designation = String(data['designation'] ?? '');
       const address = String(data['address'] ?? '');
@@ -1712,7 +1712,7 @@ export default function EmployeeManagement() {
       }
 
       const isHROrManager = role.toLowerCase() === 'hr' || role.toLowerCase() === 'manager';
-      const departmentList = isHROrManager && department ? department.split(',').map(d => d.trim()) : [];
+      const branchList = isHROrManager && branch ? branch.split(',').map(d => d.trim()) : [];
       const addressParts = address.split(',').map(part => part.trim());
       const parsedAddress = {
         houseNo: addressParts[0] || '',
@@ -1728,7 +1728,7 @@ export default function EmployeeManagement() {
         employeeId,
         name,
         email,
-        department: isHROrManager ? '' : department,
+        branch: isHROrManager ? '' : branch,
         role,
         designation,
         address,
@@ -1745,7 +1745,7 @@ export default function EmployeeManagement() {
         photoUrl
       });
 
-      setSelectedDepartments(departmentList);
+      setSelectedDepartments(branchList);
       setAddressFields(parsedAddress);
       setImagePreview(photoUrl);
       setIsEditDialogOpen(true);
@@ -1825,7 +1825,7 @@ export default function EmployeeManagement() {
               onClick={async () => {
                 await Promise.all([fetchEmployees(), fetchDepartments()]);
                 setExportFilters({
-                  department: selectedDepartment,
+                  branch: selectedDepartment,
                   role: selectedRole,
                   status: selectedStatus
                 });
@@ -1882,7 +1882,7 @@ export default function EmployeeManagement() {
                           </div>
                           <div className="flex items-start gap-2">
                             <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-gray-300 text-white text-xs font-bold flex-shrink-0 mt-0.5">○</span>
-                            <span><strong>Optional:</strong> Department</span>
+                            <span><strong>Optional:</strong> Branch</span>
                           </div>
                         </div>
                         <div className="mt-3 p-3 bg-white rounded-lg border border-blue-200">
@@ -1935,7 +1935,7 @@ export default function EmployeeManagement() {
                     </div>
                     <Textarea
                       id="bulk-textarea"
-                      placeholder="Paste your CSV data here (EmployeeID,Name,Email,Department,...)"
+                      placeholder="Paste your CSV data here (EmployeeID,Name,Email,Branch,...)"
                       value={bulkData}
                       onChange={(e) => setBulkData(e.target.value)}
                       rows={8}
@@ -2152,7 +2152,7 @@ export default function EmployeeManagement() {
                       value={formData.employeeId || ''}
                       onChange={(e) => {
                         // Convert to uppercase and remove all non-alphanumeric characters
-                        let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                        const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
                         setFormData((prev) => ({ ...prev, employeeId: value }));
                       }}
                       required
@@ -2216,17 +2216,17 @@ export default function EmployeeManagement() {
                           }
                         }
 
-                        // If role is HR, automatically select ALL departments
+                        // If role is HR, automatically select ALL branchs
                         if (roleValue === 'hr') {
-                          setSelectedDepartments([...departments]);
-                        } else if (roleValue === 'manager' && formData.department && selectedDepartments.length === 0) {
-                          // If switching TO manager, migrate single department TO multi-select list
-                          setSelectedDepartments([formData.department]);
+                          setSelectedDepartments([...branchs]);
+                        } else if (roleValue === 'manager' && formData.branch && selectedDepartments.length === 0) {
+                          // If switching TO manager, migrate single branch TO multi-select list
+                          setSelectedDepartments([formData.branch]);
                         }
 
-                        // If switching FROM hr/manager, migrate first selected department TO single select
+                        // If switching FROM hr/manager, migrate first selected branch TO single select
                         if (roleValue !== 'hr' && roleValue !== 'manager' && selectedDepartments.length > 0) {
-                          setFormData(prev => ({ ...prev, role: roleValue, designation: newDesignation, department: selectedDepartments[0] }));
+                          setFormData(prev => ({ ...prev, role: roleValue, designation: newDesignation, branch: selectedDepartments[0] }));
                         } else {
                           setFormData((prev) => ({ ...prev, role: roleValue, designation: newDesignation }));
                         }
@@ -2257,13 +2257,13 @@ export default function EmployeeManagement() {
                     </Select>
                   </div>
 
-                  {/* Single Department Selection or "All Departments" for HR */}
+                  {/* Single Branch Selection or "All Branches" for HR */}
                   {!isManager && (
                     <div>
-                      <Label htmlFor="create-department">Department *</Label>
+                      <Label htmlFor="create-branch">Branch *</Label>
                       {isHR ? (
                         <Input
-                          value="All Departments"
+                          value="All Branches"
                           readOnly
                           className="mt-1 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 font-medium text-blue-700 dark:text-blue-300"
                         />
@@ -2277,9 +2277,9 @@ export default function EmployeeManagement() {
                               className="w-full justify-between mt-1 h-10 px-3 font-normal"
                               disabled={isCreatingDepartment}
                             >
-                              {formData.department
-                                ? departments.find((d) => d.toLowerCase() === formData.department?.toLowerCase()) || formData.department
-                                : "Select or type department"}
+                              {formData.branch
+                                ? branchs.find((d) => d.toLowerCase() === formData.branch?.toLowerCase()) || formData.branch
+                                : "Select or type branch"}
                               {isCreatingDepartment ? (
                                 <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
                               ) : (
@@ -2290,16 +2290,16 @@ export default function EmployeeManagement() {
                           <PopoverContent className="w-[400px] p-0" align="start">
                             <Command>
                               <CommandInput
-                                placeholder="Search department..."
+                                placeholder="Search branch..."
                                 value={deptSearchValue}
                                 onValueChange={(val) => setDeptSearchValue(val.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                               />
                               <CommandList className="max-h-[300px]">
-                                {deptSearchValue.trim().length > 0 && !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
-                                  <CommandGroup heading="New Department">
+                                {deptSearchValue.trim().length > 0 && !branchs.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
+                                  <CommandGroup heading="New Branch">
                                     <CommandItem
                                       value={deptSearchValue}
-                                      onSelect={() => handleCreateDepartment(deptSearchValue)}
+                                      onSelect={() => handleCreateBranch(deptSearchValue)}
                                       className="cursor-pointer text-blue-600 font-medium"
                                     >
                                       <Plus className="mr-2 h-4 w-4" />
@@ -2308,15 +2308,15 @@ export default function EmployeeManagement() {
                                   </CommandGroup>
                                 )}
                                 <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
-                                  {deptSearchValue.trim().length === 0 ? "No departments available." : "No matching departments found."}
+                                  {deptSearchValue.trim().length === 0 ? "No branchs available." : "No matching branchs found."}
                                 </CommandEmpty>
-                                <CommandGroup heading="Existing Departments">
-                                  {departments.map((dept) => (
+                                <CommandGroup heading="Existing Branches">
+                                  {branchs.map((dept) => (
                                     <CommandItem
                                       key={dept}
                                       value={dept}
                                       onSelect={(currentValue) => {
-                                        setFormData(prev => ({ ...prev, department: currentValue }));
+                                        setFormData(prev => ({ ...prev, branch: currentValue }));
                                         setIsDeptPopoverOpen(false);
                                         setDeptSearchValue('');
                                       }}
@@ -2325,7 +2325,7 @@ export default function EmployeeManagement() {
                                       <Check
                                         className={cn(
                                           "mr-2 h-4 w-4",
-                                          formData.department?.toLowerCase() === dept.toLowerCase() ? "opacity-100" : "opacity-0"
+                                          formData.branch?.toLowerCase() === dept.toLowerCase() ? "opacity-100" : "opacity-0"
                                         )}
                                       />
                                       {dept}
@@ -2337,40 +2337,40 @@ export default function EmployeeManagement() {
                           </PopoverContent>
                         </Popover>
                       )}
-                      {!isHR && departments.length === 0 && (
+                      {!isHR && branchs.length === 0 && (
                         <p className="text-sm text-amber-600 mt-1">
-                          ⚠️ No departments available. Please go to Department Management to create departments first.
+                          ⚠️ No branches available. Please go to Branch Management to create branches first.
                         </p>
                       )}
                     </div>
                   )}
 
-                  {/* Multiple Department Selection for Manager */}
+                  {/* Multiple Branch Selection for Manager */}
                   {isManager && (
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <Label>Assigned Departments *</Label>
-                        {departments.length > 0 && (
+                        <Label>Assigned Branches *</Label>
+                        {branchs.length > 0 && (
                           <button
                             type="button"
                             onClick={() => {
-                              if (selectedDepartments.length === departments.length) {
+                              if (selectedDepartments.length === branchs.length) {
                                 setSelectedDepartments([]);
                               } else {
-                                setSelectedDepartments([...departments]);
+                                setSelectedDepartments([...branchs]);
                               }
                             }}
                             className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                           >
-                            {selectedDepartments.length === departments.length ? 'Deselect All' : 'Select All'}
+                            {selectedDepartments.length === branchs.length ? 'Deselect All' : 'Select All'}
                           </button>
                         )}
                       </div>
                       <div className="mt-2 space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
-                        {departments.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">No departments available</p>
+                        {branchs.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No branchs available</p>
                         ) : (
-                          departments.map((dept) => (
+                          branchs.map((dept) => (
                             <div key={dept} className="flex items-center space-x-2">
                               <input
                                 type="checkbox"
@@ -2394,7 +2394,7 @@ export default function EmployeeManagement() {
                       </div>
                       {selectedDepartments.length > 0 && (
                         <p className="text-sm text-muted-foreground mt-1">
-                          Selected: {selectedDepartments.length === departments.length ? 'All Departments' : selectedDepartments.join(', ')}
+                          Selected: {selectedDepartments.length === branchs.length ? 'All Branches' : selectedDepartments.join(', ')}
                         </p>
                       )}
                     </div>
@@ -2668,7 +2668,7 @@ export default function EmployeeManagement() {
               </div>
             </div>
             <div className="flex flex-col gap-2 w-full sm:w-44">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Department</Label>
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Branch</Label>
               <Select
                 value={selectedDepartment}
                 onValueChange={setSelectedDepartment}
@@ -2683,15 +2683,15 @@ export default function EmployeeManagement() {
                     ? 'text-blue-600'
                     : 'text-gray-600 dark:text-gray-400'
                     }`} />
-                  <SelectValue placeholder="Department" />
+                  <SelectValue placeholder="Branch" />
                 </SelectTrigger>
                 <SelectContent className="border-2 shadow-2xl">
                   <SelectItem value="all" className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors font-medium">
                     <div className="flex items-center gap-2">
-                      All Departments
+                      All Branches
                     </div>
                   </SelectItem>
-                  {departments.map((dept, index) => {
+                  {branchs.map((dept, index) => {
                     return (
                       <SelectItem key={dept} value={dept} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
                         <div className="flex items-center gap-2">
@@ -2782,7 +2782,7 @@ export default function EmployeeManagement() {
                   <TableHead className="font-semibold">Employee ID</TableHead>
                   <TableHead className="font-semibold">Name</TableHead>
                   <TableHead className="hidden sm:table-cell font-semibold">Email</TableHead>
-                  <TableHead className="font-semibold">Department</TableHead>
+                  <TableHead className="font-semibold">Branch</TableHead>
                   <TableHead className="hidden md:table-cell font-semibold">Role</TableHead>
                   <TableHead className="font-semibold">Status</TableHead>
                   <TableHead className="text-right font-semibold">Actions</TableHead>
@@ -2825,9 +2825,9 @@ export default function EmployeeManagement() {
                       <TableCell className="hidden sm:table-cell text-muted-foreground">{employee.email}</TableCell>
                       <TableCell>
                         <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 text-sm font-medium">
-                          {employee.role?.toLowerCase() === 'hr' || !employee.department
+                          {employee.role?.toLowerCase() === 'hr' || !employee.branch
                             ? 'No Dept'
-                            : employee.department}
+                            : employee.branch}
                         </span>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
@@ -2863,8 +2863,8 @@ export default function EmployeeManagement() {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          {/* Removed Delete button for Admin and HR profiles */}
-                          {getInternalRole(user?.role || '') !== 'admin' && getInternalRole(user?.role || '') !== 'hr' && (
+                          {/* Delete button available for Admin and HR to manage other employees */}
+                          {(getInternalRole(user?.role || '') === 'admin' || getInternalRole(user?.role || '') === 'hr') && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -3028,17 +3028,17 @@ export default function EmployeeManagement() {
                     }
                   }
 
-                  // If role is HR, automatically select ALL departments
+                  // If role is HR, automatically select ALL branchs
                   if (roleValue === 'hr') {
-                    setSelectedDepartments([...departments]);
-                  } else if (roleValue === 'manager' && formData.department && selectedDepartments.length === 0) {
-                    // If switching TO manager, migrate single department TO multi-select list
-                    setSelectedDepartments([formData.department]);
+                    setSelectedDepartments([...branchs]);
+                  } else if (roleValue === 'manager' && formData.branch && selectedDepartments.length === 0) {
+                    // If switching TO manager, migrate single branch TO multi-select list
+                    setSelectedDepartments([formData.branch]);
                   }
 
-                  // If switching FROM hr/manager, migrate first selected department TO single select
+                  // If switching FROM hr/manager, migrate first selected branch TO single select
                   if (roleValue !== 'hr' && roleValue !== 'manager' && selectedDepartments.length > 0) {
-                    setFormData(prev => ({ ...prev, role: roleValue, designation: newDesignation, department: selectedDepartments[0] }));
+                    setFormData(prev => ({ ...prev, role: roleValue, designation: newDesignation, branch: selectedDepartments[0] }));
                   } else {
                     setFormData((prev) => ({ ...prev, role: roleValue, designation: newDesignation }));
                   }
@@ -3072,10 +3072,10 @@ export default function EmployeeManagement() {
             {/* Single Department Selection or "All Departments" for HR in Edit */}
             {!isManager && (
               <div>
-                <Label htmlFor="edit-department">Department *</Label>
+                <Label htmlFor="edit-branch">Branch *</Label>
                 {isHR ? (
                   <Input
-                    value="All Departments"
+                    value="All Branches"
                     readOnly
                     className="mt-1 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 font-medium text-blue-700 dark:text-blue-300"
                   />
@@ -3089,9 +3089,9 @@ export default function EmployeeManagement() {
                         className="w-full justify-between mt-1 h-10 px-3 font-normal"
                         disabled={isCreatingDepartment}
                       >
-                        {formData.department
-                          ? departments.find((d) => d.toLowerCase() === formData.department?.toLowerCase()) || formData.department
-                          : "Select or type department"}
+                        {formData.branch
+                          ? branchs.find((d) => d.toLowerCase() === formData.branch?.toLowerCase()) || formData.branch
+                          : "Select or type branch"}
                         {isCreatingDepartment ? (
                           <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
                         ) : (
@@ -3102,16 +3102,16 @@ export default function EmployeeManagement() {
                     <PopoverContent className="w-[400px] p-0" align="start">
                       <Command>
                         <CommandInput
-                          placeholder="Search department..."
+                          placeholder="Search branch..."
                           value={deptSearchValue}
                           onValueChange={(val) => setDeptSearchValue(val.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                         />
                         <CommandList className="max-h-[300px]">
-                          {deptSearchValue.trim().length > 0 && !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
-                            <CommandGroup heading="New Department">
+                          {deptSearchValue.trim().length > 0 && !branchs.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
+                            <CommandGroup heading="New Branch">
                               <CommandItem
                                 value={deptSearchValue}
-                                onSelect={() => handleCreateDepartment(deptSearchValue)}
+                                onSelect={() => handleCreateBranch(deptSearchValue)}
                                 className="cursor-pointer text-blue-600 font-medium"
                               >
                                 <Plus className="mr-2 h-4 w-4" />
@@ -3120,15 +3120,15 @@ export default function EmployeeManagement() {
                             </CommandGroup>
                           )}
                           <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
-                            {deptSearchValue.trim().length === 0 ? "No departments available." : "No matching departments found."}
+                            {deptSearchValue.trim().length === 0 ? "No branches available." : "No matching branches found."}
                           </CommandEmpty>
-                          <CommandGroup heading="Existing Departments">
-                            {departments.map((dept) => (
+                          <CommandGroup heading="Existing Branches">
+                            {branchs.map((dept) => (
                               <CommandItem
                                 key={dept}
                                 value={dept}
                                 onSelect={(currentValue) => {
-                                  setFormData(prev => ({ ...prev, department: currentValue }));
+                                  setFormData(prev => ({ ...prev, branch: currentValue }));
                                   setIsDeptPopoverOpen(false);
                                   setDeptSearchValue('');
                                 }}
@@ -3137,7 +3137,7 @@ export default function EmployeeManagement() {
                                 <Check
                                   className={cn(
                                     "mr-2 h-4 w-4",
-                                    formData.department?.toLowerCase() === dept.toLowerCase() ? "opacity-100" : "opacity-0"
+                                    formData.branch?.toLowerCase() === dept.toLowerCase() ? "opacity-100" : "opacity-0"
                                   )}
                                 />
                                 {dept}
@@ -3152,32 +3152,32 @@ export default function EmployeeManagement() {
               </div>
             )}
 
-            {/* Multiple Department Selection for Manager in Edit */}
+            {/* Multiple Branch Selection for Manager in Edit */}
             {isManager && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Assigned Departments *</Label>
-                  {departments.length > 0 && (
+                  <Label>Assigned Branches *</Label>
+                  {branchs.length > 0 && (
                     <button
                       type="button"
                       onClick={() => {
-                        if (selectedDepartments.length === departments.length) {
+                        if (selectedDepartments.length === branchs.length) {
                           setSelectedDepartments([]);
                         } else {
-                          setSelectedDepartments([...departments]);
+                          setSelectedDepartments([...branchs]);
                         }
                       }}
                       className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                     >
-                      {selectedDepartments.length === departments.length ? 'Deselect All' : 'Select All'}
+                      {selectedDepartments.length === branchs.length ? 'Deselect All' : 'Select All'}
                     </button>
                   )}
                 </div>
                 <div className="mt-2 space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
-                  {departments.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No departments available</p>
+                  {branchs.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No branchs available</p>
                   ) : (
-                    departments.map((dept) => (
+                    branchs.map((dept) => (
                       <div key={dept} className="flex items-center space-x-2">
                         <input
                           type="checkbox"
@@ -3201,7 +3201,7 @@ export default function EmployeeManagement() {
                 </div>
                 {selectedDepartments.length > 0 && (
                   <p className="text-sm text-muted-foreground mt-1">
-                    Selected: {selectedDepartments.length === departments.length ? 'All Departments' : selectedDepartments.join(', ')}
+                    Selected: {selectedDepartments.length === branchs.length ? 'All Branches' : selectedDepartments.join(', ')}
                   </p>
                 )}
               </div>
@@ -3508,14 +3508,14 @@ export default function EmployeeManagement() {
                     <span className="font-medium">{viewEmployee.email}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Department</span>
+                    <span className="text-muted-foreground">Branch</span>
                     <div className="font-medium">
-                      {viewEmployee.role?.toLowerCase() === 'hr' || (viewEmployee.department && viewEmployee.department.includes(',')) || !viewEmployee.department ? (
+                      {viewEmployee.role?.toLowerCase() === 'hr' || (viewEmployee.branch && viewEmployee.branch.includes(',')) || !viewEmployee.branch ? (
                         <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-sm font-semibold border border-blue-200 dark:border-blue-800">
                           No Dept
                         </span>
                       ) : (
-                        <span>{viewEmployee.department}</span>
+                        <span>{viewEmployee.branch}</span>
                       )}
                     </div>
                   </div>
@@ -3616,22 +3616,22 @@ export default function EmployeeManagement() {
             {/* Export Filters */}
             <div className="grid grid-cols-1 gap-4 mb-4">
               <div>
-                <Label htmlFor="export-department">Department</Label>
+                <Label htmlFor="export-branch">Branch</Label>
                 <Select
-                  value={exportFilters.department}
-                  onValueChange={(value) => setExportFilters(prev => ({ ...prev, department: value }))}
+                  value={exportFilters.branch}
+                  onValueChange={(value) => setExportFilters(prev => ({ ...prev, branch: value }))}
                   onOpenChange={(open) => {
                     if (open) {
                       fetchDepartments();
                     }
                   }}
                 >
-                  <SelectTrigger id="export-department" className="mt-1">
-                    <SelectValue placeholder="Select Department" />
+                  <SelectTrigger id="export-branch" className="mt-1">
+                    <SelectValue placeholder="Select Branch" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Departments</SelectItem>
-                    {departments.map((dept) => (
+                    <SelectItem value="all">All Branches</SelectItem>
+                    {branchs.map((dept) => (
                       <SelectItem key={dept} value={dept}>
                         {dept}
                       </SelectItem>

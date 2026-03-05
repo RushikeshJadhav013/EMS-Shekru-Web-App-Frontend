@@ -119,7 +119,7 @@ const HRDashboard: React.FC = () => {
         const response = await apiService.getAllWFHRequests();
 
         // Handle response - it's always an array
-        let requests = Array.isArray(response) ? response : [];
+        const requests = Array.isArray(response) ? response : [];
 
         // Transform API response to match our UI format
         // The API returns requests with fields like: wfh_id, user_id, start_date, end_date, wfh_type, reason, status, employee_id, name, department, role, approver_name

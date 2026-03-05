@@ -194,8 +194,8 @@ const AttendanceManager: React.FC = () => {
 
     // Apply Duration Filter
     if (wfhDecisionsDurationFilter !== 'all') {
-      let startDate = wfhDecisionsStartDate;
-      let endDate = wfhDecisionsEndDate ? new Date(wfhDecisionsEndDate) : new Date();
+      const startDate = wfhDecisionsStartDate;
+      const endDate = wfhDecisionsEndDate ? new Date(wfhDecisionsEndDate) : new Date();
       endDate.setHours(23, 59, 59, 999);
 
       filtered = filtered.filter(req => {
@@ -755,8 +755,8 @@ const AttendanceManager: React.FC = () => {
   const handleDepartmentTimingSave = async () => {
     if (!departmentTimingForm.department.trim()) {
       toast({
-        title: 'Department required',
-        description: 'Please specify a department before saving.',
+        title: 'Branch required',
+        description: 'Please specify a branch before saving.',
         variant: 'destructive',
       });
       return;
@@ -779,14 +779,14 @@ const AttendanceManager: React.FC = () => {
       if (!res.ok) throw new Error(`Failed to save department office timing: ${res.status}`);
       await loadOfficeTimings();
       toast({
-        title: 'Department timing saved',
+        title: 'Branch timing saved',
         description: `Office timing updated for ${departmentTimingForm.department}.`,
       });
     } catch (error) {
       console.error('handleDepartmentTimingSave error', error);
       toast({
         title: 'Save failed',
-        description: 'Unable to save department office time. Please try again.',
+        description: 'Unable to save branch office time. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -821,8 +821,8 @@ const AttendanceManager: React.FC = () => {
 
     // Show toast notification
     toast({
-      title: 'Editing Department Timing',
-      description: `Form populated with settings for ${timing.department || 'All Departments'}. Scroll up to edit.`,
+      title: 'Editing Branch Timing',
+      description: `Form populated with settings for ${timing.department || 'All Branches'}. Scroll up to edit.`,
     });
   };
 
@@ -1535,7 +1535,7 @@ const AttendanceManager: React.FC = () => {
       }
 
       // Handle response - it might be wrapped in an object or be an array directly
-      let requests = Array.isArray(response) ? response : (response?.data || response?.requests || []);
+      const requests = Array.isArray(response) ? response : (response?.data || response?.requests || []);
 
       // Transform API response to match our UI format
       const formattedRequests = requests.map((req: any) => {
@@ -2480,7 +2480,7 @@ const AttendanceManager: React.FC = () => {
             {employeeFilter === 'specific' && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="department-select" className="text-sm font-medium">Department</Label>
+                  <Label htmlFor="department-select" className="text-sm font-medium">Branch</Label>
                   <Select
                     value={selectedDepartmentFilter}
                     onValueChange={(value) => {
@@ -2803,14 +2803,14 @@ const AttendanceManager: React.FC = () => {
 
         <Card ref={departmentFormRef} className="shadow-xl border border-purple-100 dark:border-slate-800 transition-all duration-300">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl font-semibold">Department Timing</CardTitle>
+            <CardTitle className="text-xl font-semibold">Branch Timing</CardTitle>
             <CardDescription>
               Override the global schedule for particular departments or create new ones.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label>Department</Label>
+              <Label>Branch</Label>
               <Select
                 value={departmentTimingForm.department || undefined}
                 onValueChange={handleDepartmentSelect}
@@ -2819,7 +2819,7 @@ const AttendanceManager: React.FC = () => {
                 <SelectTrigger className="h-10 border-purple-100 focus:border-purple-400">
                   <SelectValue
                     placeholder={
-                      coreDepartments.length ? 'Select department' : 'No departments available'
+                      coreDepartments.length ? 'Select branch' : 'No branches available'
                     }
                   />
                 </SelectTrigger>
@@ -3003,7 +3003,7 @@ const AttendanceManager: React.FC = () => {
                 disabled={isDeptSaving || officeFormLoading || !departmentTimingForm.department.trim()}
                 className="gap-2 bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 shadow-md"
               >
-                {isDeptSaving ? 'Saving...' : 'Save Department Timing'}
+                {isDeptSaving ? 'Saving...' : 'Save Branch Timing'}
               </Button>
             </div>
           </CardContent>
@@ -3029,10 +3029,10 @@ const AttendanceManager: React.FC = () => {
                   >
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">
-                        {isGlobalTiming ? 'Global Schedule' : 'Department'}
+                        {isGlobalTiming ? 'Global Schedule' : 'Branch'}
                       </p>
                       <h3 className="text-xl font-semibold">
-                        {isGlobalTiming ? 'All Departments' : timing.department}
+                        {isGlobalTiming ? 'All Branches' : timing.department}
                       </h3>
                       <div className="mt-3 flex flex-wrap gap-3">
                         <Badge variant="secondary" className="bg-blue-50 text-blue-700">
@@ -3182,7 +3182,7 @@ const AttendanceManager: React.FC = () => {
                                 <p className="text-sm text-muted-foreground">{request.reason}</p>
                                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                   <span>Submitted: {formatRelativeTime(request.submittedAt)} ({formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')})</span>
-                                  <span>Department: {request.department}</span>
+                                  <span>Branch: {request.department}</span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 ml-4">
@@ -3382,7 +3382,7 @@ const AttendanceManager: React.FC = () => {
                                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                     <span>Submitted: {formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
                                     <span>Decision: {formatDateTimeIST(request.processedAt || request.submittedAt, 'dd MMM yyyy, hh:mm a')}</span>
-                                    <span>Department: {request.department}</span>
+                                    <span>Branch: {request.department}</span>
                                   </div>
                                   {request.rejectionReason && (
                                     <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">

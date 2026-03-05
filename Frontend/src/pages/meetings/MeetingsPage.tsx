@@ -3,21 +3,24 @@ import {
     Video,
     Plus,
     Calendar,
-    Users,
-    ExternalLink,
-    MoreVertical,
-    Trash2,
-    Edit2,
     Clock,
+    MoreVertical,
     Search,
     Filter,
-    CheckCircle2,
-    AlertCircle,
     Briefcase,
     Users2,
-    Settings2,
+    FolderKanban,
+    Link2,
+    LogIn,
+    ArrowRight,
+    Play,
+    X,
+    Trash2,
+    Info,
     CalendarDays,
-    FolderKanban
+    Edit2,
+    ExternalLink,
+    Users
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
@@ -34,7 +37,7 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger
+    DialogTrigger,
 } from '@/components/ui/dialog';
 import {
     Select,
@@ -100,6 +103,8 @@ const MeetingsPage: React.FC = () => {
     const [projects, setProjects] = useState<any[]>([]);
     const [departments, setDepartments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('upcoming');
+    const [searchQuery, setSearchQuery] = useState('');
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -165,7 +170,6 @@ const MeetingsPage: React.FC = () => {
         fetchData();
     }, []);
 
-    const [searchQuery, setSearchQuery] = useState('');
     const [dateFilter, setDateFilter] = useState('');
     const [typeFilter, setTypeFilter] = useState('all');
 
@@ -407,18 +411,30 @@ const MeetingsPage: React.FC = () => {
     };
 
     return (
-        <div className="flex-1 flex flex-col h-full bg-slate-50/50 dark:bg-slate-950/50 overflow-hidden">
-            {/* Header Section */}
-            <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-8">
-                <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="flex items-center gap-5">
-                        <div className="h-16 w-16 rounded-[2rem] bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-xl shadow-blue-200 dark:shadow-none">
-                            <Video className="h-8 w-8 text-white" />
+        <div className="flex-1 flex flex-col h-full bg-[#f8fafc] dark:bg-[#020617] overflow-hidden">
+            {/* Simple Header based on image */}
+            <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+                <div className="max-w-7xl mx-auto px-8 py-8">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-6">
+                            <div className="h-16 w-16 bg-blue-600 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
+                                <Video className="h-8 w-8" />
+                            </div>
+                            <div>
+                                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Meetings</h1>
+                                <p className="text-slate-500 font-medium">Coordinate and collaborate across the organization</p>
+                            </div>
                         </div>
-                        <div>
-                            <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Meetings</h1>
-                            <p className="text-slate-500 dark:text-slate-400 font-medium">Coordinate and collaborate across the organization</p>
-                        </div>
+                        <Button
+                            onClick={() => {
+                                resetForm();
+                                setIsCreateDialogOpen(true);
+                            }}
+                            className="h-14 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-500/10 transition-all active:scale-95"
+                        >
+                            <Plus className="h-5 w-5 mr-2" />
+                            SCHEDULE SYNC
+                        </Button>
                     </div>
 
                     <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {

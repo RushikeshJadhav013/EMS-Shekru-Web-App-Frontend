@@ -18,6 +18,8 @@
 
   <body>
     <div id="root"></div>
+    <script>console.log("index.html: Non-module script diagnostic");</script>
+    <script type="module">console.log("index.html: Module script diagnostic");</script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

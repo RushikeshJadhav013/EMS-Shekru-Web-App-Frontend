@@ -4,7 +4,7 @@ interface EmployeeData {
   name: string;
   email: string;
   employee_id: string;
-  department?: string;
+  branch?: string;
   designation?: string;
   phone?: string;
   address?: string;
@@ -30,7 +30,7 @@ interface Employee {
   employee_id: string;
   name: string;
   email: string;
-  department?: string;
+  branch?: string;
   designation?: string;
   role: string;
   phone?: string;
@@ -97,7 +97,20 @@ export interface LeaveAllocationConfig {
   updated_by?: number;
 }
 
-export interface DepartmentData {
+export interface LeaveAllocationConfig {
+  id?: number;
+  total_annual_leave: number;
+  sick_leave_allocation: number;
+  casual_leave_allocation: number;
+  other_leave_allocation: number;
+  is_configured?: boolean;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string | null;
+  updated_by?: number;
+}
+
+export interface BranchData {
   name: string;
   code: string;
   manager_id?: number | null;
@@ -107,7 +120,7 @@ export interface DepartmentData {
   location?: string | null;
 }
 
-export interface Department {
+export interface Branch {
   id: number;
   name: string;
   code: string;
@@ -280,9 +293,9 @@ class ApiService {
     }
   }
 
-  // Get employees with optional department filter
-  async getEmployees(department?: string) {
-    const query = department && department !== 'all' ? `?department=${department}` : '';
+  // Get employees with optional branch filter
+  async getEmployees(branch?: string) {
+    const query = branch && branch !== 'all' ? `?department=${branch}` : '';
     const data = await this.request(`/employees/${query}`);
     return Array.isArray(data) ? data : (data?.employees || []);
   }
@@ -292,9 +305,9 @@ class ApiService {
     return this.getEmployees();
   }
 
-  // Backwards compatibility for exact department filter
-  async getEmployeesByDepartment(department: string) {
-    return this.getEmployees(department);
+  // Backwards compatibility for exact branch filter
+  async getEmployeesByBranch(branch: string) {
+    return this.getEmployees(branch);
   }
 
   // Get employee by ID
@@ -323,20 +336,20 @@ class ApiService {
     }
   }
 
-  async getDepartmentManagers() {
+  async getBranchManagers() {
     return this.request('/departments/managers');
   }
 
-  // Department APIs
-  async getDepartments(): Promise<Department[]> {
+  // Branch APIs
+  async getBranchs(): Promise<Branch[]> {
     return this.request('/departments');
   }
 
-  async getDepartmentNames(): Promise<{ name: string, code: string }[]> {
+  async getBranchNames(): Promise<{ name: string, code: string }[]> {
     return this.request('/departments/names');
   }
 
-  async createDepartment(data: DepartmentData): Promise<Department> {
+  async createBranch(data: BranchData): Promise<Branch> {
     return this.request('/departments', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -346,7 +359,7 @@ class ApiService {
     });
   }
 
-  async updateDepartment(id: number, data: Partial<DepartmentData>): Promise<Department> {
+  async updateBranch(id: number, data: Partial<BranchData>): Promise<Branch> {
     return this.request(`/departments/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -356,13 +369,13 @@ class ApiService {
     });
   }
 
-  async deleteDepartment(id: number): Promise<void> {
+  async deleteBranch(id: number): Promise<void> {
     await this.request(`/departments/${id}`, {
       method: 'DELETE',
     });
   }
 
-  async syncDepartmentsFromUsers(): Promise<{
+  async syncBranchsFromUsers(): Promise<{
     message: string;
     created: number;
     updated: number;
@@ -373,6 +386,32 @@ class ApiService {
       method: 'POST',
     });
   }
+
+  // --- Department Aliases for backward compatibility ---
+  async getDepartments(branch?: string) {
+    return this.getEmployees(branch);
+  }
+
+  async getDepartmentNames() {
+    return this.getBranchNames();
+  }
+
+  async createDepartment(data: BranchData) {
+    return this.createBranch(data);
+  }
+
+  async updateDepartment(id: number, data: Partial<BranchData>) {
+    return this.updateBranch(id, data);
+  }
+
+  async deleteDepartment(id: number) {
+    return this.deleteBranch(id);
+  }
+
+  async syncDepartmentsFromUsers() {
+    return this.syncBranchsFromUsers();
+  }
+  // ------------------------------------------------------
 
   // Dashboard endpoints
   async getAdminDashboard() {
@@ -1746,6 +1785,10 @@ class ApiService {
     return this.request(`/projects/${projectId}`);
   }
 
+  async getProjectById(projectId: number): Promise<any> {
+    return this.getProject(projectId);
+  }
+
   async createProject(projectData: any): Promise<any> {
     return this.request('/projects/', {
       method: 'POST',
@@ -1806,6 +1849,25 @@ class ApiService {
     });
   }
 
+  async assignTasksBulk(payload: {
+    title: string;
+    description?: string;
+    status?: string;
+    due_date?: string | null;
+    priority?: string;
+    assigned_to_ids: number[];
+    project_id: number;
+  }): Promise<any> {
+    return this.request('/tasks/bulk', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getProjectTasks(projectId: number): Promise<any> {
+    return this.request(`/projects/${projectId}/tasks`);
+  }
+
   async updateProjectTaskStatus(projectId: number, taskId: number, status: string): Promise<any> {
     return this.request(`/projects/${projectId}/tasks/${taskId}/status`, {
       method: 'PUT',
@@ -1840,9 +1902,10 @@ class ApiService {
     start_time: string;
     end_time: string;
     meeting_url: string;
-    participant_ids?: number[];
-    team_id?: number;
     type?: string;
+    team_id?: number;
+    project_id?: number;
+    participant_ids?: number[];
   }): Promise<any> {
     return this.request('/meetings/', {
       method: 'POST',
@@ -1893,9 +1956,10 @@ class ApiService {
     start_time: string;
     end_time: string;
     meeting_url: string;
-    participant_ids?: number[];
-    team_id?: number;
     type?: string;
+    team_id?: number;
+    project_id?: number;
+    participant_ids?: number[];
   }): Promise<any> {
     return this.request(`/meetings/${meetingId}`, {
       method: 'PUT',

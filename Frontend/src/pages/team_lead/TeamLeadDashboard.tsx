@@ -82,7 +82,7 @@ const TeamLeadDashboard: React.FC = () => {
         const employees = await apiService.getEmployees();
 
         // Filter by department: include only 'Employee' role from fetched list
-        let departmentEmployees = employees.filter((emp: any) =>
+        const departmentEmployees = employees.filter((emp: any) =>
           emp.department === user.department &&
           emp.role?.toLowerCase() === 'employee' &&
           emp.is_active !== false &&
