@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { Switch } from '@/components/ui/switch';
+import { useNavigate } from 'react-router-dom';
 import {
   User,
   Mail,
@@ -31,6 +32,7 @@ import {
   Check,
   Bell,
   BellOff,
+  Plus,
 } from 'lucide-react';
 import { formatDateIST } from '@/utils/timezone';
 
@@ -39,6 +41,7 @@ const Profile: React.FC = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
   const { colorTheme, setColorTheme } = useTheme();
+  const navigate = useNavigate();
   const [editedUser, setEditedUser] = useState(user);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [employeeData, setEmployeeData] = useState<any>(null);
@@ -174,6 +177,8 @@ const Profile: React.FC = () => {
     { label: 'Attendance', value: '95%', icon: Clock, color: 'text-purple-500' },
   ];
 
+  const canCreateTask = ['admin', 'hr', 'manager', 'team_lead', 'employee'].includes(user.role);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5">
       <div className="w-full space-y-6">
@@ -228,6 +233,15 @@ const Profile: React.FC = () => {
               </div>
 
               <div className="flex gap-2">
+                {canCreateTask && (
+                  <Button
+                    onClick={() => navigate(`/${user.role}/tasks`, { state: { createFor: user.id } })}
+                    className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create Task
+                  </Button>
+                )}
                 <Button onClick={handleRemovePhoto} variant="outline" className="shadow-lg">
                   Remove Photo
                 </Button>

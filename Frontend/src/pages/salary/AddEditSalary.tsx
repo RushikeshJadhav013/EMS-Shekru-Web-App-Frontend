@@ -939,13 +939,13 @@ const AddEditSalary = () => {
                                                 <CardDescription>Automated compensation structuring based on annual CTC and statutory norms.</CardDescription>
                                             </CardHeader>
                                             <CardContent className="space-y-6">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="grid grid-cols-2 gap-6">
                                                     <div className="space-y-2">
-                                                        <Label className="flex items-center gap-2">
+                                                        <Label className="flex items-center gap-2 font-semibold">
                                                             Annual CTC (₹) <span className="text-red-500">*</span>
                                                         </Label>
                                                         <div className="relative">
-                                                            <span className="absolute left-3 top-2.5 text-muted-foreground">₹</span>
+                                                            <span className="absolute left-3 top-2.5 text-muted-foreground font-medium">₹</span>
                                                             <Input
                                                                 type="text"
                                                                 className="pl-8 h-10 bg-white dark:bg-slate-800"
@@ -958,10 +958,11 @@ const AddEditSalary = () => {
                                                         {form.formState.errors.annualCtc && <p className="text-red-500 text-xs mt-1">{form.formState.errors.annualCtc.message}</p>}
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label>Working Days (Month)</Label>
+                                                        <Label className="font-semibold">Working Days (Month)</Label>
                                                         <Input
                                                             type="text"
                                                             className="h-10 bg-white dark:bg-slate-800"
+                                                            placeholder="e.g. 22"
                                                             disabled={false}
                                                             {...form.register("workingDays")}
                                                             onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}

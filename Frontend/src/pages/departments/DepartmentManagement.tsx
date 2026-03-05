@@ -53,8 +53,6 @@ export default function DepartmentManagement() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
-  const [selectedManagerFilter, setSelectedManagerFilter] = useState<'all' | string>('all');
-  const [sortBy, setSortBy] = useState<'name' | 'employees'>('name');
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [viewDepartment, setViewDepartment] = useState<ExtendedDepartment | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -93,25 +91,13 @@ export default function DepartmentManagement() {
         (dept.location || '').toLowerCase().includes(query);
 
       const matchesStatus = selectedStatus === 'all' || dept.status === selectedStatus;
-      const matchesManager =
-        selectedManagerFilter === 'all' ||
-        String(dept.managerId ?? '') === selectedManagerFilter;
-
-      return matchesSearch && matchesStatus && matchesManager;
+      return matchesSearch && matchesStatus;
     });
 
-    result = [...result].sort((a, b) => {
-      if (sortBy === 'name') {
-        return a.name.localeCompare(b.name);
-      }
-      if (sortBy === 'employees') {
-        return (b.employeeCount || 0) - (a.employeeCount || 0);
-      }
-      return 0;
-    });
+    result = [...result].sort((a, b) => a.name.localeCompare(b.name));
 
     return result;
-  }, [departments, searchQuery, selectedStatus, selectedManagerFilter, sortBy]);
+  }, [departments, searchQuery, selectedStatus]);
 
   const paginatedDepartments = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -124,7 +110,7 @@ export default function DepartmentManagement() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedStatus, selectedManagerFilter, sortBy]);
+  }, [searchQuery, selectedStatus]);
 
   // Reset to first page when items per page changes
   useEffect(() => {
@@ -718,44 +704,6 @@ export default function DepartmentManagement() {
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Manager</Label>
-                <Select
-                  value={selectedManagerFilter}
-                  onValueChange={(value) =>
-                    setSelectedManagerFilter(value as 'all' | string)
-                  }
-                >
-                  <SelectTrigger className="w-[170px] border-slate-300 dark:border-slate-600 h-10">
-                    <SelectValue placeholder="Manager" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-64 overflow-y-auto">
-                    <SelectItem value="all">All Managers</SelectItem>
-                    {managers.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Sort By</Label>
-                <Select
-                  value={sortBy}
-                  onValueChange={(value) =>
-                    setSortBy(value as 'name' | 'employees')
-                  }
-                >
-                  <SelectTrigger className="w-[150px] border-slate-300 dark:border-slate-600 h-10">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="name">Name (A-Z)</SelectItem>
-                    <SelectItem value="employees">Employees</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

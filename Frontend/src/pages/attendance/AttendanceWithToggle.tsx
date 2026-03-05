@@ -24,6 +24,7 @@ import { formatIST, formatDateTimeIST, formatTimeIST, formatDateIST, todayIST, f
 import { getCurrentLocation as fetchPreciseLocation, getCurrentLocationFast } from '@/utils/geolocation';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Pagination } from '@/components/ui/pagination';
+import TruncatedText from '@/components/ui/TruncatedText';
 import { apiService, API_BASE_URL } from '@/lib/api';
 
 type GeoLocation = {
@@ -236,6 +237,10 @@ const AttendanceWithToggle: React.FC = () => {
   // Reset recent decisions page when filters change
   useEffect(() => {
     setRecentDecisionsCurrentPage(1);
+    // If start date becomes after end date, adjust end date
+    if (wfhRequestStartDate && wfhRequestEndDate && wfhRequestStartDate > wfhRequestEndDate) {
+      setWfhRequestEndDate(wfhRequestStartDate);
+    }
   }, [wfhRequestFilter, wfhRoleFilter, wfhRequestTimeFilter, wfhRequestStartDate, wfhRequestEndDate]);
 
   const filteredRecentDecisions = useMemo(() => {
@@ -294,14 +299,52 @@ const AttendanceWithToggle: React.FC = () => {
       }
 
       if (startDate) {
+        // Safe date parser: handles both YYYY-MM-DD and full ISO datetime strings
+        const safeParseDate = (dateStr: string | null | undefined): Date | null => {
+          if (!dateStr) return null;
+          try {
+            // Date-only strings parsed as local noon to avoid UTC offset issues
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+              const [year, month, day] = dateStr.split('-').map(Number);
+              return new Date(year, month - 1, day, 12, 0, 0);
+            }
+            const d = new Date(dateStr);
+            return isNaN(d.getTime()) ? null : d;
+          } catch {
+            return null;
+          }
+        };
+        // Filter by EITHER decision date OR WFH session overlap
         filtered = filtered.filter(req => {
-          const reqDate = new Date(req.processedAt || req.submittedAt || req.startDate);
-          return reqDate >= startDate! && reqDate <= endDate;
+          const rawDecisionDate = req.processedAt || req.submittedAt;
+          const decisionDate = safeParseDate(rawDecisionDate);
+
+          const sessionStart = safeParseDate(req.startDate);
+          const sessionEnd = safeParseDate(req.endDate);
+
+          const matchesDecisionDate = decisionDate && decisionDate >= startDate! && decisionDate <= endDate;
+          const matchesSessionDate = sessionStart && sessionEnd && (
+            (sessionStart >= startDate! && sessionStart <= endDate) ||
+            (sessionEnd >= startDate! && sessionEnd <= endDate) ||
+            (sessionStart <= startDate! && sessionEnd >= endDate)
+          );
+
+          return matchesDecisionDate || matchesSessionDate;
         });
       }
     }
 
-    return filtered.sort((a, b) => new Date(b.processedAt || b.submittedAt || b.startDate).getTime() - new Date(a.processedAt || a.submittedAt || a.startDate).getTime());
+    return filtered.sort((a, b) => {
+      const getMs = (d: string | null | undefined) => {
+        if (!d) return 0;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+          const [y, m, day] = d.split('-').map(Number);
+          return new Date(y, m - 1, day, 12).getTime();
+        }
+        return new Date(d).getTime() || 0;
+      };
+      return getMs(b.processedAt || b.submittedAt) - getMs(a.processedAt || a.submittedAt);
+    });
   }, [allWfhRequests, wfhRequestFilter, wfhRoleFilter, wfhRequestTimeFilter, wfhRequestStartDate, wfhRequestEndDate]);
 
   // Helper function to format role for display
@@ -930,7 +973,7 @@ const AttendanceWithToggle: React.FC = () => {
               status: status,
               workHours: rec.total_hours,
               workSummary: rec.workSummary || rec.work_summary || null,
-              taskDeadlineReason: rec.taskDeadlineReason || rec.task_deadline_reason || rec.taskPendingReason || rec.task_pending_reason || null,
+              taskDeadlineReason: rec.overdue_reason || rec.task_overdue_reason || rec.late_reason || rec.late_arrival_reason || rec.latearrival_reason || rec.due_reason || rec.taskDeadlineReason || rec.task_deadline_reason || rec.deadline_reason || rec.overdueReason || rec.lateArrivalReason || rec.taskPendingReason || rec.task_pending_reason || rec.overtime_reason || rec.delay_reason || rec.reason || null,
               workReport: resolveStaticUrl(rec.workReport || rec.work_report),
               workLocation: workLocation,
             };
@@ -996,11 +1039,19 @@ const AttendanceWithToggle: React.FC = () => {
           status: 'present',
           workHours: todayRecord.total_hours,
           workSummary: todayRecord.workSummary || todayRecord.work_summary || null,
-          taskDeadlineReason: todayRecord.taskDeadlineReason || todayRecord.task_deadline_reason || todayRecord.taskPendingReason || todayRecord.task_pending_reason || null,
+          taskDeadlineReason: todayRecord.overdue_reason || todayRecord.task_overdue_reason || todayRecord.late_reason || todayRecord.late_arrival_reason || todayRecord.latearrival_reason || todayRecord.due_reason || todayRecord.taskDeadlineReason || todayRecord.task_deadline_reason || todayRecord.deadline_reason || todayRecord.overdueReason || todayRecord.lateArrivalReason || todayRecord.taskPendingReason || todayRecord.task_pending_reason || todayRecord.overtime_reason || todayRecord.delay_reason || todayRecord.reason || null,
           workReport: resolveStaticUrl(todayRecord.workReport || todayRecord.work_report),
           workLocation: workLocation,
         };
         setCurrentAttendance(attendance);
+
+        // Pre-fill checkout feedback states if they exist in the record
+        if (attendance.taskDeadlineReason) {
+          setTaskDeadlineReason(attendance.taskDeadlineReason);
+        }
+        if (attendance.workSummary) {
+          setTodaysWork(attendance.workSummary);
+        }
 
         // Initialize timer state for existing attendance
         if (!attendance.checkOutTime) {
@@ -1165,29 +1216,44 @@ const AttendanceWithToggle: React.FC = () => {
       // Enforce strict visibility rules (Client-side fail-safe)
       if ((user?.role === 'manager' || user?.role === 'team_lead') && user?.id) {
         const userId = String(user.id);
-        const userDept = user.department?.trim().toLowerCase();
+        const userDept = (user.department || '').trim().toLowerCase();
+        const hasDept = userDept.length > 0;
 
         data = data.filter((rec: any) => {
-          const recUserId = String(rec.user_id || rec.userId || rec.employee_id);
+          const recUserId = String(rec.user_id || rec.userId || rec.employee_id || '');
 
           // 1. Always show Self
           if (recUserId === userId) return true;
 
-          // 2. Determine department (prefer attendance record, fallback to employee map)
+          // 2. If the manager has no department set, skip department filter
+          //    (backend already scoped by manager_id / team_lead_id)
+          if (!hasDept) {
+            const role = (userRoleMap[recUserId] || '').toLowerCase();
+            if (user.role === 'manager') {
+              // show team leads and employees
+              return role === 'employee' || role === 'teamlead' || role === 'team_lead';
+            }
+            if (user.role === 'team_lead') {
+              return role === 'employee';
+            }
+            return true;
+          }
+
+          // 3. Determine department (prefer attendance record, fallback to employee map)
           let recDept = (rec.department || '').trim().toLowerCase();
           if (!recDept && userDepartmentMap[recUserId]) {
             recDept = userDepartmentMap[recUserId];
           }
 
-          // 3. Department must match (mandatory for manager/team_lead)
-          if (recDept !== userDept) return false;
+          // 4. Department must match
+          if (recDept && recDept !== userDept) return false;
 
-          // 4. Role lookup
-          const role = userRoleMap[recUserId];
+          // 5. Role lookup (normalized: underscores & spaces stripped)
+          const role = (userRoleMap[recUserId] || '').toLowerCase();
 
           // Managers can see employees and team leads in their department
           if (user.role === 'manager') {
-            return role === 'employee' || role === 'teamlead';
+            return role === 'employee' || role === 'teamlead' || role === 'team_lead';
           }
 
           // Team leads can see employees in their department
@@ -1289,7 +1355,7 @@ const AttendanceWithToggle: React.FC = () => {
             workSummary: rec.workSummary || rec.work_summary || null,
             workReport: resolveStaticUrl(rec.workReport || rec.work_report),
             workLocation: workLocation,
-            taskDeadlineReason: rec.taskDeadlineReason || rec.task_deadline_reason || rec.taskPendingReason || rec.task_pending_reason || null,
+            taskDeadlineReason: rec.overdue_reason || rec.task_overdue_reason || rec.late_reason || rec.late_arrival_reason || rec.latearrival_reason || rec.due_reason || rec.taskDeadlineReason || rec.task_deadline_reason || rec.deadline_reason || rec.overdueReason || rec.lateArrivalReason || rec.taskPendingReason || rec.task_pending_reason || rec.overtime_reason || rec.delay_reason || rec.reason || null,
           };
         })
         .filter((r: AttendanceRecord) => {
@@ -2380,9 +2446,9 @@ const AttendanceWithToggle: React.FC = () => {
     const checkInTime = record.checkInTime;
     const checkOutTime = record.checkOutTime;
 
-    // If no check-in, show as absent
+    // If no check-in, show as offline
     if (!checkInTime) {
-      return { isOnline: false, label: 'Absent', showAbsent: true };
+      return { isOnline: false, label: 'Offline', showAbsent: false };
     }
 
     // If record date is today
@@ -2774,7 +2840,7 @@ const AttendanceWithToggle: React.FC = () => {
                               <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.common.status}</th>
                               <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.workSummary}</th>
                               <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.workReport}</th>
-                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Overdue Reason</th>
+                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Overdue</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -2944,34 +3010,13 @@ const AttendanceWithToggle: React.FC = () => {
                                   </td>
                                   <td className="p-3 text-xs text-slate-600 dark:text-slate-400 max-w-[280px]">
                                     {record.taskDeadlineReason ? (
-                                      <button
-                                        type="button"
-                                        className="text-left hover:text-blue-600 dark:hover:text-blue-400 block w-full text-xs leading-relaxed"
-                                        onClick={() => {
-                                          setSelectedOverdueReason(record.taskDeadlineReason || '');
-                                          setShowWorkSummaryDialog(true);
-                                        }}
-                                        title={record.taskDeadlineReason}
-                                        style={{
-                                          wordBreak: 'break-word',
-                                          overflowWrap: 'break-word',
-                                          display: 'block',
-                                          textAlign: 'left'
-                                        }}
-                                      >
-                                        <span style={{
-                                          display: '-webkit-box',
-                                          WebkitLineClamp: 2,
-                                          WebkitBoxOrient: 'vertical',
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis'
-                                        }}>
-                                          {record.taskDeadlineReason}
-                                        </span>
-                                        {record.taskDeadlineReason.length > 60 && (
-                                          <span className="text-blue-600 dark:text-blue-400 font-medium mt-1 block">View more...</span>
-                                        )}
-                                      </button>
+                                      <div className="text-left w-full" title={record.taskDeadlineReason}>
+                                        <TruncatedText
+                                          text={record.taskDeadlineReason || ''}
+                                          maxLength={40}
+                                          showToggle={true}
+                                        />
+                                      </div>
                                     ) : (
                                       <span className="text-slate-400 dark:text-slate-500">—</span>
                                     )}
@@ -3076,10 +3121,9 @@ const AttendanceWithToggle: React.FC = () => {
                   <div className="flex flex-col gap-2 w-full md:flex-1">
                     <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">From Date</Label>
                     <DatePicker
-                      date={customStartDate || undefined}
-                      onDateChange={(date) => setCustomStartDate(date)}
-                      placeholder="Select from date"
-                      toDate={getTodayISTDate ? getTodayISTDate() : new Date()}
+                      date={customStartDate}
+                      onDateChange={setCustomStartDate}
+                      placeholder="From date"
                       className="h-11 border-2 border-slate-200 dark:border-slate-800 rounded-xl w-full shadow-sm"
                     />
                   </div>
@@ -3089,11 +3133,10 @@ const AttendanceWithToggle: React.FC = () => {
                   <div className="flex flex-col gap-2 w-full md:flex-1">
                     <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">To Date</Label>
                     <DatePicker
-                      date={customEndDate || undefined}
-                      onDateChange={(date) => setCustomEndDate(date)}
-                      placeholder="Select to date"
-                      fromDate={customStartDate || undefined}
-                      toDate={getTodayISTDate ? getTodayISTDate() : new Date()}
+                      date={customEndDate}
+                      onDateChange={setCustomEndDate}
+                      placeholder="To date"
+                      fromDate={customStartDate}
                       className="h-11 border-2 border-slate-200 dark:border-slate-800 rounded-xl w-full shadow-sm"
                     />
                   </div>
@@ -3125,7 +3168,7 @@ const AttendanceWithToggle: React.FC = () => {
                         <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.common.status}</th>
                         <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.workSummary}</th>
                         <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.attendance.workReport}</th>
-                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Overdue Reason</th>
+                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">Overdue</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3162,11 +3205,7 @@ const AttendanceWithToggle: React.FC = () => {
                                 {(() => {
                                   const statusInfo = getOnlineStatusForEmployeeDisplay(record);
                                   if (statusInfo.showAbsent) {
-                                    return (
-                                      <Badge variant="destructive" className="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-0.5">
-                                        Absent
-                                      </Badge>
-                                    );
+                                    return null;
                                   } else if (statusInfo.label === 'Checked Out') {
                                     return <span className="text-xs text-slate-500 dark:text-slate-400">Checked Out</span>;
                                   } else {
@@ -3306,19 +3345,12 @@ const AttendanceWithToggle: React.FC = () => {
                               </td>
                               <td className="p-3 text-xs text-slate-600 dark:text-slate-400 max-w-[280px]">
                                 {record.taskDeadlineReason ? (
-                                  <div className="text-left text-xs leading-relaxed" style={{
-                                    wordBreak: 'break-word',
-                                    overflowWrap: 'break-word'
-                                  }}>
-                                    <span style={{
-                                      display: '-webkit-box',
-                                      WebkitLineClamp: 2,
-                                      WebkitBoxOrient: 'vertical',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis'
-                                    }}>
-                                      {record.taskDeadlineReason}
-                                    </span>
+                                  <div className="text-left w-full" title={record.taskDeadlineReason}>
+                                    <TruncatedText
+                                      text={record.taskDeadlineReason || ''}
+                                      maxLength={40}
+                                      showToggle={true}
+                                    />
                                   </div>
                                 ) : (
                                   <span className="text-slate-400 dark:text-slate-500">—</span>
@@ -3548,7 +3580,6 @@ const AttendanceWithToggle: React.FC = () => {
                               date={wfhRequestStartDate || undefined}
                               onDateChange={setWfhRequestStartDate}
                               placeholder="From date"
-                              toDate={getTodayISTDate()}
                               className="h-10 w-full"
                             />
                           </div>
@@ -3558,7 +3589,6 @@ const AttendanceWithToggle: React.FC = () => {
                               date={wfhRequestEndDate || undefined}
                               onDateChange={setWfhRequestEndDate}
                               placeholder="To date"
-                              toDate={getTodayISTDate()}
                               fromDate={wfhRequestStartDate || undefined}
                               className="h-10 w-full"
                             />

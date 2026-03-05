@@ -56,6 +56,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Checkbox } from '@/components/ui/checkbox';
 import { format, isValid } from 'date-fns';
 
 interface Meeting {
@@ -115,6 +116,17 @@ const MeetingsPage: React.FC = () => {
         project_id: undefined as number | undefined,
     });
 
+    const normalizeMeeting = (m: any): Meeting => {
+        let type = m.type?.toLowerCase();
+        if (!type || type === 'null' || type === 'undefined') {
+            if (m.project_id || m.project_name) type = 'project';
+            else if (m.team_id || m.team_name) type = 'team';
+            else if (m.participants && m.participants.length <= 2) type = 'one-to-one';
+            else type = 'company';
+        }
+        return { ...m, type };
+    };
+
     const fetchData = async () => {
         try {
             setLoading(true);
@@ -125,7 +137,8 @@ const MeetingsPage: React.FC = () => {
                 apiService.getEmployees().catch(() => [])
             ]);
 
-            setMeetings(Array.isArray(meetingsData) ? meetingsData : []);
+            const normalizedMeetings = (Array.isArray(meetingsData) ? meetingsData : []).map(normalizeMeeting);
+            setMeetings(normalizedMeetings);
             setDepartments(Array.isArray(depts) ? depts : (depts as any)?.departments || []);
             setProjects(Array.isArray(projs) ? projs : (projs as any)?.projects || []);
             setEmployees(Array.isArray(emps) ? emps : (emps as any)?.employees || []);
@@ -165,8 +178,6 @@ const MeetingsPage: React.FC = () => {
         let matchesType = false;
         if (typeFilter === 'all') {
             matchesType = true;
-        } else if (typeFilter === 'company') {
-            matchesType = mType === 'company' || mType === 'team';
         } else {
             matchesType = mType === typeFilter;
         }
@@ -198,8 +209,8 @@ const MeetingsPage: React.FC = () => {
                 title: formData.title,
                 description: formData.description,
                 meeting_url: formData.meeting_url,
-                start_time: startDate.toISOString(),
-                end_time: endDate.toISOString(),
+                start_time: format(startDate, 'yyyy-MM-dd HH:mm:ss'),
+                end_time: format(endDate, 'yyyy-MM-dd HH:mm:ss'),
                 participant_ids: formData.participant_ids,
                 type: formData.type,
             };
@@ -266,9 +277,9 @@ const MeetingsPage: React.FC = () => {
             title: meeting.title,
             description: meeting.description || '',
             meeting_url: meeting.meeting_url,
-            // Format for datetime-local input: YYYY-MM-DDThh:mm
-            start_time: meeting.start_time ? new Date(meeting.start_time).toISOString().slice(0, 16) : '',
-            end_time: meeting.end_time ? new Date(meeting.end_time).toISOString().slice(0, 16) : '',
+            // Format for datetime-local input: YYYY-MM-DDThh:mm in LOCAL time
+            start_time: meeting.start_time ? format(new Date(meeting.start_time), "yyyy-MM-dd'T'HH:mm") : '',
+            end_time: meeting.end_time ? format(new Date(meeting.end_time), "yyyy-MM-dd'T'HH:mm") : '',
             participant_ids: meeting.participants?.map(p => p.user_id) || [],
             type: (meeting.type || 'one-to-one') as any,
             team_id: meeting.team_id,
@@ -299,36 +310,89 @@ const MeetingsPage: React.FC = () => {
         }
     };
 
-    const getBadgeColor = (type: string) => {
-        switch (type) {
+    const getBadgeColor = (type?: string) => {
+        const t = (type || '').toLowerCase();
+        switch (t) {
             case 'company': return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400';
-            case 'team': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+            case 'team': return 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400';
             case 'project': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
             case 'one-to-one': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
-            default: return 'bg-slate-100 text-slate-700';
+            default: return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
         }
     };
 
-    const getDisplayName = (type: string) => {
-        switch (type) {
-            case 'company':
-            case 'team': return 'Townhall Meeting';
+    const getDisplayName = (type?: string) => {
+        const t = (type || '').toLowerCase();
+        switch (t) {
+            case 'company': return 'Townhall Meeting';
+            case 'team': return 'Team Specific';
             case 'project': return 'Project Meeting';
             case 'one-to-one': return 'One to One Meeting';
-            default: return 'Meeting';
+            default: return 'General Meeting';
         }
     };
 
     const toggleParticipant = (userId: number) => {
         setFormData(prev => {
-            const has = prev.participant_ids.includes(userId);
+            const id = Number(userId);
+            if (isNaN(id)) return prev;
+
+            const isOneToOne = prev.type === 'one-to-one';
+            const has = prev.participant_ids.includes(id);
+
+            let newIds = [...prev.participant_ids];
+            if (isOneToOne) {
+                // For one-to-one, we only allow one participant (excluding self which is usually assumed or handled by backend)
+                newIds = has ? [] : [id];
+            } else {
+                newIds = has
+                    ? prev.participant_ids.filter(item => item !== id)
+                    : [...prev.participant_ids, id];
+            }
+
             return {
                 ...prev,
-                participant_ids: has
-                    ? prev.participant_ids.filter(id => id !== userId)
-                    : [...prev.participant_ids, userId]
+                participant_ids: newIds
             };
         });
+    };
+
+    // Constraint effect (keep only for 1:1 ensuring constraint stays during selections)
+    useEffect(() => {
+        if (formData.type === 'one-to-one' && formData.participant_ids.length > 1) {
+            setFormData(prev => ({
+                ...prev,
+                participant_ids: prev.participant_ids.slice(0, 1)
+            }));
+        }
+    }, [formData.type, formData.participant_ids]);
+
+    const selectAllParticipants = async () => {
+        if (formData.type === 'team' && formData.team_id) {
+            const teamMembers = employees
+                .filter(emp => emp.department_id === formData.team_id || emp.department === departments.find(d => d.id === formData.team_id)?.name)
+                .map(emp => Number(emp.user_id || emp.id))
+                .filter(id => !isNaN(id));
+            setFormData(prev => ({ ...prev, participant_ids: teamMembers }));
+        } else if (formData.type === 'project' && formData.project_id) {
+            try {
+                const members = await apiService.getProjectMembers(formData.project_id);
+                const memberIds = (Array.isArray(members) ? members : (members?.members || []))
+                    .map((m: any) => Number(m.user_id || m.id))
+                    .filter((id: number) => !isNaN(id));
+                setFormData(prev => ({ ...prev, participant_ids: memberIds }));
+            } catch (error) {
+                console.error('Failed to fetch project members:', error);
+            }
+        } else {
+            // General select all
+            const allIds = employees.map(emp => Number(emp.user_id || emp.id)).filter(id => !isNaN(id));
+            setFormData(prev => ({ ...prev, participant_ids: allIds }));
+        }
+    };
+
+    const deselectAll = () => {
+        setFormData(prev => ({ ...prev, participant_ids: [] }));
     };
 
     return (
@@ -372,7 +436,14 @@ const MeetingsPage: React.FC = () => {
                                         <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Meeting Type</Label>
                                         <Select
                                             value={formData.type || "one-to-one"}
-                                            onValueChange={(v: any) => setFormData({ ...formData, type: v, team_id: undefined, project_id: undefined })}
+                                            onValueChange={(v: any) => {
+                                                const newFormData = { ...formData, type: v, team_id: undefined, project_id: undefined, participant_ids: [] };
+                                                if (v === 'company') {
+                                                    const allIds = employees.map(emp => Number(emp.user_id || emp.id)).filter(id => !isNaN(id));
+                                                    newFormData.participant_ids = allIds;
+                                                }
+                                                setFormData(newFormData);
+                                            }}
                                         >
                                             <SelectTrigger className="rounded-xl h-11 border-slate-200">
                                                 <SelectValue placeholder="Select type" />
@@ -443,7 +514,22 @@ const MeetingsPage: React.FC = () => {
                                         <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Target Project</Label>
                                         <Select
                                             value={formData.project_id?.toString() || ""}
-                                            onValueChange={(v) => setFormData({ ...formData, project_id: v ? parseInt(v) : undefined })}
+                                            onValueChange={async (v) => {
+                                                const pId = v ? parseInt(v) : undefined;
+                                                const newFormData = { ...formData, project_id: pId, participant_ids: [] };
+                                                if (pId) {
+                                                    try {
+                                                        const members = await apiService.getProjectMembers(pId);
+                                                        const memberIds = (Array.isArray(members) ? members : (members?.members || []))
+                                                            .map((m: any) => Number(m.user_id || m.id))
+                                                            .filter((id: number) => !isNaN(id));
+                                                        newFormData.participant_ids = memberIds;
+                                                    } catch (error) {
+                                                        console.error('Failed to fetch project members:', error);
+                                                    }
+                                                }
+                                                setFormData(newFormData);
+                                            }}
                                         >
                                             <SelectTrigger className="rounded-xl h-11">
                                                 <SelectValue placeholder="Choose Project" />
@@ -482,24 +568,61 @@ const MeetingsPage: React.FC = () => {
                                 <div className="space-y-4">
                                     <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest flex items-center justify-between">
                                         Assigned Assets / Participants
-                                        <span className="text-blue-600 font-black">{formData.participant_ids.length} selected</span>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-blue-600 font-black">{formData.participant_ids.length} selected</span>
+                                            {formData.type !== 'one-to-one' && (
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={selectAllParticipants}
+                                                        className="text-[9px] uppercase font-black text-blue-600 hover:underline"
+                                                    >
+                                                        Select All
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={deselectAll}
+                                                        className="text-[9px] uppercase font-black text-rose-600 hover:underline"
+                                                    >
+                                                        Clear
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </Label>
                                     <div className="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto p-1 custom-scrollbar">
-                                        {employees.filter(Boolean).map((emp: any) => (
-                                            <div
-                                                key={emp.id}
-                                                onClick={() => toggleParticipant(emp.id)}
-                                                className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all border ${formData.participant_ids.includes(emp.id)
-                                                    ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
-                                                    : 'hover:bg-slate-50 border-slate-100 dark:hover:bg-slate-800/50 dark:border-slate-800'
-                                                    }`}
-                                            >
-                                                <div className="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
-                                                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${emp.name || emp.id}`} alt="" className="h-full w-full object-cover" />
+                                        {employees.filter(Boolean).filter(emp => {
+                                            if (formData.type === 'team' && formData.team_id) {
+                                                return Number(emp.department_id) === formData.team_id || emp.department === departments.find(d => d.id === formData.team_id)?.name;
+                                            }
+                                            // For project-specific, we often only want to show project members in the selection list to pick/choose
+                                            // However, requirement 5 says "Select Employees Automatically"
+                                            // Let's filter the list to making choosing from project members easier if they want to deselect some.
+                                            return true; // default show all
+                                        }).map((emp: any) => {
+                                            const empId = Number(emp.user_id || emp.id);
+                                            const isSelected = formData.participant_ids.includes(empId);
+                                            return (
+                                                <div
+                                                    key={emp.id || emp.user_id}
+                                                    onClick={() => toggleParticipant(empId)}
+                                                    className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all border ${isSelected
+                                                        ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 shadow-sm'
+                                                        : 'hover:bg-slate-50 border-slate-100 dark:hover:bg-slate-800/50 dark:border-slate-800'
+                                                        }`}
+                                                >
+                                                    <Checkbox
+                                                        checked={isSelected}
+                                                        onCheckedChange={() => toggleParticipant(empId)}
+                                                        className="pointer-events-none"
+                                                    />
+                                                    <div className="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
+                                                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${emp.name || emp.id}`} alt="" className="h-full w-full object-cover" />
+                                                    </div>
+                                                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">{emp.name || "Unknown User"}</span>
                                                 </div>
-                                                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">{emp.name || "Unknown User"}</span>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
@@ -520,12 +643,13 @@ const MeetingsPage: React.FC = () => {
                 <div className="max-w-7xl mx-auto px-6 py-8">
 
                     {/* Quick Stats Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
                         {[
-                            { label: 'Upcoming', val: meetings.length, icon: CalendarDays, color: 'blue' },
-                            { label: 'Townhall Meeting', val: meetings.filter(m => m?.type === 'company' || m?.type === 'team').length, icon: Briefcase, color: 'indigo' },
-                            { label: 'Project Meeting', val: meetings.filter(m => m?.type === 'project').length, icon: FolderKanban, color: 'emerald' },
-                            { label: 'One to One Meeting', val: meetings.filter(m => m?.type === 'one-to-one').length, icon: Users, color: 'amber' },
+                            { label: 'Upcoming', val: meetings.length, icon: CalendarDays, bg: 'bg-blue-50', darkBg: 'dark:bg-blue-900/20', text: 'text-blue-600', darkText: 'dark:text-blue-400' },
+                            { label: 'Townhall', val: meetings.filter(m => m?.type === 'company').length, icon: Briefcase, bg: 'bg-indigo-50', darkBg: 'dark:bg-indigo-900/20', text: 'text-indigo-600', darkText: 'dark:text-indigo-400' },
+                            { label: 'Team Specific', val: meetings.filter(m => m?.type === 'team').length, icon: Users2, bg: 'bg-rose-50', darkBg: 'dark:bg-rose-900/20', text: 'text-rose-600', darkText: 'dark:text-rose-400' },
+                            { label: 'Project Specific', val: meetings.filter(m => m?.type === 'project').length, icon: FolderKanban, bg: 'bg-blue-50', darkBg: 'dark:bg-blue-900/20', text: 'text-blue-600', darkText: 'dark:text-blue-400' },
+                            { label: 'One to One', val: meetings.filter(m => m?.type === 'one-to-one').length, icon: Users, bg: 'bg-amber-50', darkBg: 'dark:bg-amber-900/20', text: 'text-amber-600', darkText: 'dark:text-amber-400' },
                         ].map((stat, i) => (
                             <Card key={i} className="border-none shadow-sm bg-white dark:bg-slate-900 rounded-[2rem] overflow-hidden hover:shadow-md transition-all duration-300">
                                 <CardContent className="p-6 flex items-center justify-between">
@@ -533,7 +657,7 @@ const MeetingsPage: React.FC = () => {
                                         <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider mb-1">{stat.label}</p>
                                         <h3 className="text-2xl font-black text-slate-900 dark:text-white">{stat.val}</h3>
                                     </div>
-                                    <div className={`h-12 w-12 rounded-2xl bg-${stat.color}-50 dark:bg-${stat.color}-900/20 flex items-center justify-center text-${stat.color}-600 dark:text-${stat.color}-400`}>
+                                    <div className={`h-12 w-12 rounded-2xl ${stat.bg} ${stat.darkBg} flex items-center justify-center ${stat.text} ${stat.darkText}`}>
                                         <stat.icon className="h-6 w-6" />
                                     </div>
                                 </CardContent>
@@ -544,10 +668,11 @@ const MeetingsPage: React.FC = () => {
                     <Tabs value={typeFilter} onValueChange={setTypeFilter} className="w-full">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                             <TabsList className="h-14 p-1.5 rounded-[1.5rem] bg-white dark:bg-slate-900 shadow-sm border-none">
-                                <TabsTrigger value="all" className="rounded-2xl px-8 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-white">All Meetings</TabsTrigger>
-                                <TabsTrigger value="company" className="rounded-2xl px-8 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-indigo-600 data-[state=active]:text-white">Townhall Meeting</TabsTrigger>
-                                <TabsTrigger value="project" className="rounded-2xl px-8 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:text-white">Project Meeting</TabsTrigger>
-                                <TabsTrigger value="one-to-one" className="rounded-2xl px-8 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-amber-500 data-[state=active]:text-white">One to One Meeting</TabsTrigger>
+                                <TabsTrigger value="all" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-white">All</TabsTrigger>
+                                <TabsTrigger value="company" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-indigo-600 data-[state=active]:text-white">Townhall</TabsTrigger>
+                                <TabsTrigger value="team" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-rose-600 data-[state=active]:text-white">Team Specific</TabsTrigger>
+                                <TabsTrigger value="project" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:text-white">Project Specific</TabsTrigger>
+                                <TabsTrigger value="one-to-one" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-amber-500 data-[state=active]:text-white">One to One</TabsTrigger>
                             </TabsList>
 
                             <div className="flex items-center gap-3">
@@ -607,11 +732,11 @@ const MeetingsPage: React.FC = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                         {filteredMeetings.map((meeting) => (
                                             <Card key={meeting.id} className="group relative border-none shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500">
-                                                <div className={`absolute top-0 left-0 right-0 h-1.5 ${getBadgeColor(meeting.type || 'company').split(' ')[0].replace('bg-', 'bg-')}`}></div>
+                                                <div className={`absolute top-0 left-0 right-0 h-1.5 ${getBadgeColor(meeting.type).split(' ')[0]}`}></div>
                                                 <CardHeader className="p-8 pb-4">
                                                     <div className="flex justify-between items-start mb-6">
-                                                        <Badge className={`rounded-full px-4 py-1 font-black text-[9px] uppercase tracking-widest border-none ${getBadgeColor(meeting.type || 'company')}`}>
-                                                            {getDisplayName(meeting.type || 'company')}
+                                                        <Badge className={`rounded-full px-4 py-1 font-black text-[9px] uppercase tracking-widest border-none ${getBadgeColor(meeting.type)}`}>
+                                                            {getDisplayName(meeting.type)}
                                                         </Badge>
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger asChild>

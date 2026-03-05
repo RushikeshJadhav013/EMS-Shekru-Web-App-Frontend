@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocation } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { Task as BaseTask, UserRole } from '@/types';
@@ -352,6 +353,7 @@ const TaskManagement: React.FC = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
+  const location = useLocation();
   const { addNotification } = useNotifications();
   const [tasks, setTasks] = useState<TaskWithPassMeta[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -371,6 +373,22 @@ const TaskManagement: React.FC = () => {
     employeeId: '',
   });
   const [assigneeSearchQuery, setAssigneeSearchQuery] = useState('');
+
+  // Handle auto-opening task creation dialog from navigation state
+  useEffect(() => {
+    if (location.state?.createFor) {
+      const targetUserId = String(location.state.createFor);
+      setNewTask(prev => ({
+        ...prev,
+        assignedTo: [targetUserId]
+      }));
+      setIsCreateDialogOpen(true);
+
+      // Clear location state to prevent dialog reopening on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
   const [assignRoleFilter, setAssignRoleFilter] = useState<'all' | UserRole>('all');
   const [departments, setDepartments] = useState<string[]>([]);
   const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
@@ -426,19 +444,21 @@ const TaskManagement: React.FC = () => {
 
   // Export states
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-  const [exportFormat, setExportFormat] = useState<'pdf' | 'csv'>('pdf');
-  const [exportDateRange, setExportDateRange] = useState<'1month' | '3months' | '6months' | 'custom' | 'all'>('all');
+  const [exportFormat, setExportFormat] = useState<'pdf'>('pdf');
+  const [exportPeriodType, setExportPeriodType] = useState<'all' | 'monthly' | 'quarterly' | 'custom'>('all');
+  const [exportMonth, setExportMonth] = useState<string>(String(new Date().getMonth() + 1));
+  const [exportQuarter, setExportQuarter] = useState<string>('1');
+  const [exportYear, setExportYear] = useState<string>(String(new Date().getFullYear()));
   const [exportStartDate, setExportStartDate] = useState('');
   const [exportEndDate, setExportEndDate] = useState('');
-  const [exportDepartmentFilter, setExportDepartmentFilter] = useState<string>('all');
-  const [exportUserFilter, setExportUserFilter] = useState<string>('all');
+  const [exportStatusFilter, setExportStatusFilter] = useState<string>('all');
   const [isExporting, setIsExporting] = useState(false);
 
   // Pagination states
   const [taskCurrentPage, setTaskCurrentPage] = useState(1);
   const [taskItemsPerPage, setTaskItemsPerPage] = useState(10);
 
-  const isCreateDisabled = !newTask.title.trim() || !newTask.description.trim() || !newTask.assignedTo.length || isSubmitting;
+  const isCreateDisabled = !newTask.title.trim() || !newTask.description.trim() || isSubmitting;
 
   const userId = useMemo(() => {
     if (user?.id === undefined || user?.id === null) return null;
@@ -524,12 +544,8 @@ const TaskManagement: React.FC = () => {
     }
 
     try {
-      // Only fetch all employees if user has a management role
-      if (normalizedUserRole === 'employee') {
-        console.log('Skipping employee list fetch - current user is an employee');
-        setEmployees([]);
-        return;
-      }
+      // Now all roles including employee can fetch (at least their own list or filtered list if required)
+      // Removed role check to allow employee role to load necessary data for task creation
 
       const response = await fetch(`${API_BASE_URL}/employees/`, {
         headers: authorizedHeaders,
@@ -748,9 +764,9 @@ const TaskManagement: React.FC = () => {
   // Check if user can assign tasks to others
   const canAssignTasks = () => {
     if (!normalizedUserRole) return false;
-    // Only Admin, HR, Manager, and Team Lead can assign tasks
-    // Explicitly exclude 'employee' to follow user requirement
-    return ['admin', 'hr', 'manager', 'team_lead'].includes(normalizedUserRole);
+    // All roles including 'employee' should be able to create tasks (perhaps for self)
+    // following the latest feedback that even employees should be able to create tasks
+    return ['admin', 'hr', 'manager', 'team_lead', 'employee'].includes(normalizedUserRole);
   };
 
   const extendedEmployees = useMemo(() => {
@@ -780,19 +796,21 @@ const TaskManagement: React.FC = () => {
 
       switch (normalizedUserRole) {
         case 'admin':
-          // Admin can assign tasks to anyone
-          return true;
         case 'hr':
-          // HR can assign tasks to everyone
+          // Admin and HR can assign tasks to anyone
           return true;
         case 'manager':
-          return sameDepartment && ['team_lead', 'employee'].includes(emp.role);
+          // Managers can assign tasks to anyone with lower or same role (excluding admin/hr maybe? no, stay flexible)
+          // For now, allow anyone but default filter to department in UI
+          return true;
         case 'team_lead':
-          return sameDepartment && emp.role === 'employee';
+          // Team Leads can assign tasks to anyone
+          return true;
         case 'employee':
-          return false;
+          // Employees can assign tasks to anyone
+          return true;
         default:
-          return false;
+          return true;
       }
     });
   }, [extendedEmployees, user, userId, normalizedUserRole]);
@@ -1067,7 +1085,7 @@ const TaskManagement: React.FC = () => {
       setNewTask((prev) => ({
         ...prev,
         assignedTo: [userId],
-        department: user.department || prev.department,
+        department: '', // Default to "All Departments" as requested
       }));
     }
   }, [isCreateDialogOpen, newTask.assignedTo.length, user, userId]);
@@ -1287,64 +1305,35 @@ const TaskManagement: React.FC = () => {
       return;
     }
 
+    // One assignee is required (can default to self but let's be explicit from UI selection if any)
     const assignees = newTask.assignedTo.length > 0 ? newTask.assignedTo : [userId];
+    const assigneeIdsNormalized = assignees.map(id => Number(id)).filter(id => !isNaN(id));
+
+    if (assigneeIdsNormalized.length === 0) {
+      toast({
+        title: 'No valid assignees',
+        description: 'Please select valid employees to assign tasks to.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
-      // Build the bulk payload — one entry per assignee
-      const bulkPayloads: {
-        title: string;
-        description?: string;
-        priority?: string;
-        due_date: string | null;
-        assigned_to: number;
-        assigned_by: number;
-      }[] = [];
+      // Build the POST /tasks/bulk payload as per user's latest requirement
+      const payload = {
+        title: newTask.title,
+        description: newTask.description,
+        status: 'Pending',
+        due_date: newTask.deadline || null,
+        priority: frontendToBackendPriority[newTask.priority],
+        assigned_to_ids: assigneeIdsNormalized,
+        project_id: 1 // Default to 1 as per example
+      };
 
-      const assigneeMap: Map<number, { name: string; userId: string }> = new Map();
-
-      for (const assigneeIdRaw of assignees) {
-        if (!assigneeIdRaw) continue;
-
-        const selectedEmployee = assignableEmployees.find(
-          (emp) => emp.userId === assigneeIdRaw || emp.email === assigneeIdRaw
-        );
-        const assignedToIdRaw = selectedEmployee?.userId ?? assigneeIdRaw;
-        const assignedToBackend = Number(assignedToIdRaw);
-        const assignedByBackend = Number(userId);
-
-        if (!Number.isFinite(assignedToBackend) || !Number.isFinite(assignedByBackend)) {
-          console.warn(`Skipping invalid assignee: ${selectedEmployee?.name || assigneeIdRaw}`);
-          continue;
-        }
-
-        bulkPayloads.push({
-          title: newTask.title,
-          description: newTask.description,
-          priority: frontendToBackendPriority[newTask.priority],
-          due_date: newTask.deadline || null,
-          assigned_to: assignedToBackend,
-          assigned_by: assignedByBackend,
-        });
-
-        assigneeMap.set(assignedToBackend, {
-          name: selectedEmployee?.name || assigneeIdRaw,
-          userId: String(assignedToIdRaw),
-        });
-      }
-
-      if (bulkPayloads.length === 0) {
-        toast({
-          title: 'No valid assignees',
-          description: 'None of the selected assignees are valid.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // Call PUT /tasks/bulk with all payloads in one request
-      const createdTasks: BackendTask[] = await apiService.createTasksBulk(bulkPayloads);
+      // Call POST /tasks/bulk with the new data structure
+      const createdTasks: BackendTask[] = await apiService.assignBulkTasks(payload);
 
       const convertedTasks = (Array.isArray(createdTasks) ? createdTasks : []).map(
         mapBackendTaskToFrontend
@@ -1400,7 +1389,7 @@ const TaskManagement: React.FC = () => {
       setAssigneeSearchQuery('');
 
     } catch (err: unknown) {
-      console.error('Failed to create tasks via bulk endpoint', err);
+      console.error('Failed to create tasks via POST bulk endpoint', err);
       const message = err instanceof Error ? err.message : 'Unable to create tasks. Please try again.';
       toast({
         title: 'Task creation failed',
@@ -1809,10 +1798,22 @@ const TaskManagement: React.FC = () => {
         throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail));
       }
 
+      // Explicitly update status to 'Pending' (todo) via the dedicated status endpoint
+      // This is necessary because the general update endpoint might not process status changes for overdue tasks
+      try {
+        await fetch(`${API_BASE_URL}/tasks/${reassignTask.id}/status?status=Pending`, {
+          method: 'PUT',
+          headers: authorizedHeaders,
+        });
+      } catch (statusError) {
+        console.warn('Failed to explicitly reset status during reassignment:', statusError);
+        // We continue anyway as the main update might have worked or we'll optimistic update locally
+      }
+
       const updatedTask: BackendTask = await response.json();
       let converted = mapBackendTaskToFrontend(updatedTask);
 
-      // Reset status to 'todo' (Pending) when reassigning, regardless of previous status
+      // Force status to 'todo' (Pending) in local state for immediate feedback
       converted = { ...converted, status: 'todo' };
 
       setTasks((prev) => prev.map((task) => (task.id === converted.id ? converted : task)));
@@ -2185,270 +2186,50 @@ const TaskManagement: React.FC = () => {
     return priority.charAt(0).toUpperCase() + priority.slice(1);
   };
 
-  // Export functions
-  const getFilteredTasksForExport = useCallback(() => {
-    let filteredTasks = [...tasks];
-
-    // Apply date range filter
-    if (exportDateRange !== 'all') {
-      const now = new Date();
-      let startDate: Date;
-
-      switch (exportDateRange) {
-        case '1month':
-          startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-          break;
-        case '3months':
-          startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
-          break;
-        case '6months':
-          startDate = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
-          break;
-        case 'custom':
-          if (exportStartDate) {
-            startDate = new Date(exportStartDate);
-          } else {
-            startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-          }
-          break;
-        default:
-          startDate = new Date(now.getFullYear(), 0, 1);
-      }
-      startDate.setHours(0, 0, 0, 0);
-
-      const endDate = exportEndDate ? new Date(exportEndDate) : new Date();
-      endDate.setHours(23, 59, 59, 999);
-
-      filteredTasks = filteredTasks.filter(task => {
-        const taskDate = parseToIST(task.createdAt) || new Date(task.createdAt);
-        return taskDate >= startDate && taskDate <= endDate;
-      });
-    }
-
-    // Apply department filter
-    if (exportDepartmentFilter !== 'all') {
-      filteredTasks = filteredTasks.filter(task => {
-        const assignee = employeesById.get(task.assignedTo[0] || '');
-        const assigner = employeesById.get(task.assignedBy);
-        return (assignee?.department === exportDepartmentFilter) || (assigner?.department === exportDepartmentFilter);
-      });
-    }
-
-    // Apply user filter
-    if (exportUserFilter !== 'all') {
-      filteredTasks = filteredTasks.filter(task =>
-        task.assignedTo.includes(exportUserFilter) ||
-        task.assignedBy === exportUserFilter
-      );
-    }
-
-    return filteredTasks;
-  }, [tasks, exportDateRange, exportStartDate, exportEndDate, exportDepartmentFilter, exportUserFilter, employeesById]);
-
-  const exportToCSV = useCallback(() => {
-    const filteredTasks = getFilteredTasksForExport();
-
-    const headers = [
-      'Task ID',
-      'Title',
-      'Description',
-      'Status',
-      'Priority',
-      'Assigned By',
-      'Assigned To',
-      'Created Date',
-      'Due Date',
-      'Completed Date',
-      'Department',
-      'Last Passed By',
-      'Last Passed To',
-      'Last Pass Note'
-    ];
-
-    const csvData = filteredTasks.map(task => {
-      const assignee = employeesById.get(task.assignedTo[0] || '');
-      const assigner = employeesById.get(task.assignedBy);
-      const lastPassedBy = task.lastPassedBy ? employeesById.get(task.lastPassedBy) : null;
-      const lastPassedTo = task.lastPassedTo ? employeesById.get(task.lastPassedTo) : null;
-
-      return [
-        task.id,
-        `"${task.title.replace(/"/g, '""')}"`,
-        `"${task.description.replace(/"/g, '""')}"`,
-        task.status.replace('-', ' ').toUpperCase(),
-        task.priority.toUpperCase(),
-        assigner?.name || 'Unknown',
-        assignee?.name || 'Unknown',
-        task.createdAt ? formatDateTimeIST(task.createdAt, 'MMM dd, yyyy HH:mm') : '',
-        task.deadline ? formatDateIST(parseToIST(task.deadline) || task.deadline, 'MMM dd, yyyy') : '',
-        task.completedDate ? formatDateTimeIST(task.completedDate, 'MMM dd, yyyy HH:mm') : '',
-        assignee?.department || assigner?.department || 'Unknown',
-        lastPassedBy?.name || '',
-        lastPassedTo?.name || '',
-        `"${(task.lastPassNote || '').replace(/"/g, '""')}"`
-      ];
-    });
-
-    const csvContent = [headers, ...csvData].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-
-    const dateRange = exportDateRange === 'custom'
-      ? `${exportStartDate || 'start'}_${exportEndDate || 'end'}`
-      : exportDateRange;
-    const userFilter = exportUserFilter !== 'all' ? `_user_${exportUserFilter}` : '';
-
-    link.setAttribute('href', url);
-    link.setAttribute('download', `task_report_${dateRange}${userFilter}_${formatDateIST(new Date(), 'yyyy-MM-dd')}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }, [getFilteredTasksForExport, employeesById, exportDateRange, exportStartDate, exportEndDate, exportUserFilter]);
-
-  const exportToPDF = useCallback(async () => {
-    const filteredTasks = getFilteredTasksForExport();
-
-    // Simple PDF export using window.print() styled for printing
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      toast({
-        title: 'Export Failed',
-        description: 'Please allow popups for this site to export PDF.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const dateRange = exportDateRange === 'custom'
-      ? `${exportStartDate || 'start'} - ${exportEndDate || 'end'}`
-      : exportDateRange === 'all' ? 'All Time' : exportDateRange;
-    const userFilter = exportUserFilter !== 'all'
-      ? employeesById.get(exportUserFilter)?.name || 'Unknown User'
-      : 'All Users';
-
-    const tableRows = filteredTasks.map(task => {
-      const assignee = employeesById.get(task.assignedTo[0] || '');
-      const assigner = employeesById.get(task.assignedBy);
-      const lastPassedBy = task.lastPassedBy ? employeesById.get(task.lastPassedBy) : null;
-      const lastPassedTo = task.lastPassedTo ? employeesById.get(task.lastPassedTo) : null;
-
-      return `
-        <tr>
-          <td>${task.id}</td>
-          <td>${task.title}</td>
-          <td>${task.description.substring(0, 100)}${task.description.length > 100 ? '...' : ''}</td>
-          <td><span class="status-${task.status}">${task.status.replace('-', ' ').toUpperCase()}</span></td>
-          <td><span class="priority-${task.priority}">${task.priority.toUpperCase()}</span></td>
-          <td>${assigner?.name || 'Unknown'}</td>
-          <td>${assignee?.name || 'Unknown'}</td>
-          <td>${task.createdAt ? formatDateTimeIST(task.createdAt, 'MMM dd, yyyy HH:mm') : ''}</td>
-          <td>${task.deadline ? formatDateIST(parseToIST(task.deadline) || new Date(), 'MMM dd, yyyy') : ''}</td>
-          <td>${task.completedDate ? formatDateTimeIST(task.completedDate, 'MMM dd, yyyy HH:mm') : ''}</td>
-          <td>${assignee?.department || assigner?.department || 'Unknown'}</td>
-          <td>${lastPassedBy?.name || ''}</td>
-          <td>${lastPassedTo?.name || ''}</td>
-          <td>${task.lastPassNote || ''}</td>
-        </tr>
-      `;
-    }).join('');
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Task Report</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            h1 { color: #4F46E5; }
-            .header-info { margin-bottom: 20px; padding: 10px; background: #f5f5f5; border-radius: 5px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #4F46E5; color: white; }
-            tr:nth-child(even) { background-color: #f9f9f9; }
-            .status-todo { background: #94a3b8; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
-            .status-in-progress { background: #3b82f6; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
-            .status-completed { background: #10b981; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
-            .priority-low { background: #10b981; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
-            .priority-medium { background: #f59e0b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
-            .priority-high { background: #ef4444; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
-            .priority-urgent { background: #dc2626; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
-            @media print { body { margin: 10px; } }
-          </style>
-        </head>
-        <body>
-          <h1>Task Management Report</h1>
-          <div class="header-info">
-            <p><strong>Date Range:</strong> ${dateRange}</p>
-            <p><strong>User Filter:</strong> ${userFilter}</p>
-            <p><strong>Total Tasks:</strong> ${filteredTasks.length}</p>
-            <p><strong>Generated on:</strong> ${formatDateTimeIST(new Date(), 'MMM dd, yyyy HH:mm')}</p>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Title</th>
-                <th>Description</th>
-                <th>Status</th>
-                <th>Priority</th>
-                <th>Assigned By</th>
-                <th>Assigned To</th>
-                <th>Created</th>
-                <th>Due Date</th>
-                <th>Completed</th>
-                <th>Department</th>
-                <th>Last Passed By</th>
-                <th>Last Passed To</th>
-                <th>Pass Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${tableRows}
-            </tbody>
-          </table>
-        </body>
-      </html>
-    `);
-
-    printWindow.document.close();
-    printWindow.focus();
-
-    // Wait for the content to load before printing
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 500);
-  }, [getFilteredTasksForExport, employeesById, exportDateRange, exportStartDate, exportEndDate, exportUserFilter]);
-
+  // Export function — calls backend API
   const handleExport = useCallback(async () => {
     setIsExporting(true);
-
     try {
-      if (exportFormat === 'csv') {
-        exportToCSV();
-      } else {
-        await exportToPDF();
+      const params: Parameters<typeof apiService.getTaskManagementReport>[0] = {};
+
+      if (exportPeriodType !== 'all') {
+        params.period_type = exportPeriodType;
+        if (exportPeriodType === 'monthly') {
+          params.month = Number(exportMonth);
+          params.year = Number(exportYear);
+        } else if (exportPeriodType === 'quarterly') {
+          params.quarter = Number(exportQuarter);
+          params.year = Number(exportYear);
+        } else if (exportPeriodType === 'custom') {
+          if (exportStartDate) params.start_date = exportStartDate;
+          if (exportEndDate) params.end_date = exportEndDate;
+        }
       }
 
-      toast({
-        title: 'Export Successful',
-        description: `Task report exported as ${exportFormat.toUpperCase()}`,
-      });
+      if (exportStatusFilter !== 'all') {
+        params.status = exportStatusFilter;
+      }
 
+      const blob = await apiService.getTaskManagementReport(params);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `task_management_report_${formatDateIST(new Date(), 'yyyy-MM-dd')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      toast({ title: 'Export Successful', description: 'Task Management Report downloaded as PDF.' });
       setIsExportDialogOpen(false);
     } catch (error) {
       console.error('Export failed:', error);
-      toast({
-        title: 'Export Failed',
-        description: 'Failed to export task report. Please try again.',
-        variant: 'destructive',
-      });
+      const message = error instanceof Error ? error.message : 'Failed to export report. Please try again.';
+      toast({ title: 'Export Failed', description: message, variant: 'destructive' });
     } finally {
       setIsExporting(false);
     }
-  }, [exportFormat, exportToCSV, exportToPDF, toast]);
+  }, [exportPeriodType, exportMonth, exportQuarter, exportYear, exportStartDate, exportEndDate, exportStatusFilter, toast]);
 
   return (
     <div className="space-y-6 animate-fade-in p-4 sm:p-6">
@@ -2581,8 +2362,8 @@ const TaskManagement: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {['admin', 'hr', 'manager'].includes(normalizedUserRole || '') && (
-                      <div className={['admin', 'hr'].includes(normalizedUserRole || '') ? "space-y-2" : "space-y-2 col-span-full"}>
+                    {['admin', 'hr', 'manager', 'team_lead', 'employee'].includes(normalizedUserRole || '') && (
+                      <div className="space-y-2">
                         <Label htmlFor="assignRoleFilter" className="text-sm font-semibold flex items-center gap-2">
                           <Filter className="h-4 w-4 text-violet-600" />
                           Filter Role
@@ -2596,33 +2377,17 @@ const TaskManagement: React.FC = () => {
                           </SelectTrigger>
                           <SelectContent className="border-2 shadow-xl" side="bottom">
                             <SelectItem value="all">All Roles</SelectItem>
-                            {normalizedUserRole === 'admin' && (
-                              <>
-                                <SelectItem value="hr">HR</SelectItem>
-                                <SelectItem value="manager">Manager</SelectItem>
-                                <SelectItem value="team_lead">Team Lead</SelectItem>
-                                <SelectItem value="employee">Employee</SelectItem>
-                              </>
-                            )}
-                            {normalizedUserRole === 'hr' && (
-                              <>
-                                <SelectItem value="manager">Manager</SelectItem>
-                                <SelectItem value="team_lead">Team Lead</SelectItem>
-                                <SelectItem value="employee">Employee</SelectItem>
-                              </>
-                            )}
-                            {normalizedUserRole === 'manager' && (
-                              <>
-                                <SelectItem value="team_lead">Team Lead</SelectItem>
-                                <SelectItem value="employee">Employee</SelectItem>
-                              </>
-                            )}
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="hr">HR</SelectItem>
+                            <SelectItem value="manager">Manager</SelectItem>
+                            <SelectItem value="team_lead">Team Lead</SelectItem>
+                            <SelectItem value="employee">Employee</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                     )}
 
-                    {['admin', 'hr'].includes(normalizedUserRole || '') && (
+                    {['admin', 'hr', 'manager', 'team_lead', 'employee'].includes(normalizedUserRole || '') && (
                       <div className="space-y-2">
                         <Label htmlFor="assignDeptFilter" className="text-sm font-semibold flex items-center gap-2">
                           <Building2 className="h-4.4 w-4.5 text-violet-600" />
@@ -2668,59 +2433,61 @@ const TaskManagement: React.FC = () => {
                       />
                     </div>
 
-                    <div className="border-2 rounded-xl p-4 max-h-[250px] overflow-y-auto space-y-2.5 bg-white dark:bg-gray-950 shadow-inner custom-scrollbar border-violet-50">
+                    <div className="border-2 rounded-xl max-h-[280px] overflow-y-auto bg-white dark:bg-gray-950 shadow-inner custom-scrollbar border-violet-50 relative">
                       {/* Select All Option */}
-                      <div className="flex items-center space-x-3 pb-2 mb-0.5 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-gray-950 z-10">
-                        <Checkbox
-                          id="select-all-employees"
-                          checked={
-                            canAssignToSelection
-                              .filter((emp) => emp.userId !== userId)
-                              .filter((emp) => assignRoleFilter === 'all' || emp.role === assignRoleFilter)
-                              .filter((emp) => !newTask.department || (emp.department && emp.department.trim().toLowerCase() === newTask.department.trim().toLowerCase()))
-                              .filter((emp) => {
-                                const search = assigneeSearchQuery.toLowerCase();
-                                return emp.name.toLowerCase().includes(search) ||
-                                  emp.email.toLowerCase().includes(search) ||
-                                  emp.employeeId.toLowerCase().includes(search);
-                              })
-                              .every(emp => newTask.assignedTo.includes(emp.userId)) &&
-                            canAssignToSelection
-                              .filter((emp) => emp.userId !== userId)
-                              .filter((emp) => assignRoleFilter === 'all' || emp.role === assignRoleFilter)
-                              .filter((emp) => !newTask.department || (emp.department && emp.department.trim().toLowerCase() === newTask.department.trim().toLowerCase()))
-                              .filter((emp) => {
-                                const search = assigneeSearchQuery.toLowerCase();
-                                return emp.name.toLowerCase().includes(search) ||
-                                  emp.email.toLowerCase().includes(search) ||
-                                  emp.employeeId.toLowerCase().includes(search);
-                              }).length > 0
-                          }
-                          onCheckedChange={(checked) => {
-                            const filteredEmps = canAssignToSelection
-                              .filter((emp) => emp.userId !== userId)
-                              .filter((emp) => assignRoleFilter === 'all' || emp.role === assignRoleFilter)
-                              .filter((emp) => !newTask.department || (emp.department && emp.department.trim().toLowerCase() === newTask.department.trim().toLowerCase()))
-                              .filter((emp) => {
-                                const search = assigneeSearchQuery.toLowerCase();
-                                return emp.name.toLowerCase().includes(search) ||
-                                  emp.email.toLowerCase().includes(search) ||
-                                  emp.employeeId.toLowerCase().includes(search);
-                              });
-
-                            if (checked) {
-                              const newIds = Array.from(new Set([...newTask.assignedTo, ...filteredEmps.map(e => e.userId)]));
-                              setNewTask(prev => ({ ...prev, assignedTo: newIds }));
-                            } else {
-                              const idsToRemove = filteredEmps.map(e => e.userId);
-                              setNewTask(prev => ({ ...prev, assignedTo: prev.assignedTo.filter(id => !idsToRemove.includes(id)) }));
+                      <div className="flex items-center space-x-3 pb-3 mb-2 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-gray-950 z-20 px-4 pt-3 shadow-sm">
+                        <div className="flex items-center space-x-3 flex-1">
+                          <Checkbox
+                            id="select-all-employees"
+                            checked={
+                              canAssignToSelection
+                                .filter((emp) => emp.userId !== userId)
+                                .filter((emp) => assignRoleFilter === 'all' || emp.role === assignRoleFilter)
+                                .filter((emp) => !newTask.department || (emp.department && emp.department.trim().toLowerCase() === newTask.department.trim().toLowerCase()))
+                                .filter((emp) => {
+                                  const search = assigneeSearchQuery.toLowerCase();
+                                  return emp.name.toLowerCase().includes(search) ||
+                                    emp.email.toLowerCase().includes(search) ||
+                                    emp.employeeId.toLowerCase().includes(search);
+                                })
+                                .every(emp => newTask.assignedTo.includes(emp.userId)) &&
+                              canAssignToSelection
+                                .filter((emp) => emp.userId !== userId)
+                                .filter((emp) => assignRoleFilter === 'all' || emp.role === assignRoleFilter)
+                                .filter((emp) => !newTask.department || (emp.department && emp.department.trim().toLowerCase() === newTask.department.trim().toLowerCase()))
+                                .filter((emp) => {
+                                  const search = assigneeSearchQuery.toLowerCase();
+                                  return emp.name.toLowerCase().includes(search) ||
+                                    emp.email.toLowerCase().includes(search) ||
+                                    emp.employeeId.toLowerCase().includes(search);
+                                }).length > 0
                             }
-                          }}
-                        />
-                        <Label htmlFor="select-all-employees" className="text-sm cursor-pointer font-bold text-violet-600 dark:text-violet-400">
-                          Select All Visible
-                        </Label>
-                        <span className="text-[10px] bg-violet-100 dark:bg-violet-900 text-violet-600 dark:text-violet-300 px-2 py-0.5 rounded-full font-bold ml-auto">
+                            onCheckedChange={(checked) => {
+                              const filteredEmps = canAssignToSelection
+                                .filter((emp) => emp.userId !== userId)
+                                .filter((emp) => assignRoleFilter === 'all' || emp.role === assignRoleFilter)
+                                .filter((emp) => !newTask.department || (emp.department && emp.department.trim().toLowerCase() === newTask.department.trim().toLowerCase()))
+                                .filter((emp) => {
+                                  const search = assigneeSearchQuery.toLowerCase();
+                                  return emp.name.toLowerCase().includes(search) ||
+                                    emp.email.toLowerCase().includes(search) ||
+                                    emp.employeeId.toLowerCase().includes(search);
+                                });
+
+                              if (checked) {
+                                const newIds = Array.from(new Set([...newTask.assignedTo, ...filteredEmps.map(e => e.userId)]));
+                                setNewTask(prev => ({ ...prev, assignedTo: newIds }));
+                              } else {
+                                const idsToRemove = filteredEmps.map(e => e.userId);
+                                setNewTask(prev => ({ ...prev, assignedTo: prev.assignedTo.filter(id => !idsToRemove.includes(id)) }));
+                              }
+                            }}
+                          />
+                          <Label htmlFor="select-all-employees" className="text-sm cursor-pointer font-bold text-violet-600 dark:text-violet-400">
+                            Select All Visible
+                          </Label>
+                        </div>
+                        <span className="text-[10px] bg-violet-100 dark:bg-violet-900 text-violet-600 dark:text-violet-300 px-2 py-0.5 rounded-full font-bold">
                           {newTask.assignedTo.length} Selected
                         </span>
                       </div>
@@ -2728,7 +2495,7 @@ const TaskManagement: React.FC = () => {
                       {/* Current User (Self) */}
                       {userId && user && (
                         (!assigneeSearchQuery || user.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()) || user.email.toLowerCase().includes(assigneeSearchQuery.toLowerCase())) && (
-                          <div className="flex items-center space-x-3 py-2 px-2 hover:bg-slate-50 dark:hover:bg-slate-900/50 rounded-lg transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
+                          <div className="flex items-center space-x-3 py-2 px-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 rounded-lg transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
                             <Checkbox
                               id={`emp-${userId}`}
                               checked={newTask.assignedTo.includes(userId)}
@@ -2760,7 +2527,7 @@ const TaskManagement: React.FC = () => {
                             emp.employeeId.toLowerCase().includes(search);
                         })
                         .map((emp) => (
-                          <div key={emp.userId} className="flex items-center space-x-3 py-2 px-2 hover:bg-slate-50 dark:hover:bg-slate-900/50 rounded-lg transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
+                          <div key={emp.userId} className="flex items-center space-x-3 py-2 px-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 rounded-lg transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
                             <Checkbox
                               id={`emp-${emp.userId}`}
                               checked={newTask.assignedTo.includes(emp.userId)}
@@ -4530,57 +4297,96 @@ const TaskManagement: React.FC = () => {
           </DialogHeader>
 
           <div className="space-y-6 mt-6">
-            {/* Export Format */}
-            <div className="space-y-3">
-              <Label className="text-sm font-semibold flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600"></div>
-                Export Format
-              </Label>
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant={exportFormat === 'pdf' ? 'default' : 'outline'}
-                  onClick={() => setExportFormat('pdf')}
-                  className="gap-2 h-12 border-2"
-                >
-                  <FileDown className="h-4 w-4" />
-                  PDF Report
-                </Button>
-                <Button
-                  variant={exportFormat === 'csv' ? 'default' : 'outline'}
-                  onClick={() => setExportFormat('csv')}
-                  className="gap-2 h-12 border-2"
-                >
-                  <FileSpreadsheet className="h-4 w-4" />
-                  CSV Data
-                </Button>
-              </div>
-            </div>
-
-            {/* Date Range */}
+            {/* Period Type */}
             <div className="space-y-3">
               <Label className="text-sm font-semibold flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-emerald-600" />
-                Date Range
+                Period Type
               </Label>
-              <Select value={exportDateRange} onValueChange={(value: any) => setExportDateRange(value)}>
+              <Select value={exportPeriodType} onValueChange={(value: any) => setExportPeriodType(value)}>
                 <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="border-2 shadow-xl">
                   <SelectItem value="all">All Time</SelectItem>
-                  <SelectItem value="1month">Last 1 Month</SelectItem>
-                  <SelectItem value="3months">Last 3 Months</SelectItem>
-                  <SelectItem value="6months">Last 6 Months</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
                   <SelectItem value="custom">Custom Range</SelectItem>
                 </SelectContent>
               </Select>
 
-              {exportDateRange === 'custom' && (
+              {/* Monthly sub-options */}
+              {exportPeriodType === 'monthly' && (
                 <div className="grid grid-cols-2 gap-3 mt-3">
                   <div>
-                    <Label htmlFor="start-date" className="text-xs font-medium">Start Date</Label>
+                    <Label className="text-xs font-medium">Month</Label>
+                    <Select value={exportMonth} onValueChange={setExportMonth}>
+                      <SelectTrigger className="h-10 border-2 mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                          <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Year</Label>
+                    <Select value={exportYear} onValueChange={setExportYear}>
+                      <SelectTrigger className="h-10 border-2 mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[2023, 2024, 2025, 2026].map(y => (
+                          <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+
+              {/* Quarterly sub-options */}
+              {exportPeriodType === 'quarterly' && (
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <Label className="text-xs font-medium">Quarter</Label>
+                    <Select value={exportQuarter} onValueChange={setExportQuarter}>
+                      <SelectTrigger className="h-10 border-2 mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Q1 (Jan–Mar)</SelectItem>
+                        <SelectItem value="2">Q2 (Apr–Jun)</SelectItem>
+                        <SelectItem value="3">Q3 (Jul–Sep)</SelectItem>
+                        <SelectItem value="4">Q4 (Oct–Dec)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Year</Label>
+                    <Select value={exportYear} onValueChange={setExportYear}>
+                      <SelectTrigger className="h-10 border-2 mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[2023, 2024, 2025, 2026].map(y => (
+                          <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+
+              {/* Custom date range */}
+              {exportPeriodType === 'custom' && (
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <Label htmlFor="export-start-date" className="text-xs font-medium">Start Date</Label>
                     <Input
-                      id="start-date"
+                      id="export-start-date"
                       type="date"
                       value={exportStartDate}
                       onChange={(e) => setExportStartDate(e.target.value)}
@@ -4588,9 +4394,9 @@ const TaskManagement: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="end-date" className="text-xs font-medium">End Date</Label>
+                    <Label htmlFor="export-end-date" className="text-xs font-medium">End Date</Label>
                     <Input
-                      id="end-date"
+                      id="export-end-date"
                       type="date"
                       value={exportEndDate}
                       onChange={(e) => setExportEndDate(e.target.value)}
@@ -4601,48 +4407,23 @@ const TaskManagement: React.FC = () => {
               )}
             </div>
 
-            {/* Department Filter */}
+            {/* Status Filter */}
             <div className="space-y-3">
               <Label className="text-sm font-semibold flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-emerald-600" />
-                Department Filter
+                <Filter className="h-4 w-4 text-emerald-600" />
+                Status Filter
               </Label>
-              <Select value={exportDepartmentFilter} onValueChange={setExportDepartmentFilter}>
+              <Select value={exportStatusFilter} onValueChange={setExportStatusFilter}>
                 <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="border-2 shadow-xl max-h-72 overflow-auto">
-                  <SelectItem value="all">All Departments</SelectItem>
-                  {departments
-                    .filter(dept => CORE_DEPARTMENTS.some(core => core.toLowerCase() === dept.toLowerCase()))
-                    .map((dept) => (
-                      <SelectItem key={dept} value={dept} className="cursor-pointer">
-                        {dept}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* User Filter */}
-            <div className="space-y-3">
-              <Label className="text-sm font-semibold flex items-center gap-2">
-                <User className="h-4 w-4 text-emerald-600" />
-                User Filter
-              </Label>
-              <Select value={exportUserFilter} onValueChange={setExportUserFilter}>
-                <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="border-2 shadow-xl max-h-72 overflow-auto">
-                  <SelectItem value="all">All Users</SelectItem>
-                  {extendedEmployees.map((emp) => (
-                    <SelectItem key={emp.userId} value={emp.userId} className="cursor-pointer">
-                      {emp.name}
-                      {emp.department ? ` • ${emp.department}` : ''}
-                      {emp.employeeId ? ` (${emp.employeeId})` : ''}
-                    </SelectItem>
-                  ))}
+                <SelectContent className="border-2 shadow-xl">
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="In Progress">In Progress</SelectItem>
+                  <SelectItem value="Overdue">Overdue</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="Cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -4651,20 +4432,16 @@ const TaskManagement: React.FC = () => {
             <div className="p-4 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950 dark:to-teal-950 border">
               <h4 className="font-semibold mb-2">Export Summary</h4>
               <div className="text-sm text-muted-foreground space-y-1">
-                <p>• Format: <span className="font-medium text-foreground">{exportFormat.toUpperCase()}</span></p>
-                <p>• Date Range: <span className="font-medium text-foreground">
-                  {exportDateRange === 'all' ? 'All Time' :
-                    exportDateRange === 'custom' ? `${exportStartDate || 'Not set'} - ${exportEndDate || 'Not set'}` :
-                      `Last ${exportDateRange.replace('months', ' Months').replace('1month', '1 Month')}`}
+                <p>• Format: <span className="font-medium text-foreground">PDF</span></p>
+                <p>• Period: <span className="font-medium text-foreground">
+                  {exportPeriodType === 'all' ? 'All Time' :
+                    exportPeriodType === 'monthly' ? `Month ${exportMonth}, ${exportYear}` :
+                      exportPeriodType === 'quarterly' ? `Q${exportQuarter} ${exportYear}` :
+                        `${exportStartDate || 'Not set'} → ${exportEndDate || 'Not set'}`}
                 </span></p>
-                <p>• Department Filter: <span className="font-medium text-foreground">
-                  {exportDepartmentFilter === 'all' ? 'All Departments' : exportDepartmentFilter}
+                <p>• Status: <span className="font-medium text-foreground">
+                  {exportStatusFilter === 'all' ? 'All Statuses' : exportStatusFilter}
                 </span></p>
-                <p>• User Filter: <span className="font-medium text-foreground">
-                  {exportUserFilter === 'all' ? 'All Users' :
-                    employeesById.get(exportUserFilter)?.name || 'Unknown User'}
-                </span></p>
-                <p>• Total Tasks: <span className="font-medium text-foreground">{getFilteredTasksForExport().length}</span></p>
               </div>
             </div>
 
@@ -4679,7 +4456,7 @@ const TaskManagement: React.FC = () => {
               </Button>
               <Button
                 onClick={handleExport}
-                disabled={isExporting || getFilteredTasksForExport().length === 0}
+                disabled={isExporting}
                 className="h-11 px-6 gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isExporting ? (
@@ -4690,13 +4467,14 @@ const TaskManagement: React.FC = () => {
                 ) : (
                   <>
                     <Download className="h-4 w-4" />
-                    Export {exportFormat.toUpperCase()}
+                    Export PDF
                   </>
                 )}
               </Button>
             </div>
           </div>
         </DialogContent>
+
       </Dialog>
 
       {/* Pass History Dialog */}

@@ -32,7 +32,7 @@ import { Calendar, Home, Trash2, Edit, CheckCircle, XCircle, Clock as ClockIcon,
 import { toast } from '@/hooks/use-toast';
 import { apiService } from '@/lib/api';
 import { format } from 'date-fns';
-import { formatDateIST, formatDateTimeIST } from '@/utils/timezone';
+import { formatDateIST, formatDateTimeIST, nowIST } from '@/utils/timezone';
 
 interface WFHRequest {
   id: number;
@@ -310,34 +310,37 @@ const WFHRequests: React.FC = () => {
 
     // Apply duration filter
     if (myRequestsDurationFilter !== 'all') {
-      const now = new Date();
+      const now = nowIST();
       let startDate: Date | null = null;
       let endDate: Date | null = null;
 
       if (myRequestsDurationFilter === 'current_month') {
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       } else if (myRequestsDurationFilter === 'last_month') {
         startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
       } else if (myRequestsDurationFilter === 'last_3_months') {
         startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-        endDate = now;
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       } else if (myRequestsDurationFilter === 'last_6_months') {
         startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-        endDate = now;
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       } else if (myRequestsDurationFilter === 'last_year') {
-        startDate = new Date(now.getFullYear(), now.getMonth() - 12, 1);
-        endDate = now;
+        startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       } else if (myRequestsDurationFilter === 'custom' && myRequestsCustomDateRange.startDate && myRequestsCustomDateRange.endDate) {
-        startDate = myRequestsCustomDateRange.startDate;
+        startDate = new Date(myRequestsCustomDateRange.startDate);
+        startDate.setHours(0, 0, 0, 0);
         endDate = new Date(myRequestsCustomDateRange.endDate);
         endDate.setHours(23, 59, 59, 999);
       }
 
       if (startDate && endDate) {
         filtered = filtered.filter(req => {
-          const reqDate = new Date(req.created_at);
+          // Filter by WFH start date instead of creation date for better user experience
+          const reqDate = new Date(req.start_date);
+          reqDate.setHours(0, 0, 0, 0);
           return reqDate >= startDate! && reqDate <= endDate!;
         });
       }
@@ -370,34 +373,36 @@ const WFHRequests: React.FC = () => {
 
     // Apply duration filter
     if (durationFilter !== 'all') {
-      const now = new Date();
+      const now = nowIST();
       let startDate: Date | null = null;
       let endDate: Date | null = null;
 
       if (durationFilter === 'current_month') {
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       } else if (durationFilter === 'last_month') {
         startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
       } else if (durationFilter === 'last_3_months') {
         startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-        endDate = now;
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       } else if (durationFilter === 'last_6_months') {
         startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-        endDate = now;
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       } else if (durationFilter === 'last_year') {
-        startDate = new Date(now.getFullYear(), now.getMonth() - 12, 1);
-        endDate = now;
+        startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       } else if (durationFilter === 'custom' && customDateRange.startDate && customDateRange.endDate) {
-        startDate = customDateRange.startDate;
+        startDate = new Date(customDateRange.startDate);
+        startDate.setHours(0, 0, 0, 0);
         endDate = new Date(customDateRange.endDate);
         endDate.setHours(23, 59, 59, 999);
       }
 
       if (startDate && endDate) {
         filtered = filtered.filter(decision => {
-          const decisionDate = new Date(decision.updated_at);
+          // Use approved_at (actual decision timestamp) falling back to updated_at
+          const decisionDate = new Date(decision.approved_at || decision.updated_at);
           return decisionDate >= startDate! && decisionDate <= endDate!;
         });
       }
@@ -792,10 +797,12 @@ const WFHRequests: React.FC = () => {
                   <ClockIcon className="h-8 w-8 animate-spin text-blue-600" />
                   <span className="ml-2 text-muted-foreground">Loading decisions...</span>
                 </div>
-              ) : recentDecisions.length === 0 ? (
+              ) : filteredDecisions.length === 0 ? (
                 <div className="text-center py-8">
                   <History className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-muted-foreground">No decisions found yet</p>
+                  <p className="text-muted-foreground">
+                    {recentDecisions.length === 0 ? 'No decisions found yet' : 'No decisions match the selected filters'}
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">

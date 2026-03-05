@@ -37,10 +37,51 @@ export function DatePicker({
   toDate,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
-  const [currentMonth, setCurrentMonth] = React.useState<Date>(date || nowIST());
-
   // Set minimum date to today if disablePastDates is true
   const minDate = disablePastDates ? nowIST() : fromDate;
+
+  const [currentMonth, setCurrentMonth] = React.useState<Date>(() => {
+    if (date) return date;
+    if (minDate && minDate > nowIST()) return minDate;
+    if (toDate && toDate < nowIST()) return toDate;
+    return nowIST();
+  });
+
+  // Sync current month when date, minDate, or toDate changes
+  React.useEffect(() => {
+    if (open) {
+      if (date) {
+        const normalizedDate = new Date(date);
+        normalizedDate.setHours(0, 0, 0, 0);
+
+        if (minDate) {
+          const normalizedMin = new Date(minDate);
+          normalizedMin.setHours(0, 0, 0, 0);
+          if (normalizedDate < normalizedMin) {
+            setCurrentMonth(minDate);
+            return;
+          }
+        }
+
+        if (toDate) {
+          const normalizedMax = new Date(toDate);
+          normalizedMax.setHours(23, 59, 59, 999);
+          if (normalizedDate > normalizedMax) {
+            setCurrentMonth(toDate);
+            return;
+          }
+        }
+
+        setCurrentMonth(date);
+      } else if (minDate && minDate > nowIST()) {
+        setCurrentMonth(minDate);
+      } else if (toDate && toDate < nowIST()) {
+        setCurrentMonth(toDate);
+      } else {
+        setCurrentMonth(nowIST());
+      }
+    }
+  }, [open, date, minDate, toDate]);
 
   const handleSelect = (selectedDate: Date | undefined) => {
     onDateChange?.(selectedDate);
@@ -80,17 +121,21 @@ export function DatePicker({
               currentMonth={currentMonth}
               onMonthChange={setCurrentMonth}
               minDate={minDate}
-              disabled={(date) => {
-                if (minDate && date < minDate) {
-                  // Disable dates before minDate
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  const checkDate = new Date(date);
-                  checkDate.setHours(0, 0, 0, 0);
-                  return checkDate < today;
+              toDate={toDate}
+              disabled={(checkDate) => {
+                const normalized = new Date(checkDate);
+                normalized.setHours(0, 0, 0, 0);
+                // Disable dates strictly before the minimum allowed date
+                if (minDate) {
+                  const minNormalized = new Date(minDate);
+                  minNormalized.setHours(0, 0, 0, 0);
+                  if (normalized < minNormalized) return true;
                 }
-                if (toDate && date > toDate) {
-                  return true;
+                // Disable dates strictly after the maximum allowed date
+                if (toDate) {
+                  const maxNormalized = new Date(toDate);
+                  maxNormalized.setHours(23, 59, 59, 999);
+                  if (normalized > maxNormalized) return true;
                 }
                 return false;
               }}

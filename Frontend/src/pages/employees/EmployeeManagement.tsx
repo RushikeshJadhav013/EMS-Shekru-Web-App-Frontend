@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Pagination } from '@/components/ui/pagination';
 import { toast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Command,
@@ -40,7 +41,8 @@ import {
   FileText,
   Check,
   ChevronsUpDown,
-  RefreshCcw
+  RefreshCcw,
+  ClipboardList
 } from 'lucide-react';
 import { User, type UserRole } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -335,6 +337,7 @@ const formatDuplicateErrorMessage = (message: string, employeeId?: string, email
 export default function EmployeeManagement() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1802,28 +1805,6 @@ export default function EmployeeManagement() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {selectedIds.length > 0 && (
-              <>
-                <Button
-                  onClick={() => handleBulkToggleStatus(true)}
-                  disabled={isBulkProcessing || isLoading}
-                  variant="outline"
-                  className="gap-2 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-400"
-                >
-                  {isBulkProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                  Bulk Activate ({selectedIds.length})
-                </Button>
-                <Button
-                  onClick={() => handleBulkToggleStatus(false)}
-                  disabled={isBulkProcessing || isLoading}
-                  variant="outline"
-                  className="gap-2 border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:border-rose-800 dark:text-rose-400"
-                >
-                  {isBulkProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                  Bulk Deactivate ({selectedIds.length})
-                </Button>
-              </>
-            )}
             <Button
               onClick={() => {
                 fetchEmployees();
@@ -3579,6 +3560,17 @@ export default function EmployeeManagement() {
                 </div>
               </div>
             </div>
+          )}
+          {viewEmployee && ['admin', 'hr', 'manager', 'team_lead', 'employee'].includes(user?.role?.toLowerCase() || '') && (
+            <DialogFooter className="px-6 py-4 border-t bg-slate-50/50 dark:bg-slate-900/50 flex-shrink-0">
+              <Button
+                onClick={() => navigate(`/${user.role}/tasks`, { state: { createFor: viewEmployee.id } })}
+                className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white shadow-md flex items-center justify-center gap-2 h-11 rounded-xl transition-all active:scale-[0.98]"
+              >
+                <ClipboardList className="h-4 w-4" />
+                Create Task for {viewEmployee.name.split(' ')[0]}
+              </Button>
+            </DialogFooter>
           )}
         </DialogContent>
       </Dialog>

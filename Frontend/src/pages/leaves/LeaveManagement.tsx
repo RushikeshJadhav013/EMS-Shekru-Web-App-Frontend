@@ -63,7 +63,7 @@ interface LeaveRequest {
   employeeName: string;
   department: string;
   role?: string;
-  type: 'annual' | 'sick' | 'casual' | 'maternity' | 'paternity' | 'unpaid';
+  type: 'annual' | 'sick' | 'casual' | 'maternity' | 'paternity' | 'unpaid' | 'wfh';
   startDate: Date;
   endDate: Date;
   reason: string;
@@ -71,6 +71,7 @@ interface LeaveRequest {
   approvedBy?: string;
   comments?: string;
   requestDate: Date;
+  isWFH?: boolean;
 }
 
 export default function LeaveManagement() {
@@ -736,21 +737,44 @@ export default function LeaveManagement() {
       const fetchApprovals = async () => {
         try {
           if (!(canApproveLeaves || canViewTeamLeaves)) return;
-          const approvals = await apiService.getLeaveApprovals();
-          const formatted: LeaveRequest[] = approvals.map((req) => ({
+          const [approvals, wfhApprovals] = await Promise.all([
+            apiService.getLeaveApprovals(),
+            apiService.getWFHRequests()
+          ]);
+
+          const formattedLeaves: LeaveRequest[] = approvals.map((req: any) => ({
             id: String(req.leave_id),
             employeeId: String(req.user_id),
             employeeName: req.name || req.employee_id,
-            department: req.department || '',
-            role: req.role,
+            department: req.department || req.department_name || '',
+            role: req.role || 'employee',
             type: (req.leave_type || 'annual').toLowerCase() as LeaveRequest['type'],
             startDate: new Date(req.start_date),
             endDate: new Date(req.end_date),
             reason: req.reason,
             status: (String(req.status || 'pending').toLowerCase() as LeaveRequest['status']),
-            requestDate: new Date(req.start_date)
+            requestDate: new Date(req.start_date),
+            isWFH: false
           }));
-          setApprovalRequests(formatted);
+
+          const formattedWFH: LeaveRequest[] = (Array.isArray(wfhApprovals) ? wfhApprovals : (wfhApprovals?.data || wfhApprovals?.requests || []))
+            .filter((req: any) => (req.status || 'pending').toLowerCase() === 'pending')
+            .map((req: any) => ({
+              id: String(req.wfh_id || req.id),
+              employeeId: String(req.user_id),
+              employeeName: req.employee_name || req.name || 'Unknown',
+              department: req.department || req.department_name || '',
+              role: req.role || req.requester_role || 'employee',
+              type: 'wfh' as any,
+              startDate: new Date(req.start_date),
+              endDate: new Date(req.end_date),
+              reason: req.reason,
+              status: 'pending' as const,
+              requestDate: new Date(req.created_at || req.start_date),
+              isWFH: true
+            }));
+
+          setApprovalRequests([...formattedLeaves, ...formattedWFH]);
         } catch (error) {
           console.error('Error fetching approvals:', error);
         }
@@ -770,25 +794,50 @@ export default function LeaveManagement() {
             params.end_date = format(customHistoryEndDate, 'yyyy-MM-dd');
           }
 
-          const history = await apiService.getLeaveApprovalsHistory(params);
-          const formatted: LeaveRequest[] = history.map((req) => ({
+          const [history, wfhHistory] = await Promise.all([
+            apiService.getLeaveApprovalsHistory(params),
+            apiService.getWFHRequests() // Reusing same endpoint, filtering for processed in map/filter if needed
+          ]);
+
+          const formattedLeaves: LeaveRequest[] = history.map((req: any) => ({
             id: String(req.leave_id),
             employeeId: String(req.user_id),
             employeeName: req.name || req.employee_id,
-            department: req.department || '',
-            role: req.role,
+            department: req.department || req.department_name || '',
+            role: req.role || 'employee',
             type: (req.leave_type || 'annual').toLowerCase() as LeaveRequest['type'],
             startDate: new Date(req.start_date),
             endDate: new Date(req.end_date),
             reason: req.reason,
             status: (String(req.status || 'approved').toLowerCase() as LeaveRequest['status']),
-            requestDate: new Date(req.start_date)
+            requestDate: new Date(req.start_date),
+            isWFH: false
           }));
+
+          const formattedWFH: LeaveRequest[] = (Array.isArray(wfhHistory) ? wfhHistory : (wfhHistory?.data || wfhHistory?.requests || []))
+            .filter((req: any) => (req.status || 'pending').toLowerCase() !== 'pending')
+            .map((req: any) => ({
+              id: String(req.wfh_id || req.id),
+              employeeId: String(req.user_id),
+              employeeName: req.employee_name || req.name || 'Unknown',
+              department: req.department || req.department_name || '',
+              role: req.role || req.requester_role || 'employee',
+              type: 'wfh' as any,
+              startDate: new Date(req.start_date),
+              endDate: new Date(req.end_date),
+              reason: req.reason,
+              status: (String(req.status || 'approved').toLowerCase() as LeaveRequest['status']),
+              requestDate: new Date(req.created_at || req.start_date),
+              isWFH: true
+            }));
+
+          const allFormatted = [...formattedLeaves, ...formattedWFH];
+
           // Merge with existing history
           setApprovalHistory(prev => {
-            const existingIds = new Set(formatted.map(r => r.id));
+            const existingIds = new Set(allFormatted.map(r => r.id));
             const localDecisions = prev.filter(r => !existingIds.has(r.id) && r.status !== 'pending');
-            const combined = [...localDecisions, ...formatted];
+            const combined = [...localDecisions, ...allFormatted];
             return combined.sort((a, b) => {
               const timeA = new Date(a.requestDate).getTime();
               const timeB = new Date(b.requestDate).getTime();
@@ -936,7 +985,7 @@ export default function LeaveManagement() {
         setLeaveRequests([...leaveRequests, newRequest]);
       }
 
-      // âœ… Trigger notification for leave application
+      // ✅ Trigger notification for leave application
       if (user) {
         const leaveType = formData.type.charAt(0).toUpperCase() + formData.type.slice(1);
         addNotification({
@@ -997,7 +1046,11 @@ export default function LeaveManagement() {
     try {
       // Call API to approve/reject
       const approved = status === 'approved';
-      await apiService.approveLeaveRequest(id, approved);
+      if (request.isWFH) {
+        await apiService.approveWFHRequest(Number(id), approved);
+      } else {
+        await apiService.approveLeaveRequest(id, approved);
+      }
 
 
 
@@ -1029,7 +1082,7 @@ export default function LeaveManagement() {
         ));
       }
 
-      // âœ… Trigger notification to the leave requester
+      // ✅ Trigger notification to the leave requester
       if (request.employeeId && user) {
         const statusText = status === 'approved' ? 'approved' : 'rejected';
         const leaveType = request.type.charAt(0).toUpperCase() + request.type.slice(1);
@@ -1091,6 +1144,7 @@ export default function LeaveManagement() {
       case 'maternity': return 'bg-purple-100 text-purple-800';
       case 'paternity': return 'bg-indigo-100 text-indigo-800';
       case 'unpaid': return 'bg-gray-100 text-gray-800';
+      case 'wfh': return 'bg-cyan-100 text-cyan-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -1497,6 +1551,11 @@ export default function LeaveManagement() {
     });
   }, [leaveRequests, user?.id, leaveHistoryPeriod, leaveHistoryCustomStartDate, leaveHistoryCustomEndDate]);
 
+  // Calculate true totals across all leave types since annual might only represent the annual bucket
+  const totalAllocated = (leaveBalance.annual.allocated || 0) + (leaveBalance.sick.allocated || 0) + (leaveBalance.casual.allocated || 0);
+  const totalUsed = (leaveBalance.annual.used || 0) + (leaveBalance.sick.used || 0) + (leaveBalance.casual.used || 0);
+  const totalRemaining = Math.max(0, totalAllocated - totalUsed);
+
   return (
     <div className="w-full space-y-6">
       {/* Modern Header */}
@@ -1553,8 +1612,8 @@ export default function LeaveManagement() {
               {[
                 {
                   label: 'Total Leaves',
-                  value: `${leaveBalance.annual.remaining}/${leaveBalance.annual.allocated}`,
-                  sub: `${leaveBalance.annual.used} used`,
+                  value: `${totalRemaining}/${totalAllocated}`,
+                  sub: `${totalUsed} used`,
                   icon: CalendarDays,
                   color: 'blue',
                   bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
@@ -1648,11 +1707,7 @@ export default function LeaveManagement() {
                       </div>
                       <div className="flex items-start gap-2">
                         <div className="h-1 w-1 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
-                        <p><strong>Casual Leave:</strong> For shorter durations (1-2 days). Must be applied at least 24 hours in advance.</p>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <div className="h-1 w-1 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
-                        <p><strong>Other Leaves:</strong> Annual, Maternity, Paternity must be applied at least 24 hours in advance.</p>
+                        <p><strong>Other Leaves:</strong> must be applied at least 24 hours in advance.</p>
                       </div>
                     </div>
                   </div>
@@ -2811,12 +2866,13 @@ export default function LeaveManagement() {
                                   </Badge>
                                 </div>
                                 <div className="text-muted-foreground text-xs">
-                                  {format(request.startDate, 'MMM dd')} - {format(request.endDate, 'MMM dd, yyyy')} â€¢ {request.department}
+                                  {format(request.startDate, 'MMM dd')} - {format(request.endDate, 'MMM dd, yyyy')} • {request.department}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Badge className={`px-4 py-1.5 text-sm font-bold capitalize transition-all duration-300 ${getStatusBadgeStyle(request.status)}`}>
-                                  {request.status}
+                                <Badge className={`px-4 py-1.5 text-sm font-bold capitalize transition-all duration-300 flex items-center gap-2 ${getStatusBadgeStyle(request.status)}`}>
+                                  {request.status === 'approved' ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                                  {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                                 </Badge>
                               </div>
                             </div>

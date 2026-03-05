@@ -400,7 +400,26 @@ class ApiService {
     return this.request('/tasks/');
   }
 
-  // Bulk create tasks (PUT /tasks/bulk)
+  // Bulk create tasks (POST /tasks/bulk)
+  async assignBulkTasks(data: {
+    title: string;
+    description?: string;
+    status?: string;
+    due_date?: string | null;
+    priority?: string;
+    assigned_to_ids: number[];
+    project_id?: number;
+  }) {
+    return this.request('/tasks/bulk', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...data,
+        project_id: data.project_id || 1 // Default to 1 as per user example if not provided
+      }),
+    });
+  }
+
+  // Legacy/Compatibility Bulk create tasks (PUT /tasks/bulk)
   async createTasksBulk(tasks: {
     title: string;
     description?: string;
@@ -516,7 +535,11 @@ class ApiService {
   }
 
   // Leave Allocation Configuration (Admin only)
-  async getLeaveAllocationConfig(): Promise<LeaveAllocationConfig> {
+  async getLeaveAllocationConfig(): Promise<LeaveAllocationConfig[]> {
+    return this.request('/leave/config/allocation');
+  }
+
+  async getCurrentLeaveAllocation(): Promise<LeaveAllocationConfig> {
     return this.request('/leave/config/allocation');
   }
 
@@ -1549,7 +1572,7 @@ class ApiService {
           ifscCode: response.ifsc_code || '',
           panNumber: response.pan_number || '',
           uanNumber: response.uan_number || '',
-          isActive: response.is_active !== undefined ? response.is_active : true,
+          is_active: response.is_active !== undefined ? response.is_active : true,
           effectiveDate: response.created_at || '',
           createdAt: response.created_at || '',
           updatedAt: response.updated_at || ''
@@ -1581,6 +1604,24 @@ class ApiService {
     return this.request(`/salary/employee/${userId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
+    });
+  }
+
+  // Toggle salary active/inactive — fetches full record first, then PUTs with toggled is_active
+  async toggleSalaryStatus(userId: string, activate: boolean): Promise<any> {
+    // First, fetch the current salary record so we don't send a partial payload
+    const current = await this.request(`/salary/employee/${userId}`);
+    if (!current) throw new Error('Salary record not found');
+
+    const payload = {
+      ...current,
+      user_id: Number(userId),
+      is_active: activate,
+    };
+
+    return this.request(`/salary/employee/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
     });
   }
 
@@ -1882,6 +1923,27 @@ class ApiService {
     return this.request(`/meetings/${meetingId}/participants/${userId}`, {
       method: 'DELETE',
     });
+  }
+  async getTaskManagementReport(params: {
+    department?: string;
+    period_type?: string;
+    month?: number;
+    quarter?: number;
+    year?: number;
+    start_date?: string;
+    end_date?: string;
+    status?: string;
+  }): Promise<Blob> {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, String(value));
+      }
+    });
+
+    const queryString = queryParams.toString();
+    const endpoint = `/reports/task-management${queryString ? `?${queryString}` : ''}`;
+    return this.download(endpoint);
   }
 }
 

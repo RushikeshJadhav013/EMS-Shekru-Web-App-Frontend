@@ -150,14 +150,16 @@ export const LeaveBalanceProvider: React.FC<{ children: React.ReactNode }> = ({ 
         remaining: 0,
       };
 
-      // Calculate Total Leaves = Sick + Annual (paid leave only, excluding unpaid)
-      // Use normalized values after all adjustments to ensure accurate calculation
-      // Store this in annual field for display purposes (Total Leaves card)
-      // This ensures the total is always calculated correctly from the latest API data
-      const totalAllocated = defaults.sick.allocated + defaults.annual.allocated;
-      const totalUsed = defaults.sick.used + defaults.annual.used;
+      // Calculate Total Leaves from config or balance
+      // If we have an allocation config, total_annual_leave is the authoritative sum
+      // Otherwise fallback to summing specific categories from balance
+      const totalAllocated = allocationConfig
+        ? (Number(allocationConfig.total_annual_leave ?? allocationConfig.totalAnnualLeave) || 0)
+        : (defaults.sick.allocated + defaults.annual.allocated + defaults.casual.allocated);
+
+      const totalUsed = defaults.sick.used + defaults.annual.used + defaults.casual.used;
       const totalRemaining = Math.max(0, totalAllocated - totalUsed);
-      
+
       defaults.annual = {
         allocated: totalAllocated,
         used: totalUsed,

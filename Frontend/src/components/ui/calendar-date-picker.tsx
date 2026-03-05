@@ -26,6 +26,11 @@ export function CalendarDatePicker({
     setMonth(currentMonth);
   }, [currentMonth]);
 
+  const safeMonth = React.useMemo(() => {
+    if (month && !isNaN(month.getTime())) return month;
+    return nowIST();
+  }, [month]);
+
   const handleMonthChange = (newMonth: Date) => {
     // Prevent navigation to months before minDate
     if (minDate) {
@@ -55,8 +60,8 @@ export function CalendarDatePicker({
     onMonthChange?.(newMonth);
   };
 
-  const currentYear = month.getFullYear();
-  const currentMonthIndex = month.getMonth();
+  const currentYear = safeMonth.getFullYear();
+  const currentMonthIndex = safeMonth.getMonth();
 
   const years = React.useMemo(() => {
     const currentYear = nowIST().getFullYear();
@@ -174,7 +179,7 @@ export function CalendarDatePicker({
       {/* Calendar - Clean, neutral styling without holiday indicators */}
       <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 relative">
         <Calendar
-          month={month}
+          month={safeMonth}
           onMonthChange={handleMonthChange}
           firstWeekContainsDate={1}
           classNames={enhancedClassNames}

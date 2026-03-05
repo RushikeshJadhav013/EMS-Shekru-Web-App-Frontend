@@ -1271,6 +1271,7 @@ export default function HiringManagement() {
       'offered': 'default',
       'rejected': 'destructive',
       'hired': 'default',
+      'withdrawn': 'outline',
     };
 
     return (
@@ -1553,10 +1554,10 @@ export default function HiringManagement() {
                     <SelectItem value="applied">Applied</SelectItem>
                     <SelectItem value="screening">Screening</SelectItem>
                     <SelectItem value="interview">Interview</SelectItem>
-                    <SelectItem value="shortlisted">Shortlisted</SelectItem>
+                    <SelectItem value="offered">Offered</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
                     <SelectItem value="hired">Hired</SelectItem>
-                    <SelectItem value="on-hold">On Hold</SelectItem>
+                    <SelectItem value="withdrawn">Withdrawn</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1627,12 +1628,11 @@ export default function HiringManagement() {
                               <SelectContent>
                                 <SelectItem value="applied">Applied</SelectItem>
                                 <SelectItem value="screening">Screening</SelectItem>
-                                <SelectItem value="shortlisted">Shortlisted</SelectItem>
                                 <SelectItem value="interview">Interview</SelectItem>
                                 <SelectItem value="offered">Offered</SelectItem>
                                 <SelectItem value="rejected">Rejected</SelectItem>
                                 <SelectItem value="hired">Hired</SelectItem>
-                                <SelectItem value="on-hold">On Hold</SelectItem>
+                                <SelectItem value="withdrawn">Withdrawn</SelectItem>
                               </SelectContent>
                             </Select>
                           </TableCell>

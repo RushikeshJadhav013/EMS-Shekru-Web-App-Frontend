@@ -218,6 +218,7 @@ export interface SalaryStructure {
   monthlyGross: number;
   monthlyDeductions: number;
   otherDeduction: number;
+  monthlyCtc?: number;
   monthlyInHand: number;
   workingDays: number;
   paymentMode: 'bank_transfer' | 'cash' | 'cheque';
@@ -244,6 +245,8 @@ export interface SalaryStructure {
   total_deductions_annual?: number;
   ctc_annual?: number;
   monthly_ctc?: number;
+  monthly_in_hand?: number;
+  package_ctc_annual?: number;
   is_active?: boolean;
 }
 

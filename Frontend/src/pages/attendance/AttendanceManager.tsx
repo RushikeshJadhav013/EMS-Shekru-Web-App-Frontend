@@ -199,13 +199,20 @@ const AttendanceManager: React.FC = () => {
       endDate.setHours(23, 59, 59, 999);
 
       filtered = filtered.filter(req => {
-        const reqDate = new Date(req.processedAt || req.submittedAt || req.startDate);
-        if (startDate) {
-          const sDate = new Date(startDate);
-          sDate.setHours(0, 0, 0, 0);
-          return reqDate >= sDate && reqDate <= endDate;
-        }
-        return reqDate <= endDate;
+        const rawDecisionDate = req.processedAt || req.submittedAt;
+        const decisionDate = rawDecisionDate ? new Date(rawDecisionDate) : null;
+
+        const sessionStart = req.startDate ? new Date(req.startDate) : null;
+        const sessionEnd = req.endDate ? new Date(req.endDate) : null;
+
+        const matchesDecisionDate = decisionDate && decisionDate >= startDate! && decisionDate <= endDate;
+        const matchesSessionDate = sessionStart && sessionEnd && (
+          (sessionStart >= startDate! && sessionStart <= endDate) ||
+          (sessionEnd >= startDate! && sessionEnd <= endDate) ||
+          (sessionStart <= startDate! && sessionEnd >= endDate)
+        );
+
+        return matchesDecisionDate || matchesSessionDate;
       });
     }
 
@@ -214,6 +221,10 @@ const AttendanceManager: React.FC = () => {
 
   useEffect(() => {
     setWfhCurrentPage(1);
+    // If start date becomes after end date, adjust end date
+    if (wfhDecisionsStartDate && wfhDecisionsEndDate && wfhDecisionsStartDate > wfhDecisionsEndDate) {
+      setWfhDecisionsEndDate(wfhDecisionsStartDate);
+    }
   }, [wfhRequestFilter, wfhRoleFilter, wfhDecisionsDurationFilter, wfhDecisionsStartDate, wfhDecisionsEndDate]);
 
   useEffect(() => {
@@ -443,9 +454,9 @@ const AttendanceManager: React.FC = () => {
     const checkInTime = record.checkInTime;
     const checkOutTime = record.checkOutTime;
 
-    // If no check-in, show as absent
+    // If no check-in, show as offline
     if (!checkInTime) {
-      return { isOnline: false, label: 'Absent', showAbsent: true };
+      return { isOnline: false, label: 'Offline', showAbsent: false };
     }
 
     // If record date is today
@@ -466,8 +477,8 @@ const AttendanceManager: React.FC = () => {
 
     if (recordDateObj < todayDateObj) {
       if (!checkOutTime) {
-        // Forgotten checkout - show as absent
-        return { isOnline: false, label: 'Absent', showAbsent: true };
+        // Forgotten checkout - show as offline
+        return { isOnline: false, label: 'Offline', showAbsent: false };
       } else {
         // Checked out on past date - show as checked out
         return { isOnline: false, label: 'Checked Out', showAbsent: false };
@@ -1016,7 +1027,7 @@ const AttendanceManager: React.FC = () => {
               scheduledEnd: scheduledEnd || undefined,
               workSummary: rec.workSummary || rec.work_summary || null,
               workReport: resolveMediaUrl(rec.workReport || rec.work_report),
-              taskDeadlineReason: rec.taskDeadlineReason || rec.task_deadline_reason || rec.taskPendingReason || rec.task_pending_reason || null,
+              taskDeadlineReason: rec.overdue_reason || rec.task_overdue_reason || rec.late_reason || rec.due_reason || rec.taskDeadlineReason || rec.task_deadline_reason || rec.deadline_reason || rec.overdueReason || rec.lateArrivalReason || rec.taskPendingReason || rec.task_pending_reason || rec.overtime_reason || rec.delay_reason || rec.reason || null,
               workLocation: workLocation,
             };
           })
@@ -1071,10 +1082,7 @@ const AttendanceManager: React.FC = () => {
           return checkOutStatusValue === 'early';
         }
         if (filterStatus === 'present') {
-          return statusValue === 'present' && checkOutStatusValue !== 'early';
-        }
-        if (filterStatus === 'absent') {
-          return statusValue === 'absent' || !record.checkInTime;
+          return !!record.checkInTime;
         }
         return true;
       });
@@ -1786,7 +1794,6 @@ const AttendanceManager: React.FC = () => {
                   <SelectItem value="present">Present</SelectItem>
                   <SelectItem value="late">Late</SelectItem>
                   <SelectItem value="early">Early Departure</SelectItem>
-                  <SelectItem value="absent">Absent</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1820,7 +1827,6 @@ const AttendanceManager: React.FC = () => {
                     <DatePicker
                       date={customStartDate}
                       onDateChange={setCustomStartDate}
-                      toDate={new Date()}
                       placeholder="Start Date"
                       className="w-full bg-white dark:bg-gray-950 border-blue-200"
                     />
@@ -1833,7 +1839,6 @@ const AttendanceManager: React.FC = () => {
                     <DatePicker
                       date={customEndDate}
                       onDateChange={setCustomEndDate}
-                      toDate={new Date()}
                       placeholder="End Date"
                       className="w-full bg-white dark:bg-gray-950 border-indigo-200"
                     />
@@ -1868,7 +1873,7 @@ const AttendanceManager: React.FC = () => {
                     <th className="text-left p-3 font-medium">{t.common.status}</th>
                     <th className="text-left p-3 font-medium">{t.attendance.workSummary}</th>
                     <th className="text-left p-3 font-medium">{t.attendance.workReport}</th>
-                    <th className="text-left p-3 font-medium">Overdue Reason</th>
+                    <th className="text-left p-3 font-medium">Overdue</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1914,11 +1919,7 @@ const AttendanceManager: React.FC = () => {
                             {(() => {
                               const statusInfo = getOnlineStatusForDisplay(record);
                               if (statusInfo.showAbsent) {
-                                return (
-                                  <Badge variant="destructive" className="bg-red-500 hover:bg-red-600 text-white text-xs">
-                                    Absent
-                                  </Badge>
-                                );
+                                return null;
                               } else if (statusInfo.label === 'Checked Out') {
                                 return <span className="text-xs text-muted-foreground">Checked Out</span>;
                               } else {
@@ -2047,11 +2048,11 @@ const AttendanceManager: React.FC = () => {
                           </td>
                           <td className="p-3 text-sm text-muted-foreground max-w-[200px]">
                             {record.taskDeadlineReason ? (
-                              <div className="text-left w-full">
+                              <div className="text-left w-full" title={record.taskDeadlineReason}>
                                 <TruncatedText
                                   text={record.taskDeadlineReason}
                                   maxLength={40}
-                                  showToggle={false}
+                                  showToggle={true}
                                 />
                               </div>
                             ) : (
@@ -3296,7 +3297,6 @@ const AttendanceManager: React.FC = () => {
                               <DatePicker
                                 date={wfhDecisionsStartDate}
                                 onDateChange={setWfhDecisionsStartDate}
-                                toDate={new Date()}
                                 placeholder="Start Date"
                                 className="h-10 w-full"
                               />
@@ -3307,7 +3307,6 @@ const AttendanceManager: React.FC = () => {
                                 date={wfhDecisionsEndDate}
                                 onDateChange={setWfhDecisionsEndDate}
                                 fromDate={wfhDecisionsStartDate}
-                                toDate={new Date()}
                                 placeholder="End Date"
                                 className="h-10 w-full"
                               />
