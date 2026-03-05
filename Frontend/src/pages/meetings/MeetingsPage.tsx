@@ -117,11 +117,18 @@ const MeetingsPage: React.FC = () => {
     });
 
     const normalizeMeeting = (m: any): Meeting => {
-        let type = m.type?.toLowerCase();
+        let type = (m.type || '').toLowerCase();
+
+        // Force type based on ID associations to prevent misclassification
+        if (m.project_id || m.project_name) {
+            type = 'project';
+        } else if (m.team_id || m.team_name) {
+            type = 'team';
+        }
+
+        // If still missing or generic, use heuristics
         if (!type || type === 'null' || type === 'undefined') {
-            if (m.project_id || m.project_name) type = 'project';
-            else if (m.team_id || m.team_name) type = 'team';
-            else if (m.participants && m.participants.length <= 2) type = 'one-to-one';
+            if (m.participants && m.participants.length <= 2) type = 'one-to-one';
             else type = 'company';
         }
         return { ...m, type };
@@ -218,9 +225,12 @@ const MeetingsPage: React.FC = () => {
             if (formData.type === 'team' && formData.team_id) {
                 payload.team_id = formData.team_id;
             }
+            if (formData.type === 'project' && formData.project_id) {
+                payload.project_id = formData.project_id;
+            }
 
             if (selectedMeeting) {
-                if (selectedMeeting.type === 'project' && formData.project_id) {
+                if (formData.type === 'project' && formData.project_id) {
                     await apiService.updateProjectMeeting(formData.project_id, selectedMeeting.id, payload);
                 } else {
                     await apiService.updateMeeting(selectedMeeting.id, payload);
@@ -242,6 +252,7 @@ const MeetingsPage: React.FC = () => {
             }
 
             setIsCreateDialogOpen(false);
+            setTypeFilter(formData.type); // Auto-redirect to the specific tab
             resetForm();
             fetchData();
         } catch (error: any) {

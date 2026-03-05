@@ -643,14 +643,14 @@ export default function HiringManagement() {
       await apiService.shortlistCandidate(selectedCandidate.candidate_id, shortlistFormData);
       toast({
         title: 'Success',
-        description: 'Candidate shortlisted for interview',
+        description: 'Candidate scheduled for interview',
       });
       setIsShortlistDialogOpen(false);
       fetchCandidates();
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to shortlist candidate',
+        description: error.message || 'Failed to schedule interview',
         variant: 'destructive',
       });
     } finally {
@@ -1664,7 +1664,7 @@ export default function HiringManagement() {
                                   });
                                   setIsShortlistDialogOpen(true);
                                 }}
-                                title="Shortlist for Interview"
+                                title="Schedule Interview"
                               >
                                 <Calendar className="h-4 w-4 text-blue-600" />
                               </Button>
@@ -2354,12 +2354,11 @@ export default function HiringManagement() {
                       <SelectContent>
                         <SelectItem value="applied">Applied</SelectItem>
                         <SelectItem value="screening">Screening</SelectItem>
-                        <SelectItem value="shortlisted">Shortlisted</SelectItem>
                         <SelectItem value="interview">Interview</SelectItem>
                         <SelectItem value="offered">Offered</SelectItem>
                         <SelectItem value="rejected">Rejected</SelectItem>
                         <SelectItem value="hired">Hired</SelectItem>
-                        <SelectItem value="on-hold">On Hold</SelectItem>
+                        <SelectItem value="withdrawn">Withdrawn</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -2698,7 +2697,7 @@ export default function HiringManagement() {
       < Dialog open={isShortlistDialogOpen} onOpenChange={setIsShortlistDialogOpen} >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Shortlist for Interview</DialogTitle>
+            <DialogTitle>Schedule Interview</DialogTitle>
             <DialogDescription>Schedule an interview for {selectedCandidate?.name}.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -2783,7 +2782,7 @@ export default function HiringManagement() {
             <Button variant="outline" onClick={() => setIsShortlistDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleShortlistCandidate} disabled={isUpdating}>
               {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Confirm Shortlist
+              Schedule Interview
             </Button>
           </DialogFooter>
         </DialogContent>
