@@ -2171,7 +2171,7 @@ export default function EmployeeManagement() {
                       value={formData.employeeId || ''}
                       onChange={(e) => {
                         // Convert to uppercase and remove all non-alphanumeric characters
-                        let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                        const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
                         setFormData((prev) => ({ ...prev, employeeId: value }));
                       }}
                       required

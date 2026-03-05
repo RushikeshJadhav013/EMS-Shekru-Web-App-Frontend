@@ -1744,6 +1744,10 @@ class ApiService {
     return this.request(`/projects/${projectId}`);
   }
 
+  async getProjectById(projectId: number): Promise<any> {
+    return this.getProject(projectId);
+  }
+
   async createProject(projectData: any): Promise<any> {
     return this.request('/projects/', {
       method: 'POST',
@@ -1804,6 +1808,25 @@ class ApiService {
     });
   }
 
+  async assignTasksBulk(payload: {
+    title: string;
+    description?: string;
+    status?: string;
+    due_date?: string | null;
+    priority?: string;
+    assigned_to_ids: number[];
+    project_id: number;
+  }): Promise<any> {
+    return this.request('/tasks/bulk', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getProjectTasks(projectId: number): Promise<any> {
+    return this.request(`/projects/${projectId}/tasks`);
+  }
+
   async updateProjectTaskStatus(projectId: number, taskId: number, status: string): Promise<any> {
     return this.request(`/projects/${projectId}/tasks/${taskId}/status`, {
       method: 'PUT',
@@ -1842,8 +1865,6 @@ class ApiService {
     team_id?: number;
     project_id?: number;
     participant_ids?: number[];
-    team_id?: number;
-    type?: string;
   }): Promise<any> {
     return this.request('/meetings/', {
       method: 'POST',
@@ -1898,8 +1919,6 @@ class ApiService {
     team_id?: number;
     project_id?: number;
     participant_ids?: number[];
-    team_id?: number;
-    type?: string;
   }): Promise<any> {
     return this.request(`/meetings/${meetingId}`, {
       method: 'PUT',

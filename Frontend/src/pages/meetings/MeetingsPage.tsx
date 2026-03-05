@@ -16,12 +16,16 @@ import {
     Play,
     X,
     Trash2,
-    Info
+    Info,
+    CalendarDays,
+    Edit2,
+    ExternalLink,
+    Users
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +37,7 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
+    DialogTrigger,
 } from '@/components/ui/dialog';
 import {
     Select,
@@ -124,11 +129,10 @@ const MeetingsPage: React.FC = () => {
             end_time: '',
             participant_ids: [],
             type: 'company',
-            subType: 'individual',
             team_id: undefined,
             project_id: undefined,
         });
-        setEditingMeetingId(null);
+        setSelectedMeeting(null);
     };
 
     const fetchData = async () => {
@@ -161,7 +165,6 @@ const MeetingsPage: React.FC = () => {
         fetchData();
     }, []);
 
-    const [searchQuery, setSearchQuery] = useState('');
     const [dateFilter, setDateFilter] = useState('');
     const [typeFilter, setTypeFilter] = useState('all');
 
@@ -288,6 +291,33 @@ const MeetingsPage: React.FC = () => {
                     : [...prev.participant_ids, userId]
             };
         });
+    };
+
+    const openEditDialog = (meeting: Meeting) => {
+        setFormData({
+            title: meeting.title || '',
+            description: meeting.description || '',
+            meeting_url: meeting.meeting_url || '',
+            start_time: meeting.start_time ? new Date(meeting.start_time).toISOString().slice(0, 16) : '',
+            end_time: meeting.end_time ? new Date(meeting.end_time).toISOString().slice(0, 16) : '',
+            participant_ids: meeting.participants?.map(p => Number(p.user_id) || Number(p.id)) || [],
+            type: meeting.type || 'company',
+            team_id: meeting.team_id,
+            project_id: meeting.project_id,
+        });
+        setSelectedMeeting(meeting);
+        setIsCreateDialogOpen(true);
+    };
+
+    const handleDeleteMeeting = async (meeting: Meeting) => {
+        if (!window.confirm("Are you sure you want to purge this node?")) return;
+        try {
+            await apiService.deleteMeeting(meeting.id);
+            toast({ title: "Node Terminated", description: "The meeting protocol has been successfully purged." });
+            fetchData();
+        } catch (error: any) {
+            toast({ title: "Deletion Failure", description: error.message || "Failed to purge node.", variant: "destructive" });
+        }
     };
 
     return (

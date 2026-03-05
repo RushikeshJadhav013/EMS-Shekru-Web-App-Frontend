@@ -5,12 +5,13 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
-  branch: string;
+  branch?: string;
   designation: string;
   joiningDate: string;
   profilePhoto?: string;
   phone?: string;
   address?: string;
+  department?: string;
   managerId?: string;
   teamLeadId?: string;
   status: 'active' | 'inactive';

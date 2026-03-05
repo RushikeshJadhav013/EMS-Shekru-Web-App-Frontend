@@ -194,8 +194,8 @@ const AttendanceManager: React.FC = () => {
 
     // Apply Duration Filter
     if (wfhDecisionsDurationFilter !== 'all') {
-      let startDate = wfhDecisionsStartDate;
-      let endDate = wfhDecisionsEndDate ? new Date(wfhDecisionsEndDate) : new Date();
+      const startDate = wfhDecisionsStartDate;
+      const endDate = wfhDecisionsEndDate ? new Date(wfhDecisionsEndDate) : new Date();
       endDate.setHours(23, 59, 59, 999);
 
       filtered = filtered.filter(req => {
@@ -1527,7 +1527,7 @@ const AttendanceManager: React.FC = () => {
       }
 
       // Handle response - it might be wrapped in an object or be an array directly
-      let requests = Array.isArray(response) ? response : (response?.data || response?.requests || []);
+      const requests = Array.isArray(response) ? response : (response?.data || response?.requests || []);
 
       // Transform API response to match our UI format
       const formattedRequests = requests.map((req: any) => {

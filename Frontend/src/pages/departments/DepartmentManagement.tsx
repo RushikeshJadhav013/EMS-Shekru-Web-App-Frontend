@@ -28,14 +28,16 @@ import { Branch, BranchData } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { apiService } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { Employee } from '@/types';
+import { formatDateIST } from '@/utils/timezone';
+// Removed missing Employee import
 
-interface ExtendedBranch extends Branch {
+interface ExtendedBranch extends Omit<Branch, 'manager_id'> {
   status: 'active' | 'inactive';
   employeeCount?: number;
   location?: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
+  manager_id?: string;
 }
 
 interface ManagerOption {
@@ -67,7 +69,7 @@ export default function BranchManagement() {
   const [formData, setFormData] = useState<Partial<ExtendedBranch>>({
     name: '',
     code: '',
-    manager_id: undefined,
+    manager_id: undefined as string | undefined,
     description: '',
     status: 'active',
     employeeCount: undefined,
@@ -99,7 +101,7 @@ export default function BranchManagement() {
       const matchesStatus = selectedStatus === 'all' || dept.status === selectedStatus;
       const matchesManager =
         selectedManagerFilter === 'all' ||
-        String(dept.managerId ?? '') === selectedManagerFilter;
+        String(dept.manager_id ?? '') === selectedManagerFilter;
 
       return matchesSearch && matchesStatus && matchesManager;
     });
@@ -150,24 +152,24 @@ export default function BranchManagement() {
       .createBranch({
         name: formData.name!,
         code: formData.code!,
-        manager_id: formData.managerId ? Number(formData.managerId) : undefined,
+        manager_id: formData.manager_id ? Number(formData.manager_id) : undefined,
         description: formData.description || '',
         status: formData.status || 'active',
         employee_count: formData.employeeCount ?? 0,
         location: formData.location || '',
       })
-      .then((created: ApiBranch) => {
+      .then((created: Branch) => {
         const mapped: ExtendedBranch = {
           id: created.id,
           name: created.name,
           code: created.code,
-          managerId: created.manager_id?.toString() ?? '',
+          manager_id: created.manager_id?.toString() ?? '',
           description: created.description ?? '',
           status: (created.status as 'active' | 'inactive') || 'active',
           employeeCount: created.employee_count ?? 0,
           location: created.location ?? '',
-          createdAt: created.created_at,
-          updatedAt: created.updated_at,
+          created_at: created.created_at,
+          updated_at: created.updated_at,
         };
         setBranchs((prev) => [...prev, mapped]);
         setIsCreateDialogOpen(false);
@@ -194,8 +196,8 @@ export default function BranchManagement() {
   const handleUpdateBranch = () => {
     if (!selectedBranch) return;
 
-    const oldManagerId = selectedBranch.managerId;
-    const newManagerId = formData.managerId;
+    const oldManagerId = selectedBranch.manager_id;
+    const newManagerId = formData.manager_id;
     const managerChanged = oldManagerId !== newManagerId;
 
     setIsSaving(true);
@@ -203,13 +205,13 @@ export default function BranchManagement() {
       .updateBranch(Number(selectedBranch.id), {
         name: formData.name,
         code: formData.code,
-        manager_id: formData.managerId ? Number(formData.managerId) : undefined,
+        manager_id: formData.manager_id ? Number(formData.manager_id) : undefined,
         description: formData.description,
         status: formData.status,
         employee_count: formData.employeeCount,
         location: formData.location,
       })
-      .then((updated: ApiBranch) => {
+      .then((updated: Branch) => {
         setBranchs((prev) =>
           prev.map((dept) =>
             dept.id === selectedBranch.id
@@ -217,12 +219,14 @@ export default function BranchManagement() {
                 ...dept,
                 name: updated.name,
                 code: updated.code,
-                managerId: updated.manager_id?.toString() ?? '',
+                manager_id: updated.manager_id?.toString() ?? '',
                 description: updated.description ?? '',
                 status: updated.status as 'active' | 'inactive',
                 employeeCount: updated.employee_count ?? dept.employeeCount,
                 location: updated.location ?? '',
                 updatedAt: updated.updated_at,
+                updated_at: updated.updated_at,
+                created_at: dept.created_at,
               }
               : dept,
           ),
@@ -300,7 +304,7 @@ export default function BranchManagement() {
     setFormData({
       name: '',
       code: '',
-      managerId: '',
+      manager_id: '',
       description: '',
       status: 'active',
       employeeCount: undefined,
@@ -323,7 +327,7 @@ export default function BranchManagement() {
     setSelectedBranch(department);
     setFormData({
       ...department,
-      managerId: department.managerId ? String(department.managerId) : '',
+      manager_id: department.manager_id ? String(department.manager_id) : '',
     });
     setIsEditDialogOpen(true);
   };
@@ -382,17 +386,17 @@ export default function BranchManagement() {
     setIsLoading(true);
     try {
       const data = await apiService.getBranchs();
-      const mapped: ExtendedBranch[] = (data || []).map((dept: ApiBranch) => ({
+      const mapped: ExtendedBranch[] = (data || []).map((dept: Branch) => ({
         id: dept.id,
         name: dept.name,
         code: dept.code,
-        managerId: dept.manager_id?.toString() ?? '',
+        manager_id: dept.manager_id?.toString() ?? '',
         description: dept.description ?? '',
         status: (dept.status as 'active' | 'inactive') || 'active',
         employeeCount: dept.employee_count ?? 0,
         location: dept.location ?? '',
-        createdAt: dept.created_at,
-        updatedAt: dept.updated_at,
+        created_at: dept.created_at,
+        updated_at: dept.updated_at,
       }));
       setBranchs(mapped);
     } catch (error) {
@@ -800,9 +804,9 @@ export default function BranchManagement() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedDepartments.map((department) => {
+                  paginatedBranchs.map((department) => {
                     const manager = allEmployees.find(
-                      (emp) => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(department.managerId ?? ''),
+                      (emp) => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(department.manager_id ?? ''),
                     );
                     const managerNameStr = manager ? (manager.name || manager.full_name || '') : '';
                     const isActive = department.status === 'active';
@@ -1044,16 +1048,17 @@ export default function BranchManagement() {
                   <div>
                     <Label className="text-sm font-medium text-slate-600 dark:text-slate-400">Manager</Label>
                     <div className="flex items-center gap-2 mt-1 bg-slate-50 dark:bg-slate-800 px-3 py-2 rounded border border-slate-200 dark:border-slate-700">
-                      {allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewDepartment.managerId)) ? (
+                      {allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewBranch.manager_id)) ? (
                         <>
                           <div className="h-8 w-8 rounded-full bg-green-600 flex items-center justify-center">
                             <span className="text-sm font-bold text-white">
-                              {(allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewDepartment.managerId))?.name ||
-                                allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewDepartment.managerId))?.full_name || '').charAt(0).toUpperCase()}
+                              {(allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewBranch.manager_id))?.name ||
+                                allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewBranch.manager_id))?.full_name || '').charAt(0).toUpperCase()}
                             </span>
                           </div>
                           <span className="text-base font-medium text-slate-900 dark:text-white">
-                            {managers.find(m => String(m.id) === String(viewDepartment.managerId))?.name}
+                            {allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewBranch.manager_id))?.name ||
+                              allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewBranch.manager_id))?.full_name}
                           </span>
                         </>
                       ) : (
@@ -1088,10 +1093,10 @@ export default function BranchManagement() {
               )}
               <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
                 <div className="text-xs text-slate-500 dark:text-slate-400">
-                  Created: {viewBranch.createdAt ? formatDateIST(viewBranch.createdAt, 'MMM dd, yyyy') : 'Unknown'}
+                  Created: {viewBranch.created_at ? formatDateIST(viewBranch.created_at, 'MMM dd, yyyy') : 'Unknown'}
                 </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400">
-                  Updated: {viewBranch.updatedAt ? formatDateIST(viewBranch.updatedAt, 'MMM dd, yyyy') : 'Unknown'}
+                  Updated: {viewBranch.updated_at ? formatDateIST(viewBranch.updated_at, 'MMM dd, yyyy') : 'Unknown'}
                 </div>
               </div>
             </div>
@@ -1221,9 +1226,9 @@ function BranchForm({
               </p>
             </div>
           </div>
-          {!isCreateMode && selectedBranch?.updatedAt && (
+          {!isCreateMode && selectedBranch?.updated_at && (
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Updated {formatDateIST(selectedBranch.updatedAt, 'MMM dd, yyyy')}
+              Updated {formatDateIST(selectedBranch.updated_at, 'MMM dd, yyyy')}
             </p>
           )}
         </div>
@@ -1233,7 +1238,7 @@ function BranchForm({
               Branch Manager
             </Label>
             <Select
-              value={formData.managerId}
+              value={formData.manager_id}
               onValueChange={onManagerChange}
               disabled={isManagersLoading || managers.length === 0}
             >

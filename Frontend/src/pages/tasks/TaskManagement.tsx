@@ -373,6 +373,7 @@ const TaskManagement: React.FC = () => {
   const [assigneeSearchQuery, setAssigneeSearchQuery] = useState('');
   const [assignRoleFilter, setAssignRoleFilter] = useState<'all' | UserRole>('all');
   const [departments, setDepartments] = useState<string[]>([]);
+  const [showAllDepartments, setShowAllDepartments] = useState(false);
   const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
   const [userCache, setUserCache] = useState<Map<string, EmployeeSummary>>(new Map());
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
@@ -786,16 +787,16 @@ const TaskManagement: React.FC = () => {
           // HR can assign tasks to everyone
           return true;
         case 'manager':
-          return sameDepartment && ['team_lead', 'employee'].includes(emp.role);
+          return (showAllDepartments || sameDepartment) && (['team_lead', 'employee'].includes(emp.role) || !emp.role);
         case 'team_lead':
-          return sameDepartment && emp.role === 'employee';
+          return (showAllDepartments || sameDepartment) && (emp.role === 'employee' || !emp.role);
         case 'employee':
           return false;
         default:
           return false;
       }
     });
-  }, [extendedEmployees, user, userId, normalizedUserRole]);
+  }, [extendedEmployees, user, userId, normalizedUserRole, showAllDepartments]);
 
   const passEligibleEmployees = useMemo(() => {
     if (!user || !userId) return [] as EmployeeSummary[];
@@ -2652,10 +2653,25 @@ const TaskManagement: React.FC = () => {
                   </div>
 
                   <div className="space-y-3">
-                    <Label htmlFor="assignTo" className="text-sm font-semibold flex items-center gap-2">
-                      <User className="h-4 w-4 text-violet-600" />
-                      Assign To <span className="text-red-500">*</span>
-                    </Label>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="assignTo" className="text-sm font-semibold flex items-center gap-2">
+                        <User className="h-4 w-4 text-violet-600" />
+                        Assign To <span className="text-red-500">*</span>
+                      </Label>
+                      {['manager', 'team_lead'].includes(normalizedUserRole || '') && (
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="show-all-depts"
+                            checked={showAllDepartments}
+                            onCheckedChange={(checked) => setShowAllDepartments(!!checked)}
+                            className="data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
+                          />
+                          <Label htmlFor="show-all-depts" className="text-[10px] font-medium text-slate-500 cursor-pointer">
+                            Show All Departments
+                          </Label>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Assign To Filter / Search */}
                     <div className="relative mb-2">
