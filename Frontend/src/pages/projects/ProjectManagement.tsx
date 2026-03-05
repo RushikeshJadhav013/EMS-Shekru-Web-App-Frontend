@@ -54,11 +54,45 @@ import {
     AlertCircle,
     Briefcase,
     X,
-    ArchiveIcon
+    ArchiveIcon,
+    Video
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { formatDateIST } from '@/utils/timezone';
+
+const TASK_STATUSES = ['pending', 'in-progress', 'overdue', 'completed', 'cancelled', 'todo'] as const;
+type TaskStatus = typeof TASK_STATUSES[number];
+
+const PRIORITY_OPTIONS = ['Low', 'Medium', 'High'] as const;
+type Priority = typeof PRIORITY_OPTIONS[number];
+
+// Form-only type: supports multiple assignees per task row
+interface TaskFormRow {
+    task_name: string;
+    description: string;
+    assigned_to_ids: number[];
+    due_date: string;
+    status: TaskStatus;
+    priority: Priority;
+}
+
+const emptyTask = (): TaskFormRow => ({
+    task_name: '',
+    description: '',
+    assigned_to_ids: [],
+    due_date: '',
+    status: 'todo',
+    priority: 'Medium',
+});
+
+interface Employee {
+    user_id: number;
+    name: string;
+    email?: string;
+    role?: string;
+    department?: string;
+}
 
 // ─────────────────────────────────────────
 // Task form component — Multi-assignee
@@ -101,7 +135,21 @@ const TaskFormSection = ({
                                 onChange={e => updateTaskRow(index, 'due_date', e.target.value)}
                                 className="shadow-inner"
                             />
-                            <div className="flex gap-2 justify-end">
+                            <div className="flex gap-2">
+                                <Select
+                                    value={task.priority}
+                                    onValueChange={(v) => updateTaskRow(index, 'priority', v)}
+                                >
+                                    <SelectTrigger className="h-9 w-28 text-xs shadow-inner">
+                                        <SelectValue placeholder="Priority" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {PRIORITY_OPTIONS.map(opt => (
+                                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
                                 {taskList.length > 1 && (
                                     <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-red-50 hover:text-red-600" onClick={() => removeTaskRow(index)}>
                                         <Trash2 className="h-4 w-4" />
@@ -186,6 +234,15 @@ interface ProjectTask {
     status: 'pending' | 'in-progress' | 'overdue' | 'completed' | 'cancelled' | 'todo';
 }
 
+interface ProjectMeeting {
+    meeting_id: number;
+    title: string;
+    description?: string;
+    start_time: string;
+    end_time: string;
+    meeting_url: string;
+}
+
 
 interface Project {
     project_id: number;
@@ -201,35 +258,8 @@ interface Project {
     task_count?: number;
     members?: ProjectMember[];
     tasks?: ProjectTask[];
+    meetings?: ProjectMeeting[];
 }
-
-interface Employee {
-    user_id: number;
-    name: string;
-    email?: string;
-    role?: string;
-    department?: string;
-}
-
-const TASK_STATUSES = ['pending', 'in-progress', 'overdue', 'completed', 'cancelled', 'todo'] as const;
-type TaskStatus = typeof TASK_STATUSES[number];
-
-// Form-only type: supports multiple assignees per task row
-interface TaskFormRow {
-    task_name: string;
-    description: string;
-    assigned_to_ids: number[];
-    due_date: string;
-    status: TaskStatus;
-}
-
-const emptyTask = (): TaskFormRow => ({
-    task_name: '',
-    description: '',
-    assigned_to_ids: [],
-    due_date: '',
-    status: 'todo',
-});
 
 const normalizeStatus = (s?: string): string => {
     if (!s) return 'inprogress';
@@ -555,6 +585,15 @@ function ProjectCard({
                                 )}
                             </>
                         )}
+                        {/* Meetings */}
+                        {(project.meetings?.length ?? 0) > 0 && (
+                            <div className="flex items-center gap-1.5 bg-rose-50 dark:bg-rose-900/20 px-2.5 py-1 rounded-full">
+                                <Video className="h-3.5 w-3.5 text-rose-500" />
+                                <span className="text-xs font-medium text-rose-600 dark:text-rose-400">
+                                    {project.meetings?.length} Meeting{(project.meetings?.length ?? 0) !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                        )}
 
                         {/* Expand toggle */}
                         {(tasks.length > 0 || members.length > 0) && (
@@ -776,6 +815,7 @@ export default function ProjectManagement() {
                         assigned_to: uid,
                         due_date: t.due_date || undefined,
                         status: t.status,
+                        priority: t.priority,
                     });
                 }
             }
@@ -846,29 +886,37 @@ export default function ProjectManagement() {
     // ── Helper to fetch and normalize full project details ──
     const loadFullProjectDetails = async (projectId: number) => {
         try {
-            const [projectRes, membersRes, tasksRes] = await Promise.all([
+            const [projectRes, membersRes, tasksRes, meetingsRes] = await Promise.allSettled([
                 apiService.getProjectById(projectId),
                 apiService.getProjectMembers(projectId),
-                apiService.getProjectTasks(projectId)
+                apiService.getProjectTasks(projectId),
+                apiService.getProjectMeetings(projectId)
             ]);
 
             // Normalise Project Data
-            let projectData: any = projectRes;
-            if (projectRes?.project && typeof projectRes.project === 'object') {
-                projectData = projectRes.project;
-            } else if (projectRes?.data && typeof projectRes.data === 'object') {
-                projectData = projectRes.data;
+            const projectRaw = projectRes.status === 'fulfilled' ? projectRes.value : null;
+            let projectData: any = projectRaw;
+            if (projectRaw?.project && typeof projectRaw.project === 'object') {
+                projectData = projectRaw.project;
+            } else if (projectRaw?.data && typeof projectRaw.data === 'object') {
+                projectData = projectRaw.data;
             }
 
             // Normalise Members
-            const members = Array.isArray(membersRes) ? membersRes :
-                (Array.isArray(membersRes?.data) ? membersRes.data :
-                    (Array.isArray(membersRes?.members) ? membersRes.members : []));
+            const membersRaw = membersRes.status === 'fulfilled' ? membersRes.value : null;
+            const members = Array.isArray(membersRaw) ? membersRaw :
+                (Array.isArray(membersRaw?.data) ? membersRaw.data :
+                    (Array.isArray(membersRaw?.members) ? membersRaw.members : []));
 
             // Normalise Tasks
-            const tasks = Array.isArray(tasksRes) ? tasksRes :
-                (Array.isArray(tasksRes?.data) ? tasksRes.data :
-                    (Array.isArray(tasksRes?.tasks) ? tasksRes.tasks : []));
+            const tasksRaw = tasksRes.status === 'fulfilled' ? tasksRes.value : null;
+            const tasks = Array.isArray(tasksRaw) ? tasksRaw :
+                (Array.isArray(tasksRaw?.data) ? tasksRaw.data :
+                    (Array.isArray(tasksRaw?.tasks) ? tasksRaw.tasks : []));
+
+            // Normalise Meetings — getProjectMeetings returns any[] directly
+            const meetingsRaw = meetingsRes.status === 'fulfilled' ? meetingsRes.value : null;
+            const meetings: any[] = Array.isArray(meetingsRaw) ? meetingsRaw : [];
 
             const localProject = projects.find(p => p.project_id === projectId);
 
@@ -878,6 +926,7 @@ export default function ProjectManagement() {
                 project_id: projectId,
                 members: members.length > 0 ? members : (localProject?.members || []),
                 tasks: tasks.length > 0 ? tasks : (localProject?.tasks || []),
+                meetings: meetings.length > 0 ? meetings : (localProject?.meetings || []),
                 member_count: projectData?.member_count ?? members.length ?? localProject?.member_count ?? 0,
                 task_count: projectData?.task_count ?? tasks.length ?? localProject?.task_count ?? 0,
                 person_in_charge_name: projectData?.person_in_charge_name || projectData?.pic_name || localProject?.person_in_charge_name || localProject?.pic_name,
@@ -940,7 +989,7 @@ export default function ProjectManagement() {
                     description: task.description,
                     status: task.status,
                     due_date: task.due_date || undefined,
-                    // priority: task.priority,
+                    priority: task.priority,
                     assigned_to_ids: task.assigned_to_ids,
                     project_id: selectedProject.project_id
                 });
@@ -1356,6 +1405,64 @@ export default function ProjectManagement() {
                                                     ))}
                                                 </TableBody>
                                             </Table>
+                                        </div>
+                                    )}
+                                </section>
+
+                                {/* Meetings Section */}
+                                <section>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                            <Video className="h-5 w-5 text-rose-500" />
+                                            Project Meetings
+                                            <span className="bg-rose-100 dark:bg-rose-900/30 text-rose-600 text-[10px] px-2 py-0.5 rounded-full ml-1">
+                                                {selectedProject?.meetings?.length || 0}
+                                            </span>
+                                        </h3>
+                                    </div>
+
+                                    {!selectedProject?.meetings?.length ? (
+                                        <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 text-center border border-slate-100 dark:border-slate-800 border-dashed">
+                                            <Video className="h-10 w-10 text-slate-200 mx-auto mb-2" />
+                                            <p className="text-sm text-slate-400">No meetings scheduled for this project.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {selectedProject.meetings.map((meeting) => (
+                                                <div key={meeting.meeting_id} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
+                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{meeting.title}</p>
+                                                                <Badge variant="outline" className="text-[10px] uppercase font-bold text-rose-500 border-rose-200 bg-rose-50 dark:bg-rose-900/10">Meeting</Badge>
+                                                            </div>
+                                                            {meeting.description && <p className="text-xs text-slate-400 line-clamp-1 mb-2 italic">"{meeting.description}"</p>}
+                                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
+                                                                <span className="flex items-center gap-1.5 font-medium">
+                                                                    <CalendarDays className="h-3.5 w-3.5" />
+                                                                    {new Date(meeting.start_time).toLocaleDateString()}
+                                                                </span>
+                                                                <span className="flex items-center gap-1.5 font-medium">
+                                                                    <Clock className="h-3.5 w-3.5" />
+                                                                    {new Date(meeting.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                                            {meeting.meeting_url && (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-8 rounded-full text-xs font-bold border-rose-200 text-rose-600 hover:bg-rose-50 gap-1.5"
+                                                                    onClick={() => window.open(meeting.meeting_url, '_blank')}
+                                                                >
+                                                                    <Video className="h-3.5 w-3.5" /> Join Meeting
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
                                 </section>

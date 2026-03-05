@@ -155,9 +155,9 @@ export const LeaveBalanceProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Otherwise fallback to summing specific categories from balance
       const totalAllocated = allocationConfig
         ? (Number(allocationConfig.total_annual_leave ?? allocationConfig.totalAnnualLeave) || 0)
-        : (defaults.sick.allocated + defaults.annual.allocated + defaults.casual.allocated);
+        : (defaults.sick.allocated + defaults.casual.allocated);
 
-      const totalUsed = defaults.sick.used + defaults.annual.used + defaults.casual.used;
+      const totalUsed = defaults.sick.used + defaults.casual.used;
       const totalRemaining = Math.max(0, totalAllocated - totalUsed);
 
       defaults.annual = {

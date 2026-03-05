@@ -28,7 +28,7 @@ interface Employee {
 
 export default function ExportDialog({ open, onOpenChange, selectedEmployee }: ExportDialogProps) {
   const [exportFormat, setExportFormat] = useState<ExportFormat>('csv');
-  const [timeRange, setTimeRange] = useState<TimeRange>('monthly');
+  const [timeRange, setTimeRange] = useState<TimeRange>('custom');
   const [customStartDate, setCustomStartDate] = useState<Date>();
   const [customEndDate, setCustomEndDate] = useState<Date>();
   const [isExporting, setIsExporting] = useState(false);
@@ -70,7 +70,7 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
   const loadEmployees = async (department: string) => {
     setIsLoadingEmps(true);
     try {
-      const data = await apiService.getEmployeesByDepartment(department);
+      const data = await apiService.getEmployees(department);
       const emps = Array.isArray(data) ? data : data.employees || [];
       setEmployees(emps.map((emp: any) => ({
         id: emp.id || emp.user_id,
@@ -272,10 +272,6 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="monthly">Last Month</SelectItem>
-                  <SelectItem value="last3months">Last 3 Months</SelectItem>
-                  <SelectItem value="last6months">Last 6 Months</SelectItem>
-                  <SelectItem value="yearly">Last Year</SelectItem>
                   <SelectItem value="custom">Custom Date Range</SelectItem>
                 </SelectContent>
               </Select>

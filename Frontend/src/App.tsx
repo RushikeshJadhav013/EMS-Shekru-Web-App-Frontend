@@ -310,11 +310,6 @@ const App = () => {
                                     <ProjectManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/manager/reports" element={
-                                  <ProtectedRoute allowedRoles={['manager']}>
-                                    <Reports />
-                                  </ProtectedRoute>
-                                } />
                                 <Route path="/manager/profile" element={
                                   <ProtectedRoute allowedRoles={['manager']}>
                                     <Profile />
@@ -365,11 +360,6 @@ const App = () => {
                                 <Route path="/team_lead/teams" element={
                                   <ProtectedRoute allowedRoles={['team_lead']}>
                                     <TeamManagement />
-                                  </ProtectedRoute>
-                                } />
-                                <Route path="/team_lead/reports" element={
-                                  <ProtectedRoute allowedRoles={['team_lead']}>
-                                    <Reports />
                                   </ProtectedRoute>
                                 } />
                                 <Route path="/team_lead/projects" element={
@@ -442,11 +432,6 @@ const App = () => {
                                 <Route path="/employee/chat/*" element={
                                   <ProtectedRoute allowedRoles={['employee']}>
                                     <Chat />
-                                  </ProtectedRoute>
-                                } />
-                                <Route path="/employee/reports" element={
-                                  <ProtectedRoute allowedRoles={['employee']}>
-                                    <Reports />
                                   </ProtectedRoute>
                                 } />
                               </Route>

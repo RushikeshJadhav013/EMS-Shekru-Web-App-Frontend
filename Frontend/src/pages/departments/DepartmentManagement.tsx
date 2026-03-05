@@ -563,7 +563,7 @@ export default function BranchManagement() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                Branch Management
+                Department Management
               </h1>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                 Organize teams, assign managers, and maintain your company structure.
@@ -588,14 +588,14 @@ export default function BranchManagement() {
               <DialogTrigger asChild>
                 <Button className="gap-2 bg-blue-600 hover:bg-blue-700 text-white">
                   <Plus className="h-4 w-4" />
-                  New Branch
+                  New Department
                 </Button>
               </DialogTrigger>
               <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] p-0 border-2 shadow-2xl flex flex-col">
                 <div className="px-6 pt-6 pb-2">
                   <DialogHeader>
                     <DialogTitle className="text-xl font-semibold">
-                      Create New Branch
+                      Create New Department
                     </DialogTitle>
                   </DialogHeader>
                 </div>
@@ -631,7 +631,7 @@ export default function BranchManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
-                    Total Branches
+                    Total Departments
                   </p>
                   <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{departments.length}</p>
                 </div>
@@ -647,7 +647,7 @@ export default function BranchManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
-                    Active Branches
+                    Active Departments
                   </p>
                   <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{activeBranchs}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
@@ -684,9 +684,9 @@ export default function BranchManagement() {
         <CardHeader className="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
           <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Branches</CardTitle>
+              <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Departments</CardTitle>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                Search, filter, and manage branches across your organization.
+                Search, filter, and manage departments across your organization.
               </p>
             </div>
             <div className="flex flex-wrap gap-4 w-full xl:w-auto">
@@ -695,7 +695,7 @@ export default function BranchManagement() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
-                    placeholder="Search branches..."
+                    placeholder="Search departments..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                     className="pl-10 border-slate-300 dark:border-slate-600 h-10"
@@ -724,7 +724,7 @@ export default function BranchManagement() {
               <TableHeader className="bg-slate-50 dark:bg-slate-800">
                 <TableRow>
                   <TableHead className="w-[100px] px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">Code</TableHead>
-                  <TableHead className="px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">Branch</TableHead>
+                  <TableHead className="px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">Department</TableHead>
                   <TableHead className="px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">Manager</TableHead>
                   <TableHead className="px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">Employees</TableHead>
                   <TableHead className="px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">Location</TableHead>
@@ -738,7 +738,7 @@ export default function BranchManagement() {
                     <TableCell colSpan={7} className="py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                        <p className="text-sm text-slate-500 dark:text-slate-400">Loading branches...</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Loading departments...</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -747,7 +747,7 @@ export default function BranchManagement() {
                     <TableCell colSpan={7} className="py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Building2 className="h-12 w-12 text-slate-300 dark:text-slate-600" />
-                        <p className="text-sm text-slate-500 dark:text-slate-400">No branches match your filters.</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">No departments match your filters.</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -917,7 +917,7 @@ export default function BranchManagement() {
         <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] p-0 flex flex-col">
           <div className="px-6 pt-6 pb-2">
             <DialogHeader>
-              <DialogTitle className="text-xl font-semibold">Edit Branch</DialogTitle>
+              <DialogTitle className="text-xl font-semibold">Edit Department</DialogTitle>
             </DialogHeader>
           </div>
           <div className="overflow-y-auto px-6 pb-6 flex-1">
@@ -952,7 +952,7 @@ export default function BranchManagement() {
                 <Building2 className="h-5 w-5 text-white" />
               </div>
               <div>
-                <span>Branch Details</span>
+                <span>Department Details</span>
                 <p className="text-sm text-slate-500 dark:text-slate-400 font-normal mt-1">
                   Complete information about this department
                 </p>
@@ -964,13 +964,13 @@ export default function BranchManagement() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <Label className="text-sm font-medium text-slate-600 dark:text-slate-400">Branch Name</Label>
+                    <Label className="text-sm font-medium text-slate-600 dark:text-slate-400">Department Name</Label>
                     <p className="text-base font-semibold text-slate-900 dark:text-white mt-1 bg-slate-50 dark:bg-slate-800 px-3 py-2 rounded border border-slate-200 dark:border-slate-700">
                       {viewBranch.name}
                     </p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-slate-600 dark:text-slate-400">Branch Code</Label>
+                    <Label className="text-sm font-medium text-slate-600 dark:text-slate-400">Department Code</Label>
                     <div className="mt-1">
                       <Badge variant="outline" className="font-mono font-bold">
                         {viewBranch.code}
@@ -1062,7 +1062,7 @@ export default function BranchManagement() {
               }}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              Edit Branch
+              Edit Department
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1134,7 +1134,7 @@ function BranchForm({
         <div className="grid sm:grid-cols-2 gap-5">
           <div className="space-y-2.5">
             <Label htmlFor="name" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Branch Name <span className="text-red-500">*</span>
+              Department Name <span className="text-red-500">*</span>
             </Label>
             <Input
               id="name"
@@ -1146,7 +1146,7 @@ function BranchForm({
           </div>
           <div className="space-y-2">
             <Label htmlFor="code" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Branch Code <span className="text-red-500">*</span>
+              Department Code <span className="text-red-500">*</span>
             </Label>
             <Input
               id="code"
@@ -1183,7 +1183,7 @@ function BranchForm({
         <div className="grid sm:grid-cols-2 gap-5">
           <div className="space-y-2.5">
             <Label htmlFor="manager" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Branch Manager
+              Department Manager
             </Label>
             <Select
               value={formData.manager_id}
@@ -1255,7 +1255,7 @@ function BranchForm({
         <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-700">
           <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
           <div>
-            <p className="text-base font-semibold text-slate-900 dark:text-white">Branch Size</p>
+            <p className="text-base font-semibold text-slate-900 dark:text-white">Department Size</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Track headcount for this department
             </p>
@@ -1343,7 +1343,7 @@ function BranchForm({
               Saving...
             </>
           ) : (
-            <>{isCreateMode ? 'Create Branch' : 'Save Changes'}</>
+            <>{isCreateMode ? 'Create Department' : 'Save Changes'}</>
           )}
         </Button>
       </DialogFooter>

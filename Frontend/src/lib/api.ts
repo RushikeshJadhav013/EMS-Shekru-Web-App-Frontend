@@ -830,6 +830,8 @@ class ApiService {
     interview_mode: string;
     location_or_link: string;
     interviewer_name: string;
+    panel_members?: number[];
+    round_type?: string;
   }) {
     return this.request(`/hiring/candidates/${candidateId}/shortlist`, {
       method: 'PUT',
@@ -1145,6 +1147,16 @@ class ApiService {
     });
 
     return this.download(`/reports/export?${query.toString()}`);
+  }
+
+  async updateBulkEmployeeStatus(userIds: number[], isActive: boolean) {
+    return this.request('/employees/status', {
+      method: 'PUT',
+      body: JSON.stringify({
+        user_ids: userIds,
+        is_active: isActive
+      }),
+    });
   }
 
   async exportLeaveReport(params: {

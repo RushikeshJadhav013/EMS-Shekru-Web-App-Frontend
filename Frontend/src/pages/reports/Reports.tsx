@@ -114,11 +114,6 @@ export default function Reports() {
   const [departments, setDepartments] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Leave report states
-  const [leaveStartDate, setLeaveStartDate] = useState(formatIST(new Date(parseInt(selectedYear), parseInt(selectedMonth), 1), 'yyyy-MM-dd'));
-  const [leaveEndDate, setLeaveEndDate] = useState(formatIST(new Date(parseInt(selectedYear), parseInt(selectedMonth) + 1, 0), 'yyyy-MM-dd'));
-  const [leaveDepartment, setLeaveDepartment] = useState('all');
-  const [leaveFormat, setLeaveFormat] = useState<'pdf' | 'csv'>('pdf');
 
   // Load ratings from localStorage on mount
   useEffect(() => {
@@ -625,13 +620,6 @@ export default function Reports() {
             >
               <BarChart3 className="h-4 w-4 mr-1.5" />
               Executive Summary
-            </TabsTrigger>
-            <TabsTrigger
-              value="leave"
-              className="h-9 text-sm font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:shadow-sm transition-all"
-            >
-              <CalendarIcon className="h-4 w-4 mr-1.5" />
-              Leave Reports
             </TabsTrigger>
           </TabsList>
 
@@ -1222,143 +1210,8 @@ export default function Reports() {
                   )}
                 </div>
 
-                {/* Export Actions */}
-                <div className="flex flex-wrap items-center justify-end gap-4 pt-6">
-                  <Button variant="ghost" size="sm" onClick={() => handleQuickExport('csv')} className="h-10 text-xs font-black text-slate-500 hover:text-slate-900 dark:hover:text-white tracking-widest">
-                    <FileSpreadsheet className="h-4 w-4 mr-2" />
-                    GENERATE CSV
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleQuickExport('pdf')} className="h-10 text-xs font-black text-slate-500 hover:text-slate-900 dark:hover:text-white tracking-widest">
-                    <FileText className="h-4 w-4 mr-2" />
-                    GENERATE PDF
-                  </Button>
-                  <Button onClick={() => openExportDialog()} className="h-10 px-6 text-xs font-black bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800 shadow-xl transition-all hover:scale-[1.02] tracking-widest">
-                    <Download className="h-4 w-4 mr-2" />
-                    ADVANCED EXPORT
-                  </Button>
-                </div>
               </div>
             )}
-          </TabsContent>
-          <TabsContent value="leave" className="mt-0 outline-none">
-            <Card className="border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-              <CardHeader className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
-                    <Calendar className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                  </div>
-                  <CardTitle className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Export Leave Report</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold">Start Date</Label>
-                    <Input
-                      type="date"
-                      value={leaveStartDate}
-                      onChange={(e) => setLeaveStartDate(e.target.value)}
-                      className="bg-white dark:bg-slate-950"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold">End Date</Label>
-                    <Input
-                      type="date"
-                      value={leaveEndDate}
-                      onChange={(e) => setLeaveEndDate(e.target.value)}
-                      className="bg-white dark:bg-slate-950"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold">Department</Label>
-                    <Select value={leaveDepartment} onValueChange={setLeaveDepartment}>
-                      <SelectTrigger className="bg-white dark:bg-slate-950">
-                        <SelectValue placeholder="All Departments" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Branches</SelectItem>
-                        {departments.map(dept => (
-                          <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold">Format</Label>
-                    <Select value={leaveFormat} onValueChange={(val: 'pdf' | 'csv') => setLeaveFormat(val)}>
-                      <SelectTrigger className="bg-white dark:bg-slate-950">
-                        <SelectValue placeholder="PDF" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pdf">PDF Document</SelectItem>
-                        <SelectItem value="csv">CSV Spreadsheet</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="mt-8 flex flex-wrap gap-4">
-                  <Button
-                    onClick={async () => {
-                      try {
-                        setIsLoading(true);
-                        const blob = await apiService.exportLeaveReport({
-                          format: leaveFormat,
-                          start_date: leaveStartDate,
-                          end_date: leaveEndDate,
-                          department: leaveDepartment === 'all' ? undefined : leaveDepartment
-                        });
-
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `leave_report_${leaveStartDate}_to_${leaveEndDate}.${leaveFormat}`;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        window.URL.revokeObjectURL(url);
-
-                        toast({
-                          title: 'Success',
-                          description: 'Leave report generated successfully.',
-                        });
-                      } catch (error: any) {
-                        console.error('Leave report error:', error);
-                        toast({
-                          title: 'Error',
-                          description: error.message || 'Failed to generate leave report.',
-                          variant: 'destructive',
-                        });
-                      } finally {
-                        setIsLoading(false);
-                      }
-                    }}
-                    className="bg-orange-600 hover:bg-orange-700 text-white font-bold h-11 px-8 rounded-xl shadow-lg shadow-orange-200 dark:shadow-none transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="h-4 w-4 mr-2" />
-                        Download Leave Report
-                      </>
-                    )}
-                  </Button>
-
-                  <div className="flex-1 flex items-center gap-3 p-4 bg-orange-50/50 dark:bg-orange-950/20 rounded-xl border border-orange-100 dark:border-orange-900/30">
-                    <Activity className="h-5 w-5 text-orange-500 shrink-0" />
-                    <p className="text-xs text-orange-800 dark:text-orange-300 font-medium">
-                      Report includes leave counts, types, and approval status across the selected period and departments.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
 

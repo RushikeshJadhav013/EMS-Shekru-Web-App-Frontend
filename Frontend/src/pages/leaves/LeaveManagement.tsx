@@ -54,7 +54,9 @@ import {
   Timer,
   Pencil,
   Trash2,
-  ChevronRight
+  ChevronRight,
+  Loader2,
+  Download
 } from 'lucide-react';
 
 interface LeaveRequest {
@@ -180,6 +182,13 @@ export default function LeaveManagement() {
   // Pagination states for My Leave History
   const [myLeaveCurrentPage, setMyLeaveCurrentPage] = useState(1);
   const [myLeaveItemsPerPage, setMyLeaveItemsPerPage] = useState(10);
+
+  // Leave export states
+  const [leaveStartDate, setLeaveStartDate] = useState(formatIST(new Date(nowIST().getFullYear(), nowIST().getMonth(), 1), 'yyyy-MM-dd'));
+  const [leaveEndDate, setLeaveEndDate] = useState(formatIST(new Date(nowIST().getFullYear(), nowIST().getMonth() + 1, 0), 'yyyy-MM-dd'));
+  const [leaveDepartment, setLeaveDepartment] = useState('all');
+  const [leaveFormat, setLeaveFormat] = useState<'pdf' | 'csv'>('pdf');
+  const [isExportLoading, setIsExportLoading] = useState(false);
 
   // Holiday dialog state
   const [selectedHoliday, setSelectedHoliday] = useState<typeof holidays[0] | null>(null);
@@ -567,7 +576,8 @@ export default function LeaveManagement() {
   }, [user?.department, user?.role, weekOffConfig, weekOffForm.department, weekOffForm.days]);
 
   const canApproveLeaves = ['admin', 'hr', 'manager'].includes(user?.role || '');
-  const canViewTeamLeaves = [].includes(user?.role || '');
+  const canViewTeamLeaves = ['team_lead'].includes(user?.role || '');
+  const canExport = ['admin', 'hr'].includes(user?.role || '');
   // Admins should not have an option to apply for leave from the admin dashboard
   const canApply = user?.role !== 'admin';
 
@@ -673,8 +683,8 @@ export default function LeaveManagement() {
     const sick = leaveAllocationConfig.sick_leave_allocation;
     const casual = leaveAllocationConfig.casual_leave_allocation;
     const other = leaveAllocationConfig.other_leave_allocation;
-    // Enforce Total = Sick + Casual + Other
-    const total = sick + casual + other;
+    // Enforce Total = Sick + Casual (Other leave is excluded from annual total)
+    const total = sick + casual;
 
     if (total < 1) {
       toast({
@@ -880,9 +890,7 @@ export default function LeaveManagement() {
       }, 300);
     }
   }, [searchParams]);
-  // compute visible tabs count and columns class for the TabsList
-  const tabsCount = (canApply ? 1 : 0) + ((canApproveLeaves || canViewTeamLeaves) ? 1 : 0) + 1; // calendar always present
-  const colsClass = tabsCount === 3 ? 'grid-cols-3' : (tabsCount === 2 ? 'grid-cols-2' : 'grid-cols-1');
+  // Tabs and permission logic consolidated below near line 1560
 
   const handleSubmitRequest = async () => {
     if (!user?.id) {
@@ -1552,9 +1560,25 @@ export default function LeaveManagement() {
   }, [leaveRequests, user?.id, leaveHistoryPeriod, leaveHistoryCustomStartDate, leaveHistoryCustomEndDate]);
 
   // Calculate true totals across all leave types since annual might only represent the annual bucket
-  const totalAllocated = (leaveBalance.annual.allocated || 0) + (leaveBalance.sick.allocated || 0) + (leaveBalance.casual.allocated || 0);
-  const totalUsed = (leaveBalance.annual.used || 0) + (leaveBalance.sick.used || 0) + (leaveBalance.casual.used || 0);
+  const totalAllocated = leaveBalance.annual.allocated || 0;
+  const totalUsed = leaveBalance.annual.used || 0;
   const totalRemaining = Math.max(0, totalAllocated - totalUsed);
+
+  // Calculate total columns for tabs based on user permissions
+  const colsClass = useMemo(() => {
+    let count = 1; // Start with 'Leave Calendar' which is always visible
+    if (canApply) count++;
+    if (canApproveLeaves || canViewTeamLeaves) count++;
+    if (canExport) count++;
+
+    switch (count) {
+      case 1: return 'grid-cols-1';
+      case 2: return 'grid-cols-2';
+      case 3: return 'grid-cols-3';
+      case 4: return 'grid-cols-4';
+      default: return 'grid-cols-4';
+    }
+  }, [canApply, canApproveLeaves, canViewTeamLeaves, canExport]);
 
   return (
     <div className="w-full space-y-6">
@@ -1603,6 +1627,14 @@ export default function LeaveManagement() {
           >
             Leave Calendar
           </TabsTrigger>
+          {canExport && (
+            <TabsTrigger
+              value="export"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-amber-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+            >
+              Export
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {canApply && (
@@ -2110,7 +2142,7 @@ export default function LeaveManagement() {
                           placeholder="Calculated automatically"
                         />
                         <p className="text-xs text-muted-foreground">
-                          Total days (Sick + Casual + Other)
+                          Total days (Sick + Casual)
                         </p>
                       </div>
 
@@ -2128,7 +2160,7 @@ export default function LeaveManagement() {
                             setLeaveAllocationConfig((prev) => ({
                               ...prev,
                               sick_leave_allocation: val,
-                              total_annual_leave: val + prev.casual_leave_allocation + prev.other_leave_allocation,
+                              total_annual_leave: val + prev.casual_leave_allocation,
                             }));
                           }}
                           className="border-2 border-red-200 dark:border-red-800 focus:border-red-500"
@@ -2153,7 +2185,7 @@ export default function LeaveManagement() {
                             setLeaveAllocationConfig((prev) => ({
                               ...prev,
                               casual_leave_allocation: val,
-                              total_annual_leave: prev.sick_leave_allocation + val + prev.other_leave_allocation,
+                              total_annual_leave: prev.sick_leave_allocation + val,
                             }));
                           }}
                           className="border-2 border-green-200 dark:border-green-800 focus:border-green-500"
@@ -2178,7 +2210,7 @@ export default function LeaveManagement() {
                             setLeaveAllocationConfig((prev) => ({
                               ...prev,
                               other_leave_allocation: val,
-                              total_annual_leave: prev.sick_leave_allocation + prev.casual_leave_allocation + val,
+                              total_annual_leave: prev.sick_leave_allocation + prev.casual_leave_allocation,
                             }));
                           }}
                           className="border-2 border-gray-200 dark:border-gray-800 focus:border-gray-500"
@@ -2895,6 +2927,128 @@ export default function LeaveManagement() {
                         )}
                       </div>
                     )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+        {['admin', 'hr'].includes(user?.role || '') && (
+          <TabsContent value="export" className="space-y-4">
+            <Card className="border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+              <CardHeader className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
+                    <CalendarIcon className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <CardTitle className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Export Leave Report</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Start Date</Label>
+                    <Input
+                      type="date"
+                      value={leaveStartDate}
+                      onChange={(e) => setLeaveStartDate(e.target.value)}
+                      className="bg-white dark:bg-slate-950"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">End Date</Label>
+                    <Input
+                      type="date"
+                      value={leaveEndDate}
+                      onChange={(e) => setLeaveEndDate(e.target.value)}
+                      className="bg-white dark:bg-slate-950"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Department</Label>
+                    <Select value={leaveDepartment} onValueChange={setLeaveDepartment}>
+                      <SelectTrigger className="bg-white dark:bg-slate-950">
+                        <SelectValue placeholder="All Departments" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Branches</SelectItem>
+                        {companyDepartments.map(dept => (
+                          <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Format</Label>
+                    <Select value={leaveFormat} onValueChange={(val: 'pdf' | 'csv') => setLeaveFormat(val)}>
+                      <SelectTrigger className="bg-white dark:bg-slate-950">
+                        <SelectValue placeholder="PDF" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pdf">PDF Document</SelectItem>
+                        <SelectItem value="csv">CSV Spreadsheet</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="mt-8 flex flex-wrap gap-4">
+                  <Button
+                    onClick={async () => {
+                      try {
+                        setIsExportLoading(true);
+                        const blob = await apiService.exportLeaveReport({
+                          format: leaveFormat,
+                          start_date: leaveStartDate,
+                          end_date: leaveEndDate,
+                          department: leaveDepartment === 'all' ? undefined : leaveDepartment
+                        });
+
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `leave_report_${leaveStartDate}_to_${leaveEndDate}.${leaveFormat}`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+
+                        toast({
+                          title: 'Success',
+                          description: 'Leave report generated successfully.',
+                        });
+                      } catch (error: any) {
+                        console.error('Leave report error:', error);
+                        toast({
+                          title: 'Error',
+                          description: error.message || 'Failed to generate leave report.',
+                          variant: 'destructive',
+                        });
+                      } finally {
+                        setIsExportLoading(false);
+                      }
+                    }}
+                    className="bg-orange-600 hover:bg-orange-700 text-white font-bold h-11 px-8 rounded-xl shadow-lg shadow-orange-200 dark:shadow-none transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    disabled={isExportLoading}
+                  >
+                    {isExportLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download Leave Report
+                      </>
+                    )}
+                  </Button>
+
+                  <div className="flex-1 flex items-center gap-3 p-4 bg-orange-50/50 dark:bg-orange-950/20 rounded-xl border border-orange-100 dark:border-orange-900/30">
+                    <AlertCircle className="h-5 w-5 text-orange-500 shrink-0" />
+                    <p className="text-xs text-orange-800 dark:text-orange-300 font-medium">
+                      Report includes leave counts, types, and approval status across the selected period and departments.
+                    </p>
                   </div>
                 </div>
               </CardContent>

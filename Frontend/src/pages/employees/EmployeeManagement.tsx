@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Pagination } from '@/components/ui/pagination';
 import { toast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Command,
@@ -338,6 +338,7 @@ export default function EmployeeManagement() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [branchs, setDepartments] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -406,10 +407,11 @@ export default function EmployeeManagement() {
 
   // Export filters
   const [exportFilters, setExportFilters] = useState({
-    branch: 'all',
-    role: 'all',
     status: 'all'
   });
+
+  // State for highlighting the Add Employee form
+  const [shouldHighlight, setShouldHighlight] = useState(false);
 
   // API states
   const [isLoading, setIsLoading] = useState(false);
@@ -534,6 +536,29 @@ export default function EmployeeManagement() {
     fetchEmployees();
     fetchDepartments();
   }, [fetchEmployees, fetchDepartments]);
+
+  // Auto-open create dialog when navigated from "Add Employee" button on dashboard
+  useEffect(() => {
+    if (location.pathname.endsWith('/new') || location.pathname.endsWith('/new/')) {
+      setIsCreateDialogOpen(true);
+
+      // If navigated from dashboard Add Employee button, trigger highlight
+      if (location.state?.highlight) {
+        setShouldHighlight(true);
+        // Clear the highlight after 3 seconds
+        const timer = setTimeout(() => {
+          setShouldHighlight(false);
+        }, 3000);
+
+        // Clear the location state to prevent flickering on reload
+        navigate(location.pathname, { replace: true, state: {} });
+
+        return () => clearTimeout(timer);
+      }
+    } else {
+      setShouldHighlight(false);
+    }
+  }, [location.pathname, location.state, navigate]);
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(emp => {
@@ -1212,7 +1237,6 @@ export default function EmployeeManagement() {
 
     setIsBulkProcessing(true);
     const isActive = newStatus === 'active';
-    let successCount = 0;
 
     try {
       toast({
@@ -1220,26 +1244,22 @@ export default function EmployeeManagement() {
         description: `Processing ${selectedIds.length} employees...`,
       });
 
-      for (const id of selectedIds) {
-        try {
-          await apiService.updateEmployeeStatus(id, isActive);
-          successCount++;
-        } catch (err) {
-          console.error(`Failed to update status for ${id}:`, err);
-        }
-      }
+      await apiService.updateBulkEmployeeStatus(
+        selectedIds.map(id => parseInt(id)),
+        isActive
+      );
 
       await fetchEmployees();
       setSelectedIds([]);
 
       toast({
         title: 'Update Complete',
-        description: `Successfully updated ${successCount} employees.`
+        description: `Successfully updated ${selectedIds.length} employees.`
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'Failed to complete bulk update',
+        description: error.message || 'Failed to complete bulk update',
         variant: 'destructive'
       });
     } finally {
@@ -1322,14 +1342,14 @@ export default function EmployeeManagement() {
       const name = (data.name || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       const email = (data.email || '').trim();
       const emailKey = email.toLowerCase();
-      const branch = (data.branch || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
+      const branch = (data.department || data.branch || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       const role = normalizeRole(data.role);
       const designation = (data.designation || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       const address = (data.address || '').trim();
       const joiningDate = data.joiningdate || '';
       const status = data.status || '';
       const gender = (data.gender || '').trim();
-      const employeeType = normalizeEmployeeType(data.employeetype);
+      const employeeType = normalizeEmployeeType(data.employee || data.employeetype);
       const resignationDate = data.resignationdate || '';
       const panCard = (data.pancard || '').toUpperCase();
       const aadharCard = (data.aadharcard || '').trim();
@@ -1355,7 +1375,7 @@ export default function EmployeeManagement() {
       if (!joiningDate) errors.push('JoiningDate is required');
       if (!status) errors.push('Status is required');
       if (!gender) errors.push('Gender is required');
-      if (!employeeType) errors.push('EmployeeType is required');
+      if (!employeeType) errors.push('Employee (Type) is required');
       if (!panCard) errors.push('PANCard is required');
       if (panCard && !isValidPan(panCard)) {
         errors.push('PAN card format is invalid (must be like ABCDE1234F)');
@@ -1510,7 +1530,7 @@ export default function EmployeeManagement() {
       'EmployeeID',
       'Name',
       'Email',
-      'Branch',
+      'Department',
       'Role',
       'Designation',
       'Phone',
@@ -1518,7 +1538,7 @@ export default function EmployeeManagement() {
       'JoiningDate',
       'Status',
       'Gender',
-      'EmployeeType',
+      'Employee',
       'PANCard',
       'AadharCard',
       'Shift'
@@ -1532,7 +1552,7 @@ export default function EmployeeManagement() {
       'Employee',
       'Software Engineer',
       '9876543210',
-      '123 Street Name, City, State, 123456',
+      '123 Main Street, City Name, State, 123456',
       '2024-01-15',
       'active',
       'male',
@@ -2045,7 +2065,7 @@ export default function EmployeeManagement() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <CardTitle className="text-lg font-semibold">Employee Directory</CardTitle>
-              {selectedIds.length > 0 && (
+              {selectedIds.length > 0 && getInternalRole(user?.role || '') !== 'hr' && (
                 <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/40 px-3 py-1.5 rounded-lg border border-blue-100 dark:border-blue-900 animate-in fade-in slide-in-from-left-2 transition-all">
                   <span className="text-sm font-medium text-blue-700 dark:text-blue-300 mr-2">
                     {selectedIds.length} selected
@@ -2088,7 +2108,12 @@ export default function EmployeeManagement() {
                   Add User
                 </Button>
               </DialogTrigger>
-              <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] border-2 shadow-2xl flex flex-col">
+              <DialogContent
+                className={cn(
+                  "w-[95vw] max-w-[500px] max-h-[90vh] border-2 shadow-2xl flex flex-col transition-all duration-500",
+                  shouldHighlight && "ring-4 ring-blue-400 ring-opacity-70 border-blue-500 shadow-[0_0_25px_rgba(59,130,246,0.6)] scale-[1.01] animate-pulse"
+                )}
+              >
                 <DialogHeader className="pb-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 -m-6 mb-0 p-6 rounded-t-lg flex-shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
@@ -2771,13 +2796,15 @@ export default function EmployeeManagement() {
             <Table>
               <TableHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
                 <TableRow className="hover:bg-transparent border-b-2">
-                  <TableHead className="w-[50px] px-4">
-                    <Checkbox
-                      checked={selectedIds.length === filteredEmployees.length && filteredEmployees.length > 0}
-                      onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                      aria-label="Select all"
-                    />
-                  </TableHead>
+                  {getInternalRole(user?.role || '') !== 'hr' && (
+                    <TableHead className="w-[50px] px-4">
+                      <Checkbox
+                        checked={selectedIds.length === filteredEmployees.length && filteredEmployees.length > 0}
+                        onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
+                  )}
                   <TableHead className="w-[60px] hidden sm:table-cell font-semibold">Photo</TableHead>
                   <TableHead className="font-semibold">Employee ID</TableHead>
                   <TableHead className="font-semibold">Name</TableHead>
@@ -2807,13 +2834,15 @@ export default function EmployeeManagement() {
                 ) : (
                   paginatedEmployees.map((employee) => (
                     <TableRow key={employee.employeeId} className="hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors border-b">
-                      <TableCell className="px-4">
-                        <Checkbox
-                          checked={selectedIds.includes(employee.id.toString())}
-                          onCheckedChange={(checked) => handleSelectEmployee(employee.id, !!checked)}
-                          aria-label={`Select ${employee.name}`}
-                        />
-                      </TableCell>
+                      {getInternalRole(user?.role || '') !== 'hr' && (
+                        <TableCell className="px-4">
+                          <Checkbox
+                            checked={selectedIds.includes(employee.id.toString())}
+                            onCheckedChange={(checked) => handleSelectEmployee(employee.id, !!checked)}
+                            aria-label={`Select ${employee.name}`}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="hidden sm:table-cell">
                         <Avatar className="h-10 w-10 border-2 border-blue-200 dark:border-blue-800">
                           <AvatarImage src={employee.photoUrl} alt={employee.name} />
