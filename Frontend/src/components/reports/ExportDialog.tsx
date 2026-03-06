@@ -279,7 +279,7 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
 
             {/* Department Selection */}
             <div className="space-y-2">
-              <Label className="text-sm font-semibold">Select Branch</Label>
+              <Label className="text-sm font-semibold">Select Department</Label>
               <Select value={selectedDepartment} onValueChange={setSelectedDepartment} disabled={isLoadingDepts}>
                 <SelectTrigger>
                   <SelectValue />

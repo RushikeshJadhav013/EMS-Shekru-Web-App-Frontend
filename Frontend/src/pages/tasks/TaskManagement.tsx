@@ -2392,17 +2392,17 @@ const TaskManagement: React.FC = () => {
                       <div className="space-y-2">
                         <Label htmlFor="assignDeptFilter" className="text-sm font-semibold flex items-center gap-2">
                           <Building2 className="h-4.4 w-4.5 text-violet-600" />
-                          Filter Branch
+                          Filter Department
                         </Label>
                         <Select
                           value={newTask.department || 'all'}
                           onValueChange={(value) => setNewTask({ ...newTask, department: value === 'all' ? '' : value })}
                         >
                           <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                            <SelectValue placeholder="All Branches" />
+                            <SelectValue placeholder="All Departments" />
                           </SelectTrigger>
                           <SelectContent className="border-2 shadow-xl" side="bottom">
-                            <SelectItem value="all">All Branches</SelectItem>
+                            <SelectItem value="all">All Departments</SelectItem>
                             {CORE_DEPARTMENTS
                               .slice()
                               .sort((a, b) => a.localeCompare(b))
@@ -2814,13 +2814,13 @@ const TaskManagement: React.FC = () => {
               {/* Department Filter - Show when viewing All Tasks for Admin only */}
               {taskOwnershipFilter === 'all' && normalizedUserRole === 'admin' && (
                 <div className="flex flex-col gap-2">
-                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Branch</Label>
+                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Department</Label>
                   <Select
                     value={selectedDepartmentFilter}
                     onValueChange={setSelectedDepartmentFilter}
                   >
                     <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white dark:bg-gray-950">
-                      <SelectValue placeholder="Select Branch" />
+                      <SelectValue placeholder="Select Department" />
                     </SelectTrigger>
                     <SelectContent>
                       {normalizedUserRole === 'admin' && (
