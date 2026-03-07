@@ -95,23 +95,6 @@ const ROLE_ORDER: UserRole[] = [
   "employee",
 ];
 
-const CORE_DEPARTMENTS = [
-  "Engineering",
-  "Product",
-  "Design",
-  "Marketing",
-  "Sales",
-  "HR",
-  "Human Resources",
-  "Finance",
-  "Operations",
-  "Legal",
-  "Customer Support",
-  "IT",
-  "Administration",
-  "Management",
-];
-
 type BackendTask = {
   task_id: number;
   title: string;
@@ -668,9 +651,19 @@ const TaskManagement: React.FC = () => {
 
       const uniqueDepartments = new Set<string>();
       formatted.forEach((emp) => {
-        if (emp.department) uniqueDepartments.add(emp.department);
+        if (emp.department) {
+          emp.department.split(",").forEach((d) => {
+            const trimmed = d.trim();
+            if (trimmed) uniqueDepartments.add(trimmed);
+          });
+        }
       });
-      if (user?.department) uniqueDepartments.add(user.department);
+      if (user?.department) {
+        user.department.split(",").forEach((d) => {
+          const trimmed = d.trim();
+          if (trimmed) uniqueDepartments.add(trimmed);
+        });
+      }
       setDepartments(Array.from(uniqueDepartments));
     } catch (error) {
       console.error("Failed to fetch employees", error);
@@ -2950,7 +2943,9 @@ const TaskManagement: React.FC = () => {
                             side="bottom"
                           >
                             <SelectItem value="all">All Departments</SelectItem>
-                            {CORE_DEPARTMENTS.slice()
+                            {departments
+                              .slice()
+                              .filter((dept) => dept && dept.trim() !== "")
                               .sort((a, b) => a.localeCompare(b))
                               .map((dept) => (
                                 <SelectItem key={dept} value={dept}>
@@ -3573,12 +3568,7 @@ const TaskManagement: React.FC = () => {
                           <SelectItem value="all">All Departments</SelectItem>
                         )}
                         {departments
-                          .filter((dept) =>
-                            CORE_DEPARTMENTS.some(
-                              (core) =>
-                                core.toLowerCase() === dept.toLowerCase(),
-                            ),
-                          )
+                          .filter((dept) => dept && dept.trim() !== "")
                           .sort((a, b) => a.localeCompare(b))
                           .map((dept) => (
                             <SelectItem key={dept} value={dept}>

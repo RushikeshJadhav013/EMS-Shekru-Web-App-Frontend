@@ -1682,10 +1682,7 @@ class ApiService {
     return this.request("/calendar/weekoffs");
   }
 
-  async createWeekoff(data: {
-    department: string;
-    days: string[];
-  }): Promise<{
+  async createWeekoff(data: { department: string; days: string[] }): Promise<{
     id: number;
     department: string;
     days: string[];
@@ -2160,7 +2157,9 @@ class ApiService {
   }
 
   async getProjectTasks(projectId: number): Promise<any> {
-    return this.request(`/projects/${projectId}/tasks`);
+    // /projects/{id}/tasks returns 404 on this backend.
+    // Use the main tasks endpoint with a project_id filter instead.
+    return this.request(`/tasks/?project_id=${projectId}`);
   }
 
   async updateProjectTaskStatus(
