@@ -122,21 +122,50 @@ const MeetingsPage: React.FC = () => {
     });
 
     const normalizeMeeting = (m: any): Meeting => {
-        let type = (m.type || '').toLowerCase();
+        const id = m.id || m.meeting_id || m.meetingId;
+        let type = (m.type || m.meeting_type || '').toLowerCase();
 
-        // Force type based on ID associations to prevent misclassification
-        if (m.project_id || m.project_name) {
+        const projectId = m.project_id || m.projectId || m.project?.id || m.project?.project_id;
+        const projectName = m.project_name || m.projectName || m.project?.name;
+
+        const teamId = m.team_id || m.teamId || m.department_id || m.departmentId || m.team?.id || m.department?.id;
+        const teamName = m.team_name || m.teamName || m.department_name || m.departmentName || m.team?.name || m.department?.name;
+
+        // Force type based on metadata if not set or generic
+        if (projectId || projectName) {
             type = 'project';
-        } else if (m.team_id || m.team_name) {
+        } else if (teamId || teamName) {
             type = 'team';
         }
 
-        // If still missing or generic, use heuristics
-        if (!type || type === 'null' || type === 'undefined') {
-            if (m.participants && m.participants.length <= 2) type = 'one-to-one';
-            else type = 'company';
+        // Heuristics for type if still missing
+        if (!type || ['null', 'undefined', 'general', 'company'].includes(type)) {
+            if (m.participants && m.participants.length > 0 && m.participants.length <= 2) {
+                type = 'one-to-one';
+            } else if (teamId || teamName) {
+                type = 'team';
+            } else if (projectId || projectName) {
+                type = 'project';
+            } else {
+                type = 'company';
+            }
         }
-        return { ...m, type };
+
+        // Handle specific type aliases
+        if (type.includes('project')) type = 'project';
+        else if (type.includes('team') || type.includes('department')) type = 'team';
+        else if (type.includes('townhall') || type.includes('general') || type.includes('company')) type = 'company';
+        else if (type.includes('1:1') || type.includes('individual') || type.includes('one-to-one')) type = 'one-to-one';
+
+        return {
+            ...m,
+            id,
+            type: type as Meeting['type'],
+            team_id: teamId,
+            team_name: teamName,
+            project_id: projectId,
+            project_name: projectName
+        };
     };
 
     const fetchData = async () => {
@@ -441,12 +470,6 @@ const MeetingsPage: React.FC = () => {
                         setIsCreateDialogOpen(open);
                         if (!open) resetForm();
                     }}>
-                        <DialogTrigger asChild>
-                            <Button className="h-12 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-200 dark:shadow-none transition-all duration-300 transform hover:scale-105">
-                                <Plus className="h-4 w-4 mr-2" />
-                                Initiate Sync
-                            </Button>
-                        </DialogTrigger>
                         <DialogContent className="sm:max-w-[650px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
                             <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 text-white">
                                 <DialogTitle className="text-2xl font-black uppercase tracking-tighter">
@@ -815,6 +838,14 @@ const MeetingsPage: React.FC = () => {
                                                                     <Briefcase className="h-4 w-4" />
                                                                 </div>
                                                                 <span className="text-xs font-black tracking-tight uppercase">{meeting.project_name}</span>
+                                                            </div>
+                                                        )}
+                                                        {meeting.team_name && (
+                                                            <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
+                                                                <div className="h-8 w-8 rounded-xl bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-600">
+                                                                    <Users2 className="h-4 w-4" />
+                                                                </div>
+                                                                <span className="text-xs font-black tracking-tight uppercase">{meeting.team_name}</span>
                                                             </div>
                                                         )}
                                                     </div>
