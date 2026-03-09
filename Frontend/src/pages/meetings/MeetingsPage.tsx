@@ -99,11 +99,13 @@ const MeetingsPage: React.FC = () => {
     const canCreateOneToOne = true; // All can create
 
     const [meetings, setMeetings] = useState<Meeting[]>([]);
+    const [myMeetings, setMyMeetings] = useState<Meeting[]>([]);
     const [employees, setEmployees] = useState<any[]>([]);
     const [projects, setProjects] = useState<any[]>([]);
     const [departments, setDepartments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('upcoming');
+    const [mainTab, setMainTab] = useState<'all' | 'my'>('all');
+    const [typeFilter, setTypeFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
@@ -121,73 +123,100 @@ const MeetingsPage: React.FC = () => {
         project_id: undefined as number | undefined,
     });
 
+    /**
+     * Normalize a raw meeting object from the backend into a consistent Meeting shape.
+     *
+     * Priority order (highest to lowest):
+     *  1. project_id present  → always 'project'
+     *  2. team_id present     → always 'team'
+     *  3. backend type field  → normalise known aliases
+     *  4. participant count   → heuristic fallback
+     *  5. default             → 'company'
+     *
+     * Associations take ABSOLUTE priority because the backend often stores
+     * project/team meetings with a generic or incorrect `type` value.
+     */
     const normalizeMeeting = (m: any): Meeting => {
         const id = m.id || m.meeting_id || m.meetingId;
-        let type = (m.type || m.meeting_type || '').toLowerCase();
 
+        // --- Step 1: extract association IDs & names ---
         const projectId = m.project_id || m.projectId || m.project?.id || m.project?.project_id;
         const projectName = m.project_name || m.projectName || m.project?.name;
-
         const teamId = m.team_id || m.teamId || m.department_id || m.departmentId || m.team?.id || m.department?.id;
         const teamName = m.team_name || m.teamName || m.department_name || m.departmentName || m.team?.name || m.department?.name;
 
-        // Force type based on metadata if not set or generic
+        // --- Step 2: association IDs win unconditionally ---
+        let finalType: Meeting['type'];
+
         if (projectId || projectName) {
-            type = 'project';
+            finalType = 'project';
         } else if (teamId || teamName) {
-            type = 'team';
-        }
+            finalType = 'team';
+        } else {
+            // --- Step 3: fall back to backend type field ---
+            let rawType = (m.type || m.meeting_type || '').toLowerCase().trim();
 
-        // Heuristics for type if still missing
-        if (!type || ['null', 'undefined', 'general', 'company'].includes(type)) {
-            if (m.participants && m.participants.length > 0 && m.participants.length <= 2) {
-                type = 'one-to-one';
-            } else if (teamId || teamName) {
-                type = 'team';
-            } else if (projectId || projectName) {
-                type = 'project';
-            } else {
-                type = 'company';
+            if (rawType.includes('project')) {
+                rawType = 'project';
+            } else if (rawType.includes('team') || rawType.includes('department')) {
+                rawType = 'team';
+            } else if (rawType.includes('townhall') || rawType.includes('general') || rawType.includes('company') || rawType === 'all') {
+                rawType = 'company';
+            } else if (rawType.includes('1:1') || rawType.includes('individual') || rawType === 'one-to-one') {
+                rawType = 'one-to-one';
             }
-        }
 
-        // Handle specific type aliases
-        if (type.includes('project')) type = 'project';
-        else if (type.includes('team') || type.includes('department')) type = 'team';
-        else if (type.includes('townhall') || type.includes('general') || type.includes('company')) type = 'company';
-        else if (type.includes('1:1') || type.includes('individual') || type.includes('one-to-one')) type = 'one-to-one';
+            // --- Step 4: heuristic / default ---
+            if (!rawType || rawType === '' || rawType === 'null' || rawType === 'undefined') {
+                if (m.participants && m.participants.length > 0 && m.participants.length <= 2) {
+                    rawType = 'one-to-one';
+                } else {
+                    rawType = 'company';
+                }
+            }
+
+            finalType = rawType as Meeting['type'];
+        }
 
         return {
             ...m,
             id,
-            type: type as Meeting['type'],
+            type: finalType,
             team_id: teamId,
             team_name: teamName,
             project_id: projectId,
-            project_name: projectName
+            project_name: projectName,
         };
     };
 
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [meetingsData, depts, projs, emps] = await Promise.all([
+
+            // Fetch all meetings + "assigned to me" meetings in parallel
+            const [allMeetingsData, myMeetingsData, depts, projs, emps] = await Promise.all([
                 apiService.getMeetings(),
-                apiService.getDepartments().catch(() => []),
+                apiService.getMeetings({ as_creator: 'false' }).catch(() => []),
+                // getBranchs() hits /departments and returns real Branch[] objects with id + name
+                apiService.getBranchs().catch(() => []),
                 apiService.getProjects().catch(() => []),
                 apiService.getEmployees().catch(() => [])
             ]);
 
-            const normalizedMeetings = (Array.isArray(meetingsData) ? meetingsData : []).map(normalizeMeeting);
-            setMeetings(normalizedMeetings);
-            setDepartments(Array.isArray(depts) ? depts : (depts as any)?.departments || []);
+            const normalizedAll = (Array.isArray(allMeetingsData) ? allMeetingsData : []).map(normalizeMeeting);
+            const normalizedMy = (Array.isArray(myMeetingsData) ? myMeetingsData : []).map(normalizeMeeting);
+
+            setMeetings(normalizedAll);
+            setMyMeetings(normalizedMy);
+            // depts is Branch[] from /departments — each has { id, name, code, ... }
+            setDepartments(Array.isArray(depts) ? depts : []);
             setProjects(Array.isArray(projs) ? projs : (projs as any)?.projects || []);
             setEmployees(Array.isArray(emps) ? emps : (emps as any)?.employees || []);
         } catch (error) {
             console.error('Failed to fetch data:', error);
             toast({
                 title: "Error",
-                description: "Failed to sync data from server.",
+                description: "Failed to load meetings data.",
                 variant: "destructive"
             });
         } finally {
@@ -200,9 +229,11 @@ const MeetingsPage: React.FC = () => {
     }, []);
 
     const [dateFilter, setDateFilter] = useState('');
-    const [typeFilter, setTypeFilter] = useState('all');
 
-    const filteredMeetings = meetings.filter(m => {
+    // Active meeting list based on main tab selection
+    const activeMeetings = mainTab === 'my' ? myMeetings : meetings;
+
+    const filteredMeetings = activeMeetings.filter(m => {
         if (!m || !m.title) return false;
         const matchesSearch = m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (m.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
@@ -229,7 +260,7 @@ const MeetingsPage: React.FC = () => {
         if (!formData.title || !formData.meeting_url || !formData.start_time || !formData.end_time) {
             toast({
                 title: "Missing Information",
-                description: "All fields are required to establish a sync node.",
+                description: "Please fill in all required fields.",
                 variant: "destructive"
             });
             return;
@@ -241,7 +272,7 @@ const MeetingsPage: React.FC = () => {
             const endDate = new Date(formData.end_time);
 
             if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-                throw new Error("Invalid temporal coordinates provided.");
+                throw new Error("Invalid date/time provided.");
             }
 
             // Construct payload
@@ -256,7 +287,12 @@ const MeetingsPage: React.FC = () => {
             };
 
             if (formData.type === 'team' && formData.team_id) {
+                // Send both field names for maximum backend compatibility
                 payload.team_id = formData.team_id;
+                payload.department_id = formData.team_id;
+                // Also send the department name so the backend can store it
+                const dept = departments.find((d: any) => d.id === formData.team_id);
+                if (dept) payload.team_name = dept.name;
             }
             if (formData.type === 'project' && formData.project_id) {
                 payload.project_id = formData.project_id;
@@ -269,8 +305,8 @@ const MeetingsPage: React.FC = () => {
                     await apiService.updateMeeting(selectedMeeting.id, payload);
                 }
                 toast({
-                    title: "Sync Re-authorized",
-                    description: "The meeting protocol has been successfully updated.",
+                    title: "Meeting Updated",
+                    description: "The meeting has been successfully updated.",
                 });
             } else {
                 if (formData.type === 'project' && formData.project_id) {
@@ -279,8 +315,8 @@ const MeetingsPage: React.FC = () => {
                     await apiService.createMeeting(payload);
                 }
                 toast({
-                    title: "Sync Authorized",
-                    description: "The meeting protocol has been successfully established.",
+                    title: "Meeting Scheduled",
+                    description: "The meeting has been successfully created.",
                 });
             }
 
@@ -291,8 +327,8 @@ const MeetingsPage: React.FC = () => {
         } catch (error: any) {
             console.error('Operation failed:', error);
             toast({
-                title: "Protocol Failure",
-                description: error.message || "Failed to establish sync.",
+                title: "Error",
+                description: error.message || "Failed to save the meeting.",
                 variant: "destructive"
             });
         } finally {
@@ -321,7 +357,6 @@ const MeetingsPage: React.FC = () => {
             title: meeting.title,
             description: meeting.description || '',
             meeting_url: meeting.meeting_url,
-            // Format for datetime-local input: YYYY-MM-DDThh:mm in LOCAL time
             start_time: meeting.start_time ? format(new Date(meeting.start_time), "yyyy-MM-dd'T'HH:mm") : '',
             end_time: meeting.end_time ? format(new Date(meeting.end_time), "yyyy-MM-dd'T'HH:mm") : '',
             participant_ids: meeting.participants?.map(p => p.user_id) || [],
@@ -333,7 +368,7 @@ const MeetingsPage: React.FC = () => {
     };
 
     const handleDeleteMeeting = async (meeting: Meeting) => {
-        if (!confirm('Are you sure you want to terminate this sync node?')) return;
+        if (!confirm('Are you sure you want to delete this meeting?')) return;
         try {
             if (meeting.type === 'project' && meeting.project_id) {
                 await apiService.deleteProjectMeeting(meeting.project_id, meeting.id);
@@ -341,14 +376,14 @@ const MeetingsPage: React.FC = () => {
                 await apiService.deleteMeeting(meeting.id);
             }
             toast({
-                title: "Node Terminated",
-                description: "The meeting protocol has been successfully purged.",
+                title: "Meeting Deleted",
+                description: "The meeting has been removed.",
             });
             fetchData();
         } catch (error: any) {
             toast({
-                title: "Deletion Failure",
-                description: error.message || "Failed to purge node.",
+                title: "Error",
+                description: error.message || "Failed to delete the meeting.",
                 variant: "destructive"
             });
         }
@@ -386,7 +421,6 @@ const MeetingsPage: React.FC = () => {
 
             let newIds = [...prev.participant_ids];
             if (isOneToOne) {
-                // For one-to-one, we only allow one participant (excluding self which is usually assumed or handled by backend)
                 newIds = has ? [] : [id];
             } else {
                 newIds = has
@@ -401,7 +435,6 @@ const MeetingsPage: React.FC = () => {
         });
     };
 
-    // Constraint effect (keep only for 1:1 ensuring constraint stays during selections)
     useEffect(() => {
         if (formData.type === 'one-to-one' && formData.participant_ids.length > 1) {
             setFormData(prev => ({
@@ -414,7 +447,15 @@ const MeetingsPage: React.FC = () => {
     const selectAllParticipants = async () => {
         if (formData.type === 'team' && formData.team_id) {
             const teamMembers = employees
-                .filter(emp => emp.department_id === formData.team_id || emp.department === departments.find(d => d.id === formData.team_id)?.name)
+                .filter(emp => {
+                    const dept = departments.find((d: any) => d.id === formData.team_id);
+                    const deptName = dept?.name || '';
+                    return (
+                        Number(emp.department_id) === formData.team_id ||
+                        (emp.branch && emp.branch === deptName) ||
+                        (emp.department && emp.department === deptName)
+                    );
+                })
                 .map(emp => Number(emp.user_id || emp.id))
                 .filter(id => !isNaN(id));
             setFormData(prev => ({ ...prev, participant_ids: teamMembers }));
@@ -429,7 +470,6 @@ const MeetingsPage: React.FC = () => {
                 console.error('Failed to fetch project members:', error);
             }
         } else {
-            // General select all
             const allIds = employees.map(emp => Number(emp.user_id || emp.id)).filter(id => !isNaN(id));
             setFormData(prev => ({ ...prev, participant_ids: allIds }));
         }
@@ -441,7 +481,7 @@ const MeetingsPage: React.FC = () => {
 
     return (
         <div className="flex-1 flex flex-col h-full bg-[#f8fafc] dark:bg-[#020617] overflow-hidden">
-            {/* Simple Header based on image */}
+            {/* Header */}
             <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
                 <div className="max-w-7xl mx-auto px-8 py-8">
                     <div className="flex items-center justify-between">
@@ -451,7 +491,7 @@ const MeetingsPage: React.FC = () => {
                             </div>
                             <div>
                                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Meetings</h1>
-                                <p className="text-slate-500 font-medium">Coordinate and collaborate across the organization</p>
+                                <p className="text-slate-500 font-medium">Schedule and manage your meetings</p>
                             </div>
                         </div>
                         <Button
@@ -462,7 +502,7 @@ const MeetingsPage: React.FC = () => {
                             className="h-14 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-500/10 transition-all active:scale-95"
                         >
                             <Plus className="h-5 w-5 mr-2" />
-                            SCHEDULE SYNC
+                            Schedule Meeting
                         </Button>
                     </div>
 
@@ -473,10 +513,10 @@ const MeetingsPage: React.FC = () => {
                         <DialogContent className="sm:max-w-[650px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
                             <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 text-white">
                                 <DialogTitle className="text-2xl font-black uppercase tracking-tighter">
-                                    {selectedMeeting ? 'Update Sync' : 'Sync Configuration'}
+                                    {selectedMeeting ? 'Edit Meeting' : 'Schedule Meeting'}
                                 </DialogTitle>
                                 <DialogDescription className="text-blue-100 font-medium opacity-80 uppercase text-[10px] tracking-widest mt-1">
-                                    {selectedMeeting ? 'Re-authorize communication node.' : 'Establish a new communication node.'}
+                                    {selectedMeeting ? 'Update meeting details.' : 'Create a new meeting with an existing Google Meet or Zoom URL.'}
                                 </DialogDescription>
                             </div>
 
@@ -509,7 +549,7 @@ const MeetingsPage: React.FC = () => {
                                     <div className="grid gap-2">
                                         <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Meeting Title</Label>
                                         <Input
-                                            placeholder="Sync Title"
+                                            placeholder="Meeting title"
                                             className="rounded-xl h-11 border-slate-200 focus:ring-blue-500"
                                             value={formData.title}
                                             onChange={e => setFormData({ ...formData, title: e.target.value })}
@@ -550,9 +590,9 @@ const MeetingsPage: React.FC = () => {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {Array.isArray(departments) && departments.filter(Boolean).length > 0 ? departments.filter(Boolean).map((d: any) => (
-                                                    <SelectItem key={d.id || d.department_id || Math.random()} value={(d.id || d.department_id)?.toString() || ""}>{d.name || "Unnamed Department"}</SelectItem>
+                                                    <SelectItem key={d.id || Math.random()} value={d.id?.toString() || ""}>{d.name || d.code || "Unnamed Department"}</SelectItem>
                                                 )) : (
-                                                    <SelectItem disabled value="none">No active department nodes found.</SelectItem>
+                                                    <SelectItem disabled value="none">No departments found.</SelectItem>
                                                 )}
                                             </SelectContent>
                                         </Select>
@@ -561,7 +601,7 @@ const MeetingsPage: React.FC = () => {
 
                                 {formData.type === 'project' && (
                                     <div className="grid gap-2">
-                                        <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Target Project</Label>
+                                        <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Select Project</Label>
                                         <Select
                                             value={formData.project_id?.toString() || ""}
                                             onValueChange={async (v) => {
@@ -588,7 +628,7 @@ const MeetingsPage: React.FC = () => {
                                                 {Array.isArray(projects) && projects.filter(Boolean).length > 0 ? projects.filter(Boolean).map((p: any) => (
                                                     <SelectItem key={p.project_id || p.id || Math.random()} value={(p.project_id || p.id)?.toString() || ""}>{p.name || "Unnamed Project"}</SelectItem>
                                                 )) : (
-                                                    <SelectItem disabled value="none">No active project nodes found.</SelectItem>
+                                                    <SelectItem disabled value="none">No projects found.</SelectItem>
                                                 )}
                                             </SelectContent>
                                         </Select>
@@ -596,7 +636,7 @@ const MeetingsPage: React.FC = () => {
                                 )}
 
                                 <div className="grid gap-2">
-                                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Transmission URL</Label>
+                                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Meeting URL (Google Meet / Zoom)</Label>
                                     <Input
                                         placeholder="https://meet.google.com/..."
                                         className="rounded-xl h-11 border-slate-200 font-medium"
@@ -606,9 +646,9 @@ const MeetingsPage: React.FC = () => {
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Tactical Brief / Agenda</Label>
+                                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Description / Agenda</Label>
                                     <Textarea
-                                        placeholder="Outline the communication objectives..."
+                                        placeholder="Describe the meeting agenda..."
                                         className="rounded-xl border-slate-200 min-h-[80px]"
                                         value={formData.description}
                                         onChange={e => setFormData({ ...formData, description: e.target.value })}
@@ -617,7 +657,7 @@ const MeetingsPage: React.FC = () => {
 
                                 <div className="space-y-4">
                                     <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest flex items-center justify-between">
-                                        Assigned Assets / Participants
+                                        Participants
                                         <div className="flex items-center gap-3">
                                             <span className="text-blue-600 font-black">{formData.participant_ids.length} selected</span>
                                             {formData.type !== 'one-to-one' && (
@@ -643,12 +683,16 @@ const MeetingsPage: React.FC = () => {
                                     <div className="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto p-1 custom-scrollbar">
                                         {employees.filter(Boolean).filter(emp => {
                                             if (formData.type === 'team' && formData.team_id) {
-                                                return Number(emp.department_id) === formData.team_id || emp.department === departments.find(d => d.id === formData.team_id)?.name;
+                                                const dept = departments.find((d: any) => d.id === formData.team_id);
+                                                const deptName = dept?.name || '';
+                                                // Match by department_id number OR by branch/department name string
+                                                return (
+                                                    Number(emp.department_id) === formData.team_id ||
+                                                    (emp.branch && emp.branch === deptName) ||
+                                                    (emp.department && emp.department === deptName)
+                                                );
                                             }
-                                            // For project-specific, we often only want to show project members in the selection list to pick/choose
-                                            // However, requirement 5 says "Select Employees Automatically"
-                                            // Let's filter the list to making choosing from project members easier if they want to deselect some.
-                                            return true; // default show all
+                                            return true;
                                         }).map((emp: any) => {
                                             const empId = Number(emp.user_id || emp.id);
                                             const isSelected = formData.participant_ids.includes(empId);
@@ -680,7 +724,7 @@ const MeetingsPage: React.FC = () => {
                             <DialogFooter className="p-8 bg-slate-50 dark:bg-slate-900/50 flex !justify-center gap-3 border-t border-slate-100 dark:border-slate-800">
                                 <Button variant="ghost" onClick={() => setIsCreateDialogOpen(false)} className="rounded-xl h-11 px-6 font-bold text-xs uppercase tracking-widest text-slate-400">Cancel</Button>
                                 <Button disabled={isSubmitting} onClick={handleCreateMeeting} className="rounded-xl h-11 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest px-10 shadow-lg shadow-blue-500/20">
-                                    {isSubmitting ? 'Processing...' : (selectedMeeting ? 'Re-authorize Sync' : 'Authorize Sync')}
+                                    {isSubmitting ? 'Saving...' : (selectedMeeting ? 'Update Meeting' : 'Schedule Meeting')}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
@@ -695,7 +739,7 @@ const MeetingsPage: React.FC = () => {
                     {/* Quick Stats Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
                         {[
-                            { label: 'Upcoming', val: meetings.length, icon: CalendarDays, bg: 'bg-blue-50', darkBg: 'dark:bg-blue-900/20', text: 'text-blue-600', darkText: 'dark:text-blue-400' },
+                            { label: 'All Meetings', val: meetings.length, icon: CalendarDays, bg: 'bg-blue-50', darkBg: 'dark:bg-blue-900/20', text: 'text-blue-600', darkText: 'dark:text-blue-400' },
                             { label: 'Townhall', val: meetings.filter(m => m?.type === 'company').length, icon: Briefcase, bg: 'bg-indigo-50', darkBg: 'dark:bg-indigo-900/20', text: 'text-indigo-600', darkText: 'dark:text-indigo-400' },
                             { label: 'Team Specific', val: meetings.filter(m => m?.type === 'team').length, icon: Users2, bg: 'bg-rose-50', darkBg: 'dark:bg-rose-900/20', text: 'text-rose-600', darkText: 'dark:text-rose-400' },
                             { label: 'Project Specific', val: meetings.filter(m => m?.type === 'project').length, icon: FolderKanban, bg: 'bg-blue-50', darkBg: 'dark:bg-blue-900/20', text: 'text-blue-600', darkText: 'dark:text-blue-400' },
@@ -715,14 +759,35 @@ const MeetingsPage: React.FC = () => {
                         ))}
                     </div>
 
+                    {/* Main Tab: All Meetings vs My Meetings */}
+                    <div className="flex items-center gap-2 mb-6">
+                        <button
+                            onClick={() => setMainTab('all')}
+                            className={`h-10 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${mainTab === 'all' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-white dark:bg-slate-900 text-slate-500 hover:text-slate-900 dark:hover:text-white shadow-sm'}`}
+                        >
+                            All Meetings
+                        </button>
+                        <button
+                            onClick={() => setMainTab('my')}
+                            className={`h-10 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${mainTab === 'my' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-white dark:bg-slate-900 text-slate-500 hover:text-slate-900 dark:hover:text-white shadow-sm'}`}
+                        >
+                            My Meetings
+                            {myMeetings.length > 0 && (
+                                <span className={`ml-2 inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full text-[9px] font-black ${mainTab === 'my' ? 'bg-white text-slate-900' : 'bg-blue-600 text-white'}`}>
+                                    {myMeetings.length}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+
                     <Tabs value={typeFilter} onValueChange={setTypeFilter} className="w-full">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                             <TabsList className="h-14 p-1.5 rounded-[1.5rem] bg-white dark:bg-slate-900 shadow-sm border-none">
                                 <TabsTrigger value="all" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-white">All</TabsTrigger>
                                 <TabsTrigger value="company" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-indigo-600 data-[state=active]:text-white">Townhall</TabsTrigger>
-                                <TabsTrigger value="team" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-rose-600 data-[state=active]:text-white">Team Specific</TabsTrigger>
-                                <TabsTrigger value="project" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:text-white">Project Specific</TabsTrigger>
-                                <TabsTrigger value="one-to-one" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-amber-500 data-[state=active]:text-white">One to One</TabsTrigger>
+                                <TabsTrigger value="team" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-rose-600 data-[state=active]:text-white">Team</TabsTrigger>
+                                <TabsTrigger value="project" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:text-white">Project</TabsTrigger>
+                                <TabsTrigger value="one-to-one" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-amber-500 data-[state=active]:text-white">1:1</TabsTrigger>
                             </TabsList>
 
                             <div className="flex items-center gap-3">
@@ -769,7 +834,11 @@ const MeetingsPage: React.FC = () => {
                                             <Video className="h-10 w-10 text-slate-200" />
                                         </div>
                                         <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">No Meetings Found</h3>
-                                        <p className="text-slate-400 text-sm font-medium mt-2">There are no active {typeFilter === 'all' ? '' : typeFilter} meetings for this selection.</p>
+                                        <p className="text-slate-400 text-sm font-medium mt-2">
+                                            {mainTab === 'my'
+                                                ? 'No meetings have been assigned to you yet.'
+                                                : `There are no ${typeFilter === 'all' ? '' : typeFilter + ' '}meetings for this selection.`}
+                                        </p>
                                         <Button
                                             variant="outline"
                                             onClick={() => { setSearchQuery(''); setDateFilter(''); setTypeFilter('all'); }}
@@ -799,11 +868,11 @@ const MeetingsPage: React.FC = () => {
                                                                     <>
                                                                         <DropdownMenuItem onClick={() => openEditDialog(meeting)} className="rounded-lg gap-2 font-bold text-xs uppercase tracking-wider py-3">
                                                                             <Edit2 className="h-3.5 w-3.5 text-blue-600" />
-                                                                            Edit Protocol
+                                                                            Edit Meeting
                                                                         </DropdownMenuItem>
                                                                         <DropdownMenuItem onClick={() => handleDeleteMeeting(meeting)} className="rounded-lg gap-2 font-bold text-xs uppercase tracking-wider py-3 text-destructive">
                                                                             <Trash2 className="h-3.5 w-3.5" />
-                                                                            Purge Node
+                                                                            Delete Meeting
                                                                         </DropdownMenuItem>
                                                                     </>
                                                                 )}
@@ -846,6 +915,14 @@ const MeetingsPage: React.FC = () => {
                                                                     <Users2 className="h-4 w-4" />
                                                                 </div>
                                                                 <span className="text-xs font-black tracking-tight uppercase">{meeting.team_name}</span>
+                                                            </div>
+                                                        )}
+                                                        {meeting.created_by_name && (
+                                                            <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
+                                                                <div className="h-8 w-8 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+                                                                    <Users className="h-4 w-4" />
+                                                                </div>
+                                                                <span className="text-xs font-medium tracking-tight">By {meeting.created_by_name}</span>
                                                             </div>
                                                         )}
                                                     </div>
