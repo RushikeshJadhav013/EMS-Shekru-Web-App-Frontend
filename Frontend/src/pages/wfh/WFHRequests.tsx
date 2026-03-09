@@ -1,14 +1,26 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useWFH } from '@/contexts/WFHContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Pagination } from '@/components/ui/pagination';
+import React, { useState, useEffect, useMemo } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useWFH } from "@/contexts/WFHContext";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Pagination } from "@/components/ui/pagination";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +28,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,13 +38,28 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { DatePicker } from '@/components/ui/date-picker';
-import { Calendar, Home, Trash2, Edit, CheckCircle, XCircle, Clock as ClockIcon, AlertCircle, History } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import { apiService } from '@/lib/api';
-import { format } from 'date-fns';
-import { formatDateIST, formatDateTimeIST, nowIST } from '@/utils/timezone';
+} from "@/components/ui/alert-dialog";
+import { DatePicker } from "@/components/ui/date-picker";
+import {
+  Calendar,
+  Home,
+  Trash2,
+  Edit,
+  CheckCircle,
+  XCircle,
+  Clock as ClockIcon,
+  AlertCircle,
+  History,
+} from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { apiService } from "@/lib/api";
+import { format } from "date-fns";
+import {
+  formatDateIST,
+  formatDateTimeIST,
+  nowIST,
+  parseToIST,
+} from "@/utils/timezone";
 
 interface WFHRequest {
   id: number;
@@ -42,15 +69,15 @@ interface WFHRequest {
   start_date: string;
   end_date: string;
   reason: string;
-  wfh_type: 'full_day' | 'half_day';
-  status: 'pending' | 'approved' | 'rejected';
+  wfh_type: "full_day" | "half_day";
+  status: "pending" | "approved" | "rejected";
   created_at: string;
   updated_at: string;
   rejection_reason?: string;
   approved_by?: string;
-  manager_approval?: 'pending' | 'approved' | 'rejected';
-  hr_approval?: 'pending' | 'approved' | 'rejected';
-  admin_approval?: 'pending' | 'approved' | 'rejected';
+  manager_approval?: "pending" | "approved" | "rejected";
+  hr_approval?: "pending" | "approved" | "rejected";
+  admin_approval?: "pending" | "approved" | "rejected";
 }
 
 const reasonTemplates = [
@@ -59,7 +86,7 @@ const reasonTemplates = [
   "Family emergency",
   "Car trouble",
   "Child care",
-  "Working from home today"
+  "Working from home today",
 ];
 
 const WFHRequests: React.FC = () => {
@@ -75,18 +102,37 @@ const WFHRequests: React.FC = () => {
     isLoadingPending,
     loadPendingApprovals,
     approveRequest,
-    rejectRequest
+    rejectRequest,
   } = useWFH();
 
   // State management
   const [wfhRequests, setWfhRequests] = useState<WFHRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'my-requests' | 'pending-approvals' | 'recent-decisions'>('my-requests');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
-  const [decisionFilter, setDecisionFilter] = useState<'all' | 'approved' | 'rejected'>('all');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'hr' | 'manager' | 'team_lead' | 'employee'>('all');
-  const [durationFilter, setDurationFilter] = useState<'all' | 'current_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_year' | 'custom'>('all');
-  const [customDateRange, setCustomDateRange] = useState<{ startDate: Date | null; endDate: Date | null }>({ startDate: null, endDate: null });
+  const [activeTab, setActiveTab] = useState<
+    "my-requests" | "pending-approvals" | "recent-decisions"
+  >("my-requests");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "pending" | "approved" | "rejected"
+  >("all");
+  const [decisionFilter, setDecisionFilter] = useState<
+    "all" | "approved" | "rejected"
+  >("all");
+  const [roleFilter, setRoleFilter] = useState<
+    "all" | "admin" | "hr" | "manager" | "team_lead" | "employee"
+  >("all");
+  const [durationFilter, setDurationFilter] = useState<
+    | "all"
+    | "current_month"
+    | "last_month"
+    | "last_3_months"
+    | "last_6_months"
+    | "last_year"
+    | "custom"
+  >("all");
+  const [customDateRange, setCustomDateRange] = useState<{
+    startDate: Date | null;
+    endDate: Date | null;
+  }>({ startDate: null, endDate: null });
   const [isCustomRangeDialogOpen, setIsCustomRangeDialogOpen] = useState(false);
 
   // Sync context data with local state
@@ -99,8 +145,8 @@ const WFHRequests: React.FC = () => {
   const [formData, setFormData] = useState({
     startDate: new Date(),
     endDate: new Date(),
-    reason: '',
-    type: 'full_day' as 'full_day' | 'half_day',
+    reason: "",
+    type: "full_day" as "full_day" | "half_day",
   });
 
   // Dialog states
@@ -108,9 +154,14 @@ const WFHRequests: React.FC = () => {
   const [editingRequest, setEditingRequest] = useState<WFHRequest | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [requestToDelete, setRequestToDelete] = useState<WFHRequest | null>(null);
+  const [requestToDelete, setRequestToDelete] = useState<WFHRequest | null>(
+    null,
+  );
   const [isDeletingRequest, setIsDeletingRequest] = useState(false);
-  const [isMyRequestsCustomRangeDialogOpen, setIsMyRequestsCustomRangeDialogOpen] = useState(false);
+  const [
+    isMyRequestsCustomRangeDialogOpen,
+    setIsMyRequestsCustomRangeDialogOpen,
+  ] = useState(false);
 
   // Pagination states
   const [myRequestsPage, setMyRequestsPage] = useState(1);
@@ -118,8 +169,19 @@ const WFHRequests: React.FC = () => {
   const [recentDecisionsPage, setRecentDecisionsPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const [myRequestsDurationFilter, setMyRequestsDurationFilter] = useState<'all' | 'current_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_year' | 'custom'>('all');
-  const [myRequestsCustomDateRange, setMyRequestsCustomDateRange] = useState<{ startDate: Date | null; endDate: Date | null }>({ startDate: null, endDate: null });
+  const [myRequestsDurationFilter, setMyRequestsDurationFilter] = useState<
+    | "all"
+    | "current_month"
+    | "last_month"
+    | "last_3_months"
+    | "last_6_months"
+    | "last_year"
+    | "custom"
+  >("all");
+  const [myRequestsCustomDateRange, setMyRequestsCustomDateRange] = useState<{
+    startDate: Date | null;
+    endDate: Date | null;
+  }>({ startDate: null, endDate: null });
 
   // Load WFH requests on mount and when component becomes visible
   useEffect(() => {
@@ -131,25 +193,29 @@ const WFHRequests: React.FC = () => {
 
   const handleEditRequest = (request: WFHRequest) => {
     setEditingRequest(request);
-    const startDateParts = request.start_date.split('-');
-    const endDateParts = request.end_date.split('-');
+    const startDateParts = request.start_date.split("-");
+    const endDateParts = request.end_date.split("-");
 
-    const startDate = new Date(Date.UTC(
-      parseInt(startDateParts[0]),
-      parseInt(startDateParts[1]) - 1,
-      parseInt(startDateParts[2])
-    ));
-    const endDate = new Date(Date.UTC(
-      parseInt(endDateParts[0]),
-      parseInt(endDateParts[1]) - 1,
-      parseInt(endDateParts[2])
-    ));
+    const startDate = new Date(
+      Date.UTC(
+        parseInt(startDateParts[0]),
+        parseInt(startDateParts[1]) - 1,
+        parseInt(startDateParts[2]),
+      ),
+    );
+    const endDate = new Date(
+      Date.UTC(
+        parseInt(endDateParts[0]),
+        parseInt(endDateParts[1]) - 1,
+        parseInt(endDateParts[2]),
+      ),
+    );
 
     setFormData({
       startDate,
       endDate,
       reason: request.reason,
-      type: request.wfh_type as 'full_day' | 'half_day',
+      type: request.wfh_type as "full_day" | "half_day",
     });
     setIsEditDialogOpen(true);
   };
@@ -159,19 +225,19 @@ const WFHRequests: React.FC = () => {
 
     if (!formData.reason.trim() || formData.reason.trim().length < 10) {
       toast({
-        title: 'Error',
-        description: 'Reason must be at least 10 characters long',
-        variant: 'destructive',
+        title: "Error",
+        description: "Reason must be at least 10 characters long",
+        variant: "destructive",
       });
       return;
     }
 
-    const newStartDate = format(formData.startDate, 'yyyy-MM-dd');
-    const newEndDate = format(formData.endDate, 'yyyy-MM-dd');
+    const newStartDate = format(formData.startDate, "yyyy-MM-dd");
+    const newEndDate = format(formData.endDate, "yyyy-MM-dd");
 
-    const hasOverlap = wfhRequests.some(req => {
+    const hasOverlap = wfhRequests.some((req) => {
       if (req.id === editingRequest.id) return false;
-      if (req.status !== 'pending' && req.status !== 'approved') return false;
+      if (req.status !== "pending" && req.status !== "approved") return false;
       const reqStart = req.start_date;
       const reqEnd = req.end_date;
       return newStartDate <= reqEnd && newEndDate >= reqStart;
@@ -179,9 +245,9 @@ const WFHRequests: React.FC = () => {
 
     if (hasOverlap) {
       toast({
-        title: 'Overlapping Request',
-        description: 'You already have a WFH request for these dates.',
-        variant: 'destructive',
+        title: "Overlapping Request",
+        description: "You already have a WFH request for these dates.",
+        variant: "destructive",
       });
       return;
     }
@@ -192,25 +258,27 @@ const WFHRequests: React.FC = () => {
         start_date: newStartDate,
         end_date: newEndDate,
         reason: formData.reason,
-        wfh_type: (formData.type === 'full_day' ? 'Full Day' : 'Half Day') as 'Full Day' | 'Half Day',
+        wfh_type: (formData.type === "full_day" ? "Full Day" : "Half Day") as
+          | "Full Day"
+          | "Half Day",
       };
 
       await apiService.updateWFHRequest(editingRequest.id, updateData);
 
       toast({
-        title: 'Success',
-        description: 'WFH request updated successfully',
+        title: "Success",
+        description: "WFH request updated successfully",
       });
 
       setIsEditDialogOpen(false);
       setEditingRequest(null);
       await refreshWFHRequests();
     } catch (error) {
-      console.error('Error updating WFH request:', error);
+      console.error("Error updating WFH request:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to update WFH request',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to update WFH request",
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
@@ -229,18 +297,18 @@ const WFHRequests: React.FC = () => {
     try {
       await apiService.deleteWFHRequest(requestToDelete.id);
       toast({
-        title: 'Success',
-        description: 'WFH request deleted successfully',
+        title: "Success",
+        description: "WFH request deleted successfully",
       });
       setIsDeleteDialogOpen(false);
       setRequestToDelete(null);
       await refreshWFHRequests();
     } catch (error) {
-      console.error('Error deleting WFH request:', error);
+      console.error("Error deleting WFH request:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to delete WFH request',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to delete WFH request",
+        variant: "destructive",
       });
     } finally {
       setIsDeletingRequest(false);
@@ -251,14 +319,14 @@ const WFHRequests: React.FC = () => {
     try {
       await approveRequest(id);
       toast({
-        title: 'Success',
-        description: 'WFH request approved successfully',
+        title: "Success",
+        description: "WFH request approved successfully",
       });
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to approve WFH request',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to approve WFH request",
+        variant: "destructive",
       });
     }
   };
@@ -267,14 +335,14 @@ const WFHRequests: React.FC = () => {
     try {
       await rejectRequest(id, reason);
       toast({
-        title: 'Success',
-        description: 'WFH request rejected successfully',
+        title: "Success",
+        description: "WFH request rejected successfully",
       });
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to reject WFH request',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to reject WFH request",
+        variant: "destructive",
       });
     }
   };
@@ -283,17 +351,17 @@ const WFHRequests: React.FC = () => {
     if (!user?.role) return [];
     const currentUserRole = user.role.toLowerCase();
 
-    return pendingApprovals.filter(req => {
-      const requesterRole = req.requester_role?.toLowerCase() || 'employee';
+    return pendingApprovals.filter((req) => {
+      const requesterRole = req.requester_role?.toLowerCase() || "employee";
 
       // Rule 1: HR/Manager requests -> Only Admin can act
-      if (requesterRole === 'hr' || requesterRole === 'manager') {
-        return currentUserRole === 'admin';
+      if (requesterRole === "hr" || requesterRole === "manager") {
+        return currentUserRole === "admin";
       }
 
       // Rule 2: TL/Employee requests -> Both Manager and HR can act
-      if (requesterRole === 'team_lead' || requesterRole === 'employee') {
-        return currentUserRole === 'manager' || currentUserRole === 'hr';
+      if (requesterRole === "team_lead" || requesterRole === "employee") {
+        return currentUserRole === "manager" || currentUserRole === "hr";
       }
 
       return false;
@@ -304,32 +372,76 @@ const WFHRequests: React.FC = () => {
     let filtered = wfhRequests;
 
     // Apply status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(req => req.status === statusFilter);
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((req) => req.status === statusFilter);
     }
 
     // Apply duration filter
-    if (myRequestsDurationFilter !== 'all') {
+    if (myRequestsDurationFilter !== "all") {
       const now = nowIST();
       let startDate: Date | null = null;
       let endDate: Date | null = null;
 
-      if (myRequestsDurationFilter === 'current_month') {
+      if (myRequestsDurationFilter === "current_month") {
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-      } else if (myRequestsDurationFilter === 'last_month') {
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
+      } else if (myRequestsDurationFilter === "last_month") {
         startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-      } else if (myRequestsDurationFilter === 'last_3_months') {
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
+      } else if (myRequestsDurationFilter === "last_3_months") {
         startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-      } else if (myRequestsDurationFilter === 'last_6_months') {
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
+      } else if (myRequestsDurationFilter === "last_6_months") {
         startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-      } else if (myRequestsDurationFilter === 'last_year') {
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
+      } else if (myRequestsDurationFilter === "last_year") {
         startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-      } else if (myRequestsDurationFilter === 'custom' && myRequestsCustomDateRange.startDate && myRequestsCustomDateRange.endDate) {
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
+      } else if (
+        myRequestsDurationFilter === "custom" &&
+        myRequestsCustomDateRange.startDate &&
+        myRequestsCustomDateRange.endDate
+      ) {
         startDate = new Date(myRequestsCustomDateRange.startDate);
         startDate.setHours(0, 0, 0, 0);
         endDate = new Date(myRequestsCustomDateRange.endDate);
@@ -337,17 +449,21 @@ const WFHRequests: React.FC = () => {
       }
 
       if (startDate && endDate) {
-        filtered = filtered.filter(req => {
-          // Filter by WFH start date instead of creation date for better user experience
-          const reqDate = new Date(req.start_date);
-          reqDate.setHours(0, 0, 0, 0);
-          return reqDate >= startDate! && reqDate <= endDate!;
+        filtered = filtered.filter((req) => {
+          // Use parseToIST for consistent comparison
+          const reqDate = parseToIST(req.created_at);
+          return reqDate ? reqDate >= startDate! && reqDate <= endDate! : false;
         });
       }
     }
 
     return filtered;
-  }, [wfhRequests, statusFilter, myRequestsDurationFilter, myRequestsCustomDateRange]);
+  }, [
+    wfhRequests,
+    statusFilter,
+    myRequestsDurationFilter,
+    myRequestsCustomDateRange,
+  ]);
 
   const paginatedMyRequests = useMemo(() => {
     const start = (myRequestsPage - 1) * itemsPerPage;
@@ -360,39 +476,88 @@ const WFHRequests: React.FC = () => {
   }, [visiblePendingApprovals, pendingApprovalsPage, itemsPerPage]);
 
   const filteredDecisions = useMemo(() => {
-    let filtered = recentDecisions.filter(decision => decisionFilter === 'all' || decision.status === decisionFilter);
+    let filtered = recentDecisions.filter(
+      (decision) =>
+        decisionFilter === "all" || decision.status === decisionFilter,
+    );
 
     // Apply role filter
-    if (roleFilter !== 'all') {
-      filtered = filtered.filter(decision => {
+    if (roleFilter !== "all") {
+      filtered = filtered.filter((decision) => {
         const role = decision.requester_role;
-        const normalizedRole = role ? role.toLowerCase().replace(/\s+/g, '_') : 'employee';
+        const normalizedRole = role
+          ? role.toLowerCase().replace(/\s+/g, "_")
+          : "employee";
         return normalizedRole === (roleFilter as string);
       });
     }
 
     // Apply duration filter
-    if (durationFilter !== 'all') {
+    if (durationFilter !== "all") {
       const now = nowIST();
       let startDate: Date | null = null;
       let endDate: Date | null = null;
 
-      if (durationFilter === 'current_month') {
+      if (durationFilter === "current_month") {
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-      } else if (durationFilter === 'last_month') {
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
+      } else if (durationFilter === "last_month") {
         startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-      } else if (durationFilter === 'last_3_months') {
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
+      } else if (durationFilter === "last_3_months") {
         startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-      } else if (durationFilter === 'last_6_months') {
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
+      } else if (durationFilter === "last_6_months") {
         startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-      } else if (durationFilter === 'last_year') {
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
+      } else if (durationFilter === "last_year") {
         startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-      } else if (durationFilter === 'custom' && customDateRange.startDate && customDateRange.endDate) {
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
+      } else if (
+        durationFilter === "custom" &&
+        customDateRange.startDate &&
+        customDateRange.endDate
+      ) {
         startDate = new Date(customDateRange.startDate);
         startDate.setHours(0, 0, 0, 0);
         endDate = new Date(customDateRange.endDate);
@@ -400,16 +565,26 @@ const WFHRequests: React.FC = () => {
       }
 
       if (startDate && endDate) {
-        filtered = filtered.filter(decision => {
-          // Use approved_at (actual decision timestamp) falling back to updated_at
-          const decisionDate = new Date(decision.approved_at || decision.updated_at);
-          return decisionDate >= startDate! && decisionDate <= endDate!;
+        filtered = filtered.filter((decision) => {
+          // Use parseToIST for consistent comparison
+          const decisionDate = parseToIST(decision.created_at);
+          return decisionDate &&
+            decisionDate >= startDate! &&
+            decisionDate <= endDate!
+            ? true
+            : false;
         });
       }
     }
 
     return filtered;
-  }, [recentDecisions, decisionFilter, durationFilter, customDateRange, roleFilter]);
+  }, [
+    recentDecisions,
+    decisionFilter,
+    durationFilter,
+    customDateRange,
+    roleFilter,
+  ]);
 
   const paginatedRecentDecisions = useMemo(() => {
     const start = (recentDecisionsPage - 1) * itemsPerPage;
@@ -417,17 +592,23 @@ const WFHRequests: React.FC = () => {
   }, [filteredDecisions, recentDecisionsPage, itemsPerPage]);
 
   // Reset pages when filters change
-  useEffect(() => { setMyRequestsPage(1); }, [statusFilter, myRequestsDurationFilter, myRequestsCustomDateRange]);
-  useEffect(() => { setPendingApprovalsPage(1); }, [visiblePendingApprovals]);
-  useEffect(() => { setRecentDecisionsPage(1); }, [decisionFilter, durationFilter, customDateRange, roleFilter]);
+  useEffect(() => {
+    setMyRequestsPage(1);
+  }, [statusFilter, myRequestsDurationFilter, myRequestsCustomDateRange]);
+  useEffect(() => {
+    setPendingApprovalsPage(1);
+  }, [visiblePendingApprovals]);
+  useEffect(() => {
+    setRecentDecisionsPage(1);
+  }, [decisionFilter, durationFilter, customDateRange, roleFilter]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'approved':
+      case "approved":
         return <Badge className="bg-green-500">Approved</Badge>;
-      case 'rejected':
+      case "rejected":
         return <Badge variant="destructive">Rejected</Badge>;
-      case 'pending':
+      case "pending":
         return <Badge variant="secondary">Pending</Badge>;
       default:
         return <Badge>{status}</Badge>;
@@ -436,11 +617,11 @@ const WFHRequests: React.FC = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'approved':
+      case "approved":
         return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case 'rejected':
+      case "rejected":
         return <XCircle className="h-5 w-5 text-red-500" />;
-      case 'pending':
+      case "pending":
         return <ClockIcon className="h-5 w-5 text-yellow-500" />;
       default:
         return <AlertCircle className="h-5 w-5 text-gray-500" />;
@@ -458,12 +639,18 @@ const WFHRequests: React.FC = () => {
             </div>
             Work From Home Requests
           </h1>
-          <p className="text-blue-100 mt-2">Manage your WFH requests and approvals</p>
+          <p className="text-blue-100 mt-2">
+            Manage your WFH requests and approvals
+          </p>
         </div>
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value: any) => setActiveTab(value)}
+        className="w-full"
+      >
         <TabsList className="grid w-full grid-cols-3 h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm">
           <TabsTrigger
             value="my-requests"
@@ -471,7 +658,7 @@ const WFHRequests: React.FC = () => {
           >
             My Requests
           </TabsTrigger>
-          {['admin', 'hr', 'manager'].includes(user?.role || '') && (
+          {["admin", "hr", "manager"].includes(user?.role || "") && (
             <TabsTrigger
               value="pending-approvals"
               className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
@@ -501,36 +688,52 @@ const WFHRequests: React.FC = () => {
               <div className="flex items-center justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <CardTitle className="text-xl font-semibold">My WFH Requests</CardTitle>
+                    <CardTitle className="text-xl font-semibold">
+                      My WFH Requests
+                    </CardTitle>
                     {wfhRequests.length > 0 && (
                       <Badge variant="outline" className="text-sm">
                         {wfhRequests.length}
                       </Badge>
                     )}
                   </div>
-                  <CardDescription>View and manage your work from home requests</CardDescription>
+                  <CardDescription>
+                    View and manage your work from home requests
+                  </CardDescription>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Select value={myRequestsDurationFilter} onValueChange={(value: any) => {
-                    setMyRequestsDurationFilter(value);
-                    if (value === 'custom') {
-                      setIsMyRequestsCustomRangeDialogOpen(true);
-                    }
-                  }}>
+                  <Select
+                    value={myRequestsDurationFilter}
+                    onValueChange={(value: any) => {
+                      setMyRequestsDurationFilter(value);
+                      if (value === "custom") {
+                        setIsMyRequestsCustomRangeDialogOpen(true);
+                      }
+                    }}
+                  >
                     <SelectTrigger className="w-[180px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Duration</SelectItem>
-                      <SelectItem value="current_month">Current Month</SelectItem>
+                      <SelectItem value="current_month">
+                        Current Month
+                      </SelectItem>
                       <SelectItem value="last_month">Last Month</SelectItem>
-                      <SelectItem value="last_3_months">Last 3 Months</SelectItem>
-                      <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                      <SelectItem value="last_3_months">
+                        Last 3 Months
+                      </SelectItem>
+                      <SelectItem value="last_6_months">
+                        Last 6 Months
+                      </SelectItem>
                       <SelectItem value="last_year">Last 1 Year</SelectItem>
                       <SelectItem value="custom">Custom Range</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+                  <Select
+                    value={statusFilter}
+                    onValueChange={(value: any) => setStatusFilter(value)}
+                  >
                     <SelectTrigger className="w-[180px]">
                       <SelectValue />
                     </SelectTrigger>
@@ -548,7 +751,9 @@ const WFHRequests: React.FC = () => {
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <ClockIcon className="h-8 w-8 animate-spin text-blue-600" />
-                  <span className="ml-2 text-muted-foreground">Loading requests...</span>
+                  <span className="ml-2 text-muted-foreground">
+                    Loading requests...
+                  </span>
                 </div>
               ) : filteredRequests.length === 0 ? (
                 <div className="text-center py-8">
@@ -558,7 +763,10 @@ const WFHRequests: React.FC = () => {
               ) : (
                 <div className="space-y-3">
                   {paginatedMyRequests.map((request) => (
-                    <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                    <div
+                      key={request.id}
+                      className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+                    >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-3 flex-wrap">
@@ -569,21 +777,37 @@ const WFHRequests: React.FC = () => {
                               </span>
                             </div>
                             <Badge variant="outline" className="text-xs">
-                              {request.wfh_type === 'full_day' ? 'Full Day' : 'Half Day'}
+                              {request.wfh_type === "full_day"
+                                ? "Full Day"
+                                : "Half Day"}
                             </Badge>
                             {getStatusBadge(request.status)}
                           </div>
-                          <p className="text-sm text-muted-foreground">{request.reason}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {request.reason}
+                          </p>
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>Submitted: {formatDateTimeIST(new Date(request.created_at), 'dd MMM yyyy, hh:mm a')}</span>
-                            {request.status !== 'pending' && (
-                              <span>Processed: {formatDateTimeIST(new Date(request.updated_at), 'dd MMM yyyy, hh:mm a')}</span>
+                            <span>
+                              Submitted:{" "}
+                              {formatDateTimeIST(
+                                new Date(request.created_at),
+                                "dd MMM yyyy, hh:mm a",
+                              )}
+                            </span>
+                            {request.status !== "pending" && (
+                              <span>
+                                Processed:{" "}
+                                {formatDateTimeIST(
+                                  new Date(request.updated_at),
+                                  "dd MMM yyyy, hh:mm a",
+                                )}
+                              </span>
                             )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           {getStatusIcon(request.status)}
-                          {request.status === 'pending' && (
+                          {request.status === "pending" && (
                             <div className="flex gap-2">
                               <Button
                                 size="sm"
@@ -614,7 +838,9 @@ const WFHRequests: React.FC = () => {
                 <div className="mt-6">
                   <Pagination
                     currentPage={myRequestsPage}
-                    totalPages={Math.ceil(filteredRequests.length / itemsPerPage)}
+                    totalPages={Math.ceil(
+                      filteredRequests.length / itemsPerPage,
+                    )}
                     totalItems={filteredRequests.length}
                     itemsPerPage={itemsPerPage}
                     onPageChange={setMyRequestsPage}
@@ -631,33 +857,48 @@ const WFHRequests: React.FC = () => {
         <TabsContent value="pending-approvals" className="space-y-4">
           <Card className="border-0 shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-              <CardTitle className="text-xl font-semibold">Pending Approvals</CardTitle>
-              <CardDescription>Review and process work from home requests</CardDescription>
+              <CardTitle className="text-xl font-semibold">
+                Pending Approvals
+              </CardTitle>
+              <CardDescription>
+                Review and process work from home requests
+              </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
               {isLoadingPending ? (
                 <div className="flex items-center justify-center py-8">
                   <ClockIcon className="h-8 w-8 animate-spin text-blue-600" />
-                  <span className="ml-2 text-muted-foreground">Loading pending requests...</span>
+                  <span className="ml-2 text-muted-foreground">
+                    Loading pending requests...
+                  </span>
                 </div>
               ) : visiblePendingApprovals.length === 0 ? (
                 <div className="text-center py-8">
                   <CheckCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-muted-foreground">No pending WFH requests to display</p>
+                  <p className="text-muted-foreground">
+                    No pending WFH requests to display
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {paginatedPendingApprovals.map((request) => (
-                    <div key={request.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                    <div
+                      key={request.id}
+                      className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+                    >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-3">
-                            <span className="font-bold text-lg">{request.employee_name}</span>
+                            <span className="font-bold text-lg">
+                              {request.employee_name}
+                            </span>
                             <Badge variant="secondary" className="capitalize">
                               {request.requester_role}
                             </Badge>
                             <Badge variant="outline">
-                              {request.wfh_type === 'full_day' ? 'Full Day' : 'Half Day'}
+                              {request.wfh_type === "full_day"
+                                ? "Full Day"
+                                : "Half Day"}
                             </Badge>
                           </div>
                           <div className="flex items-center gap-2 text-sm">
@@ -666,21 +907,41 @@ const WFHRequests: React.FC = () => {
                               {request.start_date} - {request.end_date}
                             </span>
                           </div>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">Reason: {request.reason}</p>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                            Reason: {request.reason}
+                          </p>
 
                           <div className="flex flex-wrap gap-4 mt-2">
                             {request.manager_approval && (
                               <div className="flex items-center gap-1.5 text-xs">
-                                <span className="text-muted-foreground">Manager:</span>
-                                <Badge variant={request.manager_approval === 'approved' ? 'default' : 'secondary'} className="text-[10px]">
+                                <span className="text-muted-foreground">
+                                  Manager:
+                                </span>
+                                <Badge
+                                  variant={
+                                    request.manager_approval === "approved"
+                                      ? "default"
+                                      : "secondary"
+                                  }
+                                  className="text-[10px]"
+                                >
                                   {request.manager_approval}
                                 </Badge>
                               </div>
                             )}
                             {request.hr_approval && (
                               <div className="flex items-center gap-1.5 text-xs">
-                                <span className="text-muted-foreground">HR:</span>
-                                <Badge variant={request.hr_approval === 'approved' ? 'default' : 'secondary'} className="text-[10px]">
+                                <span className="text-muted-foreground">
+                                  HR:
+                                </span>
+                                <Badge
+                                  variant={
+                                    request.hr_approval === "approved"
+                                      ? "default"
+                                      : "secondary"
+                                  }
+                                  className="text-[10px]"
+                                >
                                   {request.hr_approval}
                                 </Badge>
                               </div>
@@ -699,8 +960,11 @@ const WFHRequests: React.FC = () => {
                           <Button
                             variant="destructive"
                             onClick={() => {
-                              const reason = prompt("Please enter rejection reason:");
-                              if (reason) handleRejectRequest(request.id, reason);
+                              const reason = prompt(
+                                "Please enter rejection reason:",
+                              );
+                              if (reason)
+                                handleRejectRequest(request.id, reason);
                             }}
                           >
                             <XCircle className="h-4 w-4 mr-2" />
@@ -716,7 +980,9 @@ const WFHRequests: React.FC = () => {
                 <div className="mt-6">
                   <Pagination
                     currentPage={pendingApprovalsPage}
-                    totalPages={Math.ceil(visiblePendingApprovals.length / itemsPerPage)}
+                    totalPages={Math.ceil(
+                      visiblePendingApprovals.length / itemsPerPage,
+                    )}
                     totalItems={visiblePendingApprovals.length}
                     itemsPerPage={itemsPerPage}
                     onPageChange={setPendingApprovalsPage}
@@ -736,17 +1002,24 @@ const WFHRequests: React.FC = () => {
               <div className="flex items-center justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <CardTitle className="text-xl font-semibold">Recent Decisions</CardTitle>
+                    <CardTitle className="text-xl font-semibold">
+                      Recent Decisions
+                    </CardTitle>
                     {recentDecisions.length > 0 && (
                       <Badge variant="outline" className="text-sm">
                         {recentDecisions.length}
                       </Badge>
                     )}
                   </div>
-                  <CardDescription>View recently approved and rejected WFH requests</CardDescription>
+                  <CardDescription>
+                    View recently approved and rejected WFH requests
+                  </CardDescription>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Select value={roleFilter} onValueChange={(value: any) => setRoleFilter(value)}>
+                  <Select
+                    value={roleFilter}
+                    onValueChange={(value: any) => setRoleFilter(value)}
+                  >
                     <SelectTrigger className="w-[150px]">
                       <SelectValue placeholder="Filter by Role" />
                     </SelectTrigger>
@@ -759,26 +1032,38 @@ const WFHRequests: React.FC = () => {
                       <SelectItem value="employee">Employee</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Select value={durationFilter} onValueChange={(value: any) => {
-                    setDurationFilter(value);
-                    if (value === 'custom') {
-                      setIsCustomRangeDialogOpen(true);
-                    }
-                  }}>
+                  <Select
+                    value={durationFilter}
+                    onValueChange={(value: any) => {
+                      setDurationFilter(value);
+                      if (value === "custom") {
+                        setIsCustomRangeDialogOpen(true);
+                      }
+                    }}
+                  >
                     <SelectTrigger className="w-[200px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Duration</SelectItem>
-                      <SelectItem value="current_month">Current Month</SelectItem>
+                      <SelectItem value="current_month">
+                        Current Month
+                      </SelectItem>
                       <SelectItem value="last_month">Last Month</SelectItem>
-                      <SelectItem value="last_3_months">Last 3 Months</SelectItem>
-                      <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                      <SelectItem value="last_3_months">
+                        Last 3 Months
+                      </SelectItem>
+                      <SelectItem value="last_6_months">
+                        Last 6 Months
+                      </SelectItem>
                       <SelectItem value="last_year">Last 1 Year</SelectItem>
                       <SelectItem value="custom">Custom Range</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Select value={decisionFilter} onValueChange={(value: any) => setDecisionFilter(value)}>
+                  <Select
+                    value={decisionFilter}
+                    onValueChange={(value: any) => setDecisionFilter(value)}
+                  >
                     <SelectTrigger className="w-[180px]">
                       <SelectValue />
                     </SelectTrigger>
@@ -795,25 +1080,36 @@ const WFHRequests: React.FC = () => {
               {isLoadingDecisions ? (
                 <div className="flex items-center justify-center py-8">
                   <ClockIcon className="h-8 w-8 animate-spin text-blue-600" />
-                  <span className="ml-2 text-muted-foreground">Loading decisions...</span>
+                  <span className="ml-2 text-muted-foreground">
+                    Loading decisions...
+                  </span>
                 </div>
               ) : filteredDecisions.length === 0 ? (
                 <div className="text-center py-8">
                   <History className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-muted-foreground">
-                    {recentDecisions.length === 0 ? 'No decisions found yet' : 'No decisions match the selected filters'}
+                    {recentDecisions.length === 0
+                      ? "No decisions found yet"
+                      : "No decisions match the selected filters"}
                   </p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {paginatedRecentDecisions.map((decision) => (
-                    <div key={decision.id} className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                    <div
+                      key={decision.id}
+                      className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+                    >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-3 flex-wrap">
-                            <span className="font-medium text-sm">{decision.employee_name}</span>
+                            <span className="font-medium text-sm">
+                              {decision.employee_name}
+                            </span>
                             <Badge variant="outline" className="text-xs">
-                              {decision.wfh_type === 'full_day' ? 'Full Day' : 'Half Day'}
+                              {decision.wfh_type === "full_day"
+                                ? "Full Day"
+                                : "Half Day"}
                             </Badge>
                             {getStatusBadge(decision.status)}
                           </div>
@@ -823,9 +1119,17 @@ const WFHRequests: React.FC = () => {
                               {decision.start_date} - {decision.end_date}
                             </span>
                           </div>
-                          <p className="text-sm text-muted-foreground">{decision.reason}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {decision.reason}
+                          </p>
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>Decision: {formatDateTimeIST(new Date(decision.updated_at), 'dd MMM yyyy, hh:mm a')}</span>
+                            <span>
+                              Decision:{" "}
+                              {formatDateTimeIST(
+                                new Date(decision.updated_at),
+                                "dd MMM yyyy, hh:mm a",
+                              )}
+                            </span>
                             {decision.approved_by && (
                               <span>By: {decision.approved_by}</span>
                             )}
@@ -833,7 +1137,8 @@ const WFHRequests: React.FC = () => {
                           {decision.rejection_reason && (
                             <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
                               <p className="text-sm text-red-800 dark:text-red-200">
-                                <strong>Rejection Reason:</strong> {decision.rejection_reason}
+                                <strong>Rejection Reason:</strong>{" "}
+                                {decision.rejection_reason}
                               </p>
                             </div>
                           )}
@@ -850,7 +1155,9 @@ const WFHRequests: React.FC = () => {
                 <div className="mt-6">
                   <Pagination
                     currentPage={recentDecisionsPage}
-                    totalPages={Math.ceil(filteredDecisions.length / itemsPerPage)}
+                    totalPages={Math.ceil(
+                      filteredDecisions.length / itemsPerPage,
+                    )}
                     totalItems={filteredDecisions.length}
                     itemsPerPage={itemsPerPage}
                     onPageChange={setRecentDecisionsPage}
@@ -869,7 +1176,9 @@ const WFHRequests: React.FC = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit WFH Request</DialogTitle>
-            <DialogDescription>Update your work from home request details</DialogDescription>
+            <DialogDescription>
+              Update your work from home request details
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -877,7 +1186,9 @@ const WFHRequests: React.FC = () => {
                 <Label>Start Date</Label>
                 <DatePicker
                   date={formData.startDate}
-                  onDateChange={(date) => date && setFormData({ ...formData, startDate: date })}
+                  onDateChange={(date) =>
+                    date && setFormData({ ...formData, startDate: date })
+                  }
                   placeholder="Select start date"
                 />
               </div>
@@ -885,7 +1196,9 @@ const WFHRequests: React.FC = () => {
                 <Label>End Date</Label>
                 <DatePicker
                   date={formData.endDate}
-                  onDateChange={(date) => date && setFormData({ ...formData, endDate: date })}
+                  onDateChange={(date) =>
+                    date && setFormData({ ...formData, endDate: date })
+                  }
                   placeholder="Select end date"
                 />
               </div>
@@ -893,7 +1206,12 @@ const WFHRequests: React.FC = () => {
 
             <div className="space-y-2">
               <Label>WFH Type</Label>
-              <Select value={formData.type} onValueChange={(value: any) => setFormData({ ...formData, type: value })}>
+              <Select
+                value={formData.type}
+                onValueChange={(value: any) =>
+                  setFormData({ ...formData, type: value })
+                }
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -913,7 +1231,9 @@ const WFHRequests: React.FC = () => {
                     key={index}
                     variant="outline"
                     className="cursor-pointer hover:bg-blue-100"
-                    onClick={() => setFormData({ ...formData, reason: template })}
+                    onClick={() =>
+                      setFormData({ ...formData, reason: template })
+                    }
                   >
                     {template}
                   </Badge>
@@ -922,7 +1242,9 @@ const WFHRequests: React.FC = () => {
 
               <Textarea
                 value={formData.reason}
-                onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, reason: e.target.value })
+                }
                 placeholder="Reason for WFH request..."
                 rows={3}
               />
@@ -930,7 +1252,10 @@ const WFHRequests: React.FC = () => {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button
@@ -938,14 +1263,17 @@ const WFHRequests: React.FC = () => {
               disabled={isSubmitting}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              {isSubmitting ? 'Updating...' : 'Update Request'}
+              {isSubmitting ? "Updating..." : "Update Request"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Custom Date Range Dialog */}
-      <Dialog open={isCustomRangeDialogOpen} onOpenChange={setIsCustomRangeDialogOpen}>
+      <Dialog
+        open={isCustomRangeDialogOpen}
+        onOpenChange={setIsCustomRangeDialogOpen}
+      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Select Custom Date Range</DialogTitle>
@@ -961,7 +1289,12 @@ const WFHRequests: React.FC = () => {
               <div className="col-span-3">
                 <DatePicker
                   date={customDateRange.startDate || undefined}
-                  onDateChange={(date) => setCustomDateRange(prev => ({ ...prev, startDate: date || null }))}
+                  onDateChange={(date) =>
+                    setCustomDateRange((prev) => ({
+                      ...prev,
+                      startDate: date || null,
+                    }))
+                  }
                   placeholder="Pick start date"
                 />
               </div>
@@ -973,20 +1306,30 @@ const WFHRequests: React.FC = () => {
               <div className="col-span-3">
                 <DatePicker
                   date={customDateRange.endDate || undefined}
-                  onDateChange={(date) => setCustomDateRange(prev => ({ ...prev, endDate: date || null }))}
+                  onDateChange={(date) =>
+                    setCustomDateRange((prev) => ({
+                      ...prev,
+                      endDate: date || null,
+                    }))
+                  }
                   placeholder="Pick end date"
                 />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setIsCustomRangeDialogOpen(false)}>Apply Filter</Button>
+            <Button onClick={() => setIsCustomRangeDialogOpen(false)}>
+              Apply Filter
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* My Requests Custom Date Range Dialog */}
-      <Dialog open={isMyRequestsCustomRangeDialogOpen} onOpenChange={setIsMyRequestsCustomRangeDialogOpen}>
+      <Dialog
+        open={isMyRequestsCustomRangeDialogOpen}
+        onOpenChange={setIsMyRequestsCustomRangeDialogOpen}
+      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Select Custom Date Range</DialogTitle>
@@ -1002,7 +1345,12 @@ const WFHRequests: React.FC = () => {
               <div className="col-span-3">
                 <DatePicker
                   date={myRequestsCustomDateRange.startDate || undefined}
-                  onDateChange={(date) => setMyRequestsCustomDateRange(prev => ({ ...prev, startDate: date || null }))}
+                  onDateChange={(date) =>
+                    setMyRequestsCustomDateRange((prev) => ({
+                      ...prev,
+                      startDate: date || null,
+                    }))
+                  }
                   placeholder="Pick start date"
                 />
               </div>
@@ -1014,25 +1362,36 @@ const WFHRequests: React.FC = () => {
               <div className="col-span-3">
                 <DatePicker
                   date={myRequestsCustomDateRange.endDate || undefined}
-                  onDateChange={(date) => setMyRequestsCustomDateRange(prev => ({ ...prev, endDate: date || null }))}
+                  onDateChange={(date) =>
+                    setMyRequestsCustomDateRange((prev) => ({
+                      ...prev,
+                      endDate: date || null,
+                    }))
+                  }
                   placeholder="Pick end date"
                 />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setIsMyRequestsCustomRangeDialogOpen(false)}>Apply Filter</Button>
+            <Button onClick={() => setIsMyRequestsCustomRangeDialogOpen(false)}>
+              Apply Filter
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete WFH Request</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this WFH request? This action cannot be undone.
+              Are you sure you want to delete this WFH request? This action
+              cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1042,7 +1401,7 @@ const WFHRequests: React.FC = () => {
               disabled={isDeletingRequest}
               className="bg-red-600 hover:bg-red-700"
             >
-              {isDeletingRequest ? 'Deleting...' : 'Delete'}
+              {isDeletingRequest ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
