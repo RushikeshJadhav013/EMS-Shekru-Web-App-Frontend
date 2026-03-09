@@ -353,9 +353,10 @@ const AttendanceManager: React.FC = () => {
       endDate.setHours(23, 59, 59, 999);
 
       filtered = filtered.filter((req) => {
-        const decisionDate = parseToIST(req.submittedAt);
+        // Filter by request date (startDate) instead of submittedAt
+        const requestDate = parseToIST(req.startDate);
         return (
-          decisionDate && decisionDate >= startDate! && decisionDate <= endDate
+          requestDate && requestDate >= startDate! && requestDate <= endDate
         );
       });
     }

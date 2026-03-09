@@ -1654,7 +1654,9 @@ export default function LeaveManagement() {
     let startDate: Date;
     let endDate: Date = new Date(now.getFullYear() + 2, 11, 31, 23, 59, 59);
 
-    switch (historyFilter) {
+    const period = String(historyFilter || "").toLowerCase();
+
+    switch (period) {
       case "all":
         startDate = new Date(0);
         break;
@@ -1703,36 +1705,30 @@ export default function LeaveManagement() {
         );
         break;
       case "custom":
-        if (!customHistoryStartDate || !customHistoryEndDate) {
-          return [...visibleHistory].sort((a, b) => {
-            const timeA = new Date(a.requestDate).getTime();
-            const timeB = new Date(b.requestDate).getTime();
-            return timeB - timeA;
-          });
+        if (customHistoryStartDate && customHistoryEndDate) {
+          startDate = new Date(
+            customHistoryStartDate.getFullYear(),
+            customHistoryStartDate.getMonth(),
+            customHistoryStartDate.getDate(),
+            0,
+            0,
+            0,
+          );
+          endDate = new Date(
+            customHistoryEndDate.getFullYear(),
+            customHistoryEndDate.getMonth(),
+            customHistoryEndDate.getDate(),
+            23,
+            59,
+            59,
+          );
+        } else {
+          startDate = new Date(0);
         }
-        startDate = new Date(
-          customHistoryStartDate.getFullYear(),
-          customHistoryStartDate.getMonth(),
-          customHistoryStartDate.getDate(),
-          0,
-          0,
-          0,
-        );
-        endDate = new Date(
-          customHistoryEndDate.getFullYear(),
-          customHistoryEndDate.getMonth(),
-          customHistoryEndDate.getDate(),
-          23,
-          59,
-          59,
-        );
         break;
       default:
-        return [...visibleHistory].sort((a, b) => {
-          const timeA = new Date(a.requestDate).getTime();
-          const timeB = new Date(b.requestDate).getTime();
-          return timeB - timeA;
-        });
+        startDate = new Date(0);
+        break;
     }
 
     let filtered = visibleHistory.filter((request) => {
@@ -1742,14 +1738,20 @@ export default function LeaveManagement() {
 
     // 2. Apply Status Filter
     if (historyStatusFilter !== "all") {
-      filtered = filtered.filter((req) => req.status === historyStatusFilter);
+      const filterStatus = String(historyStatusFilter || "").toLowerCase();
+      filtered = filtered.filter((req) => {
+        const reqStatus = String(req.status || "").toLowerCase();
+        return reqStatus === filterStatus;
+      });
     }
 
     // 3. Apply User Selected Role Filter
     if (historyRoleFilter !== "all") {
-      const filterRole = normalize(historyRoleFilter);
+      const normalizeRole = (r: string) =>
+        (r || "").toLowerCase().replace(/[\s_]+/g, "");
+      const filterRole = normalizeRole(historyRoleFilter);
       filtered = filtered.filter(
-        (req) => normalize(req.role || "") === filterRole,
+        (req) => normalizeRole(req.role || "") === filterRole,
       );
     }
 
@@ -1835,7 +1837,13 @@ export default function LeaveManagement() {
 
   useEffect(() => {
     setHistoryCurrentPage(1);
-  }, [historyFilter, customHistoryStartDate, customHistoryEndDate]);
+  }, [
+    historyFilter,
+    customHistoryStartDate,
+    customHistoryEndDate,
+    historyStatusFilter,
+    historyRoleFilter,
+  ]);
 
   useEffect(() => {
     setMyLeaveCurrentPage(1);
@@ -3641,9 +3649,9 @@ export default function LeaveManagement() {
                     ) : (
                       <div>
                         <div className="space-y-3">
-                          {paginatedApprovalHistory.map((request) => (
+                          {paginatedApprovalHistory.map((request, idx) => (
                             <div
-                              key={`hist-${request.id}`}
+                              key={`hist-${request.isWFH ? "wfh" : "leave"}-${request.id}-${idx}`}
                               className="border rounded-lg p-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
                             >
                               <div className="text-sm flex-1">

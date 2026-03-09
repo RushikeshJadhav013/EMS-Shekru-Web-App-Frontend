@@ -518,12 +518,10 @@ const AttendanceWithToggle: React.FC = () => {
 
       if (startDate) {
         filtered = filtered.filter((req) => {
-          // Filter by submission date (submittedAt)
-          const decisionDate = parseToIST(req.submittedAt);
+          // Filter by request date (startDate) instead of submittedAt
+          const requestDate = parseToIST(req.startDate);
           return (
-            decisionDate &&
-            decisionDate >= startDate! &&
-            decisionDate <= endDate
+            requestDate && requestDate >= startDate! && requestDate <= endDate
           );
         });
       }
