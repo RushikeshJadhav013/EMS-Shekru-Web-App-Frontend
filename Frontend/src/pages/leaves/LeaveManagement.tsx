@@ -2928,7 +2928,7 @@ export default function LeaveManagement() {
                         <SelectValue placeholder="All Departments" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Branches</SelectItem>
+                        <SelectItem value="all">All Departments</SelectItem>
                         {companyDepartments.map(dept => (
                           <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                         ))}
