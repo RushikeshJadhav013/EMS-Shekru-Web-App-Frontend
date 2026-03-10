@@ -957,10 +957,20 @@ const TaskManagement: React.FC = () => {
           normalizedUserRole === "team_lead") &&
         !showAllDepartments
       ) {
+        const managerDepts = (user.department || "")
+          .split(",")
+          .map((d) => d.trim().toLowerCase())
+          .filter(Boolean);
+        const empDepts = (emp.department || "")
+          .split(",")
+          .map((d) => d.trim().toLowerCase())
+          .filter(Boolean);
+
         const sameDepartment =
-          !user.department ||
-          !emp.department ||
-          emp.department === user.department;
+          managerDepts.length === 0 ||
+          empDepts.length === 0 ||
+          empDepts.some((ed) => managerDepts.includes(ed));
+
         if (!sameDepartment) return false;
       }
 
@@ -983,13 +993,22 @@ const TaskManagement: React.FC = () => {
       if (targetIndex <= currentIndex) return false;
 
       // Non-admin users can only pass within their department
-      if (
-        normalizedUserRole !== "admin" &&
-        user.department &&
-        emp.department &&
-        emp.department !== user.department
-      ) {
-        return false;
+      if (normalizedUserRole !== "admin") {
+        const managerDepts = (user.department || "")
+          .split(",")
+          .map((d) => d.trim().toLowerCase())
+          .filter(Boolean);
+        const empDepts = (emp.department || "")
+          .split(",")
+          .map((d) => d.trim().toLowerCase())
+          .filter(Boolean);
+
+        const hasOverlap =
+          managerDepts.length === 0 ||
+          empDepts.length === 0 ||
+          empDepts.some((ed) => managerDepts.includes(ed));
+
+        if (!hasOverlap) return false;
       }
       return true;
     });
@@ -3017,10 +3036,14 @@ const TaskManagement: React.FC = () => {
                                   (emp) =>
                                     !newTask.department ||
                                     (emp.department &&
-                                      emp.department.trim().toLowerCase() ===
-                                        newTask.department
-                                          .trim()
-                                          .toLowerCase()),
+                                      emp.department
+                                        .split(",")
+                                        .map((d) => d.trim().toLowerCase())
+                                        .includes(
+                                          newTask.department
+                                            .trim()
+                                            .toLowerCase(),
+                                        )),
                                 )
                                 .filter((emp) => {
                                   const search =
@@ -3047,10 +3070,14 @@ const TaskManagement: React.FC = () => {
                                   (emp) =>
                                     !newTask.department ||
                                     (emp.department &&
-                                      emp.department.trim().toLowerCase() ===
-                                        newTask.department
-                                          .trim()
-                                          .toLowerCase()),
+                                      emp.department
+                                        .split(",")
+                                        .map((d) => d.trim().toLowerCase())
+                                        .includes(
+                                          newTask.department
+                                            .trim()
+                                            .toLowerCase(),
+                                        )),
                                 )
                                 .filter((emp) => {
                                   const search =
@@ -3076,10 +3103,14 @@ const TaskManagement: React.FC = () => {
                                   (emp) =>
                                     !newTask.department ||
                                     (emp.department &&
-                                      emp.department.trim().toLowerCase() ===
-                                        newTask.department
-                                          .trim()
-                                          .toLowerCase()),
+                                      emp.department
+                                        .split(",")
+                                        .map((d) => d.trim().toLowerCase())
+                                        .includes(
+                                          newTask.department
+                                            .trim()
+                                            .toLowerCase(),
+                                        )),
                                 )
                                 .filter((emp) => {
                                   const search =
@@ -3188,8 +3219,12 @@ const TaskManagement: React.FC = () => {
                           (emp) =>
                             !newTask.department ||
                             (emp.department &&
-                              emp.department.trim().toLowerCase() ===
-                                newTask.department.trim().toLowerCase()),
+                              emp.department
+                                .split(",")
+                                .map((d) => d.trim().toLowerCase())
+                                .includes(
+                                  newTask.department.trim().toLowerCase(),
+                                )),
                         )
                         .filter((emp) => {
                           const search = assigneeSearchQuery.toLowerCase();

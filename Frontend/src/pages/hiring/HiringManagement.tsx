@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Slider } from '@/components/ui/slider';
 import { toast } from '@/hooks/use-toast';
 import {
   Plus,
@@ -274,7 +276,10 @@ export default function HiringManagement() {
       try {
         const data = await apiService.getDepartments();
         const activeDeptNames = (data || [])
-          .filter((dept: any) => dept.status === 'active')
+          .filter((dept: any) =>
+            (dept.status || '').toLowerCase() === 'active' ||
+            (dept.status === undefined && dept.name)
+          )
           .map((dept: any) => dept.name as string)
           .sort();
         setDepartments(activeDeptNames);
@@ -628,6 +633,75 @@ export default function HiringManagement() {
       });
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleUpdateCandidate = async () => {
+    if (!selectedCandidate) return;
+
+    if (!candidateFormData.first_name || !candidateFormData.last_name || !candidateFormData.email || !candidateFormData.vacancy_id || !candidateFormData.phone) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in all required fields, including phone number',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Mobile number validation (Starting with 6, 7, 8, 9 and exactly 10 digits)
+    const mobileRegex = /^[6-9]\d{9}$/;
+    if (!mobileRegex.test(candidateFormData.phone)) {
+      toast({
+        title: 'Invalid Mobile Number',
+        description: 'Mobile number must be 10 digits and start with 6, 7, 8, or 9',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Email validation (Must be @gmail.com)
+    if (!candidateFormData.email.toLowerCase().endsWith('@gmail.com')) {
+      toast({
+        title: 'Invalid Email',
+        description: 'Only @gmail.com email addresses are allowed',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const payload = {
+        ...candidateFormData,
+        name: `${candidateFormData.first_name} ${candidateFormData.last_name}`,
+      };
+      await apiService.updateCandidate(selectedCandidate.candidate_id, payload);
+
+      // If a new resume file or URL was provided, use the resume update API
+      if (candidateResumeFile || candidateFormData.resume_external_url) {
+        await apiService.updateCandidateResume(
+          selectedCandidate.candidate_id,
+          candidateResumeFile || undefined,
+          candidateFormData.resume_external_url
+        );
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Candidate updated successfully',
+      });
+      setIsCandidateDialogOpen(false);
+      resetCandidateForm();
+      setSelectedCandidate(null);
+      fetchCandidates();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update candidate',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -1355,6 +1429,7 @@ export default function HiringManagement() {
               <Button
                 className="gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 dark:shadow-none transition-all hover:scale-[1.02]"
                 onClick={() => {
+                  setSelectedCandidate(null);
                   resetCandidateForm();
                   setIsCandidateDialogOpen(true);
                 }}
@@ -1690,21 +1765,27 @@ export default function HiringManagement() {
                                 size="icon"
                                 onClick={() => {
                                   setSelectedCandidate(candidate);
-                                  setShortlistFormData({
-                                    interview_date: '',
-                                    interview_time: '',
-                                    interview_mode: 'remote',
-                                    location_or_link: '',
-                                    interviewer_name: '',
-                                    round_type: 'Technical',
+                                  const nParts = (candidate.name || '').trim().split(/\s+/);
+                                  const fNm = candidate.first_name || nParts[0] || '';
+                                  const lNm = candidate.last_name || (nParts.length > 1 ? nParts.slice(1).join(' ') : '');
+
+                                  setCandidateFormData({
+                                    first_name: fNm,
+                                    last_name: lNm,
+                                    email: candidate.email || '',
+                                    phone: candidate.phone || '',
+                                    address: candidate.address || '',
+                                    linkedin_url: candidate.linkedin_url || '',
+                                    portfolio_url: candidate.portfolio_url || '',
                                     vacancy_id: candidate.vacancy_id ? String(candidate.vacancy_id) : '',
-                                    panel_members: [],
+                                    resume_external_url: candidate.resume_external_url || '',
+                                    status: candidate.status || 'applied',
                                   });
-                                  setIsShortlistDialogOpen(true);
+                                  setIsCandidateDialogOpen(true);
                                 }}
-                                title="Schedule Interview"
+                                title="Edit Candidate"
                               >
-                                <Calendar className="h-4 w-4 text-blue-600" />
+                                <Edit className="h-4 w-4 text-orange-500" />
                               </Button>
                               <Button
                                 variant="ghost"
@@ -2604,12 +2685,20 @@ export default function HiringManagement() {
         </DialogContent>
       </Dialog >
 
-      {/* Create Candidate Dialog */}
-      < Dialog open={isCandidateDialogOpen} onOpenChange={setIsCandidateDialogOpen} >
+      {/* Create/Edit Candidate Dialog */}
+      < Dialog open={isCandidateDialogOpen} onOpenChange={(open) => {
+        setIsCandidateDialogOpen(open);
+        if (!open) {
+          setSelectedCandidate(null);
+          resetCandidateForm();
+        }
+      }} >
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add New Candidate</DialogTitle>
-            <DialogDescription>Enter candidate information and link them to a vacancy.</DialogDescription>
+            <DialogTitle>{selectedCandidate ? 'Edit Candidate' : 'Add New Candidate'}</DialogTitle>
+            <DialogDescription>
+              {selectedCandidate ? 'Update candidate information.' : 'Enter candidate information and link them to a vacancy.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2742,128 +2831,137 @@ export default function HiringManagement() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCandidateDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateCandidate} disabled={isCreating}>
-              {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Candidate
+            <Button onClick={selectedCandidate ? handleUpdateCandidate : handleCreateCandidate} disabled={isCreating || isUpdating}>
+              {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {selectedCandidate ? 'Update Candidate' : 'Save Candidate'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog >
 
-      {/* Shortlist Dialog */}
-      < Dialog open={isShortlistDialogOpen} onOpenChange={setIsShortlistDialogOpen} >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Schedule Interview</DialogTitle>
+      {/* Shortlist Dialog - Center with Scroll and Slider */}
+      <Dialog open={isShortlistDialogOpen} onOpenChange={setIsShortlistDialogOpen}>
+        <DialogContent className="max-w-md p-0 overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl">
+          <DialogHeader className="p-6 border-b bg-slate-50 dark:bg-slate-900/50">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              Schedule Interview
+            </DialogTitle>
             <DialogDescription>Schedule an interview for {selectedCandidate?.name}.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="int_date">Interview Date *</Label>
-              <Input
-                id="int_date"
-                type="date"
-                value={shortlistFormData.interview_date}
-                onChange={(e) => setShortlistFormData({ ...shortlistFormData, interview_date: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="int_time">Interview Time</Label>
-              <Input
-                id="int_time"
-                type="time"
-                value={shortlistFormData.interview_time}
-                onChange={(e) => setShortlistFormData({ ...shortlistFormData, interview_time: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+          <ScrollArea className="max-h-[60vh]">
+            <div className="p-6 space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="int_mode">Interview Mode *</Label>
-                <Select
-                  value={shortlistFormData.interview_mode}
-                  onValueChange={(value) => setShortlistFormData({ ...shortlistFormData, interview_mode: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="remote">Remote (Online)</SelectItem>
-                    <SelectItem value="onsite">On-site (Office)</SelectItem>
-                    <SelectItem value="phone">Phone Call</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="int_round">Round Type *</Label>
+                <Label htmlFor="int_date" className="text-sm font-semibold">Interview Date *</Label>
                 <Input
-                  id="int_round"
-                  value={shortlistFormData.round_type}
-                  onChange={(e) => setShortlistFormData({ ...shortlistFormData, round_type: e.target.value })}
-                  placeholder="e.g. Technical, HR"
+                  id="int_date"
+                  type="date"
+                  className="rounded-xl border-slate-200"
+                  value={shortlistFormData.interview_date}
+                  onChange={(e) => setShortlistFormData({ ...shortlistFormData, interview_date: e.target.value })}
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="int_location">Meeting Link / Location</Label>
-              <Input
-                id="int_location"
-                value={shortlistFormData.location_or_link}
-                onChange={(e) => setShortlistFormData({ ...shortlistFormData, location_or_link: e.target.value })}
-                placeholder="Zoom link or Office Address"
-              />
-            </div>
-            <div className="space-y-4">
-              <Label className="text-sm font-semibold flex items-center justify-between">
-                Select Interviewers *
-                <span className="text-xs text-blue-600 font-bold">{shortlistFormData.panel_members.length} Selected</span>
-              </Label>
-              <div className="grid grid-cols-1 gap-2 max-h-[250px] overflow-y-auto p-2 border border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 custom-scrollbar">
-                {allEmployees.length > 0 ? (
-                  allEmployees.map((emp) => {
-                    const empId = emp.id || emp.user_id;
-                    const isSelected = shortlistFormData.panel_members.includes(Number(empId));
-                    return (
-                      <div
-                        key={empId || emp.name}
-                        onClick={() => {
-                          const id = Number(empId);
-                          const newMembers = isSelected
-                            ? shortlistFormData.panel_members.filter(m => m !== id)
-                            : [...shortlistFormData.panel_members, id];
-                          setShortlistFormData({ ...shortlistFormData, panel_members: newMembers });
-                        }}
-                        className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border ${isSelected
-                          ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 shadow-sm'
-                          : 'hover:bg-white border-transparent dark:hover:bg-slate-800/50'
-                          }`}
-                      >
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => { }} // Handled by div onClick
-                          className="pointer-events-none"
-                        />
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-sm text-slate-700 dark:text-slate-200 truncate">{emp.name}</span>
-                          <span className="text-[10px] text-muted-foreground truncate">{emp.department} • {emp.designation}</span>
+              <div className="space-y-2">
+                <Label htmlFor="int_time" className="text-sm font-semibold">Interview Time</Label>
+                <Input
+                  id="int_time"
+                  type="time"
+                  className="rounded-xl border-slate-200"
+                  value={shortlistFormData.interview_time}
+                  onChange={(e) => setShortlistFormData({ ...shortlistFormData, interview_time: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="int_mode" className="text-sm font-semibold">Interview Mode *</Label>
+                  <Select
+                    value={shortlistFormData.interview_mode}
+                    onValueChange={(value) => setShortlistFormData({ ...shortlistFormData, interview_mode: value })}
+                  >
+                    <SelectTrigger className="rounded-xl border-slate-200">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="remote">Remote (Online)</SelectItem>
+                      <SelectItem value="onsite">On-site (Office)</SelectItem>
+                      <SelectItem value="phone">Phone Call</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="int_round" className="text-sm font-semibold">Round Type *</Label>
+                  <Input
+                    id="int_round"
+                    value={shortlistFormData.round_type}
+                    onChange={(e) => setShortlistFormData({ ...shortlistFormData, round_type: e.target.value })}
+                    placeholder="e.g. Technical, HR"
+                    className="rounded-xl border-slate-200"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="int_location" className="text-sm font-semibold">Meeting Link / Location</Label>
+                <Input
+                  id="int_location"
+                  value={shortlistFormData.location_or_link}
+                  onChange={(e) => setShortlistFormData({ ...shortlistFormData, location_or_link: e.target.value })}
+                  placeholder="Zoom link or Office Address"
+                  className="rounded-xl border-slate-200"
+                />
+              </div>
+              <div className="space-y-4 pt-2">
+                <Label className="text-sm font-bold flex items-center justify-between">
+                  Select Interviewers *
+                  <span className="text-xs text-blue-600 font-bold">{shortlistFormData.panel_members.length} Selected</span>
+                </Label>
+                <div className="grid grid-cols-1 gap-2 p-1 max-h-[200px] overflow-y-auto custom-scrollbar">
+                  {allEmployees.length > 0 ? (
+                    allEmployees.map((emp) => {
+                      const empId = emp.id || emp.user_id;
+                      const isSelected = shortlistFormData.panel_members.includes(Number(empId));
+                      return (
+                        <div
+                          key={empId || emp.name}
+                          onClick={() => {
+                            const id = Number(empId);
+                            const newMembers = isSelected
+                              ? shortlistFormData.panel_members.filter(m => m !== id)
+                              : [...shortlistFormData.panel_members, id];
+                            setShortlistFormData({ ...shortlistFormData, panel_members: newMembers });
+                          }}
+                          className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all border ${isSelected
+                            ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 shadow-sm'
+                            : 'hover:bg-slate-50 border-slate-100 dark:hover:bg-slate-800/50 dark:border-slate-800'
+                            }`}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => { }} // Handled by div onClick
+                            className="pointer-events-none rounded-md"
+                          />
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-semibold text-xs text-slate-700 dark:text-slate-200 truncate">{emp.name}</span>
+                            <span className="text-[9px] text-muted-foreground truncate">{emp.department} • {emp.designation}</span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="p-8 text-center text-xs text-muted-foreground italic">No employees found to select as interviewers</div>
-                )}
+                      );
+                    })
+                  ) : (
+                    <div className="p-8 text-center text-xs text-muted-foreground italic">No employees found</div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsShortlistDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleShortlistCandidate} disabled={isUpdating}>
+          </ScrollArea>
+          <DialogFooter className="p-6 border-t bg-slate-50 dark:bg-slate-900/50 gap-3">
+            <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setIsShortlistDialogOpen(false)}>Cancel</Button>
+            <Button className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700" onClick={handleShortlistCandidate} disabled={isUpdating}>
               {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Schedule Interview
+              Schedule
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog >
+      </Dialog>
 
       {/* Update Resume Dialog */}
       < Dialog open={isUpdateResumeDialogOpen} onOpenChange={setIsUpdateResumeDialogOpen} >
@@ -2909,215 +3007,234 @@ export default function HiringManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog >
-      {/* Schedule/Edit Interview Dialog */}
-      < Dialog open={isInterviewDialogOpen} onOpenChange={setIsInterviewDialogOpen} >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{selectedInterview ? 'Edit Interview' : 'Schedule Interview'}</DialogTitle>
+      {/* Schedule/Edit Interview Dialog - Center with Scroll and Slider */}
+      <Dialog open={isInterviewDialogOpen} onOpenChange={setIsInterviewDialogOpen}>
+        <DialogContent className="max-w-md p-0 overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl">
+          <DialogHeader className="p-6 border-b bg-slate-50 dark:bg-slate-900/50">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-violet-600" />
+              {selectedInterview ? 'Edit Interview' : 'Schedule Interview'}
+            </DialogTitle>
             <DialogDescription>
               {selectedInterview ? 'Update the details for this interview.' : 'Schedule a new interview for a candidate.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="i_candidate">Candidate *</Label>
-              <Select
-                value={interviewFormData.candidate_id}
-                onValueChange={(value) => {
-                  const candidate = candidates.find(c => String(c.candidate_id) === value);
-                  setInterviewFormData({
-                    ...interviewFormData,
-                    candidate_id: value,
-                    vacancy_id: candidate ? String(candidate.vacancy_id) : '',
-                  });
-                }}
-                disabled={!!selectedInterview}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select candidate" />
-                </SelectTrigger>
-                <SelectContent>
-                  {candidates.length > 0 ? (
-                    candidates.map((c) => (
-                      <SelectItem key={c.candidate_id} value={String(c.candidate_id)}>
-                        {c.name} ({c.vacancy_title || 'No Vacancy'})
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" disabled>No candidates found</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-1 gap-4">
+          <ScrollArea className="max-h-[65vh]">
+            <div className="p-6 space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="i_start_time">Start Time *</Label>
-                <Input
-                  id="i_start_time"
-                  type="datetime-local"
-                  value={interviewFormData.start_time}
-                  onChange={(e) => setInterviewFormData({ ...interviewFormData, start_time: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="i_end_time">End Time *</Label>
-                <Input
-                  id="i_end_time"
-                  type="datetime-local"
-                  value={interviewFormData.end_time}
-                  onChange={(e) => setInterviewFormData({ ...interviewFormData, end_time: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="i_mode">Mode *</Label>
+                <Label htmlFor="i_candidate" className="text-sm font-semibold">Candidate *</Label>
                 <Select
-                  value={interviewFormData.mode}
-                  onValueChange={(value: any) => setInterviewFormData({ ...interviewFormData, mode: value })}
+                  value={interviewFormData.candidate_id}
+                  onValueChange={(value) => {
+                    const candidate = candidates.find(c => String(c.candidate_id) === value);
+                    setInterviewFormData({
+                      ...interviewFormData,
+                      candidate_id: value,
+                      vacancy_id: candidate ? String(candidate.vacancy_id) : '',
+                    });
+                  }}
+                  disabled={!!selectedInterview}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger className="rounded-xl border-slate-200">
+                    <SelectValue placeholder="Select candidate" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="remote">Remote</SelectItem>
-                    <SelectItem value="onsite">On-site</SelectItem>
-                    <SelectItem value="phone">Phone Call</SelectItem>
+                    {candidates.length > 0 ? (
+                      candidates.map((c) => (
+                        <SelectItem key={c.candidate_id} value={String(c.candidate_id)}>
+                          {c.name} ({c.vacancy_title || 'No Vacancy'})
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>No candidates found</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="i_status">Status</Label>
-                <Select
-                  value={interviewFormData.status}
-                  onValueChange={(value: any) => setInterviewFormData({ ...interviewFormData, status: value })}
-                >
-                  <SelectTrigger className={cn(
-                    "capitalize font-medium",
-                    interviewFormData.status === 'scheduled' && "text-blue-600 bg-blue-50 border-blue-200",
-                    interviewFormData.status === 'completed' && "text-emerald-600 bg-emerald-50 border-emerald-200",
-                    interviewFormData.status === 'cancelled' && "text-red-600 bg-red-50 border-red-200",
-                    interviewFormData.status === 'rescheduled' && "text-amber-600 bg-amber-50 border-amber-200",
-                    interviewFormData.status === 'no_show' && "text-slate-600 bg-slate-50 border-slate-200"
-                  )}>
-                    <SelectValue>
-                      {interviewFormData.status === 'no_show' ? 'No Show' : interviewFormData.status}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="scheduled">Scheduled</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                    <SelectItem value="rescheduled">Rescheduled</SelectItem>
-                    <SelectItem value="no_show">No Show</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="i_start_time" className="text-sm font-semibold">Start Time *</Label>
+                  <Input
+                    id="i_start_time"
+                    type="datetime-local"
+                    className="rounded-xl border-slate-200"
+                    value={interviewFormData.start_time}
+                    onChange={(e) => setInterviewFormData({ ...interviewFormData, start_time: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="i_end_time" className="text-sm font-semibold">End Time *</Label>
+                  <Input
+                    id="i_end_time"
+                    type="datetime-local"
+                    className="rounded-xl border-slate-200"
+                    value={interviewFormData.end_time}
+                    onChange={(e) => setInterviewFormData({ ...interviewFormData, end_time: e.target.value })}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="i_location">Location / Meeting Link</Label>
-              <Input
-                id="i_location"
-                value={interviewFormData.location}
-                onChange={(e) => setInterviewFormData({ ...interviewFormData, location: e.target.value })}
-                placeholder="Zoom link or Office Address"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="i_round">Round Type *</Label>
-              <Input
-                id="i_round"
-                value={interviewFormData.round_type}
-                onChange={(e) => setInterviewFormData({ ...interviewFormData, round_type: e.target.value })}
-                placeholder="e.g. Technical, HR, Management"
-              />
-            </div>
-            <div className="space-y-4">
-              <Label className="text-sm font-semibold flex items-center justify-between">
-                Select Interviewers *
-                <span className="text-xs text-blue-600 font-bold">{interviewFormData.panel_members.length} Selected</span>
-              </Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[250px] overflow-y-auto p-2 border border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/50">
-                {allEmployees.length > 0 ? (
-                  allEmployees.map((emp) => {
-                    const empId = Number(emp.id || emp.user_id);
-                    const isSelected = interviewFormData.panel_members.includes(empId);
-                    return (
-                      <div
-                        key={empId}
-                        onClick={() => {
-                          const newMembers = isSelected
-                            ? interviewFormData.panel_members.filter(m => m !== empId)
-                            : [...interviewFormData.panel_members, empId];
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="i_mode" className="text-sm font-semibold">Mode *</Label>
+                  <Select
+                    value={interviewFormData.mode}
+                    onValueChange={(value: any) => setInterviewFormData({ ...interviewFormData, mode: value })}
+                  >
+                    <SelectTrigger className="rounded-xl border-slate-200">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="remote">Remote</SelectItem>
+                      <SelectItem value="onsite">On-site</SelectItem>
+                      <SelectItem value="phone">Phone Call</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="i_status" className="text-sm font-semibold">Status</Label>
+                  <Select
+                    value={interviewFormData.status}
+                    onValueChange={(value: any) => setInterviewFormData({ ...interviewFormData, status: value })}
+                  >
+                    <SelectTrigger className={cn(
+                      "capitalize font-medium rounded-xl",
+                      interviewFormData.status === 'scheduled' && "text-blue-600 bg-blue-50 border-blue-200",
+                      interviewFormData.status === 'completed' && "text-emerald-600 bg-emerald-50 border-emerald-200",
+                      interviewFormData.status === 'cancelled' && "text-red-600 bg-red-50 border-red-200",
+                      interviewFormData.status === 'rescheduled' && "text-amber-600 bg-amber-50 border-amber-200",
+                      interviewFormData.status === 'no_show' && "text-slate-600 bg-slate-50 border-slate-200"
+                    )}>
+                      <SelectValue>
+                        {interviewFormData.status === 'no_show' ? 'No Show' : interviewFormData.status}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="scheduled">Scheduled</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="rescheduled">Rescheduled</SelectItem>
+                      <SelectItem value="no_show">No Show</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="i_location" className="text-sm font-semibold">Location / Meeting Link</Label>
+                <Input
+                  id="i_location"
+                  value={interviewFormData.location}
+                  onChange={(e) => setInterviewFormData({ ...interviewFormData, location: e.target.value })}
+                  placeholder="Zoom link or Office Address"
+                  className="rounded-xl border-slate-200"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="i_round" className="text-sm font-semibold">Round Type *</Label>
+                <Input
+                  id="i_round"
+                  value={interviewFormData.round_type}
+                  onChange={(e) => setInterviewFormData({ ...interviewFormData, round_type: e.target.value })}
+                  placeholder="e.g. Technical, HR"
+                  className="rounded-xl border-slate-200"
+                />
+              </div>
+              <div className="space-y-4 pt-2">
+                <Label className="text-sm font-bold flex items-center justify-between">
+                  Select Interviewers *
+                  <span className="text-xs text-violet-600 font-bold">{interviewFormData.panel_members.length} Selected</span>
+                </Label>
+                <div className="grid grid-cols-1 gap-2 p-1 max-h-[200px] overflow-y-auto custom-scrollbar">
+                  {allEmployees.length > 0 ? (
+                    allEmployees.map((emp) => {
+                      const empId = Number(emp.id || emp.user_id);
+                      const isSelected = interviewFormData.panel_members.includes(empId);
+                      return (
+                        <div
+                          key={empId}
+                          onClick={() => {
+                            const newMembers = isSelected
+                              ? interviewFormData.panel_members.filter(m => m !== empId)
+                              : [...interviewFormData.panel_members, empId];
 
-                          // Update interviewer_name as a comma-separated string for compatibility
-                          const names = newMembers.map(id => {
-                            const e = allEmployees.find(empObj => Number(empObj.id || empObj.user_id) === id);
-                            return e ? e.name : `ID: ${id}`;
-                          });
+                            const names = newMembers.map(id => {
+                              const e = allEmployees.find(empObj => Number(empObj.id || empObj.user_id) === id);
+                              return e ? e.name : `ID: ${id}`;
+                            });
 
-                          setInterviewFormData({
-                            ...interviewFormData,
-                            panel_members: newMembers,
-                            interviewer_name: names.join(', ')
-                          });
-                        }}
-                        className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border ${isSelected
-                          ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 shadow-sm'
-                          : 'hover:bg-white border-transparent dark:hover:bg-slate-800/50'
-                          }`}
-                      >
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => { }} // Handled by div onClick
-                          className="pointer-events-none"
-                        />
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-sm text-slate-700 dark:text-slate-200 truncate">{emp.name}</span>
-                          <span className="text-[10px] text-muted-foreground truncate">{emp.department} • {emp.designation}</span>
+                            setInterviewFormData({
+                              ...interviewFormData,
+                              panel_members: newMembers,
+                              interviewer_name: names.join(', ')
+                            });
+                          }}
+                          className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all border ${isSelected
+                            ? 'bg-violet-50 border-violet-200 dark:bg-violet-900/20 dark:border-violet-800 shadow-sm'
+                            : 'hover:bg-slate-50 border-slate-100 dark:hover:bg-slate-800/50 dark:border-slate-800'
+                            }`}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => { }} // Handled by div onClick
+                            className="pointer-events-none rounded-md"
+                          />
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-semibold text-xs text-slate-700 dark:text-slate-200 truncate">{emp.name}</span>
+                            <span className="text-[9px] text-muted-foreground truncate">{emp.department} • {emp.designation}</span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="p-8 text-center text-xs text-muted-foreground italic">No employees found to select as interviewers</div>
-                )}
+                      );
+                    })
+                  ) : (
+                    <div className="p-8 text-center text-xs text-muted-foreground italic">No employees found</div>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="i_duration">Duration (minutes)</Label>
-                <Input
-                  id="i_duration"
-                  type="number"
-                  min="15"
-                  max="240"
-                  step="15"
-                  value={interviewFormData.duration_minutes}
-                  onChange={(e) => setInterviewFormData({ ...interviewFormData, duration_minutes: parseInt(e.target.value) || 60 })}
-                />
+              <div className="space-y-4 pt-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="i_duration" className="text-sm font-semibold">Duration</Label>
+                  <span className="text-xs font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">{interviewFormData.duration_minutes} Minutes</span>
+                </div>
+                <div className="px-2">
+                  <Slider
+                    id="i_duration"
+                    min={15}
+                    max={240}
+                    step={15}
+                    value={[interviewFormData.duration_minutes]}
+                    onValueChange={(vals) => setInterviewFormData({ ...interviewFormData, duration_minutes: vals[0] })}
+                    className="py-4"
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>15m</span>
+                    <span>1h</span>
+                    <span>2h</span>
+                    <span>3h</span>
+                    <span>4h</span>
+                  </div>
+                </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="i_notes">Additional Notes</Label>
+                <Label htmlFor="i_notes" className="text-sm font-semibold">Additional Notes</Label>
                 <Textarea
                   id="i_notes"
                   value={interviewFormData.notes}
                   onChange={(e) => setInterviewFormData({ ...interviewFormData, notes: e.target.value })}
-                  placeholder="Any special instructions or notes..."
+                  placeholder="Any special instructions..."
                   rows={3}
+                  className="rounded-xl border-slate-200 min-h-[100px]"
                 />
               </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsInterviewDialogOpen(false)}>Cancel</Button>
-            <Button onClick={selectedInterview ? handleUpdateInterview : handleCreateInterview} disabled={isCreating || isUpdating}>
+          </ScrollArea>
+          <DialogFooter className="p-6 border-t bg-slate-50 dark:bg-slate-900/50 gap-3">
+            <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setIsInterviewDialogOpen(false)}>Cancel</Button>
+            <Button className="flex-1 rounded-xl bg-violet-600 hover:bg-violet-700" onClick={selectedInterview ? handleUpdateInterview : handleCreateInterview} disabled={isCreating || isUpdating}>
               {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {selectedInterview ? 'Update Interview' : 'Schedule Interview'}
+              {selectedInterview ? 'Update' : 'Schedule'}
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog >
+      </Dialog>
 
       {/* View Interview & Feedback Dialog */}
       < Dialog open={isViewInterviewDialogOpen} onOpenChange={setIsViewInterviewDialogOpen} >

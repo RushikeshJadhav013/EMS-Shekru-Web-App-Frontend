@@ -357,7 +357,7 @@ const AttendanceWithToggle: React.FC = () => {
 
       if (startDate) {
         filtered = filtered.filter((req) => {
-          const reqDate = parseToIST(req.submittedAt || req.startDate);
+          const reqDate = parseToIST(req.startDate);
           return reqDate ? reqDate >= startDate! && reqDate <= endDate : false;
         });
       }
@@ -518,12 +518,10 @@ const AttendanceWithToggle: React.FC = () => {
 
       if (startDate) {
         filtered = filtered.filter((req) => {
-          // Filter by submission date (submittedAt)
-          const decisionDate = parseToIST(req.submittedAt);
+          // Filter by request date (startDate) instead of submittedAt
+          const requestDate = parseToIST(req.startDate);
           return (
-            decisionDate &&
-            decisionDate >= startDate! &&
-            decisionDate <= endDate
+            requestDate && requestDate >= startDate! && requestDate <= endDate
           );
         });
       }
@@ -658,18 +656,23 @@ const AttendanceWithToggle: React.FC = () => {
     return `${API_BASE_URL}${normalized}`;
   }, []);
 
-  // Determine if user can view employee attendance (management roles excluding Team Lead)
+  // Determine if user can view employee attendance (management roles)
   const canViewEmployeeAttendance =
-    user?.role && ["admin", "hr", "manager"].includes(user.role);
-  const canExportAttendance = user?.role && ["admin", "hr"].includes(user.role);
+    user?.role &&
+    ["admin", "hr", "manager", "team_lead", "teamlead"].includes(
+      user.role.toLowerCase(),
+    );
+  const canExportAttendance =
+    user?.role && ["admin", "hr", "manager"].includes(user.role.toLowerCase());
 
   // Access rules for attendance viewing
   const getViewableRoles = (): UserRole[] => {
-    if (user?.role === "admin")
+    const role = (user?.role || "").toLowerCase();
+    if (role === "admin")
       return ["admin", "hr", "manager", "team_lead", "employee"];
-    if (user?.role === "hr") return ["hr", "manager", "team_lead", "employee"];
-    if (user?.role === "manager") return ["team_lead", "employee"];
-    if (user?.role === "team_lead") return ["employee"];
+    if (role === "hr") return ["hr", "manager", "team_lead", "employee"];
+    if (role === "manager") return ["team_lead", "employee"];
+    if (role === "team_lead" || role === "teamlead") return ["employee"];
     return [];
   };
 
@@ -1522,12 +1525,22 @@ const AttendanceWithToggle: React.FC = () => {
       const headers = { Authorization: token ? `Bearer ${token}` : "" };
 
       let url = `${API_BASE_URL}/attendance/all`;
-      // Attempt backend enforcement by passing department scope
-      if (user?.role === "manager" && user?.department) {
-        url += `?department=${encodeURIComponent(user.department)}`;
-        url += `&manager_id=${encodeURIComponent(user.id)}`;
-      } else if (user?.role === "team_lead") {
-        url += `?team_lead_id=${encodeURIComponent(user.id)}`;
+      // Attempt backend enforcement by passing manager/team lead ID
+      const userRoleLower = (user?.role || "").toLowerCase();
+      if (userRoleLower === "manager") {
+        let params = [];
+        if (user?.department)
+          params.push(`department=${encodeURIComponent(user.department)}`);
+        params.push(`manager_id=${encodeURIComponent(user!.id)}`);
+        url += `?${params.join("&")}`;
+      } else if (
+        userRoleLower === "team_lead" ||
+        userRoleLower === "teamlead"
+      ) {
+        let params = [`team_lead_id=${encodeURIComponent(user!.id)}`];
+        if (user?.department)
+          params.push(`department=${encodeURIComponent(user.department)}`);
+        url += `?${params.join("&")}`;
       }
 
       // Fetch attendance and employees in parallel to ensure we have role data
@@ -1568,12 +1581,52 @@ const AttendanceWithToggle: React.FC = () => {
       }
 
       let data = await attendanceRes.json();
+      console.log("DEBUG: Raw Attendance Response:", data);
+
+      // Robust normalization: extract array from common wrapper keys or handle object-to-array
+      if (data) {
+        if (Array.isArray(data)) {
+          // Already an array
+        } else if (data.data && Array.isArray(data.data)) {
+          data = data.data;
+        } else if (data.attendance && Array.isArray(data.attendance)) {
+          data = data.attendance;
+        } else if (data.records && Array.isArray(data.records)) {
+          data = data.records;
+        } else if (data.employees && Array.isArray(data.employees)) {
+          data = data.employees;
+        } else if (typeof data === "object") {
+          // If it's a map of ID -> Object, convert to array
+          data = Object.entries(data)
+            .filter(([key]) => !isNaN(Number(key)) || key.length > 20)
+            .map(([userId, record]: [string, any]) => ({
+              ...record,
+              user_id: record.user_id || userId,
+              userId: record.userId || userId,
+            }));
+        }
+      }
+
+      if (!Array.isArray(data)) {
+        console.warn(
+          "DEBUG: Data is still not an array after normalization:",
+          data,
+        );
+        data = [];
+      }
+
       let employeesData = employeesRes.ok ? await employeesRes.json() : [];
-      if (!Array.isArray(employeesData) && employeesData?.employees) {
+      if (
+        employeesData &&
+        !Array.isArray(employeesData) &&
+        employeesData.employees
+      ) {
         employeesData = employeesData.employees;
       } else if (!Array.isArray(employeesData)) {
         employeesData = [];
       }
+      console.log("DEBUG: Normalized Attendance Array Size:", data.length);
+      console.log("DEBUG: Employees Data Count:", employeesData.length);
 
       // Create maps of userId -> role and department for quick lookup
       const userRoleMap: Record<string, string> = {};
@@ -1588,66 +1641,76 @@ const AttendanceWithToggle: React.FC = () => {
           .toLowerCase();
       });
 
-      // Enforce strict visibility rules (Client-side fail-safe)
+      // Enforce simplified visibility rules (Client-side fail-safe)
+      const currentUserRole = (user?.role || "").toLowerCase();
       if (
-        (user?.role === "manager" || user?.role === "team_lead") &&
+        (currentUserRole === "manager" ||
+          currentUserRole === "team_lead" ||
+          currentUserRole === "teamlead") &&
         user?.id
       ) {
-        const userId = String(user.id);
+        const currentUserId = String(user.id);
         const userDept = (user.department || "").trim().toLowerCase();
-        const hasDept = userDept.length > 0;
 
+        console.log(
+          "DEBUG: Filtering attendance for Manager/Team Lead. User Dept:",
+          userDept,
+        );
         data = data.filter((rec: any) => {
           const recUserId = String(
             rec.user_id || rec.userId || rec.employee_id || "",
           );
 
           // 1. Always show Self
-          if (recUserId === userId) return true;
+          if (recUserId === currentUserId) return true;
 
-          // 2. If the manager has no department set, skip department filter
-          //    (backend already scoped by manager_id / team_lead_id)
-          if (!hasDept) {
-            const role = (userRoleMap[recUserId] || "").toLowerCase();
-            if (user.role === "manager") {
-              // show team leads and employees
-              return (
-                role === "employee" ||
-                role === "teamlead" ||
-                role === "team_lead"
-              );
-            }
-            if (user.role === "team_lead") {
-              return role === "employee";
-            }
-            return true;
-          }
-
-          // 3. Determine department (prefer attendance record, fallback to employee map)
+          // 2. Determine department (prefer attendance record, fallback to employee map)
           let recDept = (rec.department || "").trim().toLowerCase();
           if (!recDept && userDepartmentMap[recUserId]) {
             recDept = userDepartmentMap[recUserId];
           }
 
-          // 4. Department must match
-          if (recDept && recDept !== userDept) return false;
-
-          // 5. Role lookup (normalized: underscores & spaces stripped)
+          // 3. Role lookup (normalized) and Hierarchy check
           const role = (userRoleMap[recUserId] || "").toLowerCase();
 
-          // Managers can see employees and team leads in their department
-          if (user.role === "manager") {
-            return (
-              role === "employee" || role === "teamlead" || role === "team_lead"
+          // Trust backend results for managers, but apply safety check if role is known
+          if (role) {
+            if (currentUserRole === "manager") {
+              // Managers can see employees, team leads, and potentially other managers in same branch
+              const isAllowed = [
+                "employee",
+                "teamlead",
+                "team_lead",
+                "manager",
+              ].includes(role);
+              if (!isAllowed) return false;
+            } else if (
+              currentUserRole === "team_lead" ||
+              currentUserRole === "teamlead"
+            ) {
+              // Team leads should only see employees
+              if (role !== "employee") return false;
+            }
+          }
+
+          // 4. If manager has department, enforce department scope.
+          //    Support multi-department managers by checking for overlap.
+          if (userDept && recDept) {
+            const managerDepts = userDept
+              .split(",")
+              .map((d) => d.trim().toLowerCase())
+              .filter(Boolean);
+            const recordDepts = recDept
+              .split(",")
+              .map((d) => d.trim().toLowerCase())
+              .filter(Boolean);
+            const hasOverlap = recordDepts.some((rd) =>
+              managerDepts.includes(rd),
             );
+            if (!hasOverlap) return false;
           }
 
-          // Team leads can see employees in their department
-          if (user.role === "team_lead") {
-            return role === "employee";
-          }
-
-          return false;
+          return true;
         });
       }
 
@@ -1688,21 +1751,39 @@ const AttendanceWithToggle: React.FC = () => {
       endDateLimit.setHours(23, 59, 59, 999);
 
       const records: EmployeeAttendanceRecord[] = data
-        .filter((rec: any) => rec.check_in && new Date(rec.check_in))
+        .filter((rec: any) => {
+          const checkIn =
+            rec.check_in || rec.checkInTime || rec.checkIn || rec.checkin_time;
+          if (!checkIn) return false;
+          const d = new Date(checkIn);
+          return !isNaN(d.getTime());
+        })
         .map((rec: any) => {
-          const checkInDate = rec.check_in;
-          const checkOutDate = rec.check_out;
-          const recordDateStr = formatDateIST(checkInDate, "yyyy-MM-dd");
+          const checkInDate =
+            rec.check_in || rec.checkInTime || rec.checkIn || rec.checkin_time;
+          const checkOutDate =
+            rec.check_out ||
+            rec.checkOutTime ||
+            rec.checkOut ||
+            rec.checkout_time;
+
+          const recordDateStr = checkInDate
+            ? formatDateIST(checkInDate, "yyyy-MM-dd")
+            : "";
           const todayStr = formatDateIST(new Date(), "yyyy-MM-dd");
 
-          let statusResult = "present";
+          let statusResult = (rec.status || "present").toLowerCase();
           // If it's a past date and check-out is missing, mark as absent (forgotten checkout)
-          if (recordDateStr < todayStr && !checkOutDate) {
+          if (recordDateStr && recordDateStr < todayStr && !checkOutDate) {
             statusResult = "absent";
           }
 
           // Determine work location from backend or based on WFH approval
-          let workLocation = rec.workLocation || rec.work_location;
+          let workLocation =
+            rec.workLocation ||
+            rec.work_location ||
+            rec.work_type ||
+            rec.workType;
 
           // If work location is not set, check for WFH approval for that date
           if (!workLocation && checkInDate) {
@@ -1733,7 +1814,7 @@ const AttendanceWithToggle: React.FC = () => {
 
           return {
             id: String(rec.attendance_id || rec.id || ""),
-            userId: String(rec.user_id || rec.employee_id || ""),
+            userId: String(rec.user_id || rec.userId || rec.employee_id || ""),
             date: rec.check_in ? formatDateIST(rec.check_in) : selectedDate,
             checkInTime: rec.check_in || undefined,
             checkOutTime: rec.check_out || undefined,
@@ -1744,20 +1825,26 @@ const AttendanceWithToggle: React.FC = () => {
                 rec.checkInLocationLabel ||
                 rec.locationLabel ||
                 rec.gps_location ||
+                rec.checkInLocation?.address ||
                 "N/A",
             },
             checkOutLocation: {
               latitude: 0,
               longitude: 0,
-              address: rec.checkOutLocationLabel || rec.locationLabel || "N/A",
+              address:
+                rec.checkOutLocationLabel ||
+                rec.locationLabel ||
+                rec.checkOutLocation?.address ||
+                "N/A",
             },
-            checkInSelfie: rec.checkInSelfie || rec.selfie || "",
-            checkOutSelfie: rec.checkOutSelfie || "",
+            checkInSelfie:
+              rec.checkInSelfie || rec.selfie || rec.selfie_url || "",
+            checkOutSelfie: rec.checkOutSelfie || rec.check_out_selfie || "",
             status: statusResult,
-            workHours: rec.total_hours || 0,
-            name: rec.name || rec.userName || undefined,
+            workHours: rec.total_hours || rec.workHours || 0,
+            name: rec.name || rec.userName || rec.employee_name || undefined,
             email: rec.email || rec.userEmail || undefined,
-            department: rec.department || undefined,
+            department: rec.department || rec.department_name || undefined,
             workSummary: rec.workSummary || rec.work_summary || null,
             workReport: resolveStaticUrl(rec.workReport || rec.work_report),
             workLocation: workLocation,
@@ -1782,9 +1869,16 @@ const AttendanceWithToggle: React.FC = () => {
           };
         })
         .filter((r: AttendanceRecord) => {
-          // Filter by date range based on time period
-          const recordDate = new Date(r.date);
-          return recordDate >= startDate && recordDate <= endDateLimit;
+          // Filter by date range using string comparison for better stability across timezones
+          const startStr = formatDateIST(startDate);
+          const endStr = formatDateIST(endDateLimit);
+          const inRange = r.date >= startStr && r.date <= endStr;
+          if (!inRange) {
+            console.log(
+              `DEBUG: Record ${r.userId} filtered out by date. Record Date: ${r.date}, Range: ${startStr} to ${endStr}`,
+            );
+          }
+          return inRange;
         })
         .sort((a, b) => {
           // Sort by check-in time in descending order (most recent first)
@@ -1792,6 +1886,7 @@ const AttendanceWithToggle: React.FC = () => {
           const timeB = new Date(b.checkInTime || 0).getTime();
           return timeB - timeA;
         });
+      console.log("DEBUG: Final Processed Records count:", records.length);
       setEmployeeAttendanceData(records);
     } catch (e: any) {
       console.error("Error loading employee attendance:", e);
