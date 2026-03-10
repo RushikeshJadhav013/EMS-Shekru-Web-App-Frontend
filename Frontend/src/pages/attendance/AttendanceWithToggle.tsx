@@ -656,6 +656,19 @@ const AttendanceWithToggle: React.FC = () => {
     return `${API_BASE_URL}${normalized}`;
   }, []);
 
+<<<<<<< HEAD
+  // Determine if user can view employee attendance (management roles)
+  const canViewEmployeeAttendance = user?.role && ['admin', 'hr', 'manager', 'team_lead', 'teamlead'].includes(user.role.toLowerCase());
+  const canExportAttendance = user?.role && ['admin', 'hr', 'manager'].includes(user.role.toLowerCase());
+
+  // Access rules for attendance viewing
+  const getViewableRoles = (): UserRole[] => {
+    const role = (user?.role || '').toLowerCase();
+    if (role === 'admin') return ['admin', 'hr', 'manager', 'team_lead', 'employee'];
+    if (role === 'hr') return ['hr', 'manager', 'team_lead', 'employee'];
+    if (role === 'manager') return ['team_lead', 'employee'];
+    if (role === 'team_lead' || role === 'teamlead') return ['employee'];
+=======
   // Determine if user can view employee attendance (management roles excluding Team Lead)
   const canViewEmployeeAttendance =
     user?.role && ["admin", "hr", "manager"].includes(user.role);
@@ -668,6 +681,7 @@ const AttendanceWithToggle: React.FC = () => {
     if (user?.role === "hr") return ["hr", "manager", "team_lead", "employee"];
     if (user?.role === "manager") return ["team_lead", "employee"];
     if (user?.role === "team_lead") return ["employee"];
+>>>>>>> Onkar
     return [];
   };
 
@@ -789,49 +803,49 @@ const AttendanceWithToggle: React.FC = () => {
 
       const mappedRequests = Array.isArray(wfhResponse)
         ? wfhResponse.map((req: any) => {
-            // Use multiple fallback fields for user ID to ensure a match
-            const userIdForMapping = String(
-              req.user_id || req.userId || req.submittedById || "",
-            );
+          // Use multiple fallback fields for user ID to ensure a match
+          const userIdForMapping = String(
+            req.user_id || req.userId || req.submittedById || "",
+          );
 
-            // Robust role lookup:
-            // 1. Try exact match in map
-            // 2. Try falling back to request-provided role
-            // 3. Default to 'employee'
-            // We explicitly check userRoleMap first to fix the "Showing as Manager" issue
-            // where backend might return incorrect role on the request object.
-            let resolvedRole = userRoleMap[userIdForMapping];
+          // Robust role lookup:
+          // 1. Try exact match in map
+          // 2. Try falling back to request-provided role
+          // 3. Default to 'employee'
+          // We explicitly check userRoleMap first to fix the "Showing as Manager" issue
+          // where backend might return incorrect role on the request object.
+          let resolvedRole = userRoleMap[userIdForMapping];
 
-            if (!resolvedRole) {
-              resolvedRole =
-                req.role || req.user_role || req.requester_role || "employee";
-            }
+          if (!resolvedRole) {
+            resolvedRole =
+              req.role || req.user_role || req.requester_role || "employee";
+          }
 
-            return {
-              id: req.id?.toString() || req.wfh_id?.toString(),
-              wfhId: req.id || req.wfh_id,
-              user_id: req.user_id,
-              submittedBy:
-                req.employee_name ||
-                req.user_name ||
-                req.name ||
-                "Unknown User",
-              role: resolvedRole,
-              department: req.department || "",
-              startDate: req.start_date,
-              endDate: req.end_date,
-              reason: req.reason,
-              type: (req.wfh_type || "Full Day").toLowerCase().includes("full")
-                ? "full_day"
-                : "half_day",
-              status: (req.status || "pending").toLowerCase(),
-              submittedAt: req.created_at,
-              submittedById: req.user_id,
-              rejectionReason: req.rejection_reason,
-              processedAt: req.processed_at || req.updated_at,
-              approvedBy: req.approved_by,
-            };
-          })
+          return {
+            id: req.id?.toString() || req.wfh_id?.toString(),
+            wfhId: req.id || req.wfh_id,
+            user_id: req.user_id,
+            submittedBy:
+              req.employee_name ||
+              req.user_name ||
+              req.name ||
+              "Unknown User",
+            role: resolvedRole,
+            department: req.department || "",
+            startDate: req.start_date,
+            endDate: req.end_date,
+            reason: req.reason,
+            type: (req.wfh_type || "Full Day").toLowerCase().includes("full")
+              ? "full_day"
+              : "half_day",
+            status: (req.status || "pending").toLowerCase(),
+            submittedAt: req.created_at,
+            submittedById: req.user_id,
+            rejectionReason: req.rejection_reason,
+            processedAt: req.processed_at || req.updated_at,
+            approvedBy: req.approved_by,
+          };
+        })
         : [];
 
       setAllWfhRequests(mappedRequests);
@@ -1070,15 +1084,15 @@ const AttendanceWithToggle: React.FC = () => {
         blob =
           exportType === "csv"
             ? await apiService.exportMonthlyGridCSV({
-                month: exportMonth,
-                year: exportYear,
-                department: params.department,
-              })
+              month: exportMonth,
+              year: exportYear,
+              department: params.department,
+            })
             : await apiService.exportMonthlyGridPDF({
-                month: exportMonth,
-                year: exportYear,
-                department: params.department,
-              });
+              month: exportMonth,
+              year: exportYear,
+              department: params.department,
+            });
       } else if (reportLayout === "detailed_grid") {
         // Detailed Grid export
         const exportMonth = exportStartDate
@@ -1091,15 +1105,15 @@ const AttendanceWithToggle: React.FC = () => {
         blob =
           exportType === "csv"
             ? await apiService.exportMonthlyGridDetailedCSV({
-                month: exportMonth,
-                year: exportYear,
-                department: params.department,
-              })
+              month: exportMonth,
+              year: exportYear,
+              department: params.department,
+            })
             : await apiService.downloadMonthlyDetailedAttendanceGridPDF({
-                month: exportMonth,
-                year: exportYear,
-                department: params.department,
-              });
+              month: exportMonth,
+              year: exportYear,
+              department: params.department,
+            });
       } else {
         blob =
           exportType === "csv"
@@ -1520,12 +1534,26 @@ const AttendanceWithToggle: React.FC = () => {
       const headers = { Authorization: token ? `Bearer ${token}` : "" };
 
       let url = `${API_BASE_URL}/attendance/all`;
+<<<<<<< HEAD
+      // Attempt backend enforcement by passing manager/team lead ID
+      const userRoleLower = (user?.role || '').toLowerCase();
+      if (userRoleLower === 'manager') {
+        let params = [];
+        if (user?.department) params.push(`department=${encodeURIComponent(user.department)}`);
+        params.push(`manager_id=${encodeURIComponent(user!.id)}`);
+        url += `?${params.join('&')}`;
+      } else if (userRoleLower === 'team_lead' || userRoleLower === 'teamlead') {
+        let params = [`team_lead_id=${encodeURIComponent(user!.id)}`];
+        if (user?.department) params.push(`department=${encodeURIComponent(user.department)}`);
+        url += `?${params.join('&')}`;
+=======
       // Attempt backend enforcement by passing department scope
       if (user?.role === "manager" && user?.department) {
         url += `?department=${encodeURIComponent(user.department)}`;
         url += `&manager_id=${encodeURIComponent(user.id)}`;
       } else if (user?.role === "team_lead") {
         url += `?team_lead_id=${encodeURIComponent(user.id)}`;
+>>>>>>> Onkar
       }
 
       // Fetch attendance and employees in parallel to ensure we have role data
@@ -1626,6 +1654,13 @@ const AttendanceWithToggle: React.FC = () => {
           .toLowerCase();
       });
 
+<<<<<<< HEAD
+      // Enforce simplified visibility rules (Client-side fail-safe)
+      const currentUserRole = (user?.role || '').toLowerCase();
+      if ((currentUserRole === 'manager' || currentUserRole === 'team_lead' || currentUserRole === 'teamlead') && user?.id) {
+        const currentUserId = String(user.id);
+        const userDept = (user.department || '').trim().toLowerCase();
+=======
       // Enforce strict visibility rules (Client-side fail-safe)
       if (
         (user?.role === "manager" || user?.role === "team_lead") &&
@@ -1634,6 +1669,7 @@ const AttendanceWithToggle: React.FC = () => {
         const userId = String(user.id);
         const userDept = (user.department || "").trim().toLowerCase();
         const hasDept = userDept.length > 0;
+>>>>>>> Onkar
 
         console.log(
           "DEBUG: Filtering attendance for Manager/Team Lead. User Dept:",
@@ -1645,18 +1681,14 @@ const AttendanceWithToggle: React.FC = () => {
           );
 
           // 1. Always show Self
-          if (recUserId === userId) return true;
+          if (recUserId === currentUserId) return true;
 
-          // 2. Identify role: from employeesData lookup, fallback to record itself
-          const role = (userRoleMap[recUserId] || rec.role || "")
-            .toLowerCase()
-            .replace(/[\s_]+/g, "");
-
-          // 3. Relaxed role check: if role is missing, assume it's an employee (most likely)
-          const isAllowedRoleForManager =
-            !role || role === "employee" || role === "teamlead";
-
-          // 4. If the manager has no department set, skip department filter
+<<<<<<< HEAD
+          // 2. Determine department (prefer attendance record, fallback to employee map)
+          let recDept = (rec.department || '').trim().toLowerCase();
+=======
+          // 2. If the manager has no department set, skip department filter
+          //    (backend already scoped by manager_id / team_lead_id)
           if (!hasDept) {
             let allowed = true;
             if (user.role === "manager") allowed = isAllowedRoleForManager;
@@ -1670,57 +1702,55 @@ const AttendanceWithToggle: React.FC = () => {
             return allowed;
           }
 
-          // 5. Determine department (prefer attendance record, fallback to employee map)
-          let recDeptArr = [
-            (rec.department || "").trim().toLowerCase(),
-            (rec.department_name || "").trim().toLowerCase(),
-            (userDepartmentMap[recUserId] || "").trim().toLowerCase(),
-          ].filter(Boolean);
+          // 3. Determine department (prefer attendance record, fallback to employee map)
+          let recDept = (rec.department || "").trim().toLowerCase();
+>>>>>>> Onkar
+          if (!recDept && userDepartmentMap[recUserId]) {
+            recDept = userDepartmentMap[recUserId];
+          }
 
-          let recDept = recDeptArr.length > 0 ? recDeptArr[0] : "";
+<<<<<<< HEAD
+          // 3. Role lookup (normalized) and Hierarchy check
+          const role = (userRoleMap[recUserId] || '').toLowerCase();
 
-          // 6. Department must match (supporting multi-department managers)
-          if (recDept) {
-            const managerDepts = userDept
-              .split(",")
-              .map((d) => d.trim())
-              .filter(Boolean);
-            const recordDepts = recDept
-              .split(",")
-              .map((d) => d.trim())
-              .filter(Boolean);
-
-            const hasOverlap = recordDepts.some((rd) =>
-              managerDepts.includes(rd),
-            );
-
-            if (!hasOverlap) {
-              console.log(
-                `DEBUG: Record ${recUserId} rejected by dept mismatch. Record Dept: ${recDept}, User Dept: ${userDept}`,
-              );
-              return false;
+          // Trust backend results for managers, but apply safety check if role is known
+          if (role) {
+            if (currentUserRole === 'manager') {
+              // Managers can see employees, team leads, and potentially other managers in same branch
+              const isAllowed = ['employee', 'teamlead', 'team_lead', 'manager'].includes(role);
+              if (!isAllowed) return false;
+            } else if (currentUserRole === 'team_lead' || currentUserRole === 'teamlead') {
+              // Team leads should only see employees
+              if (role !== 'employee') return false;
             }
           }
 
-          // 7. Manager/Team Lead specific logic
-          let finalAllowed = false;
-          if (user.role === "manager") {
-            finalAllowed = isAllowedRoleForManager;
-          } else if (user.role === "team_lead") {
-            finalAllowed = role === "employee";
-          }
+          // 4. If manager has department, enforce department scope.
+          //    Allow observation if record department is missing (rely on backend manager_id scope)
+          if (userDept && recDept && recDept !== userDept) {
+            return false;
+=======
+          // 4. Department must match
+          if (recDept && recDept !== userDept) return false;
 
-          if (!finalAllowed) {
-            console.log(
-              `DEBUG: Record ${recUserId} rejected by final role check. Role: ${role}`,
+          // 5. Role lookup (normalized: underscores & spaces stripped)
+          const role = (userRoleMap[recUserId] || "").toLowerCase();
+
+          // Managers can see employees and team leads in their department
+          if (user.role === "manager") {
+            return (
+              role === "employee" || role === "teamlead" || role === "team_lead"
             );
           }
-          return finalAllowed;
+
+          // Team leads can see employees in their department
+          if (user.role === "team_lead") {
+            return role === "employee";
+>>>>>>> Onkar
+          }
+
+          return true;
         });
-        console.log(
-          "DEBUG: Attendance Data after Manager Filter:",
-          data.length,
-        );
       }
 
       // Calculate date range based on time period filter
@@ -1822,17 +1852,16 @@ const AttendanceWithToggle: React.FC = () => {
           }
 
           return {
-            id: String(rec.attendance_id || rec.id || rec.attendanceId || ""),
-            userId: String(
-              rec.user_id ||
-                rec.userId ||
-                rec.employee_id ||
-                rec.employeeId ||
-                "",
-            ),
-            date: checkInDate ? formatDateIST(checkInDate) : selectedDate,
-            checkInTime: checkInDate || undefined,
-            checkOutTime: checkOutDate || undefined,
+<<<<<<< HEAD
+            id: String(rec.attendance_id || rec.id || ''),
+            userId: String(rec.user_id || rec.userId || rec.employee_id || ''),
+=======
+            id: String(rec.attendance_id || rec.id || ""),
+            userId: String(rec.user_id || rec.employee_id || ""),
+>>>>>>> Onkar
+            date: rec.check_in ? formatDateIST(rec.check_in) : selectedDate,
+            checkInTime: rec.check_in || undefined,
+            checkOutTime: rec.check_out || undefined,
             checkInLocation: {
               latitude: 0,
               longitude: 0,
@@ -1947,7 +1976,7 @@ const AttendanceWithToggle: React.FC = () => {
         // Check if check-in was late (similar to getStatusBadge logic)
         const checkInT =
           checkInTime &&
-          (checkInTime.includes(" ") || checkInTime.includes("T"))
+            (checkInTime.includes(" ") || checkInTime.includes("T"))
             ? checkInTime.includes("T")
               ? checkInTime.split("T")[1].substring(0, 8)
               : checkInTime.split(" ")[1].substring(0, 8)
@@ -1958,7 +1987,7 @@ const AttendanceWithToggle: React.FC = () => {
         // Check if check-out was early
         const checkOutT =
           checkOutTime &&
-          (checkOutTime.includes(" ") || checkOutTime.includes("T"))
+            (checkOutTime.includes(" ") || checkOutTime.includes("T"))
             ? checkOutTime.includes("T")
               ? checkOutTime.split("T")[1].substring(0, 8)
               : checkOutTime.split(" ")[1].substring(0, 8)
@@ -3407,7 +3436,7 @@ const AttendanceWithToggle: React.FC = () => {
                             currentAttendance.checkOutTime,
                           )}
                           {currentAttendance.workLocation ===
-                          "work_from_home" ? (
+                            "work_from_home" ? (
                             <Badge
                               variant="outline"
                               className="bg-orange-50 border-orange-500 text-orange-700 dark:bg-orange-950 dark:text-orange-300"
@@ -3424,23 +3453,23 @@ const AttendanceWithToggle: React.FC = () => {
                               Work From Office
                             </Badge>
                           ) : // Fallback: check WFH status if workLocation is not set
-                          getTodayWfhStatus()?.hasApprovedWfh ? (
-                            <Badge
-                              variant="outline"
-                              className="bg-orange-50 border-orange-500 text-orange-700 dark:bg-orange-950 dark:text-orange-300"
-                            >
-                              <Home className="h-3 w-3 mr-1" />
-                              Work From Home
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className="bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
-                            >
-                              <MapPin className="h-3 w-3 mr-1" />
-                              Work From Office
-                            </Badge>
-                          )}
+                            getTodayWfhStatus()?.hasApprovedWfh ? (
+                              <Badge
+                                variant="outline"
+                                className="bg-orange-50 border-orange-500 text-orange-700 dark:bg-orange-950 dark:text-orange-300"
+                              >
+                                <Home className="h-3 w-3 mr-1" />
+                                Work From Home
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant="outline"
+                                className="bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                              >
+                                <MapPin className="h-3 w-3 mr-1" />
+                                Work From Office
+                              </Badge>
+                            )}
                         </div>
                         <p className="text-lg font-semibold">
                           {formatAttendanceTime(
@@ -3449,8 +3478,8 @@ const AttendanceWithToggle: React.FC = () => {
                           )}
                         </p>
                         {currentAttendance.workLocation === "work_from_home" ||
-                        (currentAttendance.workLocation !== "office" &&
-                          getTodayWfhStatus()?.hasApprovedWfh) ? (
+                          (currentAttendance.workLocation !== "office" &&
+                            getTodayWfhStatus()?.hasApprovedWfh) ? (
                           <p className="text-xs text-orange-600 dark:text-orange-400">
                             Working from home today
                           </p>
@@ -3470,15 +3499,15 @@ const AttendanceWithToggle: React.FC = () => {
                           {(() => {
                             const checkOutT =
                               currentAttendance.checkOutTime &&
-                              (currentAttendance.checkOutTime.includes(" ") ||
-                                currentAttendance.checkOutTime.includes("T"))
+                                (currentAttendance.checkOutTime.includes(" ") ||
+                                  currentAttendance.checkOutTime.includes("T"))
                                 ? currentAttendance.checkOutTime.includes("T")
                                   ? currentAttendance.checkOutTime
-                                      .split("T")[1]
-                                      .substring(0, 8)
+                                    .split("T")[1]
+                                    .substring(0, 8)
                                   : currentAttendance.checkOutTime
-                                      .split(" ")[1]
-                                      .substring(0, 8)
+                                    .split(" ")[1]
+                                    .substring(0, 8)
                                 : currentAttendance.checkOutTime;
                             return (
                               checkOutT &&
@@ -3496,9 +3525,9 @@ const AttendanceWithToggle: React.FC = () => {
                         <p className="text-lg font-semibold">
                           {currentAttendance.checkOutTime
                             ? formatAttendanceTime(
-                                currentAttendance.date,
-                                currentAttendance.checkOutTime,
-                              )
+                              currentAttendance.date,
+                              currentAttendance.checkOutTime,
+                            )
                             : "-"}
                         </p>
                       </div>
@@ -3514,8 +3543,8 @@ const AttendanceWithToggle: React.FC = () => {
                           <p className="text-lg font-semibold">
                             {currentAttendance.checkOutTime
                               ? formatWorkHours(
-                                  currentAttendance.workHours || 0,
-                                )
+                                currentAttendance.workHours || 0,
+                              )
                               : workingHours}
                           </p>
                         </div>
@@ -3754,7 +3783,7 @@ const AttendanceWithToggle: React.FC = () => {
                               .slice(
                                 (selfCurrentPage - 1) * selfItemsPerPage,
                                 (selfCurrentPage - 1) * selfItemsPerPage +
-                                  selfItemsPerPage,
+                                selfItemsPerPage,
                               )
                               .map((record) => (
                                 <tr
@@ -3779,7 +3808,7 @@ const AttendanceWithToggle: React.FC = () => {
                                   </td>
                                   <td className="p-3 whitespace-nowrap">
                                     {record.workLocation ===
-                                    "work_from_home" ? (
+                                      "work_from_home" ? (
                                       <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
                                         <div className="h-1.5 w-1.5 rounded-full bg-orange-500"></div>
                                         <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
@@ -3858,7 +3887,7 @@ const AttendanceWithToggle: React.FC = () => {
                                   </td>
                                   <td className="p-3 whitespace-nowrap">
                                     {record.checkInLocation?.address &&
-                                    record.checkInLocation.address !== "N/A" ? (
+                                      record.checkInLocation.address !== "N/A" ? (
                                       <Button
                                         variant="ghost"
                                         size="sm"
@@ -4023,7 +4052,7 @@ const AttendanceWithToggle: React.FC = () => {
                           currentPage={selfCurrentPage}
                           totalPages={Math.ceil(
                             getFilteredAttendanceHistory().length /
-                              selfItemsPerPage,
+                            selfItemsPerPage,
                           )}
                           totalItems={getFilteredAttendanceHistory().length}
                           itemsPerPage={selfItemsPerPage}
@@ -4348,7 +4377,7 @@ const AttendanceWithToggle: React.FC = () => {
                               </td>
                               <td className="p-3 whitespace-nowrap">
                                 {record.checkInLocation?.address &&
-                                record.checkInLocation.address !== "N/A" ? (
+                                  record.checkInLocation.address !== "N/A" ? (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -4569,7 +4598,7 @@ const AttendanceWithToggle: React.FC = () => {
                   </span>
                 </div>
               ) : allWfhRequests.filter((req) => req.status === "pending")
-                  .length > 0 ? (
+                .length > 0 ? (
                 <>
                   <div className="space-y-3">
                     {allWfhRequests
@@ -4670,26 +4699,26 @@ const AttendanceWithToggle: React.FC = () => {
                   </div>
                   {allWfhRequests.filter((req) => req.status === "pending")
                     .length > 0 && (
-                    <div className="mt-4">
-                      <Pagination
-                        currentPage={pendingWfhCurrentPage}
-                        totalPages={Math.ceil(
-                          allWfhRequests.filter(
-                            (req) => req.status === "pending",
-                          ).length / pendingWfhItemsPerPage,
-                        )}
-                        totalItems={
-                          allWfhRequests.filter(
-                            (req) => req.status === "pending",
-                          ).length
-                        }
-                        itemsPerPage={pendingWfhItemsPerPage}
-                        onPageChange={setPendingWfhCurrentPage}
-                        onItemsPerPageChange={setPendingWfhItemsPerPage}
-                        showItemsPerPage={true}
-                      />
-                    </div>
-                  )}
+                      <div className="mt-4">
+                        <Pagination
+                          currentPage={pendingWfhCurrentPage}
+                          totalPages={Math.ceil(
+                            allWfhRequests.filter(
+                              (req) => req.status === "pending",
+                            ).length / pendingWfhItemsPerPage,
+                          )}
+                          totalItems={
+                            allWfhRequests.filter(
+                              (req) => req.status === "pending",
+                            ).length
+                          }
+                          itemsPerPage={pendingWfhItemsPerPage}
+                          onPageChange={setPendingWfhCurrentPage}
+                          onItemsPerPageChange={setPendingWfhItemsPerPage}
+                          showItemsPerPage={true}
+                        />
+                      </div>
+                    )}
                 </>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
@@ -4879,9 +4908,9 @@ const AttendanceWithToggle: React.FC = () => {
                       {filteredRecentDecisions
                         .slice(
                           (recentDecisionsCurrentPage - 1) *
-                            recentDecisionsItemsPerPage,
+                          recentDecisionsItemsPerPage,
                           recentDecisionsCurrentPage *
-                            recentDecisionsItemsPerPage,
+                          recentDecisionsItemsPerPage,
                         )
                         .map((request) => (
                           <div
@@ -4941,7 +4970,7 @@ const AttendanceWithToggle: React.FC = () => {
                                     Decision:{" "}
                                     {formatDateTimeIST(
                                       request.processedAt ||
-                                        request.submittedAt,
+                                      request.submittedAt,
                                       "dd MMM yyyy, hh:mm a",
                                     )}
                                   </span>
@@ -4984,7 +5013,7 @@ const AttendanceWithToggle: React.FC = () => {
                           currentPage={recentDecisionsCurrentPage}
                           totalPages={Math.ceil(
                             filteredRecentDecisions.length /
-                              recentDecisionsItemsPerPage,
+                            recentDecisionsItemsPerPage,
                           )}
                           totalItems={filteredRecentDecisions.length}
                           itemsPerPage={recentDecisionsItemsPerPage}
@@ -5125,7 +5154,7 @@ const AttendanceWithToggle: React.FC = () => {
                         <li>
                           Your request will be reviewed by your{" "}
                           {user?.role === "employee" ||
-                          user?.role === "team_lead"
+                            user?.role === "team_lead"
                             ? "manager and HR"
                             : "admin"}
                         </li>
@@ -5264,7 +5293,7 @@ const AttendanceWithToggle: React.FC = () => {
                               </span>
                               <Badge variant="outline" className="text-xs">
                                 {request.type === "full_day" ||
-                                request.type === "Full Day"
+                                  request.type === "Full Day"
                                   ? "Full Day"
                                   : "Half Day"}
                               </Badge>
@@ -5474,11 +5503,10 @@ const AttendanceWithToggle: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setReportLayout("basic")}
-                  className={`p-2.5 rounded-lg border transition-all ${
-                    reportLayout === "basic"
+                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === "basic"
                       ? "border-blue-600 bg-blue-50 dark:bg-blue-950"
                       : "border-gray-200 hover:border-blue-300 dark:border-gray-700"
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <div
@@ -5499,11 +5527,10 @@ const AttendanceWithToggle: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setReportLayout("grid")}
-                  className={`p-2.5 rounded-lg border transition-all ${
-                    reportLayout === "grid"
+                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === "grid"
                       ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
                       : "border-gray-200 hover:border-indigo-300 dark:border-gray-700"
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <div
@@ -5524,11 +5551,10 @@ const AttendanceWithToggle: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setReportLayout("detailed_grid")}
-                  className={`p-2.5 rounded-lg border transition-all ${
-                    reportLayout === "detailed_grid"
+                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === "detailed_grid"
                       ? "border-purple-600 bg-purple-50 dark:bg-purple-950"
                       : "border-gray-200 hover:border-purple-300 dark:border-gray-700"
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <div
@@ -5556,11 +5582,10 @@ const AttendanceWithToggle: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setExportType("csv")}
-                  className={`p-2.5 rounded-lg border transition-all ${
-                    exportType === "csv"
+                  className={`p-2.5 rounded-lg border transition-all ${exportType === "csv"
                       ? "border-green-600 bg-green-50 dark:bg-green-950"
                       : "border-gray-200 hover:border-green-300 dark:border-gray-700"
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <FileSpreadsheet
@@ -5579,11 +5604,10 @@ const AttendanceWithToggle: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setExportType("pdf")}
-                  className={`p-2.5 rounded-lg border transition-all ${
-                    exportType === "pdf"
+                  className={`p-2.5 rounded-lg border transition-all ${exportType === "pdf"
                       ? "border-red-600 bg-red-50 dark:bg-red-950"
                       : "border-gray-200 hover:border-red-300 dark:border-gray-700"
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <FileText
@@ -5753,11 +5777,10 @@ const AttendanceWithToggle: React.FC = () => {
                               type="button"
                               key={emp.user_id}
                               onClick={() => setSelectedExportEmployee(emp)}
-                              className={`w-full text-left p-3 border-b last:border-b-0 transition-colors ${
-                                isSelected
+                              className={`w-full text-left p-3 border-b last:border-b-0 transition-colors ${isSelected
                                   ? "bg-blue-50 dark:bg-blue-900"
                                   : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                              }`}
+                                }`}
                             >
                               <div className="font-medium">{emp.name}</div>
                               <div className="text-sm text-muted-foreground">
@@ -5883,9 +5906,9 @@ const AttendanceWithToggle: React.FC = () => {
                     Check-in:{" "}
                     {selectedRecord?.checkInTime
                       ? formatAttendanceTime(
-                          selectedRecord.date,
-                          selectedRecord.checkInTime,
-                        )
+                        selectedRecord.date,
+                        selectedRecord.checkInTime,
+                      )
                       : "N/A"}
                   </p>
                   <p className="text-sm opacity-80">
@@ -6264,12 +6287,12 @@ const AttendanceWithToggle: React.FC = () => {
                     setSelectedWfhRequest((prev) =>
                       prev
                         ? {
-                            ...prev,
-                            rejectionReason: e.target.value.replace(
-                              /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
-                              "",
-                            ),
-                          }
+                          ...prev,
+                          rejectionReason: e.target.value.replace(
+                            /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
+                            "",
+                          ),
+                        }
                         : null,
                     );
                   }}

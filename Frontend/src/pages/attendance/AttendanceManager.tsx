@@ -841,7 +841,7 @@ const AttendanceManager: React.FC = () => {
           }
         });
 
-        // Step 3: Filter employees based on allowed users
+        // Simplified visibility: allow all Employees and Team Leads in same department
         data = data.filter((emp: any) => {
           const uId = String(emp.user_id || emp.userId || emp.id);
           const empDept = (emp.department || emp.department_name || "")
@@ -852,13 +852,16 @@ const AttendanceManager: React.FC = () => {
           // 1. Always allow Self (Manager)
           if (uId === managerId) return true;
 
-          // 2. Department must match (mandatory)
-          if (empDept !== normalizedDept) return false;
+          // 2. Allow all Employees and Team Leads
+          const isAllowedRole = ['employee', 'teamlead', 'team_lead', 'manager'].includes(role);
+          if (!isAllowedRole) return false;
 
-          // 3. Check if user is in allowed set (Team Lead or Employee in reporting chain)
-          if (teamLeadIds.has(uId)) return true; // Team Lead reporting to Manager
-          if (allowedEmployeeIds.has(uId)) return true; // Employee reporting to Team Lead
+          // 3. If manager has department, filter by it. Otherwise show all provided by backend.
+          if (normalizedDept && empDept && empDept !== normalizedDept) return false;
 
+<<<<<<< HEAD
+          return true;
+=======
           // 4. Explicitly exclude other roles
           if (role === "admin" || role === "hr" || role === "manager") {
             return false;
@@ -876,6 +879,7 @@ const AttendanceManager: React.FC = () => {
 
           // Default: exclude unknown users
           return false;
+>>>>>>> Onkar
         });
 
         console.log("Manager employee filtering:", {
@@ -1176,11 +1180,19 @@ const AttendanceManager: React.FC = () => {
         let query = targetDate ? `?date=${encodeURIComponent(targetDate)}` : "";
 
         // Enforce backend-level filtering for Managers (Department Scope + Manager ID)
+<<<<<<< HEAD
+        if (user?.role === 'manager') {
+          if (user.department) {
+            query += (query ? '&' : '?') + `department=${encodeURIComponent(user.department)}`;
+          }
+          query += (query ? '&' : '?') + `manager_id=${encodeURIComponent(user.id)}`;
+=======
         if (user?.role === "manager" && user?.department) {
           query +=
             (query ? "&" : "?") +
             `department=${encodeURIComponent(user.department)}`;
           query += `&manager_id=${encodeURIComponent(user.id)}`;
+>>>>>>> Onkar
         }
 
         const [attendanceRes, employeesRes] = await Promise.all([
@@ -1232,12 +1244,16 @@ const AttendanceManager: React.FC = () => {
 
         console.log("Attendance data received:", data);
 
+<<<<<<< HEAD
+        // Enforce simplified visibility validation for Managers
+        if (user?.role === 'manager') {
+=======
         // Enforce strict visibility validation for Managers based on role hierarchy and department
         if (user?.role === "manager" && user?.department) {
+>>>>>>> Onkar
           const managerId = String(user.id);
-          const normalizedDept = user.department.trim().toLowerCase();
+          const normalizedDept = (user.department || '').trim().toLowerCase();
 
-          // Step 1: Filter attendance records based on roles and department
           data = data.filter((rec: any) => {
             const recUserId = String(rec.user_id || rec.userId);
             let recDept = (rec.department || "").trim().toLowerCase();
@@ -1245,21 +1261,29 @@ const AttendanceManager: React.FC = () => {
             // 1. Always show Self (Manager)
             if (recUserId === managerId) return true;
 
-            // 2. Use department from employee map as fallback
+            // 2. Fallback department lookup
             if (!recDept && userDepartmentMap[recUserId]) {
               recDept = userDepartmentMap[recUserId];
             }
 
-            // 3. Department must match (mandatory)
-            if (recDept !== normalizedDept) return false;
-
-            // 4. Role lookup
+            // 3. Role check
             const role = userRoleMap[recUserId];
+            const isAllowedRole = ['employee', 'teamlead', 'team_lead', 'manager'].includes(role);
+            if (!isAllowedRole) return false;
 
+<<<<<<< HEAD
+            // 4. If manager has department, enforce department scope
+            if (normalizedDept && recDept && recDept !== normalizedDept) {
+              return false;
+            }
+
+            return true;
+=======
             // Allow all Employees and Team Leads in the same department
             return (
               role === "employee" || role === "teamlead" || role === "team_lead"
             );
+>>>>>>> Onkar
           });
 
           console.log("Manager attendance filtering simplified:", {

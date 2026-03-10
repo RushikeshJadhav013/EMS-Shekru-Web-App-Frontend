@@ -415,8 +415,8 @@ class ApiService {
   }
 
   // --- Department Aliases for backward compatibility ---
-  async getDepartments(branch?: string) {
-    return this.getEmployees(branch);
+  async getDepartments() {
+    return this.getBranchs();
   }
 
   async getDepartmentNames() {

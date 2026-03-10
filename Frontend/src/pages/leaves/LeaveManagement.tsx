@@ -85,13 +85,13 @@ interface LeaveRequest {
   department: string;
   role?: string;
   type:
-    | "annual"
-    | "sick"
-    | "casual"
-    | "maternity"
-    | "paternity"
-    | "unpaid"
-    | "wfh";
+  | "annual"
+  | "sick"
+  | "casual"
+  | "maternity"
+  | "paternity"
+  | "unpaid"
+  | "wfh";
   startDate: Date;
   endDate: Date;
   reason: string;
@@ -940,10 +940,7 @@ export default function LeaveManagement() {
       const fetchApprovals = async () => {
         try {
           if (!(canApproveLeaves || canViewTeamLeaves)) return;
-          const [approvals, wfhApprovals] = await Promise.all([
-            apiService.getLeaveApprovals(),
-            apiService.getWFHRequests(),
-          ]);
+          const approvals = await apiService.getLeaveApprovals();
 
           const formattedLeaves: LeaveRequest[] = approvals.map((req: any) => ({
             id: String(req.leave_id),
@@ -961,34 +958,10 @@ export default function LeaveManagement() {
               req.status || "pending",
             ).toLowerCase() as LeaveRequest["status"],
             requestDate: new Date(req.start_date),
-            isWFH: false,
+            isWFH: (req.leave_type || '').toLowerCase() === 'wfh'
           }));
 
-          const formattedWFH: LeaveRequest[] = (
-            Array.isArray(wfhApprovals)
-              ? wfhApprovals
-              : wfhApprovals?.data || wfhApprovals?.requests || []
-          )
-            .filter(
-              (req: any) =>
-                (req.status || "pending").toLowerCase() === "pending",
-            )
-            .map((req: any) => ({
-              id: String(req.wfh_id || req.id),
-              employeeId: String(req.user_id),
-              employeeName: req.employee_name || req.name || "Unknown",
-              department: req.department || req.department_name || "",
-              role: req.role || req.requester_role || "employee",
-              type: "wfh" as any,
-              startDate: new Date(req.start_date),
-              endDate: new Date(req.end_date),
-              reason: req.reason,
-              status: "pending" as const,
-              requestDate: new Date(req.created_at || req.start_date),
-              isWFH: true,
-            }));
-
-          setApprovalRequests([...formattedLeaves, ...formattedWFH]);
+          setApprovalRequests(formattedLeaves);
         } catch (error) {
           console.error("Error fetching approvals:", error);
         }
@@ -996,7 +969,7 @@ export default function LeaveManagement() {
 
       const fetchApprovalHistory = async () => {
         try {
-          if (!canApproveLeaves) return;
+          if (!(canApproveLeaves || canViewTeamLeaves)) return;
 
           // Prepare parameters based on historyFilter
           const params: {
@@ -1016,10 +989,7 @@ export default function LeaveManagement() {
             params.end_date = format(customHistoryEndDate, "yyyy-MM-dd");
           }
 
-          const [history, wfhHistory] = await Promise.all([
-            apiService.getLeaveApprovalsHistory(params),
-            apiService.getWFHRequests(), // Reusing same endpoint, filtering for processed in map/filter if needed
-          ]);
+          const history = await apiService.getLeaveApprovalsHistory(params);
 
           const formattedLeaves: LeaveRequest[] = history.map((req: any) => ({
             id: String(req.leave_id),
@@ -1037,44 +1007,14 @@ export default function LeaveManagement() {
               req.status || "approved",
             ).toLowerCase() as LeaveRequest["status"],
             requestDate: new Date(req.start_date),
-            isWFH: false,
+            isWFH: (req.leave_type || '').toLowerCase() === 'wfh'
           }));
 
-          const formattedWFH: LeaveRequest[] = (
-            Array.isArray(wfhHistory)
-              ? wfhHistory
-              : wfhHistory?.data || wfhHistory?.requests || []
-          )
-            .filter(
-              (req: any) =>
-                (req.status || "pending").toLowerCase() !== "pending",
-            )
-            .map((req: any) => ({
-              id: String(req.wfh_id || req.id),
-              employeeId: String(req.user_id),
-              employeeName: req.employee_name || req.name || "Unknown",
-              department: req.department || req.department_name || "",
-              role: req.role || req.requester_role || "employee",
-              type: "wfh" as any,
-              startDate: new Date(req.start_date),
-              endDate: new Date(req.end_date),
-              reason: req.reason,
-              status: String(
-                req.status || "approved",
-              ).toLowerCase() as LeaveRequest["status"],
-              requestDate: new Date(req.created_at || req.start_date),
-              isWFH: true,
-            }));
-
-          const allFormatted = [...formattedLeaves, ...formattedWFH];
-
           // Merge with existing history
-          setApprovalHistory((prev) => {
-            const existingIds = new Set(allFormatted.map((r) => r.id));
-            const localDecisions = prev.filter(
-              (r) => !existingIds.has(r.id) && r.status !== "pending",
-            );
-            const combined = [...localDecisions, ...allFormatted];
+          setApprovalHistory(prev => {
+            const existingIds = new Set(formattedLeaves.map(r => r.id));
+            const localDecisions = prev.filter(r => !existingIds.has(r.id) && r.status !== 'pending');
+            const combined = [...localDecisions, ...formattedLeaves];
             return combined.sort((a, b) => {
               const timeA = new Date(a.requestDate).getTime();
               const timeB = new Date(b.requestDate).getTime();
@@ -1303,12 +1243,10 @@ export default function LeaveManagement() {
 
     try {
       // Call API to approve/reject
-      const approved = status === "approved";
-      if (request.isWFH) {
-        await apiService.approveWFHRequest(Number(id), approved);
-      } else {
-        await apiService.approveLeaveRequest(id, approved);
-      }
+      const approved = status === 'approved';
+      await apiService.approveLeaveRequest(id, approved);
+
+
 
       // Update approvals list - move approved/rejected request to the top
       const updatedRequest = { ...request, status, approvedBy: user?.name };
@@ -1399,22 +1337,13 @@ export default function LeaveManagement() {
 
   const getLeaveTypeColor = (type: string) => {
     switch (type) {
-      case "annual":
-        return "bg-blue-100 text-blue-800";
-      case "sick":
-        return "bg-red-100 text-red-800";
-      case "casual":
-        return "bg-green-100 text-green-800";
-      case "maternity":
-        return "bg-purple-100 text-purple-800";
-      case "paternity":
-        return "bg-indigo-100 text-indigo-800";
-      case "unpaid":
-        return "bg-gray-100 text-gray-800";
-      case "wfh":
-        return "bg-cyan-100 text-cyan-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+      case 'annual': return 'bg-blue-100 text-blue-800';
+      case 'sick': return 'bg-red-100 text-red-800';
+      case 'casual': return 'bg-green-100 text-green-800';
+      case 'maternity': return 'bg-purple-100 text-purple-800';
+      case 'paternity': return 'bg-indigo-100 text-indigo-800';
+      case 'unpaid': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -1638,13 +1567,12 @@ export default function LeaveManagement() {
         return ["manager", "teamlead", "team_lead", "employee"].includes(role);
       }
 
-      if (userRole === "manager") {
-        const isAllowedRole = ["teamlead", "team_lead", "employee"].includes(
-          role,
-        );
-        const isSameDept =
-          (req.department || "").trim().toLowerCase() === userDept;
-        return isAllowedRole && isSameDept;
+      if (userRole === 'manager') {
+        return ['teamlead', 'team_lead', 'employee', 'manager'].includes(role);
+      }
+
+      if (userRole === 'teamlead' || userRole === 'team_lead') {
+        return ['employee'].includes(role);
       }
 
       return false;
@@ -1791,13 +1719,12 @@ export default function LeaveManagement() {
           );
         }
 
-        if (userRole === "manager") {
-          const isAllowedRole = ["teamlead", "team_lead", "employee"].includes(
-            role,
-          );
-          const isSameDept =
-            (req.department || "").trim().toLowerCase() === userDept;
-          return isAllowedRole && isSameDept;
+        if (userRole === 'manager') {
+          return ['teamlead', 'team_lead', 'employee', 'manager'].includes(role);
+        }
+
+        if (userRole === 'teamlead' || userRole === 'team_lead') {
+          return ['employee'].includes(role);
         }
 
         return false;
@@ -2127,15 +2054,14 @@ export default function LeaveManagement() {
                       </div>
                       <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
                         <div
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            item.color === "blue"
+                          className={`h-1.5 w-1.5 rounded-full ${item.color === "blue"
                               ? "bg-blue-500"
                               : item.color === "rose"
                                 ? "bg-rose-500"
                                 : item.color === "emerald"
                                   ? "bg-emerald-500"
                                   : "bg-slate-500"
-                          }`}
+                            }`}
                         />
                         <span className="text-[10px] font-bold text-muted-foreground uppercase">
                           {item.sub}
@@ -2260,7 +2186,7 @@ export default function LeaveManagement() {
                     Math.ceil(
                       (formData.endDate.getTime() -
                         formData.startDate.getTime()) /
-                        (1000 * 60 * 60 * 24),
+                      (1000 * 60 * 60 * 24),
                     ) + 1;
                   const now = new Date();
                   const startDate = new Date(formData.startDate);
@@ -2333,11 +2259,10 @@ export default function LeaveManagement() {
                       {validationMessages.map((msg, index) => (
                         <div
                           key={index}
-                          className={`p-3 rounded-lg border text-sm flex items-center gap-2 ${
-                            msg.type === "error"
+                          className={`p-3 rounded-lg border text-sm flex items-center gap-2 ${msg.type === "error"
                               ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200"
                               : "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200"
-                          }`}
+                            }`}
                         >
                           {msg.type === "error" ? (
                             <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -2369,7 +2294,7 @@ export default function LeaveManagement() {
                     rows={3}
                     className={
                       formData.reason.trim().length > 0 &&
-                      formData.reason.trim().length < 10
+                        formData.reason.trim().length < 10
                         ? "border-red-500"
                         : ""
                     }
@@ -2524,7 +2449,7 @@ export default function LeaveManagement() {
                           Math.ceil(
                             (request.endDate.getTime() -
                               request.startDate.getTime()) /
-                              (1000 * 60 * 60 * 24),
+                            (1000 * 60 * 60 * 24),
                           ) + 1;
                         const statusConfig = {
                           pending: {
@@ -2640,7 +2565,7 @@ export default function LeaveManagement() {
                           currentPage={myLeaveCurrentPage}
                           totalPages={Math.ceil(
                             getFilteredLeaveRequests.length /
-                              myLeaveItemsPerPage,
+                            myLeaveItemsPerPage,
                           )}
                           totalItems={getFilteredLeaveRequests.length}
                           itemsPerPage={myLeaveItemsPerPage}
@@ -3031,11 +2956,10 @@ export default function LeaveManagement() {
                                     return { ...prev, days: nextDays };
                                   })
                                 }
-                                className={`rounded-full px-3 py-1 text-sm border transition ${
-                                  isSelected
+                                className={`rounded-full px-3 py-1 text-sm border transition ${isSelected
                                     ? "border-sky-500 bg-white text-sky-600 shadow-sm"
                                     : "border-slate-300 text-slate-600 hover:bg-white"
-                                }`}
+                                  }`}
                               >
                                 {day.label}
                               </button>
@@ -3267,7 +3191,7 @@ export default function LeaveManagement() {
                           .filter(
                             (h) =>
                               h.date.getFullYear() ===
-                                displayedMonth.getFullYear() &&
+                              displayedMonth.getFullYear() &&
                               h.date.getMonth() === displayedMonth.getMonth(),
                           )
                           .sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -3386,7 +3310,7 @@ export default function LeaveManagement() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {approvalRequests.length === 0 ? (
+                  {(getFilteredApprovalRequests.length === 0) ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p>No leave requests to display</p>
@@ -3441,7 +3365,7 @@ export default function LeaveManagement() {
                                     {Math.ceil(
                                       (request.endDate.getTime() -
                                         request.startDate.getTime()) /
-                                        (1000 * 60 * 60 * 24),
+                                      (1000 * 60 * 60 * 24),
                                     ) + 1}{" "}
                                     days
                                   </span>
@@ -3462,7 +3386,7 @@ export default function LeaveManagement() {
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               {request.status === "pending" &&
-                              canApproveLeaves ? (
+                                canApproveLeaves ? (
                                 <>
                                   <Button
                                     size="sm"
@@ -3599,20 +3523,20 @@ export default function LeaveManagement() {
                             )}
                             {(user?.role === "admin" ||
                               user?.role === "hr") && (
-                              <SelectItem value="manager">Manager</SelectItem>
-                            )}
+                                <SelectItem value="manager">Manager</SelectItem>
+                              )}
                             {(user?.role === "admin" ||
                               user?.role === "hr" ||
                               user?.role === "manager") && (
-                              <SelectItem value="team_lead">
-                                Team Lead
-                              </SelectItem>
-                            )}
+                                <SelectItem value="team_lead">
+                                  Team Lead
+                                </SelectItem>
+                              )}
                             {(user?.role === "admin" ||
                               user?.role === "hr" ||
                               user?.role === "manager") && (
-                              <SelectItem value="employee">Employee</SelectItem>
-                            )}
+                                <SelectItem value="employee">Employee</SelectItem>
+                              )}
                           </SelectContent>
                         </Select>
                       </div>
@@ -3917,7 +3841,7 @@ export default function LeaveManagement() {
                 placeholder="Update the reason for your leave request (minimum 10 characters)."
                 className={
                   editFormData.reason.trim().length > 0 &&
-                  editFormData.reason.trim().length < 10
+                    editFormData.reason.trim().length < 10
                     ? "border-red-500"
                     : ""
                 }

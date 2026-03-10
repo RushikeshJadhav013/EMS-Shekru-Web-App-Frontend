@@ -441,12 +441,7 @@ const MeetingsPage: React.FC = () => {
                         setIsCreateDialogOpen(open);
                         if (!open) resetForm();
                     }}>
-                        <DialogTrigger asChild>
-                            <Button className="h-12 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-200 dark:shadow-none transition-all duration-300 transform hover:scale-105">
-                                <Plus className="h-4 w-4 mr-2" />
-                                Initiate Sync
-                            </Button>
-                        </DialogTrigger>
+
                         <DialogContent className="sm:max-w-[650px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
                             <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 text-white">
                                 <DialogTitle className="text-2xl font-black uppercase tracking-tighter">
