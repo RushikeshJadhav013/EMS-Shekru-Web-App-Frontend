@@ -448,10 +448,11 @@ const AttendanceWithToggle: React.FC = () => {
 
   // Access rules for attendance viewing
   const getViewableRoles = (): UserRole[] => {
-    if (user?.role === 'admin') return ['admin', 'hr', 'manager', 'team_lead', 'employee'];
-    if (user?.role === 'hr') return ['hr', 'manager', 'team_lead', 'employee'];
-    if (user?.role === 'manager') return ['team_lead', 'employee'];
-    if (user?.role === 'team_lead') return ['employee'];
+    const role = (user?.role || '').toLowerCase();
+    if (role === 'admin') return ['admin', 'hr', 'manager', 'team_lead', 'employee'];
+    if (role === 'hr') return ['hr', 'manager', 'team_lead', 'employee'];
+    if (role === 'manager') return ['team_lead', 'employee'];
+    if (role === 'team_lead' || role === 'teamlead') return ['employee'];
     return [];
   };
 
@@ -1163,14 +1164,15 @@ const AttendanceWithToggle: React.FC = () => {
 
       let url = `${API_BASE_URL}/attendance/all`;
       // Attempt backend enforcement by passing manager/team lead ID
-      if (user?.role === 'manager') {
+      const userRoleLower = (user?.role || '').toLowerCase();
+      if (userRoleLower === 'manager') {
         let params = [];
-        if (user.department) params.push(`department=${encodeURIComponent(user.department)}`);
-        params.push(`manager_id=${encodeURIComponent(user.id)}`);
+        if (user?.department) params.push(`department=${encodeURIComponent(user.department)}`);
+        params.push(`manager_id=${encodeURIComponent(user!.id)}`);
         url += `?${params.join('&')}`;
-      } else if (user?.role === 'team_lead' || user?.role === 'teamlead') {
-        let params = [`team_lead_id=${encodeURIComponent(user.id)}`];
-        if (user.department) params.push(`department=${encodeURIComponent(user.department)}`);
+      } else if (userRoleLower === 'team_lead' || userRoleLower === 'teamlead') {
+        let params = [`team_lead_id=${encodeURIComponent(user!.id)}`];
+        if (user?.department) params.push(`department=${encodeURIComponent(user.department)}`);
         url += `?${params.join('&')}`;
       }
 
@@ -1218,15 +1220,16 @@ const AttendanceWithToggle: React.FC = () => {
       });
 
       // Enforce simplified visibility rules (Client-side fail-safe)
-      if ((user?.role === 'manager' || user?.role === 'team_lead' || user?.role === 'teamlead') && user?.id) {
-        const userId = String(user.id);
+      const currentUserRole = (user?.role || '').toLowerCase();
+      if ((currentUserRole === 'manager' || currentUserRole === 'team_lead' || currentUserRole === 'teamlead') && user?.id) {
+        const currentUserId = String(user.id);
         const userDept = (user.department || '').trim().toLowerCase();
 
         data = data.filter((rec: any) => {
           const recUserId = String(rec.user_id || rec.userId || rec.employee_id || '');
 
           // 1. Always show Self
-          if (recUserId === userId) return true;
+          if (recUserId === currentUserId) return true;
 
           // 2. Determine department (prefer attendance record, fallback to employee map)
           let recDept = (rec.department || '').trim().toLowerCase();
@@ -1234,23 +1237,25 @@ const AttendanceWithToggle: React.FC = () => {
             recDept = userDepartmentMap[recUserId];
           }
 
-          // 3. Role lookup (normalized)
+          // 3. Role lookup (normalized) and Hierarchy check
           const role = (userRoleMap[recUserId] || '').toLowerCase();
-          const isAllowedRole = ['employee', 'teamlead', 'team_lead', 'manager'].includes(role);
-          if (!isAllowedRole) return false;
+          
+          // Trust backend results for managers, but apply safety check if role is known
+          if (role) {
+            if (currentUserRole === 'manager') {
+              // Managers can see employees, team leads, and potentially other managers in same branch
+              const isAllowed = ['employee', 'teamlead', 'team_lead', 'manager'].includes(role);
+              if (!isAllowed) return false;
+            } else if (currentUserRole === 'team_lead' || currentUserRole === 'teamlead') {
+              // Team leads should only see employees
+              if (role !== 'employee') return false;
+            }
+          }
 
           // 4. If manager has department, enforce department scope.
           //    Allow observation if record department is missing (rely on backend manager_id scope)
           if (userDept && recDept && recDept !== userDept) {
             return false;
-          }
-
-          // 5. Hierarchy check
-          if (user.role === 'manager') {
-            return ['employee', 'teamlead', 'team_lead', 'manager'].includes(role);
-          }
-          if (user.role === 'team_lead' || user.role === 'teamlead') {
-            return role === 'employee';
           }
 
           return true;
