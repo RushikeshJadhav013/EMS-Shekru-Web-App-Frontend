@@ -1022,9 +1022,14 @@ export default function HiringManagement() {
       return;
     }
 
+    const finalFeedbackData = {
+      ...feedbackFormData,
+      rating: (Number(feedbackFormData.technical_rating || 0) + Number(feedbackFormData.communication_rating || 0)) / 2
+    };
+
     setIsCreating(true);
     try {
-      await apiService.createInterviewFeedback(selectedInterview.interview_id, feedbackFormData);
+      await apiService.createInterviewFeedback(selectedInterview.interview_id, finalFeedbackData);
       toast({
         title: 'Success',
         description: 'Feedback submitted successfully',
@@ -1055,9 +1060,14 @@ export default function HiringManagement() {
       return;
     }
 
+    const finalFeedbackData = {
+      ...feedbackFormData,
+      rating: (Number(feedbackFormData.technical_rating || 0) + Number(feedbackFormData.communication_rating || 0)) / 2
+    };
+
     setIsUpdating(true);
     try {
-      await apiService.updateInterviewFeedback(selectedInterview.interview_id, selectedFeedback.feedback_id, feedbackFormData);
+      await apiService.updateInterviewFeedback(selectedInterview.interview_id, selectedFeedback.feedback_id, finalFeedbackData);
       toast({
         title: 'Success',
         description: 'Feedback updated successfully',
@@ -2604,20 +2614,34 @@ export default function HiringManagement() {
                 <div className="flex flex-wrap gap-2">
                   {selectedCandidate.resume_url && (
                     <Button
-                      asChild
                       variant="outline"
                       className="h-9 px-4 rounded-lg bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-800/50 text-green-700 dark:text-green-400 hover:bg-green-100"
+                      onClick={async () => {
+                        try {
+                          // Fetch via authenticated API endpoint so auth headers are included
+                          const blob = await apiService.downloadCandidateResume(selectedCandidate.candidate_id);
+                          const objectUrl = URL.createObjectURL(blob);
+                          const win = window.open(objectUrl, '_blank');
+                          // Revoke the object URL after a delay to free memory
+                          setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+                          if (!win) {
+                            toast({ title: 'Error', description: 'Popup blocked. Please allow popups for this site.', variant: 'destructive' });
+                          }
+                        } catch (err: any) {
+                          // Fallback: try direct URL if blob download fails
+                          const directUrl = selectedCandidate.resume_url.startsWith('http')
+                            ? selectedCandidate.resume_url
+                            : `${API_BASE_URL}${selectedCandidate.resume_url.startsWith('/') ? '' : '/'}${selectedCandidate.resume_url}`;
+                          const win = window.open(directUrl, '_blank');
+                          if (!win) {
+                            toast({ title: 'Error', description: 'Could not open resume. Please allow popups for this site.', variant: 'destructive' });
+                          }
+                        }
+                      }}
                     >
-                      <a
-                        href={selectedCandidate.resume_url.startsWith('http') ? selectedCandidate.resume_url : `${API_BASE_URL}${selectedCandidate.resume_url.startsWith('/') ? '' : '/'}${selectedCandidate.resume_url}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center"
-                      >
-                        <FileText className="mr-2 h-4 w-4" />
-                        View Uploaded Resume
-                        <ExternalLink className="ml-2 h-3 w-3" />
-                      </a>
+                      <FileText className="mr-2 h-4 w-4" />
+                      View Uploaded Resume
+                      <ExternalLink className="ml-2 h-3 w-3" />
                     </Button>
                   )}
                   {selectedCandidate.resume_external_url && (
@@ -3359,16 +3383,20 @@ export default function HiringManagement() {
                               className="h-7 w-7 text-blue-600"
                               onClick={() => {
                                 setSelectedFeedback(f);
-                                setFeedbackFormData({
-                                  rating: f.rating,
-                                  feedback_summary: f.feedback_summary || '',
-                                  technical_rating: f.technical_rating || 3,
-                                  communication_rating: f.communication_rating || 3,
-                                  strengths: f.strengths || '',
-                                  weaknesses: f.weaknesses || '',
-                                  recommendation: f.recommendation,
-                                  comments: f.comments || '',
-                                });
+                                {
+                                  const tech = f.technical_rating || 3;
+                                  const comm = f.communication_rating || 3;
+                                  setFeedbackFormData({
+                                    rating: (tech + comm) / 2,
+                                    feedback_summary: f.feedback_summary || '',
+                                    technical_rating: tech,
+                                    communication_rating: comm,
+                                    strengths: f.strengths || '',
+                                    weaknesses: f.weaknesses || '',
+                                    recommendation: f.recommendation,
+                                    comments: f.comments || '',
+                                  });
+                                }
                                 setIsFeedbackDialogOpen(true);
                               }}
                             >
@@ -3493,11 +3521,14 @@ export default function HiringManagement() {
                   max="5"
                   value={feedbackFormData.technical_rating}
                   onChange={(e) => {
-                    const tech = parseInt(e.target.value) || 0;
+                    let tech = parseInt(e.target.value) || 0;
+                    if (tech > 5) tech = 5;
+                    if (tech < 0) tech = 0;
+                    const comm = feedbackFormData.communication_rating || 0;
                     setFeedbackFormData({
                       ...feedbackFormData,
                       technical_rating: tech,
-                      rating: tech + (feedbackFormData.communication_rating || 0)
+                      rating: (tech + comm) / 2
                     });
                   }}
                 />
@@ -3511,11 +3542,14 @@ export default function HiringManagement() {
                   max="5"
                   value={feedbackFormData.communication_rating}
                   onChange={(e) => {
-                    const comm = parseInt(e.target.value) || 0;
+                    let comm = parseInt(e.target.value) || 0;
+                    if (comm > 5) comm = 5;
+                    if (comm < 0) comm = 0;
+                    const tech = feedbackFormData.technical_rating || 0;
                     setFeedbackFormData({
                       ...feedbackFormData,
                       communication_rating: comm,
-                      rating: (feedbackFormData.technical_rating || 0) + comm
+                      rating: (tech + comm) / 2
                     });
                   }}
                 />

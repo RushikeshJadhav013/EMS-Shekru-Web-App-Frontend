@@ -753,8 +753,11 @@ const AttendanceManager: React.FC = () => {
     let subset = employees;
     const normalizedDept = selectedDepartmentFilter.trim().toLowerCase();
     if (normalizedDept) {
-      subset = subset.filter(
-        (emp) => (emp.department || "").trim().toLowerCase() === normalizedDept,
+      subset = subset.filter((emp) =>
+        (emp.department || "")
+          .split(',')
+          .map((d: string) => d.trim().toLowerCase())
+          .includes(normalizedDept)
       );
     }
 
@@ -772,8 +775,8 @@ const AttendanceManager: React.FC = () => {
 
   useEffect(() => {
     if (employeeFilter === "specific") {
-      if (!selectedDepartmentFilter && departments.length === 1) {
-        setSelectedDepartmentFilter(departments[0]);
+      if (!selectedDepartmentFilter && coreDepartments.length === 1) {
+        setSelectedDepartmentFilter(coreDepartments[0]);
       }
     } else {
       setSelectedDepartmentFilter("");
@@ -859,27 +862,7 @@ const AttendanceManager: React.FC = () => {
           // 3. If manager has department, filter by it. Otherwise show all provided by backend.
           if (normalizedDept && empDept && empDept !== normalizedDept) return false;
 
-<<<<<<< HEAD
           return true;
-=======
-          // 4. Explicitly exclude other roles
-          if (role === "admin" || role === "hr" || role === "manager") {
-            return false;
-          }
-
-          // 5. Exclude Team Leads not reporting to this Manager
-          if (role === "teamlead" && !teamLeadIds.has(uId)) {
-            return false;
-          }
-
-          // 6. Exclude Employees not reporting to allowed Team Leads
-          if (role === "employee" && !allowedEmployeeIds.has(uId)) {
-            return false;
-          }
-
-          // Default: exclude unknown users
-          return false;
->>>>>>> Onkar
         });
 
         console.log("Manager employee filtering:", {
@@ -1106,7 +1089,7 @@ const AttendanceManager: React.FC = () => {
       if (
         timing.department &&
         departmentTimingForm.department.trim().toLowerCase() ===
-          timing.department.trim().toLowerCase()
+        timing.department.trim().toLowerCase()
       ) {
         setDepartmentTimingForm({
           department: "",
@@ -1180,19 +1163,14 @@ const AttendanceManager: React.FC = () => {
         let query = targetDate ? `?date=${encodeURIComponent(targetDate)}` : "";
 
         // Enforce backend-level filtering for Managers (Department Scope + Manager ID)
-<<<<<<< HEAD
-        if (user?.role === 'manager') {
+        if (user?.role === "manager") {
           if (user.department) {
-            query += (query ? '&' : '?') + `department=${encodeURIComponent(user.department)}`;
+            query +=
+              (query ? "&" : "?") +
+              `department=${encodeURIComponent(user.department)}`;
           }
-          query += (query ? '&' : '?') + `manager_id=${encodeURIComponent(user.id)}`;
-=======
-        if (user?.role === "manager" && user?.department) {
           query +=
-            (query ? "&" : "?") +
-            `department=${encodeURIComponent(user.department)}`;
-          query += `&manager_id=${encodeURIComponent(user.id)}`;
->>>>>>> Onkar
+            (query ? "&" : "?") + `manager_id=${encodeURIComponent(user.id)}`;
         }
 
         const [attendanceRes, employeesRes] = await Promise.all([
@@ -1244,13 +1222,8 @@ const AttendanceManager: React.FC = () => {
 
         console.log("Attendance data received:", data);
 
-<<<<<<< HEAD
-        // Enforce simplified visibility validation for Managers
-        if (user?.role === 'manager') {
-=======
-        // Enforce strict visibility validation for Managers based on role hierarchy and department
-        if (user?.role === "manager" && user?.department) {
->>>>>>> Onkar
+        // Enforce visibility validation for Managers
+        if (user?.role === "manager") {
           const managerId = String(user.id);
           const normalizedDept = (user.department || '').trim().toLowerCase();
 
@@ -1271,19 +1244,12 @@ const AttendanceManager: React.FC = () => {
             const isAllowedRole = ['employee', 'teamlead', 'team_lead', 'manager'].includes(role);
             if (!isAllowedRole) return false;
 
-<<<<<<< HEAD
             // 4. If manager has department, enforce department scope
             if (normalizedDept && recDept && recDept !== normalizedDept) {
               return false;
             }
 
             return true;
-=======
-            // Allow all Employees and Team Leads in the same department
-            return (
-              role === "employee" || role === "teamlead" || role === "team_lead"
-            );
->>>>>>> Onkar
           });
 
           console.log("Manager attendance filtering simplified:", {
@@ -1362,8 +1328,8 @@ const AttendanceManager: React.FC = () => {
               ),
               checkOutSelfie: resolveMediaUrl(
                 rec.checkOutSelfie ||
-                  rec.check_out_selfie ||
-                  rec.checkout_selfie_url,
+                rec.check_out_selfie ||
+                rec.checkout_selfie_url,
               ),
               status: (status as any) || "present",
               workHours: rec.total_hours || rec.workHours || 0,
@@ -1768,15 +1734,15 @@ const AttendanceManager: React.FC = () => {
         blob =
           exportType === "csv"
             ? await apiService.exportMonthlyGridCSV({
-                month: exportMonth,
-                year: exportYear,
-                department: exportParams.department,
-              })
+              month: exportMonth,
+              year: exportYear,
+              department: exportParams.department,
+            })
             : await apiService.exportMonthlyGridPDF({
-                month: exportMonth,
-                year: exportYear,
-                department: exportParams.department,
-              });
+              month: exportMonth,
+              year: exportYear,
+              department: exportParams.department,
+            });
       } else if (reportLayout === "detailed_grid") {
         // Detailed Grid export also needs month and year
         const exportMonth = startDate
@@ -1789,15 +1755,15 @@ const AttendanceManager: React.FC = () => {
         blob =
           exportType === "csv"
             ? await apiService.exportMonthlyGridDetailedCSV({
-                month: exportMonth,
-                year: exportYear,
-                department: exportParams.department,
-              })
+              month: exportMonth,
+              year: exportYear,
+              department: exportParams.department,
+            })
             : await apiService.downloadMonthlyDetailedAttendanceGridPDF({
-                month: exportMonth,
-                year: exportYear,
-                department: exportParams.department,
-              });
+              month: exportMonth,
+              year: exportYear,
+              department: exportParams.department,
+            });
       } else {
         blob =
           exportType === "csv"
@@ -2022,12 +1988,12 @@ const AttendanceManager: React.FC = () => {
         prev.map((req) =>
           req.id === requestId
             ? {
-                ...req,
-                status: action === "approve" ? "approved" : "rejected",
-                processedAt: currentTime.toISOString(),
-                processedBy: user?.name || "Admin",
-                rejectionReason: action === "reject" ? reason : undefined,
-              }
+              ...req,
+              status: action === "approve" ? "approved" : "rejected",
+              processedAt: currentTime.toISOString(),
+              processedBy: user?.name || "Admin",
+              rejectionReason: action === "reject" ? reason : undefined,
+            }
             : req,
         ),
       );
@@ -2197,15 +2163,14 @@ const AttendanceManager: React.FC = () => {
                 </div>
                 <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
                   <div
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      item.color === "blue"
+                    className={`h-1.5 w-1.5 rounded-full ${item.color === "blue"
                         ? "bg-blue-500"
                         : item.color === "emerald"
                           ? "bg-emerald-500"
                           : item.color === "orange"
                             ? "bg-orange-500"
                             : "bg-amber-500"
-                    }`}
+                      }`}
                   />
                   <span className="text-[10px] font-bold text-muted-foreground uppercase">
                     {item.sub}
@@ -2508,7 +2473,7 @@ const AttendanceManager: React.FC = () => {
                           </td>
                           <td className="p-3">
                             {record.checkInLocation?.address &&
-                            record.checkInLocation.address !== "-" ? (
+                              record.checkInLocation.address !== "-" ? (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -2712,9 +2677,9 @@ const AttendanceManager: React.FC = () => {
                     Check-in:{" "}
                     {selectedRecord?.checkInTime
                       ? formatAttendanceTime(
-                          selectedRecord.date,
-                          selectedRecord.checkInTime,
-                        )
+                        selectedRecord.date,
+                        selectedRecord.checkInTime,
+                      )
                       : "N/A"}
                   </p>
                   <p className="text-sm opacity-80">
@@ -2883,11 +2848,10 @@ const AttendanceManager: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setReportLayout("basic")}
-                  className={`p-2.5 rounded-lg border transition-all ${
-                    reportLayout === "basic"
+                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === "basic"
                       ? "border-blue-600 bg-blue-50 dark:bg-blue-950"
                       : "border-gray-200 hover:border-blue-300 dark:border-gray-700"
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <div
@@ -2908,11 +2872,10 @@ const AttendanceManager: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setReportLayout("grid")}
-                  className={`p-2.5 rounded-lg border transition-all ${
-                    reportLayout === "grid"
+                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === "grid"
                       ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
                       : "border-gray-200 hover:border-indigo-300 dark:border-gray-700"
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <div
@@ -2933,11 +2896,10 @@ const AttendanceManager: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setReportLayout("detailed_grid")}
-                  className={`p-2.5 rounded-lg border transition-all ${
-                    reportLayout === "detailed_grid"
+                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === "detailed_grid"
                       ? "border-purple-600 bg-purple-50 dark:bg-purple-950"
                       : "border-gray-200 hover:border-purple-300 dark:border-gray-700"
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <div
@@ -2965,11 +2927,10 @@ const AttendanceManager: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setExportType("csv")}
-                  className={`p-2.5 rounded-lg border transition-all ${
-                    exportType === "csv"
+                  className={`p-2.5 rounded-lg border transition-all ${exportType === "csv"
                       ? "border-green-600 bg-green-50 dark:bg-green-950"
                       : "border-gray-200 hover:border-green-300 dark:border-gray-700"
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <FileSpreadsheet
@@ -2988,11 +2949,10 @@ const AttendanceManager: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setExportType("pdf")}
-                  className={`p-2.5 rounded-lg border transition-all ${
-                    exportType === "pdf"
+                  className={`p-2.5 rounded-lg border transition-all ${exportType === "pdf"
                       ? "border-red-600 bg-red-50 dark:bg-red-950"
                       : "border-gray-200 hover:border-red-300 dark:border-gray-700"
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <FileText
@@ -3163,8 +3123,8 @@ const AttendanceManager: React.FC = () => {
                       sideOffset={5}
                       align="start"
                     >
-                      {departments.length ? (
-                        departments.map((dept) => (
+                      {coreDepartments.length ? (
+                        coreDepartments.map((dept) => (
                           <SelectItem
                             key={dept}
                             value={dept}
@@ -3212,11 +3172,10 @@ const AttendanceManager: React.FC = () => {
                               type="button"
                               key={emp.user_id}
                               onClick={() => setSelectedEmployee(emp)}
-                              className={`w-full text-left p-3 border-b last:border-b-0 transition-colors ${
-                                isSelected
+                              className={`w-full text-left p-3 border-b last:border-b-0 transition-colors ${isSelected
                                   ? "bg-blue-50 dark:bg-blue-900"
                                   : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                              }`}
+                                }`}
                             >
                               <div className="font-medium">{emp.name}</div>
                               <div className="text-sm text-muted-foreground">
@@ -3612,11 +3571,10 @@ const AttendanceManager: React.FC = () => {
                         key={dept}
                         type="button"
                         onClick={() => handleDepartmentSelect(dept)}
-                        className={`px-3 py-1.5 rounded-full text-sm transition-all ${
-                          isSelected
+                        className={`px-3 py-1.5 rounded-full text-sm transition-all ${isSelected
                             ? "bg-purple-600 text-white shadow-lg"
                             : "bg-purple-50 text-purple-700 hover:bg-purple-100"
-                        }`}
+                          }`}
                       >
                         {dept}
                       </button>
@@ -3939,7 +3897,7 @@ const AttendanceManager: React.FC = () => {
                     </span>
                   </div>
                 ) : allWfhRequests.filter((req) => req.status === "pending")
-                    .length > 0 ? (
+                  .length > 0 ? (
                   <>
                     <div className="space-y-3">
                       {allWfhRequests
@@ -3963,11 +3921,10 @@ const AttendanceManager: React.FC = () => {
                                     </span>
                                     <Badge
                                       variant="outline"
-                                      className={`text-xs ${
-                                        request.role === "hr"
+                                      className={`text-xs ${request.role === "hr"
                                           ? "border-green-500 text-green-700 bg-green-50 dark:bg-green-950"
                                           : "border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950"
-                                      }`}
+                                        }`}
                                     >
                                       {formatRoleDisplay(request.role)}
                                     </Badge>
@@ -4283,11 +4240,10 @@ const AttendanceManager: React.FC = () => {
                                       </span>
                                       <Badge
                                         variant="outline"
-                                        className={`text-xs ${
-                                          request.role === "hr"
+                                        className={`text-xs ${request.role === "hr"
                                             ? "border-green-500 text-green-700 bg-green-50 dark:bg-green-950"
                                             : "border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950"
-                                        }`}
+                                          }`}
                                       >
                                         {formatRoleDisplay(request.role)}
                                       </Badge>
@@ -4330,7 +4286,7 @@ const AttendanceManager: React.FC = () => {
                                       Decision:{" "}
                                       {formatDateTimeIST(
                                         request.processedAt ||
-                                          request.submittedAt,
+                                        request.submittedAt,
                                         "dd MMM yyyy, hh:mm a",
                                       )}
                                     </span>
@@ -4430,11 +4386,10 @@ const AttendanceManager: React.FC = () => {
                     </span>
                     <Badge
                       variant="outline"
-                      className={`text-xs ${
-                        selectedWfhRequest.role === "hr"
+                      className={`text-xs ${selectedWfhRequest.role === "hr"
                           ? "border-green-500 text-green-700 bg-green-50 dark:bg-green-950"
                           : "border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950"
-                      }`}
+                        }`}
                     >
                       {formatRoleDisplay(selectedWfhRequest.role)}
                     </Badge>
@@ -4470,12 +4425,12 @@ const AttendanceManager: React.FC = () => {
                     setSelectedWfhRequest((prev) =>
                       prev
                         ? {
-                            ...prev,
-                            rejectionReason: e.target.value.replace(
-                              /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
-                              "",
-                            ),
-                          }
+                          ...prev,
+                          rejectionReason: e.target.value.replace(
+                            /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
+                            "",
+                          ),
+                        }
                         : null,
                     );
                   }}

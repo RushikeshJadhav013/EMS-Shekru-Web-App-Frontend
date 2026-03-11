@@ -511,6 +511,8 @@ const TaskManagement: React.FC = () => {
   const [exportStartDate, setExportStartDate] = useState("");
   const [exportEndDate, setExportEndDate] = useState("");
   const [exportStatusFilter, setExportStatusFilter] = useState<string>("all");
+  const [exportDepartmentFilter, setExportDepartmentFilter] =
+    useState<string>("all");
   const [isExporting, setIsExporting] = useState(false);
 
   // Pagination states
@@ -551,7 +553,7 @@ const TaskManagement: React.FC = () => {
       setTaskOwnershipFilter("received");
       // Set manager's department as default filter if applicable
       if (normalizedUserRole === "manager" && user?.department) {
-        setSelectedDepartmentFilter(user.department);
+        setSelectedDepartmentFilter("all");
       }
     }
   }, [normalizedUserRole, user?.department]);
@@ -957,10 +959,12 @@ const TaskManagement: React.FC = () => {
           normalizedUserRole === "team_lead") &&
         !showAllDepartments
       ) {
-        const sameDepartment =
-          !user.department ||
-          !emp.department ||
-          emp.department === user.department;
+        if (!user.department || !emp.department) return true;
+        
+        const userDepts = user.department.split(",").map(d => d.trim().toLowerCase());
+        const empDepts = emp.department.split(",").map(d => d.trim().toLowerCase());
+        
+        const sameDepartment = empDepts.some(d => userDepts.includes(d));
         if (!sameDepartment) return false;
       }
 
@@ -986,10 +990,12 @@ const TaskManagement: React.FC = () => {
       if (
         normalizedUserRole !== "admin" &&
         user.department &&
-        emp.department &&
-        emp.department !== user.department
+        emp.department
       ) {
-        return false;
+        const userDepts = user.department.split(",").map(d => d.trim().toLowerCase());
+        const empDepts = emp.department.split(",").map(d => d.trim().toLowerCase());
+        const sameDepartment = empDepts.some(d => userDepts.includes(d));
+        if (!sameDepartment) return false;
       }
       return true;
     });
@@ -1044,7 +1050,8 @@ const TaskManagement: React.FC = () => {
     if (normalizedUserRole === "admin" || normalizedUserRole === "hr")
       return departments;
     if (!user.department) return departments;
-    return departments.filter((dept) => dept === user.department);
+    const userDepts = user.department.split(",").map((d) => d.trim());
+    return departments.filter((dept) => userDepts.includes(dept));
   }, [departments, user, userId, normalizedUserRole]);
 
   const employeesById = useMemo(() => {
@@ -1320,16 +1327,51 @@ const TaskManagement: React.FC = () => {
       const matchesStatus =
         filterStatus === "all" || task.status === filterStatus;
 
-      const isVisible =
-        userId && user
-          ? task.assignedBy === userId ||
-            task.assignedTo.includes(userId) ||
-            normalizedUserRole === "admin"
-          : false;
+      const isVisible = (() => {
+        if (!userId || !user) return false;
+        if (normalizedUserRole === "admin") return true;
+        if (task.assignedBy === userId || task.assignedTo.includes(userId))
+          return true;
+
+        // For Managers, show tasks from their department
+        if (normalizedUserRole === "manager" && user.department) {
+          const userDepts = user.department
+            .split(",")
+            .map((d) => d.trim().toLowerCase());
+
+          const creator = employees.find(
+            (emp) => String(emp.userId) === String(task.assignedBy),
+          );
+          const assignees = task.assignedTo.map((id) =>
+            employees.find((emp) => String(emp.userId) === String(id)),
+          );
+
+          const creatorInDept = creator?.department
+            ?.split(",")
+            .some((d) => userDepts.includes(d.trim().toLowerCase()));
+          const anyAssigneeInDept = assignees.some((assignee) =>
+            assignee?.department
+              ?.split(",")
+              .some((d) => userDepts.includes(d.trim().toLowerCase())),
+          );
+
+          if (creatorInDept || anyAssigneeInDept) return true;
+        }
+
+        return false;
+      })();
 
       return matchesSearch && matchesStatus && Boolean(isVisible);
     });
-  }, [filterStatus, searchQuery, tasks, user, userId, normalizedUserRole]);
+  }, [
+    filterStatus,
+    searchQuery,
+    tasks,
+    user,
+    userId,
+    normalizedUserRole,
+    employees,
+  ]);
 
   // Get task counts by status (for stat cards) - without status filter
   const taskCountsByStatus = useMemo(() => {
@@ -1338,12 +1380,39 @@ const TaskManagement: React.FC = () => {
         task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         task.description.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const isVisible =
-        userId && user
-          ? task.assignedBy === userId ||
-            task.assignedTo.includes(userId) ||
-            normalizedUserRole === "admin"
-          : false;
+      const isVisible = (() => {
+        if (!userId || !user) return false;
+        if (normalizedUserRole === "admin") return true;
+        if (task.assignedBy === userId || task.assignedTo.includes(userId))
+          return true;
+
+        // For Managers, show tasks from their department
+        if (normalizedUserRole === "manager" && user.department) {
+          const userDepts = user.department
+            .split(",")
+            .map((d) => d.trim().toLowerCase());
+
+          const creator = employees.find(
+            (emp) => String(emp.userId) === String(task.assignedBy),
+          );
+          const assignees = task.assignedTo.map((id) =>
+            employees.find((emp) => String(emp.userId) === String(id)),
+          );
+
+          const creatorInDept = creator?.department
+            ?.split(",")
+            .some((d) => userDepts.includes(d.trim().toLowerCase()));
+          const anyAssigneeInDept = assignees.some((assignee) =>
+            assignee?.department
+              ?.split(",")
+              .some((d) => userDepts.includes(d.trim().toLowerCase())),
+          );
+
+          if (creatorInDept || anyAssigneeInDept) return true;
+        }
+
+        return false;
+      })();
 
       return matchesSearch && Boolean(isVisible);
     });
@@ -1389,11 +1458,17 @@ const TaskManagement: React.FC = () => {
         );
 
         // Check if task belongs to selected department
+        const creatorDepts =
+          creator?.department?.split(",").map((d) => d.trim()) || [];
+        const anyAssigneeMatch = assignees.some((assignee) =>
+          assignee?.department
+            ?.split(",")
+            .map((d) => d.trim())
+            .includes(selectedDepartmentFilter),
+        );
+
         return (
-          creator?.department === selectedDepartmentFilter ||
-          assignees.some(
-            (assignee) => assignee?.department === selectedDepartmentFilter,
-          )
+          creatorDepts.includes(selectedDepartmentFilter) || anyAssigneeMatch
         );
       });
     }
@@ -2642,6 +2717,10 @@ const TaskManagement: React.FC = () => {
         params.status = exportStatusFilter;
       }
 
+      if (exportDepartmentFilter !== "all") {
+        params.department = exportDepartmentFilter;
+      }
+
       const blob = await apiService.getTaskManagementReport(params);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -2679,6 +2758,7 @@ const TaskManagement: React.FC = () => {
     exportStartDate,
     exportEndDate,
     exportStatusFilter,
+    exportDepartmentFilter,
     toast,
   ]);
 
@@ -3474,7 +3554,8 @@ const TaskManagement: React.FC = () => {
                   Filter
                 </Label>
                 <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1 h-10">
-                  {normalizedUserRole === "admin" ? (
+                  {normalizedUserRole === "admin" ||
+                  normalizedUserRole === "manager" ? (
                     <>
                       <Button
                         size="sm"
@@ -3549,9 +3630,10 @@ const TaskManagement: React.FC = () => {
                 </div>
               </div>
 
-              {/* Department Filter - Show when viewing All Tasks for Admin only */}
+              {/* Department Filter - Show when viewing All Tasks for Admin and Manager */}
               {taskOwnershipFilter === "all" &&
-                normalizedUserRole === "admin" && (
+                (normalizedUserRole === "admin" ||
+                  normalizedUserRole === "manager") && (
                   <div className="flex flex-col gap-2">
                     <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                       Department
@@ -3564,7 +3646,8 @@ const TaskManagement: React.FC = () => {
                         <SelectValue placeholder="Select Department" />
                       </SelectTrigger>
                       <SelectContent>
-                        {normalizedUserRole === "admin" && (
+                        {(normalizedUserRole === "admin" ||
+                          normalizedUserRole === "manager") && (
                           <SelectItem value="all">All Departments</SelectItem>
                         )}
                         {departments
@@ -5821,6 +5904,38 @@ const TaskManagement: React.FC = () => {
               </Select>
             </div>
 
+            {/* Department Filter - Only for Admin, HR, Manager */}
+            {(normalizedUserRole === "admin" ||
+              normalizedUserRole === "hr" ||
+              normalizedUserRole === "manager") && (
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-emerald-600" />
+                  Department Filter
+                </Label>
+                <Select
+                  value={exportDepartmentFilter}
+                  onValueChange={setExportDepartmentFilter}
+                >
+                  <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-2 shadow-xl">
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments
+                      .slice()
+                      .filter((dept) => dept && dept.trim() !== "")
+                      .sort((a, b) => a.localeCompare(b))
+                      .map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Export Summary */}
             <div className="p-4 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950 dark:to-teal-950 border">
               <h4 className="font-semibold mb-2">Export Summary</h4>
@@ -5847,6 +5962,14 @@ const TaskManagement: React.FC = () => {
                     {exportStatusFilter === "all"
                       ? "All Statuses"
                       : exportStatusFilter}
+                  </span>
+                </p>
+                <p>
+                  • Department:{" "}
+                  <span className="font-medium text-foreground">
+                    {exportDepartmentFilter === "all"
+                      ? "All Departments"
+                      : exportDepartmentFilter}
                   </span>
                 </p>
               </div>

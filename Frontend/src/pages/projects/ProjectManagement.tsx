@@ -62,12 +62,10 @@ import { apiService } from "@/lib/api";
 import { formatDateIST } from "@/utils/timezone";
 
 const TASK_STATUSES = [
-  "pending",
+  "todo",
   "in-progress",
-  "overdue",
   "completed",
   "cancelled",
-  "todo",
 ] as const;
 type TaskStatus = (typeof TASK_STATUSES)[number];
 
@@ -301,20 +299,16 @@ interface Project {
 }
 
 const normalizeStatus = (s?: string): string => {
-  if (!s) return "inprogress";
-  const low = s.toLowerCase();
-  if (low === "planned" || low === "on-hold") return "planned";
-  if (
-    low === "inprogress" ||
-    low === "in-progress" ||
-    low === "in_progress" ||
-    low === "active"
-  )
-    return "inprogress";
-  if (low === "completed" || low === "complete" || low === "achieved")
-    return "complete";
-  if (low === "cancelled") return "cancelled";
+  if (!s) return "todo";
+  const low = s.toLowerCase().trim().replace(/[-_]/g, "");
+  if (low === "todo" || low === "pending" || low === "planned") return "todo";
+  if (low === "inprogress" || low === "active") return "in-progress";
+  if (low === "completed" || low === "complete" || low === "achieved") return "completed";
+  if (low === "cancelled" || low === "canceled") return "cancelled";
+  // For Select dropdown compatibility, map everything else to one of the four if needed, 
+  // or return the value and ensure Select has an item for it.
   if (low === "archived") return "archived";
+  if (low === "overdue") return "overdue";
   return low;
 };
 
@@ -322,66 +316,63 @@ const normalizeStatus = (s?: string): string => {
 // Status helpers
 // ─────────────────────────────────────────
 function TaskStatusBadge({ status }: { status: string }) {
-  if (status === "todo" || status === "pending" || status === "on-hold")
+  const norm = normalizeStatus(status);
+  if (norm === "todo")
     return (
-      <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-0 gap-1 text-[11px]">
+      <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-0 gap-1 text-[11px]">
         <Clock className="h-3 w-3" />
-        Planned
+        To Do
       </Badge>
     );
-  if (status === "in-progress" || status === "active")
+  if (norm === "in-progress")
     return (
       <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0 gap-1 text-[11px]">
         <Clock className="h-3 w-3" />
-        Active
+        In Progress
       </Badge>
     );
-  if (status === "overdue")
+  if (norm === "overdue")
     return (
       <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0 gap-1 text-[11px]">
         <AlertCircle className="h-3 w-3" />
         Overdue
       </Badge>
     );
-  if (status === "completed")
+  if (norm === "completed")
     return (
       <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-0 gap-1 text-[11px]">
         <CheckCircle2 className="h-3 w-3" />
         Completed
       </Badge>
     );
-  if (status === "archived")
-    return (
-      <Badge className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-0 gap-1 text-[11px]">
-        <FolderKanban className="h-3 w-3" />
-        Archived
-      </Badge>
-    );
-  if (status === "cancelled")
+  if (norm === "cancelled")
     return (
       <Badge className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-0 gap-1 text-[11px]">
         <XCircle className="h-3 w-3" />
-        Cancelled
+        Canceled
       </Badge>
     );
   return (
-    <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-0 gap-1 text-[11px]">
+    <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-0 gap-1 text-[11px]">
       <Clock className="h-3 w-3" />
-      Planned
+      To Do
     </Badge>
   );
 }
 
 function statusColor(s?: string) {
-  if (s === "create")
-    return "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400";
-  if (s === "planned" || s === "on-hold")
-    return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
-  if (s === "completed" || s === "complete" || s === "achieved")
+  const status = normalizeStatus(s);
+  if (status === "todo")
+    return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400";
+  if (status === "in-progress")
+    return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
+  if (status === "completed")
     return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
-  if (s === "cancelled" || s === "on-hold" || s === "archived")
-    return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
-  return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
+  if (status === "cancelled")
+    return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+  if (status === "overdue")
+    return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+  return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400";
 }
 
 const normalizeRole = (role: string | null | undefined): string => {
@@ -404,11 +395,12 @@ const normalizeRole = (role: string | null | undefined): string => {
 
 function statusLabel(s?: string) {
   const status = normalizeStatus(s);
-  if (status === "planned") return "Planned";
-  if (status === "inprogress") return "In-Progress";
-  if (status === "complete") return "Completed";
+  if (status === "todo") return "To Do";
+  if (status === "in-progress") return "In Progress";
+  if (status === "completed") return "Completed";
+  if (status === "cancelled") return "Canceled";
   if (status === "archived") return "Archived";
-  if (status === "cancelled") return "Cancelled";
+  if (status === "overdue") return "Overdue";
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
@@ -439,9 +431,7 @@ function TaskRow({
 
   const effectiveStatus = isOverdue
     ? "overdue"
-    : task.status === "todo"
-      ? "pending"
-      : task.status;
+    : normalizeStatus(task.status);
 
   return (
     <TableRow className="hover:bg-slate-50/60 dark:hover:bg-slate-900/30 transition-colors">
@@ -467,41 +457,41 @@ function TaskRow({
       <TableCell>
         {canManageProjects ? (
           <Select
-            value={task.status === "todo" ? "pending" : task.status}
+            value={normalizeStatus(task.status)}
             onValueChange={(v) => onStatusChange(id, v)}
           >
-            <SelectTrigger className="h-7 w-32 text-xs border-slate-200 dark:border-slate-700">
+            <SelectTrigger className="h-7 w-36 text-[11px] border-slate-200 dark:border-slate-700 shadow-sm font-medium">
               <SelectValue />
             </SelectTrigger>
             <SelectContent side="bottom" className="shadow-md">
-              <SelectItem value="pending">
-                <span className="flex items-center gap-1.5 text-amber-600 font-medium">
+              <SelectItem value="todo">
+                <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tight text-[10px]">
                   <Clock className="h-3 w-3" />
-                  Planned
+                  To Do
                 </span>
               </SelectItem>
               <SelectItem value="in-progress">
-                <span className="flex items-center gap-1.5 text-blue-600 font-medium">
+                <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold uppercase tracking-tight text-[10px]">
                   <Clock className="h-3 w-3" />
-                  Active
+                  In Progress
                 </span>
               </SelectItem>
               <SelectItem value="completed">
-                <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
+                <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tight text-[10px]">
                   <CheckCircle2 className="h-3 w-3" />
                   Completed
                 </span>
               </SelectItem>
-              <SelectItem value="archived">
-                <span className="flex items-center gap-1.5 text-slate-600 font-medium">
-                  <FolderKanban className="h-3 w-3" />
-                  Archived
+              <SelectItem value="cancelled">
+                <span className="flex items-center gap-1.5 text-red-500 dark:text-red-400 font-bold uppercase tracking-tight text-[10px]">
+                  <XCircle className="h-3 w-3" />
+                  Canceled
                 </span>
               </SelectItem>
-              <SelectItem value="cancelled">
-                <span className="flex items-center gap-1.5 text-slate-500 font-medium">
-                  <XCircle className="h-3 w-3" />
-                  Cancelled
+              <SelectItem value="overdue">
+                <span className="flex items-center gap-1.5 text-red-500 dark:text-red-400 font-bold uppercase tracking-tight text-[10px]">
+                  <AlertCircle className="h-3 w-3" />
+                  Overdue
                 </span>
               </SelectItem>
             </SelectContent>
@@ -619,38 +609,32 @@ function ProjectCard({
                   )
                 }
               >
-                <SelectTrigger className="h-7 w-32 text-xs border-slate-200 dark:border-slate-700">
-                  <SelectValue placeholder="Status" />
+                <SelectTrigger className="h-7 w-32 text-xs border-slate-200 dark:border-slate-700 font-medium">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent side="bottom" className="shadow-md">
-                  <SelectItem value="planned">
-                    <span className="flex items-center gap-1.5 text-amber-600 font-medium">
+                  <SelectItem value="todo">
+                    <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tight text-[10px]">
                       <Clock className="h-3 w-3" />
-                      Planned
+                      To Do
                     </span>
                   </SelectItem>
-                  <SelectItem value="inprogress">
-                    <span className="flex items-center gap-1.5 text-blue-600 font-medium">
+                  <SelectItem value="in-progress">
+                    <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold uppercase tracking-tight text-[10px]">
                       <Clock className="h-3 w-3" />
-                      In-Progress
+                      In Progress
                     </span>
                   </SelectItem>
-                  <SelectItem value="complete">
-                    <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
+                  <SelectItem value="completed">
+                    <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tight text-[10px]">
                       <CheckCircle2 className="h-3 w-3" />
                       Completed
                     </span>
                   </SelectItem>
-                  <SelectItem value="archived">
-                    <span className="flex items-center gap-1.5 text-slate-600 font-medium">
-                      <FolderKanban className="h-3 w-3" />
-                      Archived
-                    </span>
-                  </SelectItem>
                   <SelectItem value="cancelled">
-                    <span className="flex items-center gap-1.5 text-slate-500 font-medium">
+                    <span className="flex items-center gap-1.5 text-red-500 dark:text-red-400 font-bold uppercase tracking-tight text-[10px]">
                       <XCircle className="h-3 w-3" />
-                      Cancelled
+                      Canceled
                     </span>
                   </SelectItem>
                 </SelectContent>
@@ -659,18 +643,18 @@ function ProjectCard({
 
             {/* Actions */}
             <div className="flex-1 flex items-center justify-end gap-1 flex-shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-950"
+                title="View project details"
+                onClick={onView}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+
               {canManageProjects && (
                 <>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-950"
-                    title="View project details"
-                    onClick={onView}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-
                   <Button
                     variant="ghost"
                     size="icon"
@@ -800,25 +784,29 @@ function ProjectCard({
               </div>
             )}
 
-            {/* Expand toggle */}
+            {/* Expansion toggle (only if content exists) */}
             {(tasks.length > 0 || members.length > 0) && (
               <button
                 onClick={() => setExpanded((e) => !e)}
-                className="ml-auto flex items-center gap-1 text-xs text-violet-600 dark:text-violet-400 font-semibold hover:underline"
+                className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                title={expanded ? "Hide quick view" : "Show quick view"}
               >
                 {expanded ? (
-                  <>
-                    <ChevronUp className="h-3.5 w-3.5" />
-                    Hide details
-                  </>
+                  <ChevronUp className="h-4 w-4" />
                 ) : (
-                  <>
-                    <ChevronDown className="h-3.5 w-3.5" />
-                    View details
-                  </>
+                  <ChevronDown className="h-4 w-4" />
                 )}
               </button>
             )}
+
+            {/* Full View Details Link (Always visible for all profiles) */}
+            <button
+              onClick={onView}
+              className="ml-auto flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 font-bold hover:underline decoration-violet-300 underline-offset-4"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              View details
+            </button>
           </div>
         </div>
 
@@ -942,7 +930,7 @@ export default function ProjectManagement() {
     description: "",
     start_date: "",
     end_date: "",
-    status: "inprogress",
+    status: "in-progress",
   });
   // Multi-select members (for create)
   const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
@@ -1036,7 +1024,7 @@ export default function ProjectManagement() {
       description: "",
       start_date: "",
       end_date: "",
-      status: "active",
+      status: "in-progress",
     });
     setSelectedMemberIds([]);
     setMemberSearch("");
@@ -1108,12 +1096,19 @@ export default function ProjectManagement() {
       for (const t of taskList) {
         if (!t.task_name.trim() || t.assigned_to_ids.length === 0) continue;
         for (const uid of t.assigned_to_ids) {
+          // Map UI status back to backend-friendly status for tasks
+          let backendTaskStatus: string = t.status;
+          if (t.status === "todo") backendTaskStatus = "Pending";
+          else if (t.status === "in-progress") backendTaskStatus = "In Progress";
+          else if (t.status === "completed") backendTaskStatus = "Completed";
+          else if (t.status === "cancelled") backendTaskStatus = "Cancelled";
+
           expandedTasks.push({
             task_name: t.task_name,
             description: t.description,
             assigned_to: uid,
             due_date: t.due_date || undefined,
-            status: t.status,
+            status: backendTaskStatus as any,
             priority: t.priority,
           });
         }
@@ -1171,7 +1166,15 @@ export default function ProjectManagement() {
     }
     setIsUpdating(true);
     try {
-      await apiService.updateProject(selectedProject.project_id, formData);
+      // Map UI status back to backend-friendly status
+      let backendStatus = formData.status;
+      if (formData.status === "todo") backendStatus = "planned";
+      else if (formData.status === "in-progress") backendStatus = "in_progress";
+      else if (formData.status === "completed") backendStatus = "completed";
+      else if (formData.status === "cancelled") backendStatus = "cancelled";
+
+      const payload = { ...formData, status: backendStatus };
+      await apiService.updateProject(selectedProject.project_id, payload);
       toast({ title: "Success", description: "Project updated" });
       setIsEditDialogOpen(false);
       resetForm();
@@ -1263,7 +1266,7 @@ export default function ProjectManagement() {
             ? `${t.assigned_to_first_name} ${t.assigned_to_last_name || ""}`.trim()
             : null) ||
           null,
-        status: t.status || "todo",
+        status: t.status || "Pending",
       }));
 
       // Normalise Meetings — getProjectMeetings returns any[] directly
@@ -1391,11 +1394,18 @@ export default function ProjectManagement() {
     try {
       // Use Bulk API: one API call per task row (which can have multiple assignees)
       for (const task of validTasks) {
+        // Map UI status back to backend-friendly status for tasks
+        let backendStatus: string = task.status;
+        if (task.status === "todo") backendStatus = "Pending";
+        else if (task.status === "in-progress") backendStatus = "In Progress";
+        else if (task.status === "completed") backendStatus = "Completed";
+        else if (task.status === "cancelled") backendStatus = "Cancelled";
+
         await apiService.assignTasksBulk({
           title: task.task_name,
           description: task.description,
-          status: task.status,
-          due_date: task.due_date || undefined,
+          status: backendStatus,
+          due_date: task.due_date || null,
           priority: task.priority,
           assigned_to_ids: task.assigned_to_ids,
           project_id: selectedProject.project_id,
@@ -1471,8 +1481,29 @@ export default function ProjectManagement() {
     status: string,
   ) => {
     try {
-      await apiService.updateProjectTaskStatus(projectId, taskId, status);
+      // Map UI status back to backend-friendly status
+      let backendStatus = status;
+      if (status === "todo") backendStatus = "Pending";
+      else if (status === "in-progress") backendStatus = "In Progress";
+      else if (status === "completed") backendStatus = "Completed";
+      else if (status === "cancelled") backendStatus = "Cancelled";
+
+      await apiService.updateProjectTaskStatus(projectId, taskId, backendStatus);
       toast({ title: "Success", description: "Task status updated" });
+      
+      // Update selected project state immediately for UI responsiveness
+      if (selectedProject?.project_id === projectId) {
+        setSelectedProject((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            tasks: prev.tasks?.map((t) =>
+              (t.task_id === taskId || t.id === taskId) ? { ...t, status: backendStatus as any } : t
+            ),
+          };
+        });
+      }
+      
       fetchProjects();
     } catch (err: any) {
       toast({
@@ -1492,8 +1523,10 @@ export default function ProjectManagement() {
       if (!project) throw new Error("Project not found");
 
       let backendStatus = status;
-      if (status === "inprogress") backendStatus = "in_progress";
-      else if (status === "complete") backendStatus = "completed";
+      if (status === "todo") backendStatus = "planned";
+      else if (status === "in-progress") backendStatus = "in_progress";
+      else if (status === "completed") backendStatus = "completed";
+      else if (status === "cancelled") backendStatus = "cancelled";
 
       const payload = {
         name: project.name,
@@ -1592,9 +1625,9 @@ export default function ProjectManagement() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Projects</SelectItem>
-              <SelectItem value="planned">Planned</SelectItem>
-              <SelectItem value="inprogress">In-Progress</SelectItem>
-              <SelectItem value="complete">Completed</SelectItem>
+              <SelectItem value="todo">Planned</SelectItem>
+              <SelectItem value="in-progress">In-Progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
               <SelectItem value="archived">Archived</SelectItem>
             </SelectContent>
@@ -1614,7 +1647,7 @@ export default function ProjectManagement() {
           {
             label: "Planned",
             value: projects.filter(
-              (p) => normalizeStatus(p.status) === "planned",
+              (p) => normalizeStatus(p.status) === "todo",
             ).length,
             color: "from-amber-400 to-orange-500",
             icon: Briefcase,
@@ -1622,7 +1655,7 @@ export default function ProjectManagement() {
           {
             label: "In-Progress",
             value: projects.filter(
-              (p) => normalizeStatus(p.status) === "inprogress",
+              (p) => normalizeStatus(p.status) === "in-progress",
             ).length,
             color: "from-blue-400 to-blue-500",
             icon: Clock,
@@ -1630,7 +1663,7 @@ export default function ProjectManagement() {
           {
             label: "Complete",
             value: projects.filter(
-              (p) => normalizeStatus(p.status) === "complete",
+              (p) => normalizeStatus(p.status) === "completed",
             ).length,
             color: "from-emerald-400 to-teal-500",
             icon: CheckCircle2,
@@ -1712,7 +1745,7 @@ export default function ProjectManagement() {
                   description: project.description || "",
                   start_date: project.start_date?.split("T")[0] || "",
                   end_date: project.end_date?.split("T")[0] || "",
-                  status: project.status || "active",
+                  status: normalizeStatus(project.status),
                 });
                 setIsEditDialogOpen(true);
               }}
@@ -1993,11 +2026,45 @@ export default function ProjectManagement() {
                                 </span>
                               </TableCell>
                               <TableCell className="pr-6 text-right">
-                                <Badge
-                                  className={`${statusColor(task.status)} border-0 text-white text-[10px] font-bold rounded-full px-2 py-0.5 uppercase`}
-                                >
-                                  {statusLabel(task.status)}
-                                </Badge>
+                                {canManageProjects ? (
+                                  <Select
+                                    value={normalizeStatus(task.status)}
+                                    onValueChange={(v) => handleTaskStatusChange(selectedProject.project_id, task.task_id || task.id, v)}
+                                  >
+                                    <SelectTrigger className="h-8 w-36 ml-auto text-[11px] border-slate-200 dark:border-slate-800 font-medium">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent side="bottom" className="shadow-lg min-w-[140px]">
+                                      <SelectItem value="todo">
+                                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tighter text-[10px]">
+                                          <Clock className="h-3 w-3" /> To Do
+                                        </div>
+                                      </SelectItem>
+                                      <SelectItem value="in-progress">
+                                        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold uppercase tracking-tighter text-[10px]">
+                                          <Clock className="h-3 w-3" /> In Progress
+                                        </div>
+                                      </SelectItem>
+                                      <SelectItem value="completed">
+                                        <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tighter text-[10px]">
+                                          <CheckCircle2 className="h-3 w-3" /> Completed
+                                        </div>
+                                      </SelectItem>
+                                      <SelectItem value="cancelled">
+                                        <div className="flex items-center gap-2 text-red-500 dark:text-red-400 font-bold uppercase tracking-tighter text-[10px]">
+                                          <XCircle className="h-3 w-3" /> Canceled
+                                        </div>
+                                      </SelectItem>
+                                      <SelectItem value="overdue">
+                                        <div className="flex items-center gap-2 text-red-500 dark:text-red-400 font-bold uppercase tracking-tighter text-[10px]">
+                                          <AlertCircle className="h-3 w-3" /> Overdue
+                                        </div>
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <TaskStatusBadge status={task.status} />
+                                )}
                               </TableCell>
                             </TableRow>
                           ))}
@@ -2368,10 +2435,11 @@ export default function ProjectManagement() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="planned">Planned</SelectItem>
-                  <SelectItem value="inprogress">In-Progress</SelectItem>
-                  <SelectItem value="complete">Completed</SelectItem>
+                  <SelectItem value="todo">Planned</SelectItem>
+                  <SelectItem value="in-progress">In-Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
             </div>

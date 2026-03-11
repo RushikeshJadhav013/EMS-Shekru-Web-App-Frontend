@@ -547,7 +547,11 @@ export default function EmployeeManagement() {
         emp.name.toLowerCase().includes(query) ||
         emp.employeeId.toLowerCase().includes(query) ||
         emp.email.toLowerCase().includes(query);
-      const matchesDepartment = selectedDepartment === 'all' || emp.department === selectedDepartment;
+      const matchesDepartment = selectedDepartment === 'all' || (
+        emp.department
+          ? emp.department.split(',').map((d: string) => d.trim().toLowerCase()).includes(selectedDepartment.toLowerCase())
+          : false
+      );
       const matchesRole = selectedRole === 'all' ||
         (emp.role && emp.role.toLowerCase().replace(/[\s_]+/g, '') === selectedRole.toLowerCase().replace(/[\s_]+/g, ''));
       const matchesStatus = selectedStatus === 'all' ||

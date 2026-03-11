@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
+import { chatService } from '@/services/chatService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -142,18 +143,39 @@ const MeetingsPage: React.FC = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [meetingsData, depts, projs, emps] = await Promise.all([
+            const [meetingsData, depts, projs, emps, chatUsers] = await Promise.all([
                 apiService.getMeetings(),
                 apiService.getDepartments().catch(() => []),
                 apiService.getProjects().catch(() => []),
-                apiService.getEmployees().catch(() => [])
+                apiService.getEmployees().catch(() => []),
+                chatService.getAvailableUsers().catch(() => [])
             ]);
 
             const normalizedMeetings = (Array.isArray(meetingsData) ? meetingsData : []).map(normalizeMeeting);
             setMeetings(normalizedMeetings);
-            setDepartments(Array.isArray(depts) ? depts : (depts as any)?.departments || []);
+            const safeEmps = Array.isArray(emps) ? emps : ((emps as any)?.employees || []);
+            const safeChatUsers = Array.isArray(chatUsers) ? chatUsers : [];
+            const empMap = new Map();
+            safeChatUsers.forEach((u: any) => empMap.set(Number(u.user_id || u.id), u));
+            safeEmps.forEach((u: any) => empMap.set(Number(u.user_id || u.id), u));
+            const mergedEmployees = Array.from(empMap.values());
+            setEmployees(mergedEmployees);
+
+            let finalDepts = Array.isArray(depts) ? depts : (depts as any)?.departments || [];
+            if (finalDepts.length === 0 && mergedEmployees.length > 0) {
+                const uniqueDepts = new Set<string>();
+                mergedEmployees.forEach(e => {
+                   if (e.department) {
+                        e.department.split(',').forEach((d: string) => {
+                            const trimmed = d.trim();
+                            if (trimmed && trimmed !== 'N/A') uniqueDepts.add(trimmed);
+                        });
+                   } 
+                });
+                finalDepts = Array.from(uniqueDepts).map((name, idx) => ({ id: idx + 99000, name }));
+            }
+            setDepartments(finalDepts);
             setProjects(Array.isArray(projs) ? projs : (projs as any)?.projects || []);
-            setEmployees(Array.isArray(emps) ? emps : (emps as any)?.employees || []);
         } catch (error) {
             console.error('Failed to fetch data:', error);
             toast({
@@ -226,8 +248,10 @@ const MeetingsPage: React.FC = () => {
                 type: formData.type,
             };
 
-            if (formData.type === 'team' && formData.team_id) {
-                payload.team_id = formData.team_id;
+            if (formData.type === 'team') {
+                const fallbackTeamId = isTeamLead ? 
+                    (user?.department_id || departments.find(d => d.name === user?.department)?.id) : undefined;
+                payload.team_id = formData.team_id || fallbackTeamId;
             }
             if (formData.type === 'project' && formData.project_id) {
                 payload.project_id = formData.project_id;
@@ -385,7 +409,12 @@ const MeetingsPage: React.FC = () => {
     const selectAllParticipants = async () => {
         if (formData.type === 'team' && formData.team_id) {
             const teamMembers = employees
-                .filter(emp => emp.department_id === formData.team_id || emp.department === departments.find(d => d.id === formData.team_id)?.name)
+                .filter(emp => {
+                    const targetDept = departments.find(d => d.id === formData.team_id)?.name;
+                    const matchesId = Number(emp.department_id) === formData.team_id;
+                    const matchesName = targetDept && emp.department && emp.department.includes(targetDept);
+                    return matchesId || matchesName;
+                })
                 .map(emp => Number(emp.user_id || emp.id))
                 .filter(id => !isNaN(id));
             setFormData(prev => ({ ...prev, participant_ids: teamMembers }));
@@ -472,7 +501,7 @@ const MeetingsPage: React.FC = () => {
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl">
                                                 {canCreateCompany && <SelectItem value="company">Townhall (Company Wide)</SelectItem>}
-                                                {canCreateTeam && <SelectItem value="team"> Team Specific</SelectItem>}
+                                                {canCreateTeam && <SelectItem value="team">Team Specific</SelectItem>}
                                                 {canCreateProject && <SelectItem value="project">Project Specific</SelectItem>}
                                                 {canCreateOneToOne && <SelectItem value="one-to-one">One to One Meeting</SelectItem>}
                                             </SelectContent>
@@ -510,7 +539,7 @@ const MeetingsPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {formData.type === 'team' && (
+                                {formData.type === 'team' && !isTeamLead && (
                                     <div className="grid gap-2">
                                         <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Select Department</Label>
                                         <Select
@@ -529,6 +558,10 @@ const MeetingsPage: React.FC = () => {
                                             </SelectContent>
                                         </Select>
                                     </div>
+                                )}
+
+                                {formData.type === 'team' && isTeamLead && (
+                                   <input type="hidden" value={user?.department_id || ''} />
                                 )}
 
                                 {formData.type === 'project' && (
@@ -592,7 +625,7 @@ const MeetingsPage: React.FC = () => {
                                         Assigned Assets / Participants
                                         <div className="flex items-center gap-3">
                                             <span className="text-blue-600 font-black">{formData.participant_ids.length} selected</span>
-                                            {formData.type !== 'one-to-one' && (
+                                            {formData.type !== 'one-to-one' && formData.type !== 'project' && (
                                                 <div className="flex gap-2">
                                                     <button
                                                         type="button"
@@ -614,12 +647,25 @@ const MeetingsPage: React.FC = () => {
                                     </Label>
                                     <div className="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto p-1 custom-scrollbar">
                                         {employees.filter(Boolean).filter(emp => {
-                                            if (formData.type === 'team' && formData.team_id) {
-                                                return Number(emp.department_id) === formData.team_id || emp.department === departments.find(d => d.id === formData.team_id)?.name;
+                                            if (formData.type === 'team') {
+                                                if (isTeamLead && !isAdmin && !isHR) {
+                                                    // For Team Lead, show their own department by default or if department string matches
+                                                    return Number(emp.department_id) === Number(user?.department_id) || emp.department === user?.department;
+                                                }
+                                                if (formData.team_id) {
+                                                    const targetDept = departments.find(d => d.id === formData.team_id)?.name;
+                                                    const matchesId = Number(emp.department_id) === formData.team_id;
+                                                    const matchesName = targetDept && emp.department && emp.department.includes(targetDept);
+                                                    return matchesId || matchesName;
+                                                }
+                                                return true;
                                             }
-                                            // For project-specific, we often only want to show project members in the selection list to pick/choose
-                                            // However, requirement 5 says "Select Employees Automatically"
-                                            // Let's filter the list to making choosing from project members easier if they want to deselect some.
+                                            if (formData.type === 'project' && formData.project_id) {
+                                                const empId = Number(emp.user_id || emp.id);
+                                                // Ensure they are auto-selected but strictly show ONLY members mapping to this project? No, we show all so they can add/remove,
+                                                // but requirement: "Project Specific Meeting:- Auto Selection of Employees Is Not Working".
+                                                // Given the previous fix, newFormData.participant_ids works, it just wasn't reflecting if users missed. Since we fetch everyone now, it should work.
+                                            }
                                             return true; // default show all
                                         }).map((emp: any) => {
                                             const empId = Number(emp.user_id || emp.id);

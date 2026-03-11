@@ -14,7 +14,7 @@ import { apiService } from '@/lib/api';
 interface ExportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  selectedEmployee?: { id: string; name: string } | null;
+  selectedEmployee?: { id: string; name: string; employee_id?: string } | null;
 }
 
 type ExportFormat = 'csv' | 'pdf';
@@ -32,58 +32,16 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
   const [customStartDate, setCustomStartDate] = useState<Date>();
   const [customEndDate, setCustomEndDate] = useState<Date>();
   const [isExporting, setIsExporting] = useState(false);
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<string>('all');
-  const [departments, setDepartments] = useState<string[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [isLoadingDepts, setIsLoadingDepts] = useState(false);
   const [isLoadingEmps, setIsLoadingEmps] = useState(false);
 
-  // Load departments on mount
+  // Load employees on mount
   useEffect(() => {
-    loadDepartments();
+    loadAllEmployees();
   }, []);
 
-  // Load employees when department changes
-  useEffect(() => {
-    if (selectedDepartment !== 'all') {
-      loadEmployees(selectedDepartment);
-    } else {
-      loadAllEmployees();
-    }
-  }, [selectedDepartment]);
 
-  const loadDepartments = async () => {
-    setIsLoadingDepts(true);
-    try {
-      const data = await apiService.getReportDepartments();
-      if (data && data.departments) {
-        setDepartments(data.departments);
-      }
-    } catch (error) {
-      console.error('Failed to load departments:', error);
-    } finally {
-      setIsLoadingDepts(false);
-    }
-  };
-
-  const loadEmployees = async (department: string) => {
-    setIsLoadingEmps(true);
-    try {
-      const data = await apiService.getEmployees(department);
-      const emps = Array.isArray(data) ? data : data.employees || [];
-      setEmployees(emps.map((emp: any) => ({
-        id: emp.id || emp.user_id,
-        name: emp.name,
-        department: emp.department,
-      })));
-    } catch (error) {
-      console.error('Failed to load employees:', error);
-      setEmployees([]);
-    } finally {
-      setIsLoadingEmps(false);
-    }
-  };
 
   const loadAllEmployees = async () => {
     setIsLoadingEmps(true);
@@ -149,8 +107,7 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
         format: exportFormat,
         start_date: format(startDate, 'yyyy-MM-dd'),
         end_date: format(endDate, 'yyyy-MM-dd'),
-        employee_id: selectedEmployee?.id || (selectedUser !== 'all' ? selectedUser : undefined),
-        department: selectedDepartment !== 'all' ? selectedDepartment : undefined,
+        employee_id: selectedEmployee?.id || (selectedUser !== 'all' ? selectedUser : undefined)
       });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -162,8 +119,6 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
       } else if (selectedUser !== 'all') {
         const user = employees.find(e => e.id === selectedUser);
         filename = `performance_${user?.name || 'employee'}_${format(startDate, 'yyyy-MM-dd')}_to_${format(endDate, 'yyyy-MM-dd')}`;
-      } else if (selectedDepartment !== 'all') {
-        filename = `performance_${selectedDepartment}_${format(startDate, 'yyyy-MM-dd')}_to_${format(endDate, 'yyyy-MM-dd')}`;
       } else {
         filename = `performance_all_employees_${format(startDate, 'yyyy-MM-dd')}_to_${format(endDate, 'yyyy-MM-dd')}`;
       }
@@ -208,7 +163,7 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
               <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
                 <p className="text-sm font-medium text-muted-foreground mb-1">Exporting for:</p>
                 <p className="text-lg font-bold text-slate-800 dark:text-white">{selectedEmployee.name}</p>
-                <p className="text-xs text-muted-foreground">Employee ID: {selectedEmployee.id}</p>
+                <p className="text-xs text-muted-foreground">Employee ID: {selectedEmployee.employee_id || selectedEmployee.id}</p>
               </div>
             )}
 
@@ -277,21 +232,7 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
               </Select>
             </div>
 
-            {/* Department Selection */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">Select Department</Label>
-              <Select value={selectedDepartment} onValueChange={setSelectedDepartment} disabled={isLoadingDepts}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Branches</SelectItem>
-                  {departments.map(dept => (
-                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+
 
             {/* User Selection */}
             <div className="space-y-2">

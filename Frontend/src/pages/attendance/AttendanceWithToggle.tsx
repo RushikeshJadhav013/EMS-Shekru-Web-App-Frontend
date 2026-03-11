@@ -656,32 +656,24 @@ const AttendanceWithToggle: React.FC = () => {
     return `${API_BASE_URL}${normalized}`;
   }, []);
 
-<<<<<<< HEAD
   // Determine if user can view employee attendance (management roles)
-  const canViewEmployeeAttendance = user?.role && ['admin', 'hr', 'manager', 'team_lead', 'teamlead'].includes(user.role.toLowerCase());
-  const canExportAttendance = user?.role && ['admin', 'hr', 'manager'].includes(user.role.toLowerCase());
-
-  // Access rules for attendance viewing
-  const getViewableRoles = (): UserRole[] => {
-    const role = (user?.role || '').toLowerCase();
-    if (role === 'admin') return ['admin', 'hr', 'manager', 'team_lead', 'employee'];
-    if (role === 'hr') return ['hr', 'manager', 'team_lead', 'employee'];
-    if (role === 'manager') return ['team_lead', 'employee'];
-    if (role === 'team_lead' || role === 'teamlead') return ['employee'];
-=======
-  // Determine if user can view employee attendance (management roles excluding Team Lead)
   const canViewEmployeeAttendance =
-    user?.role && ["admin", "hr", "manager"].includes(user.role);
-  const canExportAttendance = user?.role && ["admin", "hr"].includes(user.role);
+    user?.role &&
+    ["admin", "hr", "manager", "team_lead", "teamlead"].includes(
+      user.role.toLowerCase(),
+    );
+  const canExportAttendance =
+    user?.role &&
+    ["admin", "hr", "manager"].includes(user.role.toLowerCase());
 
   // Access rules for attendance viewing
   const getViewableRoles = (): UserRole[] => {
-    if (user?.role === "admin")
+    const role = (user?.role || "").toLowerCase();
+    if (role === "admin")
       return ["admin", "hr", "manager", "team_lead", "employee"];
-    if (user?.role === "hr") return ["hr", "manager", "team_lead", "employee"];
-    if (user?.role === "manager") return ["team_lead", "employee"];
-    if (user?.role === "team_lead") return ["employee"];
->>>>>>> Onkar
+    if (role === "hr") return ["hr", "manager", "team_lead", "employee"];
+    if (role === "manager") return ["team_lead", "employee"];
+    if (role === "team_lead" || role === "teamlead") return ["employee"];
     return [];
   };
 
@@ -1534,26 +1526,22 @@ const AttendanceWithToggle: React.FC = () => {
       const headers = { Authorization: token ? `Bearer ${token}` : "" };
 
       let url = `${API_BASE_URL}/attendance/all`;
-<<<<<<< HEAD
       // Attempt backend enforcement by passing manager/team lead ID
-      const userRoleLower = (user?.role || '').toLowerCase();
-      if (userRoleLower === 'manager') {
+      const userRoleLower = (user?.role || "").toLowerCase();
+      if (userRoleLower === "manager") {
         let params = [];
-        if (user?.department) params.push(`department=${encodeURIComponent(user.department)}`);
+        if (user?.department)
+          params.push(`department=${encodeURIComponent(user.department)}`);
         params.push(`manager_id=${encodeURIComponent(user!.id)}`);
-        url += `?${params.join('&')}`;
-      } else if (userRoleLower === 'team_lead' || userRoleLower === 'teamlead') {
+        url += `?${params.join("&")}`;
+      } else if (
+        userRoleLower === "team_lead" ||
+        userRoleLower === "teamlead"
+      ) {
         let params = [`team_lead_id=${encodeURIComponent(user!.id)}`];
-        if (user?.department) params.push(`department=${encodeURIComponent(user.department)}`);
-        url += `?${params.join('&')}`;
-=======
-      // Attempt backend enforcement by passing department scope
-      if (user?.role === "manager" && user?.department) {
-        url += `?department=${encodeURIComponent(user.department)}`;
-        url += `&manager_id=${encodeURIComponent(user.id)}`;
-      } else if (user?.role === "team_lead") {
-        url += `?team_lead_id=${encodeURIComponent(user.id)}`;
->>>>>>> Onkar
+        if (user?.department)
+          params.push(`department=${encodeURIComponent(user.department)}`);
+        url += `?${params.join("&")}`;
       }
 
       // Fetch attendance and employees in parallel to ensure we have role data
@@ -1654,22 +1642,16 @@ const AttendanceWithToggle: React.FC = () => {
           .toLowerCase();
       });
 
-<<<<<<< HEAD
-      // Enforce simplified visibility rules (Client-side fail-safe)
-      const currentUserRole = (user?.role || '').toLowerCase();
-      if ((currentUserRole === 'manager' || currentUserRole === 'team_lead' || currentUserRole === 'teamlead') && user?.id) {
-        const currentUserId = String(user.id);
-        const userDept = (user.department || '').trim().toLowerCase();
-=======
-      // Enforce strict visibility rules (Client-side fail-safe)
+      // Enforce visibility rules (Client-side fail-safe)
+      const currentUserRole = (user?.role || "").toLowerCase();
       if (
-        (user?.role === "manager" || user?.role === "team_lead") &&
+        (currentUserRole === "manager" ||
+          currentUserRole === "team_lead" ||
+          currentUserRole === "teamlead") &&
         user?.id
       ) {
-        const userId = String(user.id);
+        const currentUserId = String(user.id);
         const userDept = (user.department || "").trim().toLowerCase();
-        const hasDept = userDept.length > 0;
->>>>>>> Onkar
 
         console.log(
           "DEBUG: Filtering attendance for Manager/Team Lead. User Dept:",
@@ -1683,70 +1665,39 @@ const AttendanceWithToggle: React.FC = () => {
           // 1. Always show Self
           if (recUserId === currentUserId) return true;
 
-<<<<<<< HEAD
           // 2. Determine department (prefer attendance record, fallback to employee map)
-          let recDept = (rec.department || '').trim().toLowerCase();
-=======
-          // 2. If the manager has no department set, skip department filter
-          //    (backend already scoped by manager_id / team_lead_id)
-          if (!hasDept) {
-            let allowed = true;
-            if (user.role === "manager") allowed = isAllowedRoleForManager;
-            else if (user.role === "team_lead") allowed = role === "employee";
-
-            if (!allowed) {
-              console.log(
-                `DEBUG: Record ${recUserId} rejected by role filter (no dept). Role: ${role}`,
-              );
-            }
-            return allowed;
-          }
-
-          // 3. Determine department (prefer attendance record, fallback to employee map)
           let recDept = (rec.department || "").trim().toLowerCase();
->>>>>>> Onkar
           if (!recDept && userDepartmentMap[recUserId]) {
             recDept = userDepartmentMap[recUserId];
           }
 
-<<<<<<< HEAD
           // 3. Role lookup (normalized) and Hierarchy check
-          const role = (userRoleMap[recUserId] || '').toLowerCase();
+          const role = (userRoleMap[recUserId] || "").toLowerCase();
 
           // Trust backend results for managers, but apply safety check if role is known
           if (role) {
-            if (currentUserRole === 'manager') {
+            if (currentUserRole === "manager") {
               // Managers can see employees, team leads, and potentially other managers in same branch
-              const isAllowed = ['employee', 'teamlead', 'team_lead', 'manager'].includes(role);
+              const isAllowed = [
+                "employee",
+                "teamlead",
+                "team_lead",
+                "manager",
+              ].includes(role);
               if (!isAllowed) return false;
-            } else if (currentUserRole === 'team_lead' || currentUserRole === 'teamlead') {
+            } else if (
+              currentUserRole === "team_lead" ||
+              currentUserRole === "teamlead"
+            ) {
               // Team leads should only see employees
-              if (role !== 'employee') return false;
+              if (role !== "employee") return false;
             }
           }
 
-          // 4. If manager has department, enforce department scope.
-          //    Allow observation if record department is missing (rely on backend manager_id scope)
+          // 4. Department check
+          // If manager has department, enforce department scope
           if (userDept && recDept && recDept !== userDept) {
             return false;
-=======
-          // 4. Department must match
-          if (recDept && recDept !== userDept) return false;
-
-          // 5. Role lookup (normalized: underscores & spaces stripped)
-          const role = (userRoleMap[recUserId] || "").toLowerCase();
-
-          // Managers can see employees and team leads in their department
-          if (user.role === "manager") {
-            return (
-              role === "employee" || role === "teamlead" || role === "team_lead"
-            );
-          }
-
-          // Team leads can see employees in their department
-          if (user.role === "team_lead") {
-            return role === "employee";
->>>>>>> Onkar
           }
 
           return true;
@@ -1852,13 +1803,8 @@ const AttendanceWithToggle: React.FC = () => {
           }
 
           return {
-<<<<<<< HEAD
             id: String(rec.attendance_id || rec.id || ''),
             userId: String(rec.user_id || rec.userId || rec.employee_id || ''),
-=======
-            id: String(rec.attendance_id || rec.id || ""),
-            userId: String(rec.user_id || rec.employee_id || ""),
->>>>>>> Onkar
             date: rec.check_in ? formatDateIST(rec.check_in) : selectedDate,
             checkInTime: rec.check_in || undefined,
             checkOutTime: rec.check_out || undefined,
@@ -5504,8 +5450,8 @@ const AttendanceWithToggle: React.FC = () => {
                   type="button"
                   onClick={() => setReportLayout("basic")}
                   className={`p-2.5 rounded-lg border transition-all ${reportLayout === "basic"
-                      ? "border-blue-600 bg-blue-50 dark:bg-blue-950"
-                      : "border-gray-200 hover:border-blue-300 dark:border-gray-700"
+                    ? "border-blue-600 bg-blue-50 dark:bg-blue-950"
+                    : "border-gray-200 hover:border-blue-300 dark:border-gray-700"
                     }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
@@ -5528,8 +5474,8 @@ const AttendanceWithToggle: React.FC = () => {
                   type="button"
                   onClick={() => setReportLayout("grid")}
                   className={`p-2.5 rounded-lg border transition-all ${reportLayout === "grid"
-                      ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
-                      : "border-gray-200 hover:border-indigo-300 dark:border-gray-700"
+                    ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
+                    : "border-gray-200 hover:border-indigo-300 dark:border-gray-700"
                     }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
@@ -5552,8 +5498,8 @@ const AttendanceWithToggle: React.FC = () => {
                   type="button"
                   onClick={() => setReportLayout("detailed_grid")}
                   className={`p-2.5 rounded-lg border transition-all ${reportLayout === "detailed_grid"
-                      ? "border-purple-600 bg-purple-50 dark:bg-purple-950"
-                      : "border-gray-200 hover:border-purple-300 dark:border-gray-700"
+                    ? "border-purple-600 bg-purple-50 dark:bg-purple-950"
+                    : "border-gray-200 hover:border-purple-300 dark:border-gray-700"
                     }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
@@ -5583,8 +5529,8 @@ const AttendanceWithToggle: React.FC = () => {
                   type="button"
                   onClick={() => setExportType("csv")}
                   className={`p-2.5 rounded-lg border transition-all ${exportType === "csv"
-                      ? "border-green-600 bg-green-50 dark:bg-green-950"
-                      : "border-gray-200 hover:border-green-300 dark:border-gray-700"
+                    ? "border-green-600 bg-green-50 dark:bg-green-950"
+                    : "border-gray-200 hover:border-green-300 dark:border-gray-700"
                     }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
@@ -5605,8 +5551,8 @@ const AttendanceWithToggle: React.FC = () => {
                   type="button"
                   onClick={() => setExportType("pdf")}
                   className={`p-2.5 rounded-lg border transition-all ${exportType === "pdf"
-                      ? "border-red-600 bg-red-50 dark:bg-red-950"
-                      : "border-gray-200 hover:border-red-300 dark:border-gray-700"
+                    ? "border-red-600 bg-red-50 dark:bg-red-950"
+                    : "border-gray-200 hover:border-red-300 dark:border-gray-700"
                     }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
@@ -5778,8 +5724,8 @@ const AttendanceWithToggle: React.FC = () => {
                               key={emp.user_id}
                               onClick={() => setSelectedExportEmployee(emp)}
                               className={`w-full text-left p-3 border-b last:border-b-0 transition-colors ${isSelected
-                                  ? "bg-blue-50 dark:bg-blue-900"
-                                  : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                                ? "bg-blue-50 dark:bg-blue-900"
+                                : "hover:bg-gray-100 dark:hover:bg-gray-800"
                                 }`}
                             >
                               <div className="font-medium">{emp.name}</div>

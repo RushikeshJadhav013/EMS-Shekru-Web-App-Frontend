@@ -749,14 +749,18 @@ class ApiService {
   }): Promise<Blob> {
     const params = new URLSearchParams();
     if (filters) {
-      if (filters.status && filters.status !== "all")
-        params.append("status", filters.status);
-      if (filters.designation && filters.designation !== "all")
+      if (filters.status && filters.status !== "all") {
+        params.append("status", filters.status === "active" ? "true" : "false");
+      }
+      if (filters.designation && filters.designation !== "all") {
         params.append("designation", filters.designation);
-      if (filters.department && filters.department !== "all")
+      }
+      if (filters.department && filters.department !== "all") {
         params.append("department", filters.department);
-      if (filters.role && filters.role !== "all")
-        params.append("role", filters.role);
+      }
+      if (filters.role && filters.role !== "all") {
+        params.append("role", filters.role.toUpperCase());
+      }
     }
     const queryString = params.toString() ? `?${params.toString()}` : "";
 
@@ -772,14 +776,18 @@ class ApiService {
   }): Promise<Blob> {
     const params = new URLSearchParams();
     if (filters) {
-      if (filters.status && filters.status !== "all")
-        params.append("status", filters.status);
-      if (filters.designation)
+      if (filters.status && filters.status !== "all") {
+        params.append("status", filters.status === "active" ? "true" : "false");
+      }
+      if (filters.designation) {
         params.append("designation", filters.designation);
-      if (filters.department && filters.department !== "all")
+      }
+      if (filters.department && filters.department !== "all") {
         params.append("department", filters.department);
-      if (filters.role && filters.role !== "all")
-        params.append("role", filters.role);
+      }
+      if (filters.role && filters.role !== "all") {
+        params.append("role", filters.role.toUpperCase());
+      }
     }
     const queryString = params.toString() ? `?${params.toString()}` : "";
 
@@ -1896,19 +1904,14 @@ class ApiService {
     });
   }
 
-  // Toggle salary active/inactive — fetches full record first, then PUTs with toggled is_active
+  // Toggle salary active/inactive
   async toggleSalaryStatus(userId: string, activate: boolean): Promise<any> {
-    // First, fetch the current salary record so we don't send a partial payload
-    const current = await this.request(`/salary/employee/${userId}`);
-    if (!current) throw new Error("Salary record not found");
-
     const payload = {
-      ...current,
       user_id: Number(userId),
       is_active: activate,
     };
 
-    return this.request(`/salary/employee/${userId}`, {
+    return this.request(`/salary/employee/${userId}/status`, {
       method: "PUT",
       body: JSON.stringify(payload),
     });
@@ -2157,9 +2160,7 @@ class ApiService {
   }
 
   async getProjectTasks(projectId: number): Promise<any> {
-    // /projects/{id}/tasks returns 404 on this backend.
-    // Use the main tasks endpoint with a project_id filter instead.
-    return this.request(`/tasks/?project_id=${projectId}`);
+    return this.request(`/tasks/projects/${projectId}`);
   }
 
   async updateProjectTaskStatus(
@@ -2167,9 +2168,9 @@ class ApiService {
     taskId: number,
     status: string,
   ): Promise<any> {
-    return this.request(`/projects/${projectId}/tasks/${taskId}/status`, {
+    return this.request(`/tasks/${taskId}/status`, {
       method: "PUT",
-      body: JSON.stringify({ project_id: projectId, task_id: taskId, status }),
+      body: JSON.stringify({ project_id: projectId, task_id: taskId, status: status }),
     });
   }
 
