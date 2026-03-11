@@ -821,14 +821,15 @@ export default function HiringManagement() {
   const handleCreateInterview = async () => {
     const { candidate_id, vacancy_id, start_time, end_time, mode, location, round_type, interviewer_name, duration_minutes, notes, status } = interviewFormData;
 
-    if (!candidate_id || !vacancy_id || !start_time || !end_time || !round_type || !interviewer_name) {
+    if (!candidate_id || !vacancy_id || !start_time || !end_time || !round_type || (!interviewer_name && interviewFormData.panel_members.length === 0)) {
       toast({
         title: 'Error',
-        description: 'Please fill in all required fields (Candidate, Start Time, End Time, Round, Interviewer)',
+        description: 'Please fill in all required fields (Candidate, Start Time, End Time, Round, and at least one Interviewer)',
         variant: 'destructive',
       });
       return;
     }
+
 
     const startDate = new Date(start_time);
     const endDate = new Date(end_time);
@@ -889,7 +890,7 @@ export default function HiringManagement() {
 
     const { candidate_id, vacancy_id, start_time, end_time, mode, location, round_type, interviewer_name, duration_minutes, notes, status } = interviewFormData;
 
-    if (!start_time || !end_time || !round_type || !interviewer_name) {
+    if (!start_time || !end_time || !round_type || (!interviewer_name && interviewFormData.panel_members.length === 0)) {
       toast({
         title: 'Error',
         description: 'Please fill in all required fields',
@@ -897,6 +898,7 @@ export default function HiringManagement() {
       });
       return;
     }
+
 
     const startDate = new Date(start_time);
     const endDate = new Date(end_time);
@@ -2022,24 +2024,36 @@ export default function HiringManagement() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                onClick={() => {
-                                  setSelectedInterview(interview);
-                                  setInterviewFormData({
-                                    candidate_id: String(interview.candidate_id),
-                                    vacancy_id: String(interview.vacancy_id),
-                                    start_time: interview.start_time.slice(0, 16), // datetime-local format
-                                    end_time: interview.end_time.slice(0, 16),
-                                    mode: interview.mode,
-                                    location: interview.location,
-                                    round_type: interview.round_type,
-                                    interviewer_name: interview.interviewer_name || '',
-                                    duration_minutes: interview.duration_minutes || 60,
-                                    panel_members: interview.panel_members,
-                                    status: interview.status,
-                                    notes: interview.notes || '',
-                                  });
-                                  setIsInterviewDialogOpen(true);
-                                }}
+                            onClick={() => {
+                              setSelectedInterview(interview);
+                              
+                              const panelMembers = interview.panel_members || [];
+                              let derivedName = interview.interviewer_name || '';
+                              
+                              if (!derivedName && panelMembers.length > 0) {
+                                  derivedName = panelMembers.map(id => {
+                                      const emp = allEmployees.find(e => Number(e.id || e.user_id) === Number(id));
+                                      return emp ? emp.name : `ID: ${id}`;
+                                  }).join(', ');
+                              }
+
+                              setInterviewFormData({
+                                candidate_id: String(interview.candidate_id),
+                                vacancy_id: String(interview.vacancy_id),
+                                start_time: interview.start_time ? interview.start_time.slice(0, 16) : '',
+                                end_time: interview.end_time ? interview.end_time.slice(0, 16) : '',
+                                mode: interview.mode,
+                                location: interview.location,
+                                round_type: interview.round_type,
+                                interviewer_name: derivedName,
+                                duration_minutes: interview.duration_minutes || 60,
+                                panel_members: panelMembers,
+                                status: interview.status,
+                                notes: interview.notes || '',
+                              });
+                              setIsInterviewDialogOpen(true);
+                            }}
+
                                 title="Edit Interview"
                               >
                                 <Edit className="h-4 w-4" />

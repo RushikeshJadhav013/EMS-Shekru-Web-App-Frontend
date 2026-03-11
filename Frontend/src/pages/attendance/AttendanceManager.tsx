@@ -1241,11 +1241,8 @@ const AttendanceManager: React.FC = () => {
 
         console.log("Attendance data received:", data);
 
-<<<<<<< HEAD
-        // Enforce visibility validation for Managers
-=======
         // Enforce simplified visibility validation for Managers
->>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
+
         if (user?.role === "manager") {
           const managerId = String(user.id);
           const normalizedDept = (user.department || "").trim().toLowerCase();

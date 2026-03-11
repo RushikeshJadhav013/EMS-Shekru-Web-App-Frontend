@@ -659,20 +659,11 @@ const AttendanceWithToggle: React.FC = () => {
   // Determine if user can view employee attendance (management roles)
   const canViewEmployeeAttendance =
     user?.role &&
-<<<<<<< HEAD
-    ["admin", "hr", "manager"].includes(
-      user.role.toLowerCase(),
-    );
+    ["admin", "hr", "manager"].includes(user.role.toLowerCase());
   const canExportAttendance =
     user?.role &&
     ["admin", "hr", "manager"].includes(user.role.toLowerCase());
-=======
-    ["admin", "hr", "manager", "team_lead", "teamlead"].includes(
-      user.role.toLowerCase(),
-    );
-  const canExportAttendance =
-    user?.role && ["admin", "hr", "manager"].includes(user.role.toLowerCase());
->>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
+
 
   // Access rules for attendance viewing
   const getViewableRoles = (): UserRole[] => {
@@ -681,11 +672,8 @@ const AttendanceWithToggle: React.FC = () => {
       return ["admin", "hr", "manager", "team_lead", "employee"];
     if (role === "hr") return ["hr", "manager", "team_lead", "employee"];
     if (role === "manager") return ["team_lead", "employee"];
-<<<<<<< HEAD
     if (role === "team_lead" || role === "teamlead") return [];
-=======
-    if (role === "team_lead" || role === "teamlead") return ["employee"];
->>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
+
     return [];
   };
 
@@ -1654,11 +1642,8 @@ const AttendanceWithToggle: React.FC = () => {
           .toLowerCase();
       });
 
-<<<<<<< HEAD
-      // Enforce visibility rules (Client-side fail-safe)
-=======
       // Enforce simplified visibility rules (Client-side fail-safe)
->>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
+
       const currentUserRole = (user?.role || "").toLowerCase();
       if (
         (currentUserRole === "manager" ||
@@ -1710,12 +1695,6 @@ const AttendanceWithToggle: React.FC = () => {
             }
           }
 
-<<<<<<< HEAD
-          // 4. Department check
-          // If manager has department, enforce department scope
-          if (userDept && recDept && recDept !== userDept) {
-            return false;
-=======
           // 4. If manager has department, enforce department scope.
           //    Support multi-department managers by checking for overlap.
           if (userDept && recDept) {
@@ -1731,7 +1710,7 @@ const AttendanceWithToggle: React.FC = () => {
               managerDepts.includes(rd),
             );
             if (!hasOverlap) return false;
->>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
+
           }
 
           return true;
@@ -1837,13 +1816,9 @@ const AttendanceWithToggle: React.FC = () => {
           }
 
           return {
-<<<<<<< HEAD
-            id: String(rec.attendance_id || rec.id || ''),
-            userId: String(rec.user_id || rec.userId || rec.employee_id || ''),
-=======
             id: String(rec.attendance_id || rec.id || ""),
             userId: String(rec.user_id || rec.userId || rec.employee_id || ""),
->>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
+
             date: rec.check_in ? formatDateIST(rec.check_in) : selectedDate,
             checkInTime: rec.check_in || undefined,
             checkOutTime: rec.check_out || undefined,
@@ -5488,18 +5463,12 @@ const AttendanceWithToggle: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setReportLayout("basic")}
-<<<<<<< HEAD
-                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === "basic"
-                    ? "border-blue-600 bg-blue-50 dark:bg-blue-950"
-                    : "border-gray-200 hover:border-blue-300 dark:border-gray-700"
-                    }`}
-=======
                   className={`p-2.5 rounded-lg border transition-all ${
                     reportLayout === "basic"
                       ? "border-blue-600 bg-blue-50 dark:bg-blue-950"
                       : "border-gray-200 hover:border-blue-300 dark:border-gray-700"
                   }`}
->>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
+
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <div
@@ -5520,18 +5489,12 @@ const AttendanceWithToggle: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setReportLayout("grid")}
-<<<<<<< HEAD
-                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === "grid"
-                    ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
-                    : "border-gray-200 hover:border-indigo-300 dark:border-gray-700"
-                    }`}
-=======
                   className={`p-2.5 rounded-lg border transition-all ${
                     reportLayout === "grid"
                       ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
                       : "border-gray-200 hover:border-indigo-300 dark:border-gray-700"
                   }`}
->>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
+
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <div
@@ -5552,18 +5515,12 @@ const AttendanceWithToggle: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setReportLayout("detailed_grid")}
-<<<<<<< HEAD
-                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === "detailed_grid"
-                    ? "border-purple-600 bg-purple-50 dark:bg-purple-950"
-                    : "border-gray-200 hover:border-purple-300 dark:border-gray-700"
-                    }`}
-=======
                   className={`p-2.5 rounded-lg border transition-all ${
                     reportLayout === "detailed_grid"
                       ? "border-purple-600 bg-purple-50 dark:bg-purple-950"
                       : "border-gray-200 hover:border-purple-300 dark:border-gray-700"
                   }`}
->>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
+
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <div
@@ -5591,18 +5548,12 @@ const AttendanceWithToggle: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setExportType("csv")}
-<<<<<<< HEAD
-                  className={`p-2.5 rounded-lg border transition-all ${exportType === "csv"
-                    ? "border-green-600 bg-green-50 dark:bg-green-950"
-                    : "border-gray-200 hover:border-green-300 dark:border-gray-700"
-                    }`}
-=======
                   className={`p-2.5 rounded-lg border transition-all ${
                     exportType === "csv"
                       ? "border-green-600 bg-green-50 dark:bg-green-950"
                       : "border-gray-200 hover:border-green-300 dark:border-gray-700"
                   }`}
->>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
+
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <FileSpreadsheet
@@ -5621,18 +5572,12 @@ const AttendanceWithToggle: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setExportType("pdf")}
-<<<<<<< HEAD
-                  className={`p-2.5 rounded-lg border transition-all ${exportType === "pdf"
-                    ? "border-red-600 bg-red-50 dark:bg-red-950"
-                    : "border-gray-200 hover:border-red-300 dark:border-gray-700"
-                    }`}
-=======
                   className={`p-2.5 rounded-lg border transition-all ${
                     exportType === "pdf"
                       ? "border-red-600 bg-red-50 dark:bg-red-950"
                       : "border-gray-200 hover:border-red-300 dark:border-gray-700"
                   }`}
->>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
+
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <FileText
@@ -5802,18 +5747,12 @@ const AttendanceWithToggle: React.FC = () => {
                               type="button"
                               key={emp.user_id}
                               onClick={() => setSelectedExportEmployee(emp)}
-<<<<<<< HEAD
-                              className={`w-full text-left p-3 border-b last:border-b-0 transition-colors ${isSelected
-                                ? "bg-blue-50 dark:bg-blue-900"
-                                : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                                }`}
-=======
                               className={`w-full text-left p-3 border-b last:border-b-0 transition-colors ${
                                 isSelected
                                   ? "bg-blue-50 dark:bg-blue-900"
                                   : "hover:bg-gray-100 dark:hover:bg-gray-800"
                               }`}
->>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
+
                             >
                               <div className="font-medium">{emp.name}</div>
                               <div className="text-sm text-muted-foreground">
