@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
 import TruncatedText from "@/components/ui/TruncatedText";
 import { Pagination } from "@/components/ui/pagination";
@@ -740,7 +740,7 @@ export default function LeaveManagement() {
   const canApproveLeaves = ["admin", "hr", "manager"].includes(
     user?.role || "",
   );
-  const canViewTeamLeaves = ["team_lead"].includes(user?.role || "");
+  const canViewTeamLeaves = false;
   const canExport = ["admin", "hr"].includes(user?.role || "");
   // Admins should not have an option to apply for leave from the admin dashboard
   const canApply = user?.role !== "admin";

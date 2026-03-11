@@ -659,7 +659,7 @@ const AttendanceWithToggle: React.FC = () => {
   // Determine if user can view employee attendance (management roles)
   const canViewEmployeeAttendance =
     user?.role &&
-    ["admin", "hr", "manager", "team_lead", "teamlead"].includes(
+    ["admin", "hr", "manager"].includes(
       user.role.toLowerCase(),
     );
   const canExportAttendance =
@@ -673,7 +673,7 @@ const AttendanceWithToggle: React.FC = () => {
       return ["admin", "hr", "manager", "team_lead", "employee"];
     if (role === "hr") return ["hr", "manager", "team_lead", "employee"];
     if (role === "manager") return ["team_lead", "employee"];
-    if (role === "team_lead" || role === "teamlead") return ["employee"];
+    if (role === "team_lead" || role === "teamlead") return [];
     return [];
   };
 

@@ -139,6 +139,7 @@ const MeetingsPage: React.FC = () => {
      */
     const normalizeMeeting = (m: any): Meeting => {
         const id = m.id || m.meeting_id || m.meetingId;
+        const titleLower = (m.title || '').toLowerCase().trim();
 
         // --- Step 1: extract association IDs & names ---
         const projectId = m.project_id || m.projectId || m.project?.id || m.project?.project_id;
@@ -146,12 +147,12 @@ const MeetingsPage: React.FC = () => {
         const teamId = m.team_id || m.teamId || m.department_id || m.departmentId || m.team?.id || m.department?.id;
         const teamName = m.team_name || m.teamName || m.department_name || m.departmentName || m.team?.name || m.department?.name;
 
-        // --- Step 2: association IDs win unconditionally ---
+        // --- Step 2: association IDs and Title hints win unconditionally ---
         let finalType: Meeting['type'];
 
-        if (projectId || projectName) {
+        if (projectId || projectName || titleLower.includes('project')) {
             finalType = 'project';
-        } else if (teamId || teamName) {
+        } else if (teamId || teamName || titleLower.includes('team') || titleLower.includes('department')) {
             finalType = 'team';
         } else {
             // --- Step 3: fall back to backend type field ---
@@ -193,20 +194,23 @@ const MeetingsPage: React.FC = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [meetingsData, depts, projs, emps] = await Promise.all([
+            const [allMeetingsData, participationData, deptsData, projsData, empsData, chatUsersData] = await Promise.all([
                 apiService.getMeetings(),
                 apiService.getMeetings({ as_creator: 'false' }).catch(() => []),
-                // getBranchs() hits /departments and returns real Branch[] objects with id + name
                 apiService.getBranchs().catch(() => []),
                 apiService.getProjects().catch(() => []),
                 apiService.getEmployees().catch(() => []),
                 chatService.getAvailableUsers().catch(() => [])
             ]);
 
-            const normalizedMeetings = (Array.isArray(meetingsData) ? meetingsData : []).map(normalizeMeeting);
-            setMeetings(normalizedMeetings);
-            setDepartments(Array.isArray(depts) ? depts : (depts as any)?.departments || []);
-            setProjects(Array.isArray(projs) ? projs : (projs as any)?.projects || []);
+            const normalizedAll = (Array.isArray(allMeetingsData) ? allMeetingsData : []).map(normalizeMeeting);
+            const normalizedMy = (Array.isArray(participationData) ? participationData : []).map(normalizeMeeting);
+
+            setMeetings(normalizedAll);
+            setMyMeetings(normalizedMy);
+            setDepartments(Array.isArray(deptsData) ? deptsData : (deptsData as any)?.departments || []);
+            setProjects(Array.isArray(projsData) ? projsData : (projsData as any)?.projects || []);
+            setEmployees(Array.isArray(empsData) ? empsData : (empsData as any)?.employees || []);
         } catch (error) {
             console.error('Failed to fetch data:', error);
             toast({
