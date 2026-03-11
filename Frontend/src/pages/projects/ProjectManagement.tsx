@@ -404,34 +404,47 @@ function statusLabel(s?: string) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+const isTaskOverdue = (dueDate?: string, currentStatus?: string) => {
+  if (!dueDate) return false;
+  if (currentStatus === "completed" || currentStatus === "cancelled") return false;
+  const due = new Date(dueDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return due < today;
+};
+
 // ─────────────────────────────────────────
 // TaskRow sub-component with inline status
 // ─────────────────────────────────────────
 function TaskRow({
   task,
+  project,
   canManageProjects,
   onStatusChange,
+  currentUser,
 }: {
   task: ProjectTask;
+  project?: Project;
   canManageProjects: boolean;
   onStatusChange: (taskId: number, status: string) => void;
+  currentUser: any;
 }) {
   const id = task.task_id ?? task.id ?? 0;
 
-  // Detect overdue automatically
-  const isOverdue = useMemo(() => {
-    if (task.status === "completed" || task.status === "cancelled")
-      return false;
-    if (!task.due_date) return false;
-    const due = new Date(task.due_date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return due < today;
-  }, [task.due_date, task.status]);
+  const isOverdue = useMemo(() => isTaskOverdue(task.due_date, task.status), [task.due_date, task.status]);
 
   const effectiveStatus = isOverdue
     ? "overdue"
     : normalizeStatus(task.status);
+
+  const canEditTaskStatus = useMemo(() => {
+    if (!currentUser) return false;
+    if (canManageProjects) return true;
+    
+    const isPIC = project?.person_in_charge_name === currentUser.name || project?.pic_name === currentUser.name;
+    const isMember = String(task.assigned_to) === String(currentUser.id);
+    return isPIC || isMember;
+  }, [currentUser, canManageProjects, project, task.assigned_to]);
 
   return (
     <TableRow className="hover:bg-slate-50/60 dark:hover:bg-slate-900/30 transition-colors">
@@ -455,60 +468,59 @@ function TaskRow({
         {task.due_date ? formatDateIST(task.due_date, "MMM dd, yyyy") : "—"}
       </TableCell>
       <TableCell>
-        {canManageProjects ? (
-          <Select
-            value={normalizeStatus(task.status)}
-            onValueChange={(v) => onStatusChange(id, v)}
-          >
-            <SelectTrigger className="h-7 w-36 text-[11px] border-slate-200 dark:border-slate-700 shadow-sm font-medium">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent side="bottom" className="shadow-md">
-              <SelectItem value="todo">
-                <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tight text-[10px]">
-                  <Clock className="h-3 w-3" />
-                  To Do
-                </span>
-              </SelectItem>
-              <SelectItem value="in-progress">
-                <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold uppercase tracking-tight text-[10px]">
-                  <Clock className="h-3 w-3" />
-                  In Progress
-                </span>
-              </SelectItem>
-              <SelectItem value="completed">
-                <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tight text-[10px]">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Completed
-                </span>
-              </SelectItem>
-              <SelectItem value="cancelled">
-                <span className="flex items-center gap-1.5 text-red-500 dark:text-red-400 font-bold uppercase tracking-tight text-[10px]">
-                  <XCircle className="h-3 w-3" />
-                  Canceled
-                </span>
-              </SelectItem>
-              <SelectItem value="overdue">
-                <span className="flex items-center gap-1.5 text-red-500 dark:text-red-400 font-bold uppercase tracking-tight text-[10px]">
-                  <AlertCircle className="h-3 w-3" />
-                  Overdue
-                </span>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        ) : (
-          <TaskStatusBadge status={effectiveStatus} />
-        )}
-        {isOverdue &&
-          task.status !== "completed" &&
-          task.status !== "cancelled" &&
-          !canManageProjects && (
-            <div className="mt-1">
-              <Badge className="bg-red-50 text-red-600 dark:bg-red-900/20 border-0 text-[9px] height-auto py-0 px-1">
-                AUTO OVERDUE
-              </Badge>
-            </div>
+        <div className="flex flex-col gap-1">
+          {canEditTaskStatus ? (
+            <Select
+              value={normalizeStatus(task.status) === "overdue" ? "todo" : normalizeStatus(task.status)}
+              onValueChange={(v) => onStatusChange(id, v)}
+            >
+              <SelectTrigger className={`h-7 w-36 text-[11px] border-slate-200 dark:border-slate-700 shadow-sm font-medium ${isOverdue ? 'border-red-200 bg-red-50 text-red-600' : ''}`}>
+                <div className="flex items-center gap-1.5">
+                  {isOverdue ? (
+                    <span className="flex items-center gap-1.5 uppercase tracking-tight text-[10px] font-bold">
+                      <AlertCircle className="h-3 w-3" /> Overdue
+                    </span>
+                  ) : (
+                    <SelectValue />
+                  )}
+                </div>
+              </SelectTrigger>
+              <SelectContent side="bottom" className="shadow-md">
+                <SelectItem value="todo">
+                  <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tight text-[10px]">
+                    <Clock className="h-3 w-3" />
+                    To Do
+                  </span>
+                </SelectItem>
+                <SelectItem value="in-progress">
+                  <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold uppercase tracking-tight text-[10px]">
+                    <Clock className="h-3 w-3" />
+                    In Progress
+                  </span>
+                </SelectItem>
+                <SelectItem value="completed">
+                  <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tight text-[10px]">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Completed
+                  </span>
+                </SelectItem>
+                <SelectItem value="cancelled">
+                  <span className="flex items-center gap-1.5 text-red-500 dark:text-red-400 font-bold uppercase tracking-tight text-[10px]">
+                    <XCircle className="h-3 w-3" />
+                    Canceled
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <TaskStatusBadge status={effectiveStatus} />
           )}
+          {isOverdue && task.status !== "completed" && task.status !== "cancelled" && (
+            <Badge className="bg-red-50 text-red-600 dark:bg-red-900/20 border-red-100 border text-[9px] height-auto py-0 px-1 w-fit">
+              AUTO OVERDUE
+            </Badge>
+          )}
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -550,6 +562,7 @@ function ProjectCard({
   onToggleActive: (projectId: number, isActive: boolean) => void;
   onView: () => void;
 }) {
+  const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const tasks = project.tasks || [];
   const members = project.members || [];
@@ -870,6 +883,7 @@ function ProjectCard({
                         <TaskRow
                           key={task.task_id ?? task.id ?? idx}
                           task={task}
+                          project={project}
                           canManageProjects={canManageProjects}
                           onStatusChange={(taskId, status) =>
                             onTaskStatusChange(
@@ -878,6 +892,7 @@ function ProjectCard({
                               status,
                             )
                           }
+                          currentUser={user}
                         />
                       ))}
                     </TableBody>
@@ -1091,52 +1106,57 @@ export default function ProjectManagement() {
     }
     setIsCreating(true);
     try {
-      // Fan-out: one task per (task, assignee) pair
-      const expandedTasks: any[] = [];
-      for (const t of taskList) {
-        if (!t.task_name.trim() || t.assigned_to_ids.length === 0) continue;
-        for (const uid of t.assigned_to_ids) {
-          // Map UI status back to backend-friendly status for tasks
+      const newProject = await apiService.createProject(formData);
+      const projectId = newProject?.project_id || newProject?.id || newProject?.data?.project_id || newProject?.data?.id;
+
+      if (projectId) {
+        // 1. Add members first
+        if (selectedMemberIds.length > 0) {
+          try {
+            await apiService.addProjectMembersBulk(
+              projectId,
+              selectedMemberIds,
+            );
+          } catch (memberErr) {
+            console.error("Failed to add members:", memberErr);
+            toast({
+              title: "Warning",
+              description: "Project created, but failed to add some members.",
+              variant: "destructive",
+            });
+          }
+        }
+
+        // 2. Assign tasks using Bulk API
+        for (const t of taskList) {
+          if (!t.task_name.trim() || t.assigned_to_ids.length === 0) continue;
+          
           let backendTaskStatus: string = t.status;
           if (t.status === "todo") backendTaskStatus = "Pending";
           else if (t.status === "in-progress") backendTaskStatus = "In Progress";
           else if (t.status === "completed") backendTaskStatus = "Completed";
           else if (t.status === "cancelled") backendTaskStatus = "Cancelled";
 
-          expandedTasks.push({
-            task_name: t.task_name,
-            description: t.description,
-            assigned_to: uid,
-            due_date: t.due_date || undefined,
-            status: backendTaskStatus as any,
-            priority: t.priority,
-          });
-        }
-      }
-      const payload = {
-        ...formData,
-        tasks: expandedTasks,
-      };
-      const newProject = await apiService.createProject(payload);
-
-      // Add members if any are selected
-      if (selectedMemberIds.length > 0) {
-        try {
-          // Extract the project ID correctly depending on how the backend returns it
-          const projectId = newProject?.project_id || newProject?.id;
-          if (projectId) {
-            await apiService.addProjectMembersBulk(
-              projectId,
-              selectedMemberIds,
-            );
+          try {
+            await apiService.assignTasksBulk({
+              title: t.task_name,
+              description: t.description,
+              status: backendTaskStatus,
+              due_date: t.due_date || null,
+              priority: t.priority,
+              assigned_to_ids: t.assigned_to_ids,
+              project_id: Number(projectId),
+            });
+          } catch (taskErr) {
+            console.error("Failed to assign project task:", taskErr);
           }
-        } catch (memberErr) {
-          console.error("Failed to add members:", memberErr);
-          toast({
-            title: "Warning",
-            description: "Project created, but failed to add some members.",
-            variant: "destructive",
-          });
+        }
+
+        // 3. Re-fetch full details to sync state
+        try {
+          await loadFullProjectDetails(projectId);
+        } catch (fetchErr) {
+          console.error("Failed to refetch project details:", fetchErr);
         }
       }
 
@@ -1408,7 +1428,7 @@ export default function ProjectManagement() {
           due_date: task.due_date || null,
           priority: task.priority,
           assigned_to_ids: task.assigned_to_ids,
-          project_id: selectedProject.project_id,
+          project_id: Number(selectedProject.project_id || (selectedProject as any).id),
         });
       }
       toast({ title: "Success", description: "Tasks assigned successfully" });
@@ -2026,45 +2046,74 @@ export default function ProjectManagement() {
                                 </span>
                               </TableCell>
                               <TableCell className="pr-6 text-right">
-                                {canManageProjects ? (
-                                  <Select
-                                    value={normalizeStatus(task.status)}
-                                    onValueChange={(v) => handleTaskStatusChange(selectedProject.project_id, task.task_id || task.id, v)}
-                                  >
-                                    <SelectTrigger className="h-8 w-36 ml-auto text-[11px] border-slate-200 dark:border-slate-800 font-medium">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent side="bottom" className="shadow-lg min-w-[140px]">
-                                      <SelectItem value="todo">
-                                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tighter text-[10px]">
-                                          <Clock className="h-3 w-3" /> To Do
-                                        </div>
-                                      </SelectItem>
-                                      <SelectItem value="in-progress">
-                                        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold uppercase tracking-tighter text-[10px]">
-                                          <Clock className="h-3 w-3" /> In Progress
-                                        </div>
-                                      </SelectItem>
-                                      <SelectItem value="completed">
-                                        <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tighter text-[10px]">
-                                          <CheckCircle2 className="h-3 w-3" /> Completed
-                                        </div>
-                                      </SelectItem>
-                                      <SelectItem value="cancelled">
-                                        <div className="flex items-center gap-2 text-red-500 dark:text-red-400 font-bold uppercase tracking-tighter text-[10px]">
-                                          <XCircle className="h-3 w-3" /> Canceled
-                                        </div>
-                                      </SelectItem>
-                                      <SelectItem value="overdue">
-                                        <div className="flex items-center gap-2 text-red-500 dark:text-red-400 font-bold uppercase tracking-tighter text-[10px]">
-                                          <AlertCircle className="h-3 w-3" /> Overdue
-                                        </div>
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                ) : (
-                                  <TaskStatusBadge status={task.status} />
-                                )}
+                                {(() => {
+                                  const isOverdue = isTaskOverdue(task.due_date, task.status);
+                                  const canEdit = canManageProjects || 
+                                                 selectedProject.person_in_charge_name === user?.name || 
+                                                 selectedProject.pic_name === user?.name ||
+                                                 String(task.assigned_to) === String(user?.id);
+                                  
+                                  if (canEdit) {
+                                    return (
+                                      <div className="flex flex-col items-end gap-1">
+                                        <Select
+                                          value={normalizeStatus(task.status) === "overdue" ? "todo" : normalizeStatus(task.status)}
+                                          onValueChange={(v) => handleTaskStatusChange(selectedProject.project_id, task.task_id || task.id, v)}
+                                        >
+                                          <SelectTrigger className={`h-8 w-36 ml-auto text-[11px] border-slate-200 dark:border-slate-800 font-medium ${isOverdue ? 'border-red-200 bg-red-50 text-red-600' : ''}`}>
+                                            <div className="flex items-center gap-1.5">
+                                              {isOverdue ? (
+                                                <span className="flex items-center gap-1.5 uppercase tracking-tight text-[10px] font-bold">
+                                                  <AlertCircle className="h-3 w-3" /> Overdue
+                                                </span>
+                                              ) : (
+                                                <SelectValue />
+                                              )}
+                                            </div>
+                                          </SelectTrigger>
+                                          <SelectContent side="bottom" className="shadow-lg min-w-[140px]">
+                                            <SelectItem value="todo">
+                                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tighter text-[10px]">
+                                                <Clock className="h-3 w-3" /> To Do
+                                              </div>
+                                            </SelectItem>
+                                            <SelectItem value="in-progress">
+                                              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold uppercase tracking-tighter text-[10px]">
+                                                <Clock className="h-3 w-3" /> In Progress
+                                              </div>
+                                            </SelectItem>
+                                            <SelectItem value="completed">
+                                              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tighter text-[10px]">
+                                                <CheckCircle2 className="h-3 w-3" /> Completed
+                                              </div>
+                                            </SelectItem>
+                                            <SelectItem value="cancelled">
+                                              <div className="flex items-center gap-2 text-red-500 dark:text-red-400 font-bold uppercase tracking-tighter text-[10px]">
+                                                <XCircle className="h-3 w-3" /> Canceled
+                                              </div>
+                                            </SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                        {isOverdue && task.status !== "completed" && task.status !== "cancelled" && (
+                                          <Badge className="bg-red-50 text-red-600 dark:bg-red-900/20 border-red-100 border text-[9px] height-auto py-0 px-1 w-fit">
+                                            AUTO OVERDUE
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    );
+                                  }
+                                  
+                                  return (
+                                    <div className="flex flex-col items-end gap-1">
+                                      <TaskStatusBadge status={isOverdue ? "overdue" : task.status} />
+                                      {isOverdue && task.status !== "completed" && task.status !== "cancelled" && (
+                                        <Badge className="bg-red-50 text-red-600 dark:bg-red-900/20 border-red-100 border text-[9px] height-auto py-0 px-1 w-fit">
+                                          AUTO OVERDUE
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </TableCell>
                             </TableRow>
                           ))}

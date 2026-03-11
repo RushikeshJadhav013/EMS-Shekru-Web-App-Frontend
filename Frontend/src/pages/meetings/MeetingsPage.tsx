@@ -198,9 +198,24 @@ const MeetingsPage: React.FC = () => {
             setProjects(Array.isArray(projsData) ? projsData : (projsData as any)?.projects || (projsData as any)?.data || []);
 
             // Merge employees and managers for a complete list (Admin, HR, Manager, etc.)
-            const allEmployees = Array.isArray(empsData) ? empsData : (empsData as any)?.employees || (empsData as any)?.data || [];
+            let allEmployees = Array.isArray(empsData) ? empsData : (empsData as any)?.employees || (empsData as any)?.data || [];
             const allManagers = Array.isArray(managersData) ? managersData : (managersData as any)?.managers || (managersData as any)?.data || [];
             
+            // To Remove Role Hierarchy for all profiles (especially for 1:1 meetings):
+            // if we have departments but the employee list is small (likely restricted by backend for regular roles),
+            // try to fetch employees from each department to gather everyone.
+            if (allEmployees.length < 5 && finalDepts.length > 1) {
+                try {
+                    const deptEmployees = await Promise.all(
+                        finalDepts.map(d => apiService.getEmployees(d.name).catch(() => []))
+                    );
+                    const flatDeptEmps = deptEmployees.flat();
+                    if (flatDeptEmps.length > allEmployees.length) {
+                        allEmployees = [...allEmployees, ...flatDeptEmps];
+                    }
+                } catch (e) { console.warn("Broad employee fetch failed", e); }
+            }
+
             // Create a unique list based on ID
             const mergedMap = new Map();
             [...allEmployees, ...allManagers].forEach(person => {
