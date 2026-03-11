@@ -959,12 +959,20 @@ const TaskManagement: React.FC = () => {
           normalizedUserRole === "team_lead") &&
         !showAllDepartments
       ) {
-        if (!user.department || !emp.department) return true;
-        
-        const userDepts = user.department.split(",").map(d => d.trim().toLowerCase());
-        const empDepts = emp.department.split(",").map(d => d.trim().toLowerCase());
-        
-        const sameDepartment = empDepts.some(d => userDepts.includes(d));
+        const managerDepts = (user.department || "")
+          .split(",")
+          .map((d) => d.trim().toLowerCase())
+          .filter(Boolean);
+        const empDepts = (emp.department || "")
+          .split(",")
+          .map((d) => d.trim().toLowerCase())
+          .filter(Boolean);
+
+        const sameDepartment =
+          managerDepts.length === 0 ||
+          empDepts.length === 0 ||
+          empDepts.some((ed) => managerDepts.includes(ed));
+
         if (!sameDepartment) return false;
       }
 
@@ -987,15 +995,22 @@ const TaskManagement: React.FC = () => {
       if (targetIndex <= currentIndex) return false;
 
       // Non-admin users can only pass within their department
-      if (
-        normalizedUserRole !== "admin" &&
-        user.department &&
-        emp.department
-      ) {
-        const userDepts = user.department.split(",").map(d => d.trim().toLowerCase());
-        const empDepts = emp.department.split(",").map(d => d.trim().toLowerCase());
-        const sameDepartment = empDepts.some(d => userDepts.includes(d));
-        if (!sameDepartment) return false;
+      if (normalizedUserRole !== "admin") {
+        const managerDepts = (user.department || "")
+          .split(",")
+          .map((d) => d.trim().toLowerCase())
+          .filter(Boolean);
+        const empDepts = (emp.department || "")
+          .split(",")
+          .map((d) => d.trim().toLowerCase())
+          .filter(Boolean);
+
+        const hasOverlap =
+          managerDepts.length === 0 ||
+          empDepts.length === 0 ||
+          empDepts.some((ed) => managerDepts.includes(ed));
+
+        if (!hasOverlap) return false;
       }
       return true;
     });
@@ -2988,8 +3003,8 @@ const TaskManagement: React.FC = () => {
                             )}
                             {(normalizedUserRole === "admin" ||
                               normalizedUserRole === "hr") && (
-                              <SelectItem value="manager">Manager</SelectItem>
-                            )}
+                                <SelectItem value="manager">Manager</SelectItem>
+                              )}
                             <SelectItem value="team_lead">Team Lead</SelectItem>
                             <SelectItem value="employee">Employee</SelectItem>
                           </SelectContent>
@@ -3097,10 +3112,14 @@ const TaskManagement: React.FC = () => {
                                   (emp) =>
                                     !newTask.department ||
                                     (emp.department &&
-                                      emp.department.trim().toLowerCase() ===
-                                        newTask.department
-                                          .trim()
-                                          .toLowerCase()),
+                                      emp.department
+                                        .split(",")
+                                        .map((d) => d.trim().toLowerCase())
+                                        .includes(
+                                          newTask.department
+                                            .trim()
+                                            .toLowerCase(),
+                                        )),
                                 )
                                 .filter((emp) => {
                                   const search =
@@ -3127,10 +3146,14 @@ const TaskManagement: React.FC = () => {
                                   (emp) =>
                                     !newTask.department ||
                                     (emp.department &&
-                                      emp.department.trim().toLowerCase() ===
-                                        newTask.department
-                                          .trim()
-                                          .toLowerCase()),
+                                      emp.department
+                                        .split(",")
+                                        .map((d) => d.trim().toLowerCase())
+                                        .includes(
+                                          newTask.department
+                                            .trim()
+                                            .toLowerCase(),
+                                        )),
                                 )
                                 .filter((emp) => {
                                   const search =
@@ -3156,10 +3179,14 @@ const TaskManagement: React.FC = () => {
                                   (emp) =>
                                     !newTask.department ||
                                     (emp.department &&
-                                      emp.department.trim().toLowerCase() ===
-                                        newTask.department
-                                          .trim()
-                                          .toLowerCase()),
+                                      emp.department
+                                        .split(",")
+                                        .map((d) => d.trim().toLowerCase())
+                                        .includes(
+                                          newTask.department
+                                            .trim()
+                                            .toLowerCase(),
+                                        )),
                                 )
                                 .filter((emp) => {
                                   const search =
@@ -3268,8 +3295,12 @@ const TaskManagement: React.FC = () => {
                           (emp) =>
                             !newTask.department ||
                             (emp.department &&
-                              emp.department.trim().toLowerCase() ===
-                                newTask.department.trim().toLowerCase()),
+                              emp.department
+                                .split(",")
+                                .map((d) => d.trim().toLowerCase())
+                                .includes(
+                                  newTask.department.trim().toLowerCase(),
+                                )),
                         )
                         .filter((emp) => {
                           const search = assigneeSearchQuery.toLowerCase();
@@ -3368,11 +3399,10 @@ const TaskManagement: React.FC = () => {
             setFilterStatus("all");
             setIsOverdueFilterActive(false);
           }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-            filterStatus === "all" && !isOverdueFilterActive
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "all" && !isOverdueFilterActive
               ? "border-slate-600 dark:border-slate-400 bg-slate-100 dark:bg-slate-800"
               : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-600"
-          }`}
+            }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-slate-700 dark:text-slate-300">
@@ -3394,11 +3424,10 @@ const TaskManagement: React.FC = () => {
             setFilterStatus("in-progress");
             setIsOverdueFilterActive(false);
           }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-            filterStatus === "in-progress" && !isOverdueFilterActive
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "in-progress" && !isOverdueFilterActive
               ? "border-blue-600 dark:border-blue-400 bg-blue-100 dark:bg-blue-900"
               : "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 hover:border-blue-400 dark:hover:border-blue-600"
-          }`}
+            }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-blue-700 dark:text-blue-300">
@@ -3420,11 +3449,10 @@ const TaskManagement: React.FC = () => {
             setFilterStatus("completed");
             setIsOverdueFilterActive(false);
           }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-            filterStatus === "completed" && !isOverdueFilterActive
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "completed" && !isOverdueFilterActive
               ? "border-green-600 dark:border-green-400 bg-green-100 dark:bg-green-900"
               : "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 hover:border-green-400 dark:hover:border-green-600"
-          }`}
+            }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-green-700 dark:text-green-300">
@@ -3446,11 +3474,10 @@ const TaskManagement: React.FC = () => {
             setFilterStatus("all");
             setIsOverdueFilterActive(true);
           }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-            isOverdueFilterActive
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${isOverdueFilterActive
               ? "border-orange-600 dark:border-orange-400 bg-orange-100 dark:bg-orange-900"
               : "border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950 hover:border-orange-400 dark:hover:border-orange-600"
-          }`}
+            }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-orange-700 dark:text-orange-300">
@@ -3472,11 +3499,10 @@ const TaskManagement: React.FC = () => {
             setFilterStatus("cancelled");
             setIsOverdueFilterActive(false);
           }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-            filterStatus === "cancelled" && !isOverdueFilterActive
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "cancelled" && !isOverdueFilterActive
               ? "border-gray-600 dark:border-gray-400 bg-gray-100 dark:bg-gray-800"
               : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:border-gray-400 dark:hover:border-gray-600"
-          }`}
+            }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -3555,7 +3581,7 @@ const TaskManagement: React.FC = () => {
                 </Label>
                 <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1 h-10">
                   {normalizedUserRole === "admin" ||
-                  normalizedUserRole === "manager" ? (
+                    normalizedUserRole === "manager" ? (
                     <>
                       <Button
                         size="sm"
@@ -3648,8 +3674,8 @@ const TaskManagement: React.FC = () => {
                       <SelectContent>
                         {(normalizedUserRole === "admin" ||
                           normalizedUserRole === "manager") && (
-                          <SelectItem value="all">All Departments</SelectItem>
-                        )}
+                            <SelectItem value="all">All Departments</SelectItem>
+                          )}
                         {departments
                           .filter((dept) => dept && dept.trim() !== "")
                           .sort((a, b) => a.localeCompare(b))
@@ -3783,9 +3809,9 @@ const TaskManagement: React.FC = () => {
                           : null;
                         const lastPassTimestamp = task.lastPassedAt
                           ? formatDateTimeIST(
-                              task.lastPassedAt,
-                              "MMM dd, yyyy HH:mm",
-                            )
+                            task.lastPassedAt,
+                            "MMM dd, yyyy HH:mm",
+                          )
                           : null;
                         return (
                           <TableRow
@@ -3860,23 +3886,21 @@ const TaskManagement: React.FC = () => {
                             </TableCell>
                             <TableCell>
                               {(task.status as string) === "completed" ||
-                              (task.status as string) === "cancelled" ||
-                              (task.status as string) === "overdue" ? (
+                                (task.status as string) === "cancelled" ||
+                                (task.status as string) === "overdue" ? (
                                 <div
-                                  className={`w-[170px] h-10 bg-white dark:bg-gray-950 border-2 rounded-md flex items-center px-3 gap-2 ${
-                                    (task.status as string) === "overdue"
+                                  className={`w-[170px] h-10 bg-white dark:bg-gray-950 border-2 rounded-md flex items-center px-3 gap-2 ${(task.status as string) === "overdue"
                                       ? "border-orange-200 dark:border-orange-800"
                                       : "border-violet-200 dark:border-violet-800"
-                                  }`}
+                                    }`}
                                 >
                                   <div
-                                    className={`h-3 w-3 rounded-full ${
-                                      (task.status as string) === "cancelled"
+                                    className={`h-3 w-3 rounded-full ${(task.status as string) === "cancelled"
                                         ? "bg-gradient-to-br from-red-400 to-rose-600"
                                         : (task.status as string) === "overdue"
                                           ? "bg-gradient-to-br from-orange-400 to-orange-600"
                                           : "bg-gradient-to-br from-green-400 to-emerald-600"
-                                    } shadow-md flex-shrink-0`}
+                                      } shadow-md flex-shrink-0`}
                                   />
                                   <span className="font-medium text-sm">
                                     {(task.status as string) === "cancelled"
@@ -3928,59 +3952,59 @@ const TaskManagement: React.FC = () => {
                                       task.status,
                                       "todo",
                                     ) && (
-                                      <SelectItem
-                                        value="todo"
-                                        className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors py-2.5"
-                                      >
-                                        <div className="flex items-center gap-3">
-                                          <div className="h-3 w-3 rounded-full bg-gradient-to-br from-slate-400 to-slate-600 shadow-md animate-pulse flex-shrink-0" />
-                                          <span className="font-medium text-sm">
-                                            To Do
-                                          </span>
-                                        </div>
-                                      </SelectItem>
-                                    )}
+                                        <SelectItem
+                                          value="todo"
+                                          className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors py-2.5"
+                                        >
+                                          <div className="flex items-center gap-3">
+                                            <div className="h-3 w-3 rounded-full bg-gradient-to-br from-slate-400 to-slate-600 shadow-md animate-pulse flex-shrink-0" />
+                                            <span className="font-medium text-sm">
+                                              To Do
+                                            </span>
+                                          </div>
+                                        </SelectItem>
+                                      )}
                                     {/* Show "In Progress" only if allowed */}
                                     {isStatusTransitionAllowed(
                                       task.status,
                                       "in-progress",
                                     ) && (
-                                      <SelectItem
-                                        value="in-progress"
-                                        className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors py-2.5"
-                                      >
-                                        <div className="flex items-center gap-3">
-                                          <div className="h-3 w-3 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 shadow-md animate-pulse flex-shrink-0" />
-                                          <span className="font-medium text-sm">
-                                            In Progress
-                                          </span>
-                                        </div>
-                                      </SelectItem>
-                                    )}
+                                        <SelectItem
+                                          value="in-progress"
+                                          className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors py-2.5"
+                                        >
+                                          <div className="flex items-center gap-3">
+                                            <div className="h-3 w-3 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 shadow-md animate-pulse flex-shrink-0" />
+                                            <span className="font-medium text-sm">
+                                              In Progress
+                                            </span>
+                                          </div>
+                                        </SelectItem>
+                                      )}
 
                                     {/* Show "Completed" only if allowed */}
                                     {isStatusTransitionAllowed(
                                       task.status,
                                       "completed",
                                     ) && (
-                                      <SelectItem
-                                        value="completed"
-                                        className="cursor-pointer hover:bg-green-50 dark:hover:bg-green-950 transition-colors py-2.5"
-                                      >
-                                        <div className="flex items-center gap-3">
-                                          <div className="h-3 w-3 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 shadow-md flex-shrink-0" />
-                                          <span className="font-medium text-sm flex-1">
-                                            Completed
-                                          </span>
-                                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
-                                        </div>
-                                      </SelectItem>
-                                    )}
+                                        <SelectItem
+                                          value="completed"
+                                          className="cursor-pointer hover:bg-green-50 dark:hover:bg-green-950 transition-colors py-2.5"
+                                        >
+                                          <div className="flex items-center gap-3">
+                                            <div className="h-3 w-3 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 shadow-md flex-shrink-0" />
+                                            <span className="font-medium text-sm flex-1">
+                                              Completed
+                                            </span>
+                                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+                                          </div>
+                                        </SelectItem>
+                                      )}
                                     {/* Show Cancel option to task creator for any status except already cancelled/completed */}
                                     {canManageTask &&
                                       (task.status as string) !== "cancelled" &&
                                       (task.status as string) !==
-                                        "completed" && (
+                                      "completed" && (
                                         <SelectItem
                                           value="cancelled"
                                           className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950 transition-colors py-2.5"
@@ -4048,16 +4072,16 @@ const TaskManagement: React.FC = () => {
                                     <>
                                       {(task.status as string) !==
                                         "overdue" && (
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => handleEditClick(task)}
-                                          className="hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950 p-2 h-auto"
-                                          title="Edit task"
-                                        >
-                                          ✏️
-                                        </Button>
-                                      )}
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleEditClick(task)}
+                                            className="hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950 p-2 h-auto"
+                                            title="Edit task"
+                                          >
+                                            ✏️
+                                          </Button>
+                                        )}
                                       <Button
                                         variant="ghost"
                                         size="sm"
@@ -4154,17 +4178,15 @@ const TaskManagement: React.FC = () => {
                   return (
                     <Card
                       key={task.id}
-                      className={`border transition-all duration-300 cursor-pointer transform hover:scale-[1.02] shadow-sm hover:shadow-xl group relative overflow-hidden ${
-                        isTaskOverdue(task)
+                      className={`border transition-all duration-300 cursor-pointer transform hover:scale-[1.02] shadow-sm hover:shadow-xl group relative overflow-hidden ${isTaskOverdue(task)
                           ? "border-orange-200 bg-orange-50/30 dark:border-orange-900/50 dark:bg-orange-900/10"
                           : "border-slate-200 bg-white dark:border-gray-800 dark:bg-gray-950/50"
-                      }`}
+                        }`}
                       onClick={() => setSelectedTask(task)}
                     >
                       {/* Status Indicator Strip */}
                       <div
-                        className={`absolute top-0 left-0 w-1 h-full ${
-                          task.status === "completed"
+                        className={`absolute top-0 left-0 w-1 h-full ${task.status === "completed"
                             ? "bg-green-500"
                             : task.status === "cancelled"
                               ? "bg-red-500"
@@ -4173,7 +4195,7 @@ const TaskManagement: React.FC = () => {
                                 : task.status === "in-progress"
                                   ? "bg-blue-500"
                                   : "bg-slate-400"
-                        }`}
+                          }`}
                       />
 
                       <CardHeader className="p-4 pb-0">
@@ -4203,16 +4225,15 @@ const TaskManagement: React.FC = () => {
                           </div>
                           {/* Progress Ring or Simple Status Icon */}
                           <div
-                            className={`h-8 w-8 rounded-full flex items-center justify-center border-2 ${
-                              task.status === "completed"
+                            className={`h-8 w-8 rounded-full flex items-center justify-center border-2 ${task.status === "completed"
                                 ? "border-green-100 bg-green-50 text-green-600 dark:border-green-900/30 dark:bg-green-900/20"
                                 : task.status === "in-progress"
                                   ? "border-blue-100 bg-blue-50 text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20"
                                   : "border-slate-100 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900"
-                            }`}
+                              }`}
                           >
                             {typeof task.progress === "number" &&
-                            task.progress > 0 ? (
+                              task.progress > 0 ? (
                               <span className="text-[10px] font-bold">
                                 {task.progress}%
                               </span>
@@ -5056,9 +5077,9 @@ const TaskManagement: React.FC = () => {
                       <p className="text-muted-foreground font-medium">
                         {selectedTask.createdAt
                           ? formatDateIST(
-                              parseToIST(selectedTask.createdAt) || new Date(),
-                              "MMM dd, yyyy",
-                            )
+                            parseToIST(selectedTask.createdAt) || new Date(),
+                            "MMM dd, yyyy",
+                          )
                           : "N/A"}
                       </p>
                     </div>
@@ -5108,8 +5129,8 @@ const TaskManagement: React.FC = () => {
               >
                 <div className="space-y-4">
                   {isFetchingHistory &&
-                  selectedTask &&
-                  isFetchingHistory === selectedTask.id ? (
+                    selectedTask &&
+                    isFetchingHistory === selectedTask.id ? (
                     <div className="flex justify-center py-8 text-muted-foreground">
                       <Loader2 className="h-5 w-5 animate-spin" />
                     </div>
@@ -5158,7 +5179,7 @@ const TaskManagement: React.FC = () => {
                               : null;
                           const note =
                             typeof details.note === "string" &&
-                            details.note.trim().length > 0
+                              details.note.trim().length > 0
                               ? details.note
                               : null;
                           return (
@@ -5476,11 +5497,10 @@ const TaskManagement: React.FC = () => {
 
                                 {/* Message Content */}
                                 <div
-                                  className={`rounded-lg px-3 py-2 shadow-sm ${
-                                    isOwnComment
+                                  className={`rounded-lg px-3 py-2 shadow-sm ${isOwnComment
                                       ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-tr-none"
                                       : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-tl-none"
-                                  }`}
+                                    }`}
                                 >
                                   {/* Role badge for own messages (inside bubble) */}
                                   {isOwnComment && (
@@ -5501,11 +5521,10 @@ const TaskManagement: React.FC = () => {
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       download={comment.file_name}
-                                      className={`flex items-center gap-2 p-2 rounded-lg mb-2 transition-colors ${
-                                        isOwnComment
+                                      className={`flex items-center gap-2 p-2 rounded-lg mb-2 transition-colors ${isOwnComment
                                           ? "bg-white/10 hover:bg-white/20"
                                           : "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600"
-                                      }`}
+                                        }`}
                                     >
                                       {comment.file_type?.startsWith(
                                         "image/",
@@ -5533,8 +5552,8 @@ const TaskManagement: React.FC = () => {
                                               className={`h-5 w-5 ${isOwnComment ? "text-white" : "text-red-500"}`}
                                             />
                                           ) : comment.file_type?.includes(
-                                              "spreadsheet",
-                                            ) ||
+                                            "spreadsheet",
+                                          ) ||
                                             comment.file_type?.includes(
                                               "excel",
                                             ) ||
@@ -5545,8 +5564,8 @@ const TaskManagement: React.FC = () => {
                                               className={`h-5 w-5 ${isOwnComment ? "text-white" : "text-green-500"}`}
                                             />
                                           ) : comment.file_type?.includes(
-                                              "word",
-                                            ) ||
+                                            "word",
+                                          ) ||
                                             comment.file_name?.endsWith(
                                               ".doc",
                                             ) ||
@@ -5908,33 +5927,33 @@ const TaskManagement: React.FC = () => {
             {(normalizedUserRole === "admin" ||
               normalizedUserRole === "hr" ||
               normalizedUserRole === "manager") && (
-              <div className="space-y-3">
-                <Label className="text-sm font-semibold flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-emerald-600" />
-                  Department Filter
-                </Label>
-                <Select
-                  value={exportDepartmentFilter}
-                  onValueChange={setExportDepartmentFilter}
-                >
-                  <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="border-2 shadow-xl">
-                    <SelectItem value="all">All Departments</SelectItem>
-                    {departments
-                      .slice()
-                      .filter((dept) => dept && dept.trim() !== "")
-                      .sort((a, b) => a.localeCompare(b))
-                      .map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-emerald-600" />
+                    Department Filter
+                  </Label>
+                  <Select
+                    value={exportDepartmentFilter}
+                    onValueChange={setExportDepartmentFilter}
+                  >
+                    <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="border-2 shadow-xl">
+                      <SelectItem value="all">All Departments</SelectItem>
+                      {departments
+                        .slice()
+                        .filter((dept) => dept && dept.trim() !== "")
+                        .sort((a, b) => a.localeCompare(b))
+                        .map((dept) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
             {/* Export Summary */}
             <div className="p-4 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950 dark:to-teal-950 border">
@@ -6074,7 +6093,7 @@ const TaskManagement: React.FC = () => {
                           : toInfo.name;
                       const note =
                         typeof details?.note === "string" &&
-                        details.note.trim().length > 0
+                          details.note.trim().length > 0
                           ? details.note
                           : null;
                       const actor = employeesById.get(String(entry.user_id));

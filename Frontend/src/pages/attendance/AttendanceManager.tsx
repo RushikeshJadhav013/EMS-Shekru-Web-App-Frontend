@@ -856,11 +856,30 @@ const AttendanceManager: React.FC = () => {
           if (uId === managerId) return true;
 
           // 2. Allow all Employees and Team Leads
-          const isAllowedRole = ['employee', 'teamlead', 'team_lead', 'manager'].includes(role);
+          const isAllowedRole = [
+            "employee",
+            "teamlead",
+            "team_lead",
+            "manager",
+          ].includes(role);
           if (!isAllowedRole) return false;
 
           // 3. If manager has department, filter by it. Otherwise show all provided by backend.
-          if (normalizedDept && empDept && empDept !== normalizedDept) return false;
+          // Support multi-department managers by checking for overlap
+          if (normalizedDept && empDept) {
+            const managerDepts = normalizedDept
+              .split(",")
+              .map((d) => d.trim().toLowerCase())
+              .filter(Boolean);
+            const recordDepts = empDept
+              .split(",")
+              .map((d) => d.trim().toLowerCase())
+              .filter(Boolean);
+            const hasOverlap = recordDepts.some((rd) =>
+              managerDepts.includes(rd),
+            );
+            if (!hasOverlap) return false;
+          }
 
           return true;
         });
@@ -1222,10 +1241,14 @@ const AttendanceManager: React.FC = () => {
 
         console.log("Attendance data received:", data);
 
+<<<<<<< HEAD
         // Enforce visibility validation for Managers
+=======
+        // Enforce simplified visibility validation for Managers
+>>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
         if (user?.role === "manager") {
           const managerId = String(user.id);
-          const normalizedDept = (user.department || '').trim().toLowerCase();
+          const normalizedDept = (user.department || "").trim().toLowerCase();
 
           data = data.filter((rec: any) => {
             const recUserId = String(rec.user_id || rec.userId);
@@ -1241,12 +1264,29 @@ const AttendanceManager: React.FC = () => {
 
             // 3. Role check
             const role = userRoleMap[recUserId];
-            const isAllowedRole = ['employee', 'teamlead', 'team_lead', 'manager'].includes(role);
+            const isAllowedRole = [
+              "employee",
+              "teamlead",
+              "team_lead",
+              "manager",
+            ].includes(role);
             if (!isAllowedRole) return false;
 
             // 4. If manager has department, enforce department scope
-            if (normalizedDept && recDept && recDept !== normalizedDept) {
-              return false;
+            // Support multi-department managers by checking for overlap
+            if (normalizedDept && recDept) {
+              const managerDepts = normalizedDept
+                .split(",")
+                .map((d) => d.trim().toLowerCase())
+                .filter(Boolean);
+              const recordDepts = recDept
+                .split(",")
+                .map((d) => d.trim().toLowerCase())
+                .filter(Boolean);
+              const hasOverlap = recordDepts.some((rd) =>
+                managerDepts.includes(rd),
+              );
+              if (!hasOverlap) return false;
             }
 
             return true;

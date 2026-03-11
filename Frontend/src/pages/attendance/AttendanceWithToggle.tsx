@@ -659,12 +659,20 @@ const AttendanceWithToggle: React.FC = () => {
   // Determine if user can view employee attendance (management roles)
   const canViewEmployeeAttendance =
     user?.role &&
+<<<<<<< HEAD
     ["admin", "hr", "manager"].includes(
       user.role.toLowerCase(),
     );
   const canExportAttendance =
     user?.role &&
     ["admin", "hr", "manager"].includes(user.role.toLowerCase());
+=======
+    ["admin", "hr", "manager", "team_lead", "teamlead"].includes(
+      user.role.toLowerCase(),
+    );
+  const canExportAttendance =
+    user?.role && ["admin", "hr", "manager"].includes(user.role.toLowerCase());
+>>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
 
   // Access rules for attendance viewing
   const getViewableRoles = (): UserRole[] => {
@@ -673,7 +681,11 @@ const AttendanceWithToggle: React.FC = () => {
       return ["admin", "hr", "manager", "team_lead", "employee"];
     if (role === "hr") return ["hr", "manager", "team_lead", "employee"];
     if (role === "manager") return ["team_lead", "employee"];
+<<<<<<< HEAD
     if (role === "team_lead" || role === "teamlead") return [];
+=======
+    if (role === "team_lead" || role === "teamlead") return ["employee"];
+>>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
     return [];
   };
 
@@ -795,49 +807,49 @@ const AttendanceWithToggle: React.FC = () => {
 
       const mappedRequests = Array.isArray(wfhResponse)
         ? wfhResponse.map((req: any) => {
-          // Use multiple fallback fields for user ID to ensure a match
-          const userIdForMapping = String(
-            req.user_id || req.userId || req.submittedById || "",
-          );
+            // Use multiple fallback fields for user ID to ensure a match
+            const userIdForMapping = String(
+              req.user_id || req.userId || req.submittedById || "",
+            );
 
-          // Robust role lookup:
-          // 1. Try exact match in map
-          // 2. Try falling back to request-provided role
-          // 3. Default to 'employee'
-          // We explicitly check userRoleMap first to fix the "Showing as Manager" issue
-          // where backend might return incorrect role on the request object.
-          let resolvedRole = userRoleMap[userIdForMapping];
+            // Robust role lookup:
+            // 1. Try exact match in map
+            // 2. Try falling back to request-provided role
+            // 3. Default to 'employee'
+            // We explicitly check userRoleMap first to fix the "Showing as Manager" issue
+            // where backend might return incorrect role on the request object.
+            let resolvedRole = userRoleMap[userIdForMapping];
 
-          if (!resolvedRole) {
-            resolvedRole =
-              req.role || req.user_role || req.requester_role || "employee";
-          }
+            if (!resolvedRole) {
+              resolvedRole =
+                req.role || req.user_role || req.requester_role || "employee";
+            }
 
-          return {
-            id: req.id?.toString() || req.wfh_id?.toString(),
-            wfhId: req.id || req.wfh_id,
-            user_id: req.user_id,
-            submittedBy:
-              req.employee_name ||
-              req.user_name ||
-              req.name ||
-              "Unknown User",
-            role: resolvedRole,
-            department: req.department || "",
-            startDate: req.start_date,
-            endDate: req.end_date,
-            reason: req.reason,
-            type: (req.wfh_type || "Full Day").toLowerCase().includes("full")
-              ? "full_day"
-              : "half_day",
-            status: (req.status || "pending").toLowerCase(),
-            submittedAt: req.created_at,
-            submittedById: req.user_id,
-            rejectionReason: req.rejection_reason,
-            processedAt: req.processed_at || req.updated_at,
-            approvedBy: req.approved_by,
-          };
-        })
+            return {
+              id: req.id?.toString() || req.wfh_id?.toString(),
+              wfhId: req.id || req.wfh_id,
+              user_id: req.user_id,
+              submittedBy:
+                req.employee_name ||
+                req.user_name ||
+                req.name ||
+                "Unknown User",
+              role: resolvedRole,
+              department: req.department || "",
+              startDate: req.start_date,
+              endDate: req.end_date,
+              reason: req.reason,
+              type: (req.wfh_type || "Full Day").toLowerCase().includes("full")
+                ? "full_day"
+                : "half_day",
+              status: (req.status || "pending").toLowerCase(),
+              submittedAt: req.created_at,
+              submittedById: req.user_id,
+              rejectionReason: req.rejection_reason,
+              processedAt: req.processed_at || req.updated_at,
+              approvedBy: req.approved_by,
+            };
+          })
         : [];
 
       setAllWfhRequests(mappedRequests);
@@ -1076,15 +1088,15 @@ const AttendanceWithToggle: React.FC = () => {
         blob =
           exportType === "csv"
             ? await apiService.exportMonthlyGridCSV({
-              month: exportMonth,
-              year: exportYear,
-              department: params.department,
-            })
+                month: exportMonth,
+                year: exportYear,
+                department: params.department,
+              })
             : await apiService.exportMonthlyGridPDF({
-              month: exportMonth,
-              year: exportYear,
-              department: params.department,
-            });
+                month: exportMonth,
+                year: exportYear,
+                department: params.department,
+              });
       } else if (reportLayout === "detailed_grid") {
         // Detailed Grid export
         const exportMonth = exportStartDate
@@ -1097,15 +1109,15 @@ const AttendanceWithToggle: React.FC = () => {
         blob =
           exportType === "csv"
             ? await apiService.exportMonthlyGridDetailedCSV({
-              month: exportMonth,
-              year: exportYear,
-              department: params.department,
-            })
+                month: exportMonth,
+                year: exportYear,
+                department: params.department,
+              })
             : await apiService.downloadMonthlyDetailedAttendanceGridPDF({
-              month: exportMonth,
-              year: exportYear,
-              department: params.department,
-            });
+                month: exportMonth,
+                year: exportYear,
+                department: params.department,
+              });
       } else {
         blob =
           exportType === "csv"
@@ -1642,7 +1654,11 @@ const AttendanceWithToggle: React.FC = () => {
           .toLowerCase();
       });
 
+<<<<<<< HEAD
       // Enforce visibility rules (Client-side fail-safe)
+=======
+      // Enforce simplified visibility rules (Client-side fail-safe)
+>>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
       const currentUserRole = (user?.role || "").toLowerCase();
       if (
         (currentUserRole === "manager" ||
@@ -1694,10 +1710,28 @@ const AttendanceWithToggle: React.FC = () => {
             }
           }
 
+<<<<<<< HEAD
           // 4. Department check
           // If manager has department, enforce department scope
           if (userDept && recDept && recDept !== userDept) {
             return false;
+=======
+          // 4. If manager has department, enforce department scope.
+          //    Support multi-department managers by checking for overlap.
+          if (userDept && recDept) {
+            const managerDepts = userDept
+              .split(",")
+              .map((d) => d.trim().toLowerCase())
+              .filter(Boolean);
+            const recordDepts = recDept
+              .split(",")
+              .map((d) => d.trim().toLowerCase())
+              .filter(Boolean);
+            const hasOverlap = recordDepts.some((rd) =>
+              managerDepts.includes(rd),
+            );
+            if (!hasOverlap) return false;
+>>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
           }
 
           return true;
@@ -1803,8 +1837,13 @@ const AttendanceWithToggle: React.FC = () => {
           }
 
           return {
+<<<<<<< HEAD
             id: String(rec.attendance_id || rec.id || ''),
             userId: String(rec.user_id || rec.userId || rec.employee_id || ''),
+=======
+            id: String(rec.attendance_id || rec.id || ""),
+            userId: String(rec.user_id || rec.userId || rec.employee_id || ""),
+>>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
             date: rec.check_in ? formatDateIST(rec.check_in) : selectedDate,
             checkInTime: rec.check_in || undefined,
             checkOutTime: rec.check_out || undefined,
@@ -1922,7 +1961,7 @@ const AttendanceWithToggle: React.FC = () => {
         // Check if check-in was late (similar to getStatusBadge logic)
         const checkInT =
           checkInTime &&
-            (checkInTime.includes(" ") || checkInTime.includes("T"))
+          (checkInTime.includes(" ") || checkInTime.includes("T"))
             ? checkInTime.includes("T")
               ? checkInTime.split("T")[1].substring(0, 8)
               : checkInTime.split(" ")[1].substring(0, 8)
@@ -1933,7 +1972,7 @@ const AttendanceWithToggle: React.FC = () => {
         // Check if check-out was early
         const checkOutT =
           checkOutTime &&
-            (checkOutTime.includes(" ") || checkOutTime.includes("T"))
+          (checkOutTime.includes(" ") || checkOutTime.includes("T"))
             ? checkOutTime.includes("T")
               ? checkOutTime.split("T")[1].substring(0, 8)
               : checkOutTime.split(" ")[1].substring(0, 8)
@@ -3382,7 +3421,7 @@ const AttendanceWithToggle: React.FC = () => {
                             currentAttendance.checkOutTime,
                           )}
                           {currentAttendance.workLocation ===
-                            "work_from_home" ? (
+                          "work_from_home" ? (
                             <Badge
                               variant="outline"
                               className="bg-orange-50 border-orange-500 text-orange-700 dark:bg-orange-950 dark:text-orange-300"
@@ -3399,23 +3438,23 @@ const AttendanceWithToggle: React.FC = () => {
                               Work From Office
                             </Badge>
                           ) : // Fallback: check WFH status if workLocation is not set
-                            getTodayWfhStatus()?.hasApprovedWfh ? (
-                              <Badge
-                                variant="outline"
-                                className="bg-orange-50 border-orange-500 text-orange-700 dark:bg-orange-950 dark:text-orange-300"
-                              >
-                                <Home className="h-3 w-3 mr-1" />
-                                Work From Home
-                              </Badge>
-                            ) : (
-                              <Badge
-                                variant="outline"
-                                className="bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
-                              >
-                                <MapPin className="h-3 w-3 mr-1" />
-                                Work From Office
-                              </Badge>
-                            )}
+                          getTodayWfhStatus()?.hasApprovedWfh ? (
+                            <Badge
+                              variant="outline"
+                              className="bg-orange-50 border-orange-500 text-orange-700 dark:bg-orange-950 dark:text-orange-300"
+                            >
+                              <Home className="h-3 w-3 mr-1" />
+                              Work From Home
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                            >
+                              <MapPin className="h-3 w-3 mr-1" />
+                              Work From Office
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-lg font-semibold">
                           {formatAttendanceTime(
@@ -3424,8 +3463,8 @@ const AttendanceWithToggle: React.FC = () => {
                           )}
                         </p>
                         {currentAttendance.workLocation === "work_from_home" ||
-                          (currentAttendance.workLocation !== "office" &&
-                            getTodayWfhStatus()?.hasApprovedWfh) ? (
+                        (currentAttendance.workLocation !== "office" &&
+                          getTodayWfhStatus()?.hasApprovedWfh) ? (
                           <p className="text-xs text-orange-600 dark:text-orange-400">
                             Working from home today
                           </p>
@@ -3445,15 +3484,15 @@ const AttendanceWithToggle: React.FC = () => {
                           {(() => {
                             const checkOutT =
                               currentAttendance.checkOutTime &&
-                                (currentAttendance.checkOutTime.includes(" ") ||
-                                  currentAttendance.checkOutTime.includes("T"))
+                              (currentAttendance.checkOutTime.includes(" ") ||
+                                currentAttendance.checkOutTime.includes("T"))
                                 ? currentAttendance.checkOutTime.includes("T")
                                   ? currentAttendance.checkOutTime
-                                    .split("T")[1]
-                                    .substring(0, 8)
+                                      .split("T")[1]
+                                      .substring(0, 8)
                                   : currentAttendance.checkOutTime
-                                    .split(" ")[1]
-                                    .substring(0, 8)
+                                      .split(" ")[1]
+                                      .substring(0, 8)
                                 : currentAttendance.checkOutTime;
                             return (
                               checkOutT &&
@@ -3471,9 +3510,9 @@ const AttendanceWithToggle: React.FC = () => {
                         <p className="text-lg font-semibold">
                           {currentAttendance.checkOutTime
                             ? formatAttendanceTime(
-                              currentAttendance.date,
-                              currentAttendance.checkOutTime,
-                            )
+                                currentAttendance.date,
+                                currentAttendance.checkOutTime,
+                              )
                             : "-"}
                         </p>
                       </div>
@@ -3489,8 +3528,8 @@ const AttendanceWithToggle: React.FC = () => {
                           <p className="text-lg font-semibold">
                             {currentAttendance.checkOutTime
                               ? formatWorkHours(
-                                currentAttendance.workHours || 0,
-                              )
+                                  currentAttendance.workHours || 0,
+                                )
                               : workingHours}
                           </p>
                         </div>
@@ -3729,7 +3768,7 @@ const AttendanceWithToggle: React.FC = () => {
                               .slice(
                                 (selfCurrentPage - 1) * selfItemsPerPage,
                                 (selfCurrentPage - 1) * selfItemsPerPage +
-                                selfItemsPerPage,
+                                  selfItemsPerPage,
                               )
                               .map((record) => (
                                 <tr
@@ -3754,7 +3793,7 @@ const AttendanceWithToggle: React.FC = () => {
                                   </td>
                                   <td className="p-3 whitespace-nowrap">
                                     {record.workLocation ===
-                                      "work_from_home" ? (
+                                    "work_from_home" ? (
                                       <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
                                         <div className="h-1.5 w-1.5 rounded-full bg-orange-500"></div>
                                         <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
@@ -3833,7 +3872,7 @@ const AttendanceWithToggle: React.FC = () => {
                                   </td>
                                   <td className="p-3 whitespace-nowrap">
                                     {record.checkInLocation?.address &&
-                                      record.checkInLocation.address !== "N/A" ? (
+                                    record.checkInLocation.address !== "N/A" ? (
                                       <Button
                                         variant="ghost"
                                         size="sm"
@@ -3998,7 +4037,7 @@ const AttendanceWithToggle: React.FC = () => {
                           currentPage={selfCurrentPage}
                           totalPages={Math.ceil(
                             getFilteredAttendanceHistory().length /
-                            selfItemsPerPage,
+                              selfItemsPerPage,
                           )}
                           totalItems={getFilteredAttendanceHistory().length}
                           itemsPerPage={selfItemsPerPage}
@@ -4323,7 +4362,7 @@ const AttendanceWithToggle: React.FC = () => {
                               </td>
                               <td className="p-3 whitespace-nowrap">
                                 {record.checkInLocation?.address &&
-                                  record.checkInLocation.address !== "N/A" ? (
+                                record.checkInLocation.address !== "N/A" ? (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -4544,7 +4583,7 @@ const AttendanceWithToggle: React.FC = () => {
                   </span>
                 </div>
               ) : allWfhRequests.filter((req) => req.status === "pending")
-                .length > 0 ? (
+                  .length > 0 ? (
                 <>
                   <div className="space-y-3">
                     {allWfhRequests
@@ -4645,26 +4684,26 @@ const AttendanceWithToggle: React.FC = () => {
                   </div>
                   {allWfhRequests.filter((req) => req.status === "pending")
                     .length > 0 && (
-                      <div className="mt-4">
-                        <Pagination
-                          currentPage={pendingWfhCurrentPage}
-                          totalPages={Math.ceil(
-                            allWfhRequests.filter(
-                              (req) => req.status === "pending",
-                            ).length / pendingWfhItemsPerPage,
-                          )}
-                          totalItems={
-                            allWfhRequests.filter(
-                              (req) => req.status === "pending",
-                            ).length
-                          }
-                          itemsPerPage={pendingWfhItemsPerPage}
-                          onPageChange={setPendingWfhCurrentPage}
-                          onItemsPerPageChange={setPendingWfhItemsPerPage}
-                          showItemsPerPage={true}
-                        />
-                      </div>
-                    )}
+                    <div className="mt-4">
+                      <Pagination
+                        currentPage={pendingWfhCurrentPage}
+                        totalPages={Math.ceil(
+                          allWfhRequests.filter(
+                            (req) => req.status === "pending",
+                          ).length / pendingWfhItemsPerPage,
+                        )}
+                        totalItems={
+                          allWfhRequests.filter(
+                            (req) => req.status === "pending",
+                          ).length
+                        }
+                        itemsPerPage={pendingWfhItemsPerPage}
+                        onPageChange={setPendingWfhCurrentPage}
+                        onItemsPerPageChange={setPendingWfhItemsPerPage}
+                        showItemsPerPage={true}
+                      />
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
@@ -4854,9 +4893,9 @@ const AttendanceWithToggle: React.FC = () => {
                       {filteredRecentDecisions
                         .slice(
                           (recentDecisionsCurrentPage - 1) *
-                          recentDecisionsItemsPerPage,
+                            recentDecisionsItemsPerPage,
                           recentDecisionsCurrentPage *
-                          recentDecisionsItemsPerPage,
+                            recentDecisionsItemsPerPage,
                         )
                         .map((request) => (
                           <div
@@ -4916,7 +4955,7 @@ const AttendanceWithToggle: React.FC = () => {
                                     Decision:{" "}
                                     {formatDateTimeIST(
                                       request.processedAt ||
-                                      request.submittedAt,
+                                        request.submittedAt,
                                       "dd MMM yyyy, hh:mm a",
                                     )}
                                   </span>
@@ -4959,7 +4998,7 @@ const AttendanceWithToggle: React.FC = () => {
                           currentPage={recentDecisionsCurrentPage}
                           totalPages={Math.ceil(
                             filteredRecentDecisions.length /
-                            recentDecisionsItemsPerPage,
+                              recentDecisionsItemsPerPage,
                           )}
                           totalItems={filteredRecentDecisions.length}
                           itemsPerPage={recentDecisionsItemsPerPage}
@@ -5100,7 +5139,7 @@ const AttendanceWithToggle: React.FC = () => {
                         <li>
                           Your request will be reviewed by your{" "}
                           {user?.role === "employee" ||
-                            user?.role === "team_lead"
+                          user?.role === "team_lead"
                             ? "manager and HR"
                             : "admin"}
                         </li>
@@ -5239,7 +5278,7 @@ const AttendanceWithToggle: React.FC = () => {
                               </span>
                               <Badge variant="outline" className="text-xs">
                                 {request.type === "full_day" ||
-                                  request.type === "Full Day"
+                                request.type === "Full Day"
                                   ? "Full Day"
                                   : "Half Day"}
                               </Badge>
@@ -5449,10 +5488,18 @@ const AttendanceWithToggle: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setReportLayout("basic")}
+<<<<<<< HEAD
                   className={`p-2.5 rounded-lg border transition-all ${reportLayout === "basic"
                     ? "border-blue-600 bg-blue-50 dark:bg-blue-950"
                     : "border-gray-200 hover:border-blue-300 dark:border-gray-700"
                     }`}
+=======
+                  className={`p-2.5 rounded-lg border transition-all ${
+                    reportLayout === "basic"
+                      ? "border-blue-600 bg-blue-50 dark:bg-blue-950"
+                      : "border-gray-200 hover:border-blue-300 dark:border-gray-700"
+                  }`}
+>>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <div
@@ -5473,10 +5520,18 @@ const AttendanceWithToggle: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setReportLayout("grid")}
+<<<<<<< HEAD
                   className={`p-2.5 rounded-lg border transition-all ${reportLayout === "grid"
                     ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
                     : "border-gray-200 hover:border-indigo-300 dark:border-gray-700"
                     }`}
+=======
+                  className={`p-2.5 rounded-lg border transition-all ${
+                    reportLayout === "grid"
+                      ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
+                      : "border-gray-200 hover:border-indigo-300 dark:border-gray-700"
+                  }`}
+>>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <div
@@ -5497,10 +5552,18 @@ const AttendanceWithToggle: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setReportLayout("detailed_grid")}
+<<<<<<< HEAD
                   className={`p-2.5 rounded-lg border transition-all ${reportLayout === "detailed_grid"
                     ? "border-purple-600 bg-purple-50 dark:bg-purple-950"
                     : "border-gray-200 hover:border-purple-300 dark:border-gray-700"
                     }`}
+=======
+                  className={`p-2.5 rounded-lg border transition-all ${
+                    reportLayout === "detailed_grid"
+                      ? "border-purple-600 bg-purple-50 dark:bg-purple-950"
+                      : "border-gray-200 hover:border-purple-300 dark:border-gray-700"
+                  }`}
+>>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <div
@@ -5528,10 +5591,18 @@ const AttendanceWithToggle: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setExportType("csv")}
+<<<<<<< HEAD
                   className={`p-2.5 rounded-lg border transition-all ${exportType === "csv"
                     ? "border-green-600 bg-green-50 dark:bg-green-950"
                     : "border-gray-200 hover:border-green-300 dark:border-gray-700"
                     }`}
+=======
+                  className={`p-2.5 rounded-lg border transition-all ${
+                    exportType === "csv"
+                      ? "border-green-600 bg-green-50 dark:bg-green-950"
+                      : "border-gray-200 hover:border-green-300 dark:border-gray-700"
+                  }`}
+>>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <FileSpreadsheet
@@ -5550,10 +5621,18 @@ const AttendanceWithToggle: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setExportType("pdf")}
+<<<<<<< HEAD
                   className={`p-2.5 rounded-lg border transition-all ${exportType === "pdf"
                     ? "border-red-600 bg-red-50 dark:bg-red-950"
                     : "border-gray-200 hover:border-red-300 dark:border-gray-700"
                     }`}
+=======
+                  className={`p-2.5 rounded-lg border transition-all ${
+                    exportType === "pdf"
+                      ? "border-red-600 bg-red-50 dark:bg-red-950"
+                      : "border-gray-200 hover:border-red-300 dark:border-gray-700"
+                  }`}
+>>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
                 >
                   <div className="flex flex-col items-center gap-1.5">
                     <FileText
@@ -5723,10 +5802,18 @@ const AttendanceWithToggle: React.FC = () => {
                               type="button"
                               key={emp.user_id}
                               onClick={() => setSelectedExportEmployee(emp)}
+<<<<<<< HEAD
                               className={`w-full text-left p-3 border-b last:border-b-0 transition-colors ${isSelected
                                 ? "bg-blue-50 dark:bg-blue-900"
                                 : "hover:bg-gray-100 dark:hover:bg-gray-800"
                                 }`}
+=======
+                              className={`w-full text-left p-3 border-b last:border-b-0 transition-colors ${
+                                isSelected
+                                  ? "bg-blue-50 dark:bg-blue-900"
+                                  : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                              }`}
+>>>>>>> caee5c7d506ee5af0daa7363e0efc63d76c0de19
                             >
                               <div className="font-medium">{emp.name}</div>
                               <div className="text-sm text-muted-foreground">
@@ -5852,9 +5939,9 @@ const AttendanceWithToggle: React.FC = () => {
                     Check-in:{" "}
                     {selectedRecord?.checkInTime
                       ? formatAttendanceTime(
-                        selectedRecord.date,
-                        selectedRecord.checkInTime,
-                      )
+                          selectedRecord.date,
+                          selectedRecord.checkInTime,
+                        )
                       : "N/A"}
                   </p>
                   <p className="text-sm opacity-80">
@@ -6233,12 +6320,12 @@ const AttendanceWithToggle: React.FC = () => {
                     setSelectedWfhRequest((prev) =>
                       prev
                         ? {
-                          ...prev,
-                          rejectionReason: e.target.value.replace(
-                            /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
-                            "",
-                          ),
-                        }
+                            ...prev,
+                            rejectionReason: e.target.value.replace(
+                              /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
+                              "",
+                            ),
+                          }
                         : null,
                     );
                   }}
