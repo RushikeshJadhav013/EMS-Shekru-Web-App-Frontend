@@ -1,29 +1,29 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { format } from "date-fns"
-import { Calendar as CalendarIcon } from "lucide-react"
-import { nowIST } from "@/utils/timezone"
+import * as React from "react";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { nowIST } from "@/utils/timezone";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { CalendarDatePicker } from "@/components/ui/calendar-date-picker"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { CalendarDatePicker } from "@/components/ui/calendar-date-picker";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 
 interface DatePickerProps {
-  date?: Date
-  onDateChange?: (date: Date | undefined) => void
-  placeholder?: string
-  className?: string
-  disabled?: boolean
-  disablePastDates?: boolean
-  fromDate?: Date
-  toDate?: Date
+  date?: Date;
+  onDateChange?: (date: Date | undefined) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+  disablePastDates?: boolean;
+  fromDate?: Date;
+  toDate?: Date;
 }
 
 export function DatePicker({
@@ -91,12 +91,12 @@ export function DatePicker({
   return (
     <>
       <Button
-        variant={"outline"}
+        variant="ghost"
         className={cn(
-          "w-full justify-start text-left font-normal h-11 bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950 dark:hover:to-indigo-950 transition-all duration-300",
+          "w-full justify-start text-left font-normal h-11 bg-white dark:bg-gray-950 border-2 border-solid border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 hover:border-blue-400 dark:hover:border-blue-500 hover:text-slate-900 dark:hover:text-slate-100 transition-none",
           !date && "text-muted-foreground hover:text-muted-foreground",
           date && "text-foreground hover:text-foreground",
-          className
+          className,
         )}
         disabled={disabled}
         onClick={() => setOpen(true)}
@@ -145,5 +145,5 @@ export function DatePicker({
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

@@ -93,7 +93,6 @@ export default function Reports() {
   const currentDate = nowIST();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth().toString());
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear().toString());
-  const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [yearOpen, setYearOpen] = useState(false);
 
   // Check URL for tab parameter
@@ -105,7 +104,7 @@ export default function Reports() {
   const [employeeRatings, setEmployeeRatings] = useState<Record<string, EmployeeRating>>({});
   const [expandedDepartments, setExpandedDepartments] = useState<Set<string>>(new Set());
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [exportEmployee, setExportEmployee] = useState<{ id: string; name: string } | null>(null);
+  const [exportEmployee, setExportEmployee] = useState<{ id: string; name: string; employee_id?: string } | null>(null);
 
   // State for API data
   const [employeePerformance, setEmployeePerformance] = useState<EmployeePerformance[]>([]);
@@ -138,7 +137,7 @@ export default function Reports() {
   // Load report data when filters change
   useEffect(() => {
     loadReportData();
-  }, [selectedMonth, selectedYear, selectedDepartment]);
+  }, [selectedMonth, selectedYear]);
 
   const loadDepartments = async () => {
     try {
@@ -160,14 +159,12 @@ export default function Reports() {
     try {
       const month = parseInt(selectedMonth) + 1; // Convert to 1-indexed for API
       const year = parseInt(selectedYear);
-      const departmentParam = selectedDepartment !== 'all' ? selectedDepartment : undefined;
 
       // Fetch all data in parallel using apiService
       const [empData, deptData, summaryData] = await Promise.all([
         apiService.getEmployeePerformance({
           month,
-          year,
-          department: departmentParam
+          year
         }),
         apiService.getDepartmentMetrics({ month, year }),
         apiService.getExecutiveSummary({ month, year }),
@@ -435,14 +432,13 @@ export default function Reports() {
     return { variant: 'destructive' as const, text: 'Poor' };
   };
 
-  const openExportDialog = (employee?: { id: string; name: string }) => {
+  const openExportDialog = (employee?: { id: string; name: string; employee_id?: string }) => {
     setExportEmployee(employee || null);
     setExportDialogOpen(true);
   };
 
   const handleQuickExport = async (format: 'csv' | 'pdf' = 'csv') => {
     try {
-      // Generate full report with current filters
       // Generate full report with current filters
       const startDate = new Date(parseInt(selectedYear), parseInt(selectedMonth), 1);
       const endDate = new Date(parseInt(selectedYear), parseInt(selectedMonth) + 1, 0);
@@ -452,11 +448,6 @@ export default function Reports() {
         start_date: `${selectedYear}-${String(parseInt(selectedMonth) + 1).padStart(2, '0')}-01`,
         end_date: `${selectedYear}-${String(parseInt(selectedMonth) + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`,
       });
-
-      if (selectedDepartment !== 'all') {
-        // If department filter is applied, we need to get all employees from that department
-        // The backend will filter by employee_id, so we'll let it handle all employees
-      }
 
       const token = localStorage.getItem('token');
       const headers = {
@@ -581,18 +572,7 @@ export default function Reports() {
               </PopoverContent>
             </Popover>
 
-            <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-              <SelectTrigger className="w-[160px] h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-left">
-                <Filter className="h-4 w-4 mr-1.5 text-slate-400" />
-                <SelectValue placeholder="Department" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-sm">All Departments</SelectItem>
-                {departments.map(dept => (
-                  <SelectItem key={dept} value={dept} className="text-sm">{dept}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
           </div>
         </div>
 
@@ -762,7 +742,7 @@ export default function Reports() {
                                           <Button
                                             size="sm"
                                             variant="ghost"
-                                            onClick={() => openExportDialog({ id: employee.employeeId, name: employee.name })}
+                                            onClick={() => openExportDialog({ id: employee.id, name: employee.name, employee_id: employee.employeeId })}
                                             className="h-8 px-3 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
                                           >
                                             <Download className="h-4 w-4 mr-1.5" />

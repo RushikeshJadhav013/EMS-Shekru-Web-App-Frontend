@@ -473,6 +473,10 @@ export default function EmployeeManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
 
+  // Bulk selection state
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+
   const createFileInputRef = useRef<HTMLInputElement>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
@@ -543,7 +547,11 @@ export default function EmployeeManagement() {
         emp.name.toLowerCase().includes(query) ||
         emp.employeeId.toLowerCase().includes(query) ||
         emp.email.toLowerCase().includes(query);
-      const matchesDepartment = selectedDepartment === 'all' || emp.department === selectedDepartment;
+      const matchesDepartment = selectedDepartment === 'all' || (
+        emp.department
+          ? emp.department.split(',').map((d: string) => d.trim().toLowerCase()).includes(selectedDepartment.toLowerCase())
+          : false
+      );
       const matchesRole = selectedRole === 'all' ||
         (emp.role && emp.role.toLowerCase().replace(/[\s_]+/g, '') === selectedRole.toLowerCase().replace(/[\s_]+/g, ''));
       const matchesStatus = selectedStatus === 'all' ||
@@ -1133,6 +1141,35 @@ export default function EmployeeManagement() {
         variant: 'destructive'
       });
     }
+  };
+
+  const handleBulkStatusChange = async (targetStatus: 'active' | 'inactive') => {
+    if (selectedEmployeeIds.length === 0) return;
+    setIsBulkUpdating(true);
+    let successCount = 0;
+    let failCount = 0;
+    const updatedEmployees = [...employees];
+    for (const empId of selectedEmployeeIds) {
+      const employee = employees.find(emp => emp.employeeId === empId);
+      if (!employee) continue;
+      if (employee.status === targetStatus) { successCount++; continue; }
+      try {
+        const updatedEmployee = await apiService.updateEmployeeStatus(employee.id.toString(), targetStatus === 'active');
+        const mappedUpdated = mapEmployeeData(updatedEmployee);
+        const idx = updatedEmployees.findIndex(e => e.id === employee.id);
+        if (idx !== -1) updatedEmployees[idx] = mappedUpdated;
+        successCount++;
+      } catch {
+        failCount++;
+      }
+    }
+    setEmployees(updatedEmployees);
+    setSelectedEmployeeIds([]);
+    setIsBulkUpdating(false);
+    toast({
+      title: 'Bulk Update Complete',
+      description: `${successCount} employee(s) ${targetStatus === 'active' ? 'activated' : 'deactivated'}${failCount > 0 ? `, ${failCount} failed` : ''}`
+    });
   };
 
   const openViewDialog = (employee: EmployeeRecord) => {
@@ -1915,575 +1952,615 @@ export default function EmployeeManagement() {
       {/* Main Content Card */}
       <Card className="border-0 shadow-lg">
         <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold">Employee Directory</CardTitle>
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={openCreateDialog} className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
-                  <Plus className="h-4 w-4" />
-                  Add User
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] border-2 shadow-2xl flex flex-col">
-                <DialogHeader className="pb-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 -m-6 mb-0 p-6 rounded-t-lg flex-shrink-0">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                      <Plus className="h-6 w-6 text-white" />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="text-lg font-semibold">Employee Directory</CardTitle>
+              {selectedEmployeeIds.length > 0 && (
+                <span className="text-sm bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-full px-3 py-0.5 font-medium text-blue-700 dark:text-blue-300">
+                  {selectedEmployeeIds.length} selected
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedEmployeeIds.length > 0 && (
+                <>
+                  <Button
+                    size="sm"
+                    onClick={() => handleBulkStatusChange('active')}
+                    disabled={isBulkUpdating}
+                    className="gap-1.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-sm font-medium h-9 px-3 text-xs"
+                  >
+                    {isBulkUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Activity className="h-3 w-3" />}
+                    Bulk Activate
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleBulkStatusChange('inactive')}
+                    disabled={isBulkUpdating}
+                    className="gap-1.5 bg-gradient-to-r from-gray-500 to-slate-600 hover:from-gray-600 hover:to-slate-700 text-white shadow-sm font-medium h-9 px-3 text-xs"
+                  >
+                    {isBulkUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                    Bulk Deactivate
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setSelectedEmployeeIds([])}
+                    className="h-9 w-9 p-0 text-muted-foreground hover:text-red-500 border border-gray-200 dark:border-gray-700 rounded-lg"
+                    title="Clear selection"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </>
+              )}
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={openCreateDialog} className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
+                    <Plus className="h-4 w-4" />
+                    Add User
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] border-2 shadow-2xl flex flex-col">
+                  <DialogHeader className="pb-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 -m-6 mb-0 p-6 rounded-t-lg flex-shrink-0">
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                        <Plus className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <DialogTitle className="text-2xl font-bold">Create New Employee</DialogTitle>
+                        <DialogDescription className="mt-1">Fill in the required fields marked with *</DialogDescription>
+                      </div>
+                    </div>
+                  </DialogHeader>
+                  <div className="space-y-4 overflow-y-auto flex-1 px-6 py-4" onKeyDown={handleKeyDown}>
+                    <div className="flex flex-col items-center gap-3">
+                      <div
+                        className="relative w-28 h-28 cursor-pointer group"
+                        onClick={() => createFileInputRef.current?.click()}
+                      >
+                        {imagePreview ? (
+                          <>
+                            <img
+                              src={imagePreview}
+                              alt="Preview"
+                              className="w-full h-full object-cover rounded-full border-4 border-blue-200 shadow-lg group-hover:shadow-xl transition-shadow"
+                            />
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="absolute -top-2 -right-2 h-7 w-7 rounded-full shadow-lg hover:shadow-xl"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setImageFile(null);
+                                setImagePreview('');
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full border-4 border-dashed border-blue-300 hover:border-blue-500 hover:bg-blue-100 transition-all shadow-md group-hover:shadow-lg">
+                            <Upload className="h-8 w-8 text-blue-500 mb-1" />
+                            <span className="text-xs font-semibold text-blue-600">Add Photo</span>
+                          </div>
+                        )}
+                        <Input
+                          id="create-photo"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          className="hidden"
+                          ref={createFileInputRef}
+                        />
+                      </div>
+                      <p className="text-sm text-center text-slate-600 dark:text-slate-400">
+                        Click to upload employee photo
+                      </p>
                     </div>
                     <div>
-                      <DialogTitle className="text-2xl font-bold">Create New Employee</DialogTitle>
-                      <DialogDescription className="mt-1">Fill in the required fields marked with *</DialogDescription>
-                    </div>
-                  </div>
-                </DialogHeader>
-                <div className="space-y-4 overflow-y-auto flex-1 px-6 py-4" onKeyDown={handleKeyDown}>
-                  <div className="flex flex-col items-center gap-3">
-                    <div
-                      className="relative w-28 h-28 cursor-pointer group"
-                      onClick={() => createFileInputRef.current?.click()}
-                    >
-                      {imagePreview ? (
-                        <>
-                          <img
-                            src={imagePreview}
-                            alt="Preview"
-                            className="w-full h-full object-cover rounded-full border-4 border-blue-200 shadow-lg group-hover:shadow-xl transition-shadow"
-                          />
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            className="absolute -top-2 -right-2 h-7 w-7 rounded-full shadow-lg hover:shadow-xl"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setImageFile(null);
-                              setImagePreview('');
-                            }}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </>
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full border-4 border-dashed border-blue-300 hover:border-blue-500 hover:bg-blue-100 transition-all shadow-md group-hover:shadow-lg">
-                          <Upload className="h-8 w-8 text-blue-500 mb-1" />
-                          <span className="text-xs font-semibold text-blue-600">Add Photo</span>
-                        </div>
-                      )}
+                      <Label htmlFor="create-employeeId">Employee ID * <span className="text-xs text-gray-500">(Uppercase & Numbers only)</span></Label>
                       <Input
-                        id="create-photo"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        className="hidden"
-                        ref={createFileInputRef}
+                        id="create-employeeId"
+                        value={formData.employeeId || ''}
+                        onChange={(e) => {
+                          // Convert to uppercase and remove all non-alphanumeric characters
+                          let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                          setFormData((prev) => ({ ...prev, employeeId: value }));
+                        }}
+                        required
+                        className="mt-1"
+                        placeholder="e.g., EMP001"
+                      />
+                      {formData.employeeId && !/[A-Z]/.test(formData.employeeId) && (
+                        <p className="text-red-500 text-sm mt-1">Employee ID must contain at least one letter</p>
+                      )}
+                      {formData.employeeId && !/[0-9]/.test(formData.employeeId) && (
+                        <p className="text-red-500 text-sm mt-1">Employee ID must contain at least one number</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="create-name">Name *</Label>
+                      <Input
+                        id="create-name"
+                        value={formData.name || ''}
+                        onChange={(e) => {
+                          // Only allow alphabetic characters and spaces
+                          const value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                          setFormData((prev) => ({ ...prev, name: value }));
+                        }}
+                        required
+                        className="mt-1"
+                        placeholder="e.g., John Doe"
                       />
                     </div>
-                    <p className="text-sm text-center text-slate-600 dark:text-slate-400">
-                      Click to upload employee photo
-                    </p>
-                  </div>
-                  <div>
-                    <Label htmlFor="create-employeeId">Employee ID * <span className="text-xs text-gray-500">(Uppercase & Numbers only)</span></Label>
-                    <Input
-                      id="create-employeeId"
-                      value={formData.employeeId || ''}
-                      onChange={(e) => {
-                        // Convert to uppercase and remove all non-alphanumeric characters
-                        let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                        setFormData((prev) => ({ ...prev, employeeId: value }));
-                      }}
-                      required
-                      className="mt-1"
-                      placeholder="e.g., EMP001"
-                    />
-                    {formData.employeeId && !/[A-Z]/.test(formData.employeeId) && (
-                      <p className="text-red-500 text-sm mt-1">Employee ID must contain at least one letter</p>
-                    )}
-                    {formData.employeeId && !/[0-9]/.test(formData.employeeId) && (
-                      <p className="text-red-500 text-sm mt-1">Employee ID must contain at least one number</p>
-                    )}
-                  </div>
-                  <div>
-                    <Label htmlFor="create-name">Name *</Label>
-                    <Input
-                      id="create-name"
-                      value={formData.name || ''}
-                      onChange={(e) => {
-                        // Only allow alphabetic characters and spaces
-                        const value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
-                        setFormData((prev) => ({ ...prev, name: value }));
-                      }}
-                      required
-                      className="mt-1"
-                      placeholder="e.g., John Doe"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="create-email">Email *</Label>
-                    <Input
-                      id="create-email"
-                      type="email"
-                      value={formData.email || ''}
-                      onChange={(e) => {
-                        const email = e.target.value;
-                        setFormData((prev) => ({ ...prev, email }));
-                        validateEmail(email);
-                      }}
-                      required
-                      className={`mt-1 ${emailError ? 'border-red-500' : ''}`}
-                      placeholder='e.g., xyz@gmail.com'
-                    />
-                    {emailError && (
-                      <p className="text-red-500 text-sm mt-1">{emailError}</p>
-                    )}
-                  </div>
-                  <div>
-                    <Label htmlFor="create-role">Role *</Label>
-                    <Select
-                      value={formData.role || 'employee'}
-                      onValueChange={(value) => {
-                        const roleValue = value as UserRole;
-                        // Auto-set designation based on role if designation is currently empty
-                        let newDesignation = formData.designation || '';
-                        if (!newDesignation) {
-                          if (roleValue === 'hr') {
-                            newDesignation = 'HR';
-                          } else if (roleValue === 'manager') {
-                            newDesignation = 'Manager';
+                    <div>
+                      <Label htmlFor="create-email">Email *</Label>
+                      <Input
+                        id="create-email"
+                        type="email"
+                        value={formData.email || ''}
+                        onChange={(e) => {
+                          const email = e.target.value;
+                          setFormData((prev) => ({ ...prev, email }));
+                          validateEmail(email);
+                        }}
+                        required
+                        className={`mt-1 ${emailError ? 'border-red-500' : ''}`}
+                        placeholder='e.g., xyz@gmail.com'
+                      />
+                      {emailError && (
+                        <p className="text-red-500 text-sm mt-1">{emailError}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="create-role">Role *</Label>
+                      <Select
+                        value={formData.role || 'employee'}
+                        onValueChange={(value) => {
+                          const roleValue = value as UserRole;
+                          // Auto-set designation based on role if designation is currently empty
+                          let newDesignation = formData.designation || '';
+                          if (!newDesignation) {
+                            if (roleValue === 'hr') {
+                              newDesignation = 'HR';
+                            } else if (roleValue === 'manager') {
+                              newDesignation = 'Manager';
+                            }
                           }
-                        }
 
-                        // If role is HR, automatically select ALL departments
-                        if (roleValue === 'hr') {
-                          setSelectedDepartments([...departments]);
-                        } else if (roleValue === 'manager' && formData.department && selectedDepartments.length === 0) {
-                          // If switching TO manager, migrate single department TO multi-select list
-                          setSelectedDepartments([formData.department]);
-                        }
+                          // If role is HR, automatically select ALL departments
+                          if (roleValue === 'hr') {
+                            setSelectedDepartments([...departments]);
+                          } else if (roleValue === 'manager' && formData.department && selectedDepartments.length === 0) {
+                            // If switching TO manager, migrate single department TO multi-select list
+                            setSelectedDepartments([formData.department]);
+                          }
 
-                        // If switching FROM hr/manager, migrate first selected department TO single select
-                        if (roleValue !== 'hr' && roleValue !== 'manager' && selectedDepartments.length > 0) {
-                          setFormData(prev => ({ ...prev, role: roleValue, designation: newDesignation, department: selectedDepartments[0] }));
-                        } else {
-                          setFormData((prev) => ({ ...prev, role: roleValue, designation: newDesignation }));
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="mt-1">
-                        {formData.role ? (
-                          <span>
-                            {formData.role === 'admin' && 'Admin'}
-                            {formData.role === 'hr' && 'HR'}
-                            {formData.role === 'manager' && 'Manager'}
-                            {formData.role === 'team_lead' && 'TeamLead'}
-                            {formData.role === 'employee' && 'Employee'}
-                          </span>
+                          // If switching FROM hr/manager, migrate first selected department TO single select
+                          if (roleValue !== 'hr' && roleValue !== 'manager' && selectedDepartments.length > 0) {
+                            setFormData(prev => ({ ...prev, role: roleValue, designation: newDesignation, department: selectedDepartments[0] }));
+                          } else {
+                            setFormData((prev) => ({ ...prev, role: roleValue, designation: newDesignation }));
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="mt-1">
+                          {formData.role ? (
+                            <span>
+                              {formData.role === 'admin' && 'Admin'}
+                              {formData.role === 'hr' && 'HR'}
+                              {formData.role === 'manager' && 'Manager'}
+                              {formData.role === 'team_lead' && 'TeamLead'}
+                              {formData.role === 'employee' && 'Employee'}
+                            </span>
+                          ) : (
+                            <SelectValue placeholder="Select Role" />
+                          )}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {user?.role !== 'admin' && user?.role !== 'hr' && (
+                            <SelectItem value="admin">Admin</SelectItem>
+                          )}
+                          <SelectItem value="hr">HR</SelectItem>
+                          <SelectItem value="manager">Manager</SelectItem>
+                          <SelectItem value="team_lead">TeamLead</SelectItem>
+                          <SelectItem value="employee">Employee</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Single Department Selection or "All Departments" for HR */}
+                    {!isManager && (
+                      <div>
+                        <Label htmlFor="create-department">Department *</Label>
+                        {isHR ? (
+                          <Input
+                            value="All Departments"
+                            readOnly
+                            className="mt-1 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 font-medium text-blue-700 dark:text-blue-300"
+                          />
                         ) : (
-                          <SelectValue placeholder="Select Role" />
-                        )}
-                      </SelectTrigger>
-                      <SelectContent>
-                        {user?.role !== 'admin' && user?.role !== 'hr' && (
-                          <SelectItem value="admin">Admin</SelectItem>
-                        )}
-                        <SelectItem value="hr">HR</SelectItem>
-                        <SelectItem value="manager">Manager</SelectItem>
-                        <SelectItem value="team_lead">TeamLead</SelectItem>
-                        <SelectItem value="employee">Employee</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Single Department Selection or "All Departments" for HR */}
-                  {!isManager && (
-                    <div>
-                      <Label htmlFor="create-department">Department *</Label>
-                      {isHR ? (
-                        <Input
-                          value="All Departments"
-                          readOnly
-                          className="mt-1 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 font-medium text-blue-700 dark:text-blue-300"
-                        />
-                      ) : (
-                        <Popover open={isDeptPopoverOpen} onOpenChange={setIsDeptPopoverOpen}>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              aria-expanded={isDeptPopoverOpen}
-                              className="w-full justify-between mt-1 h-10 px-3 font-normal"
-                              disabled={isCreatingDepartment}
-                            >
-                              {formData.department
-                                ? departments.find((d) => d.toLowerCase() === formData.department?.toLowerCase()) || formData.department
-                                : "Select or type department"}
-                              {isCreatingDepartment ? (
-                                <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
-                              ) : (
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              )}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[400px] p-0" align="start">
-                            <Command>
-                              <CommandInput
-                                placeholder="Search department..."
-                                value={deptSearchValue}
-                                onValueChange={(val) => setDeptSearchValue(val.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
-                              />
-                              <CommandList className="max-h-[300px]">
-                                {deptSearchValue.trim().length > 0 && !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
-                                  <CommandGroup heading="New Department">
-                                    <CommandItem
-                                      value={deptSearchValue}
-                                      onSelect={() => handleCreateDepartment(deptSearchValue)}
-                                      className="cursor-pointer text-blue-600 font-medium"
-                                    >
-                                      <Plus className="mr-2 h-4 w-4" />
-                                      Create "{deptSearchValue}"
-                                    </CommandItem>
-                                  </CommandGroup>
+                          <Popover open={isDeptPopoverOpen} onOpenChange={setIsDeptPopoverOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={isDeptPopoverOpen}
+                                className="w-full justify-between mt-1 h-10 px-3 font-normal"
+                                disabled={isCreatingDepartment}
+                              >
+                                {formData.department
+                                  ? departments.find((d) => d.toLowerCase() === formData.department?.toLowerCase()) || formData.department
+                                  : "Select or type department"}
+                                {isCreatingDepartment ? (
+                                  <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
+                                ) : (
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 )}
-                                <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
-                                  {deptSearchValue.trim().length === 0 ? "No departments available." : "No matching departments found."}
-                                </CommandEmpty>
-                                <CommandGroup heading="Existing Departments">
-                                  {departments.map((dept) => (
-                                    <CommandItem
-                                      key={dept}
-                                      value={dept}
-                                      onSelect={(currentValue) => {
-                                        setFormData(prev => ({ ...prev, department: currentValue }));
-                                        setIsDeptPopoverOpen(false);
-                                        setDeptSearchValue('');
-                                      }}
-                                      className="cursor-pointer"
-                                    >
-                                      <Check
-                                        className={cn(
-                                          "mr-2 h-4 w-4",
-                                          formData.department?.toLowerCase() === dept.toLowerCase() ? "opacity-100" : "opacity-0"
-                                        )}
-                                      />
-                                      {dept}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                      )}
-                      {!isHR && departments.length === 0 && (
-                        <p className="text-sm text-amber-600 mt-1">
-                          ⚠️ No departments available. Please go to Department Management to create departments first.
-                        </p>
-                      )}
-                    </div>
-                  )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[400px] p-0" align="start">
+                              <Command>
+                                <CommandInput
+                                  placeholder="Search department..."
+                                  value={deptSearchValue}
+                                  onValueChange={(val) => setDeptSearchValue(val.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
+                                />
+                                <CommandList className="max-h-[300px]">
+                                  {deptSearchValue.trim().length > 0 && !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
+                                    <CommandGroup heading="New Department">
+                                      <CommandItem
+                                        value={deptSearchValue}
+                                        onSelect={() => handleCreateDepartment(deptSearchValue)}
+                                        className="cursor-pointer text-blue-600 font-medium"
+                                      >
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Create "{deptSearchValue}"
+                                      </CommandItem>
+                                    </CommandGroup>
+                                  )}
+                                  <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
+                                    {deptSearchValue.trim().length === 0 ? "No departments available." : "No matching departments found."}
+                                  </CommandEmpty>
+                                  <CommandGroup heading="Existing Departments">
+                                    {departments.map((dept) => (
+                                      <CommandItem
+                                        key={dept}
+                                        value={dept}
+                                        onSelect={(currentValue) => {
+                                          setFormData(prev => ({ ...prev, department: currentValue }));
+                                          setIsDeptPopoverOpen(false);
+                                          setDeptSearchValue('');
+                                        }}
+                                        className="cursor-pointer"
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            formData.department?.toLowerCase() === dept.toLowerCase() ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        {dept}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                        )}
+                        {!isHR && departments.length === 0 && (
+                          <p className="text-sm text-amber-600 mt-1">
+                            ⚠️ No departments available. Please go to Department Management to create departments first.
+                          </p>
+                        )}
+                      </div>
+                    )}
 
-                  {/* Multiple Department Selection for Manager */}
-                  {isManager && (
+                    {/* Multiple Department Selection for Manager */}
+                    {isManager && (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <Label>Assigned Departments *</Label>
+                          {departments.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (selectedDepartments.length === departments.length) {
+                                  setSelectedDepartments([]);
+                                } else {
+                                  setSelectedDepartments([...departments]);
+                                }
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                            >
+                              {selectedDepartments.length === departments.length ? 'Deselect All' : 'Select All'}
+                            </button>
+                          )}
+                        </div>
+                        <div className="mt-2 space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
+                          {departments.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">No departments available</p>
+                          ) : (
+                            departments.map((dept) => (
+                              <div key={dept} className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  id={`dept-${dept}`}
+                                  checked={selectedDepartments.includes(dept)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedDepartments([...selectedDepartments, dept]);
+                                    } else {
+                                      setSelectedDepartments(selectedDepartments.filter(d => d !== dept));
+                                    }
+                                  }}
+                                  className="rounded border-gray-300"
+                                />
+                                <Label htmlFor={`dept-${dept}`} className="text-sm font-normal">
+                                  {dept}
+                                </Label>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        {selectedDepartments.length > 0 && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Selected: {selectedDepartments.length === departments.length ? 'All Departments' : selectedDepartments.join(', ')}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Designation Field - Always show now */}
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <Label>Assigned Departments *</Label>
-                        {departments.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (selectedDepartments.length === departments.length) {
-                                setSelectedDepartments([]);
-                              } else {
-                                setSelectedDepartments([...departments]);
-                              }
-                            }}
-                            className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                          >
-                            {selectedDepartments.length === departments.length ? 'Deselect All' : 'Select All'}
-                          </button>
-                        )}
-                      </div>
-                      <div className="mt-2 space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
-                        {departments.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">No departments available</p>
-                        ) : (
-                          departments.map((dept) => (
-                            <div key={dept} className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                id={`dept-${dept}`}
-                                checked={selectedDepartments.includes(dept)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedDepartments([...selectedDepartments, dept]);
-                                  } else {
-                                    setSelectedDepartments(selectedDepartments.filter(d => d !== dept));
-                                  }
-                                }}
-                                className="rounded border-gray-300"
-                              />
-                              <Label htmlFor={`dept-${dept}`} className="text-sm font-normal">
-                                {dept}
-                              </Label>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                      {selectedDepartments.length > 0 && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Selected: {selectedDepartments.length === departments.length ? 'All Departments' : selectedDepartments.join(', ')}
-                        </p>
+                      <Label htmlFor="create-designation">Designation</Label>
+                      <Input
+                        id="create-designation"
+                        value={formData.designation || ''}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, designation: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
+                        className="mt-1"
+                        placeholder='e.g.,Software Engineer'
+                      />
+                    </div>
+
+
+                    <div>
+                      <Label htmlFor="create-joiningDate">Joining Date <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="create-joiningDate"
+                        type="date"
+                        value={formData.joiningDate || ''}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, joiningDate: e.target.value }))}
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="create-phone">Phone <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="create-phone"
+                        value={formData.phone || ''}
+                        onChange={(e) => {
+                          const phone = handlePhoneInput(e.target.value, formData.countryCode || '+91');
+                          setFormData((prev) => ({ ...prev, phone }));
+                          validatePhoneNumber(phone.replace(/[^0-9]/g, ''), formData.countryCode || '+91');
+                        }}
+                        className={`mt-1 ${phoneError ? 'border-red-500' : ''}`}
+                        placeholder='e.g., 9876543210'
+                      />
+                      {phoneError && (
+                        <p className="text-red-500 text-sm mt-1">{phoneError}</p>
                       )}
                     </div>
-                  )}
-
-                  {/* Designation Field - Always show now */}
-                  <div>
-                    <Label htmlFor="create-designation">Designation</Label>
-                    <Input
-                      id="create-designation"
-                      value={formData.designation || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, designation: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
-                      className="mt-1"
-                      placeholder='e.g.,Software Engineer'
-                    />
-                  </div>
-
-
-                  <div>
-                    <Label htmlFor="create-joiningDate">Joining Date <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="create-joiningDate"
-                      type="date"
-                      value={formData.joiningDate || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, joiningDate: e.target.value }))}
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="create-phone">Phone <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="create-phone"
-                      value={formData.phone || ''}
-                      onChange={(e) => {
-                        const phone = handlePhoneInput(e.target.value, formData.countryCode || '+91');
-                        setFormData((prev) => ({ ...prev, phone }));
-                        validatePhoneNumber(phone.replace(/[^0-9]/g, ''), formData.countryCode || '+91');
-                      }}
-                      className={`mt-1 ${phoneError ? 'border-red-500' : ''}`}
-                      placeholder='e.g., 9876543210'
-                    />
-                    {phoneError && (
-                      <p className="text-red-500 text-sm mt-1">{phoneError}</p>
-                    )}
-                  </div>
-                  <div className="space-y-3">
-                    <Label>Address <span className="text-red-500">*</span></Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <Label htmlFor="create-houseNo" className="text-xs">House No. / Flat No.</Label>
-                        <Input
-                          id="create-houseNo"
-                          value={addressFields.houseNo || ''}
-                          onChange={(e) => setAddressFields((prev) => ({ ...prev, houseNo: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
-                          className="mt-1 text-sm"
-                          placeholder="e.g., 123"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="create-street" className="text-xs">House Name / Building Name</Label>
-                        <Input
-                          id="create-street"
-                          value={addressFields.street || ''}
-                          onChange={(e) => setAddressFields((prev) => ({ ...prev, street: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
-                          className="mt-1 text-sm"
-                          placeholder="e.g., Galaxy Tower"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="create-area" className="text-xs">Area</Label>
-                        <Input
-                          id="create-area"
-                          value={addressFields.area || ''}
-                          onChange={(e) => setAddressFields((prev) => ({ ...prev, area: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
-                          className="mt-1 text-sm"
-                          placeholder="e.g., Downtown"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="create-city" className="text-xs">City</Label>
-                        <Input
-                          id="create-city"
-                          value={addressFields.city || ''}
-                          onChange={(e) => setAddressFields((prev) => ({ ...prev, city: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
-                          className="mt-1 text-sm"
-                          placeholder="e.g., Mumbai"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="create-pincode" className="text-xs">Pincode</Label>
-                        <Input
-                          id="create-pincode"
-                          value={addressFields.pincode || ''}
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
-                            setAddressFields((prev) => ({ ...prev, pincode: value }));
-                          }}
-                          className="mt-1 text-sm"
-                          placeholder="e.g., 400001"
-                          maxLength={6}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="create-state" className="text-xs">State</Label>
-                        <Input
-                          id="create-state"
-                          value={addressFields.state || ''}
-                          onChange={(e) => setAddressFields((prev) => ({ ...prev, state: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
-                          className="mt-1 text-sm"
-                          placeholder="e.g., Maharashtra"
-                        />
+                    <div className="space-y-3">
+                      <Label>Address <span className="text-red-500">*</span></Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label htmlFor="create-houseNo" className="text-xs">House No. / Flat No.</Label>
+                          <Input
+                            id="create-houseNo"
+                            value={addressFields.houseNo || ''}
+                            onChange={(e) => setAddressFields((prev) => ({ ...prev, houseNo: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
+                            className="mt-1 text-sm"
+                            placeholder="e.g., 123"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="create-street" className="text-xs">House Name / Building Name</Label>
+                          <Input
+                            id="create-street"
+                            value={addressFields.street || ''}
+                            onChange={(e) => setAddressFields((prev) => ({ ...prev, street: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
+                            className="mt-1 text-sm"
+                            placeholder="e.g., Galaxy Tower"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="create-area" className="text-xs">Area</Label>
+                          <Input
+                            id="create-area"
+                            value={addressFields.area || ''}
+                            onChange={(e) => setAddressFields((prev) => ({ ...prev, area: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
+                            className="mt-1 text-sm"
+                            placeholder="e.g., Downtown"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="create-city" className="text-xs">City</Label>
+                          <Input
+                            id="create-city"
+                            value={addressFields.city || ''}
+                            onChange={(e) => setAddressFields((prev) => ({ ...prev, city: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
+                            className="mt-1 text-sm"
+                            placeholder="e.g., Mumbai"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="create-pincode" className="text-xs">Pincode</Label>
+                          <Input
+                            id="create-pincode"
+                            value={addressFields.pincode || ''}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+                              setAddressFields((prev) => ({ ...prev, pincode: value }));
+                            }}
+                            className="mt-1 text-sm"
+                            placeholder="e.g., 400001"
+                            maxLength={6}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="create-state" className="text-xs">State</Label>
+                          <Input
+                            id="create-state"
+                            value={addressFields.state || ''}
+                            onChange={(e) => setAddressFields((prev) => ({ ...prev, state: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
+                            className="mt-1 text-sm"
+                            placeholder="e.g., Maharashtra"
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="create-panCard">PAN Card *</Label>
-                    <Input
-                      id="create-panCard"
-                      value={formData.panCard || ''}
-                      onChange={(e) => {
-                        // Limit to maximum 10 characters
-                        const panCard = e.target.value.toUpperCase().slice(0, 10);
-                        setFormData((prev) => ({ ...prev, panCard }));
-                        validatePanCard(panCard);
-                        // Clear duplicate error when user starts typing
-                        if (panCardDuplicateError) {
-                          setPanCardDuplicateError('');
+                    <div>
+                      <Label htmlFor="create-panCard">PAN Card *</Label>
+                      <Input
+                        id="create-panCard"
+                        value={formData.panCard || ''}
+                        onChange={(e) => {
+                          // Limit to maximum 10 characters
+                          const panCard = e.target.value.toUpperCase().slice(0, 10);
+                          setFormData((prev) => ({ ...prev, panCard }));
+                          validatePanCard(panCard);
+                          // Clear duplicate error when user starts typing
+                          if (panCardDuplicateError) {
+                            setPanCardDuplicateError('');
+                          }
+                        }}
+                        required
+                        maxLength={10}
+                        className={`mt-1 ${panCardError || panCardDuplicateError ? 'border-red-500' : ''}`}
+                        placeholder="e.g., ABCDE1234F"
+                      />
+                      {panCardError && (
+                        <p className="text-red-500 text-sm mt-1">{panCardError}</p>
+                      )}
+                      {panCardDuplicateError && (
+                        <p className="text-red-500 text-sm mt-1">{panCardDuplicateError}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="create-aadharCard">Aadhar Card *</Label>
+                      <Input
+                        id="create-aadharCard"
+                        value={formData.aadharCard || ''}
+                        onChange={(e) => {
+                          const formatted = formatAadharInput(e.target.value);
+                          setFormData((prev) => ({ ...prev, aadharCard: formatted }));
+                          validateAadharCard(formatted);
+                          // Clear duplicate error when user starts typing
+                          if (aadharCardDuplicateError) {
+                            setAadharCardDuplicateError('');
+                          }
+                        }}
+                        required
+                        className={`mt-1 ${aadharCardError || aadharCardDuplicateError ? 'border-red-500' : ''}`}
+                        placeholder="e.g., 1234-5678-9012"
+                      />
+                      {aadharCardError && (
+                        <p className="text-red-500 text-sm mt-1">{aadharCardError}</p>
+                      )}
+                      {aadharCardDuplicateError && (
+                        <p className="text-red-500 text-sm mt-1">{aadharCardDuplicateError}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="create-shift">Shift *</Label>
+                      <Select
+                        value={formData.shift || ''}
+                        onValueChange={(value) =>
+                          setFormData((prev) => ({ ...prev, shift: value as ShiftType }))
                         }
-                      }}
-                      required
-                      maxLength={10}
-                      className={`mt-1 ${panCardError || panCardDuplicateError ? 'border-red-500' : ''}`}
-                      placeholder="e.g., ABCDE1234F"
-                    />
-                    {panCardError && (
-                      <p className="text-red-500 text-sm mt-1">{panCardError}</p>
-                    )}
-                    {panCardDuplicateError && (
-                      <p className="text-red-500 text-sm mt-1">{panCardDuplicateError}</p>
-                    )}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select Shift" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {shiftOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Gender <span className="text-red-500">*</span></Label>
+                      <RadioGroup
+                        value={formData.gender || ''}
+                        onValueChange={(value) => {
+                          setFormData((prev) => ({ ...prev, gender: value as 'male' | 'female' | 'other' }));
+                          setGenderError('');
+                        }}
+                        className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-2"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="male" id="create-male" />
+                          <Label htmlFor="create-male">Male</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="female" id="create-female" />
+                          <Label htmlFor="create-female">Female</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="other" id="create-other" />
+                          <Label htmlFor="create-other">Other</Label>
+                        </div>
+                      </RadioGroup>
+                      {genderError && (
+                        <p className="text-red-500 text-sm mt-1">{genderError}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="create-employeeType">Employee Type <span className="text-red-500">*</span></Label>
+                      <Select
+                        value={formData.employeeType || ''}
+                        onValueChange={(value) => setFormData((prev) => ({ ...prev, employeeType: value as 'contract' | 'permanent' }))}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select Employee Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="contract">Contract-based</SelectItem>
+                          <SelectItem value="permanent">Permanent</SelectItem>
+                          {formData.employeeType && !['contract', 'permanent'].includes(formData.employeeType) && (
+                            <SelectItem value={formData.employeeType}>{formData.employeeType}</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="create-aadharCard">Aadhar Card *</Label>
-                    <Input
-                      id="create-aadharCard"
-                      value={formData.aadharCard || ''}
-                      onChange={(e) => {
-                        const formatted = formatAadharInput(e.target.value);
-                        setFormData((prev) => ({ ...prev, aadharCard: formatted }));
-                        validateAadharCard(formatted);
-                        // Clear duplicate error when user starts typing
-                        if (aadharCardDuplicateError) {
-                          setAadharCardDuplicateError('');
-                        }
-                      }}
-                      required
-                      className={`mt-1 ${aadharCardError || aadharCardDuplicateError ? 'border-red-500' : ''}`}
-                      placeholder="e.g., 1234-5678-9012"
-                    />
-                    {aadharCardError && (
-                      <p className="text-red-500 text-sm mt-1">{aadharCardError}</p>
-                    )}
-                    {aadharCardDuplicateError && (
-                      <p className="text-red-500 text-sm mt-1">{aadharCardDuplicateError}</p>
-                    )}
-                  </div>
-                  <div>
-                    <Label htmlFor="create-shift">Shift *</Label>
-                    <Select
-                      value={formData.shift || ''}
-                      onValueChange={(value) =>
-                        setFormData((prev) => ({ ...prev, shift: value as ShiftType }))
-                      }
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select Shift" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {shiftOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Gender <span className="text-red-500">*</span></Label>
-                    <RadioGroup
-                      value={formData.gender || ''}
-                      onValueChange={(value) => {
-                        setFormData((prev) => ({ ...prev, gender: value as 'male' | 'female' | 'other' }));
-                        setGenderError('');
-                      }}
-                      className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-2"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="male" id="create-male" />
-                        <Label htmlFor="create-male">Male</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="female" id="create-female" />
-                        <Label htmlFor="create-female">Female</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="other" id="create-other" />
-                        <Label htmlFor="create-other">Other</Label>
-                      </div>
-                    </RadioGroup>
-                    {genderError && (
-                      <p className="text-red-500 text-sm mt-1">{genderError}</p>
-                    )}
-                  </div>
-                  <div>
-                    <Label htmlFor="create-employeeType">Employee Type <span className="text-red-500">*</span></Label>
-                    <Select
-                      value={formData.employeeType || ''}
-                      onValueChange={(value) => setFormData((prev) => ({ ...prev, employeeType: value as 'contract' | 'permanent' }))}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select Employee Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="contract">Contract-based</SelectItem>
-                        <SelectItem value="permanent">Permanent</SelectItem>
-                        {formData.employeeType && !['contract', 'permanent'].includes(formData.employeeType) && (
-                          <SelectItem value={formData.employeeType}>{formData.employeeType}</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <DialogFooter className="px-6 py-4 border-t border-gray-100 bg-gray-50 dark:bg-gray-900 flex gap-3 flex-shrink-0 -m-6 mt-0 p-6 rounded-b-lg">
-                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 font-medium">
-                    Cancel
-                  </Button>
-                  <Button onClick={handleCreateEmployee} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md font-medium gap-2" disabled={isCreating}>
-                    {isCreating ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="h-4 w-4" />
-                        Create Employee
-                      </>
-                    )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                  <DialogFooter className="px-6 py-4 border-t border-gray-100 bg-gray-50 dark:bg-gray-900 flex gap-3 flex-shrink-0 -m-6 mt-0 p-6 rounded-b-lg">
+                    <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 font-medium">
+                      Cancel
+                    </Button>
+                    <Button onClick={handleCreateEmployee} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md font-medium gap-2" disabled={isCreating}>
+                      {isCreating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4" />
+                          Create Employee
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
         </CardHeader >
         <CardContent className="pt-6">
@@ -2605,6 +2682,23 @@ export default function EmployeeManagement() {
             <Table>
               <TableHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
                 <TableRow className="hover:bg-transparent border-b-2">
+                  <TableHead className="w-[44px] font-semibold">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-400 cursor-pointer h-4 w-4"
+                      checked={paginatedEmployees.length > 0 && paginatedEmployees.every(e => selectedEmployeeIds.includes(e.employeeId))}
+                      onChange={(ev) => {
+                        if (ev.target.checked) {
+                          const newIds = paginatedEmployees.map(e => e.employeeId).filter(id => !selectedEmployeeIds.includes(id));
+                          setSelectedEmployeeIds(prev => [...prev, ...newIds]);
+                        } else {
+                          const pageIds = new Set(paginatedEmployees.map(e => e.employeeId));
+                          setSelectedEmployeeIds(prev => prev.filter(id => !pageIds.has(id)));
+                        }
+                      }}
+                      title="Select all on this page"
+                    />
+                  </TableHead>
                   <TableHead className="w-[60px] hidden sm:table-cell font-semibold">Photo</TableHead>
                   <TableHead className="font-semibold">Employee ID</TableHead>
                   <TableHead className="font-semibold">Name</TableHead>
@@ -2633,7 +2727,21 @@ export default function EmployeeManagement() {
                   </TableRow>
                 ) : (
                   paginatedEmployees.map((employee) => (
-                    <TableRow key={employee.employeeId} className="hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors border-b">
+                    <TableRow key={employee.employeeId} className={`hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors border-b ${selectedEmployeeIds.includes(employee.employeeId) ? 'bg-blue-50/60 dark:bg-blue-950/20' : ''}`}>
+                      <TableCell className="w-[44px]">
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-400 cursor-pointer h-4 w-4"
+                          checked={selectedEmployeeIds.includes(employee.employeeId)}
+                          onChange={(ev) => {
+                            if (ev.target.checked) {
+                              setSelectedEmployeeIds(prev => [...prev, employee.employeeId]);
+                            } else {
+                              setSelectedEmployeeIds(prev => prev.filter(id => id !== employee.employeeId));
+                            }
+                          }}
+                        />
+                      </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Avatar className="h-10 w-10 border-2 border-blue-200 dark:border-blue-800">
                           <AvatarImage src={employee.photoUrl} alt={employee.name} />

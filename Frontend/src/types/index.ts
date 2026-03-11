@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'hr' | 'manager' | 'team_lead' | 'employee';
+export type UserRole = "admin" | "hr" | "manager" | "team_lead" | "employee";
 
 export interface User {
   id: string;
@@ -14,7 +14,7 @@ export interface User {
   department?: string;
   managerId?: string;
   teamLeadId?: string;
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
   createdAt: string;
   updatedAt: string;
 }
@@ -46,7 +46,7 @@ export interface AttendanceRecord {
   workSummary?: string;
   workReport?: string;
   workLocation?: string;
-  status: 'present' | 'absent' | 'late' | 'half-day' | 'holiday' | 'weekend';
+  status: "present" | "absent" | "late" | "half-day" | "holiday" | "weekend";
   overtime?: number;
   remarks?: string;
   taskDeadlineReason?: string;
@@ -56,11 +56,17 @@ export interface AttendanceRecord {
 export interface LeaveRequest {
   id: string;
   userId: string;
-  leaveType: 'sick' | 'casual' | 'earned' | 'maternity' | 'paternity' | 'unpaid';
+  leaveType:
+    | "sick"
+    | "casual"
+    | "earned"
+    | "maternity"
+    | "paternity"
+    | "unpaid";
   startDate: string;
   endDate: string;
   reason: string;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  status: "pending" | "approved" | "rejected" | "cancelled";
   approvedBy?: string;
   approvedDate?: string;
   rejectionReason?: string;
@@ -75,12 +81,12 @@ export interface Task {
   description: string;
   assignedTo: string[];
   assignedBy: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'todo' | 'in-progress' | 'overdue' | 'completed' | 'cancelled';
+  priority: "low" | "medium" | "high" | "urgent";
+  status: "todo" | "in-progress" | "overdue" | "completed" | "cancelled";
   deadline: string;
   startDate: string;
   completedDate?: string;
-  projectId?: string;
+  projectId?: number | null;
   tags: string[];
   attachments?: string[];
   comments?: TaskComment[];
@@ -105,7 +111,7 @@ export interface Branch {
   code: string;
   managerId?: string;
   description?: string;
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
   createdAt?: string;
   updatedAt?: string;
   employeeCount?: number;
@@ -118,7 +124,7 @@ export interface Notification {
   userId: string;
   title: string;
   message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: "info" | "success" | "warning" | "error";
   read: boolean;
   actionUrl?: string;
   createdAt: string;
@@ -144,7 +150,7 @@ export interface ChatMessage {
   senderRole: UserRole;
   senderAvatar?: string;
   content: string;
-  messageType: 'text' | 'emoji' | 'file' | 'image';
+  messageType: "text" | "emoji" | "file" | "image";
   timestamp: string;
   isRead: boolean;
   replyTo?: string; // ID of message being replied to
@@ -155,7 +161,7 @@ export interface ChatMessage {
 export interface Chat {
   id: string;
   name: string;
-  type: 'individual' | 'group';
+  type: "individual" | "group";
   participants: ChatParticipant[];
   createdBy: string;
   createdAt: string;
@@ -180,7 +186,7 @@ export interface ChatParticipant {
 }
 
 export interface CreateChatRequest {
-  type: 'individual' | 'group';
+  type: "individual" | "group";
   name?: string; // Required for group chats
   description?: string; // Optional for group chats
   participantIds: string[];
@@ -196,7 +202,7 @@ export interface ChatPermissions {
 export interface SalaryComponent {
   name: string;
   amount: number;
-  type: 'earning' | 'deduction';
+  type: "earning" | "deduction";
   isTaxable: boolean;
 }
 
@@ -213,7 +219,7 @@ export interface SalaryStructure {
   professionalTax: number;
   pfEmployer: number;
   pfEmployee: number;
-  variablePayType: 'none' | 'percentage' | 'fixed';
+  variablePayType: "none" | "percentage" | "fixed";
   variablePayValue: number;
   variablePay?: number; // Annual variable pay from API
   monthlyGross: number;
@@ -222,7 +228,7 @@ export interface SalaryStructure {
   monthlyCtc?: number;
   monthlyInHand: number;
   workingDays: number;
-  paymentMode: 'bank_transfer' | 'cash' | 'cheque';
+  paymentMode: "bank_transfer" | "cash" | "cheque";
   bankName: string;
   accountNumber: string;
   ifscCode: string;
@@ -298,7 +304,7 @@ export interface Increment {
 export interface SalaryCreateData {
   userId: string;
   annualCtc: number;
-  variablePayType: 'none' | 'percentage' | 'fixed';
+  variablePayType: "none" | "percentage" | "fixed";
   variablePayValue: number;
   panNumber: string;
   uanNumber: string;
@@ -306,5 +312,5 @@ export interface SalaryCreateData {
   accountNumber: string;
   ifscCode: string;
   workingDays: number;
-  paymentMode: 'bank_transfer' | 'cash' | 'cheque';
+  paymentMode: "bank_transfer" | "cash" | "cheque";
 }

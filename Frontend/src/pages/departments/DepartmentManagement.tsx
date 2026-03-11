@@ -67,7 +67,7 @@ export default function BranchManagement() {
   const [formData, setFormData] = useState<Partial<ExtendedBranch>>({
     name: '',
     code: '',
-    manager_id: undefined as string | undefined,
+    manager_id: 'none',
     description: '',
     status: 'active',
     employeeCount: undefined,
@@ -138,7 +138,7 @@ export default function BranchManagement() {
       .createBranch({
         name: formData.name!,
         code: formData.code!,
-        manager_id: formData.manager_id ? Number(formData.manager_id) : undefined,
+        manager_id: (formData.manager_id && formData.manager_id !== 'none') ? Number(formData.manager_id) : undefined,
         description: formData.description || '',
         status: formData.status || 'active',
         employee_count: formData.employeeCount ?? 0,
@@ -149,7 +149,7 @@ export default function BranchManagement() {
           id: created.id,
           name: created.name,
           code: created.code,
-          manager_id: created.manager_id?.toString() ?? '',
+          manager_id: created.manager_id?.toString() ?? 'none',
           description: created.description ?? '',
           status: (created.status as 'active' | 'inactive') || 'active',
           employeeCount: created.employee_count ?? 0,
@@ -191,7 +191,7 @@ export default function BranchManagement() {
       .updateBranch(Number(selectedBranch.id), {
         name: formData.name,
         code: formData.code,
-        manager_id: formData.manager_id ? Number(formData.manager_id) : undefined,
+        manager_id: (formData.manager_id && formData.manager_id !== 'none') ? Number(formData.manager_id) : undefined,
         description: formData.description,
         status: formData.status,
         employee_count: formData.employeeCount,
@@ -205,7 +205,7 @@ export default function BranchManagement() {
                 ...dept,
                 name: updated.name,
                 code: updated.code,
-                manager_id: updated.manager_id?.toString() ?? '',
+                manager_id: updated.manager_id?.toString() ?? 'none',
                 description: updated.description ?? '',
                 status: updated.status as 'active' | 'inactive',
                 employeeCount: updated.employee_count ?? dept.employeeCount,
@@ -290,7 +290,7 @@ export default function BranchManagement() {
     setFormData({
       name: '',
       code: '',
-      manager_id: '',
+      manager_id: 'none',
       description: '',
       status: 'active',
       employeeCount: undefined,
@@ -313,7 +313,7 @@ export default function BranchManagement() {
     setSelectedBranch(department);
     setFormData({
       ...department,
-      manager_id: department.manager_id ? String(department.manager_id) : '',
+      manager_id: department.manager_id ? String(department.manager_id) : 'none',
     });
     setIsEditDialogOpen(true);
   };
@@ -345,7 +345,7 @@ export default function BranchManagement() {
   }, []);
 
   const handleManagerChange = useCallback((value: string) => {
-    setFormData((prev) => ({ ...prev, managerId: value }));
+    setFormData((prev) => ({ ...prev, manager_id: value }));
   }, []);
 
   const handleStatusChange = useCallback((value: string) => {
@@ -376,7 +376,7 @@ export default function BranchManagement() {
         id: dept.id,
         name: dept.name,
         code: dept.code,
-        manager_id: dept.manager_id?.toString() ?? '',
+        manager_id: dept.manager_id?.toString() ?? 'none',
         description: dept.description ?? '',
         status: (dept.status as 'active' | 'inactive') || 'active',
         employeeCount: dept.employee_count ?? 0,
@@ -472,26 +472,6 @@ export default function BranchManagement() {
       }
 
       const normalizedManagers: ManagerOption[] = (managerSource || [])
-        .filter((entry: any) => {
-          const role = (entry.role || '').toString().toLowerCase().trim();
-          const designation = (entry.designation || '').toString().toLowerCase().trim();
-
-          // Aggressive exclusion of Team Leads/TLs/Leads
-          const isLeadOrTeam =
-            role.includes('team') ||
-            role.includes('lead') ||
-            role === 'tl' ||
-            designation.includes('team') ||
-            designation.includes('lead') ||
-            designation === 'tl';
-
-          if (isLeadOrTeam) {
-            return false;
-          }
-
-          // Must be exactly 'manager' or have 'manager' in the designation/role
-          return role === 'manager' || role.includes('manager') || designation.includes('manager');
-        })
         .map((entry: any) => {
           const idCandidate =
             entry.id ??
@@ -1207,9 +1187,14 @@ function BranchForm({
                     Loading...
                   </SelectItem>
                 )}
+                {!isManagersLoading && (
+                  <SelectItem value="none">
+                    <span className="text-slate-500 italic">Unassigned</span>
+                  </SelectItem>
+                )}
                 {!isManagersLoading && managers.length === 0 && (
-                  <SelectItem value="none" disabled>
-                    {managerLoadError ?? 'No eligible managers'}
+                  <SelectItem value="loading" disabled>
+                    {managerLoadError ?? 'No employees found'}
                   </SelectItem>
                 )}
                 {!isManagersLoading &&
