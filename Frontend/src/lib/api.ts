@@ -2097,6 +2097,17 @@ class ApiService {
     });
   }
 
+  // Patch only the status field of a project (avoids 'field required' errors)
+  async patchProjectStatus(
+    projectId: number,
+    status: string,
+  ): Promise<any> {
+    return this.request(`/projects/${projectId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ project_id: projectId, status }),
+    });
+  }
+
   async deleteProject(projectId: number): Promise<any> {
     return this.request(`/projects/${projectId}`, {
       method: "DELETE",
@@ -2167,10 +2178,12 @@ class ApiService {
     projectId: number,
     taskId: number,
     status: string,
+    additionalData: any = {}
   ): Promise<any> {
-    return this.request(`/tasks/${taskId}/status`, {
+    // The backend expects 'status' as a query parameter, not in the request body
+    const encodedStatus = encodeURIComponent(status);
+    return this.request(`/tasks/${taskId}/status?status=${encodedStatus}`, {
       method: "PUT",
-      body: JSON.stringify({ project_id: projectId, task_id: taskId, status: status }),
     });
   }
 

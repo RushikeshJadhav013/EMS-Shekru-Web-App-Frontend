@@ -303,7 +303,7 @@ interface Project {
 
 const normalizeStatus = (s?: string): string => {
   if (!s) return "todo";
-  const low = s.toLowerCase().trim().replace(/[-_]/g, "");
+  const low = s.toLowerCase().trim().replace(/[-_\s]+/g, "");
   if (low === "todo" || low === "pending" || low === "planned") return "todo";
   if (low === "inprogress" || low === "active") return "in-progress";
   if (low === "completed" || low === "complete" || low === "achieved") return "completed";
@@ -990,6 +990,8 @@ export default function ProjectManagement() {
               : null) ||
             "Unknown Member",
         })),
+        person_in_charge_id: p.person_in_charge_id || p.person_in_charge || p.pic_id,
+        person_in_charge_name: p.person_in_charge_name || p.pic_name,
       }));
       setProjects(normalizedProjects);
     } catch (err: any) {
@@ -1529,7 +1531,13 @@ export default function ProjectManagement() {
       else if (status === "completed") backendStatus = "Completed";
       else if (status === "cancelled") backendStatus = "Cancelled";
 
-      await apiService.updateProjectTaskStatus(projectId, taskId, backendStatus);
+      // Include task identification fields to satisfy backend requirements
+      const taskObj: any = selectedProject?.tasks?.find(t => (t.task_id === taskId || t.id === taskId));
+      
+      await apiService.updateProjectTaskStatus(projectId, taskId, backendStatus, {
+        title: taskObj?.task_name || taskObj?.title || "Project Task",
+        assigned_to: taskObj?.assigned_to || null
+      });
       toast({ title: "Success", description: "Task status updated" });
       
       // Update selected project state immediately for UI responsiveness
@@ -1563,27 +1571,54 @@ export default function ProjectManagement() {
       const project = projects.find((p) => p.project_id === projectId);
       if (!project) throw new Error("Project not found");
 
+      const rawProject = project as any;
+
       let backendStatus = status;
       if (status === "todo") backendStatus = "planned";
       else if (status === "in-progress") backendStatus = "in_progress";
       else if (status === "completed") backendStatus = "completed";
       else if (status === "cancelled") backendStatus = "cancelled";
 
-      const payload = {
-        name: project.name,
-        description: project.description || "",
-        start_date: project.start_date ? project.start_date.split("T")[0] : "",
-        end_date: project.end_date ? project.end_date.split("T")[0] : null,
-        status: backendStatus,
-      };
+      // Try PATCH first (status-only, no field requirements)
+      // If backend doesn't support PATCH, fall back to full PUT
+      try {
+        await apiService.patchProjectStatus(projectId, backendStatus);
+      } catch (patchErr: any) {
+        // If PATCH not supported (405) or any other error, try full PUT
+        // Resolve person_in_charge from every possible field the API may return
+        const picId =
+          rawProject.person_in_charge_id ??
+          rawProject.person_in_charge ??
+          rawProject.pic_id ??
+          rawProject.created_by ??
+          null;
 
-      await apiService.updateProject(projectId, payload);
+        // Spread all raw fields so no backend-required field is lost,
+        // then override the ones we control. Remove nested objects the API doesn't expect.
+        const payload = {
+          ...rawProject,
+          project_id: projectId,
+          name: project.name,
+          description: project.description || "",
+          start_date: project.start_date ? project.start_date.split("T")[0] : null,
+          end_date: project.end_date ? project.end_date.split("T")[0] : null,
+          status: backendStatus,
+          person_in_charge: picId,
+          members: undefined,
+          tasks: undefined,
+          meetings: undefined,
+        };
+
+        await apiService.updateProject(projectId, payload);
+      }
+
       toast({
         title: "Success",
         description: `Project status updated to ${statusLabel(status)}`,
       });
       fetchProjects();
     } catch (err: any) {
+      console.error("Project status update error:", err);
       toast({
         title: "Error",
         description: err.message || "Failed to update project status",
