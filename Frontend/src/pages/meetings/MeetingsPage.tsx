@@ -202,18 +202,19 @@ const MeetingsPage: React.FC = () => {
             const allManagers = Array.isArray(managersData) ? managersData : (managersData as any)?.managers || (managersData as any)?.data || [];
             
             // To Remove Role Hierarchy for all profiles (especially for 1:1 meetings):
-            // if we have departments but the employee list is small (likely restricted by backend for regular roles),
-            // try to fetch employees from each department to gather everyone.
-            if (allEmployees.length < 5 && finalDepts.length > 1) {
+            // We fetch employees from each department to gather everyone and bypass role-based list restrictions.
+            if (finalDepts.length > 0) {
                 try {
                     const deptEmployees = await Promise.all(
                         finalDepts.map(d => apiService.getEmployees(d.name).catch(() => []))
                     );
                     const flatDeptEmps = deptEmployees.flat();
-                    if (flatDeptEmps.length > allEmployees.length) {
+                    if (flatDeptEmps.length > 0) {
                         allEmployees = [...allEmployees, ...flatDeptEmps];
                     }
-                } catch (e) { console.warn("Broad employee fetch failed", e); }
+                } catch (e) {
+                    console.warn("Broad employee fetch failed", e);
+                }
             }
 
             // Create a unique list based on ID
@@ -615,7 +616,8 @@ const MeetingsPage: React.FC = () => {
                                                 return targetDeptName && empDepts.includes(targetDeptName);
                                             }
                                             // Show all employees for other meeting types (Project, 1:1, etc.)
-                                            return true;
+                                            // But exclude the current user as they are the meeting creator.
+                                            return Number(emp.user_id || emp.id) !== Number(user?.id);
                                         }).map((emp: any) => {
 
 

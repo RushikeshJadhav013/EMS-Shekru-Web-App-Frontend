@@ -261,6 +261,7 @@ interface ProjectTask {
   task_name: string;
   description?: string;
   assigned_to?: number;
+  user_id?: number | string;
   assigned_to_name?: string;
   due_date?: string;
   status:
@@ -291,6 +292,8 @@ interface Project {
   is_active?: boolean;
   pic_name?: string;
   person_in_charge_name?: string;
+  pic_id?: number | string;
+  person_in_charge_id?: number | string;
   member_count?: number;
   task_count?: number;
   members?: ProjectMember[];
@@ -441,10 +444,22 @@ function TaskRow({
     if (!currentUser) return false;
     if (canManageProjects) return true;
     
-    const isPIC = project?.person_in_charge_name === currentUser.name || project?.pic_name === currentUser.name;
-    const isMember = String(task.assigned_to) === String(currentUser.id);
+    // Robust PIC check: compare by name (case-insensitive/trimmed) or by ID if available
+    const curName = currentUser.name?.toLowerCase().trim();
+    const picName1 = project?.person_in_charge_name?.toLowerCase().trim();
+    const picName2 = project?.pic_name?.toLowerCase().trim();
+    
+    const isPIC = (picName1 && curName === picName1) || 
+                  (picName2 && curName === picName2) ||
+                  (project?.person_in_charge_id && String(project.person_in_charge_id) === String(currentUser.id)) ||
+                  (project?.pic_id && String(project.pic_id) === String(currentUser.id));
+                  
+    // Robust Member check
+    const isMember = String(task.assigned_to) === String(currentUser.id) || 
+                     String(task.user_id) === String(currentUser.id);
+                     
     return isPIC || isMember;
-  }, [currentUser, canManageProjects, project, task.assigned_to]);
+  }, [currentUser, canManageProjects, project, task.assigned_to, task.user_id]);
 
   return (
     <TableRow className="hover:bg-slate-50/60 dark:hover:bg-slate-900/30 transition-colors">
@@ -1334,6 +1349,12 @@ export default function ProjectManagement() {
           projectData?.pic_name ||
           localProject?.person_in_charge_name ||
           localProject?.pic_name,
+        person_in_charge_id:
+          projectData?.person_in_charge_id ||
+          projectData?.person_in_charge ||
+          projectData?.pic_id ||
+          localProject?.person_in_charge_id ||
+          localProject?.pic_id,
       };
 
       return normalized;
@@ -1592,7 +1613,7 @@ export default function ProjectManagement() {
   };
 
   const canManageProjects =
-    user?.role === "admin" || user?.role === "hr" || user?.role === "manager";
+    ["admin", "hr", "manager"].includes(normalizeRole(user?.role));
 
   // ─────────────────────────────────────────
   // Render
@@ -2048,10 +2069,20 @@ export default function ProjectManagement() {
                               <TableCell className="pr-6 text-right">
                                 {(() => {
                                   const isOverdue = isTaskOverdue(task.due_date, task.status);
-                                  const canEdit = canManageProjects || 
-                                                 selectedProject.person_in_charge_name === user?.name || 
-                                                 selectedProject.pic_name === user?.name ||
-                                                 String(task.assigned_to) === String(user?.id);
+                                  
+                                  const curName = user?.name?.toLowerCase().trim();
+                                  const picName1 = selectedProject?.person_in_charge_name?.toLowerCase().trim();
+                                  const picName2 = selectedProject?.pic_name?.toLowerCase().trim();
+                                  const picId = selectedProject?.person_in_charge_id || selectedProject?.pic_id;
+
+                                  const isPIC = (picName1 && curName === picName1) || 
+                                                (picName2 && curName === picName2) ||
+                                                (picId && String(picId) === String(user?.id));
+                                  
+                                  const isMember = String(task.assigned_to) === String(user?.id) || 
+                                                   String(task.user_id) === String(user?.id);
+
+                                  const canEdit = canManageProjects || isPIC || isMember;
                                   
                                   if (canEdit) {
                                     return (
