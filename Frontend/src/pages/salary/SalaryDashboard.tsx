@@ -23,9 +23,9 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
-import { Search, Plus, Eye, Edit, Trash2, FileText, TrendingUp, Download, AlertCircle, DollarSign, RefreshCw, Users, Building2, Ban, CheckCircle2 } from 'lucide-react';
+import { Search, Plus, Eye, Edit, FileText, TrendingUp, Download, AlertCircle, DollarSign, RefreshCw, Users, Building2, Ban, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { UserRole } from '@/types';
+import { UserRole, SalaryStructure } from '@/types';
 import SalaryDetails from '@/pages/salary/SalaryDetails';
 
 const SalaryDashboard = () => {
@@ -45,7 +45,7 @@ const SalaryDashboard = () => {
     const userRole = user?.role?.toLowerCase();
     const isAdminOrHr = userRole === 'admin' || userRole === 'hr';
 
-    const [items, setItems] = useState<(Employee & { salary?: any })[]>([]);
+    const [items, setItems] = useState<(Employee & { salary?: SalaryStructure })[]>([]);
 
     useEffect(() => {
         if (isAdminOrHr) {
@@ -67,21 +67,22 @@ const SalaryDashboard = () => {
 
                 if (salary) {
                     // Ensure core fields are present for analytics and table display
-                    const package_ctc_annual = salary.package_ctc_annual || salary.ctc_annual || 0;
+                    const annualCtc = salary.annualCtc || salary.package_ctc_annual || salary.ctc_annual || 0;
 
                     // Improved calculation for dashboard consistency
-                    const monthly_ctc = salary.monthly_ctc || (package_ctc_annual > 0 ? package_ctc_annual / 12 : 0);
+                    const monthlyCtc = salary.monthlyCtc || salary.monthly_ctc || (annualCtc > 0 ? annualCtc / 12 : 0);
 
                     // Calculate in-hand from earnings/deductions if direct field is 0 or missing
-                    let monthly_in_hand = salary.monthly_in_hand || salary.net_salary || 0;
-                    if (monthly_in_hand <= 0 && salary.total_earnings_annual) {
-                        monthly_in_hand = (salary.total_earnings_annual - (salary.total_deductions_annual || 0)) / 12;
+                    let monthlyInHand = salary.monthlyInHand || salary.monthly_in_hand || salary.net_salary || 0;
+                    if (monthlyInHand <= 0 && salary.total_earnings_annual) {
+                        monthlyInHand = (salary.total_earnings_annual - (salary.total_deductions_annual || 0)) / 12;
                     }
 
-                    salary = { ...salary, package_ctc_annual, monthly_ctc, monthly_in_hand };
+                    salary = { ...salary, annualCtc, monthlyCtc, monthlyInHand };
                 }
 
-                return { ...emp, id, salary };
+                const department = (emp.department || emp.branch || '').trim();
+                return { ...emp, id, department, salary };
             });
 
             setItems(merged);
@@ -103,6 +104,23 @@ const SalaryDashboard = () => {
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchQuery(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''));
     };
+
+    const CORE_DEPARTMENTS = [
+        'Engineering',
+        'Product',
+        'Design',
+        'Marketing',
+        'Sales',
+        'HR',
+        'Human Resources',
+        'Finance',
+        'Operations',
+        'Legal',
+        'Customer Support',
+        'IT',
+        'Administration',
+        'Management'
+    ];
 
     const filteredItems = items.filter(item => {
         const itemRole = (item.role || '').toLowerCase();
@@ -127,20 +145,32 @@ const SalaryDashboard = () => {
             return false;
         }
 
+        const itemDepts = (item.department || item.branch || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+
         const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.employee_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (item.department && item.department.toLowerCase().includes(searchQuery.toLowerCase()));
+            itemDepts.some(d => d.includes(searchQuery.toLowerCase()));
 
-        const matchesDept = deptFilter === 'all' || item.department === deptFilter;
-
-        // Normalize role selection for comparison
+        const matchesDept = deptFilter === 'all' || itemDepts.includes(deptFilter.toLowerCase());
         const normalizedRoleFilter = roleFilter.toLowerCase().replace(/[\s_]/g, '');
         const matchesRole = roleFilter === 'all' || normalizedItemRole === normalizedRoleFilter;
 
         return isRoleVisible && matchesSearch && matchesDept && matchesRole;
     });
 
-    const uniqueDepts = Array.from(new Set(items.map(e => e.department).filter(Boolean)));
+    const uniqueDepts = React.useMemo(() => {
+        const depts = new Set<string>();
+        items.forEach(item => {
+            const deptField = item.department || item.branch;
+            if (deptField) {
+                deptField.split(',').forEach(d => {
+                    const trimmed = d.trim();
+                    if (trimmed) depts.add(trimmed);
+                });
+            }
+        });
+        return Array.from(depts).sort();
+    }, [items]);
 
     // Role filter options based on user access level
     const availableRoles = userRole === 'admin'
@@ -160,50 +190,37 @@ const SalaryDashboard = () => {
         setSalaryCurrentPage(1);
     }, [searchQuery, deptFilter, roleFilter]);
 
-    const handleDeleteSalary = async (userId: string) => {
-        if (!confirm('Are you sure you want to delete the salary record for this employee? This action cannot be undone.')) return;
 
-        try {
-            setLoading(true);
-            await apiService.deleteSalary(userId);
 
-            toast({
-                title: 'Success',
-                description: 'Salary record deleted successfully',
-                variant: 'success',
-            });
-            loadDashboardData();
-        } catch (error) {
-            toast({
-                title: 'Error',
-                description: 'Failed to delete salary record',
-                variant: 'destructive',
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
+    const [togglingId, setTogglingId] = useState<string | null>(null);
 
     const handleToggleSalaryStatus = async (userId: string, currentStatus: boolean) => {
+        setTogglingId(userId);
+        const newStatus = !currentStatus; // true = activate, false = deactivate
         try {
-            setLoading(true);
-            await apiService.updateSalaryDetails(userId, { is_active: !currentStatus });
+            await apiService.toggleSalaryStatus(userId, newStatus);
+
+            // Optimistically update local state for instant visual feedback
+            setItems(prev => prev.map(item =>
+                String(item.id) === userId && item.salary
+                    ? { ...item, salary: { ...item.salary, is_active: newStatus } }
+                    : item
+            ));
 
             toast({
                 title: 'Success',
-                description: `Salary record set to ${!currentStatus ? 'Active' : 'Inactive'}`,
+                description: `Salary record ${newStatus ? 'activated' : 'deactivated'} successfully`,
                 variant: 'success',
             });
-            loadDashboardData();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to toggle salary status:', error);
             toast({
                 title: 'Error',
-                description: 'Failed to update salary status',
+                description: error?.message || 'Failed to update salary status. Please try again.',
                 variant: 'destructive',
             });
         } finally {
-            setLoading(false);
+            setTogglingId(null);
         }
     };
 
@@ -267,7 +284,7 @@ const SalaryDashboard = () => {
                         ? [
                             {
                                 label: 'Annual Payroll (Filtered)',
-                                value: `₹ ${(filteredItems.reduce((acc, item) => acc + (item.salary?.package_ctc_annual || 0), 0) / 10000000).toFixed(2)} Cr`,
+                                value: `₹ ${(filteredItems.reduce((acc, item) => acc + (item.salary?.annualCtc || 0), 0) / 10000000).toFixed(2)} Cr`,
                                 sub: 'Total Annual Cost to Company',
                                 icon: DollarSign,
                                 color: 'blue',
@@ -278,7 +295,7 @@ const SalaryDashboard = () => {
                             },
                             {
                                 label: 'Monthly Disbursement',
-                                value: `₹ ${filteredItems.reduce((acc, item) => acc + (item.salary?.monthly_ctc || 0), 0).toLocaleString('en-IN')}`,
+                                value: `₹ ${filteredItems.reduce((acc, item) => acc + (item.salary?.monthlyCtc || 0), 0).toLocaleString('en-IN')}`,
                                 sub: 'Current Month Total CTC',
                                 icon: TrendingUp,
                                 color: 'emerald',
@@ -340,7 +357,7 @@ const SalaryDashboard = () => {
                     {
                         label: 'Average Annual Salary',
                         value: `₹ ${(filteredItems.filter(i => i.salary).length > 0
-                            ? Math.round(filteredItems.reduce((acc, item) => acc + (item.salary?.package_ctc_annual || 0), 0) / filteredItems.filter(i => i.salary).length)
+                            ? Math.round(filteredItems.reduce((acc, item) => acc + (item.salary?.annualCtc || 0), 0) / filteredItems.filter(i => i.salary).length)
                             : 0).toLocaleString('en-IN')}`,
                         sub: 'Per Filtered Employee',
                         icon: AlertCircle,
@@ -406,7 +423,7 @@ const SalaryDashboard = () => {
                                         <SelectTrigger className="w-[180px] h-10 bg-white dark:bg-gray-800 border-2 transition-all duration-300 hover:shadow-md">
                                             <SelectValue placeholder="All Departments" />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent side="bottom">
                                             <SelectItem value="all">All Departments</SelectItem>
                                             {uniqueDepts.map(dept => (
                                                 <SelectItem key={dept} value={dept}>{dept}</SelectItem>
@@ -421,7 +438,7 @@ const SalaryDashboard = () => {
                                         <SelectTrigger className="w-[160px] h-10 bg-white dark:bg-gray-800 border-2 transition-all duration-300 hover:shadow-md">
                                             <SelectValue placeholder="All Roles" />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent side="bottom">
                                             <SelectItem value="all">All Roles</SelectItem>
                                             {availableRoles.map(role => (
                                                 <SelectItem key={role} value={role}>
@@ -481,7 +498,7 @@ const SalaryDashboard = () => {
                                     </TableRow>
                                 ) : (
                                     paginatedItems.map((item) => (
-                                        <TableRow key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors pointer-events-none sm:pointer-events-auto">
+                                        <TableRow key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                             <TableCell className="font-bold text-slate-700 dark:text-slate-300">{item.employee_id}</TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col">
@@ -492,14 +509,14 @@ const SalaryDashboard = () => {
                                             <TableCell>
                                                 <div className="flex flex-col">
                                                     <span className="capitalize text-xs font-semibold">{item.role?.replace('_', ' ')}</span>
-                                                    <span className="text-[10px] text-muted-foreground">{item.department || '-'}</span>
+                                                    <span className="text-[10px] text-muted-foreground">{item.department || item.branch || '-'}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400">
-                                                {item.salary ? `₹${Math.round(item.salary.monthly_ctc).toLocaleString()}` : '-'}
+                                                {item.salary ? `₹${Math.round(item.salary.monthlyCtc || 0).toLocaleString()}` : '-'}
                                             </TableCell>
                                             <TableCell className="text-right font-bold text-emerald-600 dark:text-emerald-400">
-                                                {item.salary ? `₹${Math.round(item.salary.monthly_in_hand).toLocaleString()}` : '-'}
+                                                {item.salary ? `₹${Math.round(item.salary.monthlyInHand || 0).toLocaleString()}` : '-'}
                                             </TableCell>
                                             <TableCell className="text-right pointer-events-auto">
                                                 <div className="flex justify-end gap-2">
@@ -539,25 +556,23 @@ const SalaryDashboard = () => {
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            className={`h-8 w-8 p-0 ${item.salary.is_active !== false ? 'text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 dark:border-emerald-900 dark:text-emerald-400 dark:hover:bg-emerald-900/20' : 'text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700 dark:border-amber-900 dark:text-amber-400 dark:hover:bg-amber-900/20'}`}
+                                                            className={`h-8 w-8 p-0 transition-all duration-300 ${item.salary.is_active !== false
+                                                                ? 'text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-900 dark:text-emerald-400 dark:bg-emerald-900/10'
+                                                                : 'text-rose-600 border-rose-200 bg-rose-50 hover:bg-rose-100 dark:border-rose-900 dark:text-rose-400 dark:bg-rose-900/10'
+                                                                }`}
                                                             onClick={() => handleToggleSalaryStatus(String(item.id), item.salary.is_active !== false)}
-                                                            title={item.salary.is_active !== false ? "Mark Inactive" : "Mark Active"}
+                                                            title={item.salary.is_active !== false ? "Click to Deactivate" : "Click to Activate"}
+                                                            disabled={togglingId === String(item.id)}
                                                         >
-                                                            {item.salary.is_active !== false ? <CheckCircle2 className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                                                            {togglingId === String(item.id)
+                                                                ? <RefreshCw className="h-4 w-4 animate-spin" />
+                                                                : item.salary.is_active !== false
+                                                                    ? <CheckCircle2 className="h-4 w-4" />
+                                                                    : <Ban className="h-4 w-4" />}
                                                         </Button>
                                                     )}
 
-                                                    {userRole === 'admin' && item.salary && (
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="h-8 w-8 p-0 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20"
-                                                            onClick={() => handleDeleteSalary(String(item.id))}
-                                                            title="Delete Salary Record"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
+
                                                 </div>
                                             </TableCell>
                                         </TableRow>

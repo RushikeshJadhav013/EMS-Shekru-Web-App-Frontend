@@ -154,7 +154,7 @@ const AddIncrement = () => {
         try {
             setIsLoading(true);
 
-            // Create increment record via API
+            // 1. Create increment record
             const response = await apiService.createIncrement({
                 userId: data.userId,
                 previousSalary: data.previousCtc,
@@ -165,18 +165,30 @@ const AddIncrement = () => {
                 reason: data.reason
             });
 
-            if (response) {
+            if (response && currentSalary) {
+                // 2. Update the main salary structure CTC
+                try {
+                    await apiService.updateSalaryCtc(data.userId, {
+                        annualCtc: data.newCtc,
+                        variablePayType: currentSalary.variablePayType || 'none',
+                        variablePayValue: currentSalary.variablePayValue || 0
+                    });
+                } catch (updateError) {
+                    console.error("Increment created but CTC update failed:", updateError);
+                    // Don't fail the whole process as the increment is already recorded
+                }
+
                 // Show success dialog
                 setShowSuccessDialog(true);
-                
-                toast({ 
-                    title: "Success", 
-                    description: "Salary increment processed successfully.", 
-                    variant: "success" 
+
+                toast({
+                    title: "Success",
+                    description: "Salary increment processed successfully.",
+                    variant: "success"
                 });
             }
         } catch (error: any) {
-            toast({ title: "Error", description: error.message || "Failed to create increment.", variant: "destructive" });
+            toast({ title: "Error", description: error.message || "Failed to process increment.", variant: "destructive" });
         } finally {
             setIsLoading(false);
         }

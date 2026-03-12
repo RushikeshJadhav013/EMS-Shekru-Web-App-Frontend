@@ -46,7 +46,7 @@ const salarySchema = z.object({
     annualCtc: z.preprocess(preprocessNumber, z.number().min(0, 'CTC must be a positive number')),
     variablePayType: z.enum(['none', 'percentage', 'fixed']),
     variablePayValue: z.preprocess(preprocessNumber, z.number().min(0).default(0)),
-    workingDays: z.preprocess(preprocessNumber, z.number().min(1).max(31).default(26)),
+    workingDays: z.preprocess(preprocessNumber, z.number().min(1).max(31).default(22)),
     // Manual Entry Fields (Annual)
     basicAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
     hraAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
@@ -118,7 +118,7 @@ const AddEditSalary = () => {
             annualCtc: 0,
             variablePayType: 'none',
             variablePayValue: 0,
-            workingDays: 26,
+            workingDays: 22,
             basicAnnual: 0,
             hraAnnual: 0,
             specialAllowanceAnnual: 0,
@@ -540,7 +540,7 @@ const AddEditSalary = () => {
                     annualCtc: data.package_ctc_annual || data.annualCtc,
                     variablePayType: data.variable_pay_type || data.variablePayType || 'none',
                     variablePayValue: data.variable_pay_value || data.variablePayValue || 0,
-                    workingDays: data.working_days || data.workingDays || 26,
+                    workingDays: data.working_days || data.workingDays || 22,
 
                     // Manual entry fields (annual values) - from Salary API
                     basicAnnual: (data.monthly_basic || data.monthlyBasic || 0) * 12,
@@ -614,7 +614,7 @@ const AddEditSalary = () => {
                     other_deduction_annual: data.otherDeductionAnnual || 0,
                     pf_annual: data.pfAnnual || 0,
                     variable_pay: calculatedVariablePay,
-                    working_days_per_month: data.workingDays || 26
+                    working_days_per_month: data.workingDays || 22
                 };
 
                 let response;
@@ -742,13 +742,18 @@ const AddEditSalary = () => {
             {/* Simple Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-6 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-100/50 dark:border-blue-900/30">
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="sm" onClick={() => {
-                        if (userIdParam) {
-                            navigate(`/salary/employee/${userIdParam}`);
-                        } else {
-                            navigate(-1);
-                        }
-                    }}>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            if (userIdParam) {
+                                navigate(`/salary/employee/${userIdParam}`);
+                            } else {
+                                navigate(-1);
+                            }
+                        }}
+                        className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all active:scale-95"
+                    >
                         <ArrowLeft className="h-4 w-4 mr-2" /> Back
                     </Button>
                     <div>
@@ -934,13 +939,13 @@ const AddEditSalary = () => {
                                                 <CardDescription>Automated compensation structuring based on annual CTC and statutory norms.</CardDescription>
                                             </CardHeader>
                                             <CardContent className="space-y-6">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="grid grid-cols-2 gap-6">
                                                     <div className="space-y-2">
-                                                        <Label className="flex items-center gap-2">
+                                                        <Label className="flex items-center gap-2 font-semibold">
                                                             Annual CTC (₹) <span className="text-red-500">*</span>
                                                         </Label>
                                                         <div className="relative">
-                                                            <span className="absolute left-3 top-2.5 text-muted-foreground">₹</span>
+                                                            <span className="absolute left-3 top-2.5 text-muted-foreground font-medium">₹</span>
                                                             <Input
                                                                 type="text"
                                                                 className="pl-8 h-10 bg-white dark:bg-slate-800"
@@ -953,10 +958,11 @@ const AddEditSalary = () => {
                                                         {form.formState.errors.annualCtc && <p className="text-red-500 text-xs mt-1">{form.formState.errors.annualCtc.message}</p>}
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label>Working Days (Month)</Label>
+                                                        <Label className="font-semibold">Working Days (Month)</Label>
                                                         <Input
                                                             type="text"
                                                             className="h-10 bg-white dark:bg-slate-800"
+                                                            placeholder="e.g. 22"
                                                             disabled={false}
                                                             {...form.register("workingDays")}
                                                             onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
@@ -1083,11 +1089,11 @@ const AddEditSalary = () => {
                                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                                                     <div className="space-y-2">
                                                         <Label className="text-xs uppercase text-muted-foreground">Basic Annual (₹)</Label>
-                                                        <Input 
-                                                            type="text" 
-                                                            className="h-10" 
-                                                            {...form.register("basicAnnual")} 
-                                                            onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} 
+                                                        <Input
+                                                            type="text"
+                                                            className="h-10"
+                                                            {...form.register("basicAnnual")}
+                                                            onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
                                                         />
                                                     </div>
                                                     <div className="space-y-2">

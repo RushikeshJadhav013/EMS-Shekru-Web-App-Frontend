@@ -119,7 +119,7 @@ const HRDashboard: React.FC = () => {
         const response = await apiService.getAllWFHRequests();
 
         // Handle response - it's always an array
-        let requests = Array.isArray(response) ? response : [];
+        const requests = Array.isArray(response) ? response : [];
 
         // Transform API response to match our UI format
         // The API returns requests with fields like: wfh_id, user_id, start_date, end_date, wfh_type, reason, status, employee_id, name, department, role, approver_name
@@ -434,7 +434,7 @@ const HRDashboard: React.FC = () => {
 
         <div className="relative flex gap-3">
           <Button
-            onClick={() => navigate('/hr/employees/new')}
+            onClick={() => navigate('/hr/employees/', { state: { highlight: true } })}
             size="lg"
             className="rounded-xl px-6 h-12 bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-200 dark:shadow-none transition-all active:scale-95 gap-2"
           >

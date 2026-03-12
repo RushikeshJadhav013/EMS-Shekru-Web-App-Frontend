@@ -9,7 +9,7 @@ const app = express();
 
 // Enable CORS for all routes
 app.use(cors({
-  origin: ['https://stafflyhrms.netlify.app', 'https://testing.staffly.space'],
+  origin: ['https://testing.staffly.space'],
   credentials: true
 }));
 

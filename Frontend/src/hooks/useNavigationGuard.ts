@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
  * unauthorized access after logout
  */
 export const useNavigationGuard = () => {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, isLoading, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const isHandlingNavigation = useRef(false);
@@ -67,13 +67,13 @@ export const useNavigationGuard = () => {
 
   useEffect(() => {
     // After logout, prevent forward navigation back into the app
-    if (!isAuthenticated && location.pathname !== '/login' && location.pathname !== '/contact-support') {
+    if (!isLoading && !isAuthenticated && location.pathname !== '/login' && location.pathname !== '/contact-support' && location.pathname !== '/') {
       // Clear any stored session data
       localStorage.removeItem('user');
       localStorage.removeItem('token');
-      
+
       // Redirect to login with a message
-      navigate('/login', { 
+      navigate('/login', {
         replace: true,
         state: { message: 'Please login to access the application.' }
       });

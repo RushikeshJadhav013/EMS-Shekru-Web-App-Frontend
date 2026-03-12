@@ -18,18 +18,26 @@ import {
   Users,
   Search,
   ChevronRight,
-  SlidersHorizontal,
   Eye,
   Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Filter,
 } from 'lucide-react';
-import { Department } from '@/types';
+import { Branch, BranchData } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { apiService } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { formatDateIST } from '@/utils/timezone';
-import { apiService, type Department as ApiDepartment } from '@/lib/api';
+// Removed missing Employee import
 
-interface ExtendedDepartment extends Department {
+interface ExtendedBranch extends Omit<Branch, 'manager_id'> {
+  status: 'active' | 'inactive';
   employeeCount?: number;
   location?: string;
+  created_at: string;
+  updated_at: string;
+  manager_id?: string;
 }
 
 interface ManagerOption {
@@ -40,9 +48,9 @@ interface ManagerOption {
   role?: string;
 }
 
-export default function DepartmentManagement() {
+export default function BranchManagement() {
   const { t } = useLanguage();
-  const [departments, setDepartments] = useState<ExtendedDepartment[]>([]);
+  const [departments, setBranchs] = useState<ExtendedBranch[]>([]);
   const [managers, setManagers] = useState<ManagerOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -51,17 +59,15 @@ export default function DepartmentManagement() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
-  const [selectedManagerFilter, setSelectedManagerFilter] = useState<'all' | string>('all');
-  const [sortBy, setSortBy] = useState<'name' | 'employees'>('name');
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [viewDepartment, setViewDepartment] = useState<ExtendedDepartment | null>(null);
+  const [viewBranch, setViewBranch] = useState<ExtendedBranch | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedDepartment, setSelectedDepartment] = useState<ExtendedDepartment | null>(null);
-  const [formData, setFormData] = useState<Partial<ExtendedDepartment>>({
+  const [selectedBranch, setSelectedBranch] = useState<ExtendedBranch | null>(null);
+  const [formData, setFormData] = useState<Partial<ExtendedBranch>>({
     name: '',
     code: '',
-    managerId: '',
+    manager_id: 'none',
     description: '',
     status: 'active',
     employeeCount: undefined,
@@ -75,11 +81,13 @@ export default function DepartmentManagement() {
 
   const managerName = (managerId?: string) => {
     if (!managerId) return undefined;
-    const found = managers.find((mgr) => mgr.id === String(managerId));
-    return found?.name;
+    const found = allEmployees.find((emp) =>
+      String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(managerId)
+    );
+    return found?.name || found?.full_name;
   };
 
-  const filteredDepartments = useMemo(() => {
+  const filteredBranchs = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     let result = departments.filter((dept) => {
       const matchesSearch =
@@ -89,45 +97,33 @@ export default function DepartmentManagement() {
         (dept.location || '').toLowerCase().includes(query);
 
       const matchesStatus = selectedStatus === 'all' || dept.status === selectedStatus;
-      const matchesManager =
-        selectedManagerFilter === 'all' ||
-        String(dept.managerId ?? '') === selectedManagerFilter;
-
-      return matchesSearch && matchesStatus && matchesManager;
+      return matchesSearch && matchesStatus;
     });
 
-    result = [...result].sort((a, b) => {
-      if (sortBy === 'name') {
-        return a.name.localeCompare(b.name);
-      }
-      if (sortBy === 'employees') {
-        return (b.employeeCount || 0) - (a.employeeCount || 0);
-      }
-      return 0;
-    });
+    result = [...result].sort((a, b) => a.name.localeCompare(b.name));
 
     return result;
-  }, [departments, searchQuery, selectedStatus, selectedManagerFilter, sortBy]);
+  }, [departments, searchQuery, selectedStatus]);
 
-  const paginatedDepartments = useMemo(() => {
+  const paginatedBranchs = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return filteredDepartments.slice(startIndex, endIndex);
-  }, [filteredDepartments, currentPage, itemsPerPage]);
+    return filteredBranchs.slice(startIndex, endIndex);
+  }, [filteredBranchs, currentPage, itemsPerPage]);
 
-  const totalPages = Math.ceil(filteredDepartments.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredBranchs.length / itemsPerPage);
 
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedStatus, selectedManagerFilter, sortBy]);
+  }, [searchQuery, selectedStatus]);
 
   // Reset to first page when items per page changes
   useEffect(() => {
     setCurrentPage(1);
   }, [itemsPerPage]);
 
-  const handleCreateDepartment = () => {
+  const handleCreateBranch = () => {
     if (!formData.name || !formData.code) {
       toast({
         title: 'Error',
@@ -139,34 +135,34 @@ export default function DepartmentManagement() {
 
     setIsSaving(true);
     apiService
-      .createDepartment({
+      .createBranch({
         name: formData.name!,
         code: formData.code!,
-        manager_id: formData.managerId ? Number(formData.managerId) : undefined,
+        manager_id: (formData.manager_id && formData.manager_id !== 'none') ? Number(formData.manager_id) : undefined,
         description: formData.description || '',
         status: formData.status || 'active',
         employee_count: formData.employeeCount ?? 0,
         location: formData.location || '',
       })
-      .then((created: ApiDepartment) => {
-        const mapped: ExtendedDepartment = {
+      .then((created: Branch) => {
+        const mapped: ExtendedBranch = {
           id: created.id,
           name: created.name,
           code: created.code,
-          managerId: created.manager_id?.toString() ?? '',
+          manager_id: created.manager_id?.toString() ?? 'none',
           description: created.description ?? '',
           status: (created.status as 'active' | 'inactive') || 'active',
           employeeCount: created.employee_count ?? 0,
           location: created.location ?? '',
-          createdAt: created.created_at,
-          updatedAt: created.updated_at,
+          created_at: created.created_at,
+          updated_at: created.updated_at,
         };
-        setDepartments((prev) => [...prev, mapped]);
+        setBranchs((prev) => [...prev, mapped]);
         setIsCreateDialogOpen(false);
         resetForm();
         toast({
           title: 'Success',
-          description: 'Department created successfully',
+          description: 'Branch created successfully',
         });
       })
       .catch((error) => {
@@ -183,38 +179,40 @@ export default function DepartmentManagement() {
       });
   };
 
-  const handleUpdateDepartment = () => {
-    if (!selectedDepartment) return;
+  const handleUpdateBranch = () => {
+    if (!selectedBranch) return;
 
-    const oldManagerId = selectedDepartment.managerId;
-    const newManagerId = formData.managerId;
+    const oldManagerId = selectedBranch.manager_id;
+    const newManagerId = formData.manager_id;
     const managerChanged = oldManagerId !== newManagerId;
 
     setIsSaving(true);
     apiService
-      .updateDepartment(Number(selectedDepartment.id), {
+      .updateBranch(Number(selectedBranch.id), {
         name: formData.name,
         code: formData.code,
-        manager_id: formData.managerId ? Number(formData.managerId) : undefined,
+        manager_id: (formData.manager_id && formData.manager_id !== 'none') ? Number(formData.manager_id) : undefined,
         description: formData.description,
         status: formData.status,
         employee_count: formData.employeeCount,
         location: formData.location,
       })
-      .then((updated: ApiDepartment) => {
-        setDepartments((prev) =>
+      .then((updated: Branch) => {
+        setBranchs((prev) =>
           prev.map((dept) =>
-            dept.id === selectedDepartment.id
+            dept.id === selectedBranch.id
               ? {
                 ...dept,
                 name: updated.name,
                 code: updated.code,
-                managerId: updated.manager_id?.toString() ?? '',
+                manager_id: updated.manager_id?.toString() ?? 'none',
                 description: updated.description ?? '',
                 status: updated.status as 'active' | 'inactive',
                 employeeCount: updated.employee_count ?? dept.employeeCount,
                 location: updated.location ?? '',
                 updatedAt: updated.updated_at,
+                updated_at: updated.updated_at,
+                created_at: dept.created_at,
               }
               : dept,
           ),
@@ -225,7 +223,7 @@ export default function DepartmentManagement() {
         // Reload managers to reflect any role changes
         loadManagers();
 
-        let successMessage = 'Department updated successfully';
+        let successMessage = 'Branch updated successfully';
         if (managerChanged) {
           const newManager = managers.find(m => m.id === newManagerId);
           const oldManager = managers.find(m => m.id === oldManagerId);
@@ -256,9 +254,9 @@ export default function DepartmentManagement() {
       .finally(() => setIsSaving(false));
   };
 
-  const handleDeleteDepartment = (id: string) => {
-    const dept = departments.find(d => d.id === id);
-    if (dept && dept.employeeCount && dept.employeeCount > 0) {
+  const handleDeleteBranch = (id: string) => {
+    const dept = departments.find(d => String(d.id) === id);
+    if (dept && (dept.employeeCount || 0) > 0) {
       toast({
         title: 'Error',
         description: 'Cannot delete department with active employees',
@@ -268,12 +266,13 @@ export default function DepartmentManagement() {
     }
 
     apiService
-      .deleteDepartment(Number(id))
+      .deleteBranch(Number(id))
       .then(() => {
-        setDepartments((prev) => prev.filter((dept) => dept.id !== id));
+        setBranchs((prev) => prev.filter((dept) => String(dept.id) !== id));
         toast({
           title: 'Success',
-          description: 'Department deleted successfully',
+          description: 'Branch deleted successfully',
+          variant: 'success',
         });
       })
       .catch((error) => {
@@ -291,13 +290,13 @@ export default function DepartmentManagement() {
     setFormData({
       name: '',
       code: '',
-      managerId: '',
+      manager_id: 'none',
       description: '',
       status: 'active',
       employeeCount: undefined,
       location: ''
     });
-    setSelectedDepartment(null);
+    setSelectedBranch(null);
   }, []);
 
   const handleCreateCancel = useCallback(() => {
@@ -310,23 +309,30 @@ export default function DepartmentManagement() {
     resetForm();
   }, [resetForm]);
 
-  const openEditDialog = (department: ExtendedDepartment) => {
-    setSelectedDepartment(department);
+  const openEditDialog = (department: ExtendedBranch) => {
+    setSelectedBranch(department);
     setFormData({
       ...department,
-      managerId: department.managerId ? String(department.managerId) : '',
+      manager_id: department.manager_id ? String(department.manager_id) : 'none',
     });
     setIsEditDialogOpen(true);
   };
 
-  const openViewDialog = (department: ExtendedDepartment) => {
-    setViewDepartment(department);
+  const openViewDialog = (department: ExtendedBranch) => {
+    setViewBranch(department);
     setIsViewDialogOpen(true);
   };
 
-  const totalEmployees = departments.reduce((sum, dept) => sum + (dept.employeeCount || 0), 0);
+  // Compute real employee count from actual employee records (not stale DB field)
+  const totalEmployees = allEmployees.length;
 
-  const activeDepartments = departments.filter(dept => dept.status === 'active').length;
+  // Per-department live count: match employees whose department name equals dept name
+  const getEmployeeCountForDept = (deptName: string) =>
+    allEmployees.filter((emp: any) =>
+      (emp.department || '').toLowerCase().trim() === deptName.toLowerCase().trim()
+    ).length;
+
+  const activeBranchs = departments.filter(dept => dept.status === 'active').length;
 
   // Stable handlers to prevent input focus loss
   const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -339,7 +345,7 @@ export default function DepartmentManagement() {
   }, []);
 
   const handleManagerChange = useCallback((value: string) => {
-    setFormData((prev) => ({ ...prev, managerId: value }));
+    setFormData((prev) => ({ ...prev, manager_id: value }));
   }, []);
 
   const handleStatusChange = useCallback((value: string) => {
@@ -362,23 +368,23 @@ export default function DepartmentManagement() {
     setFormData((prev) => ({ ...prev, description: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }));
   }, []);
 
-  const loadDepartments = useCallback(async () => {
+  const loadBranchs = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await apiService.getDepartments();
-      const mapped: ExtendedDepartment[] = (data || []).map((dept: ApiDepartment) => ({
+      const data = await apiService.getBranchs();
+      const mapped: ExtendedBranch[] = (data || []).map((dept: Branch) => ({
         id: dept.id,
         name: dept.name,
         code: dept.code,
-        managerId: dept.manager_id?.toString() ?? '',
+        manager_id: dept.manager_id?.toString() ?? 'none',
         description: dept.description ?? '',
         status: (dept.status as 'active' | 'inactive') || 'active',
         employeeCount: dept.employee_count ?? 0,
         location: dept.location ?? '',
-        createdAt: dept.created_at,
-        updatedAt: dept.updated_at,
+        created_at: dept.created_at,
+        updated_at: dept.updated_at,
       }));
-      setDepartments(mapped);
+      setBranchs(mapped);
     } catch (error) {
       console.error('Failed to load departments:', error);
       toast({
@@ -392,13 +398,13 @@ export default function DepartmentManagement() {
     }
   }, []);
 
-  const handleSyncDepartments = useCallback(async () => {
+  const handleSyncBranchs = useCallback(async () => {
     setIsLoading(true);
     try {
-      const result = await apiService.syncDepartmentsFromUsers();
+      const result = await apiService.syncBranchsFromUsers();
 
       // Reload departments after sync
-      await loadDepartments();
+      await loadBranchs();
 
       toast({
         variant: 'success',
@@ -416,22 +422,22 @@ export default function DepartmentManagement() {
     } finally {
       setIsLoading(false);
     }
-  }, [loadDepartments]);
+  }, [loadBranchs]);
 
   useEffect(() => {
     // Auto-sync departments from users on mount, then load
-    const initializeDepartments = async () => {
+    const initializeBranchs = async () => {
       try {
-        await apiService.syncDepartmentsFromUsers();
+        await apiService.syncBranchsFromUsers();
       } catch (error) {
         // Silently fail sync, still load existing departments
         console.warn('Auto-sync failed:', error);
       }
-      await loadDepartments();
+      await loadBranchs();
     };
 
-    initializeDepartments();
-  }, [loadDepartments]);
+    initializeBranchs();
+  }, [loadBranchs]);
 
   // Load all employees for auto-calculation
   useEffect(() => {
@@ -454,7 +460,7 @@ export default function DepartmentManagement() {
       let managerSource: any[] | null = null;
 
       try {
-        managerSource = await apiService.getDepartmentManagers();
+        managerSource = await apiService.getBranchManagers();
       } catch (fallbackError) {
         if (import.meta.env.DEV) {
           console.warn('Falling back to employees endpoint for managers:', fallbackError);
@@ -466,10 +472,6 @@ export default function DepartmentManagement() {
       }
 
       const normalizedManagers: ManagerOption[] = (managerSource || [])
-        .filter((entry: any) => {
-          const role = (entry.role || '').toString().toLowerCase();
-          return role === 'manager' || role === 'teamlead' || role === 'team_lead';
-        })
         .map((entry: any) => {
           const idCandidate =
             entry.id ??
@@ -551,7 +553,7 @@ export default function DepartmentManagement() {
           <div className="flex flex-wrap gap-3">
             <Button
               variant="outline"
-              onClick={handleSyncDepartments}
+              onClick={handleSyncBranchs}
               disabled={isLoading}
               className="gap-2 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800"
             >
@@ -578,14 +580,14 @@ export default function DepartmentManagement() {
                   </DialogHeader>
                 </div>
                 <div className="overflow-y-auto px-6 pb-6 flex-1">
-                  <DepartmentForm
+                  <BranchForm
                     mode="create"
                     formData={formData}
                     managers={managers}
                     managerLoadError={managerLoadError}
                     isManagersLoading={isManagersLoading}
                     isSaving={isSaving}
-                    selectedDepartment={selectedDepartment}
+                    selectedBranch={selectedBranch}
                     onNameChange={handleNameChange}
                     onCodeChange={handleCodeChange}
                     onManagerChange={handleManagerChange}
@@ -594,7 +596,7 @@ export default function DepartmentManagement() {
                     onLocationChange={handleLocationChange}
                     onDescriptionChange={handleDescriptionChange}
                     onCancel={handleCreateCancel}
-                    onSubmit={handleCreateDepartment}
+                    onSubmit={handleCreateBranch}
                   />
                 </div>
               </DialogContent>
@@ -627,9 +629,9 @@ export default function DepartmentManagement() {
                   <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
                     Active Departments
                   </p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{activeDepartments}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{activeBranchs}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
-                    {departments.length > 0 ? Math.round((activeDepartments / departments.length) * 100) : 0}% active
+                    {departments.length > 0 ? Math.round((activeBranchs / departments.length) * 100) : 0}% active
                   </p>
                 </div>
                 <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center">
@@ -693,44 +695,6 @@ export default function DepartmentManagement() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex flex-col gap-2">
-                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Manager</Label>
-                <Select
-                  value={selectedManagerFilter}
-                  onValueChange={(value) =>
-                    setSelectedManagerFilter(value as 'all' | string)
-                  }
-                >
-                  <SelectTrigger className="w-[170px] border-slate-300 dark:border-slate-600 h-10">
-                    <SelectValue placeholder="Manager" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-64 overflow-y-auto">
-                    <SelectItem value="all">All Managers</SelectItem>
-                    {managers.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Sort By</Label>
-                <Select
-                  value={sortBy}
-                  onValueChange={(value) =>
-                    setSortBy(value as 'name' | 'employees')
-                  }
-                >
-                  <SelectTrigger className="w-[150px] border-slate-300 dark:border-slate-600 h-10">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="name">Name (A-Z)</SelectItem>
-                    <SelectItem value="employees">Employees</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
           </div>
         </CardHeader>
@@ -758,7 +722,7 @@ export default function DepartmentManagement() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ) : filteredDepartments.length === 0 ? (
+                ) : filteredBranchs.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
@@ -768,10 +732,11 @@ export default function DepartmentManagement() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedDepartments.map((department) => {
-                    const manager = managers.find(
-                      (m) => m.id === String(department.managerId ?? ''),
+                  paginatedBranchs.map((department) => {
+                    const manager = allEmployees.find(
+                      (emp) => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(department.manager_id ?? ''),
                     );
+                    const managerNameStr = manager ? (manager.name || manager.full_name || '') : '';
                     const isActive = department.status === 'active';
                     return (
                       <TableRow
@@ -795,15 +760,15 @@ export default function DepartmentManagement() {
                         </TableCell>
                         <TableCell className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            {manager ? (
+                            {managerNameStr ? (
                               <>
                                 <div className="h-6 w-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
                                   <span className="text-xs font-semibold text-green-700 dark:text-green-300">
-                                    {manager.name.charAt(0).toUpperCase()}
+                                    {managerNameStr.charAt(0).toUpperCase()}
                                   </span>
                                 </div>
                                 <span className="text-sm text-slate-700 dark:text-slate-300">
-                                  {manager.name}
+                                  {managerNameStr}
                                 </span>
                               </>
                             ) : (
@@ -813,7 +778,7 @@ export default function DepartmentManagement() {
                         </TableCell>
                         <TableCell className="px-6 py-4">
                           <Badge variant="secondary">
-                            {department.employeeCount || 0}
+                            {getEmployeeCountForDept(department.name)}
                           </Badge>
                         </TableCell>
                         <TableCell className="px-6 py-4">
@@ -864,11 +829,11 @@ export default function DepartmentManagement() {
                                 const nextStatus =
                                   department.status === 'active' ? 'inactive' : 'active';
                                 apiService
-                                  .updateDepartment(Number(department.id), {
+                                  .updateBranch(Number(department.id), {
                                     status: nextStatus,
                                   })
                                   .then(() => {
-                                    setDepartments((prev) =>
+                                    setBranchs((prev) =>
                                       prev.map((dept) =>
                                         dept.id === department.id
                                           ? { ...dept, status: nextStatus }
@@ -897,7 +862,7 @@ export default function DepartmentManagement() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => handleDeleteDepartment(String(department.id))}
+                              onClick={() => handleDeleteBranch(String(department.id))}
                               className="h-8 w-8 p-0 hover:bg-red-100 dark:hover:bg-red-900"
                               title="Delete department"
                             >
@@ -917,7 +882,7 @@ export default function DepartmentManagement() {
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
-              totalItems={filteredDepartments.length}
+              totalItems={filteredBranchs.length}
               itemsPerPage={itemsPerPage}
               onPageChange={setCurrentPage}
               onItemsPerPageChange={setItemsPerPage}
@@ -936,14 +901,14 @@ export default function DepartmentManagement() {
             </DialogHeader>
           </div>
           <div className="overflow-y-auto px-6 pb-6 flex-1">
-            <DepartmentForm
+            <BranchForm
               mode="edit"
               formData={formData}
               managers={managers}
               managerLoadError={managerLoadError}
               isManagersLoading={isManagersLoading}
               isSaving={isSaving}
-              selectedDepartment={selectedDepartment}
+              selectedBranch={selectedBranch}
               onNameChange={handleNameChange}
               onCodeChange={handleCodeChange}
               onManagerChange={handleManagerChange}
@@ -952,7 +917,7 @@ export default function DepartmentManagement() {
               onLocationChange={handleLocationChange}
               onDescriptionChange={handleDescriptionChange}
               onCancel={handleEditCancel}
-              onSubmit={handleUpdateDepartment}
+              onSubmit={handleUpdateBranch}
             />
           </div>
         </DialogContent>
@@ -974,21 +939,21 @@ export default function DepartmentManagement() {
               </div>
             </DialogTitle>
           </DialogHeader>
-          {viewDepartment && (
+          {viewBranch && (
             <div className="space-y-6 py-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
                     <Label className="text-sm font-medium text-slate-600 dark:text-slate-400">Department Name</Label>
                     <p className="text-base font-semibold text-slate-900 dark:text-white mt-1 bg-slate-50 dark:bg-slate-800 px-3 py-2 rounded border border-slate-200 dark:border-slate-700">
-                      {viewDepartment.name}
+                      {viewBranch.name}
                     </p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-slate-600 dark:text-slate-400">Department Code</Label>
                     <div className="mt-1">
                       <Badge variant="outline" className="font-mono font-bold">
-                        {viewDepartment.code}
+                        {viewBranch.code}
                       </Badge>
                     </div>
                   </div>
@@ -997,12 +962,12 @@ export default function DepartmentManagement() {
                     <div className="mt-1">
                       <Badge
                         className={
-                          viewDepartment.status === 'active'
+                          viewBranch.status === 'active'
                             ? 'bg-green-600 text-white'
                             : 'bg-slate-500 text-white'
                         }
                       >
-                        {viewDepartment.status.charAt(0).toUpperCase() + viewDepartment.status.slice(1)}
+                        {viewBranch.status.charAt(0).toUpperCase() + viewBranch.status.slice(1)}
                       </Badge>
                     </div>
                   </div>
@@ -1011,15 +976,17 @@ export default function DepartmentManagement() {
                   <div>
                     <Label className="text-sm font-medium text-slate-600 dark:text-slate-400">Manager</Label>
                     <div className="flex items-center gap-2 mt-1 bg-slate-50 dark:bg-slate-800 px-3 py-2 rounded border border-slate-200 dark:border-slate-700">
-                      {managers.find(m => m.id === viewDepartment.managerId) ? (
+                      {allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewBranch.manager_id)) ? (
                         <>
                           <div className="h-8 w-8 rounded-full bg-green-600 flex items-center justify-center">
                             <span className="text-sm font-bold text-white">
-                              {managers.find(m => m.id === viewDepartment.managerId)?.name.charAt(0).toUpperCase()}
+                              {(allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewBranch.manager_id))?.name ||
+                                allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewBranch.manager_id))?.full_name || '').charAt(0).toUpperCase()}
                             </span>
                           </div>
                           <span className="text-base font-medium text-slate-900 dark:text-white">
-                            {managers.find(m => m.id === viewDepartment.managerId)?.name}
+                            {allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewBranch.manager_id))?.name ||
+                              allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewBranch.manager_id))?.full_name}
                           </span>
                         </>
                       ) : (
@@ -1032,32 +999,32 @@ export default function DepartmentManagement() {
                     <div className="flex items-center gap-2 mt-1">
                       <Users className="h-4 w-4 text-slate-500" />
                       <span className="text-base font-medium text-slate-900 dark:text-white">
-                        {viewDepartment.employeeCount || 0} employees
+                        {viewBranch.employeeCount || 0} employees
                       </span>
                     </div>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-slate-600 dark:text-slate-400">Location</Label>
                     <p className="text-base text-slate-700 dark:text-slate-300 mt-1 bg-slate-50 dark:bg-slate-800 px-3 py-2 rounded border border-slate-200 dark:border-slate-700">
-                      {viewDepartment.location || 'Not specified'}
+                      {viewBranch.location || 'Not specified'}
                     </p>
                   </div>
                 </div>
               </div>
-              {viewDepartment.description && (
+              {viewBranch.description && (
                 <div>
                   <Label className="text-sm font-medium text-slate-600 dark:text-slate-400">Description</Label>
                   <div className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 p-3 rounded border border-slate-200 dark:border-slate-700 mt-1">
-                    {viewDepartment.description}
+                    {viewBranch.description}
                   </div>
                 </div>
               )}
               <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
                 <div className="text-xs text-slate-500 dark:text-slate-400">
-                  Created: {viewDepartment.createdAt ? formatDateIST(viewDepartment.createdAt, 'MMM dd, yyyy') : 'Unknown'}
+                  Created: {viewBranch.created_at ? formatDateIST(viewBranch.created_at, 'MMM dd, yyyy') : 'Unknown'}
                 </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400">
-                  Updated: {viewDepartment.updatedAt ? formatDateIST(viewDepartment.updatedAt, 'MMM dd, yyyy') : 'Unknown'}
+                  Updated: {viewBranch.updated_at ? formatDateIST(viewBranch.updated_at, 'MMM dd, yyyy') : 'Unknown'}
                 </div>
               </div>
             </div>
@@ -1069,8 +1036,8 @@ export default function DepartmentManagement() {
             <Button
               onClick={() => {
                 setIsViewDialogOpen(false);
-                if (viewDepartment) {
-                  openEditDialog(viewDepartment);
+                if (viewBranch) {
+                  openEditDialog(viewBranch);
                 }
               }}
               className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -1084,14 +1051,14 @@ export default function DepartmentManagement() {
   );
 }
 
-interface DepartmentFormProps {
+interface BranchFormProps {
   mode: 'create' | 'edit';
-  formData: Partial<ExtendedDepartment>;
+  formData: Partial<ExtendedBranch>;
   managers: ManagerOption[];
   managerLoadError: string | null;
   isManagersLoading: boolean;
   isSaving: boolean;
-  selectedDepartment: ExtendedDepartment | null;
+  selectedBranch: ExtendedBranch | null;
   onNameChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onCodeChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onManagerChange: (value: string) => void;
@@ -1103,14 +1070,14 @@ interface DepartmentFormProps {
   onSubmit: () => void;
 }
 
-function DepartmentForm({
+function BranchForm({
   mode,
   formData,
   managers,
   managerLoadError,
   isManagersLoading,
   isSaving,
-  selectedDepartment,
+  selectedBranch,
   onNameChange,
   onCodeChange,
   onManagerChange,
@@ -1120,7 +1087,7 @@ function DepartmentForm({
   onDescriptionChange,
   onCancel,
   onSubmit,
-}: DepartmentFormProps) {
+}: BranchFormProps) {
   const isCreateMode = mode === 'create';
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1187,9 +1154,9 @@ function DepartmentForm({
               </p>
             </div>
           </div>
-          {!isCreateMode && selectedDepartment?.updatedAt && (
+          {!isCreateMode && selectedBranch?.updated_at && (
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Updated {formatDateIST(selectedDepartment.updatedAt, 'MMM dd, yyyy')}
+              Updated {formatDateIST(selectedBranch.updated_at, 'MMM dd, yyyy')}
             </p>
           )}
         </div>
@@ -1199,7 +1166,7 @@ function DepartmentForm({
               Department Manager
             </Label>
             <Select
-              value={formData.managerId}
+              value={formData.manager_id}
               onValueChange={onManagerChange}
               disabled={isManagersLoading || managers.length === 0}
             >
@@ -1220,9 +1187,14 @@ function DepartmentForm({
                     Loading...
                   </SelectItem>
                 )}
+                {!isManagersLoading && (
+                  <SelectItem value="none">
+                    <span className="text-slate-500 italic">Unassigned</span>
+                  </SelectItem>
+                )}
                 {!isManagersLoading && managers.length === 0 && (
-                  <SelectItem value="none" disabled>
-                    {managerLoadError ?? 'No eligible managers'}
+                  <SelectItem value="loading" disabled>
+                    {managerLoadError ?? 'No employees found'}
                   </SelectItem>
                 )}
                 {!isManagersLoading &&
@@ -1263,7 +1235,7 @@ function DepartmentForm({
         </div>
       </div>
 
-      {/* Department Size Section */}
+      {/* Branch Size Section */}
       <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-5 space-y-4">
         <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-700">
           <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />

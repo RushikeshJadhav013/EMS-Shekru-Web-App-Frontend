@@ -113,15 +113,19 @@ export function CalendarWithSelect({
     day_outside: "text-slate-300 dark:text-slate-700",
   } as typeof classNames;
 
-  // Derive the date to show in the header – prefer the currently selected day.
+  // Derive the date to show in the header – ensure it reflects the currently viewed month
   const selected =
     props.mode === "single" && props.selected instanceof Date
       ? props.selected
       : Array.isArray(props.selected) && props.selected.length > 0
-      ? (props.selected[0] as Date)
-      : undefined;
+        ? (props.selected[0] as Date)
+        : undefined;
 
-  const headerDate = selected ?? month;
+  // Use the viewed month for the header month name/year, 
+  // but keep the selected day if it's within the viewed month.
+  const headerDate = (selected && selected.getMonth() === month.getMonth() && selected.getFullYear() === month.getFullYear())
+    ? selected
+    : month;
 
   return (
     <div className="w-full max-w-xs mx-auto">

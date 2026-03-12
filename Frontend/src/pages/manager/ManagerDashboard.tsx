@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatTimeIST, formatIST, nowIST } from '@/utils/timezone';
-import { apiService } from '@/lib/api';
+import { apiService, API_BASE_URL } from '@/lib/api';
 import TruncatedText from '@/components/ui/TruncatedText';
 
 interface TeamMemberStatus {
@@ -66,7 +66,7 @@ const ManagerDashboard: React.FC = () => {
 
         // If activeTasks is 0, try to get actual count from tasks API
         let activeTasks = data.activeTasks || 0;
-        let pendingApprovals = data.pendingApprovals || 0;
+        const pendingApprovals = data.pendingApprovals || 0;
 
         if (activeTasks === 0) {
           try {
@@ -98,26 +98,37 @@ const ManagerDashboard: React.FC = () => {
         });
 
         // Current User Info
-        const userDept = (user?.department || '').trim().toLowerCase();
         const userId = String(user?.id);
+        let userDept = (user?.department || '').trim().toLowerCase();
+
+        // If userDept is missing from context, try to find it in the employees list
+        if (!userDept && employees) {
+          const currentUserData = employees.find((emp: any) => String(emp.user_id || emp.userId || emp.id) === userId);
+          if (currentUserData && currentUserData.department) {
+            userDept = currentUserData.department.trim().toLowerCase();
+          }
+        }
 
         // Calculate team members count (Self + Employees only)
         // Logic: Count = 1 (Self) + Employees/TeamLeads in department. 
         // Excludes other Managers, Admins, etc.
         let teamMembersCount = data.teamMembers || 0;
-        if (userDept) {
-          const relevantEmployees = employees.filter((emp: any) => {
-            const empDept = (emp.department || '').trim().toLowerCase();
-            const role = (emp.role || '').toLowerCase();
-            const uId = String(emp.user_id || emp.userId || emp.id);
+        
+        const relevantEmployees = employees.filter((emp: any) => {
+          const empDept = (emp.department || '').trim().toLowerCase();
+          const role = (emp.role || '').toLowerCase();
+          const uId = String(emp.user_id || emp.userId || emp.id);
 
-            // Allow Self
-            if (uId === userId) return true;
+          // Allow Self
+          if (uId === userId) return true;
 
-            // Allow Department + Role constraint
-            return empDept === userDept && (role === 'employee' || role === 'team_lead');
-          });
-          teamMembersCount = relevantEmployees.length;
+          // Allow Department + Role constraint
+          // If userDept is empty, just match the role
+          return (!userDept || empDept === userDept) && (role === 'employee' || role === 'team_lead');
+        });
+        
+        if (relevantEmployees.length > 0) {
+           teamMembersCount = relevantEmployees.length;
         }
 
         setStats({
@@ -132,7 +143,7 @@ const ManagerDashboard: React.FC = () => {
         });
 
         // Filter Team Activities
-        const allActivities = data.teamActivities || [];
+        const allActivities = data.teamActivities || data.recentActivities || [];
         const filteredActivities = allActivities.filter((activity: any) => {
           // Identify user from activity (it usually has a 'user' field containing name)
           const userName = (activity.user || '').trim();
@@ -144,15 +155,19 @@ const ManagerDashboard: React.FC = () => {
           // Exception: If the name matches current user's name (we might need to fetch user details to know name, 
           // or assume if it's not found in employee list it might be someone else, so safer to hide).
           if (!empInfo) {
-            // Try to see if it's self by some other means or just hide
+            // Try to see if it's self by some other means since we know our name
+            if (userName.includes('You') || (user && userName === user.name)) {
+               return true;
+            }
             return false;
           }
 
           // 1. Allow Self
           if (empInfo.userId === userId) return true;
 
-          // 2. Check Dept & Role
-          return empInfo.department === userDept && (empInfo.role === 'employee' || empInfo.role === 'team_lead');
+          // 2. If userDept is empty, just allow them since we don't have department info to filter by
+          // Or allow them if they match the department and role
+          return !userDept || (empInfo.department === userDept && (empInfo.role === 'employee' || empInfo.role === 'team_lead'));
         });
 
         setTeamActivities(filteredActivities);
@@ -168,14 +183,27 @@ const ManagerDashboard: React.FC = () => {
             year: now.getFullYear()
           });
 
-          if (metricsData && metricsData.departments) {
-            const userDeptMetrics = metricsData.departments.find((d: any) => (d.department || '').toLowerCase() === userDept);
-            if (userDeptMetrics) {
-              performanceData.push({
-                team: userDeptMetrics.department,
-                lead: user?.name || 'You',
-                members: teamMembersCount, // Use the count we calculated earlier
-                completion: userDeptMetrics.performanceScore || 0
+          if (metricsData && metricsData.departments && metricsData.departments.length > 0) {
+            if (userDept) {
+              const userDeptMetrics = metricsData.departments.find((d: any) => (d.department || '').toLowerCase() === userDept);
+              if (userDeptMetrics) {
+                performanceData.push({
+                  team: userDeptMetrics.department,
+                  lead: user?.name || 'You',
+                  members: teamMembersCount, // Use the count we calculated earlier
+                  completion: userDeptMetrics.performanceScore || 0
+                });
+              }
+            } else {
+              // Fallback if no userDept: just show the first available, or all of them.
+              // We'll just show the first one or all if they are a top level manager
+              metricsData.departments.slice(0, 3).forEach((d: any) => {
+                 performanceData.push({
+                   team: d.department,
+                   lead: user?.name || 'You',
+                   members: teamMembersCount > 0 ? teamMembersCount : d.employeeCount || 0,
+                   completion: d.performanceScore || 0
+                 });
               });
             }
           }
@@ -189,8 +217,13 @@ const ManagerDashboard: React.FC = () => {
           const allPerformance = data.teamPerformance || [];
           performanceData = allPerformance.filter((p: any) => {
             const pTeam = (p.team || '').trim().toLowerCase();
-            return pTeam === userDept;
+            return !userDept || pTeam === userDept;
           });
+          
+          // If still empty and we have any performance data, show all as fallback for manager
+          if (performanceData.length === 0 && allPerformance.length > 0) {
+              performanceData = allPerformance;
+          }
         }
         setTeamPerformance(performanceData);
 
@@ -204,14 +237,29 @@ const ManagerDashboard: React.FC = () => {
 
   useEffect(() => {
     const fetchTeamMembersWithStatus = async () => {
-      if (!user?.department) return;
-
       setIsLoadingTeamMembers(true);
       try {
         // Fetch all employees
         const employees = await apiService.getEmployees();
-        const userDept = user.department.trim().toLowerCase();
-        const userId = String(user.id);
+        
+        let userDept = (user?.department || '').trim().toLowerCase();
+        const userId = String(user?.id);
+
+        // If userDept is missing, extract it from employees list
+        if (!userDept && employees) {
+          const currentUserData = employees.find((emp: any) => String(emp.user_id || emp.userId || emp.id) === userId);
+          if (currentUserData && currentUserData.department) {
+            userDept = currentUserData.department.trim().toLowerCase();
+          }
+        }
+
+        if (!userDept && employees.length > 0) {
+            // Even if department is missing, we shouldn't totally fail. 
+            // We can just proceed and show all subordinates. But Manager typically has a department mapped.
+            // If they are explicitly assigned as Manager to NO department, it's safer to just skip or show none?
+            // Actually, we can show people who report directly to them. But the existing logic checks department.
+            // Let's at least not crash.
+        }
 
         // Filter by department and STRICT roles (Employee, Team Lead, and Self)
         const departmentEmployees = employees.filter((emp: any) => {
@@ -223,15 +271,21 @@ const ManagerDashboard: React.FC = () => {
           if (uId === userId) return true;
 
           // 2. Allow Department Members (Employee / Team Lead ONLY)
-          return empDept === userDept && (role === 'employee' || role === 'team_lead');
+          // If userDept is empty, we include them if they are employees/team leads, just to show something.
+          return (!userDept || empDept === userDept) && (role === 'employee' || role === 'team_lead');
         });
 
         // Fetch all tasks and today's attendance in parallel
         const [tasks, attendanceRes] = await Promise.all([
           apiService.getMyTasks(),
-          fetch('https://staffly.space/attendance/today', {
+          fetch(`${API_BASE_URL}/attendance/today`, {
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Authorization': (() => {
+                const token = localStorage.getItem('token');
+                if (!token) return '';
+                return token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+              })(),
+              'Content-Type': 'application/json',
             }
           })
         ]);

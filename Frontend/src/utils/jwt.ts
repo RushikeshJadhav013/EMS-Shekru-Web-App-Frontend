@@ -28,9 +28,13 @@ export const decodeJWT = (token: string): JWTPayload | null => {
 
     // Decode the payload (second part)
     const payload = parts[1];
-    
-    // Base64 URL decode
-    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+
+    // Base64 URL decode with padding handling
+    let base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) {
+      base64 += '=';
+    }
+
     const jsonPayload = decodeURIComponent(
       atob(base64)
         .split('')
@@ -50,18 +54,34 @@ export const decodeJWT = (token: string): JWTPayload | null => {
  */
 export const isTokenExpired = (token: string): boolean => {
   const payload = decodeJWT(token);
-  if (!payload || !payload.exp) {
-    return true; // If no expiration, consider it expired for security
+  if (!payload) {
+    return true;
+  }
+
+  // If no expiration claim, consider it not expired (more lenient for different backend configurations)
+  if (!payload.exp) {
+    return false;
   }
 
   // exp is in seconds, Date.now() is in milliseconds
   const expirationTime = payload.exp * 1000;
   const currentTime = Date.now();
 
-  // Add a 5-minute buffer to account for clock skew
-  const bufferTime = 5 * 60 * 1000; // 5 minutes in milliseconds
+  // Use a small 30-second buffer only to account for clock skew between client and server.
+  // A large buffer (e.g. 5 minutes) was causing valid tokens to be rejected on page refresh.
+  const bufferTime = 30 * 1000; // 30 seconds in milliseconds
 
-  return currentTime >= (expirationTime - bufferTime);
+  const isExpired = currentTime >= (expirationTime - bufferTime);
+
+  if (isExpired) {
+    console.warn('JWT Token is expired or near expiration:', {
+      currentTime: new Date(currentTime).toISOString(),
+      expirationTime: new Date(expirationTime).toISOString(),
+      remainingMs: expirationTime - currentTime
+    });
+  }
+
+  return isExpired;
 };
 
 /**
@@ -128,8 +148,9 @@ export const getUserFromToken = (token: string): { userId?: string; email?: stri
   }
 
   return {
-    userId: payload.user_id || payload.sub || payload.userId,
-    email: payload.email,
-    role: payload.role,
+    // Check all common JWT user ID field names used by different backends
+    userId: (payload.user_id ?? payload.sub ?? payload.userId ?? payload.id) as string | undefined,
+    email: payload.email as string | undefined,
+    role: payload.role as string | undefined,
   };
 };

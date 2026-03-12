@@ -1,19 +1,20 @@
-export type UserRole = 'admin' | 'hr' | 'manager' | 'team_lead' | 'employee';
+export type UserRole = "admin" | "hr" | "manager" | "team_lead" | "employee";
 
 export interface User {
   id: string;
   email: string;
   name: string;
   role: UserRole;
-  department: string;
+  branch?: string;
   designation: string;
   joiningDate: string;
   profilePhoto?: string;
   phone?: string;
   address?: string;
+  department?: string;
   managerId?: string;
   teamLeadId?: string;
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
   createdAt: string;
   updatedAt: string;
 }
@@ -45,7 +46,7 @@ export interface AttendanceRecord {
   workSummary?: string;
   workReport?: string;
   workLocation?: string;
-  status: 'present' | 'absent' | 'late' | 'half-day' | 'holiday' | 'weekend';
+  status: "present" | "absent" | "late" | "half-day" | "holiday" | "weekend";
   overtime?: number;
   remarks?: string;
   taskDeadlineReason?: string;
@@ -55,11 +56,17 @@ export interface AttendanceRecord {
 export interface LeaveRequest {
   id: string;
   userId: string;
-  leaveType: 'sick' | 'casual' | 'earned' | 'maternity' | 'paternity' | 'unpaid';
+  leaveType:
+    | "sick"
+    | "casual"
+    | "earned"
+    | "maternity"
+    | "paternity"
+    | "unpaid";
   startDate: string;
   endDate: string;
   reason: string;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  status: "pending" | "approved" | "rejected" | "cancelled";
   approvedBy?: string;
   approvedDate?: string;
   rejectionReason?: string;
@@ -74,12 +81,12 @@ export interface Task {
   description: string;
   assignedTo: string[];
   assignedBy: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'todo' | 'in-progress' | 'overdue' | 'completed' | 'cancelled';
+  priority: "low" | "medium" | "high" | "urgent";
+  status: "todo" | "in-progress" | "overdue" | "completed" | "cancelled";
   deadline: string;
   startDate: string;
   completedDate?: string;
-  projectId?: string;
+  projectId?: number | null;
   tags: string[];
   attachments?: string[];
   comments?: TaskComment[];
@@ -98,13 +105,13 @@ export interface TaskComment {
   createdAt: string;
 }
 
-export interface Department {
+export interface Branch {
   id: number | string;
   name: string;
   code: string;
   managerId?: string;
   description?: string;
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
   createdAt?: string;
   updatedAt?: string;
   employeeCount?: number;
@@ -117,7 +124,7 @@ export interface Notification {
   userId: string;
   title: string;
   message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: "info" | "success" | "warning" | "error";
   read: boolean;
   actionUrl?: string;
   createdAt: string;
@@ -131,7 +138,7 @@ export interface DashboardStats {
   completedTasks: number;
   pendingLeaveRequests: number;
   upcomingHolidays: number;
-  totalDepartments: number;
+  totalBranches: number;
 }
 
 // Chat Types
@@ -143,7 +150,7 @@ export interface ChatMessage {
   senderRole: UserRole;
   senderAvatar?: string;
   content: string;
-  messageType: 'text' | 'emoji' | 'file' | 'image';
+  messageType: "text" | "emoji" | "file" | "image";
   timestamp: string;
   isRead: boolean;
   replyTo?: string; // ID of message being replied to
@@ -154,7 +161,7 @@ export interface ChatMessage {
 export interface Chat {
   id: string;
   name: string;
-  type: 'individual' | 'group';
+  type: "individual" | "group";
   participants: ChatParticipant[];
   createdBy: string;
   createdAt: string;
@@ -171,7 +178,7 @@ export interface ChatParticipant {
   userId: string;
   userName: string;
   userRole: UserRole;
-  department: string;
+  branch: string;
   joinedAt: string;
   isAdmin?: boolean; // For group chats
   lastSeen?: string;
@@ -179,7 +186,7 @@ export interface ChatParticipant {
 }
 
 export interface CreateChatRequest {
-  type: 'individual' | 'group';
+  type: "individual" | "group";
   name?: string; // Required for group chats
   description?: string; // Optional for group chats
   participantIds: string[];
@@ -195,7 +202,7 @@ export interface ChatPermissions {
 export interface SalaryComponent {
   name: string;
   amount: number;
-  type: 'earning' | 'deduction';
+  type: "earning" | "deduction";
   isTaxable: boolean;
 }
 
@@ -212,20 +219,22 @@ export interface SalaryStructure {
   professionalTax: number;
   pfEmployer: number;
   pfEmployee: number;
-  variablePayType: 'none' | 'percentage' | 'fixed';
+  variablePayType: "none" | "percentage" | "fixed";
   variablePayValue: number;
   variablePay?: number; // Annual variable pay from API
   monthlyGross: number;
   monthlyDeductions: number;
   otherDeduction: number;
+  monthlyCtc?: number;
   monthlyInHand: number;
   workingDays: number;
-  paymentMode: 'bank_transfer' | 'cash' | 'cheque';
+  paymentMode: "bank_transfer" | "cash" | "cheque";
   bankName: string;
   accountNumber: string;
   ifscCode: string;
   panNumber: string;
   uanNumber: string;
+  pfNumber?: string;
   effectiveDate: string;
   createdAt: string;
   updatedAt: string;
@@ -243,6 +252,8 @@ export interface SalaryStructure {
   total_deductions_annual?: number;
   ctc_annual?: number;
   monthly_ctc?: number;
+  monthly_in_hand?: number;
+  package_ctc_annual?: number;
   is_active?: boolean;
 }
 
@@ -293,7 +304,7 @@ export interface Increment {
 export interface SalaryCreateData {
   userId: string;
   annualCtc: number;
-  variablePayType: 'none' | 'percentage' | 'fixed';
+  variablePayType: "none" | "percentage" | "fixed";
   variablePayValue: number;
   panNumber: string;
   uanNumber: string;
@@ -301,5 +312,5 @@ export interface SalaryCreateData {
   accountNumber: string;
   ifscCode: string;
   workingDays: number;
-  paymentMode: 'bank_transfer' | 'cash' | 'cheque';
+  paymentMode: "bank_transfer" | "cash" | "cheque";
 }

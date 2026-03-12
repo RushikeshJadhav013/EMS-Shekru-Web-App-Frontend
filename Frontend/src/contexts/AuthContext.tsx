@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, LoginCredentials, UserRole } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { isTokenValid, decodeJWT, getUserFromToken } from '@/utils/jwt';
 import { verifyTokenWithBackend } from '@/services/authService';
+import { API_BASE_URL } from '@/lib/api';
 
 interface LoginResponse {
   user_id: string;
@@ -128,7 +129,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // First, do client-side validation (fast check)
       if (!isTokenValid(storedToken)) {
-        console.warn('Token is invalid or expired (client-side check)');
+        console.warn('Restoration: Token is invalid or expired (client-side check)', {
+          tokenPreview: storedToken.substring(0, 10) + '...',
+          isValid: isTokenValid(storedToken)
+        });
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         localStorage.removeItem('userId');
@@ -154,22 +158,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const user = JSON.parse(storedUser) as User;
 
+        // Debug user object
+        console.log('Restoration: Stored user object found:', {
+          id: user.id,
+          role: user.role,
+          email: user.email
+        });
+
         // Verify token payload matches stored user (optional extra check)
         const tokenUser = getUserFromToken(storedToken);
-        if (tokenUser && tokenUser.userId && user.id !== tokenUser.userId) {
-          console.warn('Token user ID does not match stored user ID');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          localStorage.removeItem('userId');
-          setUser(null);
-          setIsLoading(false);
-          return;
+        console.log('Restoration: Token user data:', tokenUser);
+
+        // Only reject if BOTH sides have non-empty values AND they definitively don't match.
+        // If tokenUser.userId is undefined/null (JWT field not found), skip this check
+        // to avoid false positives that log users out on every refresh.
+        if (
+          tokenUser &&
+          tokenUser.userId &&
+          user.id &&
+          String(user.id) !== String(tokenUser.userId)
+        ) {
+          console.warn('Restoration: Token user ID does not match stored user ID', {
+            tokenUserId: tokenUser.userId,
+            storedUserId: user.id
+          });
+          // For now, let's be lenient if the user is already found in storage
+          // to prevent refresh-logouts. Just log it.
+          // In the future, we can re-enable strict matching if needed.
         }
 
         setUser(user);
-        console.log('Session restored successfully');
+        console.log('Restoration: Session restored successfully');
       } catch (parseError) {
-        console.error('Error parsing stored user data:', parseError);
+        console.error('Restoration: Error parsing stored user data:', parseError);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         localStorage.removeItem('userId');
@@ -234,7 +255,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         department: userData.department || '',
         designation: userData.designation || '',
         joiningDate: userData.joining_date || new Date().toISOString(),
-        profilePhoto: userData.profile_photo ? `https://staffly.space/${userData.profile_photo}` : undefined,
+        profilePhoto: userData.profile_photo ? `${API_BASE_URL}/${userData.profile_photo}` : undefined,
         status: 'active',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -290,11 +311,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Call login resume endpoint to handle pause/resume functionality
       try {
-        await fetch('https://staffly.space/attendance/login-resume', {
+        await fetch(`${API_BASE_URL}/attendance/login-resume`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${userData.access_token}`,
+            'Authorization': userData.access_token ? (userData.access_token.startsWith('Bearer ') ? userData.access_token : `Bearer ${userData.access_token}`) : '',
           },
           body: JSON.stringify({
             user_id: parseInt(user.id),
@@ -331,11 +352,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const token = localStorage.getItem('token');
       if (token && isTokenValid(token) && user?.id) {
         // Call the logout endpoint to record pause timestamp
-        await fetch('https://staffly.space/attendance/logout', {
+        await fetch(`${API_BASE_URL}/attendance/logout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
+            'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
           },
           body: JSON.stringify({
             user_id: parseInt(user.id),

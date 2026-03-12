@@ -25,9 +25,12 @@ import {
   Star,
   Edit,
   Check,
-  ChevronsUpDown
+  ChevronsUpDown,
+  Loader2,
+  Calendar as CalendarIcon
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { apiService, API_BASE_URL } from '@/lib/api';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -51,6 +54,9 @@ interface EmployeePerformance {
   overallRating: number;
   month: string;
   completedTasks?: number;
+  totalTasks?: number;
+  attendanceDays?: number;
+  workingDays?: number;
   taskEfficiency?: number;
 }
 
@@ -87,7 +93,6 @@ export default function Reports() {
   const currentDate = nowIST();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth().toString());
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear().toString());
-  const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [yearOpen, setYearOpen] = useState(false);
 
   // Check URL for tab parameter
@@ -99,7 +104,7 @@ export default function Reports() {
   const [employeeRatings, setEmployeeRatings] = useState<Record<string, EmployeeRating>>({});
   const [expandedDepartments, setExpandedDepartments] = useState<Set<string>>(new Set());
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [exportEmployee, setExportEmployee] = useState<{ id: string; name: string } | null>(null);
+  const [exportEmployee, setExportEmployee] = useState<{ id: string; name: string; employee_id?: string } | null>(null);
 
   // State for API data
   const [employeePerformance, setEmployeePerformance] = useState<EmployeePerformance[]>([]);
@@ -107,6 +112,7 @@ export default function Reports() {
   const [executiveSummary, setExecutiveSummary] = useState<any>(null);
   const [departments, setDepartments] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
 
   // Load ratings from localStorage on mount
   useEffect(() => {
@@ -123,50 +129,49 @@ export default function Reports() {
     }
   }, [employeeRatings]);
 
+  // Load departments list once on mount
+  useEffect(() => {
+    loadDepartments();
+  }, []);
+
   // Load report data when filters change
   useEffect(() => {
     loadReportData();
-  }, [selectedMonth, selectedYear, selectedDepartment]);
+  }, [selectedMonth, selectedYear]);
+
+  const loadDepartments = async () => {
+    try {
+      const data = await apiService.getReportDepartments();
+      if (data && data.departments) {
+        // Unique and sorted departments
+        const deptList = Array.from(new Set(data.departments))
+          .filter(Boolean)
+          .sort() as string[];
+        setDepartments(deptList);
+      }
+    } catch (error) {
+      console.error('Failed to load departments list:', error);
+    }
+  };
 
   const loadReportData = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Authorization': token ? `Bearer ${token}` : '',
-      };
-
-      const month = parseInt(selectedMonth);
+      const month = parseInt(selectedMonth) + 1; // Convert to 1-indexed for API
       const year = parseInt(selectedYear);
-      const dept = selectedDepartment !== 'all' ? selectedDepartment : undefined;
 
-      // Build query parameters
-      const empParams = new URLSearchParams({
-        month: month.toString(),
-        year: year.toString(),
-        ...(dept && { department: dept }),
-      });
-
-      const deptParams = new URLSearchParams({
-        month: month.toString(),
-        year: year.toString(),
-      });
-
-      const summaryParams = new URLSearchParams({
-        month: month.toString(),
-        year: year.toString(),
-      });
-
-      // Fetch all data in parallel
-      const [empResponse, deptResponse, summaryResponse] = await Promise.all([
-        fetch(`https://staffly.space/reports/employee-performance?${empParams}`, { headers }),
-        fetch(`https://staffly.space/reports/department-metrics?${deptParams}`, { headers }),
-        fetch(`https://staffly.space/reports/executive-summary?${summaryParams}`, { headers }),
+      // Fetch all data in parallel using apiService
+      const [empData, deptData, summaryData] = await Promise.all([
+        apiService.getEmployeePerformance({
+          month,
+          year
+        }),
+        apiService.getDepartmentMetrics({ month, year }),
+        apiService.getExecutiveSummary({ month, year }),
       ]);
 
-      // Handle employee performance response
-      if (empResponse.ok) {
-        const empData = await empResponse.json();
+      // Handle employee performance
+      if (empData && empData.employees) {
         const rawEmployees = empData.employees || [];
 
         // Map raw API data to EmployeePerformance interface with robust fallbacks
@@ -183,70 +188,41 @@ export default function Reports() {
           overallRating: emp.overallRating || emp.overall_rating || 0,
           month: emp.month || selectedMonth,
           completedTasks: emp.completedTasks || emp.completed_tasks || 0,
+          totalTasks: emp.totalTasks || emp.total_tasks || 0,
+          attendanceDays: emp.attendanceDays || emp.attendance_days || 0,
+          workingDays: emp.workingDays || emp.working_days || 0,
           taskEfficiency: emp.taskEfficiency || emp.task_efficiency || 0
         }));
 
         setEmployeePerformance(employees);
-
-        // Update departments list to only include those with employees AND are considered Core Departments
-        const employeeDepts = Array.from(
-          new Set(
-            employees
-              .map((emp: EmployeePerformance) => emp.department)
-              .filter((dept: string) => {
-                if (!dept || dept.includes(',')) return false;
-                // Filter for Core Departments (case-insensitive)
-                return CORE_DEPARTMENTS.some(core => core.toLowerCase() === dept.toLowerCase());
-              })
-          )
-        ).sort() as string[];
-
-        // If filtering leaves nothing but we have employees, fallback to showing all non-empty departments
-        // This prevents showing an empty list if department naming conventions don't match standard Core names
-        const finalDepts = employeeDepts.length > 0 ? employeeDepts : Array.from(
-          new Set(
-            employees
-              .map((emp: EmployeePerformance) => emp.department)
-              .filter((dept: string) => dept && !dept.includes(','))
-          )
-        ).sort() as string[];
-
-        setDepartments(finalDepts);
-
-        // Reset department filter if selected department has no employees
-        if (selectedDepartment !== 'all' && !employeeDepts.includes(selectedDepartment)) {
-          setSelectedDepartment('all');
-        }
       } else {
-        console.error('Employee performance error:', empResponse.status, await empResponse.text());
         setEmployeePerformance([]);
       }
 
-      // Handle department metrics response
-      if (deptResponse.ok) {
-        const deptData = await deptResponse.json();
-        setDepartmentMetrics(deptData.departments || []);
+      // Handle department metrics
+      if (deptData && deptData.departments) {
+        setDepartmentMetrics(deptData.departments);
+
+        // Update departments list if it's still empty or to ensure we have any new ones from metrics
+        if (departments.length === 0) {
+          const metricsDepts = deptData.departments.map((d: any) => d.department).filter(Boolean);
+          const employeeDepts = empData?.employees?.map((e: any) => e.department || e.department_name).filter(Boolean) || [];
+
+          const allDepts = Array.from(new Set([...metricsDepts, ...employeeDepts]))
+            .filter(dept => dept && !dept.includes(','))
+            .sort() as string[];
+
+          setDepartments(allDepts);
+        }
       } else {
-        console.error('Department metrics error:', deptResponse.status, await deptResponse.text());
         setDepartmentMetrics([]);
       }
 
-      // Handle executive summary response
-      if (summaryResponse.ok) {
-        const summaryData = await summaryResponse.json();
+      // Handle executive summary
+      if (summaryData) {
         setExecutiveSummary(summaryData);
       } else {
-        console.error('Executive summary error:', summaryResponse.status, await summaryResponse.text());
         setExecutiveSummary(null);
-      }
-
-      // Show error toast if any request failed
-      if (!empResponse.ok || !deptResponse.ok || !summaryResponse.ok) {
-        toast({
-          title: 'Partial Data Load',
-          description: 'Some report data could not be loaded. Check console for details.',
-          variant: 'destructive',
-        });
       }
     } catch (error) {
       console.error('Failed to load report data:', error);
@@ -456,14 +432,13 @@ export default function Reports() {
     return { variant: 'destructive' as const, text: 'Poor' };
   };
 
-  const openExportDialog = (employee?: { id: string; name: string }) => {
+  const openExportDialog = (employee?: { id: string; name: string; employee_id?: string }) => {
     setExportEmployee(employee || null);
     setExportDialogOpen(true);
   };
 
   const handleQuickExport = async (format: 'csv' | 'pdf' = 'csv') => {
     try {
-      // Generate full report with current filters
       // Generate full report with current filters
       const startDate = new Date(parseInt(selectedYear), parseInt(selectedMonth), 1);
       const endDate = new Date(parseInt(selectedYear), parseInt(selectedMonth) + 1, 0);
@@ -474,17 +449,11 @@ export default function Reports() {
         end_date: `${selectedYear}-${String(parseInt(selectedMonth) + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`,
       });
 
-      if (selectedDepartment !== 'all') {
-        // If department filter is applied, we need to get all employees from that department
-        // The backend will filter by employee_id, so we'll let it handle all employees
-      }
-
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://staffly.space/reports/export?${params}`, {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
-      });
+      const headers = {
+        'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
+      };
+      const response = await fetch(`${API_BASE_URL}/reports/export?${params}`, { headers });
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Unknown error');
@@ -523,7 +492,7 @@ export default function Reports() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 relative">
-      {!['admin', 'hr'].includes(user?.role || '') && <V2Overlay fallbackPath="/dashboard" />}
+      {!['admin', 'hr', 'manager', 'team_lead', 'employee'].includes(user?.role || '') && <V2Overlay fallbackPath="/dashboard" />}
       <div className="w-full space-y-6 pb-20">
         {/* Header Section - aligned with other modern pages */}
         <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-sm mt-1">
@@ -603,18 +572,7 @@ export default function Reports() {
               </PopoverContent>
             </Popover>
 
-            <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-              <SelectTrigger className="w-[160px] h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-left">
-                <Filter className="h-4 w-4 mr-1.5 text-slate-400" />
-                <SelectValue placeholder="Department" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-sm">All Departments</SelectItem>
-                {departments.map(dept => (
-                  <SelectItem key={dept} value={dept} className="text-sm">{dept}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
           </div>
         </div>
 
@@ -784,7 +742,7 @@ export default function Reports() {
                                           <Button
                                             size="sm"
                                             variant="ghost"
-                                            onClick={() => openExportDialog({ id: employee.employeeId, name: employee.name })}
+                                            onClick={() => openExportDialog({ id: employee.id, name: employee.name, employee_id: employee.employeeId })}
                                             className="h-8 px-3 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
                                           >
                                             <Download className="h-4 w-4 mr-1.5" />
@@ -824,24 +782,26 @@ export default function Reports() {
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
                                           <div className="flex items-center gap-1.5 mb-1.5">
                                             <Check className="h-4 w-4 text-orange-500" />
-                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Completed</p>
+                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Tasks</p>
                                           </div>
                                           <div className="flex items-baseline gap-1">
                                             <span className="text-2xl font-black text-slate-700 dark:text-slate-300">
                                               {employee.completedTasks || 0}
                                             </span>
+                                            <span className="text-xs text-slate-400 font-medium">/ {employee.totalTasks || 0}</span>
                                           </div>
                                         </div>
 
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
                                           <div className="flex items-center gap-1.5 mb-1.5">
-                                            <TrendingUp className="h-4 w-4 text-blue-500" />
-                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Efficiency</p>
+                                            <Calendar className="h-4 w-4 text-indigo-500" />
+                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Days</p>
                                           </div>
                                           <div className="flex items-baseline gap-1">
                                             <span className="text-2xl font-black text-slate-700 dark:text-slate-300">
-                                              {employee.taskEfficiency || 0}
+                                              {employee.attendanceDays || 0}
                                             </span>
+                                            <span className="text-xs text-slate-400 font-medium">/ {employee.workingDays || 0}</span>
                                           </div>
                                         </div>
 
@@ -1230,21 +1190,6 @@ export default function Reports() {
                   )}
                 </div>
 
-                {/* Export Actions */}
-                <div className="flex flex-wrap items-center justify-end gap-4 pt-6">
-                  <Button variant="ghost" size="sm" onClick={() => handleQuickExport('csv')} className="h-10 text-xs font-black text-slate-500 hover:text-slate-900 dark:hover:text-white tracking-widest">
-                    <FileSpreadsheet className="h-4 w-4 mr-2" />
-                    GENERATE CSV
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleQuickExport('pdf')} className="h-10 text-xs font-black text-slate-500 hover:text-slate-900 dark:hover:text-white tracking-widest">
-                    <FileText className="h-4 w-4 mr-2" />
-                    GENERATE PDF
-                  </Button>
-                  <Button onClick={() => openExportDialog()} className="h-10 px-6 text-xs font-black bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800 shadow-xl transition-all hover:scale-[1.02] tracking-widest">
-                    <Download className="h-4 w-4 mr-2" />
-                    ADVANCED EXPORT
-                  </Button>
-                </div>
               </div>
             )}
           </TabsContent>

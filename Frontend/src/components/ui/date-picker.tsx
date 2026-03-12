@@ -1,29 +1,29 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { format } from "date-fns"
-import { Calendar as CalendarIcon } from "lucide-react"
-import { nowIST } from "@/utils/timezone"
+import * as React from "react";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { nowIST } from "@/utils/timezone";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { CalendarDatePicker } from "@/components/ui/calendar-date-picker"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { CalendarDatePicker } from "@/components/ui/calendar-date-picker";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 
 interface DatePickerProps {
-  date?: Date
-  onDateChange?: (date: Date | undefined) => void
-  placeholder?: string
-  className?: string
-  disabled?: boolean
-  disablePastDates?: boolean
-  fromDate?: Date
-  toDate?: Date
+  date?: Date;
+  onDateChange?: (date: Date | undefined) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+  disablePastDates?: boolean;
+  fromDate?: Date;
+  toDate?: Date;
 }
 
 export function DatePicker({
@@ -37,10 +37,51 @@ export function DatePicker({
   toDate,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
-  const [currentMonth, setCurrentMonth] = React.useState<Date>(date || nowIST());
-
   // Set minimum date to today if disablePastDates is true
   const minDate = disablePastDates ? nowIST() : fromDate;
+
+  const [currentMonth, setCurrentMonth] = React.useState<Date>(() => {
+    if (date) return date;
+    if (minDate && minDate > nowIST()) return minDate;
+    if (toDate && toDate < nowIST()) return toDate;
+    return nowIST();
+  });
+
+  // Sync current month when date, minDate, or toDate changes
+  React.useEffect(() => {
+    if (open) {
+      if (date) {
+        const normalizedDate = new Date(date);
+        normalizedDate.setHours(0, 0, 0, 0);
+
+        if (minDate) {
+          const normalizedMin = new Date(minDate);
+          normalizedMin.setHours(0, 0, 0, 0);
+          if (normalizedDate < normalizedMin) {
+            setCurrentMonth(minDate);
+            return;
+          }
+        }
+
+        if (toDate) {
+          const normalizedMax = new Date(toDate);
+          normalizedMax.setHours(23, 59, 59, 999);
+          if (normalizedDate > normalizedMax) {
+            setCurrentMonth(toDate);
+            return;
+          }
+        }
+
+        setCurrentMonth(date);
+      } else if (minDate && minDate > nowIST()) {
+        setCurrentMonth(minDate);
+      } else if (toDate && toDate < nowIST()) {
+        setCurrentMonth(toDate);
+      } else {
+        setCurrentMonth(nowIST());
+      }
+    }
+  }, [open, date, minDate, toDate]);
 
   const handleSelect = (selectedDate: Date | undefined) => {
     onDateChange?.(selectedDate);
@@ -50,18 +91,18 @@ export function DatePicker({
   return (
     <>
       <Button
-        variant={"outline"}
+        variant="ghost"
         className={cn(
-          "w-full justify-start text-left font-normal h-11 bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950 dark:hover:to-indigo-950 transition-all duration-300",
+          "w-full justify-start text-left font-normal h-11 bg-white dark:bg-gray-950 border-2 border-solid border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 hover:border-blue-400 dark:hover:border-blue-500 hover:text-slate-900 dark:hover:text-slate-100 transition-none",
           !date && "text-muted-foreground hover:text-muted-foreground",
           date && "text-foreground hover:text-foreground",
-          className
+          className,
         )}
         disabled={disabled}
         onClick={() => setOpen(true)}
       >
         <CalendarIcon className="mr-2 h-4 w-4" />
-        {date ? format(date, "PPP") : <span>{placeholder}</span>}
+        {date ? format(date, "dd MMM yyyy") : <span>{placeholder}</span>}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -80,17 +121,21 @@ export function DatePicker({
               currentMonth={currentMonth}
               onMonthChange={setCurrentMonth}
               minDate={minDate}
-              disabled={(date) => {
-                if (minDate && date < minDate) {
-                  // Disable dates before minDate
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  const checkDate = new Date(date);
-                  checkDate.setHours(0, 0, 0, 0);
-                  return checkDate < today;
+              toDate={toDate}
+              disabled={(checkDate) => {
+                const normalized = new Date(checkDate);
+                normalized.setHours(0, 0, 0, 0);
+                // Disable dates strictly before the minimum allowed date
+                if (minDate) {
+                  const minNormalized = new Date(minDate);
+                  minNormalized.setHours(0, 0, 0, 0);
+                  if (normalized < minNormalized) return true;
                 }
-                if (toDate && date > toDate) {
-                  return true;
+                // Disable dates strictly after the maximum allowed date
+                if (toDate) {
+                  const maxNormalized = new Date(toDate);
+                  maxNormalized.setHours(23, 59, 59, 999);
+                  if (normalized > maxNormalized) return true;
                 }
                 return false;
               }}
@@ -100,5 +145,5 @@ export function DatePicker({
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

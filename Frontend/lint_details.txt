@@ -1,0 +1,20 @@
+﻿
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\salary\SalaryDetails.tsx
+  201:8   warning  React Hook useEffect has a missing dependency: 'incrementForm'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  288:25  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  297:46  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  443:23  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  472:23  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  616:25  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  656:23  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  689:23  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  728:23  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  755:23  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  778:23  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  805:23  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  824:23  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  886:23  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  899:23  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+
+Γ£û 15 problems (14 errors, 1 warning)
+

@@ -60,9 +60,8 @@ export const NotificationBell: React.FC = () => {
   // Group notifications by type (maintaining sort order)
   const leaveNotifications = allNotifications.filter(n => n.type === 'leave');
   const taskNotifications = allNotifications.filter(n => n.type === 'task');
-  const salaryNotifications = allNotifications.filter(n => n.type === 'salary');
   const shiftNotifications = allNotifications.filter(n => n.type === 'shift');
-  const otherNotifications = allNotifications.filter(n => !['leave', 'task', 'salary', 'shift'].includes(n.type));
+  const otherNotifications = allNotifications.filter(n => !['leave', 'task', 'shift'].includes(n.type));
 
   const handleNotificationClick = async (notification: any) => {
     // Remove notification from list immediately (clearNotification handles marking as read)
@@ -78,10 +77,6 @@ export const NotificationBell: React.FC = () => {
     } else if (notification.type === 'task' && notification.metadata?.taskId) {
       // For task notifications, go to role-based tasks page with taskId
       navigate(`/${userRole}/tasks?taskId=${notification.metadata.taskId}`);
-      setIsOpen(false);
-    } else if (notification.type === 'salary') {
-      // For salary notifications, go to salary dashboard
-      navigate('/salary');
       setIsOpen(false);
     } else if (notification.type === 'shift') {
       // For shift notifications, redirect to Team page
@@ -113,8 +108,6 @@ export const NotificationBell: React.FC = () => {
         return <Calendar className="h-5 w-5 text-purple-500" />;
       case 'task':
         return <FileText className="h-5 w-5 text-blue-500" />;
-      case 'salary':
-        return <IndianRupee className="h-5 w-5 text-emerald-500" />;
       case 'shift':
         return <Clock className="h-5 w-5 text-orange-500" />;
       case 'warning':
@@ -130,8 +123,6 @@ export const NotificationBell: React.FC = () => {
         return 'bg-purple-50 dark:bg-purple-950/20 border-l-4 border-purple-500';
       case 'task':
         return 'bg-blue-50 dark:bg-blue-950/20 border-l-4 border-blue-500';
-      case 'salary':
-        return 'bg-emerald-50 dark:bg-emerald-950/20 border-l-4 border-emerald-500';
       case 'shift':
         return 'bg-orange-50 dark:bg-orange-950/20 border-l-4 border-orange-500';
       case 'warning':
@@ -147,8 +138,6 @@ export const NotificationBell: React.FC = () => {
         return 'Leave';
       case 'task':
         return 'Task';
-      case 'salary':
-        return 'Salary';
       case 'shift':
         return 'Shift';
       default:
@@ -329,19 +318,6 @@ export const NotificationBell: React.FC = () => {
                 </TabsTrigger>
               )}
 
-              {salaryNotifications.length > 0 && (
-                <TabsTrigger
-                  value="salary"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-500 data-[state=active]:bg-transparent px-4 py-2"
-                >
-                  <IndianRupee className="h-4 w-4 mr-1 text-emerald-500" />
-                  <span className="text-xs font-medium">Salary</span>
-                  <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-emerald-500 text-white">
-                    {salaryNotifications.length}
-                  </Badge>
-                </TabsTrigger>
-              )}
-
               {shiftNotifications.length > 0 && (
                 <TabsTrigger
                   value="shift"
@@ -393,18 +369,6 @@ export const NotificationBell: React.FC = () => {
                 )}
               </TabsContent>
 
-              <TabsContent value="salary" className="m-0 divide-y">
-                {salaryNotifications.length === 0 ? (
-                  <div className="flex items-center justify-center py-8 text-muted-foreground">
-                    <p className="text-sm">No salary notifications</p>
-                  </div>
-                ) : (
-                  salaryNotifications.map((notification) => (
-                    <NotificationItem key={notification.id} notification={notification} />
-                  ))
-                )}
-              </TabsContent>
-
               <TabsContent value="shift" className="m-0 divide-y">
                 {shiftNotifications.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
@@ -417,6 +381,19 @@ export const NotificationBell: React.FC = () => {
                 )}
               </TabsContent>
             </ScrollArea>
+            <div className="p-3 border-t bg-slate-50 dark:bg-slate-900 sticky bottom-0">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-xs font-bold hover:bg-blue-600 hover:text-white transition-all duration-300"
+                onClick={() => {
+                  navigate(`/${user?.role}/inbox`);
+                  setIsOpen(false);
+                }}
+              >
+                View All Notifications
+              </Button>
+            </div>
           </Tabs>
         )}
       </DropdownMenuContent>

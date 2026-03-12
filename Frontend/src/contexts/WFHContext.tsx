@@ -30,6 +30,7 @@ interface WFHDecision {
   id: number;
   user_id: number;
   employee_name?: string;
+  requester_role?: string;
   start_date: string;
   end_date: string;
   reason: string;
@@ -152,6 +153,7 @@ export const WFHProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           id: req.wfh_id || req.id,
           user_id: req.user_id,
           employee_name: req.employee_name || req.name || 'Unknown',
+          requester_role: req.role || req.requester_role || 'employee',
           start_date: req.start_date,
           end_date: req.end_date,
           reason: req.reason,
@@ -161,7 +163,7 @@ export const WFHProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           updated_at: req.updated_at,
           rejection_reason: req.rejection_reason,
           approved_by: req.approved_by,
-          approved_at: req.updated_at,
+          approved_at: req.approved_at || req.updated_at,
         }))
         .sort((a: WFHDecision, b: WFHDecision) => {
           return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();

@@ -20,7 +20,7 @@ import { formatIST, formatDateTimeIST, formatTimeIST, formatDateIST, todayIST, f
 import { getCurrentLocation as fetchPreciseLocation, getCurrentLocationFast, getCurrentLocationWithContinuousImprovement } from '@/utils/geolocation';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Pagination } from '@/components/ui/pagination';
-import { apiService } from '@/lib/api';
+import { apiService, API_BASE_URL } from '@/lib/api';
 
 type GeoLocation = {
   latitude: number;
@@ -99,7 +99,13 @@ const AttendancePage: React.FC = () => {
   const fetchTodayAttendance = async () => {
     if (!user?.id) return;
     try {
-      const res = await fetch(`https://staffly.space/attendance/my-attendance/${user.id}`);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/attendance/my-attendance/${user.id}`, {
+        headers: {
+          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
+          'Content-Type': 'application/json',
+        },
+      });
       if (!res.ok) throw new Error('Failed to fetch attendance');
       const data = await res.json();
 
@@ -525,8 +531,12 @@ const AttendancePage: React.FC = () => {
 
       // For now, we'll skip the selfie requirement for checkout
       // In a real implementation, you might want to add selfie capture here
-      const response = await fetch('https://staffly.space/attendance/check-out', {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/attendance/check-out`, {
         method: 'POST',
+        headers: {
+          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
+        },
         body: formData
       });
 
@@ -595,14 +605,16 @@ const AttendancePage: React.FC = () => {
       formData.append('selfie', selfieBlob, 'selfie.jpg');
 
       let apiUrl = '';
-      if (isCheckingIn) apiUrl = 'https://staffly.space/attendance/check-in';
-      else apiUrl = 'https://staffly.space/attendance/check-out';
+      if (isCheckingIn) apiUrl = `${API_BASE_URL}/attendance/check-in`;
+      else apiUrl = `${API_BASE_URL}/attendance/check-out`;
 
       const token = localStorage.getItem('token');
       const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData,
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        headers: {
+          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
+        }
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
@@ -1239,6 +1251,13 @@ const AttendancePage: React.FC = () => {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
+                            {record.checkInSelfie && (
+                              <img
+                                src={record.checkInSelfie.startsWith('http') ? record.checkInSelfie : `${API_BASE_URL}${record.checkInSelfie}`}
+                                alt="Check-in Selfie"
+                                className="h-10 w-10 rounded-full object-cover border border-gray-200 dark:border-gray-700"
+                              />
+                            )}
                             {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
                           </div>
                         </div>

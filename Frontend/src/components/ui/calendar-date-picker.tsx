@@ -26,6 +26,11 @@ export function CalendarDatePicker({
     setMonth(currentMonth);
   }, [currentMonth]);
 
+  const safeMonth = React.useMemo(() => {
+    if (month && !isNaN(month.getTime())) return month;
+    return nowIST();
+  }, [month]);
+
   const handleMonthChange = (newMonth: Date) => {
     // Prevent navigation to months before minDate
     if (minDate) {
@@ -39,12 +44,24 @@ export function CalendarDatePicker({
       }
     }
 
+    // Prevent navigation to months after toDate (maxDate)
+    if (props.toDate) {
+      const maxYear = props.toDate.getFullYear();
+      const maxMonthIndex = props.toDate.getMonth();
+      const newYear = newMonth.getFullYear();
+      const newMonthIndex = newMonth.getMonth();
+
+      if (newYear > maxYear || (newYear === maxYear && newMonthIndex > maxMonthIndex)) {
+        return;
+      }
+    }
+
     setMonth(newMonth);
     onMonthChange?.(newMonth);
   };
 
-  const currentYear = month.getFullYear();
-  const currentMonthIndex = month.getMonth();
+  const currentYear = safeMonth.getFullYear();
+  const currentMonthIndex = safeMonth.getMonth();
 
   const years = React.useMemo(() => {
     const currentYear = nowIST().getFullYear();
@@ -89,6 +106,14 @@ export function CalendarDatePicker({
     const minMonthIndex = minDate.getMonth();
     return currentYear < minYear || (currentYear === minYear && currentMonthIndex <= minMonthIndex);
   }, [minDate, currentYear, currentMonthIndex]);
+
+  // Check if next month button should be disabled
+  const isNextMonthDisabled = React.useMemo(() => {
+    if (!props.toDate) return false;
+    const maxYear = props.toDate.getFullYear();
+    const maxMonthIndex = props.toDate.getMonth();
+    return currentYear > maxYear || (currentYear === maxYear && currentMonthIndex >= maxMonthIndex);
+  }, [props.toDate, currentYear, currentMonthIndex]);
 
   const enhancedClassNames = {
     ...classNames,
@@ -144,7 +169,8 @@ export function CalendarDatePicker({
           variant="ghost"
           size="icon"
           onClick={goToNextMonth}
-          className="h-8 w-8 flex-shrink-0 rounded-full hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/40 dark:hover:to-indigo-900/40 transition-all duration-200"
+          disabled={isNextMonthDisabled}
+          className="h-8 w-8 flex-shrink-0 rounded-full hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/40 dark:hover:to-indigo-900/40 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ChevronRight className="h-4 w-4 text-slate-600 dark:text-slate-300" />
         </Button>
@@ -153,10 +179,11 @@ export function CalendarDatePicker({
       {/* Calendar - Clean, neutral styling without holiday indicators */}
       <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 relative">
         <Calendar
-          month={month}
+          month={safeMonth}
           onMonthChange={handleMonthChange}
           firstWeekContainsDate={1}
           classNames={enhancedClassNames}
+          disableNavigation
           {...props}
         />
       </div>

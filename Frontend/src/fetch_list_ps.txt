@@ -1,0 +1,77 @@
+﻿C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\components\attendance\OfficeHoursBadge.tsx:36:      const response = await fetch(`${API_BASE_URL}/attendance/office-hours`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\components\attendance\OnlineStatusIndicator.tsx:55:      const historyResponse = await fetch(`${API_BASE_URL}/attendance/online-status/${attendanceId}`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\components\attendance\OnlineStatusIndicator.tsx:67:      const hoursResponse = await fetch(`${API_BASE_URL}/attendance/working-hours/${attendanceId}`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\components\attendance\WorkSummaryDialog.tsx:61:      const response = await fetch(`${API_BASE_URL}/tasks/deadline-warnings/${user.id}`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\components\reports\ExportDialog.tsx:60:      const response = await fetch(`${API_BASE_URL}/reports/departments`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\components\reports\ExportDialog.tsx:80:      const response = await fetch(`${API_BASE_URL}/employees/?department=${department}`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\components\reports\ExportDialog.tsx:106:      const response = await fetch(`${API_BASE_URL}/employees/`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\components\reports\ExportDialog.tsx:181:      const response = await fetch(`${API_BASE_URL}/reports/export?${params}`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\components\tasks\TaskDeadlineWarnings.tsx:79:      const response = await fetch(`${API_BASE_URL}/tasks/deadline-warnings/${targetUserId}`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\contexts\AuthContext.tsx:314:        await fetch(`${API_BASE_URL}/attendance/login-resume`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\contexts\AuthContext.tsx:355:        await fetch(`${API_BASE_URL}/attendance/logout`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\contexts\NotificationContext.tsx:402:        fetch(`${API_BASE_URL}/tasks/notifications`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\contexts\NotificationContext.tsx:414:        fetch(`${API_BASE_URL}/leave/notifications`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\contexts\NotificationContext.tsx:426:        fetch(`${API_BASE_URL}/shift/notifications`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\contexts\NotificationContext.tsx:869:      const response = await fetch(endpoint, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\contexts\NotificationContext.tsx:944:          fetch(`${API_BASE_URL}/tasks/notifications/${id}/read`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\contexts\NotificationContext.tsx:956:          fetch(`${API_BASE_URL}/leave/notifications/${id}/read`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\contexts\NotificationContext.tsx:968:          fetch(`${API_BASE_URL}/shift/notifications/${id}/read`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\contexts\NotificationContext.tsx:1031:            const response = await fetch(endpoint, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\hooks\useFieldValidation.ts:42:        const response = await fetch(url, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\lib\api.ts:136:      const response = await fetch(url, config);
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\lib\api.ts:260:      const response = await fetch(url, config);
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\lib\api.ts:723:    const response = await fetch(`${this.baseURL}/hiring/candidates`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\lib\api.ts:794:    const response = await fetch(`${this.baseURL}/hiring/candidates/${candidateId}/resume`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\lib\api.ts:1048:    const response = await fetch(`${this.baseURL}/tasks/${taskId}/comments`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceManager.tsx:376:      const response = await fetch(`${API_BASE_URL}/attendance/current-online-status`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceManager.tsx:569:      const res = await fetch(`${API_BASE_URL}/employees/`, { headers });
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceManager.tsx:680:      const res = await fetch(`${API_BASE_URL}/attendance/office-hours`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceManager.tsx:724:      const res = await fetch(`${API_BASE_URL}/attendance/office-hours`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceManager.tsx:763:      const res = await fetch(`${API_BASE_URL}/attendance/office-hours`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceManager.tsx:825:      const res = await fetch(`${API_BASE_URL}/attendance/office-hours/${timing.id}`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceManager.tsx:859:      const res = await fetch(`${API_BASE_URL}/attendance/summary`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceManager.tsx:897:          fetch(`${API_BASE_URL}/attendance/all${query}`, { headers: getAuthHeaders() }),
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceManager.tsx:898:          fetch(`${API_BASE_URL}/employees/`, { headers: getAuthHeaders() })
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendancePage.tsx:103:      const res = await fetch(`${API_BASE_URL}/attendance/my-attendance/${user.id}`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendancePage.tsx:535:      const response = await fetch(`${API_BASE_URL}/attendance/check-out`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendancePage.tsx:604:      const selfieBlob = await fetch(imageData).then(r => r.blob());
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendancePage.tsx:612:      const response = await fetch(apiUrl, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceWithToggle.tsx:856:      const res = await fetch(`${API_BASE_URL}/attendance/my-attendance/${user.id}`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceWithToggle.tsx:1030:              const workHoursResponse = await fetch(`${API_BASE_URL}/attendance/working-hours/${attendance.id}`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceWithToggle.tsx:1110:        fetch(url, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceWithToggle.tsx:1115:        fetch(`${API_BASE_URL}/employees/`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceWithToggle.tsx:1354:      const res = await fetch(`${API_BASE_URL}/employees/`, { headers });
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceWithToggle.tsx:1554:      const response = await fetch(endpoint, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceWithToggle.tsx:1970:    const response = await fetch(`${API_BASE_URL}/attendance/online-status`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceWithToggle.tsx:2098:      const response = await fetch(`${API_BASE_URL}/attendance/user-online-status/${user.id}`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceWithToggle.tsx:2239:      const response = await fetch(`${API_BASE_URL}/attendance/current-online-status`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\attendance\AttendanceWithToggle.tsx:2274:      const response = await fetch(`${API_BASE_URL}/attendance/current-online-status`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\manager\ManagerDashboard.tsx:232:          fetch(`${API_BASE_URL}/attendance/today`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\reports\Reports.tsx:163:        fetch(`${API_BASE_URL}/reports/employee-performance?${empParams}`, { headers }),
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\reports\Reports.tsx:164:        fetch(`${API_BASE_URL}/reports/department-metrics?${deptParams}`, { headers }),
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\reports\Reports.tsx:165:        fetch(`${API_BASE_URL}/reports/executive-summary?${summaryParams}`, { headers }),
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\reports\Reports.tsx:487:      const response = await fetch(`${API_BASE_URL}/reports/export?${params}`, { headers });
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\tasks\TaskManagement.tsx:492:      const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/history`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\tasks\TaskManagement.tsx:532:      const response = await fetch(`${API_BASE_URL}/employees/`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\tasks\TaskManagement.tsx:695:          await fetch(`${API_BASE_URL}/tasks/${task.id}/status?status=${encodeURIComponent(backendStatus)}`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\tasks\TaskManagement.tsx:1461:      const response = await fetch(`${API_BASE_URL}/tasks/${passTaskTarget.id}/pass`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\tasks\TaskManagement.tsx:1797:      const response = await fetch(`${API_BASE_URL}/tasks/${reassignTask.id}`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\tasks\TaskManagement.tsx:1955:      const response = await fetch(`${API_BASE_URL}/tasks/${editingTask.id}`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\tasks\TaskManagement.tsx:2008:      const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\pages\tasks\TaskManagement.tsx:2119:      const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/status?status=${encodeURIComponent(backendStatus)}`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\services\authService.ts:17:    const response = await fetch(`${API_BASE_URL}/auth/verify-token`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\services\authService.ts:55:    const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\services\chatService.ts:39:      const response = await fetch(`${API_BASE_URL}/chats/sessions`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\services\chatService.ts:98:      const response = await fetch(
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\services\chatService.ts:129:      const response = await fetch(`${API_BASE_URL}/chats/${typePath}/${chatId}/messages`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\services\chatService.ts:180:      const response = await fetch(url, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\services\chatService.ts:226:      const response = await fetch(`${API_BASE_URL}/chats/users`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\services\chatService.ts:254:      await fetch(`${API_BASE_URL}/chats/${typePath}/${chatId}/messages/${messageId}/read`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\services\chatService.ts:272:      await fetch(`${API_BASE_URL}/chats/${typePath}/${chatId}/typing`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\services\chatService.ts:288:      await fetch(`${API_BASE_URL}/chats/group/${chatId}/members/bulk_add`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\services\chatService.ts:309:      await fetch(`${API_BASE_URL}/chats/group/${chatId}/members/bulk_remove`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\services\chatService.ts:329:      const response = await fetch(`${API_BASE_URL}/chats/group/${chatId}/name`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\services\chatService.ts:347:      const response = await fetch(`${API_BASE_URL}/chats/group/${chatId}`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\services\chatService.ts:374:      const response = await fetch(`${API_BASE_URL}/chats/${typePath}/${chatId}/messages/${messageId}/delete`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\services\chatService.ts:395:      const response = await fetch(`${API_BASE_URL}/chats/${typePath}/${chatId}/messages/${messageId}/edit`, {
+C:\Users\ASUS\OneDrive\Desktop\Staffly\EMS-Shekru-Web-App-Frontend\Frontend\src\utils\geolocation.ts:91:    const response = await fetch(

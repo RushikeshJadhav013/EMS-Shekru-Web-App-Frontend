@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import TaskDeadlineWarnings from '@/components/tasks/TaskDeadlineWarnings';
 import { Button } from '@/components/ui/button';
@@ -51,7 +50,9 @@ import {
   UserPlus,
   MessageCircle,
   ChevronRight,
-  Banknote
+  Banknote,
+  FolderKanban,
+  Video,
 } from 'lucide-react';
 import { UserRole } from '@/types';
 import { Language } from '@/i18n/translations';
@@ -89,33 +90,39 @@ const MainLayout: React.FC = () => {
       { icon: ClipboardList, label: t.navigation.tasks, path: `/${user.role}/tasks` },
       { icon: Banknote, label: t.navigation.salary, path: '/salary' },
       { icon: MessageCircle, label: t.navigation.chat, path: `/${user.role}/chat` },
+      { icon: Video, label: t.navigation.meetings, path: '/meetings' },
     ];
 
     const roleSpecificItems: Record<UserRole, typeof commonItems> = {
       admin: [
         ...commonItems,
         { icon: Users, label: t.navigation.employees, path: '/admin/employees' },
-        { icon: Briefcase, label: t.navigation.departments, path: '/admin/departments' },
+        { icon: Briefcase, label: t.navigation.departments, path: '/admin/branches' },
         { icon: UserPlus, label: t.navigation.hiring, path: '/admin/hiring' },
+        { icon: FolderKanban, label: t.navigation.projects, path: '/admin/projects' },
         { icon: BarChart3, label: t.navigation.reports, path: '/admin/reports' },
       ],
       hr: [
         ...commonItems,
         { icon: Users, label: t.navigation.employees, path: '/hr/employees' },
         { icon: UserPlus, label: t.navigation.hiring, path: '/hr/hiring' },
+        { icon: FolderKanban, label: 'Projects', path: '/hr/projects' },
         { icon: BarChart3, label: t.navigation.reports, path: '/hr/reports' },
       ],
       manager: [
         ...commonItems,
         { icon: Clock, label: t.navigation.shiftSchedule, path: '/manager/shift-schedule' },
+        { icon: FolderKanban, label: 'Projects', path: '/manager/projects' },
       ],
       team_lead: [
         ...commonItems,
-        { icon: Users, label: t.navigation.team, path: '/team_lead/team' },
+        { icon: Clock, label: t.navigation.shiftSchedule, path: '/team_lead/team' },
+        { icon: FolderKanban, label: 'Projects', path: '/team_lead/projects' },
       ],
       employee: [
         ...commonItems,
-        { icon: Users, label: t.navigation.team, path: '/employee/team' },
+        { icon: Clock, label: t.navigation.shiftSchedule, path: '/employee/team' },
+        { icon: FolderKanban, label: 'Projects', path: '/employee/projects' },
       ],
     };
 
@@ -126,12 +133,22 @@ const MainLayout: React.FC = () => {
 
   // Custom function to determine if a navigation item should be active
   const isNavItemActive = (itemPath: string) => {
-    // For chat routes, consider any path starting with the chat base path as active
-    if (itemPath.includes('/chat')) {
-      return location.pathname.startsWith(itemPath);
+    const currentPath = location.pathname;
+
+    // Exact match for home/dashboard
+    if (itemPath === `/${user.role}`) {
+      return currentPath === itemPath;
     }
-    // For other routes, use exact match
-    return location.pathname === itemPath;
+
+    // For chat and other main management routes, use startsWith to catch sub-routes
+    // e.g., /admin/employees should match /admin/employees/new/
+    if (itemPath.includes('/chat') || itemPath.includes('/employees') || itemPath.includes('/branches') || itemPath.includes('/hiring') || itemPath.includes('/projects') || itemPath.includes('/reports')) {
+      return currentPath.startsWith(itemPath);
+    }
+
+    // Default to startsWith but avoid common prefixes if needed. 
+    // Given the role-specific paths, simple startsWith or exact match usually suffices.
+    return currentPath === itemPath;
   };
 
   return (
@@ -202,8 +219,6 @@ const MainLayout: React.FC = () => {
             </SelectContent>
           </Select>
 
-          {/* Notifications */}
-          <NotificationBell />
 
           {/* User Menu */}
           <DropdownMenu>
@@ -428,11 +443,10 @@ const MainLayout: React.FC = () => {
 
         {/* Main Content */}
         <main
-          className={`flex-1 min-w-0 w-full overflow-x-hidden transition-all duration-500 ${
-            location.pathname.includes('/chat')
-              ? 'overflow-hidden'
-              : 'overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent'
-          }`}
+          className={`flex-1 min-w-0 w-full overflow-x-hidden transition-all duration-500 ${location.pathname.includes('/chat')
+            ? 'overflow-hidden'
+            : 'overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent'
+            }`}
         >
           <div
             className={

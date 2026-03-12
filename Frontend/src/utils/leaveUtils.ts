@@ -99,6 +99,9 @@ export const validateLeaveRequest = (
   if (!reason.trim() || reason.trim().length < 10) {
     return { valid: false, error: 'Leave reason must be at least 10 characters long' };
   }
+  if (reason.length > 200) {
+    return { valid: false, error: 'Leave reason cannot exceed 200 characters' };
+  }
 
   const leaveDays = calculateLeaveDays(startDate, endDate);
 

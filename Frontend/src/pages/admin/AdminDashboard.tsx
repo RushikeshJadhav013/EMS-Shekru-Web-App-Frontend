@@ -24,6 +24,23 @@ import { useNavigate } from 'react-router-dom';
 import { formatIST, formatDateTimeIST, formatTimeIST, todayIST, parseToIST, nowIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
 
+const CORE_DEPARTMENTS = [
+  'Engineering',
+  'Product',
+  'Design',
+  'Marketing',
+  'Sales',
+  'HR',
+  'Human Resources',
+  'Finance',
+  'Operations',
+  'Legal',
+  'Customer Support',
+  'IT',
+  'Administration',
+  'Management'
+];
+
 const AdminDashboard: React.FC = () => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
@@ -37,9 +54,9 @@ const AdminDashboard: React.FC = () => {
     pendingLeaves: 0,
     activeTasks: 0,
     completedTasks: 0,
-    departments: 0,
+    branches: 0,
   });
-  const [departmentPerformance, setDepartmentPerformance] = useState<{ name: string; employees: number; performance: number; }[]>([]);
+  const [branchPerformance, setBranchPerformance] = useState<{ name: string; employees: number; performance: number; }[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [activitiesPage, setActivitiesPage] = useState(1);
   const ACTIVITIES_PER_PAGE = 10;
@@ -51,7 +68,7 @@ const AdminDashboard: React.FC = () => {
 
         // If activeTasks is 0, try to get actual count from tasks API
         let activeTasks = data.activeTasks || 0;
-        let pendingLeaves = data.pendingLeaves || 0;
+        const pendingLeaves = data.pendingLeaves || 0;
 
         if (activeTasks === 0) {
           try {
@@ -71,6 +88,7 @@ const AdminDashboard: React.FC = () => {
           ...data,
           activeTasks,
           pendingLeaves,
+          branches: data.departments || 0
         });
 
         // Fetch detailed department metrics for performance
@@ -82,23 +100,36 @@ const AdminDashboard: React.FC = () => {
           });
 
           if (metricsData && metricsData.departments && Array.isArray(metricsData.departments)) {
-            const formattedPerformance = metricsData.departments.map((dept: any) => ({
-              name: dept.department,
-              employees: dept.totalEmployees,
-              performance: dept.performanceScore || 0
-            }));
+            const formattedPerformance = metricsData.departments
+              .filter((dept: any) => {
+                const deptName = dept.department || '';
+                return CORE_DEPARTMENTS.some(core => core.toLowerCase() === deptName.toLowerCase());
+              })
+              .map((dept: any) => ({
+                name: dept.department,
+                employees: dept.totalEmployees,
+                performance: dept.performanceScore || 0
+              }));
 
             // Sort by performance (descending)
             formattedPerformance.sort((a: any, b: any) => b.performance - a.performance);
 
-            setDepartmentPerformance(formattedPerformance);
+            setBranchPerformance(formattedPerformance);
           } else {
             // Fallback to dashboard data if metrics fail
-            setDepartmentPerformance(data.departmentPerformance || []);
+            const fallbackDepts = (data.departmentPerformance || []).filter((dept: any) => {
+              const deptName = dept.name || '';
+              return CORE_DEPARTMENTS.some(core => core.toLowerCase() === deptName.toLowerCase());
+            });
+            setBranchPerformance(fallbackDepts);
           }
         } catch (metricsError) {
-          console.error('Failed to load department metrics:', metricsError);
-          setDepartmentPerformance(data.departmentPerformance || []);
+          console.error('Failed to load branch metrics:', metricsError);
+          const fallbackDepts = (data.departmentPerformance || []).filter((dept: any) => {
+            const deptName = dept.name || '';
+            return CORE_DEPARTMENTS.some(core => core.toLowerCase() === deptName.toLowerCase());
+          });
+          setBranchPerformance(fallbackDepts);
         }
 
         // Enhanced Recent Activities Logic - Strictly Today
@@ -249,7 +280,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
         <Button
-          onClick={() => navigate('/admin/employees/new')}
+          onClick={() => navigate('/admin/employees/', { state: { highlight: true } })}
           className="h-10 px-6 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200/50 transition-all duration-300 hover:-translate-y-0.5 text-[13px] font-bold gap-2"
         >
           <UserPlus className="h-4 w-4" />
@@ -352,7 +383,7 @@ const AdminDashboard: React.FC = () => {
                 variant="ghost"
                 size="sm"
                 className="h-8 px-3 rounded-lg text-blue-600 hover:bg-blue-50 font-bold text-[11px]"
-                onClick={() => navigate('/admin/reports?tab=department')}
+                onClick={() => navigate('/admin/reports?tab=branch')}
               >
                 VIEW ALL
               </Button>
@@ -360,11 +391,11 @@ const AdminDashboard: React.FC = () => {
           </CardHeader>
           <CardContent className="p-4 flex-1">
             <div className="grid gap-3">
-              {departmentPerformance.map((dept) => (
+              {branchPerformance.map((dept) => (
                 <div
                   key={dept.name}
                   className="group relative p-3.5 rounded-lg border border-slate-100 hover:border-blue-200 hover:bg-blue-50/20 transition-all duration-300 cursor-pointer"
-                  onClick={() => navigate('/admin/reports?tab=department')}
+                  onClick={() => navigate('/admin/reports?tab=branch')}
                 >
                   <div className="flex justify-between items-center mb-3">
                     <div className="flex items-center gap-3">

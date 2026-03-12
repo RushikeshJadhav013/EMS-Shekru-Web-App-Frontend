@@ -27,7 +27,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
 
       // Check if token exists and is valid
       if (!token || !isTokenValid(token)) {
-        console.warn('Token is missing or invalid, logging out');
+        console.warn('ProtectedRoute: Token is missing or invalid, logging out', {
+          hasToken: !!token,
+          isValid: token ? isTokenValid(token) : false,
+          path: location.pathname
+        });
         // Clear invalid session
         logout(false); // Don't show toast for automatic logout
         return;
@@ -51,13 +55,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
     allowedRoles,
     currentPath: location.pathname
   });
-
-  // Verify token before allowing access
-  const token = localStorage.getItem('token');
-  if (!token || !isTokenValid(token)) {
-    console.log('Token is missing or invalid, redirecting to login');
-    return <Navigate to="/login" state={{ from: location, message: 'Your session has expired. Please login again.' }} replace />;
-  }
 
   if (!isAuthenticated || !user) {
     console.log('Not authenticated, redirecting to login');
