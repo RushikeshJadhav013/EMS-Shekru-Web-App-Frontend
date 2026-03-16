@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
-import { Switch } from '@/components/ui/switch';
+
 import { useNavigate } from 'react-router-dom';
 import {
   User,
@@ -24,14 +24,7 @@ import {
   Calendar,
   Camera,
   Shield,
-  Clock,
-  Award,
   Target,
-  TrendingUp,
-  Palette,
-  Check,
-  Bell,
-  BellOff,
   Plus,
 } from 'lucide-react';
 import { formatDateIST } from '@/utils/timezone';
@@ -46,10 +39,7 @@ const Profile: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [employeeData, setEmployeeData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
-    const stored = localStorage.getItem('notificationsEnabled');
-    return stored === null ? true : stored === 'true';
-  });
+
 
   // Fetch employee data from database
   useEffect(() => {
@@ -109,16 +99,7 @@ const Profile: React.FC = () => {
     fetchEmployeeData();
   }, [user?.email, user?.id]);
 
-  const handleNotificationToggle = (enabled: boolean) => {
-    setNotificationsEnabled(enabled);
-    localStorage.setItem('notificationsEnabled', enabled.toString());
-    toast({
-      title: enabled ? 'Notifications Enabled' : 'Notifications Disabled',
-      description: enabled
-        ? 'You will now receive notifications.'
-        : 'You will no longer receive notifications.',
-    });
-  };
+
 
   if (!user || !editedUser) return null;
 
@@ -170,12 +151,7 @@ const Profile: React.FC = () => {
     return colors[role as keyof typeof colors] || colors.employee;
   };
 
-  const stats = [
-    { label: 'Total Tasks', value: '48', icon: Target, color: 'text-blue-500' },
-    { label: 'Completed', value: '36', icon: Award, color: 'text-green-500' },
-    { label: 'In Progress', value: '12', icon: TrendingUp, color: 'text-orange-500' },
-    { label: 'Attendance', value: '95%', icon: Clock, color: 'text-purple-500' },
-  ];
+
 
   const canCreateTask = ['admin', 'hr', 'manager', 'team_lead', 'employee'].includes(user.role);
 
@@ -250,31 +226,13 @@ const Profile: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {stats.map((stat, index) => (
-            <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
-                    <p className="text-2xl font-bold mt-1">{stat.value}</p>
-                  </div>
-                  <div className={`p-3 rounded-full bg-background ${stat.color}`}>
-                    <stat.icon className="h-6 w-6" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+
 
         {/* Main Content */}
         <Tabs defaultValue="personal" className="space-y-4">
-          <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-3 bg-card">
+          <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-2 bg-card">
             <TabsTrigger value="personal">Personal Info</TabsTrigger>
             <TabsTrigger value="professional">Professional</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="personal" className="space-y-4">
@@ -401,85 +359,7 @@ const Profile: React.FC = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="settings" className="space-y-4">
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-primary" />
-                  Quick Settings
-                </CardTitle>
-                <CardDescription>
-                  Common account preferences and security options
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6 pt-6">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 p-6 rounded-xl border border-blue-200 dark:border-blue-800">
-                  <div className="flex items-start gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-                      <Palette className="h-6 w-6 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg mb-2">Customize Your Experience</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Visit the Settings page to personalize your dashboard with color themes, language preferences, and more.
-                      </p>
-                      <Button
-                        onClick={() => window.location.href = `/${user.role}/settings`}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                      >
-                        Go to Settings
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                <div className="border-t pt-6"></div>
-                <div className="flex items-center justify-between p-4 rounded-lg border bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
-                  <div className="flex items-center gap-3">
-                    {notificationsEnabled ? (
-                      <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                        <Bell className="h-5 w-5 text-white" />
-                      </div>
-                    ) : (
-                      <div className="h-10 w-10 rounded-lg bg-gray-400 dark:bg-gray-600 flex items-center justify-center">
-                        <BellOff className="h-5 w-5 text-white" />
-                      </div>
-                    )}
-                    <div>
-                      <p className="font-medium">Push Notifications</p>
-                      <p className="text-sm text-muted-foreground">
-                        {notificationsEnabled ? 'Receive real-time updates' : 'Notifications are disabled'}
-                      </p>
-                    </div>
-                  </div>
-                  <Switch
-                    checked={notificationsEnabled}
-                    onCheckedChange={handleNotificationToggle}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Two-Factor Authentication</p>
-                    <p className="text-sm text-muted-foreground">Add an extra layer of security</p>
-                  </div>
-                  <Button variant="outline">Enable</Button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Email Notifications</p>
-                    <p className="text-sm text-muted-foreground">Receive updates via email</p>
-                  </div>
-                  <Button variant="outline">Configure</Button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Change Password</p>
-                    <p className="text-sm text-muted-foreground">Update your password regularly</p>
-                  </div>
-                  <Button variant="outline">Change</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+
         </Tabs>
       </div>
     </div>

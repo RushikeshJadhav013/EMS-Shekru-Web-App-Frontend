@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Reply, Edit, Trash2, Copy, Check, CheckCheck } from 'lucide-react';
+import { Reply, Edit, Trash2, Copy, Check, CheckCheck, File as FileIcon } from 'lucide-react';
 import { ChatMessage } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -176,6 +176,38 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             <div className="break-words">
               {message.messageType === 'emoji' ? (
                 <span className="leading-none select-none">{message.content}</span>
+              ) : message.messageType === 'image' ? (
+                <div className="rounded-xl overflow-hidden mb-1 shadow-sm border border-black/5 dark:border-white/5">
+                  <img src={message.content} alt="Shared" className="max-w-full h-auto object-cover hover:scale-105 transition-transform duration-500" />
+                </div>
+              ) : message.messageType === 'file' ? (
+                <div className={cn(
+                  "flex items-center gap-3 p-3 rounded-xl border mb-1 transition-all hover:shadow-md active:scale-[0.98] group/file cursor-pointer",
+                  isOwn ? "bg-white/10 border-white/20 hover:bg-white/20" : "bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:border-slate-700/50 hover:bg-slate-100"
+                )}
+                  onClick={() => {
+                    const [name, data] = message.content.includes('|') ? message.content.split('|') : ['Document', message.content];
+                    const link = document.createElement('a');
+                    link.href = data;
+                    link.download = name;
+                    link.click();
+                  }}
+                >
+                  <div className={cn(
+                    "h-10 w-10 rounded-xl flex items-center justify-center transition-transform group-hover/file:scale-110",
+                    isOwn ? "bg-white/20 text-white" : "bg-indigo-500/10 text-indigo-500"
+                  )}>
+                    <FileIcon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 pr-2">
+                    <p className={cn("text-xs font-black truncate max-w-[150px]", isOwn ? "text-white" : "text-slate-900 dark:text-slate-100")}>
+                      {message.content.includes('|') ? message.content.split('|')[0] : 'Document'}
+                    </p>
+                    <p className={cn("text-[9px] font-bold uppercase tracking-wider opacity-60", isOwn ? "text-white/80" : "text-slate-500")}>
+                      Click to download
+                    </p>
+                  </div>
+                </div>
               ) : (
                 <div className="text-[14.5px] leading-snug font-medium tracking-tight pr-2">
                   {message.content}

@@ -53,7 +53,7 @@ class ChatService {
           userName: m.name || '',
           userRole: m.role || 'employee',
           isAdmin: m.role === 'admin',
-          department: m.department || 'N/A',
+          branch: m.department || 'N/A',
           joinedAt: this.formatTimestamp(m.joined_at),
           isOnline: false,
         })),
@@ -123,7 +123,7 @@ class ChatService {
   }
 
   // Send a message
-  async sendMessage(chatId: string, chatType: 'individual' | 'group', content: string, messageType: 'text' | 'emoji' = 'text', replyTo?: string): Promise<ChatMessage> {
+  async sendMessage(chatId: string, chatType: 'individual' | 'group', content: string, messageType: 'text' | 'emoji' | 'file' | 'image' = 'text', replyTo?: string): Promise<ChatMessage> {
     const typePath = chatType === 'individual' ? 'private' : 'group';
     try {
       const response = await fetch(`${API_BASE_URL}/chats/${typePath}/${chatId}/messages`, {
@@ -133,6 +133,7 @@ class ChatService {
           chat_type: typePath,
           chat_id: chatId,
           content,
+          message_type: messageType,
           reply_to: replyTo
         }),
       });
@@ -195,7 +196,7 @@ class ChatService {
           userId: id.toString(),
           userName: '',
           userRole: 'employee' as UserRole,
-          department: 'N/A',
+          branch: 'N/A',
           joinedAt: new Date().toISOString(),
           isOnline: false
         })))
@@ -389,7 +390,7 @@ class ChatService {
     }
   }
 
-  async editMessage(chatId: string, chatType: 'individual' | 'group', messageId: string, newContent: string): Promise<ChatMessage> {
+  async editMessage(chatId: string, chatType: 'individual' | 'group', messageId: string, newContent: string): Promise<void> {
     const typePath = chatType === 'individual' ? 'private' : 'group';
     try {
       const response = await fetch(`${API_BASE_URL}/chats/${typePath}/${chatId}/messages/${messageId}/edit`, {
@@ -404,22 +405,6 @@ class ChatService {
       });
 
       if (!response.ok) throw new Error('Failed to edit message');
-      const data = await response.json();
-
-      // Construct a partial updated message since API only returns ID and status
-      // In a real scenario, you'd want the full updated message from the backend
-      return {
-        id: messageId,
-        chatId: chatId,
-        content: newContent,
-        timestamp: new Date().toISOString(),
-        editedAt: new Date().toISOString(),
-        senderId: '', // These will be merged in context if needed
-        senderName: '',
-        senderRole: 'employee',
-        messageType: 'text',
-        isRead: true
-      } as ChatMessage;
     } catch (error) {
       console.error('Error editing message:', error);
       throw error;

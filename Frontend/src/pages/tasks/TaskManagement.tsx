@@ -405,11 +405,13 @@ const TaskManagement: React.FC = () => {
     description: "",
     assignedTo: [] as string[],
     priority: "medium" as BaseTask["priority"],
+    startDate: "",
     deadline: "",
     department: "",
     employeeId: "",
     projectId: "",
   });
+  const [projects, setProjects] = useState<any[]>([]);
   const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("");
 
   // Handle auto-opening task creation dialog from navigation state
@@ -440,6 +442,7 @@ const TaskManagement: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const [isOverdueFilterActive, setIsOverdueFilterActive] = useState(false);
+  const [isProjectFilterActive, setIsProjectFilterActive] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskWithPassMeta | null>(null);
   const [editTaskForm, setEditTaskForm] = useState({
@@ -900,6 +903,9 @@ const TaskManagement: React.FC = () => {
 
   useEffect(() => {
     fetchEmployees();
+    apiService.getProjects().then(data => {
+      setProjects(Array.isArray(data) ? data : (data as any)?.projects || (data as any)?.data || []);
+    }).catch(err => console.error("Failed to fetch projects", err));
   }, [fetchEmployees]);
 
   useEffect(() => {
@@ -1439,6 +1445,7 @@ const TaskManagement: React.FC = () => {
       completed: searchFiltered.filter((t) => t.status === "completed").length,
       overdue: searchFiltered.filter((t) => t.status === "overdue").length,
       cancelled: searchFiltered.filter((t) => t.status === "cancelled").length,
+      projectTasks: searchFiltered.filter((t) => t.projectId !== null && t.projectId !== undefined).length,
     };
   }, [searchQuery, tasks, user, userId, normalizedUserRole]);
 
@@ -1493,6 +1500,11 @@ const TaskManagement: React.FC = () => {
       baseTasks = baseTasks.filter((task) => task.status === "overdue");
     }
 
+    // Apply project filter if active
+    if (isProjectFilterActive) {
+      baseTasks = baseTasks.filter((task) => task.projectId !== null && task.projectId !== undefined);
+    }
+
     // Re-sort tasks by status priority first, then by deadline within each status
     // This ensures consistent ordering regardless of when tasks were updated
     return baseTasks.sort((a, b) => {
@@ -1537,6 +1549,7 @@ const TaskManagement: React.FC = () => {
     selectedDepartmentFilter,
     employees,
     isOverdueFilterActive,
+    isProjectFilterActive,
   ]);
 
   // Paginated tasks
@@ -1630,21 +1643,6 @@ const TaskManagement: React.FC = () => {
       return;
     }
 
-    // Validate deadline is not in the past
-    const selectedDate = new Date(newTask.deadline);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
-
-    if (selectedDate < today) {
-      toast({
-        title: "Invalid deadline",
-        description:
-          "Task deadline cannot be in the past. Please select today or a future date.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     // One assignee is required (can default to self but let's be explicit from UI selection if any)
     const assignees =
       newTask.assignedTo.length > 0 ? newTask.assignedTo : [userId];
@@ -1665,11 +1663,12 @@ const TaskManagement: React.FC = () => {
 
     try {
       // Build the POST /tasks/bulk payload as per user's latest requirement
-      const payload = {
+      const payload: any = {
         title: newTask.title,
         description: newTask.description,
         status: "Pending",
         due_date: newTask.deadline || null,
+        start_date: newTask.startDate || null,
         priority: frontendToBackendPriority[newTask.priority],
         assigned_to_ids: assigneeIdsNormalized,
         project_id: newTask.projectId ? Number(newTask.projectId) : null,
@@ -1726,6 +1725,7 @@ const TaskManagement: React.FC = () => {
         description: "",
         assignedTo: [],
         priority: "medium",
+        startDate: "",
         deadline: "",
         department: "",
         employeeId: "",
@@ -2876,7 +2876,7 @@ const TaskManagement: React.FC = () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label
                         htmlFor="priority"
@@ -2928,6 +2928,25 @@ const TaskManagement: React.FC = () => {
 
                     <div className="space-y-2">
                       <Label
+                        htmlFor="startDate"
+                        className="text-sm font-semibold flex items-center gap-2"
+                      >
+                        <Calendar className="h-4 w-4 text-violet-600" />
+                        Start Date
+                      </Label>
+                      <Input
+                        id="startDate"
+                        type="date"
+                        value={newTask.startDate}
+                        onChange={(e) =>
+                          setNewTask({ ...newTask, startDate: e.target.value })
+                        }
+                        className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
                         htmlFor="deadline"
                         className="text-sm font-semibold flex items-center gap-2"
                       >
@@ -2937,7 +2956,6 @@ const TaskManagement: React.FC = () => {
                       <Input
                         id="deadline"
                         type="date"
-                        min={new Date().toISOString().split("T")[0]}
                         value={newTask.deadline}
                         onChange={(e) =>
                           setNewTask({ ...newTask, deadline: e.target.value })
@@ -2955,21 +2973,29 @@ const TaskManagement: React.FC = () => {
                           className="text-sm font-semibold flex items-center gap-2"
                         >
                           <FileText className="h-4 w-4 text-violet-600" />
-                          Project ID (Optional)
+                          Project (Optional)
                         </Label>
-                        <Input
-                          id="projectId"
-                          type="number"
-                          placeholder="Enter Project ID"
-                          value={newTask.projectId}
-                          onChange={(e) =>
+                        <Select
+                          value={newTask.projectId || "none"}
+                          onValueChange={(value) =>
                             setNewTask({
                               ...newTask,
-                              projectId: e.target.value.replace(/\D/g, ""),
+                              projectId: value === "none" ? "" : value,
                             })
                           }
-                          className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all"
-                        />
+                        >
+                          <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                            <SelectValue placeholder="Select Project" />
+                          </SelectTrigger>
+                          <SelectContent className="border-2 shadow-xl" side="bottom">
+                            <SelectItem value="none">None</SelectItem>
+                            {projects.map((p: any) => (
+                               <SelectItem key={p.project_id || p.id} value={(p.project_id || p.id)?.toString()}>
+                                 {p.name}
+                               </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   )}
@@ -3398,8 +3424,9 @@ const TaskManagement: React.FC = () => {
           onClick={() => {
             setFilterStatus("all");
             setIsOverdueFilterActive(false);
+            setIsProjectFilterActive(false);
           }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "all" && !isOverdueFilterActive
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "all" && !isOverdueFilterActive && !isProjectFilterActive
               ? "border-slate-600 dark:border-slate-400 bg-slate-100 dark:bg-slate-800"
               : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-600"
             }`}
@@ -3421,10 +3448,37 @@ const TaskManagement: React.FC = () => {
 
         <Card
           onClick={() => {
+            setFilterStatus("all");
+            setIsOverdueFilterActive(false);
+            setIsProjectFilterActive(true);
+          }}
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${isProjectFilterActive
+              ? "border-violet-600 dark:border-violet-400 bg-violet-100 dark:bg-violet-900"
+              : "border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950 hover:border-violet-400 dark:hover:border-violet-600"
+            }`}
+        >
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-medium text-violet-700 dark:text-violet-300">
+              Project Tasks
+            </CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-violet-200 dark:bg-violet-800 flex items-center justify-center">
+              <Building2 className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-violet-900 dark:text-violet-100">
+              {taskCountsByStatus.projectTasks}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card
+          onClick={() => {
             setFilterStatus("in-progress");
             setIsOverdueFilterActive(false);
+            setIsProjectFilterActive(false);
           }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "in-progress" && !isOverdueFilterActive
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "in-progress" && !isOverdueFilterActive && !isProjectFilterActive
               ? "border-blue-600 dark:border-blue-400 bg-blue-100 dark:bg-blue-900"
               : "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 hover:border-blue-400 dark:hover:border-blue-600"
             }`}
@@ -3448,8 +3502,9 @@ const TaskManagement: React.FC = () => {
           onClick={() => {
             setFilterStatus("completed");
             setIsOverdueFilterActive(false);
+            setIsProjectFilterActive(false);
           }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "completed" && !isOverdueFilterActive
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "completed" && !isOverdueFilterActive && !isProjectFilterActive
               ? "border-green-600 dark:border-green-400 bg-green-100 dark:bg-green-900"
               : "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 hover:border-green-400 dark:hover:border-green-600"
             }`}
@@ -3473,8 +3528,9 @@ const TaskManagement: React.FC = () => {
           onClick={() => {
             setFilterStatus("all");
             setIsOverdueFilterActive(true);
+            setIsProjectFilterActive(false);
           }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${isOverdueFilterActive
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${isOverdueFilterActive && !isProjectFilterActive
               ? "border-orange-600 dark:border-orange-400 bg-orange-100 dark:bg-orange-900"
               : "border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950 hover:border-orange-400 dark:hover:border-orange-600"
             }`}
@@ -3498,8 +3554,9 @@ const TaskManagement: React.FC = () => {
           onClick={() => {
             setFilterStatus("cancelled");
             setIsOverdueFilterActive(false);
+            setIsProjectFilterActive(false);
           }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "cancelled" && !isOverdueFilterActive
+          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "cancelled" && !isOverdueFilterActive && !isProjectFilterActive
               ? "border-gray-600 dark:border-gray-400 bg-gray-100 dark:bg-gray-800"
               : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:border-gray-400 dark:hover:border-gray-600"
             }`}
@@ -3560,7 +3617,11 @@ const TaskManagement: React.FC = () => {
                 <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Status
                 </Label>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <Select value={filterStatus} onValueChange={(val) => {
+                  setFilterStatus(val);
+                  setIsProjectFilterActive(false);
+                  setIsOverdueFilterActive(val === "overdue");
+                }}>
                   <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950">
                     <SelectValue />
                   </SelectTrigger>
@@ -3590,7 +3651,11 @@ const TaskManagement: React.FC = () => {
                             ? "default"
                             : "outline"
                         }
-                        onClick={() => setTaskOwnershipFilter("created")}
+                        onClick={() => {
+                          setTaskOwnershipFilter("created");
+                          setIsProjectFilterActive(false);
+                          setIsOverdueFilterActive(false);
+                        }}
                         className={
                           taskOwnershipFilter === "created"
                             ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
@@ -3602,19 +3667,39 @@ const TaskManagement: React.FC = () => {
                       <Button
                         size="sm"
                         variant={
-                          taskOwnershipFilter === "all" ? "default" : "outline"
+                          taskOwnershipFilter === "all" && !isProjectFilterActive
+                            ? "default"
+                            : "outline"
                         }
                         onClick={() => {
                           setTaskOwnershipFilter("all");
                           setSelectedDepartmentFilter("all");
+                          setIsProjectFilterActive(false);
+                          setIsOverdueFilterActive(false);
                         }}
                         className={
-                          taskOwnershipFilter === "all"
+                          taskOwnershipFilter === "all" && !isProjectFilterActive
                             ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
                             : "h-8"
                         }
                       >
                         All Tasks
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={isProjectFilterActive ? "default" : "outline"}
+                        onClick={() => {
+                          setTaskOwnershipFilter("all");
+                          setIsProjectFilterActive(true);
+                          setIsOverdueFilterActive(false);
+                        }}
+                        className={
+                          isProjectFilterActive
+                            ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
+                            : "h-8"
+                        }
+                      >
+                        Project Tasks
                       </Button>
                     </>
                   ) : (
@@ -3626,7 +3711,11 @@ const TaskManagement: React.FC = () => {
                             ? "default"
                             : "outline"
                         }
-                        onClick={() => setTaskOwnershipFilter("received")}
+                        onClick={() => {
+                          setTaskOwnershipFilter("received");
+                          setIsProjectFilterActive(false);
+                          setIsOverdueFilterActive(false);
+                        }}
                         className={
                           taskOwnershipFilter === "received"
                             ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
@@ -3642,7 +3731,11 @@ const TaskManagement: React.FC = () => {
                             ? "default"
                             : "outline"
                         }
-                        onClick={() => setTaskOwnershipFilter("created")}
+                        onClick={() => {
+                          setTaskOwnershipFilter("created");
+                          setIsProjectFilterActive(false);
+                          setIsOverdueFilterActive(false);
+                        }}
                         className={
                           taskOwnershipFilter === "created"
                             ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
@@ -3650,6 +3743,42 @@ const TaskManagement: React.FC = () => {
                         }
                       >
                         Created
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={isProjectFilterActive ? "default" : "outline"}
+                        onClick={() => {
+                          setTaskOwnershipFilter("all");
+                          setIsProjectFilterActive(true);
+                          setIsOverdueFilterActive(false);
+                        }}
+                        className={
+                          isProjectFilterActive
+                            ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
+                            : "h-8"
+                        }
+                      >
+                        Project Tasks
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={
+                          taskOwnershipFilter === "all" && !isProjectFilterActive
+                            ? "default"
+                            : "outline"
+                        }
+                        onClick={() => {
+                          setTaskOwnershipFilter("all");
+                          setIsProjectFilterActive(false);
+                          setIsOverdueFilterActive(false);
+                        }}
+                        className={
+                          taskOwnershipFilter === "all" && !isProjectFilterActive
+                            ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
+                            : "h-8"
+                        }
+                      >
+                        All Tasks
                       </Button>
                     </>
                   )}

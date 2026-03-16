@@ -20,7 +20,10 @@ import {
   LogOut,
   Info,
   Plus,
-  Search
+  Search,
+  Paperclip,
+  File as FileIcon,
+  Image as ImageIcon
 } from 'lucide-react';
 import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -104,6 +107,7 @@ const ChatBox: React.FC = () => {
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const typingPulseRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -162,20 +166,7 @@ const ChatBox: React.FC = () => {
   };
 
   const handleEditClick = (message: any) => {
-    // Check if within 2 minutes
-    const sentTime = new Date(message.timestamp).getTime();
-    const now = new Date().getTime();
-    const diffMins = (now - sentTime) / (1000 * 60);
-
-    if (diffMins > 2) {
-      toast({
-        title: "Edit restricted",
-        description: "Messages can only be edited within 2 minutes of sending.",
-        variant: "destructive"
-      });
-      return;
-    }
-
+    /* Time restriction removed as per user request */
     setMessageToEdit(message);
     setEditText(message.content);
     setIsEditDialogOpen(true);
@@ -194,20 +185,7 @@ const ChatBox: React.FC = () => {
   };
 
   const handleDeleteClick = (message: any) => {
-    // Check if within 5 minutes
-    const sentTime = new Date(message.timestamp).getTime();
-    const now = new Date().getTime();
-    const diffMins = (now - sentTime) / (1000 * 60);
-
-    if (diffMins > 5) {
-      toast({
-        title: "Delete restricted",
-        description: "Messages can only be deleted within 5 minutes of sending.",
-        variant: "destructive"
-      });
-      return;
-    }
-
+    /* Time restriction removed as per user request */
     setMessageToDelete(message);
     setIsDeleteDialogOpen(true);
   };
@@ -268,6 +246,48 @@ const ChatBox: React.FC = () => {
       await removeParticipants(activeChat.id, [userId]);
     } catch (error) {
       console.error('Failed to remove member:', error);
+    }
+  };
+
+  const handleFileClick = (type: 'image' | 'file') => {
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = type === 'image' ? 'image/*' : '*/*';
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeChat) return;
+
+    // Check file size (e.g., 5MB limit for Data URL stability)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Maximum file size is 5MB for attachments.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64Content = event.target?.result as string;
+        const type = file.type.startsWith('image/') ? 'image' : 'file';
+        const content = type === 'file' ? `${file.name}|${base64Content}` : base64Content;
+        await sendMessage(content, type);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Failed to read file:', error);
+      toast({
+        title: "Error",
+        description: "Failed to read file for attachment.",
+        variant: "destructive"
+      });
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -439,7 +459,7 @@ const ChatBox: React.FC = () => {
                 <LogOut className="h-4 w-4 text-slate-500" />
                 <span className="font-bold text-sm">Exit Chat</span>
               </DropdownMenuItem>
-              {activeChat.type === 'group' && activeChat.participants.find(p => p.userId === user?.id)?.isAdmin && (
+              {activeChat.type === 'group' && (activeChat.participants.find(p => p.userId === user?.id)?.isAdmin || user?.role === 'admin' || user?.role === 'hr') && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -518,7 +538,9 @@ const ChatBox: React.FC = () => {
                 </p>
               </div>
               <p className={cn("text-[13px] truncate opacity-80 font-medium italic", themeClasses.text)}>
-                "{enrichedMessages.find(m => m.id === replyingTo)?.content}"
+                {enrichedMessages.find(m => m.id === replyingTo)?.messageType === 'image' ? 'Photo' : 
+                 enrichedMessages.find(m => m.id === replyingTo)?.messageType === 'file' ? (enrichedMessages.find(m => m.id === replyingTo)?.content.split('|')[0] || 'Document') :
+                 `"${enrichedMessages.find(m => m.id === replyingTo)?.content}"`}
               </p>
             </div>
             <Button
@@ -532,11 +554,35 @@ const ChatBox: React.FC = () => {
           </div>
         )}
 
-        <div className="flex items-end space-x-3">
+        <div className="flex items-end space-x-3 mt-auto relative z-10">
           <div className={cn(
             "flex-1 relative rounded-[28px] px-4 py-1.5 flex items-center transition-all shadow-lg ring-1 ring-slate-200 dark:ring-slate-800 focus-within:ring-green-500/50",
             themeClasses.inputFieldBg
           )}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-slate-400 hover:text-green-500 hover:bg-green-500/10 transition-colors">
+                  <Paperclip className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48 rounded-2xl border-2 shadow-xl p-2 mb-2">
+                <DropdownMenuItem onClick={() => handleFileClick('image')} className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  <ImageIcon className="h-4 w-4 text-blue-500" />
+                  <span className="font-bold text-sm">Photos & Videos</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleFileClick('file')} className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  <FileIcon className="h-4 w-4 text-purple-500" />
+                  <span className="font-bold text-sm">Document</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              className="hidden"
+            />
 
             <Input
               ref={inputRef}
@@ -546,8 +592,6 @@ const ChatBox: React.FC = () => {
               placeholder="Type your message..."
               className="border-0 bg-transparent focus-visible:ring-0 shadow-none text-[15px] h-11 placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium"
             />
-
-
           </div>
 
           <Button
@@ -561,8 +605,6 @@ const ChatBox: React.FC = () => {
             <Send className={cn("h-5 w-5 transition-transform", messageText.trim() && "translate-x-0.5 -translate-y-0.5 rotate-[-15deg]")} />
           </Button>
         </div>
-
-
       </div>
 
       {/* Custom Confirmation Dialog for Deletion */}
@@ -683,41 +725,59 @@ const ChatBox: React.FC = () => {
 
               <ScrollArea className="h-[200px] rounded-2xl border-2 p-2">
                 <div className="space-y-1">
-                  {activeChat?.participants.map((p) => (
-                    <div key={p.userId} className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarImage src={availableUsers.find(u => u.id === p.userId)?.profilePhoto} />
-                          <AvatarFallback className="bg-slate-100 font-bold text-xs">{p.userName.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-sm font-bold leading-none mb-1">{p.userName} {p.userId === user?.id && <span className="text-[10px] text-green-500 font-black ml-1">(You)</span>}</p>
-                          <p className="text-[10px] font-medium text-slate-500 uppercase tracking-tighter">{p.department} • {p.userRole}</p>
+                  {activeChat?.participants.map((p) => {
+                    const userData = availableUsers.find(u => u.id?.toString() === p.userId?.toString());
+                    return (
+                      <div key={p.userId} className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-9 w-9">
+                            <AvatarImage src={userData?.profilePhoto} />
+                            <AvatarFallback className="bg-slate-100 font-bold text-xs">{(userData?.name || p.userName || 'M').charAt(0).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-sm font-bold leading-none mb-1">
+                              {userData?.name || p.userName} 
+                              {p.userId === user?.id && <span className="text-[10px] text-green-500 font-black ml-1">(You)</span>}
+                            </p>
+                            <p className="text-[10px] font-medium text-slate-500 uppercase tracking-tighter">
+                              {userData?.department || 'Member'} • {userData?.role || p.userRole}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {p.isAdmin && (
+                            <Badge variant="outline" className="text-[8px] font-black uppercase bg-amber-50 text-amber-600 border-amber-200">Admin</Badge>
+                          )}
+                          {(activeChat.participants.find(part => part.userId === user?.id)?.isAdmin || user?.role === 'admin' || user?.role === 'hr') && p.userId !== user?.id && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveMember(p.userId)}
+                              className="h-8 w-8 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                            >
+                              <UserMinus className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {p.isAdmin && (
-                          <Badge variant="outline" className="text-[8px] font-black uppercase bg-amber-50 text-amber-600 border-amber-200">Admin</Badge>
-                        )}
-                        {activeChat.participants.find(part => part.userId === user?.id)?.isAdmin && p.userId !== user?.id && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveMember(p.userId)}
-                            className="h-8 w-8 rounded-full text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
-                          >
-                            <UserMinus className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </ScrollArea>
             </div>
           </div>
 
-          <div className="p-6 bg-slate-50 dark:bg-slate-900 border-t mt-auto">
+          <div className="p-6 bg-slate-50 dark:bg-slate-900 border-t mt-auto flex flex-col gap-3">
+            {(activeChat.participants.find(p => p.userId === user?.id)?.isAdmin || user?.role === 'admin' || user?.role === 'hr') && (
+              <Button
+                variant="destructive"
+                className="w-full rounded-xl font-bold py-6 bg-red-500 hover:bg-red-600 text-white border-none shadow-lg shadow-red-500/20"
+                onClick={() => setIsDeletingGroup(true)}
+              >
+                <TrashIcon className="h-4 w-4 mr-2" />
+                Delete Group
+              </Button>
+            )}
             <Button
               variant="outline"
               className="w-full rounded-xl font-bold border-2"

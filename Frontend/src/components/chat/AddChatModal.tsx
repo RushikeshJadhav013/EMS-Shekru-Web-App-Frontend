@@ -346,14 +346,30 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
               )}
             </div>
 
-            <div className="px-8 flex-1 overflow-y-auto custom-scrollbar pb-6 min-h-0">
+            <div className="px-8 pb-2 flex-shrink-0 flex items-center justify-between">
               <p className={cn(
-                "text-[10px] font-black uppercase tracking-widest mb-3 flex items-center gap-2",
+                "text-[10px] flex-shrink-0 font-black uppercase tracking-widest flex items-center gap-2",
                 isDark ? "text-slate-400" : "text-slate-500"
               )}>
-                <span className="h-1 w-1 rounded-full bg-green-500" />
+                <span className="h-1 w-1 rounded-full bg-green-500 flex-shrink-0" />
                 Select Team Members to invite
               </p>
+              {filteredUsers.length > 0 && (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    const allIds = filteredUsers.map(u => u.id);
+                    const newSelected = Array.from(new Set([...selectedUsers, ...allIds]));
+                    setSelectedUsers(newSelected);
+                  }}
+                  className="h-6 px-3 text-[10px] flex-shrink-0 font-black uppercase tracking-widest text-green-600 hover:text-green-700 hover:bg-green-500/10 rounded-lg transition-colors border border-green-500/20 bg-green-500/5"
+                >
+                  Select All
+                </Button>
+              )}
+            </div>
+
+            <div className="px-8 flex-1 overflow-y-auto custom-scrollbar pb-6 min-h-0">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {filteredUsers.map((u) => {
                   const isSelected = selectedUsers.includes(u.id);
