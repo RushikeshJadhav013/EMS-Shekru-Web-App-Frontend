@@ -1,0 +1,9 @@
+﻿491:   const [projects, setProjects] = useState<any[]>([]);
+506:   }, [location.search, projects.length > 0]); // Wait for projects to load if pId is present
+509:     const projectIndex = projects.findIndex((p) => (p.project_id || p.id) === projectId);
+512:     const project = projects[projectIndex];
+1017:       const projectList = Array.isArray(data) ? data : (data as any)?.projects || (data as any)?.data || [];
+1027:     }).catch(err => console.error("Failed to fetch projects", err))
+1746:     return projects
+1775:   }, [projects, searchQuery, filterStatus, isOverdueFilterActive]);
+3188:                             {projects.map((p: any) => (

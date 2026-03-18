@@ -1,5 +1,5 @@
 import React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +20,7 @@ import {
   FileText,
   UserCheck,
   Home,
+  RefreshCw,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatTimeIST, formatIST } from '@/utils/timezone';
@@ -58,100 +59,116 @@ const HRDashboard: React.FC = () => {
   const [activitiesPage, setActivitiesPage] = useState(1);
   const ACTIVITIES_PER_PAGE = 15;
 
-  // WFH Requests state
   const [wfhRequests, setWfhRequests] = useState<any[]>([]);
   const [isLoadingWfhRequests, setIsLoadingWfhRequests] = useState(false);
   const [isProcessingWfhRequest, setIsProcessingWfhRequest] = useState(false);
-  const [selectedWfhRequest, setSelectedWfhRequest] = useState<any>(null);
   const [showWfhRequestDialog, setShowWfhRequestDialog] = useState(false);
+  const [selectedWfhRequest, setSelectedWfhRequest] = useState<any>(null);
   const [wfhRejectionReason, setWfhRejectionReason] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
-    const loadDashboard = async () => {
-      try {
-        const data = await apiService.getHRDashboard();
-        if (!isMounted || !data) return;
-        const { recentActivities: activityFeed = [], ...statSnapshot } = data;
+  const loadDashboardData = useCallback(async (isSilent = false) => {
+    if (!isSilent) setIsLoadingActivities(true);
+    try {
+      const data = await apiService.getHRDashboard();
+      if (!data) return;
+      const { recentActivities: activityFeed = [], ...statSnapshot } = data;
 
-        setStats((prev) => ({ ...prev, ...statSnapshot }));
+      // Handle potential missing activeTasks/completedTasks from dashboard API
+      let activeTasks = statSnapshot.activeTasks;
+      let completedTasks = statSnapshot.completedTasks;
 
-        // Filter for Today's activities only
-        const today = new Date();
-        const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-        const endOfDay = new Date(today.setHours(23, 59, 59, 999));
-
-        const todaysActivities = (Array.isArray(activityFeed) ? activityFeed : []).filter((activity: HRActivity) => {
-          if (!activity.time) return false;
-          const activityTime = new Date(activity.time);
-          return activityTime >= startOfDay && activityTime <= endOfDay;
-        });
-
-        // Sort by time (most recent first)
-        todaysActivities.sort((a, b) => {
-          const timeA = a.time ? new Date(a.time).getTime() : 0;
-          const timeB = b.time ? new Date(b.time).getTime() : 0;
-          return timeB - timeA;
-        });
-
-        setRecentActivities(todaysActivities);
-      } catch (error) {
-        console.error('Failed to load HR dashboard', error);
-      } finally {
-        if (isMounted) {
-          setIsLoadingActivities(false);
+      if (activeTasks === undefined || activeTasks === 0) {
+        try {
+          const tasks = await apiService.getMyTasks();
+          activeTasks = (Array.isArray(tasks) ? tasks : []).filter((task: any) => 
+            !['completed', 'cancelled', 'complete', 'achieved'].includes((task.status || '').toLowerCase())
+          ).length;
+          completedTasks = (Array.isArray(tasks) ? tasks : []).filter((task: any) => 
+            ['completed', 'complete', 'achieved'].includes((task.status || '').toLowerCase())
+          ).length;
+        } catch (error) {
+          console.error('Failed to fetch tasks for HR fallback', error);
         }
       }
-    };
 
-    loadDashboard();
-    return () => {
-      isMounted = false;
-    };
+      setStats((prev) => ({ 
+        ...prev, 
+        ...statSnapshot,
+        activeTasks: activeTasks !== undefined ? activeTasks : prev.activeTasks,
+        completedTasks: completedTasks !== undefined ? completedTasks : prev.completedTasks
+      }));
+
+      // Filter for Today's activities only
+      const today = new Date();
+      const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
+      const todaysActivities = (Array.isArray(activityFeed) ? activityFeed : []).filter((activity: HRActivity) => {
+        if (!activity.time) return false;
+        const activityTime = new Date(activity.time);
+        return activityTime >= startOfDay && activityTime <= endOfDay;
+      });
+
+      // Sort by time (most recent first)
+      todaysActivities.sort((a, b) => {
+        const timeA = a.time ? new Date(a.time).getTime() : 0;
+        const timeB = b.time ? new Date(b.time).getTime() : 0;
+        return timeB - timeA;
+      });
+
+      setRecentActivities(todaysActivities);
+    } catch (error) {
+      console.error('Failed to load HR dashboard', error);
+    } finally {
+      if (!isSilent) setIsLoadingActivities(false);
+    }
   }, []);
 
-  // Load WFH requests for HR (both own and employee/team lead requests)
+  const loadWFHRequests = useCallback(async () => {
+    setIsLoadingWfhRequests(true);
+    try {
+      const response = await apiService.getAllWFHRequests();
+      const requests = Array.isArray(response) ? response : [];
+      const formattedRequests = requests.map((req: any) => ({
+        id: req.wfh_id || req.id,
+        user_id: req.user_id,
+        user_name: req.name || req.employee_name || 'Unknown',
+        employee_id: req.employee_id || '',
+        start_date: req.start_date,
+        end_date: req.end_date,
+        reason: req.reason,
+        wfh_type: (req.wfh_type || 'Full Day').toLowerCase().includes('full') ? 'full_day' : 'half_day',
+        status: (req.status || 'Pending').toLowerCase(),
+        created_at: req.created_at,
+        updated_at: req.updated_at,
+        rejection_reason: req.rejection_reason,
+        approved_by: req.approver_name || req.approved_by,
+        department: req.department || 'Unknown',
+        user_role: (req.role || 'employee').toLowerCase(),
+      }));
+      setWfhRequests(formattedRequests);
+    } catch (error) {
+      setWfhRequests([]);
+    } finally {
+      setIsLoadingWfhRequests(false);
+    }
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await Promise.all([loadDashboardData(true), loadWFHRequests()]);
+    setIsRefreshing(false);
+    toast({
+      title: "Dashboard Updated",
+      description: "Home page data has been refreshed successfully.",
+    });
+  }, [loadDashboardData, loadWFHRequests]);
+
   useEffect(() => {
-    const loadWFHRequests = async () => {
-      setIsLoadingWfhRequests(true);
-      try {
-        // Fetch all WFH requests using the new API method
-        const response = await apiService.getAllWFHRequests();
-
-        // Handle response - it's always an array
-        const requests = Array.isArray(response) ? response : [];
-
-        // Transform API response to match our UI format
-        // The API returns requests with fields like: wfh_id, user_id, start_date, end_date, wfh_type, reason, status, employee_id, name, department, role, approver_name
-        const formattedRequests = requests.map((req: any) => ({
-          id: req.wfh_id || req.id,
-          user_id: req.user_id,
-          user_name: req.name || req.employee_name || 'Unknown',
-          employee_id: req.employee_id || '',
-          start_date: req.start_date,
-          end_date: req.end_date,
-          reason: req.reason,
-          wfh_type: (req.wfh_type || 'Full Day').toLowerCase().includes('full') ? 'full_day' : 'half_day',
-          status: (req.status || 'Pending').toLowerCase(),
-          created_at: req.created_at,
-          updated_at: req.updated_at,
-          rejection_reason: req.rejection_reason,
-          approved_by: req.approver_name || req.approved_by,
-          department: req.department || 'Unknown',
-          user_role: (req.role || 'employee').toLowerCase(),
-        }));
-        setWfhRequests(formattedRequests);
-      } catch (error) {
-        // Silently fail - endpoint may not be implemented yet
-        // The API method already handles errors gracefully
-        setWfhRequests([]);
-      } finally {
-        setIsLoadingWfhRequests(false);
-      }
-    };
-
+    loadDashboardData();
     loadWFHRequests();
-  }, []);
+  }, [loadDashboardData, loadWFHRequests]);
 
   const safePercentage = (value: number, total: number): number => {
     if (!total || total <= 0) return 0;
@@ -182,6 +199,10 @@ const HRDashboard: React.FC = () => {
             : req
         )
       );
+
+      // Re-fetch dashboard data to update stats (like pendingApprovals)
+      loadDashboardData(true);
+      loadWFHRequests();
 
       toast({
         title: `Request ${action === 'approve' ? 'Approved' : 'Rejected'}`,
@@ -433,6 +454,16 @@ const HRDashboard: React.FC = () => {
         </div>
 
         <div className="relative flex gap-3">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="rounded-xl h-12 w-12 bg-white dark:bg-gray-800 border shadow-sm transition-all active:scale-95"
+            title="Refresh Dashboard"
+          >
+            <RefreshCw className={`h-5 w-5 text-purple-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
           <Button
             onClick={() => navigate('/hr/employees/', { state: { highlight: true } })}
             size="lg"

@@ -136,6 +136,39 @@ export interface Branch {
   updated_at: string;
 }
 
+export interface WorkingHoursDaySummary {
+  date: string;
+  working_hours: number;
+  working_seconds: number;
+  offline_hours: number;
+  offline_seconds: number;
+}
+
+export interface WorkingHoursAttendanceSummary {
+  attendance_id: number;
+  date: string;
+  check_in: string;
+  check_out: string | null;
+  working_hours: number;
+  working_seconds: number;
+  offline_hours: number;
+  offline_seconds: number;
+  is_currently_online: boolean;
+}
+
+export interface WorkingHoursSummaryResponse {
+  user_id: number;
+  period: string;
+  range_start: string;
+  range_end: string;
+  total_working_hours: number;
+  total_working_seconds: number;
+  total_offline_hours: number;
+  total_offline_seconds: number;
+  days: WorkingHoursDaySummary[];
+  attendances: WorkingHoursAttendanceSummary[];
+}
+
 class ApiService {
   private baseURL: string;
 
@@ -472,6 +505,7 @@ class ApiService {
     description?: string;
     status?: string;
     due_date?: string | null;
+    start_date?: string | null;
     priority?: string;
     assigned_to_ids: number[];
     project_id?: number;
@@ -1413,10 +1447,6 @@ class ApiService {
   }
 
   async getWFHApprovals() {
-    // Fetch all WFH requests for admin approval
-    // NOTE: Backend needs to implement GET /wfh/requests endpoint that returns all WFH requests
-    // This endpoint should return requests from all users (not just current user)
-    // and should support filtering by role, status, and date range
     return this.request("/wfh/requests");
   }
 
@@ -1439,45 +1469,119 @@ class ApiService {
     date?: string;
     department?: string;
     manager_id?: string | number;
+    team_lead_id?: string | number;
+    employee_id?: string | number;
   }) {
     const queryParams = new URLSearchParams();
     if (params?.date) queryParams.append("date", params.date);
     if (params?.department) queryParams.append("department", params.department);
     if (params?.manager_id)
       queryParams.append("manager_id", String(params.manager_id));
+    if (params?.team_lead_id)
+      queryParams.append("team_lead_id", String(params.team_lead_id));
+    if (params?.employee_id)
+      queryParams.append("employee_id", String(params.employee_id));
     const queryString = queryParams.toString()
       ? `?${queryParams.toString()}`
       : "";
     return this.request(`/attendance/all${queryString}`);
   }
 
+  async getMyAttendance(userId: string | number) {
+    return this.request(`/attendance/my-attendance/${userId}`);
+  }
+
   async getWorkingHours(attendanceId: number) {
     return this.request(`/attendance/working-hours/${attendanceId}`);
+  }
+
+  async getWorkingHoursSummary(params: {
+    user_id: number;
+    period?: "week" | "current_month" | "last_month" | "last_3_months" | "custom";
+    start_date?: string; // yyyy-MM-dd, required when period = "custom"
+    end_date?: string;   // yyyy-MM-dd, required when period = "custom"
+  }): Promise<WorkingHoursSummaryResponse> {
+    const query = new URLSearchParams();
+    query.append("user_id", String(params.user_id));
+    if (params.period) query.append("period", params.period);
+    if (params.start_date) query.append("start_date", params.start_date);
+    if (params.end_date) query.append("end_date", params.end_date);
+    return this.request(`/attendance/working-hours/summary?${query.toString()}`);
   }
 
   async getAttendanceStatus() {
     return this.request("/attendance/status");
   }
 
-  async checkIn(location?: { latitude: number; longitude: number }) {
-    return this.request("/attendance/check-in", {
+  async getTodayAttendance() {
+    return this.request("/attendance/today");
+  }
+
+  async getAttendanceSummary() {
+    return this.request("/attendance/summary");
+  }
+
+  async checkIn(data: any) {
+    if (data instanceof FormData) {
+      return this.request("/attendance/check-in", {
+        method: "POST",
+        body: data,
+      });
+    }
+    return this.request("/attendance/check-in/json", {
       method: "POST",
-      body: JSON.stringify(location || {}),
+      body: JSON.stringify(data || {}),
     });
   }
 
-  async checkOut(location?: { latitude: number; longitude: number }) {
-    return this.request("/attendance/check-out", {
+  async checkOut(data: any) {
+    if (data instanceof FormData) {
+      return this.request("/attendance/check-out", {
+        method: "POST",
+        body: data,
+      });
+    }
+    return this.request("/attendance/check-out/json", {
       method: "POST",
-      body: JSON.stringify(location || {}),
+      body: JSON.stringify(data || {}),
     });
   }
 
-  async updateOnlineStatus(isOnline: boolean) {
+  async getCurrentOnlineStatus() {
+    return this.request("/attendance/current-online-status");
+  }
+
+  async getOnlineStatusHistory(attendanceId: number) {
+    return this.request(`/attendance/online-status/${attendanceId}`);
+  }
+
+  async recordAttendanceLogin(userId: number, timestamp: string) {
+    return this.request("/attendance/login-resume", {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId, login_timestamp: timestamp }),
+    });
+  }
+
+  async recordAttendanceLogout(userId: number, timestamp: string) {
+    return this.request("/attendance/logout", {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId, logout_timestamp: timestamp }),
+    });
+  }
+
+  async updateOnlineStatus(isOnline: boolean, attendanceId?: number, reason?: string | null) {
+    const body: any = { is_online: isOnline };
+    if (attendanceId) body.attendance_id = attendanceId;
+    if (reason) body.reason = reason;
+
     return this.request("/attendance/online-status", {
-      method: "PUT",
-      body: JSON.stringify({ is_online: isOnline }),
+      method: "POST",
+      body: JSON.stringify(body),
     });
+  }
+
+  async getUserOnlineStatus(userId: string | number) {
+    return this.request(`/attendance/user-online-status/${userId}`);
   }
 
   // Export attendance as CSV
@@ -1584,6 +1688,31 @@ class ApiService {
     return this.download(
       `/attendance/report/monthly-grid-detailed/download/csv?${queryParams.toString()}`,
     );
+  }
+
+  // Office timings
+  async getOfficeTimings() {
+    return this.request("/attendance/office-hours");
+  }
+
+  async createOfficeTiming(data: any) {
+    return this.request("/attendance/office-hours", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateOfficeTiming(data: any) {
+    return this.request("/attendance/office-hours", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteOfficeTiming(timingId: number) {
+    return this.request(`/attendance/office-hours/${timingId}`, {
+      method: "DELETE",
+    });
   }
 
   // Holiday Management APIs
@@ -2160,6 +2289,7 @@ class ApiService {
     description?: string;
     status?: string;
     due_date?: string | null;
+    start_date?: string | null;
     priority?: string;
     assigned_to_ids: number[];
     project_id: number;

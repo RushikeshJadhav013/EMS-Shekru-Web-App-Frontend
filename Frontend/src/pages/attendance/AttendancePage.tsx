@@ -99,15 +99,7 @@ const AttendancePage: React.FC = () => {
   const fetchTodayAttendance = async () => {
     if (!user?.id) return;
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/attendance/my-attendance/${user.id}`, {
-        headers: {
-          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!res.ok) throw new Error('Failed to fetch attendance');
-      const data = await res.json();
+      const data = await apiService.getMyAttendance(user.id);
 
       // Parse backend response and find today's record
       const today = formatDateIST(new Date(), 'yyyy-MM-dd');
@@ -127,10 +119,22 @@ const AttendancePage: React.FC = () => {
           date: format(checkInDate, 'yyyy-MM-dd'),
           checkInTime: todayRecord.check_in,
           checkOutTime: todayRecord.check_out || undefined,
-          checkInLocation: { latitude: 0, longitude: 0, address: todayRecord.gps_location || 'N/A' },
-          checkInSelfie: todayRecord.selfie || '',
+          checkInLocation: { latitude: 0, longitude: 0, address: todayRecord.checkInLocationLabel || todayRecord.gps_location || 'N/A' },
+          checkOutLocation: { latitude: 0, longitude: 0, address: todayRecord.checkOutLocationLabel || 'N/A' },
+          checkInSelfie: todayRecord.checkInSelfie || todayRecord.selfie || '',
+          checkOutSelfie: todayRecord.checkOutSelfie || '',
           status: 'present',
-          workHours: todayRecord.total_hours
+          workHours: todayRecord.total_hours,
+          // New fields
+          employeeId: todayRecord.employee_id,
+          name: todayRecord.name,
+          department: todayRecord.department,
+          checkInStatus: todayRecord.checkInStatus,
+          checkOutStatus: todayRecord.checkOutStatus,
+          scheduledStart: todayRecord.scheduledStart,
+          scheduledEnd: todayRecord.scheduledEnd,
+          checkInLocationLabel: todayRecord.checkInLocationLabel,
+          checkOutLocationLabel: todayRecord.checkOutLocationLabel
         };
         setCurrentAttendance(attendance);
 
@@ -156,10 +160,22 @@ const AttendancePage: React.FC = () => {
               date: recordDateStr,
               checkInTime: rec.check_in,
               checkOutTime: rec.check_out || undefined,
-              checkInLocation: { latitude: 0, longitude: 0, address: rec.gps_location || 'N/A' },
-              checkInSelfie: rec.selfie || '',
+              checkInLocation: { latitude: 0, longitude: 0, address: rec.checkInLocationLabel || rec.gps_location || 'N/A' },
+              checkOutLocation: { latitude: 0, longitude: 0, address: rec.checkOutLocationLabel || 'N/A' },
+              checkInSelfie: rec.checkInSelfie || rec.selfie || '',
+              checkOutSelfie: rec.checkOutSelfie || '',
               status: status,
-              workHours: rec.total_hours
+              workHours: rec.total_hours,
+              // New fields
+              employeeId: rec.employee_id,
+              name: rec.name,
+              department: rec.department,
+              checkInStatus: rec.checkInStatus,
+              checkOutStatus: rec.checkOutStatus,
+              scheduledStart: rec.scheduledStart,
+              scheduledEnd: rec.scheduledEnd,
+              checkInLocationLabel: rec.checkInLocationLabel,
+              checkOutLocationLabel: rec.checkOutLocationLabel
             };
           })
           .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -185,10 +201,22 @@ const AttendancePage: React.FC = () => {
               date: recordDateStr,
               checkInTime: rec.check_in,
               checkOutTime: rec.check_out || undefined,
-              checkInLocation: { latitude: 0, longitude: 0, address: rec.gps_location || 'N/A' },
-              checkInSelfie: rec.selfie || '',
+              checkInLocation: { latitude: 0, longitude: 0, address: rec.checkInLocationLabel || rec.gps_location || 'N/A' },
+              checkOutLocation: { latitude: 0, longitude: 0, address: rec.checkOutLocationLabel || 'N/A' },
+              checkInSelfie: rec.checkInSelfie || rec.selfie || '',
+              checkOutSelfie: rec.checkOutSelfie || '',
               status: status,
-              workHours: rec.total_hours
+              workHours: rec.total_hours,
+              // New fields
+              employeeId: rec.employee_id,
+              name: rec.name,
+              department: rec.department,
+              checkInStatus: rec.checkInStatus,
+              checkOutStatus: rec.checkOutStatus,
+              scheduledStart: rec.scheduledStart,
+              scheduledEnd: rec.scheduledEnd,
+              checkInLocationLabel: rec.checkInLocationLabel,
+              checkOutLocationLabel: rec.checkOutLocationLabel
             };
           })
           .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -531,19 +559,7 @@ const AttendancePage: React.FC = () => {
 
       // For now, we'll skip the selfie requirement for checkout
       // In a real implementation, you might want to add selfie capture here
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/attendance/check-out`, {
-        method: 'POST',
-        headers: {
-          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
-        },
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || 'Checkout failed');
-      }
+      await apiService.checkOut(formData);
 
       // Fetch updated attendance
       await fetchTodayAttendance();
@@ -604,21 +620,10 @@ const AttendancePage: React.FC = () => {
       const selfieBlob = await fetch(imageData).then(r => r.blob());
       formData.append('selfie', selfieBlob, 'selfie.jpg');
 
-      let apiUrl = '';
-      if (isCheckingIn) apiUrl = `${API_BASE_URL}/attendance/check-in`;
-      else apiUrl = `${API_BASE_URL}/attendance/check-out`;
-
-      const token = localStorage.getItem('token');
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
-        }
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || 'Attendance API error');
+      if (isCheckingIn) {
+        await apiService.checkIn(formData);
+      } else {
+        await apiService.checkOut(formData);
       }
 
       // Fetch updated attendance

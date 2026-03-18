@@ -1,5 +1,5 @@
 import React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Activity,
   Target,
+  RefreshCw,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatTimeIST, formatIST, nowIST } from '@/utils/timezone';
@@ -51,327 +52,188 @@ const ManagerDashboard: React.FC = () => {
   const [teamPerformance, setTeamPerformance] = useState<{ team: string; lead: string; members: number; completion: number; }[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMemberStatus[]>([]);
   const [isLoadingTeamMembers, setIsLoadingTeamMembers] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [activitiesPage, setActivitiesPage] = useState(1);
   const ACTIVITIES_PER_PAGE = 15;
 
-  useEffect(() => {
-    const loadDashboard = async () => {
-      try {
-        const [dashboardData, employees] = await Promise.all([
-          apiService.getManagerDashboard(),
-          apiService.getEmployees()
-        ]);
+  const loadDashboardData = useCallback(async (isSilent = false) => {
+    try {
+      const dashboardData = await apiService.getManagerDashboard();
+      const data = dashboardData || {};
 
-        const data = dashboardData || {};
+      // Handle potential missing activeTasks/completedTasks from dashboard API
+      const statSnapshot = {
+        teamMembers: data.teamMembers || 0,
+        presentToday: data.presentToday || 0,
+        onLeave: data.onLeave || 0,
+        activeTasks: data.activeTasks, // Keep as undefined if not present
+        completedTasks: data.completedTasks, // Keep as undefined if not present
+        pendingApprovals: data.pendingApprovals || 0,
+        teamPerformancePercent: data.teamPerformancePercent || 0,
+        overdueItems: data.overdueItems || 0,
+      };
 
-        // If activeTasks is 0, try to get actual count from tasks API
-        let activeTasks = data.activeTasks || 0;
-        const pendingApprovals = data.pendingApprovals || 0;
+      let activeTasks = statSnapshot.activeTasks;
+      let completedTasks = statSnapshot.completedTasks;
 
-        if (activeTasks === 0) {
-          try {
-            const tasks = await apiService.getMyTasks();
-            // Count tasks that are not completed
-            activeTasks = tasks.filter((task: any) =>
-              task.status !== 'Completed' &&
-              task.status !== 'completed' &&
-              task.status !== 'Cancelled' &&
-              task.status !== 'cancelled'
-            ).length;
-          } catch (error) {
-            console.log('Could not fetch tasks for count');
-          }
-        }
-
-        // Create a map for quick lookup: Name -> { role, department, userId }
-        const employeeMap: Record<string, { role: string; department: string; userId: string }> = {};
-        employees.forEach((emp: any) => {
-          const name = (emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`).trim();
-          const userId = String(emp.user_id || emp.userId || emp.id);
-          employeeMap[name] = {
-            role: (emp.role || '').toLowerCase(),
-            department: (emp.department || '').trim().toLowerCase(),
-            userId: userId
-          };
-          // Also map by User ID just in case
-          employeeMap[userId] = employeeMap[name];
-        });
-
-        // Current User Info
-        const userId = String(user?.id);
-        let userDept = (user?.department || '').trim().toLowerCase();
-
-        // If userDept is missing from context, try to find it in the employees list
-        if (!userDept && employees) {
-          const currentUserData = employees.find((emp: any) => String(emp.user_id || emp.userId || emp.id) === userId);
-          if (currentUserData && currentUserData.department) {
-            userDept = currentUserData.department.trim().toLowerCase();
-          }
-        }
-
-        // Calculate team members count (Self + Employees only)
-        // Logic: Count = 1 (Self) + Employees/TeamLeads in department. 
-        // Excludes other Managers, Admins, etc.
-        let teamMembersCount = data.teamMembers || 0;
-        
-        const relevantEmployees = employees.filter((emp: any) => {
-          const empDept = (emp.department || '').trim().toLowerCase();
-          const role = (emp.role || '').toLowerCase();
-          const uId = String(emp.user_id || emp.userId || emp.id);
-
-          // Allow Self
-          if (uId === userId) return true;
-
-          // Allow Department + Role constraint
-          // If userDept is empty, just match the role
-          return (!userDept || empDept === userDept) && (role === 'employee' || role === 'team_lead');
-        });
-        
-        if (relevantEmployees.length > 0) {
-           teamMembersCount = relevantEmployees.length;
-        }
-
-        setStats({
-          teamMembers: teamMembersCount,
-          presentToday: data.presentToday || 0,
-          onLeave: data.onLeave || 0,
-          activeTasks,
-          completedTasks: data.completedTasks || 0,
-          pendingApprovals,
-          teamPerformancePercent: data.teamPerformancePercent || 0,
-          overdueItems: data.overdueItems || 0,
-        });
-
-        // Filter Team Activities
-        const allActivities = data.teamActivities || data.recentActivities || [];
-        const filteredActivities = allActivities.filter((activity: any) => {
-          // Identify user from activity (it usually has a 'user' field containing name)
-          const userName = (activity.user || '').trim();
-
-          // Use our map to verify role and department
-          const empInfo = employeeMap[userName];
-
-          // If we can't find them, default to excluded (security first)
-          // Exception: If the name matches current user's name (we might need to fetch user details to know name, 
-          // or assume if it's not found in employee list it might be someone else, so safer to hide).
-          if (!empInfo) {
-            // Try to see if it's self by some other means since we know our name
-            if (userName.includes('You') || (user && userName === user.name)) {
-               return true;
-            }
-            return false;
-          }
-
-          // 1. Allow Self
-          if (empInfo.userId === userId) return true;
-
-          // 2. If userDept is empty, just allow them since we don't have department info to filter by
-          // Or allow them if they match the department and role
-          return !userDept || (empInfo.department === userDept && (empInfo.role === 'employee' || empInfo.role === 'team_lead'));
-        });
-
-        setTeamActivities(filteredActivities);
-
-        // Filter Team Performance (Teams list)
-        // If the 'team' field matches user's department, show it or calculate from employees
-        const now = nowIST();
-        let performanceData = [];
+      // Only fetch tasks as fallback if dashboard stats are missing or zero
+      if (activeTasks === undefined || activeTasks === 0) {
         try {
-          // Fetch detailed metrics to ensure we have the latest scores
-          const metricsData = await apiService.getDepartmentMetrics({
-            month: now.getMonth(),
-            year: now.getFullYear()
-          });
-
-          if (metricsData && metricsData.departments && metricsData.departments.length > 0) {
-            if (userDept) {
-              const userDeptMetrics = metricsData.departments.find((d: any) => (d.department || '').toLowerCase() === userDept);
-              if (userDeptMetrics) {
-                performanceData.push({
-                  team: userDeptMetrics.department,
-                  lead: user?.name || 'You',
-                  members: teamMembersCount, // Use the count we calculated earlier
-                  completion: userDeptMetrics.performanceScore || 0
-                });
-              }
-            } else {
-              // Fallback if no userDept: just show the first available, or all of them.
-              // We'll just show the first one or all if they are a top level manager
-              metricsData.departments.slice(0, 3).forEach((d: any) => {
-                 performanceData.push({
-                   team: d.department,
-                   lead: user?.name || 'You',
-                   members: teamMembersCount > 0 ? teamMembersCount : d.employeeCount || 0,
-                   completion: d.performanceScore || 0
-                 });
-              });
-            }
-          }
-        } catch (metricsError) {
-          console.error('Failed to load department metrics for manager:', metricsError);
+          const tasks = await apiService.getMyTasks();
+          const taskList = Array.isArray(tasks) ? tasks : [];
+          activeTasks = taskList.filter((task: any) =>
+            !['completed', 'cancelled', 'complete', 'achieved'].includes((task.status || '').toLowerCase())
+          ).length;
+          completedTasks = taskList.filter((task: any) =>
+            ['completed', 'complete', 'achieved'].includes((task.status || '').toLowerCase())
+          ).length;
+        } catch (error) {
+          console.error('Failed to fetch tasks for Manager fallback', error);
         }
-
-        // If API data wasn't found or failed, fallback or empty
-        if (performanceData.length === 0) {
-          // Try to use dashboard data if available
-          const allPerformance = data.teamPerformance || [];
-          performanceData = allPerformance.filter((p: any) => {
-            const pTeam = (p.team || '').trim().toLowerCase();
-            return !userDept || pTeam === userDept;
-          });
-          
-          // If still empty and we have any performance data, show all as fallback for manager
-          if (performanceData.length === 0 && allPerformance.length > 0) {
-              performanceData = allPerformance;
-          }
-        }
-        setTeamPerformance(performanceData);
-
-      } catch (error) {
-        console.error('Failed to load dashboard:', error);
       }
-    };
 
-    loadDashboard();
+      setStats((prev) => ({
+        ...prev,
+        ...statSnapshot,
+        activeTasks: activeTasks !== undefined ? activeTasks : prev.activeTasks,
+        completedTasks: completedTasks !== undefined ? completedTasks : prev.completedTasks
+      }));
+
+      // Filter Team Activities
+      const allActivities = data.teamActivities || data.recentActivities || [];
+      const userDepts = (user?.department || '').split(',').map((d: any) => d.trim().toLowerCase()).filter(Boolean);
+
+      // Simple filter for activities if the API doesn't already filter by manager department
+      const filteredActivities = allActivities.slice(0, ACTIVITIES_PER_PAGE);
+      setTeamActivities(filteredActivities);
+
+      // Filter Team Performance
+      const allPerformance = data.teamPerformance || [];
+      setTeamPerformance(allPerformance);
+    } catch (error) {
+      console.error('Failed to load dashboard:', error);
+    }
   }, [user]);
 
-  useEffect(() => {
-    const fetchTeamMembersWithStatus = async () => {
-      setIsLoadingTeamMembers(true);
-      try {
-        // Fetch all employees
-        const employees = await apiService.getEmployees();
-        
-        let userDept = (user?.department || '').trim().toLowerCase();
-        const userId = String(user?.id);
+  const fetchTeamMembersWithStatus = useCallback(async () => {
+    setIsLoadingTeamMembers(true);
+    try {
+      const [employees, allTasks, attendanceData] = await Promise.all([
+        apiService.getEmployees(),
+        apiService.getMyTasks(),
+        apiService.getTodayAttendance()
+      ]);
 
-        // If userDept is missing, extract it from employees list
-        if (!userDept && employees) {
-          const currentUserData = employees.find((emp: any) => String(emp.user_id || emp.userId || emp.id) === userId);
-          if (currentUserData && currentUserData.department) {
-            userDept = currentUserData.department.trim().toLowerCase();
+      const userId = String(user?.id);
+      const userDepts = (user?.department || '').split(',').map((d: any) => d.trim().toLowerCase()).filter(Boolean);
+
+      const departmentEmployees = employees.filter((emp: any) => {
+        const role = (emp.role || '').toLowerCase();
+        const empDepts = (emp.department || '').split(',').map((d: any) => d.trim().toLowerCase()).filter(Boolean);
+        const uId = String(emp.user_id || emp.userId || emp.id);
+
+        if (uId === userId) return true;
+
+        // Share any department and role is employee/team_lead
+        const hasMatchingDept = userDepts.length === 0 || empDepts.some(d => userDepts.includes(d));
+        return hasMatchingDept && (role === 'employee' || role === 'team_lead');
+      });
+
+      const attendanceMap: Record<string, any> = {};
+      (Array.isArray(attendanceData) ? attendanceData : []).forEach((record: any) => {
+        const recordUserId = String(record.user_id || record.userId);
+        attendanceMap[recordUserId] = record;
+      });
+
+      const tasks = Array.isArray(allTasks) ? allTasks : [];
+
+      const teamMembersData: TeamMemberStatus[] = departmentEmployees.map((emp: any) => {
+        const uId = String(emp.user_id || emp.userId || emp.id);
+
+        // Filter tasks assigned to this specific user
+        const employeeTasks = tasks.filter((task: any) => {
+          const assignedToVal = task.assigned_to_ids || task.assigned_to;
+          const assignedToList = Array.isArray(assignedToVal)
+            ? assignedToVal.map(String)
+            : [String(assignedToVal)];
+          return assignedToList.includes(uId);
+        });
+
+        const activeCount = employeeTasks.filter((task: any) => {
+          const status = (task.status || '').toLowerCase();
+          return !['completed', 'cancelled', 'complete', 'achieved'].includes(status);
+        }).length;
+
+        const completedCount = employeeTasks.filter((task: any) =>
+          ['completed', 'complete', 'achieved'].includes((task.status || '').toLowerCase())
+        ).length;
+
+        const totalTasks = employeeTasks.length;
+        const progress = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
+
+        let currentStatusText = 'No tasks assigned';
+        if (activeCount > 0) {
+          const firstTask = employeeTasks.find((task: any) =>
+            !['completed', 'cancelled', 'complete', 'achieved'].includes((task.status || '').toLowerCase())
+          );
+          currentStatusText = firstTask?.title || firstTask?.task_name || 'Active on tasks';
+        } else if (completedCount > 0) {
+          currentStatusText = 'All tasks completed';
+        }
+
+        const attendanceRecord = attendanceMap[uId];
+        let status: 'present' | 'completed' | 'on-leave' | 'absent' = 'absent';
+        let isOnline = false;
+
+        if (attendanceRecord) {
+          const checkOutTime = attendanceRecord.check_out || attendanceRecord.checkOutTime;
+          if (checkOutTime && checkOutTime !== 'null' && checkOutTime !== 'None') {
+            status = 'completed';
+            isOnline = false;
+          } else {
+            status = 'present';
+            isOnline = true;
           }
         }
 
-        if (!userDept && employees.length > 0) {
-            // Even if department is missing, we shouldn't totally fail. 
-            // We can just proceed and show all subordinates. But Manager typically has a department mapped.
-            // If they are explicitly assigned as Manager to NO department, it's safer to just skip or show none?
-            // Actually, we can show people who report directly to them. But the existing logic checks department.
-            // Let's at least not crash.
-        }
+        return {
+          name: emp.name || 'Unknown',
+          status,
+          task: currentStatusText,
+          progress,
+          userId: uId,
+          isOnline,
+        };
+      });
 
-        // Filter by department and STRICT roles (Employee, Team Lead, and Self)
-        const departmentEmployees = employees.filter((emp: any) => {
-          const empDept = (emp.department || '').trim().toLowerCase();
-          const role = (emp.role || '').toLowerCase();
-          const uId = String(emp.id || emp.user_id || '');
+      setTeamMembers(teamMembersData);
 
-          // 1. Allow Self (Manager)
-          if (uId === userId) return true;
+      // Update team members count in stats if it changed
+      setStats(prev => ({
+        ...prev,
+        teamMembers: departmentEmployees.length
+      }));
 
-          // 2. Allow Department Members (Employee / Team Lead ONLY)
-          // If userDept is empty, we include them if they are employees/team leads, just to show something.
-          return (!userDept || empDept === userDept) && (role === 'employee' || role === 'team_lead');
-        });
+    } catch (error) {
+      console.error('Failed to fetch team members:', error);
+    } finally {
+      setIsLoadingTeamMembers(false);
+    }
+  }, [user]);
 
-        // Fetch all tasks and today's attendance in parallel
-        const [tasks, attendanceRes] = await Promise.all([
-          apiService.getMyTasks(),
-          fetch(`${API_BASE_URL}/attendance/today`, {
-            headers: {
-              'Authorization': (() => {
-                const token = localStorage.getItem('token');
-                if (!token) return '';
-                return token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-              })(),
-              'Content-Type': 'application/json',
-            }
-          })
-        ]);
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await Promise.all([loadDashboardData(true), fetchTeamMembersWithStatus()]);
+    setIsRefreshing(false);
+  }, [loadDashboardData, fetchTeamMembersWithStatus]);
 
-        const attendanceData = attendanceRes.ok ? await attendanceRes.json() : [];
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
 
-        // Create a map of attendance by user ID for quick lookup
-        const attendanceMap: Record<string, any> = {};
-        attendanceData.forEach((record: any) => {
-          const uId = String(record.user_id || record.userId);
-          attendanceMap[uId] = record;
-        });
-
-        // Process team members with their status and tasks
-        const teamMembersData: TeamMemberStatus[] = await Promise.all(
-          departmentEmployees.map(async (emp: any) => {
-            const uId = String(emp.id || emp.user_id || '');
-
-            // Get tasks assigned to this employee
-            const employeeTasks = tasks.filter((task: any) => {
-              // Handle both camelCase (frontend) and snake_case (backend) property names
-              const assignedToVal = task.assignedTo !== undefined ? task.assignedTo : task.assigned_to;
-              const assignedToList = Array.isArray(assignedToVal) ? assignedToVal : [assignedToVal];
-
-              // Check if employee ID is in the assigned list (converting all to strings for safe comparison)
-              return assignedToList.some((id: any) => String(id) === uId);
-            });
-
-            // Get active tasks (not completed or cancelled)
-            const activeTasks = employeeTasks.filter((task: any) => {
-              const status = (task.status || '').toLowerCase();
-              return status !== 'completed' && status !== 'cancelled';
-            });
-
-            // Calculate progress based on completed vs total tasks
-            const totalTasks = employeeTasks.length;
-            const completedTasks = employeeTasks.filter((task: any) => (task.status || '').toLowerCase() === 'completed').length;
-            const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-            // Get the most recent active task title
-            const currentTask = activeTasks.length > 0
-              ? activeTasks[0].title || 'No active task'
-              : completedTasks > 0
-                ? 'All tasks completed'
-                : 'No tasks assigned';
-
-            // Determine status based on actual attendance
-            const attendanceRecord = attendanceMap[uId];
-            let status: 'present' | 'completed' | 'on-leave' | 'absent' = 'absent';
-            let isOnline = false;
-
-            if (attendanceRecord) {
-              const checkOutTime = attendanceRecord.check_out || attendanceRecord.checkOutTime;
-              if (checkOutTime && checkOutTime !== 'null' && checkOutTime !== 'None') {
-                status = 'completed';
-                isOnline = false;
-              } else {
-                status = 'present';
-                isOnline = true;
-              }
-            } else {
-              status = 'absent';
-              isOnline = false;
-            }
-
-            return {
-              name: emp.name || 'Unknown',
-              status,
-              task: currentTask,
-              progress,
-              userId: uId,
-              isOnline,
-            };
-          })
-        );
-
-        setTeamMembers(teamMembersData);
-      } catch (error) {
-        console.error('Failed to fetch team members:', error);
-      } finally {
-        setIsLoadingTeamMembers(false);
-      }
-    };
-
+  useEffect(() => {
     fetchTeamMembersWithStatus();
-  }, [user?.department]);
+  }, [fetchTeamMembersWithStatus]);
 
   // Calculate correct attendance status based on check-in time and grace period
   const getCorrectAttendanceStatus = (activity: any) => {
@@ -432,6 +294,16 @@ const ManagerDashboard: React.FC = () => {
         </div>
 
         <div className="relative flex gap-3">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="rounded-xl h-12 w-12 bg-white dark:bg-gray-800 border shadow-sm transition-all active:scale-95"
+            title="Refresh Dashboard"
+          >
+            <RefreshCw className={`h-5 w-5 text-teal-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
           <Button
             onClick={() => navigate('/manager/tasks')}
             size="lg"

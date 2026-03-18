@@ -84,6 +84,8 @@ interface EmployeeAttendance extends AttendanceRecord {
   workSummary?: string | null;
   workReport?: string | null;
   workLocation?: string;
+  checkInLocationLabel?: string | null;
+  checkOutLocationLabel?: string | null;
 }
 
 interface OfficeTiming {
@@ -578,15 +580,8 @@ const AttendanceManager: React.FC = () => {
 
   const fetchAllOnlineStatus = async () => {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/attendance/current-online-status`,
-        {
-          headers: getAuthHeaders(),
-        },
-      );
-
-      if (response.ok) {
-        const data = await response.json();
+      const data = await apiService.getCurrentOnlineStatus();
+      if (data) {
         const statusMap: Record<number, boolean> = {};
         Object.keys(data).forEach((userId) => {
           statusMap[parseInt(userId)] = data[userId].is_online;
@@ -786,13 +781,9 @@ const AttendanceManager: React.FC = () => {
 
   const loadEmployees = async () => {
     try {
-      const headers = getAuthHeaders();
-      const res = await fetch(`${API_BASE_URL}/employees/`, { headers });
-
-      if (!res.ok) throw new Error(`Failed to load employees: ${res.status}`);
-      let data = await res.json();
-      if (!Array.isArray(data) && data?.employees) {
-        data = data.employees;
+      let data = await apiService.getEmployees();
+      if (!Array.isArray(data) && (data as any)?.employees) {
+        data = (data as any).employees;
       } else if (!Array.isArray(data)) {
         data = [];
       }
@@ -920,12 +911,7 @@ const AttendanceManager: React.FC = () => {
     if (!isAdmin) return;
     setOfficeFormLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/attendance/office-hours`, {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok)
-        throw new Error(`Failed to load office timings: ${res.status}`);
-      const data: OfficeTiming[] = await res.json();
+      const data: OfficeTiming[] = await apiService.getOfficeTimings();
       setOfficeTimings(data);
 
       const globalTiming = data.find(
@@ -971,13 +957,7 @@ const AttendanceManager: React.FC = () => {
           globalTimingForm.checkOutGrace,
         ),
       };
-      const res = await fetch(`${API_BASE_URL}/attendance/office-hours`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok)
-        throw new Error(`Failed to save office timing: ${res.status}`);
+      await apiService.updateOfficeTiming(payload);
       await loadOfficeTimings();
       toast({
         title: "Office time saved",
@@ -1018,15 +998,7 @@ const AttendanceManager: React.FC = () => {
           departmentTimingForm.checkOutGrace,
         ),
       };
-      const res = await fetch(`${API_BASE_URL}/attendance/office-hours`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok)
-        throw new Error(
-          `Failed to save department office timing: ${res.status}`,
-        );
+      await apiService.updateOfficeTiming(payload);
       await loadOfficeTimings();
       toast({
         title: "Branch timing saved",
@@ -1095,15 +1067,7 @@ const AttendanceManager: React.FC = () => {
 
     try {
       setOfficeFormLoading(true);
-      const res = await fetch(
-        `${API_BASE_URL}/attendance/office-hours/${timing.id}`,
-        {
-          method: "DELETE",
-          headers: getAuthHeaders(),
-        },
-      );
-      if (!res.ok)
-        throw new Error(`Failed to delete office timing: ${res.status}`);
+      await apiService.deleteOfficeTiming(timing.id);
       await loadOfficeTimings();
       if (
         timing.department &&
@@ -1136,12 +1100,7 @@ const AttendanceManager: React.FC = () => {
 
   const fetchSummary = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE_URL}/attendance/summary`, {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error(`Failed to load summary: ${res.status}`);
-      const data = await res.json();
+      const data = await apiService.getAttendanceSummary();
       setSummary(data);
     } catch (err) {
       console.error("fetchSummary error", err);
@@ -1174,47 +1133,22 @@ const AttendanceManager: React.FC = () => {
     // For Admin/HR/Manager: Load today's attendance records
     (async () => {
       try {
-        const token = localStorage.getItem("token");
-        const headers = {
-          Authorization: token ? `Bearer ${token}` : "",
-        };
-
-        let query = targetDate ? `?date=${encodeURIComponent(targetDate)}` : "";
+        const params: any = {};
+        if (targetDate) params.date = targetDate;
 
         // Enforce backend-level filtering for Managers (Department Scope + Manager ID)
         if (user?.role === "manager") {
-          if (user.department) {
-            query +=
-              (query ? "&" : "?") +
-              `department=${encodeURIComponent(user.department)}`;
-          }
-          query +=
-            (query ? "&" : "?") + `manager_id=${encodeURIComponent(user.id)}`;
+          if (user.department) params.department = user.department;
+          params.manager_id = user.id;
         }
 
-        const [attendanceRes, employeesRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/attendance/all${query}`, {
-            headers: getAuthHeaders(),
-          }),
-          fetch(`${API_BASE_URL}/employees/`, { headers: getAuthHeaders() }),
+        let [data, employeesRaw] = await Promise.all([
+          apiService.getAttendanceRecords(params),
+          apiService.getEmployees(),
         ]);
 
-        if (!attendanceRes.ok) {
-          const errorText = await attendanceRes.text();
-          console.error(
-            `Failed to load attendance: ${attendanceRes.status}`,
-            errorText,
-          );
-          throw new Error(
-            `Failed to load attendance: ${attendanceRes.status} - ${errorText}`,
-          );
-        }
-
-        let data = await attendanceRes.json();
-        let employeesData = employeesRes.ok ? await employeesRes.json() : [];
-        if (!Array.isArray(employeesData) && employeesData?.employees) {
-          employeesData = employeesData.employees;
-        } else if (!Array.isArray(employeesData)) {
+        let employeesData = Array.isArray(employeesRaw) ? employeesRaw : (employeesRaw as any)?.employees || [];
+        if (!Array.isArray(employeesData)) {
           employeesData = [];
         }
 
@@ -1393,6 +1327,8 @@ const AttendanceManager: React.FC = () => {
                 rec.reason ||
                 null,
               workLocation: workLocation,
+              checkInLocationLabel: rec.checkInLocationLabel,
+              checkOutLocationLabel: rec.checkOutLocationLabel,
             };
           })
           .sort((a, b) => {
@@ -2439,31 +2375,42 @@ const AttendanceManager: React.FC = () => {
                             )}
                           </td>
                           <td className="p-3">
-                            {(() => {
-                              const statusInfo =
-                                getOnlineStatusForDisplay(record);
-                              if (statusInfo.showAbsent) {
-                                return null;
-                              } else if (statusInfo.label === "Checked Out") {
-                                return (
-                                  <span className="text-xs text-muted-foreground">
-                                    Checked Out
+                            <div className="flex flex-col items-center gap-1">
+                              {(() => {
+                                const statusInfo =
+                                  getOnlineStatusForDisplay(record);
+                                if (statusInfo.showAbsent) {
+                                  return null;
+                                } else if (statusInfo.label === "Checked Out") {
+                                  return (
+                                    <span className="text-xs text-muted-foreground">
+                                      Checked Out
+                                    </span>
+                                  );
+                                } else {
+                                  return (
+                                    <OnlineStatusIndicator
+                                      isOnline={statusInfo.isOnline}
+                                      size="md"
+                                      showLabel={true}
+                                      clickable={isAdmin}
+                                      attendanceId={parseInt(record.id)}
+                                      userId={parseInt(record.userId)}
+                                      userName={record.userName}
+                                    />
+                                  );
+                                }
+                              })()}
+                              <div className="flex flex-col items-center gap-1 border-t border-slate-100 dark:border-slate-800 pt-1 mt-1 w-full">
+                                <div className="flex items-center gap-1 text-[10px] font-medium text-slate-500">
+                                  <Timer className="h-2.5 w-2.5 text-blue-400" />
+                                  <span>
+                                    {(record.scheduledStart || "10:00").replace(/^0/, '')} -{" "}
+                                    {(record.scheduledEnd || "19:00").replace(/^0/, '')}
                                   </span>
-                                );
-                              } else {
-                                return (
-                                  <OnlineStatusIndicator
-                                    isOnline={statusInfo.isOnline}
-                                    size="md"
-                                    showLabel={true}
-                                    clickable={isAdmin}
-                                    attendanceId={parseInt(record.id)}
-                                    userId={parseInt(record.userId)}
-                                    userName={record.userName}
-                                  />
-                                );
-                              }
-                            })()}
+                                </div>
+                              </div>
+                            </div>
                           </td>
                           <td className="p-3">
                             <div className="flex items-center gap-2">
@@ -2475,11 +2422,6 @@ const AttendanceManager: React.FC = () => {
                                 )}
                               </span>
                             </div>
-                            {record.scheduledStart && (
-                              <div className="text-xs text-muted-foreground mt-1">
-                                Scheduled: {record.scheduledStart}
-                              </div>
-                            )}
                           </td>
                           <td className="p-3">
                             <div className="flex items-center gap-2">
@@ -2491,16 +2433,11 @@ const AttendanceManager: React.FC = () => {
                                 )}
                               </span>
                             </div>
-                            {record.scheduledEnd && (
-                              <div className="text-xs text-muted-foreground mt-1">
-                                Scheduled: {record.scheduledEnd}
-                              </div>
-                            )}
                           </td>
                           <td className="p-3">
                             {record.workHours ? (
                               <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                                {formatWorkHours(record.workHours)}
+                                {formatWorkHours(record.workHours).replace(/^0/, '')}
                               </span>
                             ) : (
                               <span className="text-sm text-muted-foreground">

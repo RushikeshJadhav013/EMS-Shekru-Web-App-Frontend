@@ -77,6 +77,7 @@ interface TaskFormRow {
   task_name: string;
   description: string;
   assigned_to_ids: number[];
+  start_date: string;
   due_date: string;
   status: TaskStatus;
   priority: Priority;
@@ -86,6 +87,7 @@ const emptyTask = (): TaskFormRow => ({
   task_name: "",
   description: "",
   assigned_to_ids: [],
+  start_date: "",
   due_date: "",
   status: "todo",
   priority: "Medium",
@@ -127,51 +129,70 @@ const TaskFormSection = ({
             key={index}
             className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3 shadow-sm"
           >
-            {/* Row 1: name, due date, priority, remove */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-              <Input
-                placeholder="Task name *"
-                value={task.task_name}
-                onChange={(e) =>
-                  updateTaskRow(index, "task_name", e.target.value)
-                }
-                className="md:col-span-2 shadow-inner"
-              />
-              <Input
-                type="date"
-                value={task.due_date || ""}
-                onChange={(e) =>
-                  updateTaskRow(index, "due_date", e.target.value)
-                }
-                className="shadow-inner"
-              />
-              <div className="flex gap-2">
-                <Select
-                  value={task.priority}
-                  onValueChange={(v) => updateTaskRow(index, "priority", v)}
-                >
-                  <SelectTrigger className="h-9 w-28 text-xs shadow-inner">
-                    <SelectValue placeholder="Priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRIORITY_OPTIONS.map((opt) => (
-                      <SelectItem key={opt} value={opt}>
-                        {opt}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {taskList.length > 1 && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 hover:bg-red-50 hover:text-red-600"
-                    onClick={() => removeTaskRow(index)}
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+              <div className="md:col-span-2 space-y-1.5">
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Name</p>
+                <Input
+                  placeholder="Task name *"
+                  value={task.task_name}
+                  onChange={(e) =>
+                    updateTaskRow(index, "task_name", e.target.value)
+                  }
+                  className="shadow-inner"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Start Date</p>
+                <Input
+                  type="date"
+                  value={task.start_date || ""}
+                  onChange={(e) =>
+                    updateTaskRow(index, "start_date", e.target.value)
+                  }
+                  className="shadow-inner"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Due Date</p>
+                <Input
+                  type="date"
+                  value={task.due_date || ""}
+                  onChange={(e) =>
+                    updateTaskRow(index, "due_date", e.target.value)
+                  }
+                  className="shadow-inner"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Priority</p>
+                <div className="flex gap-2">
+                  <Select
+                    value={task.priority}
+                    onValueChange={(v) => updateTaskRow(index, "priority", v)}
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
+                    <SelectTrigger className="h-10 text-xs shadow-inner">
+                      <SelectValue placeholder="Priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRIORITY_OPTIONS.map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {taskList.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 hover:bg-red-50 hover:text-red-600 border border-slate-100 dark:border-slate-800 rounded-lg flex-shrink-0"
+                      onClick={() => removeTaskRow(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
             {/* Description */}
@@ -263,6 +284,7 @@ interface ProjectTask {
   assigned_to?: number;
   user_id?: number | string;
   assigned_to_name?: string;
+  start_date?: string;
   due_date?: string;
   assigned_by?: number | string;
   priority?: "Low" | "Medium" | "High";
@@ -307,7 +329,7 @@ const normalizeStatus = (s?: string): string => {
   if (!s) return "todo";
   const low = s.toLowerCase().trim().replace(/[-_\s]+/g, "");
   if (low === "todo" || low === "pending" || low === "planned") return "todo";
-  if (low === "inprogress" || low === "active") return "in-progress";
+  if (low === "inprogress" || low === "active" || low === "in_progress") return "in-progress";
   if (low === "completed" || low === "complete" || low === "achieved") return "completed";
   if (low === "cancelled" || low === "canceled") return "cancelled";
   // For Select dropdown compatibility, map everything else to one of the four if needed, 
@@ -430,15 +452,17 @@ function TaskRow({
   onEditTask,
   onDeleteTask,
   onReassignTask,
+  onViewTask,
 }: {
   task: ProjectTask;
   project?: Project;
   canManageProjects: boolean;
   onStatusChange: (taskId: number, status: string) => void;
   currentUser: any;
-  onEditTask?: (task: ProjectTask) => void;
-  onDeleteTask?: (taskId: number) => void;
-  onReassignTask?: (task: ProjectTask) => void;
+  onEditTask?: (task: ProjectTask, project?: Project) => void;
+  onDeleteTask?: (projectId: number, taskId: number) => void;
+  onReassignTask?: (task: ProjectTask, project?: Project) => void;
+  onViewTask?: (task: ProjectTask) => void;
 }) {
   const id = task.task_id ?? task.id ?? 0;
 
@@ -470,8 +494,7 @@ function TaskRow({
   }, [currentUser, canManageProjects, project, task.assigned_to, task.user_id]);
 
   const isAssigner = useMemo(() => {
-    if (!currentUser) return false;
-    // Check both assigned_by and the person who created the project (often the assigner)
+    if (!currentUser || !task) return false;
     return String(task.assigned_by) === String(currentUser.id);
   }, [currentUser, task.assigned_by]);
 
@@ -486,15 +509,39 @@ function TaskRow({
         )}
       </TableCell>
       <TableCell className="text-sm text-slate-600 dark:text-slate-300">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 min-w-[120px]">
           <div className="h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 flex-shrink-0">
             {task.assigned_to_name?.[0]?.toUpperCase() || "?"}
           </div>
-          {task.assigned_to_name || "Unassigned"}
+          <span className="truncate">{task.assigned_to_name || "Unassigned"}</span>
         </div>
       </TableCell>
-      <TableCell className="text-sm text-slate-500">
-        {task.due_date ? formatDateIST(task.due_date, "dd-MM-yyyy") : "—"}
+      <TableCell>
+        <div className="flex items-center gap-1.5 min-w-[120px]">
+          <div className="h-6 w-6 rounded-full bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center text-[10px] font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-100/50 flex-shrink-0">
+            {(() => {
+              if (task.assigned_by_name) return task.assigned_by_name[0].toUpperCase();
+              return "A";
+            })()}
+          </div>
+          <span className="truncate">{task.assigned_by_name || "Admin"}</span>
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="flex flex-col gap-0.5 text-[10px] whitespace-nowrap">
+          <div className="flex items-center gap-1">
+            <span className="text-[8px] font-black text-slate-400 w-4">ST</span>
+            <span className="text-slate-600 dark:text-slate-400 font-bold tabular-nums">
+              {task.start_date ? formatDateIST(task.start_date, "MMM dd, yyyy") : "—"}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[8px] font-black text-slate-400 w-4">DU</span>
+            <span className={`font-bold tabular-nums ${isOverdue ? 'text-red-600' : 'text-slate-600 dark:text-slate-400'}`}>
+              {task.due_date ? formatDateIST(task.due_date, "MMM dd, yyyy") : "—"}
+            </span>
+          </div>
+        </div>
       </TableCell>
       <TableCell>
         <div className="flex flex-col gap-1">
@@ -553,37 +600,49 @@ function TaskRow({
         </div>
       </TableCell>
       <TableCell className="pr-4">
-        {isAssigner && (
-          <div className="flex items-center justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
-              title="Edit Task"
-              onClick={() => onEditTask?.(task)}
-            >
-              <Edit className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-slate-400 hover:text-amber-600 hover:bg-amber-50"
-              title="Reassign Task"
-              onClick={() => onReassignTask?.(task)}
-            >
-              <UserPlus className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50"
-              title="Delete Task"
-              onClick={() => onDeleteTask?.(id)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+            title="View Task Details"
+            onClick={() => onViewTask?.(task)}
+          >
+            <Eye className="h-3.5 w-3.5" />
+          </Button>
+          
+          {isAssigner && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                title="Edit Task"
+                onClick={() => onEditTask?.(task, project)}
+              >
+                <Edit className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-slate-400 hover:text-amber-600 hover:bg-amber-50"
+                title="Reassign Task"
+                onClick={() => onReassignTask?.(task, project)}
+              >
+                <UserPlus className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                title="Delete Task"
+                onClick={() => onDeleteTask?.(project?.project_id || 0, id)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          )}
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -630,14 +689,19 @@ function ProjectCard({
   onEditTask: (task: ProjectTask, project: Project) => void;
   onDeleteTask: (projectId: number, taskId: number) => void;
   onReassignTask: (task: ProjectTask, project: Project) => void;
+  onViewTask: (task: ProjectTask) => void;
 }) {
   const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const tasks = project.tasks || [];
   const members = project.members || [];
-  const todoCount = tasks.filter((t) => t.status === "todo").length;
-  const completedCount = tasks.filter((t) => t.status === "completed").length;
-  const cancelledCount = tasks.filter((t) => t.status === "cancelled").length;
+   const todoCount = tasks.filter((t) => {
+    const s = normalizeStatus(t.status);
+    return s === "todo";
+  }).length;
+  const completedCount = tasks.filter((t) => normalizeStatus(t.status) === "completed").length;
+  const cancelledCount = tasks.filter((t) => normalizeStatus(t.status) === "cancelled").length;
+  const inProgressCount = tasks.filter((t) => normalizeStatus(t.status) === "in-progress").length;
 
   return (
     <Card className="border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
@@ -826,34 +890,13 @@ function ProjectCard({
             </div>
 
             {/* Task counts */}
-            {tasks.length > 0 && (
-              <>
-                <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-full">
-                  <Clock className="h-3.5 w-3.5 text-amber-500" />
-                  <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                    {
-                      tasks.filter(
-                        (t) => t.status === "todo" || t.status === "pending",
-                      ).length
-                    }{" "}
-                    Planned
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-full">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                    {completedCount} / {project.task_count ?? tasks.length} Done
-                  </span>
-                </div>
-                {cancelledCount > 0 && (
-                  <div className="flex items-center gap-1.5 bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-full">
-                    <XCircle className="h-3.5 w-3.5 text-red-400" />
-                    <span className="text-xs font-medium text-red-500 dark:text-red-400">
-                      {cancelledCount} Cancelled
-                    </span>
-                  </div>
-                )}
-              </>
+            {tasks.length > 0 && cancelledCount > 0 && (
+              <div className="flex items-center gap-1.5 bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-full">
+                <XCircle className="h-3.5 w-3.5 text-red-400" />
+                <span className="text-xs font-medium text-red-500 dark:text-red-400">
+                  {cancelledCount} Cancelled
+                </span>
+              </div>
             )}
             {/* Meetings */}
             {(project.meetings?.length ?? 0) > 0 && (
@@ -869,7 +912,12 @@ function ProjectCard({
             {/* Expansion toggle (only if content exists) */}
             {(tasks.length > 0 || members.length > 0) && (
               <button
-                onClick={() => setExpanded((e) => !e)}
+                onClick={() => {
+                  if (!expanded && tasks.length === 0 && (project.task_count || 0) > 0) {
+                    onView(); // Trigger load internally which updates projects list
+                  }
+                  setExpanded((e) => !e);
+                }}
                 className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                 title={expanded ? "Hide quick view" : "Show quick view"}
               >
@@ -941,11 +989,12 @@ function ProjectCard({
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50/80 dark:bg-slate-900/40">
-                        <TableHead className="pl-4 text-xs">Task</TableHead>
-                        <TableHead className="text-xs">Assigned To</TableHead>
-                        <TableHead className="text-xs">Due Date</TableHead>
-                        <TableHead className="text-xs">Status</TableHead>
-                        <TableHead className="text-xs text-right pr-4">Actions</TableHead>
+                        <TableHead className="pl-4 text-xs font-bold uppercase tracking-tight text-slate-500">Task</TableHead>
+                        <TableHead className="text-xs font-bold uppercase tracking-tight text-slate-500">Assignee</TableHead>
+                        <TableHead className="text-xs font-bold uppercase tracking-tight text-slate-500">Assigned By</TableHead>
+                        <TableHead className="text-xs font-bold uppercase tracking-tight text-slate-500">Dates</TableHead>
+                        <TableHead className="text-xs font-bold uppercase tracking-tight text-slate-500">Status</TableHead>
+                        <TableHead className="text-xs text-right pr-4 font-bold uppercase tracking-tight text-slate-500">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -966,6 +1015,7 @@ function ProjectCard({
                           onEditTask={(t) => onEditTask(t, project)}
                           onDeleteTask={(tid) => onDeleteTask(project.project_id, tid)}
                           onReassignTask={(t) => onReassignTask(t, project)}
+                          onViewTask={onViewTask}
                         />
                       ))}
                     </TableBody>
@@ -1019,6 +1069,7 @@ export default function ProjectManagement() {
   const [editTaskData, setEditTaskData] = useState({
     task_name: "",
     description: "",
+    start_date: "",
     due_date: "",
     priority: "Medium" as "Low" | "Medium" | "High",
     assigned_to: 0,
@@ -1042,6 +1093,9 @@ export default function ProjectManagement() {
   const [addMemberId, setAddMemberId] = useState("");
 
   // ── Fetch ──
+  const [isViewTaskDialogOpen, setIsViewTaskDialogOpen] = useState(false);
+  const [viewingTask, setViewingTask] = useState<ProjectTask | null>(null);
+
   const fetchProjects = async () => {
     setIsLoading(true);
     try {
@@ -1163,14 +1217,34 @@ export default function ProjectManagement() {
   const assignableEmployees = useMemo(() => {
     if (!user) return [];
     const userRole = normalizeRole(user.role);
+    const userDepts = (user.department || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+
     return employees.filter((e) => {
       const empRole = normalizeRole(e.role);
-      if (String(e.user_id) === String(user.id)) return true; // Can always assign to self
-      if (userRole === "admin" || userRole === "hr") return true; // Admin/HR to everyone
-      if (userRole === "manager")
-        return ["team_lead", "employee"].includes(empRole); // Manager to TL/Emp
-      if (userRole === "team_lead") return empRole === "employee"; // TL to Emp
-      return false; // Employee to no one
+      const empDepts = (e.department || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+      const uId = String(e.user_id);
+
+      // 1. Can always assign to self
+      if (uId === String(user.id)) return true;
+
+      // 2. Admin and HR can assign to everyone
+      if (userRole === "admin" || userRole === "hr") return true;
+
+      // 3. Managers can assign to anyone in their department(s) or any role below them
+      if (userRole === "manager") {
+         const sameDept = userDepts.length === 0 || empDepts.some(d => userDepts.includes(d));
+         const lowerRole = ["team_lead", "employee"].includes(empRole);
+         return sameDept || lowerRole;
+      }
+
+      // 4. Team leads can assign to employees in their department or any employee
+      if (userRole === "team_lead") {
+         const sameDept = userDepts.length === 0 || empDepts.some(d => userDepts.includes(d));
+         return empRole === "employee" || sameDept;
+      }
+
+      // 5. Employees can assign to self (handled by rule 1)
+      return false;
     });
   }, [employees, user]);
 
@@ -1230,6 +1304,7 @@ export default function ProjectManagement() {
               title: t.task_name,
               description: t.description,
               status: backendTaskStatus,
+              start_date: t.start_date || null,
               due_date: t.due_date || null,
               priority: t.priority,
               assigned_to_ids: t.assigned_to_ids,
@@ -1519,6 +1594,7 @@ export default function ProjectManagement() {
           title: task.task_name,
           description: task.description,
           status: backendStatus,
+          start_date: task.start_date || null,
           due_date: task.due_date || null,
           priority: task.priority,
           assigned_to_ids: task.assigned_to_ids,
@@ -1718,12 +1794,18 @@ export default function ProjectManagement() {
     }
   };
 
+  const handleViewTask = (task: ProjectTask) => {
+    setViewingTask(task);
+    setIsViewTaskDialogOpen(true);
+  };
+
   const handleEditTask = (task: ProjectTask, project?: Project) => {
     if (project) setSelectedProject(project);
     setEditingTask(task);
     setEditTaskData({
       task_name: task.task_name,
       description: task.description || "",
+      start_date: task.start_date ? task.start_date.split("T")[0] : "",
       due_date: task.due_date ? task.due_date.split("T")[0] : "",
       priority: task.priority || "Medium",
       assigned_to: Number(task.assigned_to || task.user_id || 0),
@@ -1739,6 +1821,7 @@ export default function ProjectManagement() {
     setEditTaskData({
       task_name: task.task_name,
       description: task.description || "",
+      start_date: task.start_date ? task.start_date.split("T")[0] : "",
       due_date: task.due_date ? task.due_date.split("T")[0] : "",
       priority: task.priority || "Medium",
       assigned_to: Number(task.assigned_to || task.user_id || 0),
@@ -1796,6 +1879,7 @@ export default function ProjectManagement() {
       const payload = {
         title: editTaskData.task_name,
         description: editTaskData.description,
+        start_date: editTaskData.start_date || null,
         due_date: editTaskData.due_date || null,
         priority: editTaskData.priority,
         assigned_to: editTaskData.assigned_to,
@@ -2049,6 +2133,7 @@ export default function ProjectManagement() {
               onEditTask={handleEditTask}
               onDeleteTask={handleDeleteTask}
               onReassignTask={handleReassignTask}
+              onViewTask={handleViewTask}
             />
           ))}
         </div>
@@ -2154,6 +2239,7 @@ export default function ProjectManagement() {
                       </p>
                     </div>
                   </div>
+                  {/* Planned & Done counts removed per user request */}
                 </div>
 
                 {/* Team Section */}
@@ -2248,7 +2334,10 @@ export default function ProjectManagement() {
                               Assignee
                             </TableHead>
                             <TableHead className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                              Due Date
+                              Assigned By
+                            </TableHead>
+                            <TableHead className="text-[10px] font-bold uppercase tracking-wider text-slate-500 text-center">
+                              Dates
                             </TableHead>
                             <TableHead className="text-[10px] font-bold uppercase tracking-wider text-slate-500 text-center">
                               Status
@@ -2286,12 +2375,38 @@ export default function ProjectManagement() {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                <span className="text-xs text-slate-500 flex items-center gap-1.5 font-medium">
-                                  <Clock className="h-3 w-3" />
-                                  {task.due_date
-                                    ? formatDateIST(task.due_date, "dd-MM-yyyy")
-                                    : "No date"}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <div className="h-7 w-7 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-[10px] font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-100/50">
+                                    {(() => {
+                                      if (task.assigned_by_name) return task.assigned_by_name[0].toUpperCase();
+                                      const assigner = employees.find(e => String(e.user_id) === String(task.assigned_by));
+                                      return assigner?.name?.[0]?.toUpperCase() || "A";
+                                    })()}
+                                  </div>
+                                  <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                                    {(() => {
+                                      if (task.assigned_by_name) return task.assigned_by_name;
+                                      const assigner = employees.find(e => String(e.user_id) === String(task.assigned_by));
+                                      return assigner?.name || "Admin";
+                                    })()}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-col items-center gap-1 min-w-[100px]">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none w-8">START</span>
+                                    <span className="text-[10px] text-slate-600 dark:text-slate-400 font-bold bg-slate-50 dark:bg-slate-800/50 px-1.5 py-0.5 rounded border border-slate-100 dark:border-slate-800 tabular-nums">
+                                      {task.start_date ? formatDateIST(task.start_date, "dd-MM-yyyy") : "—"}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none w-8">DUE</span>
+                                    <span className={`text-[10px] font-bold bg-slate-50 dark:bg-slate-800/50 px-1.5 py-0.5 rounded border tabular-nums ${isTaskOverdue(task.due_date, task.status) ? 'text-red-600 border-red-100 bg-red-50/50' : 'text-slate-600 dark:text-slate-400 border-slate-100 dark:border-slate-800'}`}>
+                                      {task.due_date ? formatDateIST(task.due_date, "dd-MM-yyyy") : "—"}
+                                    </span>
+                                  </div>
+                                </div>
                               </TableCell>
                               <TableCell className="text-center">
                                 {(() => {
@@ -2377,36 +2492,49 @@ export default function ProjectManagement() {
                               <TableCell className="pr-6 text-right">
                                 {(() => {
                                   const isAssigner = String(task.assigned_by) === String(user?.id);
-                                  if (!isAssigner) return null;
                                   return (
                                     <div className="flex items-center justify-end gap-1">
                                       <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
-                                        title="Edit Task"
-                                        onClick={() => handleEditTask(task)}
+                                        className="h-8 w-8 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+                                        title="View Task Details"
+                                        onClick={() => handleViewTask(task)}
                                       >
-                                        <Edit className="h-4 w-4" />
+                                        <Eye className="h-4 w-4" />
                                       </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-slate-400 hover:text-amber-600 hover:bg-amber-50"
-                                        title="Reassign Task"
-                                        onClick={() => handleReassignTask(task)}
-                                      >
-                                        <UserPlus className="h-4 w-4" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
-                                        title="Delete Task"
-                                        onClick={() => handleDeleteTask(selectedProject.project_id, task.task_id || task.id)}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
+                                      
+                                      {isAssigner && (
+                                        <>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                                            title="Edit Task"
+                                            onClick={() => handleEditTask(task)}
+                                          >
+                                            <Edit className="h-4 w-4" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-slate-400 hover:text-amber-600 hover:bg-amber-50"
+                                            title="Reassign Task"
+                                            onClick={() => handleReassignTask(task)}
+                                          >
+                                            <UserPlus className="h-4 w-4" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                                            title="Delete Task"
+                                            onClick={() => handleDeleteTask(selectedProject.project_id, task.task_id || task.id)}
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </>
+                                      )}
                                     </div>
                                   );
                                 })()}
@@ -3101,7 +3229,15 @@ export default function ProjectManagement() {
                     onChange={(e) => setEditTaskData({ ...editTaskData, description: e.target.value })}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Start Date</Label>
+                    <Input
+                      type="date"
+                      value={editTaskData.start_date}
+                      onChange={(e) => setEditTaskData({ ...editTaskData, start_date: e.target.value })}
+                    />
+                  </div>
                   <div className="space-y-1.5">
                     <Label>Due Date</Label>
                     <Input
@@ -3116,15 +3252,15 @@ export default function ProjectManagement() {
                       value={editTaskData.priority}
                       onValueChange={(v: any) => setEditTaskData({ ...editTaskData, priority: v })}
                     >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {PRIORITY_OPTIONS.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
-              </>
-            )}
+            </>
+          )}
 
             <div className="space-y-2">
               <Label className="text-[11px] font-bold text-slate-500 uppercase">
@@ -3198,6 +3334,114 @@ export default function ProjectManagement() {
               Update Task
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ══════════════════════════════════════
+          VIEW TASK DETAILS DIALOG
+         ══════════════════════════════════════ */}
+      <Dialog open={isViewTaskDialogOpen} onOpenChange={setIsViewTaskDialogOpen}>
+        <DialogContent className="max-w-md rounded-3xl p-0 overflow-hidden border-0 shadow-2xl">
+          <div className="bg-slate-900 p-6 text-white overflow-hidden relative">
+            <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-violet-600/20 rounded-full blur-3xl" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/10">
+                  <ClipboardList className="h-5 w-5 text-violet-400" />
+                </div>
+                <div>
+                  <h3 className="font-black text-xl tracking-tight leading-none uppercase">Task Details</h3>
+                  <p className="text-violet-300/60 text-[10px] font-bold tracking-widest mt-1 uppercase italic">Project: {selectedProject?.name}</p>
+                </div>
+              </div>
+              
+              <div className="p-4 bg-white/5 rounded-2xl backdrop-blur-sm border border-white/10 shadow-inner">
+                <h4 className="text-white font-black text-lg mb-2 leading-tight">{viewingTask?.task_name}</h4>
+                <div className="flex flex-wrap gap-2">
+                  <Badge className={`uppercase text-[9px] font-black tracking-widest px-2 ${statusColor(viewingTask?.status)}`}>
+                    {statusLabel(viewingTask?.status)}
+                  </Badge>
+                  <Badge variant="outline" className="uppercase text-[9px] font-black tracking-widest px-2 text-white/60 border-white/20">
+                    Priority: {viewingTask?.priority || "Medium"}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-6 bg-white dark:bg-slate-950">
+            {viewingTask?.description && (
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</Label>
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed italic whitespace-pre-wrap">
+                    "{viewingTask.description}"
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Start Date</Label>
+                <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <Clock className="h-4 w-4 text-emerald-500" />
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    {viewingTask?.start_date ? formatDateIST(viewingTask.start_date, "dd-MM-yyyy") : "—"}
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Due Date</Label>
+                <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <Clock className="h-4 w-4 text-rose-500" />
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    {viewingTask?.due_date ? formatDateIST(viewingTask.due_date, "dd-MM-yyyy") : "—"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Assignee</Label>
+                <div className="flex items-center gap-2.5 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400">
+                    {viewingTask?.assigned_to_name?.[0]?.toUpperCase() || "?"}
+                  </div>
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
+                    {viewingTask?.assigned_to_name || "Unassigned"}
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Assigned By</Label>
+                <div className="flex items-center gap-2.5 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="h-6 w-6 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-[10px] font-bold text-indigo-700 dark:text-indigo-400">
+                    {(() => {
+                      if (viewingTask?.assigned_by_name) return viewingTask.assigned_by_name[0].toUpperCase();
+                      const assigner = employees.find(e => String(e.user_id) === String(viewingTask?.assigned_by));
+                      return assigner?.name?.[0]?.toUpperCase() || "A";
+                    })()}
+                  </div>
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
+                    {(() => {
+                      if (viewingTask?.assigned_by_name) return viewingTask.assigned_by_name;
+                      const assigner = employees.find(e => String(e.user_id) === String(viewingTask?.assigned_by));
+                      return assigner?.name || "Admin";
+                    })()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => setIsViewTaskDialogOpen(false)}
+              className="w-full h-12 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest text-xs transition-all active:scale-95 shadow-lg shadow-slate-200 dark:shadow-none"
+            >
+              Close Details
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

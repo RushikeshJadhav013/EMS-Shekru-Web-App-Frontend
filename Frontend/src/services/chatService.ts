@@ -111,7 +111,24 @@ class ChatService {
         senderName: '',
         senderRole: 'employee',
         content: msg.content,
-        messageType: 'text',
+        messageType: (() => {
+          const type = (msg.message_type || msg.messageType || 'text').toLowerCase();
+          if (type === 'file' || type === 'image' || type === 'emoji') return type as any;
+          
+          const content = msg.content || '';
+          // Sniff content for base64 or data URLs if type is ambiguous
+          if (content.startsWith('data:image/')) return 'image';
+          if (content.includes('|data:') || content.startsWith('data:application/') || content.startsWith('data:text/')) return 'file';
+          
+          // Sniff for common extensions in links if it looks like a URL
+          const lowerContent = content.toLowerCase();
+          if (lowerContent.startsWith('http')) {
+            if (lowerContent.match(/\.(jpg|jpeg|png|gif|webp|svg)($|\?)/)) return 'image';
+            if (lowerContent.match(/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|zip|rar|csv)($|\?)/)) return 'file';
+          }
+          
+          return 'text';
+        })(),
         timestamp: this.formatTimestamp(msg.timestamp),
         isRead: (msg.read_by || []).length > 1,
         replyTo: msg.reply_to?.toString()
@@ -149,7 +166,15 @@ class ChatService {
         senderName: 'Me',
         senderRole: 'employee',
         content: data.content,
-        messageType: 'text',
+        messageType: (() => {
+          const type = (data.message_type || messageType || 'text').toLowerCase();
+          if (type === 'file' || type === 'image' || type === 'emoji') return type as any;
+          
+          const content = data.content || '';
+          if (content.startsWith('data:image/')) return 'image';
+          if (content.includes('|data:') || content.startsWith('data:application/') || content.startsWith('data:text/')) return 'file';
+          return 'text';
+        })(),
         timestamp: this.formatTimestamp(data.timestamp),
         isRead: false,
         replyTo: data.reply_to?.toString()

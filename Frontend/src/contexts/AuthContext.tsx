@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { isTokenValid, decodeJWT, getUserFromToken } from '@/utils/jwt';
 import { verifyTokenWithBackend } from '@/services/authService';
-import { API_BASE_URL } from '@/lib/api';
+import { apiService, API_BASE_URL } from '@/lib/api';
 
 interface LoginResponse {
   user_id: string;
@@ -176,11 +176,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           tokenUser &&
           tokenUser.userId &&
           user.id &&
-          String(user.id) !== String(tokenUser.userId)
+          String(user.id) !== String(tokenUser.userId) &&
+          user.email !== String(tokenUser.userId)
         ) {
           console.warn('Restoration: Token user ID does not match stored user ID', {
             tokenUserId: tokenUser.userId,
-            storedUserId: user.id
+            storedUserId: user.id,
+            userEmail: user.email
           });
           // For now, let's be lenient if the user is already found in storage
           // to prevent refresh-logouts. Just log it.
@@ -311,17 +313,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Call login resume endpoint to handle pause/resume functionality
       try {
-        await fetch(`${API_BASE_URL}/attendance/login-resume`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': userData.access_token ? (userData.access_token.startsWith('Bearer ') ? userData.access_token : `Bearer ${userData.access_token}`) : '',
-          },
-          body: JSON.stringify({
-            user_id: parseInt(user.id),
-            login_timestamp: new Date().toISOString(),
-          }),
-        });
+        await apiService.recordAttendanceLogin(parseInt(user.id), new Date().toISOString());
       } catch (error) {
         // Don't block login if the resume API call fails
         console.warn('Failed to record login resume:', error);
@@ -349,20 +341,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async (showToast = true) => {
     // Before logging out, record logout timestamp for pause/resume functionality
     try {
-      const token = localStorage.getItem('token');
-      if (token && isTokenValid(token) && user?.id) {
+      if (user?.id) {
         // Call the logout endpoint to record pause timestamp
-        await fetch(`${API_BASE_URL}/attendance/logout`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
-          },
-          body: JSON.stringify({
-            user_id: parseInt(user.id),
-            logout_timestamp: new Date().toISOString(),
-          }),
-        });
+        await apiService.recordAttendanceLogout(parseInt(user.id), new Date().toISOString());
       }
     } catch (error) {
       // Don't block logout if the API call fails

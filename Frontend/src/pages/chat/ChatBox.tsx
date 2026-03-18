@@ -811,7 +811,7 @@ const ChatBox: React.FC = () => {
                 placeholder="Search teammates..."
                 className="pl-9 h-11 rounded-xl border-2"
                 value={memberSearchTerm}
-                onChange={(e) => setMemberSearchTerm(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
+                onChange={(e) => setMemberSearchTerm(e.target.value)}
               />
             </div>
 
@@ -820,8 +820,8 @@ const ChatBox: React.FC = () => {
                 {availableUsers
                   .filter(u =>
                     !activeChat?.participants.some(p => p.userId === u.id) &&
-                    (u.name.toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
-                      u.department.toLowerCase().includes(memberSearchTerm.toLowerCase()))
+                    ((u.name || '').toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
+                      (u.department || '').toLowerCase().includes(memberSearchTerm.toLowerCase()))
                   )
                   .map((u) => (
                     <div
@@ -841,7 +841,7 @@ const ChatBox: React.FC = () => {
                         </Avatar>
                         <div>
                           <p className="text-sm font-bold leading-none mb-1">{u.name}</p>
-                          <p className="text-[10px] font-medium text-slate-500 uppercase tracking-tighter">{u.department} • {u.role}</p>
+                          <p className="text-[10px] font-medium text-slate-500 uppercase tracking-tighter">{u.department || 'N/A'} • {u.role}</p>
                         </div>
                       </div>
                       <Checkbox checked={selectedNewUsers.includes(u.id)} onCheckedChange={() => { }} />

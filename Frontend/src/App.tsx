@@ -123,6 +123,7 @@ const App = () => {
                                     <TaskManagement />
                                   </ProtectedRoute>
                                 } />
+
                                 <Route path="/admin/employees" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <EmployeeManagement />
@@ -201,6 +202,7 @@ const App = () => {
                                     <TaskManagement />
                                   </ProtectedRoute>
                                 } />
+
                                 <Route path="/hr/leaves" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <LeaveManagement />
@@ -295,6 +297,7 @@ const App = () => {
                                     <TaskManagement />
                                   </ProtectedRoute>
                                 } />
+
                                 <Route path="/manager/leaves" element={
                                   <ProtectedRoute allowedRoles={['manager']}>
                                     <LeaveManagement />
@@ -342,6 +345,7 @@ const App = () => {
                                     <TaskManagement />
                                   </ProtectedRoute>
                                 } />
+
                                 <Route path="/team_lead/leaves" element={
                                   <ProtectedRoute allowedRoles={['team_lead']}>
                                     <LeaveManagement />
@@ -399,6 +403,7 @@ const App = () => {
                                     <TaskManagement />
                                   </ProtectedRoute>
                                 } />
+
                                 <Route path="/employee/team" element={
                                   <ProtectedRoute allowedRoles={['employee']}>
                                     <TeamShifts />

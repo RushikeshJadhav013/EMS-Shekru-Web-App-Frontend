@@ -188,7 +188,7 @@ const ChatList: React.FC = () => {
           <Input
             placeholder="Search team..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className={cn(
               "pl-9 pr-3 py-4.5 rounded-xl border-0 shadow-inner text-xs font-semibold focus-visible:ring-1 focus-visible:ring-green-500/30 transition-all",
               themeClasses.inputBg,

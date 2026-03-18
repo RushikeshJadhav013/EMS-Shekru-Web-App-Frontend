@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Reply, Edit, Trash2, Copy, Check, CheckCheck, File as FileIcon } from 'lucide-react';
+import { Reply, Edit, Trash2, Copy, Check, CheckCheck, File as FileIcon, FileText, FileType } from 'lucide-react';
 import { ChatMessage } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -182,31 +182,66 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 </div>
               ) : message.messageType === 'file' ? (
                 <div className={cn(
-                  "flex items-center gap-3 p-3 rounded-xl border mb-1 transition-all hover:shadow-md active:scale-[0.98] group/file cursor-pointer",
+                  "flex items-center gap-3 p-3 rounded-xl border mb-1 transition-all hover:shadow-md active:scale-[0.98] group/file cursor-pointer min-w-[200px]",
                   isOwn ? "bg-white/10 border-white/20 hover:bg-white/20" : "bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:border-slate-700/50 hover:bg-slate-100"
                 )}
                   onClick={() => {
-                    const [name, data] = message.content.includes('|') ? message.content.split('|') : ['Document', message.content];
-                    const link = document.createElement('a');
-                    link.href = data;
-                    link.download = name;
-                    link.click();
+                    const content = message.content;
+                    if (content.includes('|')) {
+                      const [name, data] = content.split('|');
+                      const link = document.createElement('a');
+                      link.href = data;
+                      link.download = name;
+                      link.click();
+                    } else if (content.startsWith('http')) {
+                      window.open(content, '_blank');
+                    }
                   }}
                 >
-                  <div className={cn(
-                    "h-10 w-10 rounded-xl flex items-center justify-center transition-transform group-hover/file:scale-110",
-                    isOwn ? "bg-white/20 text-white" : "bg-indigo-500/10 text-indigo-500"
-                  )}>
-                    <FileIcon className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 pr-2">
-                    <p className={cn("text-xs font-black truncate max-w-[150px]", isOwn ? "text-white" : "text-slate-900 dark:text-slate-100")}>
-                      {message.content.includes('|') ? message.content.split('|')[0] : 'Document'}
-                    </p>
-                    <p className={cn("text-[9px] font-bold uppercase tracking-wider opacity-60", isOwn ? "text-white/80" : "text-slate-500")}>
-                      Click to download
-                    </p>
-                  </div>
+                  {(() => {
+                    let name = 'Document';
+                    const content = message.content;
+
+                    if (content.includes('|')) {
+                      [name] = content.split('|');
+                    } else if (content.startsWith('http')) {
+                      const urlParts = content.split('/');
+                      name = urlParts[urlParts.length - 1].split('?')[0] || 'Document';
+                      // Clean up URL encoded names
+                      try { name = decodeURIComponent(name); } catch(e) {}
+                    }
+
+                    const isPdf = name.toLowerCase().endsWith('.pdf');
+                    const isWord = name.toLowerCase().endsWith('.doc') || name.toLowerCase().endsWith('.docx');
+                    const isExcel = name.toLowerCase().endsWith('.xls') || name.toLowerCase().endsWith('.xlsx') || name.toLowerCase().endsWith('.csv');
+                    
+                    return (
+                      <>
+                        <div className={cn(
+                          "h-10 w-10 rounded-xl flex items-center justify-center transition-transform group-hover/file:scale-110",
+                          isOwn 
+                            ? "bg-white/20 text-white" 
+                            : isPdf 
+                              ? "bg-red-500/10 text-red-500" 
+                              : isWord 
+                                ? "bg-blue-500/10 text-blue-500" 
+                                : isExcel
+                                  ? "bg-emerald-500/10 text-emerald-500"
+                                  : "bg-indigo-500/10 text-indigo-500"
+                        )}>
+                          {isPdf ? <FileText className="h-5 w-5" /> : isWord ? <FileType className="h-5 w-5" /> : isExcel ? <FileIcon className="h-5 w-5" /> : <FileIcon className="h-5 w-5" />}
+                        </div>
+                        <div className="min-w-0 pr-2">
+                          <p className={cn("text-xs font-black truncate max-w-[150px]", isOwn ? "text-white" : "text-slate-900 dark:text-slate-100")}>
+                            {name}
+                          </p>
+                          <p className={cn("text-[9px] font-bold uppercase tracking-wider opacity-60", isOwn ? "text-white/80" : "text-slate-500")}>
+                            {isPdf ? 'PDF Document' : isWord ? 'Word Document' : isExcel ? 'Excel Sheet' : 'Attachment'} • Click to {content.includes('|') ? 'download' : 'view'}
+                          </p>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div className="text-[14.5px] leading-snug font-medium tracking-tight pr-2">

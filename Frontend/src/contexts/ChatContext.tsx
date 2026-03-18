@@ -141,9 +141,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const users = await chatService.getAvailableUsers();
-      // Filter available users based on RBAC rules
-      const filteredUsers = users.filter(u => isUserVisible(u));
-      setAvailableUsers(filteredUsers);
+      // Backend automatically returns eligible users, so we can set them directly
+      setAvailableUsers(users);
     } catch (error) {
       console.error('Failed to load available users:', error);
       toast({
