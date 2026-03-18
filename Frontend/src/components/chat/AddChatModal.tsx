@@ -80,7 +80,7 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
       (u.email || '').toLowerCase().includes(lowerSearch) ||
       (u.department || '').toLowerCase().includes(lowerSearch);
     return matchesSearch;
-  });
+  }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
   const handleUserToggle = (userId: string) => {
     setSelectedUsers(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
@@ -127,16 +127,16 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
       )}>
         {/* Header */}
         <div className={cn(
-          "flex items-center justify-between p-8 border-b transition-colors",
+          "flex items-center justify-between p-5 border-b transition-colors",
           isDark ? "border-slate-800 bg-slate-900/50" : "border-slate-100 bg-gray-50/50"
         )}>
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-green-500 shadow-lg shadow-green-500/20 rounded-2xl">
-              <Plus className="h-6 w-6 text-white" />
+          <div className="flex items-center space-x-3">
+            <div className="p-2.5 bg-green-500 shadow-lg shadow-green-500/20 rounded-xl">
+              <Plus className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h2 className={cn("text-2xl font-black tracking-tight", isDark ? "text-white" : "text-slate-900")}>New Message</h2>
-              <p className={cn("text-sm font-medium", isDark ? "text-slate-400" : "text-slate-500")}>Start a conversation with your team</p>
+              <h2 className={cn("text-xl font-black tracking-tight", isDark ? "text-white" : "text-slate-900")}>New Message</h2>
+              <p className={cn("text-[11px] font-medium", isDark ? "text-slate-400" : "text-slate-500")}>Start a conversation with your team</p>
             </div>
           </div>
           <Button
@@ -148,33 +148,33 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
         </div>
 
         <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'individual' | 'group')} className="w-full flex flex-col flex-1 overflow-hidden">
-          <div className="px-8 pt-6">
+          <div className="px-5 pt-4">
             <TabsList className={cn(
-              "grid w-full grid-cols-2 p-1.5 rounded-2xl h-auto",
+              "grid w-full grid-cols-2 p-1 rounded-xl h-auto",
               isDark ? "bg-slate-800/50" : "bg-slate-100"
             )}>
               <TabsTrigger
                 value="individual"
-                className="flex items-center justify-center gap-2.5 py-2.5 rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-lg transition-all font-bold text-sm"
+                className="flex items-center justify-center gap-2 py-2 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-lg transition-all font-bold text-xs"
               >
-                <MessageCircle className="h-4 w-4" />
+                <MessageCircle className="h-3.5 w-3.5" />
                 Individual
               </TabsTrigger>
               <TabsTrigger
                 value="group"
                 disabled={!permissions?.canCreateGroups}
-                className="flex items-center justify-center gap-2.5 py-2.5 rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-lg transition-all font-bold text-sm"
+                className="flex items-center justify-center gap-2 py-2 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-lg transition-all font-bold text-xs"
               >
-                <Users className="h-4 w-4" />
+                <Users className="h-3.5 w-3.5" />
                 Group Chat
               </TabsTrigger>
             </TabsList>
           </div>
 
-          <div className="px-8 py-6">
+          <div className="px-5 py-4">
             <div className="relative group">
               <Search className={cn(
-                "absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors",
+                "absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors",
                 searchTerm ? "text-green-500" : "text-slate-400"
               )} />
               <Input
@@ -182,7 +182,7 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className={cn(
-                  "pl-12 pr-4 py-6 border-0 rounded-2xl font-medium focus-visible:ring-2 focus-visible:ring-green-500/30 transition-all shadow-inner",
+                  "pl-10 pr-4 py-4 h-10 border-0 rounded-xl font-medium focus-visible:ring-1 focus-visible:ring-green-500/30 transition-all shadow-inner text-sm",
                   isDark ? "bg-slate-800/40 text-white placeholder:text-slate-500" : "bg-gray-100 text-slate-900 placeholder:text-slate-400"
                 )}
               />
@@ -190,7 +190,7 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
           </div>
 
           <TabsContent value="individual" className="mt-0 flex-1 overflow-hidden flex flex-col min-h-0">
-            <div className="px-8 flex-1 overflow-y-auto custom-scrollbar pb-8 min-h-0">
+            <div className="px-5 flex-1 overflow-y-auto custom-scrollbar pb-8 min-h-0">
               {filteredUsers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 opacity-50">
                   <div className="p-6 rounded-3xl bg-slate-100 dark:bg-slate-800 mb-4">
@@ -260,10 +260,10 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
           </TabsContent>
 
           <TabsContent value="group" className="mt-0 flex-1 overflow-hidden flex flex-col min-h-0">
-            <div className="px-8 pb-4 flex-shrink-0 space-y-4">
+            <div className="px-5 pb-3 flex-shrink-0 space-y-3">
               {/* Group Configuration Area */}
               <div className={cn(
-                "p-4 rounded-2xl flex flex-col space-y-3 border shadow-sm transition-all",
+                "p-3 rounded-xl flex flex-col space-y-2 border shadow-sm transition-all",
                 isDark ? "bg-slate-800/20 border-slate-700/50" : "bg-gray-50/50 border-slate-100"
               )}>
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -300,19 +300,19 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
               {/* Selected Members Preview */}
               {selectedUsers.length > 0 && (
                 <div className="animate-in slide-in-from-top-2 fade-in duration-300">
-                  <div className="flex items-center justify-between mb-2 px-1">
+                  <div className="flex items-center justify-between mb-3 px-1">
                     <p className={cn("text-[10px] font-black uppercase tracking-widest opacity-60", isDark ? "text-slate-400" : "text-slate-500")}>
-                      Selected ({selectedUsers.length})
+                      Selected Members ({selectedUsers.length})
                     </p>
                     <Button
                       variant="ghost"
-                      className="h-6 px-2 text-[10px] font-bold text-red-500 hover:text-red-600 hover:bg-red-500/5 rounded-lg"
+                      className="h-7 px-3 text-[10px] font-bold text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded-xl transition-colors"
                       onClick={() => setSelectedUsers([])}
                     >
                       Clear All
                     </Button>
                   </div>
-                  <div className="flex gap-2.5 overflow-x-auto pb-2 custom-scrollbar snap-x">
+                  <div className="flex flex-wrap gap-2 pb-2 max-h-32 overflow-y-auto custom-scrollbar">
                     {selectedUsers.map(id => {
                       const u = availableUsers.find(user => user.id === id);
                       if (!u) return null;
@@ -320,22 +320,22 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
                         <div
                           key={id}
                           className={cn(
-                            "flex-shrink-0 flex items-center gap-2 p-1.5 pr-3 rounded-full border snap-start animate-in zoom-in-90",
-                            isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-100 shadow-sm"
+                            "flex items-center gap-2.5 p-1 pr-3 rounded-full border animate-in zoom-in-90 transition-all hover:border-red-200 dark:hover:border-red-900/50 group/pill",
+                            isDark ? "bg-slate-800/80 border-slate-700" : "bg-white border-slate-100 shadow-sm"
                           )}
                         >
-                          <Avatar className="h-6 w-6 border border-white dark:border-slate-800">
+                          <Avatar className="h-7 w-7 border-2 border-white dark:border-slate-800 shadow-sm">
                             <AvatarImage src={u.profilePhoto} />
-                            <AvatarFallback className="bg-green-500 text-white text-[8px] font-bold">
+                            <AvatarFallback className="bg-gradient-to-br from-green-500 to-green-600 text-white text-[10px] font-black">
                               {u.name.charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
-                          <span className={cn("text-[11px] font-bold truncate max-w-[80px]", isDark ? "text-white" : "text-slate-900")}>
-                            {u.name.split(' ')[0]}
+                          <span className={cn("text-xs font-bold truncate max-w-[120px]", isDark ? "text-white" : "text-slate-900")}>
+                            {u.name}
                           </span>
                           <button
                             onClick={() => handleUserToggle(id)}
-                            className="hover:text-red-500 transition-colors"
+                            className="p-1 rounded-full hover:bg-red-500/10 text-slate-400 hover:text-red-500 transition-all opacity-60 group-hover/pill:opacity-100"
                           >
                             <X className="h-3 w-3" />
                           </button>
@@ -347,13 +347,13 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
               )}
             </div>
 
-            <div className="px-8 pb-2 flex-shrink-0 flex items-center justify-between">
+            <div className="px-5 pb-2 flex-shrink-0 flex items-center justify-between">
               <p className={cn(
                 "text-[10px] flex-shrink-0 font-black uppercase tracking-widest flex items-center gap-2",
                 isDark ? "text-slate-400" : "text-slate-500"
               )}>
                 <span className="h-1 w-1 rounded-full bg-green-500 flex-shrink-0" />
-                Select Team Members to invite
+                Select Members
               </p>
               {filteredUsers.length > 0 && (
                 <Button
@@ -370,51 +370,54 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
               )}
             </div>
 
-            <div className="px-8 flex-1 overflow-y-auto custom-scrollbar pb-6 min-h-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="px-5 flex-1 overflow-y-auto custom-scrollbar pb-6 min-h-0">
+               <div className="space-y-2">
                 {filteredUsers.map((u) => {
                   const isSelected = selectedUsers.includes(u.id);
                   return (
-                    <div
-                      key={u.id}
-                      onClick={() => handleUserToggle(u.id)}
-                      className={cn(
-                        "flex items-center p-3 rounded-2xl cursor-pointer transition-all duration-300 border group",
-                        isSelected
-                          ? "bg-green-500/10 border-green-500/30 shadow-[0_0_20px_-5px_rgba(34,197,94,0.15)]"
-                          : isDark ? "bg-slate-800/40 border-slate-700/50 hover:border-slate-600 hover:bg-slate-800/60" : "bg-white border-slate-100 hover:border-slate-200 hover:shadow-lg hover:shadow-black/[0.03]"
-                      )}
-                    >
-                      <div className="relative flex-shrink-0">
-                        <Avatar className={cn(
-                          "h-10 w-10 border-2 transition-transform duration-300 group-active:scale-95",
-                          isSelected ? "border-green-500/50 shadow-md shadow-green-500/10" : "border-white dark:border-slate-800"
-                        )}>
+                      <div
+                        key={u.id}
+                        onClick={() => handleUserToggle(u.id)}
+                        className={cn(
+                          "flex items-center p-3 rounded-2xl cursor-pointer transition-all duration-300 border group",
+                          isSelected
+                            ? "bg-green-500/10 border-green-500/30 shadow-[0_10px_30px_-10px_rgba(34,197,94,0.2)]"
+                            : isDark ? "bg-slate-800/40 border-slate-700/50 hover:border-slate-600 hover:bg-slate-800/60" : "bg-white border-slate-100 hover:border-slate-200 hover:shadow-lg hover:shadow-black/[0.03]"
+                        )}
+                      >
+                        <div className="relative flex-shrink-0">
+                          <Avatar className={cn(
+                            "h-10 w-10 border-2 shadow-sm transition-transform duration-300 group-active:scale-95",
+                            isSelected ? "border-green-500/50 shadow-md shadow-green-500/10" : "border-white dark:border-slate-800"
+                          )}>
                           <AvatarImage src={u.profilePhoto} />
-                          <AvatarFallback className="bg-slate-200 dark:bg-slate-700 text-[10px] font-bold uppercase">
-                            {u.name.charAt(0)}
+                          <AvatarFallback className={cn(
+                            "font-black text-sm text-white",
+                            isSelected ? "bg-green-500" : "bg-slate-400"
+                          )}>
+                            {u.name.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         {isSelected && (
-                          <div className="absolute -top-1 -right-1 h-4 w-4 bg-green-500 rounded-full border-2 border-white dark:border-[#0f172a] flex items-center justify-center animate-in zoom-in duration-200">
-                            <Plus className="h-2 w-2 text-white rotate-45" />
+                          <div className="absolute -top-1 -right-1 h-5 w-5 bg-green-500 rounded-full border-2 border-white dark:border-[#0f172a] flex items-center justify-center animate-in zoom-in duration-200 shadow-md">
+                            <Plus className="h-3 w-3 text-white rotate-45" />
                           </div>
                         )}
                       </div>
-                      <div className="ml-3 flex-1 min-w-0">
-                        <p className={cn("text-xs font-bold truncate", isSelected ? "text-green-600 dark:text-green-500" : isDark ? "text-white" : "text-slate-900")}>
+                      <div className="ml-4 flex-1 min-w-0">
+                        <p className={cn("font-bold truncate text-sm", isSelected ? "text-green-600 dark:text-green-500" : isDark ? "text-white" : "text-slate-900")}>
                           {u.name}
                         </p>
-                        <p className={cn("text-[9px] font-medium transition-colors truncate opacity-60", isDark ? "text-slate-400" : "text-slate-500")}>
-                          {u.designation}
+                        <p className={cn("text-xs font-medium opacity-60", isDark ? "text-slate-400" : "text-slate-500")}>
+                          {u.designation} {u.department ? `• ${u.department}` : ''}
                         </p>
                       </div>
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={() => handleUserToggle(u.id)}
                         className={cn(
-                          "ml-2 rounded-md transition-all duration-300",
-                          isSelected ? "bg-green-500 border-green-500" : "opacity-40"
+                          "ml-4 h-5 w-5 rounded-full transition-all duration-300 border-2",
+                          isSelected ? "bg-green-500 border-green-500 shadow-lg shadow-green-500/20" : "opacity-40"
                         )}
                         onClick={(e) => e.stopPropagation()}
                       />
@@ -425,7 +428,7 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
             </div>
 
             <div className={cn(
-              "p-8 border-t bg-gradient-to-b",
+              "p-5 border-t bg-gradient-to-b",
               isDark ? "from-slate-900 to-[#0f172a] border-slate-800" : "from-white to-gray-50 border-slate-100"
             )}>
               {groupNameError && (
