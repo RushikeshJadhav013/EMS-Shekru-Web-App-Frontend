@@ -74,50 +74,24 @@ const HRDashboard: React.FC = () => {
       if (!data) return;
       const { recentActivities: activityFeed = [], ...statSnapshot } = data;
 
-      // Handle potential missing activeTasks/completedTasks from dashboard API
-      let activeTasks = statSnapshot.activeTasks;
-      let completedTasks = statSnapshot.completedTasks;
-
-      if (activeTasks === undefined || activeTasks === 0) {
-        try {
-          const tasks = await apiService.getMyTasks();
-          activeTasks = (Array.isArray(tasks) ? tasks : []).filter((task: any) => 
-            !['completed', 'cancelled', 'complete', 'achieved'].includes((task.status || '').toLowerCase())
-          ).length;
-          completedTasks = (Array.isArray(tasks) ? tasks : []).filter((task: any) => 
-            ['completed', 'complete', 'achieved'].includes((task.status || '').toLowerCase())
-          ).length;
-        } catch (error) {
-          console.error('Failed to fetch tasks for HR fallback', error);
-        }
-      }
-
       setStats((prev) => ({ 
         ...prev, 
         ...statSnapshot,
-        activeTasks: activeTasks !== undefined ? activeTasks : prev.activeTasks,
-        completedTasks: completedTasks !== undefined ? completedTasks : prev.completedTasks
+        activeTasks: (statSnapshot as any).activeTasks ?? prev.activeTasks,
+        completedTasks: (statSnapshot as any).completedTasks ?? prev.completedTasks
       }));
 
-      // Filter for Today's activities only
-      const today = new Date();
-      const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-      const endOfDay = new Date(today.setHours(23, 59, 59, 999));
-
-      const todaysActivities = (Array.isArray(activityFeed) ? activityFeed : []).filter((activity: HRActivity) => {
-        if (!activity.time) return false;
-        const activityTime = new Date(activity.time);
-        return activityTime >= startOfDay && activityTime <= endOfDay;
-      });
+      // Show all recent activities from API (removed strict "Today" filter for better visibility)
+      const allActivities = (Array.isArray(activityFeed) ? activityFeed : []);
 
       // Sort by time (most recent first)
-      todaysActivities.sort((a, b) => {
+      allActivities.sort((a, b) => {
         const timeA = a.time ? new Date(a.time).getTime() : 0;
         const timeB = b.time ? new Date(b.time).getTime() : 0;
         return timeB - timeA;
       });
 
-      setRecentActivities(todaysActivities);
+      setRecentActivities(allActivities);
     } catch (error) {
       console.error('Failed to load HR dashboard', error);
     } finally {
@@ -475,8 +449,8 @@ const HRDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Quick Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {[
           {
             label: t.dashboard.totalEmployees,
@@ -527,6 +501,31 @@ const HRDashboard: React.FC = () => {
             borderColor: 'border-purple-300/80 dark:border-purple-700/50',
             hoverBorder: 'group-hover:border-purple-500 dark:group-hover:border-purple-400',
             path: '/hr/tasks'
+          },
+          {
+            label: 'New Joiners (Month)',
+            value: stats.newJoinersThisMonth,
+            sub: `${stats.exitingThisMonth} Exiting Soon`,
+            icon: UserPlus,
+            color: 'green',
+            bg: 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400',
+            cardBg: 'bg-green-50/40 dark:bg-green-950/10',
+            borderColor: 'border-green-300/80 dark:border-green-700/50',
+            hoverBorder: 'group-hover:border-green-500 dark:group-hover:border-green-400',
+            path: '/hr/employees'
+          },
+          {
+            label: 'Late Arrivals',
+            value: stats.lateArrivals,
+            sub: `${stats.openPositions} Open Positions`,
+            icon: Clock,
+            color: 'red',
+            bg: 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400',
+            cardBg: 'bg-red-50/40 dark:bg-red-950/10',
+            borderColor: 'border-red-300/80 dark:border-red-700/50',
+            hoverBorder: 'group-hover:border-red-500 dark:group-hover:border-red-400',
+            path: '/hr/attendance',
+            pathState: { filter: 'late' }
           }
         ].map((item, i) => (
           <Card

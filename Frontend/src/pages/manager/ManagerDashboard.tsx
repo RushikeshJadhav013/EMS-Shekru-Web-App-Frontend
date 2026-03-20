@@ -73,30 +73,11 @@ const ManagerDashboard: React.FC = () => {
         overdueItems: data.overdueItems || 0,
       };
 
-      let activeTasks = statSnapshot.activeTasks;
-      let completedTasks = statSnapshot.completedTasks;
-
-      // Only fetch tasks as fallback if dashboard stats are missing or zero
-      if (activeTasks === undefined || activeTasks === 0) {
-        try {
-          const tasks = await apiService.getMyTasks();
-          const taskList = Array.isArray(tasks) ? tasks : [];
-          activeTasks = taskList.filter((task: any) =>
-            !['completed', 'cancelled', 'complete', 'achieved'].includes((task.status || '').toLowerCase())
-          ).length;
-          completedTasks = taskList.filter((task: any) =>
-            ['completed', 'complete', 'achieved'].includes((task.status || '').toLowerCase())
-          ).length;
-        } catch (error) {
-          console.error('Failed to fetch tasks for Manager fallback', error);
-        }
-      }
-
       setStats((prev) => ({
         ...prev,
         ...statSnapshot,
-        activeTasks: activeTasks !== undefined ? activeTasks : prev.activeTasks,
-        completedTasks: completedTasks !== undefined ? completedTasks : prev.completedTasks
+        activeTasks: statSnapshot.activeTasks ?? prev.activeTasks,
+        completedTasks: statSnapshot.completedTasks ?? prev.completedTasks
       }));
 
       // Filter Team Activities
@@ -315,8 +296,8 @@ const ManagerDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Quick Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
         {[
           {
             label: 'Total Members',
@@ -367,6 +348,30 @@ const ManagerDashboard: React.FC = () => {
             hoverBorder: 'group-hover:border-amber-500 dark:group-hover:border-amber-400',
             path: '/manager/leaves',
             pathState: { tab: 'approvals' }
+          },
+          {
+            label: 'Overdue Items',
+            value: stats.overdueItems,
+            sub: 'Requires Attention',
+            icon: AlertCircle,
+            color: 'red',
+            bg: 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400',
+            cardBg: 'bg-red-50/40 dark:bg-red-950/10',
+            borderColor: 'border-red-300/80 dark:border-red-700/50',
+            hoverBorder: 'group-hover:border-red-500 dark:group-hover:border-red-400',
+            path: '/manager/tasks',
+            pathState: { filter: 'overdue' }
+          },
+          {
+            label: 'Team Performance',
+            value: `${stats.teamPerformancePercent}%`,
+            sub: 'Overall Completion',
+            icon: Target,
+            color: 'teal',
+            bg: 'bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400',
+            cardBg: 'bg-teal-50/40 dark:bg-teal-950/10',
+            borderColor: 'border-teal-300/80 dark:border-teal-700/50',
+            hoverBorder: 'group-hover:border-teal-500 dark:group-hover:border-teal-400',
           }
         ].map((item, i) => (
           <Card
@@ -446,15 +451,13 @@ const ManagerDashboard: React.FC = () => {
                           variant={
                             getCorrectAttendanceStatus(activity) === 'completed' || getCorrectAttendanceStatus(activity) === 'on-time' ? 'default' :
                               getCorrectAttendanceStatus(activity) === 'pending' ? 'secondary' :
-                                getCorrectAttendanceStatus(activity) === 'late' ? 'destructive' :
+                                getCorrectAttendanceStatus(activity) === 'late' || getCorrectAttendanceStatus(activity) === 'overdue' ? 'destructive' :
                                   'outline'
                           }
-                          className={`text-xs mt-1 ${getCorrectAttendanceStatus(activity) === 'late' ? 'bg-red-500' : ''
-                            }`}
+                          className={`text-xs mt-1 capitalize`}
                         >
                           {getCorrectAttendanceStatus(activity) === 'on-time' ? 'On Time' :
-                            getCorrectAttendanceStatus(activity) === 'late' ? 'Late' :
-                              getCorrectAttendanceStatus(activity)}
+                             getCorrectAttendanceStatus(activity).replace('-', ' ')}
                         </Badge>
                       </div>
                     </div>

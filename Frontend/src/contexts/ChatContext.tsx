@@ -122,7 +122,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const fetchedMessages = await chatService.getChatMessages(chatId, chatType);
-      setMessages(fetchedMessages);
+      // Reverse messages to show oldest at top and newest at bottom (WhatsApp style)
+      setMessages([...fetchedMessages].reverse());
     } catch (error) {
       console.error('Failed to load messages:', error);
       toast({
