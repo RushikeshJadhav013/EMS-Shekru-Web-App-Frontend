@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Users, MessageCircle, Search, Hash, Plus } from 'lucide-react';
+import { X, Users, MessageCircle, Search, Hash, Plus, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,7 +22,7 @@ interface AddChatModalProps {
 
 const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permissions, initialTab = 'individual' }) => {
   const navigate = useNavigate();
-  const { availableUsers, createChat, loadAvailableUsers, setActiveChat, chats } = useChat();
+  const { availableUsers, createChat, loadAvailableUsers, setActiveChat, chats, loadChats } = useChat();
   const { user } = useAuth();
   const { toast } = useToast();
   const { themeMode } = useTheme();
@@ -45,13 +45,14 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
   useEffect(() => {
     if (isOpen) {
       loadAvailableUsers();
+      loadChats();
       setSelectedUsers([]);
       setGroupName('');
       setGroupDescription('');
       setSearchTerm('');
       setGroupNameError('');
     }
-  }, [isOpen, loadAvailableUsers]);
+  }, [isOpen, loadAvailableUsers, loadChats]);
 
   // Check for duplicate group name in real-time
   useEffect(() => {
@@ -112,6 +113,11 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
       onClose();
     } catch (error) {
       console.error('Failed to create group chat:', error);
+      toast({
+        title: 'Creation Failed',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        variant: 'destructive',
+      });
     } finally {
       setIsCreating(false);
     }
@@ -127,7 +133,7 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
       )}>
         {/* Header */}
         <div className={cn(
-          "flex items-center justify-between p-5 border-b transition-colors",
+          "flex items-center justify-between p-5 border-b transition-colors flex-shrink-0",
           isDark ? "border-slate-800 bg-slate-900/50" : "border-slate-100 bg-gray-50/50"
         )}>
           <div className="flex items-center space-x-3">
@@ -148,7 +154,7 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
         </div>
 
         <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'individual' | 'group')} className="w-full flex flex-col flex-1 overflow-hidden">
-          <div className="px-5 pt-4">
+          <div className="px-5 pt-4 flex-shrink-0">
             <TabsList className={cn(
               "grid w-full grid-cols-2 p-1 rounded-xl h-auto",
               isDark ? "bg-slate-800/50" : "bg-slate-100"
@@ -171,7 +177,7 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
             </TabsList>
           </div>
 
-          <div className="px-5 py-4">
+          <div className="px-5 py-4 flex-shrink-0">
             <div className="relative group">
               <Search className={cn(
                 "absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors",
@@ -260,129 +266,79 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
           </TabsContent>
 
           <TabsContent value="group" className="mt-0 flex-1 overflow-hidden flex flex-col min-h-0">
-            <div className="px-5 pb-3 flex-shrink-0 space-y-3">
-              {/* Group Configuration Area */}
-              <div className={cn(
-                "p-3 rounded-xl flex flex-col space-y-2 border shadow-sm transition-all",
-                isDark ? "bg-slate-800/20 border-slate-700/50" : "bg-gray-50/50 border-slate-100"
-              )}>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="relative flex-1">
-                    <Hash className={cn(
-                      "absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 transition-colors",
-                      groupNameError ? "text-red-500" : "text-green-500"
-                    )} />
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-5 pt-3">
+              <div className="space-y-4 pb-8">
+                {/* Group Configuration Area */}
+                <div className={cn(
+                  "p-3 rounded-xl flex flex-col space-y-2 border shadow-sm transition-all",
+                  isDark ? "bg-slate-800/20 border-slate-700/50" : "bg-gray-50/50 border-slate-100"
+                )}>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1">
+                      <Hash className={cn(
+                        "absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 transition-colors",
+                        groupNameError ? "text-red-500" : "text-green-500"
+                      )} />
+                      <Input
+                        placeholder="Group Name"
+                        value={groupName}
+                        onChange={(e) => setGroupName(e.target.value)}
+                        className={cn(
+                          "pl-9 h-10 border rounded-xl focus-visible:ring-1 shadow-sm text-sm font-semibold transition-all",
+                          groupNameError
+                            ? "border-red-500 focus-visible:ring-red-500/50 bg-red-50 dark:bg-red-950/20 text-red-900 dark:text-red-100"
+                            : "border-0 focus-visible:ring-green-500/50",
+                          isDark && !groupNameError ? "bg-slate-800 text-white" : !groupNameError && "bg-white text-slate-900"
+                        )}
+                      />
+                    </div>
                     <Input
-                      placeholder="Group Name"
-                      value={groupName}
-                      onChange={(e) => setGroupName(e.target.value)}
+                      placeholder="Description (Optional)"
+                      value={groupDescription}
+                      onChange={(e) => setGroupDescription(e.target.value)}
                       className={cn(
-                        "pl-9 h-10 border rounded-xl focus-visible:ring-1 shadow-sm text-sm font-semibold transition-all",
-                        groupNameError
-                          ? "border-red-500 focus-visible:ring-red-500/50 bg-red-50 dark:bg-red-950/20 text-red-900 dark:text-red-100"
-                          : "border-0 focus-visible:ring-green-500/50",
-                        isDark && !groupNameError ? "bg-slate-800 text-white" : !groupNameError && "bg-white text-slate-900"
+                        "h-10 border-0 rounded-xl focus-visible:ring-1 focus-visible:ring-green-500/50 shadow-sm text-sm font-medium flex-[1.5]",
+                        isDark ? "bg-slate-800 text-white" : "bg-white text-slate-900"
                       )}
                     />
                   </div>
-                  <Input
-                    placeholder="Description (Optional)"
-                    value={groupDescription}
-                    onChange={(e) => setGroupDescription(e.target.value)}
-                    className={cn(
-                      "h-10 border-0 rounded-xl focus-visible:ring-1 focus-visible:ring-green-500/50 shadow-sm text-sm font-medium flex-[1.5]",
-                      isDark ? "bg-slate-800 text-white" : "bg-white text-slate-900"
-                    )}
-                  />
                 </div>
-              </div>
 
-              {/* Selected Members Preview */}
-              {selectedUsers.length > 0 && (
-                <div className="animate-in slide-in-from-top-2 fade-in duration-300">
-                  <div className="flex items-center justify-between mb-3 px-1">
-                    <p className={cn("text-[10px] font-black uppercase tracking-widest opacity-60", isDark ? "text-slate-400" : "text-slate-500")}>
-                      Selected Members ({selectedUsers.length})
-                    </p>
+                <div className="flex items-center justify-between pb-1 border-b mb-1">
+                  <p className={cn(
+                    "text-[10px] flex-shrink-0 font-black uppercase tracking-widest flex items-center gap-2",
+                    isDark ? "text-slate-400" : "text-slate-500"
+                  )}>
+                    <span className="h-1 w-1 rounded-full bg-green-500 flex-shrink-0" />
+                    Select Members ({selectedUsers.length} selected)
+                  </p>
+                  {filteredUsers.length > 0 && (
                     <Button
                       variant="ghost"
-                      className="h-7 px-3 text-[10px] font-bold text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded-xl transition-colors"
-                      onClick={() => setSelectedUsers([])}
+                      onClick={() => {
+                        const allIds = filteredUsers.map(u => u.id);
+                        const newSelected = Array.from(new Set([...selectedUsers, ...allIds]));
+                        setSelectedUsers(newSelected);
+                      }}
+                      className="h-6 px-3 text-[10px] flex-shrink-0 font-black uppercase tracking-widest text-green-600 hover:text-green-700 hover:bg-green-500/10 rounded-lg transition-colors border border-green-500/20 bg-green-500/5"
                     >
-                      Clear All
+                      Select All
                     </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-2 pb-2 max-h-32 overflow-y-auto custom-scrollbar">
-                    {selectedUsers.map(id => {
-                      const u = availableUsers.find(user => user.id === id);
-                      if (!u) return null;
-                      return (
-                        <div
-                          key={id}
-                          className={cn(
-                            "flex items-center gap-2.5 p-1 pr-3 rounded-full border animate-in zoom-in-90 transition-all hover:border-red-200 dark:hover:border-red-900/50 group/pill",
-                            isDark ? "bg-slate-800/80 border-slate-700" : "bg-white border-slate-100 shadow-sm"
-                          )}
-                        >
-                          <Avatar className="h-7 w-7 border-2 border-white dark:border-slate-800 shadow-sm">
-                            <AvatarImage src={u.profilePhoto} />
-                            <AvatarFallback className="bg-gradient-to-br from-green-500 to-green-600 text-white text-[10px] font-black">
-                              {u.name.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className={cn("text-xs font-bold truncate max-w-[120px]", isDark ? "text-white" : "text-slate-900")}>
-                            {u.name}
-                          </span>
-                          <button
-                            onClick={() => handleUserToggle(id)}
-                            className="p-1 rounded-full hover:bg-red-500/10 text-slate-400 hover:text-red-500 transition-all opacity-60 group-hover/pill:opacity-100"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            <div className="px-5 pb-2 flex-shrink-0 flex items-center justify-between">
-              <p className={cn(
-                "text-[10px] flex-shrink-0 font-black uppercase tracking-widest flex items-center gap-2",
-                isDark ? "text-slate-400" : "text-slate-500"
-              )}>
-                <span className="h-1 w-1 rounded-full bg-green-500 flex-shrink-0" />
-                Select Members
-              </p>
-              {filteredUsers.length > 0 && (
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    const allIds = filteredUsers.map(u => u.id);
-                    const newSelected = Array.from(new Set([...selectedUsers, ...allIds]));
-                    setSelectedUsers(newSelected);
-                  }}
-                  className="h-6 px-3 text-[10px] flex-shrink-0 font-black uppercase tracking-widest text-green-600 hover:text-green-700 hover:bg-green-500/10 rounded-lg transition-colors border border-green-500/20 bg-green-500/5"
-                >
-                  Select All
-                </Button>
-              )}
-            </div>
-
-            <div className="px-5 flex-1 overflow-y-auto custom-scrollbar pb-6 min-h-0">
-               <div className="space-y-2">
-                {filteredUsers.map((u) => {
-                  const isSelected = selectedUsers.includes(u.id);
-                  return (
+                <div className="space-y-2">
+                  {filteredUsers.map((u) => {
+                    const isSelected = selectedUsers.includes(u.id);
+                    return (
                       <div
                         key={u.id}
                         onClick={() => handleUserToggle(u.id)}
                         className={cn(
                           "flex items-center p-3 rounded-2xl cursor-pointer transition-all duration-300 border group",
                           isSelected
-                            ? "bg-green-500/10 border-green-500/30 shadow-[0_10px_30px_-10px_rgba(34,197,94,0.2)]"
-                            : isDark ? "bg-slate-800/40 border-slate-700/50 hover:border-slate-600 hover:bg-slate-800/60" : "bg-white border-slate-100 hover:border-slate-200 hover:shadow-lg hover:shadow-black/[0.03]"
+                            ? "bg-green-500/10 border-green-500/30 shadow-md"
+                            : isDark ? "bg-slate-800/40 border-slate-700/50 hover:border-slate-600 hover:bg-slate-800/60" : "bg-white border-slate-100 hover:border-slate-200 hover:shadow-lg"
                         )}
                       >
                         <div className="relative flex-shrink-0">
@@ -390,68 +346,79 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
                             "h-10 w-10 border-2 shadow-sm transition-transform duration-300 group-active:scale-95",
                             isSelected ? "border-green-500/50 shadow-md shadow-green-500/10" : "border-white dark:border-slate-800"
                           )}>
-                          <AvatarImage src={u.profilePhoto} />
-                          <AvatarFallback className={cn(
-                            "font-black text-sm text-white",
-                            isSelected ? "bg-green-500" : "bg-slate-400"
-                          )}>
-                            {u.name.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        {isSelected && (
-                          <div className="absolute -top-1 -right-1 h-5 w-5 bg-green-500 rounded-full border-2 border-white dark:border-[#0f172a] flex items-center justify-center animate-in zoom-in duration-200 shadow-md">
-                            <Plus className="h-3 w-3 text-white rotate-45" />
-                          </div>
-                        )}
+                            <AvatarImage src={u.profilePhoto} />
+                            <AvatarFallback className={cn(
+                              "font-black text-sm text-white",
+                              isSelected ? "bg-green-500" : "bg-slate-400"
+                            )}>
+                              {u.name.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          {isSelected && (
+                            <div className="absolute -top-1 -right-1 h-5 w-5 bg-green-500 rounded-full border-2 border-white dark:border-[#0f172a] flex items-center justify-center animate-in zoom-in duration-200 shadow-md">
+                              <Check className="h-3 w-3 text-white" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="ml-4 flex-1 min-w-0">
+                          <p className={cn("font-bold truncate text-sm", isSelected ? "text-green-600 dark:text-green-500" : isDark ? "text-white" : "text-slate-900")}>
+                            {u.name}
+                          </p>
+                          <p className={cn("text-xs font-medium opacity-60", isDark ? "text-slate-400" : "text-slate-500")}>
+                            {u.designation} {u.department ? `• ${u.department}` : ''}
+                          </p>
+                        </div>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => handleUserToggle(u.id)}
+                          className={cn(
+                            "ml-4 h-5 w-5 rounded-full transition-all duration-300 border-2",
+                            isSelected ? "bg-green-500 border-green-500 shadow-lg" : "opacity-40"
+                          )}
+                          onClick={(e) => e.stopPropagation()}
+                        />
                       </div>
-                      <div className="ml-4 flex-1 min-w-0">
-                        <p className={cn("font-bold truncate text-sm", isSelected ? "text-green-600 dark:text-green-500" : isDark ? "text-white" : "text-slate-900")}>
-                          {u.name}
-                        </p>
-                        <p className={cn("text-xs font-medium opacity-60", isDark ? "text-slate-400" : "text-slate-500")}>
-                          {u.designation} {u.department ? `• ${u.department}` : ''}
-                        </p>
-                      </div>
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => handleUserToggle(u.id)}
-                        className={cn(
-                          "ml-4 h-5 w-5 rounded-full transition-all duration-300 border-2",
-                          isSelected ? "bg-green-500 border-green-500 shadow-lg shadow-green-500/20" : "opacity-40"
-                        )}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+
               </div>
             </div>
 
+            {/* Sticky Footer for action button */}
             <div className={cn(
-              "p-5 border-t bg-gradient-to-b",
-              isDark ? "from-slate-900 to-[#0f172a] border-slate-800" : "from-white to-gray-50 border-slate-100"
+              "p-5 border-t bg-gradient-to-b flex-shrink-0 z-10",
+              isDark ? "from-slate-900 to-[#0f172a] border-slate-800 shadow-[0_-10px_20px_rgba(0,0,0,0.2)]" : "from-white to-gray-50 border-slate-100 shadow-[0_-10px_20px_rgba(0,0,0,0.03)]"
             )}>
               {groupNameError && (
-                <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 animate-in slide-in-from-top-2 fade-in duration-300">
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                    <p className="text-xs font-bold text-red-600 dark:text-red-400">
-                      {groupNameError}. Please choose a different name.
-                    </p>
-                  </div>
+                <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 animate-in slide-in-from-top-2 fade-in">
+                  <p className="text-xs font-bold text-red-600 dark:text-red-400 text-center uppercase tracking-wider">
+                    {groupNameError}
+                  </p>
                 </div>
               )}
               <Button
-                onClick={handleCreateGroupChat}
+                onClick={() => {
+                  console.log('Create Group Button Clicked');
+                  handleCreateGroupChat();
+                }}
                 disabled={selectedUsers.length === 0 || !groupName.trim() || isCreating || !!groupNameError}
                 className={cn(
-                  "w-full h-14 text-white font-black rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed",
-                  groupNameError
-                    ? "bg-red-500 hover:bg-red-600 shadow-red-500/20"
-                    : "bg-green-500 hover:bg-green-600 shadow-green-500/20"
+                  "w-full h-14 text-white font-black rounded-2xl shadow-xl transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3",
+                  groupNameError ? "bg-red-500/50" : "bg-green-500 hover:bg-green-600 shadow-green-500/20"
                 )}
               >
-                {isCreating ? "Initializing..." : groupNameError ? "Name Already Taken" : `Create Group Chat`}
+                {isCreating ? (
+                  <>
+                    <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Setting up group...</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-5 w-5 font-black" />
+                    <span>Create Group Chat {selectedUsers.length > 0 && `(${selectedUsers.length})`}</span>
+                  </>
+                )}
               </Button>
             </div>
           </TabsContent>

@@ -114,24 +114,17 @@ const AttendanceManager: React.FC = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
 
-  // Helper function to format work hours from decimal to "X hrs - Y mins" format
+  // Helper function to format work hours from decimal to "HH:MM" format
   const formatWorkHours = (decimalHours: number): string => {
     if (!decimalHours || decimalHours === 0) {
-      return "0 hrs - 0 mins";
+      return "00:00";
     }
 
-    const hours = Math.floor(decimalHours);
-    const minutes = Math.round((decimalHours - hours) * 60);
+    const totalMinutes = Math.round(decimalHours * 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
 
-    if (hours === 0 && minutes === 0) {
-      return "0 hrs - 0 mins";
-    } else if (hours === 0) {
-      return `0 hrs - ${minutes} mins`;
-    } else if (minutes === 0) {
-      return `${hours} hrs - 0 mins`;
-    } else {
-      return `${hours} hrs - ${minutes} mins`;
-    }
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
   };
   const isAdmin = user?.role === "admin";
   const [attendanceRecords, setAttendanceRecords] = useState<
@@ -1303,7 +1296,7 @@ const AttendanceManager: React.FC = () => {
                 rec.checkout_selfie_url,
               ),
               status: (status as any) || "present",
-              workHours: rec.total_hours || rec.workHours || 0,
+              workHours: rec.total_hours || rec.workHours || (checkIn && checkOut ? (new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60) : 0) || 0,
               checkInStatus: checkInStatus || undefined,
               checkOutStatus: checkOutStatus || undefined,
               scheduledStart: scheduledStart || undefined,
@@ -1515,7 +1508,7 @@ const AttendanceManager: React.FC = () => {
 
   const formatAttendanceTime = (dateString: string, timeString?: string) => {
     if (!timeString) return "-";
-    return formatDateTimeComponentsIST(dateString, timeString, "hh:mm a");
+    return formatDateTimeComponentsIST(dateString, timeString, "h:mm a");
   };
 
   const handleQuickFilter = (filter: string) => {
@@ -1524,6 +1517,15 @@ const AttendanceManager: React.FC = () => {
     today.setHours(23, 59, 59, 999);
 
     switch (filter) {
+      case "yesterday": {
+        const yesterday = subDays(new Date(), 1);
+        yesterday.setHours(0, 0, 0, 0);
+        const yesterdayEnd = new Date(yesterday);
+        yesterdayEnd.setHours(23, 59, 59, 999);
+        setStartDate(yesterday);
+        setEndDate(yesterdayEnd);
+        break;
+      }
       case "current_month":
         const firstDayOfMonth = new Date(
           today.getFullYear(),
@@ -2298,7 +2300,7 @@ const AttendanceManager: React.FC = () => {
                     <th className="text-left p-3 font-medium">
                       {t.attendance.checkOutTime}
                     </th>
-                    <th className="text-left p-3 font-medium">
+                    <th className="text-center p-3 font-medium min-w-[120px]">
                       {t.attendance.hours}
                     </th>
                     <th className="text-left p-3 font-medium">
@@ -2409,6 +2411,32 @@ const AttendanceManager: React.FC = () => {
                                     {(record.scheduledEnd || "19:00").replace(/^0/, '')}
                                   </span>
                                 </div>
+                                <div className="flex flex-col items-center gap-1">
+                                  {record.checkInStatus && (
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${
+                                        record.checkInStatus.toLowerCase() === "late"
+                                          ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
+                                          : "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400"
+                                      }`}
+                                    >
+                                      In: {record.checkInStatus}
+                                    </Badge>
+                                  )}
+                                  {record.checkOutStatus && (
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${
+                                        record.checkOutStatus.toLowerCase() === "early"
+                                          ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
+                                          : "bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-400"
+                                      }`}
+                                    >
+                                      Out: {record.checkOutStatus}
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -2435,14 +2463,16 @@ const AttendanceManager: React.FC = () => {
                             </div>
                           </td>
                           <td className="p-3">
-                            {record.workHours ? (
-                              <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                                {formatWorkHours(record.workHours).replace(/^0/, '')}
-                              </span>
+                            {record.checkOutTime ? (
+                              <div className="flex justify-center items-center">
+                                <span className="inline-flex items-center text-sm font-bold text-slate-950 dark:text-white whitespace-nowrap bg-blue-50/50 dark:bg-blue-950/20 px-3 py-1.5 rounded-full border border-blue-100 dark:border-blue-900 shadow-sm tabular-nums">
+                                  {formatWorkHours(record.workHours)}
+                                </span>
+                              </div>
                             ) : (
-                              <span className="text-sm text-muted-foreground">
-                                -
-                              </span>
+                              <div className="text-center">
+                                <span className="text-xs text-muted-foreground">—</span>
+                              </div>
                             )}
                           </td>
                           <td className="p-3">
@@ -2504,7 +2534,7 @@ const AttendanceManager: React.FC = () => {
                             </div>
                           </td>
                           <td className="p-3">
-                            <div className="flex flex-wrap gap-1">
+                            <div className="flex flex-col items-center gap-1">
                               {getStatusBadge(record)}
                             </div>
                           </td>
@@ -2962,6 +2992,12 @@ const AttendanceManager: React.FC = () => {
                   sideOffset={5}
                   align="start"
                 >
+                  <SelectItem
+                    value="yesterday"
+                    className="cursor-pointer hover:bg-blue-50"
+                  >
+                    Yesterday
+                  </SelectItem>
                   <SelectItem
                     value="current_month"
                     className="cursor-pointer hover:bg-blue-50"

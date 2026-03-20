@@ -2310,10 +2310,25 @@ class ApiService {
     status: string,
     additionalData: any = {}
   ): Promise<any> {
-    // The backend expects 'status' as a query parameter, not in the request body
+    // The backend expects 'status' as a query parameter, 
+    // but may also require title/assignee in the body.
     const encodedStatus = encodeURIComponent(status);
     return this.request(`/tasks/${taskId}/status?status=${encodedStatus}`, {
       method: "PUT",
+      body: JSON.stringify(additionalData),
+    });
+  }
+
+  async updateProjectTask(taskId: number, taskData: any): Promise<any> {
+    return this.request(`/tasks/${taskId}`, {
+      method: "PUT",
+      body: JSON.stringify(taskData),
+    });
+  }
+
+  async deleteProjectTask(taskId: number): Promise<any> {
+    return this.request(`/tasks/${taskId}`, {
+      method: "DELETE",
     });
   }
 

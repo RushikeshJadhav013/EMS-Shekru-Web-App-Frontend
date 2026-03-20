@@ -287,6 +287,7 @@ interface ProjectTask {
   start_date?: string;
   due_date?: string;
   assigned_by?: number | string;
+  assigned_by_name?: string;
   priority?: "Low" | "Medium" | "High";
   status:
     | "pending"
@@ -433,7 +434,8 @@ function statusLabel(s?: string) {
 
 const isTaskOverdue = (dueDate?: string, currentStatus?: string) => {
   if (!dueDate) return false;
-  if (currentStatus === "completed" || currentStatus === "cancelled") return false;
+  const status = normalizeStatus(currentStatus);
+  if (status === "completed" || status === "cancelled") return false;
   const due = new Date(dueDate);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -547,18 +549,16 @@ function TaskRow({
         <div className="flex flex-col gap-1">
           {canEditTaskStatus ? (
             <Select
-              value={normalizeStatus(task.status) === "overdue" ? "todo" : normalizeStatus(task.status)}
+              value={normalizeStatus(task.status)}
               onValueChange={(v) => onStatusChange(id, v)}
-              disabled={isOverdue}
             >
-              <SelectTrigger className={`h-7 w-36 text-[11px] border-slate-200 dark:border-slate-700 shadow-sm font-medium ${isOverdue ? 'border-red-200 bg-red-50 text-red-600' : ''}`}>
-                <div className="flex items-center gap-1.5">
-                  {isOverdue ? (
-                    <span className="flex items-center gap-1.5 uppercase tracking-tight text-[10px] font-bold">
-                      <AlertCircle className="h-3 w-3" /> Overdue
+              <SelectTrigger className={`h-7 w-auto min-w-[120px] text-[11px] border-slate-200 dark:border-slate-700 shadow-sm font-medium ${isOverdue ? 'border-red-200 bg-red-50 text-red-600' : ''}`}>
+                <div className="flex items-center gap-2">
+                  <SelectValue />
+                  {isOverdue && (
+                    <span className="flex items-center gap-1 bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded-sm font-bold uppercase tracking-tighter shadow-sm whitespace-nowrap">
+                       <AlertCircle className="h-2.5 w-2.5" /> Overdue
                     </span>
-                  ) : (
-                    <SelectValue />
                   )}
                 </div>
               </SelectTrigger>
@@ -590,12 +590,9 @@ function TaskRow({
               </SelectContent>
             </Select>
           ) : (
-            <TaskStatusBadge status={effectiveStatus} />
-          )}
-          {isOverdue && task.status !== "completed" && task.status !== "cancelled" && (
-            <Badge className="bg-red-50 text-red-600 dark:bg-red-900/20 border-red-100 border text-[9px] height-auto py-0 px-1 w-fit">
-              AUTO OVERDUE
-            </Badge>
+            <div className="flex items-center gap-2">
+              <TaskStatusBadge status={isOverdue ? "overdue" : task.status} />
+            </div>
           )}
         </div>
       </TableCell>
@@ -668,6 +665,7 @@ function ProjectCard({
   onEditTask,
   onDeleteTask,
   onReassignTask,
+  onViewTask,
 }: {
   project: Project;
   canManageProjects: boolean;
@@ -737,6 +735,15 @@ function ProjectCard({
                     {project.end_date
                       ? formatDateIST(project.end_date, "MMM dd, yyyy")
                       : "—"}
+                  </span>
+                </div>
+              )}
+              {/* Person in Charge */}
+              {(project.person_in_charge_name || project.pic_name) && (
+                <div className="flex items-center gap-1.5 mt-2 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-md w-fit border border-indigo-100 dark:border-indigo-800">
+                  <User className="h-3 w-3 text-indigo-500" />
+                  <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
+                    PIC: {project.person_in_charge_name || project.pic_name}
                   </span>
                 </div>
               )}
@@ -1083,6 +1090,7 @@ export default function ProjectManagement() {
     start_date: "",
     end_date: "",
     status: "in-progress",
+    person_in_charge_id: "" as string | number,
   });
   // Multi-select members (for create)
   const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
@@ -1101,24 +1109,37 @@ export default function ProjectManagement() {
     try {
       const data = await apiService.getProjects();
       const projectList = Array.isArray(data) ? data : data?.projects || [];
-      const normalizedProjects = projectList.map((p: any) => ({
-        ...p,
-        members: (p.members || []).map((m: any) => ({
-          ...m,
-          name:
-            m.name ||
-            m.employee_name ||
-            m.full_name ||
-            m.user_name ||
-            (m.first_name
-              ? `${m.first_name} ${m.last_name || ""}`.trim()
-              : null) ||
-            "Unknown Member",
-        })),
-        person_in_charge_id: p.person_in_charge_id || p.person_in_charge || p.pic_id,
-        person_in_charge_name: p.person_in_charge_name || p.pic_name,
-      }));
-      setProjects(normalizedProjects);
+      
+      setProjects((prevProjects) => 
+        projectList.map((p: any) => {
+          const pid = p.project_id || p.id;
+          const old = prevProjects.find((op) => op.project_id === pid);
+          return {
+            ...p,
+            project_id: pid,
+            members: (p.members || old?.members || []).map((m: any) => ({
+              ...(m || {}),
+              name:
+                m?.name ||
+                m?.employee_name ||
+                m?.full_name ||
+                m?.user_name ||
+                (m?.first_name
+                  ? `${m.first_name} ${m.last_name || ""}`.trim()
+                  : null) ||
+                "Unknown Member",
+            })),
+            tasks: (p.tasks || old?.tasks || []).map((t: any) => ({
+              ...(t || {}),
+              task_id: t?.task_id || t?.id,
+              task_name: t?.task_name || t?.title || t?.name || "Untitled Task",
+            })),
+            person_in_charge_id: p.person_in_charge_id || p.person_in_charge || p.pic_id || old?.person_in_charge_id,
+            person_in_charge_name: p.person_in_charge_name || p.pic_name || old?.person_in_charge_name,
+            pic_id: p.person_in_charge_id || p.person_in_charge || p.pic_id || old?.pic_id,
+          };
+        })
+      );
     } catch (err: any) {
       toast({
         title: "Error",
@@ -1182,6 +1203,7 @@ export default function ProjectManagement() {
       start_date: "",
       end_date: "",
       status: "in-progress",
+      person_in_charge_id: "",
     });
     setSelectedMemberIds([]);
     setMemberSearch("");
@@ -1266,9 +1288,26 @@ export default function ProjectManagement() {
       });
       return;
     }
+    if (!formData.person_in_charge_id) {
+      toast({
+        title: "Error",
+        description: "Person in Charge is required",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsCreating(true);
     try {
-      const newProject = await apiService.createProject(formData);
+      const { person_in_charge_id, ...baseData } = formData;
+      const payload = {
+        ...baseData,
+        person_in_charge: Number(person_in_charge_id),
+      };
+      // status mapping for creation if needed
+      if (payload.status === "todo") payload.status = "planned";
+      else if (payload.status === "in-progress") payload.status = "in_progress";
+
+      const newProject = await apiService.createProject(payload);
       const projectId = newProject?.project_id || newProject?.id || newProject?.data?.project_id || newProject?.data?.id;
 
       if (projectId) {
@@ -1356,7 +1395,12 @@ export default function ProjectManagement() {
       else if (formData.status === "completed") backendStatus = "completed";
       else if (formData.status === "cancelled") backendStatus = "cancelled";
 
-      const payload = { ...formData, status: backendStatus };
+      const { person_in_charge_id, ...baseData } = formData;
+      const payload = { 
+        ...baseData, 
+        status: backendStatus,
+        person_in_charge: person_in_charge_id ? Number(person_in_charge_id) : undefined 
+      };
       await apiService.updateProject(selectedProject.project_id, payload);
       toast({ title: "Success", description: "Project updated" });
       setIsEditDialogOpen(false);
@@ -1532,7 +1576,9 @@ export default function ProjectManagement() {
       // Refresh details
       const updated = await loadFullProjectDetails(selectedProject.project_id);
       setSelectedProject(updated);
-      fetchProjects();
+      setProjects((prev) =>
+        prev.map((p) => (p.project_id === selectedProject.project_id ? updated : p)),
+      );
     } catch (err: any) {
       toast({
         title: "Error",
@@ -1555,7 +1601,9 @@ export default function ProjectManagement() {
       // Refresh details
       const updated = await loadFullProjectDetails(projectId);
       setSelectedProject(updated);
-      fetchProjects();
+      setProjects((prev) =>
+        prev.map((p) => (p.project_id === projectId ? updated : p)),
+      );
     } catch (err: any) {
       toast({
         title: "Error",
@@ -1608,7 +1656,9 @@ export default function ProjectManagement() {
       // Refresh details
       const updated = await loadFullProjectDetails(selectedProject.project_id);
       setSelectedProject(updated);
-      fetchProjects();
+      setProjects((prev) =>
+        prev.map((p) => (p.project_id === selectedProject.project_id ? updated : p)),
+      );
     } catch (err: any) {
       toast({
         title: "Error",
@@ -1671,6 +1721,12 @@ export default function ProjectManagement() {
     status: string,
   ) => {
     try {
+      // Find the project and task from the CURRENT list or selectedProject to get metadata
+      const project = projects.find(p => p.project_id === projectId) || (selectedProject?.project_id === projectId ? selectedProject : null);
+      if (!project) throw new Error("Project context not found");
+
+      const taskObj: any = project.tasks?.find(t => (t.task_id === taskId || t.id === taskId));
+      
       // Map UI status back to backend-friendly status
       let backendStatus = status;
       if (status === "todo") backendStatus = "Pending";
@@ -1678,16 +1734,26 @@ export default function ProjectManagement() {
       else if (status === "completed") backendStatus = "Completed";
       else if (status === "cancelled") backendStatus = "Cancelled";
 
-      // Include task identification fields to satisfy backend requirements
-      const taskObj: any = selectedProject?.tasks?.find(t => (t.task_id === taskId || t.id === taskId));
-      
       await apiService.updateProjectTaskStatus(projectId, taskId, backendStatus, {
         title: taskObj?.task_name || taskObj?.title || "Project Task",
         assigned_to: taskObj?.assigned_to || null
       });
       toast({ title: "Success", description: "Task status updated" });
       
-      // Update selected project state immediately for UI responsiveness
+      // Update the projects list immediately
+      setProjects((prev) =>
+        prev.map((p) => {
+          if (p.project_id !== projectId) return p;
+          return {
+            ...p,
+            tasks: p.tasks?.map((t) =>
+              (t.task_id === taskId || t.id === taskId) ? { ...t, status: backendStatus as any } : t
+            ),
+          };
+        }),
+      );
+
+      // Also update selected project state if it matches for UI responsiveness in the dialog
       if (selectedProject?.project_id === projectId) {
         setSelectedProject((prev) => {
           if (!prev) return prev;
@@ -1699,8 +1765,6 @@ export default function ProjectManagement() {
           };
         });
       }
-      
-      fetchProjects();
     } catch (err: any) {
       toast({
         title: "Error",
@@ -1834,27 +1898,15 @@ export default function ProjectManagement() {
   const handleDeleteTask = async (projectId: number, taskId: number) => {
     if (!confirm("Are you sure you want to delete this task?")) return;
     try {
-      const token = localStorage.getItem("token");
-      const authHeader = token?.startsWith("Bearer ") ? token : `Bearer ${token}`;
-
-      const resp = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: authHeader,
-        },
-      });
-
-      if (!resp.ok) {
-        const errData = await resp.json().catch(() => ({}));
-        throw new Error(errData.detail || "Failed to delete task");
-      }
-
+      await apiService.deleteProjectTask(taskId);
       toast({ title: "Success", description: "Task deleted successfully" });
       
       // Refresh details
       const updated = await loadFullProjectDetails(projectId);
       setSelectedProject(updated);
-      fetchProjects();
+      setProjects((prev) =>
+        prev.map((p) => (p.project_id === projectId ? updated : p)),
+      );
     } catch (err: any) {
       toast({
         title: "Error",
@@ -1867,9 +1919,6 @@ export default function ProjectManagement() {
   const handleTaskUpdateSubmit = async () => {
     if (!editingTask || !selectedProject) return;
     try {
-      const token = localStorage.getItem("token");
-      const authHeader = token?.startsWith("Bearer ") ? token : `Bearer ${token}`;
-
       let backendStatus: string = editTaskData.status;
       if (editTaskData.status === "todo") backendStatus = "Pending";
       else if (editTaskData.status === "in-progress") backendStatus = "In Progress";
@@ -1887,20 +1936,8 @@ export default function ProjectManagement() {
         project_id: selectedProject.project_id
       };
 
-      const taskId = editingTask.task_id || editingTask.id;
-      const resp = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: authHeader,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!resp.ok) {
-        const errData = await resp.json().catch(() => ({}));
-        throw new Error(errData.detail || "Failed to update task");
-      }
+      const taskId = editingTask.task_id || editingTask.id || 0;
+      await apiService.updateProjectTask(taskId, payload);
 
       toast({ title: "Success", description: isReassignOnly ? "Task reassigned successfully" : "Task updated successfully" });
       setIsTaskEditOpen(false);
@@ -1909,7 +1946,9 @@ export default function ProjectManagement() {
       // Refresh details
       const updated = await loadFullProjectDetails(selectedProject.project_id);
       setSelectedProject(updated);
-      fetchProjects();
+      setProjects((prev) =>
+        prev.map((p) => (p.project_id === selectedProject.project_id ? updated : p)),
+      );
     } catch (err: any) {
       toast({
         title: "Error",
@@ -2094,6 +2133,7 @@ export default function ProjectManagement() {
                   start_date: project.start_date?.split("T")[0] || "",
                   end_date: project.end_date?.split("T")[0] || "",
                   status: normalizeStatus(project.status),
+                  person_in_charge_id: project.person_in_charge_id || project.pic_id || "",
                 });
                 setIsEditDialogOpen(true);
               }}
@@ -2358,7 +2398,7 @@ export default function ProjectManagement() {
                                   {task.task_name}
                                 </p>
                                 {task.description && (
-                                  <p className="text-xs text-slate-400 mt-0.5 line-clamp-1 italic">
+                                  <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
                                     {task.description}
                                   </p>
                                 )}
@@ -2430,18 +2470,16 @@ export default function ProjectManagement() {
                                     return (
                                       <div className="flex flex-col items-end gap-1">
                                         <Select
-                                          value={normalizeStatus(task.status) === "overdue" ? "todo" : normalizeStatus(task.status)}
+                                          value={normalizeStatus(task.status)}
                                           onValueChange={(v) => handleTaskStatusChange(selectedProject.project_id, task.task_id || task.id, v)}
-                                          disabled={isOverdue}
                                         >
-                                          <SelectTrigger className={`h-8 w-36 ml-auto text-[11px] border-slate-200 dark:border-slate-800 font-medium ${isOverdue ? 'border-red-200 bg-red-50 text-red-600' : ''}`}>
-                                            <div className="flex items-center gap-1.5">
-                                              {isOverdue ? (
-                                                <span className="flex items-center gap-1.5 uppercase tracking-tight text-[10px] font-bold">
-                                                  <AlertCircle className="h-3 w-3" /> Overdue
+                                          <SelectTrigger className={`h-8 w-auto min-w-[130px] ml-auto text-[11px] border-slate-200 dark:border-slate-800 font-medium ${isOverdue ? 'border-red-200 bg-red-50 text-red-600' : ''}`}>
+                                            <div className="flex items-center gap-2">
+                                              <SelectValue />
+                                              {isOverdue && (
+                                                <span className="flex items-center gap-1 bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded-sm font-bold uppercase tracking-tighter shadow-sm whitespace-nowrap">
+                                                  <AlertCircle className="h-2.5 w-2.5" /> Overdue
                                                 </span>
-                                              ) : (
-                                                <SelectValue />
                                               )}
                                             </div>
                                           </SelectTrigger>
@@ -2468,11 +2506,6 @@ export default function ProjectManagement() {
                                             </SelectItem>
                                           </SelectContent>
                                         </Select>
-                                        {isOverdue && task.status !== "completed" && task.status !== "cancelled" && (
-                                          <Badge className="bg-red-50 text-red-600 dark:bg-red-900/20 border-red-100 border text-[9px] height-auto py-0 px-1 w-fit">
-                                            AUTO OVERDUE
-                                          </Badge>
-                                        )}
                                       </div>
                                     );
                                   }
@@ -2587,7 +2620,7 @@ export default function ProjectManagement() {
                                 </Badge>
                               </div>
                               {meeting.description && (
-                                <p className="text-xs text-slate-400 line-clamp-1 mb-2 italic">
+                                <p className="text-xs text-slate-400 line-clamp-1 mb-2">
                                   "{meeting.description}"
                                 </p>
                               )}
@@ -2713,16 +2746,35 @@ export default function ProjectManagement() {
                       }
                     />
                   </div>
-                  {/* <div className="space-y-1.5">
-                                        <Label>Status</Label>
-                                        <Select value={formData.status} onValueChange={v => setFormData({ ...formData, status: v })}>
-                                            <SelectTrigger><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="planned">Planned</SelectItem>
-                                                <SelectItem value="inprogress">In-Progress</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div> */}
+                  {/* Status & PIC */}
+                  <div className="space-y-1.5">
+                    <Label>Person in Charge *</Label>
+                    <Select
+                      value={String(formData.person_in_charge_id)}
+                      onValueChange={(v) =>
+                        setFormData({ ...formData, person_in_charge_id: v })
+                      }
+                    >
+                      <SelectTrigger className="h-10 rounded-xl">
+                        <SelectValue placeholder="Select PIC" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {assignableEmployees.map((emp) => (
+                          <SelectItem
+                            key={emp.user_id}
+                            value={String(emp.user_id)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="h-5 w-5 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-bold text-slate-600">
+                                {emp.name?.[0]?.toUpperCase()}
+                              </div>
+                              <span className="text-xs">{emp.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2893,6 +2945,32 @@ export default function ProjectManagement() {
                   }
                 />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Person in Charge *</Label>
+              <Select
+                value={String(formData.person_in_charge_id)}
+                onValueChange={(v) =>
+                  setFormData({ ...formData, person_in_charge_id: v })
+                }
+              >
+                <SelectTrigger className="h-10 rounded-xl">
+                  <SelectValue placeholder="Select PIC" />
+                </SelectTrigger>
+                <SelectContent>
+                  {assignableEmployees.map((emp) => (
+                    <SelectItem key={emp.user_id} value={String(emp.user_id)}>
+                      <div className="flex items-center gap-2">
+                        <div className="h-5 w-5 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-bold text-slate-600">
+                          {emp.name?.[0]?.toUpperCase()}
+                        </div>
+                        <span className="text-xs">{emp.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1.5">
@@ -3351,7 +3429,7 @@ export default function ProjectManagement() {
                 </div>
                 <div>
                   <h3 className="font-black text-xl tracking-tight leading-none uppercase">Task Details</h3>
-                  <p className="text-violet-300/60 text-[10px] font-bold tracking-widest mt-1 uppercase italic">Project: {selectedProject?.name}</p>
+                  <p className="text-violet-300/60 text-[10px] font-bold tracking-widest mt-1 uppercase">Project: {selectedProject?.name}</p>
                 </div>
               </div>
               
@@ -3374,7 +3452,7 @@ export default function ProjectManagement() {
               <div className="space-y-2">
                 <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</Label>
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
-                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed italic whitespace-pre-wrap">
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
                     "{viewingTask.description}"
                   </p>
                 </div>
@@ -3420,14 +3498,16 @@ export default function ProjectManagement() {
                   <div className="h-6 w-6 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-[10px] font-bold text-indigo-700 dark:text-indigo-400">
                     {(() => {
                       if (viewingTask?.assigned_by_name) return viewingTask.assigned_by_name[0].toUpperCase();
-                      const assigner = employees.find(e => String(e.user_id) === String(viewingTask?.assigned_by));
+                      const assignerId = viewingTask?.assigned_by;
+                      const assigner = employees.find(e => String(e.user_id) === String(assignerId));
                       return assigner?.name?.[0]?.toUpperCase() || "A";
                     })()}
                   </div>
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
                     {(() => {
                       if (viewingTask?.assigned_by_name) return viewingTask.assigned_by_name;
-                      const assigner = employees.find(e => String(e.user_id) === String(viewingTask?.assigned_by));
+                      const assignerId = viewingTask?.assigned_by;
+                      const assigner = employees.find(e => String(e.user_id) === String(assignerId));
                       return assigner?.name || "Admin";
                     })()}
                   </span>

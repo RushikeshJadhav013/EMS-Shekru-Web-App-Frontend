@@ -292,7 +292,7 @@ const formatDisplayDate = (date?: string | null) => {
 
 const getStatusBadge = (status: BaseTask["status"] | string) => {
   const s = typeof status === "string" ? status.toLowerCase().trim().replace(/[-_\s]+/g, "") : status;
-  
+
   switch (s) {
     case "completed":
     case "done":
@@ -518,17 +518,17 @@ const TaskManagement: React.FC = () => {
     }
 
     // If projectId is in URL, ensure we are in project view and try to expand it
-      if (pId && projects.length > 0) {
-        const pidNum = Number(pId);
-        if (!isNaN(pidNum)) {
-          setActiveViewTab("project");
-          const project = projects.find(p => (p.project_id || p.id) === pidNum);
-          if (project && !project.isExpanded) {
-            toggleProject(pidNum);
-          }
+    if (pId && projects.length > 0) {
+      const pidNum = Number(pId);
+      if (!isNaN(pidNum)) {
+        setActiveViewTab("project");
+        const project = projects.find(p => (p.project_id || p.id) === pidNum);
+        if (project && !project.isExpanded) {
+          toggleProject(pidNum);
         }
       }
-    }, [location.search, projects.length]); // Wait for projects to load to handle pId expansion
+    }
+  }, [location.search, projects.length]); // Wait for projects to load to handle pId expansion
 
   const fetchProjectTasks = useCallback(async (projectId: number | string) => {
     const pidString = String(projectId);
@@ -537,9 +537,9 @@ const TaskManagement: React.FC = () => {
       const tasksArr = Array.isArray(resp)
         ? resp
         : resp?.data || resp?.tasks || [];
-      
+
       const normalizedTasks = tasksArr.map(mapBackendTaskToFrontend);
-      
+
       // Update global tasks state with these normalized tasks to reflect in counts
       setTasks((prev) => {
         const next = [...prev];
@@ -582,14 +582,14 @@ const TaskManagement: React.FC = () => {
     if (proj.tasks && proj.tasks.length === 0 && proj.task_count > 0) {
       await fetchProjectTasks(projectId);
     }
-    
+
     setProjects(prev => prev.map(p => String(p.project_id || p.id) === pidString ? { ...p, isExpanded: true } : p));
   };
 
   // Proactively fetch project tasks when "Project Tasks" view is active for accurate counts
   useEffect(() => {
     if (activeViewTab !== "project" || projects.length === 0) return;
-    
+
     const projectsToFetch = projects.filter(p => (!p.tasks || p.tasks.length === 0) && p.task_count > 0);
     if (projectsToFetch.length > 0) {
       // Fetch all for accurate counts across all projects user has access to
@@ -702,18 +702,19 @@ const TaskManagement: React.FC = () => {
   });
 
   useEffect(() => {
-    if (normalizedUserRole === "admin") {
-      // Admin defaults to "created" section and has "all tasks" section
-      setTaskOwnershipFilter("created");
+    if (
+      normalizedUserRole === "admin" ||
+      normalizedUserRole === "hr" ||
+      normalizedUserRole === "manager" ||
+      normalizedUserRole === "team_lead"
+    ) {
+      // Admin, HR, Manager, Team Lead default to "all" and can see other sections
+      setTaskOwnershipFilter("all");
     } else {
-      // All other roles (hr, manager, team_lead, employee) default to "received" section
+      // Employee defaults to "received" section
       setTaskOwnershipFilter("received");
-      // Set manager's department as default filter if applicable
-      if (normalizedUserRole === "manager" && user?.department) {
-        setSelectedDepartmentFilter("all");
-      }
     }
-  }, [normalizedUserRole, user?.department]);
+  }, [normalizedUserRole]);
 
   useEffect(() => {
     const storedToken = localStorage.getItem("token") || "";
@@ -1509,22 +1510,22 @@ const TaskManagement: React.FC = () => {
   const isTaskVisible = useCallback((task: TaskWithPassMeta) => {
     if (!userId || !user) return false;
     if (normalizedUserRole === "admin") return true;
-    
+
     // Direct involvement
-    if (String(task.assignedBy) === String(userId) || 
-        task.assignedTo.some(id => String(id) === String(userId))) {
+    if (String(task.assignedBy) === String(userId) ||
+      task.assignedTo.some(id => String(id) === String(userId))) {
       return true;
     }
 
     // Role-based organizational access
     if (normalizedUserRole === "manager" && user.department) {
       const userDepts = user.department.split(",").map(d => d.trim().toLowerCase());
-      
+
       const creator = employees.find(emp => String(emp.userId) === String(task.assignedBy));
       const assignees = task.assignedTo.map(id => employees.find(emp => String(emp.userId) === String(id)));
 
       const creatorInDept = creator?.department?.split(",").some(d => userDepts.includes(d.trim().toLowerCase()));
-      const anyAssigneeInDept = assignees.some(assignee => 
+      const anyAssigneeInDept = assignees.some(assignee =>
         assignee?.department?.split(",").some(d => userDepts.includes(d.trim().toLowerCase()))
       );
 
@@ -1538,7 +1539,7 @@ const TaskManagement: React.FC = () => {
       const assignees = task.assignedTo.map(id => employees.find(emp => String(emp.userId) === String(id)));
 
       const creatorInDept = creator?.department?.split(",").some(d => userDepts.includes(d.trim().toLowerCase()));
-      const anyAssigneeInDept = assignees.some(assignee => 
+      const anyAssigneeInDept = assignees.some(assignee =>
         assignee?.department?.split(",").some(d => userDepts.includes(d.trim().toLowerCase()))
       );
 
@@ -1577,17 +1578,32 @@ const TaskManagement: React.FC = () => {
     }
 
     // Department filter
-    if (taskOwnershipFilter === "all" && selectedDepartmentFilter !== "all" && (normalizedUserRole === "admin" || normalizedUserRole === "manager")) {
+    if (
+      taskOwnershipFilter === "all" &&
+      selectedDepartmentFilter !== "all" &&
+      (normalizedUserRole === "admin" ||
+        normalizedUserRole === "manager" ||
+        normalizedUserRole === "hr" ||
+        normalizedUserRole === "team_lead")
+    ) {
       base = base.filter((task) => {
         const creator = employees.find((emp) => emp.userId === task.assignedBy);
-        const assignees = task.assignedTo.map((id) => employees.find((emp) => emp.userId === id));
-        
-        const creatorDepts = creator?.department?.split(",").map((d) => d.trim()) || [];
-        const anyAssigneeMatch = assignees.some((assignee) =>
-          assignee?.department?.split(",").map((d) => d.trim()).includes(selectedDepartmentFilter)
+        const assignees = task.assignedTo.map((id) =>
+          employees.find((emp) => emp.userId === id),
         );
 
-        return creatorDepts.includes(selectedDepartmentFilter) || anyAssigneeMatch;
+        const creatorDepts =
+          creator?.department?.split(",").map((d) => d.trim()) || [];
+        const anyAssigneeMatch = assignees.some((assignee) =>
+          assignee?.department
+            ?.split(",")
+            .map((d) => d.trim())
+            .includes(selectedDepartmentFilter),
+        );
+
+        return (
+          creatorDepts.includes(selectedDepartmentFilter) || anyAssigneeMatch
+        );
       });
     }
 
@@ -1612,7 +1628,7 @@ const TaskManagement: React.FC = () => {
   const projectCounts = useMemo(() => {
     // Count tasks WITH a projectId assigned for the "Project Tasks" tab
     const projectScopedTasks = scopedTasks.filter((t) => t.projectId !== null);
-    
+
     return {
       total: projectScopedTasks.length,
       todo: projectScopedTasks.filter((t) => t.status === "todo").length,
@@ -1626,7 +1642,7 @@ const TaskManagement: React.FC = () => {
   // 5. Final Visible Tasks (status and overdue filter, further scoped by tab)
   const visibleTasks = useMemo(() => {
     // Determine target pool based on active view tab
-    let pool = activeViewTab === "all" 
+    let pool = activeViewTab === "all"
       ? scopedTasks.filter((t) => !t.projectId)
       : scopedTasks.filter((t) => t.projectId !== null);
 
@@ -1714,7 +1730,7 @@ const TaskManagement: React.FC = () => {
 
   const filteredProjects = useMemo(() => {
     const query = searchQuery.toLowerCase();
-    
+
     return projects
       .map((p) => {
         const projectMatchesSearch =
@@ -1735,10 +1751,10 @@ const TaskManagement: React.FC = () => {
 
           // 3. Status filter
           if (filterStatus !== "all" && task.status !== filterStatus) return false;
-          
+
           // 4. Overdue filter
           if (isOverdueFilterActive && task.status !== "overdue") return false;
-          
+
           // 5. Search filter
           if (query && !task.title.toLowerCase().includes(query) && !task.description.toLowerCase().includes(query)) {
             return false;
@@ -2630,11 +2646,11 @@ const TaskManagement: React.FC = () => {
         const pid = String(p.project_id || p.id);
         const currentTasks = p.tasks || [];
         const taskExistsInThisProject = currentTasks.some(t => String(t.id) === String(converted.id));
-        const belongsInThisProject = converted.projectId !== null && 
-                                   converted.projectId !== undefined && 
-                                   String(pid) === String(converted.projectId);
+        const belongsInThisProject = converted.projectId !== null &&
+          converted.projectId !== undefined &&
+          String(pid) === String(converted.projectId);
 
-        if (taskExistsInThisProject && !belongsInThisProject) { 
+        if (taskExistsInThisProject && !belongsInThisProject) {
           // Task was moved to another project OR project was removed
           return {
             ...p,
@@ -2727,12 +2743,12 @@ const TaskManagement: React.FC = () => {
 
         setTasks((prev) => prev.filter((task) => task.id !== taskId));
         // Also remove from project tasks if present
-        setProjects((prev) => 
+        setProjects((prev) =>
           prev.map(p => {
             const pid = String(p.project_id || p.id);
             const currentProjectTasks = p.tasks || [];
             const taskExistsInProject = currentProjectTasks.some((t: any) => String(t.id || t.task_id) === taskId);
-            
+
             if (taskExistsInProject) {
               return {
                 ...p,
@@ -3063,22 +3079,20 @@ const TaskManagement: React.FC = () => {
                 <Button
                   onClick={() => setActiveViewTab("all")}
                   variant={activeViewTab === "all" ? "default" : "outline"}
-                  className={`h-9 px-6 rounded-full font-bold transition-all ${
-                    activeViewTab === "all" 
-                    ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
-                    : "border-2 hover:border-violet-300"
-                  }`}
+                  className={`h-9 px-6 rounded-full font-bold transition-all ${activeViewTab === "all"
+                      ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
+                      : "border-2 hover:border-violet-300"
+                    }`}
                 >
                   All Tasks
                 </Button>
                 <Button
                   onClick={() => setActiveViewTab("project")}
                   variant={activeViewTab === "project" ? "default" : "outline"}
-                  className={`h-9 px-6 rounded-full font-bold transition-all ${
-                    activeViewTab === "project" 
-                    ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
-                    : "border-2 hover:border-violet-300"
-                  }`}
+                  className={`h-9 px-6 rounded-full font-bold transition-all ${activeViewTab === "project"
+                      ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
+                      : "border-2 hover:border-violet-300"
+                    }`}
                 >
                   Project Tasks
                 </Button>
@@ -3280,9 +3294,9 @@ const TaskManagement: React.FC = () => {
                           <SelectContent className="border-2 shadow-xl" side="bottom">
                             <SelectItem value="none">None</SelectItem>
                             {projects.map((p: any) => (
-                               <SelectItem key={p.project_id || p.id} value={(p.project_id || p.id)?.toString()}>
-                                 {p.name}
-                               </SelectItem>
+                              <SelectItem key={p.project_id || p.id} value={(p.project_id || p.id)?.toString()}>
+                                {p.name}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -3712,1259 +3726,1213 @@ const TaskManagement: React.FC = () => {
         <>
           {/* Stats Cards - Clickable Filters */}
           <div className="grid gap-3 grid-cols-2 lg:grid-cols-6">
-        <Card
-          onClick={() => {
-            setFilterStatus("all");
-            setIsOverdueFilterActive(false);
-          }}
-          className={`group overflow-hidden relative border-0 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] ${
-            filterStatus === "all" && !isOverdueFilterActive
-              ? "ring-2 ring-violet-500 ring-offset-2 dark:ring-offset-gray-950"
-              : ""
-          }`}
-        >
-          <div className="absolute top-0 right-0 p-4 opacity-[0.05] group-hover:opacity-10 transition-opacity">
-            <ListTodo className="h-24 w-24 -mr-8 -mt-8" />
-          </div>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-              Total Tasks
-            </CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-              <ListTodo className="h-4 w-4 text-slate-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">
-              {counts.total}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card
-          onClick={() => {
-            setFilterStatus("todo");
-            setIsOverdueFilterActive(false);
-          }}
-          className={`group overflow-hidden relative border-0 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] ${
-            filterStatus === "todo"
-              ? "ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-gray-950"
-              : ""
-          }`}
-        >
-          <div className="absolute top-0 right-0 p-4 opacity-[0.05] group-hover:opacity-10 transition-opacity">
-            <ClipboardList className="h-24 w-24 -mr-8 -mt-8" />
-          </div>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-[11px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400">
-              To Do
-            </CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
-              <ClipboardList className="h-4 w-4 text-indigo-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">
-              {counts.todo}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card
-          onClick={() => {
-            setFilterStatus("in-progress");
-            setIsOverdueFilterActive(false);
-          }}
-          className={`group overflow-hidden relative border-0 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] ${
-            filterStatus === "in-progress"
-              ? "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-950"
-              : ""
-          }`}
-        >
-          <div className="absolute top-0 right-0 p-4 opacity-[0.05] group-hover:opacity-10 transition-opacity">
-            <Clock className="h-24 w-24 -mr-8 -mt-8" />
-          </div>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-[11px] font-black uppercase tracking-widest text-blue-500 dark:text-blue-400">
-              In Progress
-            </CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-              <Clock className="h-4 w-4 text-blue-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">
-              {counts.inProgress}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card
-          onClick={() => {
-            setFilterStatus("completed");
-            setIsOverdueFilterActive(false);
-          }}
-          className={`group overflow-hidden relative border-0 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] ${
-            filterStatus === "completed"
-              ? "ring-2 ring-emerald-500 ring-offset-2 dark:ring-offset-gray-950"
-              : ""
-          }`}
-        >
-          <div className="absolute top-0 right-0 p-4 opacity-[0.05] group-hover:opacity-10 transition-opacity">
-            <CheckCircle2 className="h-24 w-24 -mr-8 -mt-8" />
-          </div>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-[11px] font-black uppercase tracking-widest text-emerald-500 dark:text-emerald-400">
-              Completed
-            </CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">
-              {counts.completed}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card
-          onClick={() => {
-            setFilterStatus("all");
-            setIsOverdueFilterActive(true);
-          }}
-          className={`group overflow-hidden relative border-0 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] ${
-            isOverdueFilterActive
-              ? "ring-2 ring-orange-500 ring-offset-2 dark:ring-offset-gray-950"
-              : ""
-          }`}
-        >
-          <div className="absolute top-0 right-0 p-4 opacity-[0.05] group-hover:opacity-10 transition-opacity">
-            <AlertCircle className="h-24 w-24 -mr-8 -mt-8" />
-          </div>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-[11px] font-black uppercase tracking-widest text-orange-500 dark:text-orange-400">
-              Overdue
-            </CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center">
-              <AlertCircle className="h-4 w-4 text-orange-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">
-              {counts.overdue}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card
-          onClick={() => {
-            setFilterStatus("cancelled");
-            setIsOverdueFilterActive(false);
-          }}
-          className={`group overflow-hidden relative border-0 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] ${
-            filterStatus === "cancelled"
-              ? "ring-2 ring-red-500 ring-offset-2 dark:ring-offset-gray-950"
-              : ""
-          }`}
-        >
-          <div className="absolute top-0 right-0 p-4 opacity-[0.05] group-hover:opacity-10 transition-opacity">
-            <XCircle className="h-24 w-24 -mr-8 -mt-8" />
-          </div>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-[11px] font-black uppercase tracking-widest text-red-500 dark:text-red-400">
-              Cancelled
-            </CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-red-50 dark:bg-red-900/30 flex items-center justify-center">
-              <XCircle className="h-4 w-4 text-red-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">
-              {counts.cancelled}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters and Search */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                <Filter className="h-5 w-5 text-white" />
+            <Card
+              onClick={() => {
+                setFilterStatus("all");
+                setIsOverdueFilterActive(false);
+              }}
+              className={`group overflow-hidden relative border-0 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] ${filterStatus === "all" && !isOverdueFilterActive
+                  ? "ring-2 ring-violet-500 ring-offset-2 dark:ring-offset-gray-950"
+                  : ""
+                }`}
+            >
+              <div className="absolute top-0 right-0 p-4 opacity-[0.05] group-hover:opacity-10 transition-opacity">
+                <ListTodo className="h-24 w-24 -mr-8 -mt-8" />
               </div>
-              <CardTitle className="text-xl font-semibold">
-                All Tasks Filters
-              </CardTitle>
-            </div>
-
-            <div className="flex flex-wrap items-end gap-4">
-              <div className="flex flex-col gap-2">
-                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Search
-                </Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    className="pl-9 w-full sm:w-[200px] h-10 bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-violet-500"
-                    placeholder="Search tasks..."
-                    value={searchQuery}
-                    onChange={(e) =>
-                      setSearchQuery(
-                        e.target.value.replace(
-                          /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
-                          "",
-                        ),
-                      )
-                    }
-                  />
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                  Total Tasks
+                </CardTitle>
+                <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                  <ListTodo className="h-4 w-4 text-slate-600" />
                 </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Status
-                </Label>
-                <Select value={filterStatus} onValueChange={(val) => {
-                  setFilterStatus(val);
-                  setIsOverdueFilterActive(val === "overdue");
-                }}>
-                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="todo">To Do</SelectItem>
-                    <SelectItem value="in-progress">In Progress</SelectItem>
-                    <SelectItem value="overdue">Overdue</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Filter
-                </Label>
-                <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1 h-10">
-                  {normalizedUserRole === "admin" ||
-                    normalizedUserRole === "manager" ? (
-                    <>
-                      <Button
-                        size="sm"
-                        variant={
-                          taskOwnershipFilter === "created"
-                            ? "default"
-                            : "outline"
-                        }
-                        onClick={() => {
-                          setTaskOwnershipFilter("created");
-                          setIsOverdueFilterActive(false);
-                        }}
-                        className={
-                          taskOwnershipFilter === "created"
-                            ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
-                            : "h-8"
-                        }
-                      >
-                        Created
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={taskOwnershipFilter === "all" ? "default" : "outline"}
-                        onClick={() => {
-                          setTaskOwnershipFilter("all");
-                          setSelectedDepartmentFilter("all");
-                          setIsOverdueFilterActive(false);
-                        }}
-                        className={
-                          taskOwnershipFilter === "all"
-                            ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
-                            : "h-8"
-                        }
-                      >
-                        All Tasks
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        size="sm"
-                        variant={taskOwnershipFilter === "received" ? "default" : "outline"}
-                        onClick={() => {
-                          setTaskOwnershipFilter("received");
-                          setIsOverdueFilterActive(false);
-                        }}
-                        className={
-                          taskOwnershipFilter === "received"
-                            ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
-                            : "h-8"
-                        }
-                      >
-                        Received
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={taskOwnershipFilter === "created" ? "default" : "outline"}
-                        onClick={() => {
-                          setTaskOwnershipFilter("created");
-                          setIsOverdueFilterActive(false);
-                        }}
-                        className={
-                          taskOwnershipFilter === "created"
-                            ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
-                            : "h-8"
-                        }
-                      >
-                        Created
-                      </Button>
-                    </>
-                  )}
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">
+                  {counts.total}
                 </div>
-              </div>
+              </CardContent>
+            </Card>
 
-              {/* Department Filter - Show when viewing All Tasks for Admin and Manager */}
-              {taskOwnershipFilter === "all" &&
-                (normalizedUserRole === "admin" ||
-                  normalizedUserRole === "manager") && (
+            <Card
+              onClick={() => {
+                setFilterStatus("todo");
+                setIsOverdueFilterActive(false);
+              }}
+              className={`group overflow-hidden relative border-0 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] ${filterStatus === "todo"
+                  ? "ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-gray-950"
+                  : ""
+                }`}
+            >
+              <div className="absolute top-0 right-0 p-4 opacity-[0.05] group-hover:opacity-10 transition-opacity">
+                <ClipboardList className="h-24 w-24 -mr-8 -mt-8" />
+              </div>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-[11px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400">
+                  To Do
+                </CardTitle>
+                <div className="h-8 w-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
+                  <ClipboardList className="h-4 w-4 text-indigo-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">
+                  {counts.todo}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card
+              onClick={() => {
+                setFilterStatus("in-progress");
+                setIsOverdueFilterActive(false);
+              }}
+              className={`group overflow-hidden relative border-0 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] ${filterStatus === "in-progress"
+                  ? "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-950"
+                  : ""
+                }`}
+            >
+              <div className="absolute top-0 right-0 p-4 opacity-[0.05] group-hover:opacity-10 transition-opacity">
+                <Clock className="h-24 w-24 -mr-8 -mt-8" />
+              </div>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-[11px] font-black uppercase tracking-widest text-blue-500 dark:text-blue-400">
+                  In Progress
+                </CardTitle>
+                <div className="h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                  <Clock className="h-4 w-4 text-blue-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">
+                  {counts.inProgress}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card
+              onClick={() => {
+                setFilterStatus("completed");
+                setIsOverdueFilterActive(false);
+              }}
+              className={`group overflow-hidden relative border-0 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] ${filterStatus === "completed"
+                  ? "ring-2 ring-emerald-500 ring-offset-2 dark:ring-offset-gray-950"
+                  : ""
+                }`}
+            >
+              <div className="absolute top-0 right-0 p-4 opacity-[0.05] group-hover:opacity-10 transition-opacity">
+                <CheckCircle2 className="h-24 w-24 -mr-8 -mt-8" />
+              </div>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-[11px] font-black uppercase tracking-widest text-emerald-500 dark:text-emerald-400">
+                  Completed
+                </CardTitle>
+                <div className="h-8 w-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">
+                  {counts.completed}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card
+              onClick={() => {
+                setFilterStatus("all");
+                setIsOverdueFilterActive(true);
+              }}
+              className={`group overflow-hidden relative border-0 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] ${isOverdueFilterActive
+                  ? "ring-2 ring-orange-500 ring-offset-2 dark:ring-offset-gray-950"
+                  : ""
+                }`}
+            >
+              <div className="absolute top-0 right-0 p-4 opacity-[0.05] group-hover:opacity-10 transition-opacity">
+                <AlertCircle className="h-24 w-24 -mr-8 -mt-8" />
+              </div>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-[11px] font-black uppercase tracking-widest text-orange-500 dark:text-orange-400">
+                  Overdue
+                </CardTitle>
+                <div className="h-8 w-8 rounded-lg bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center">
+                  <AlertCircle className="h-4 w-4 text-orange-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">
+                  {counts.overdue}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card
+              onClick={() => {
+                setFilterStatus("cancelled");
+                setIsOverdueFilterActive(false);
+              }}
+              className={`group overflow-hidden relative border-0 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] ${filterStatus === "cancelled"
+                  ? "ring-2 ring-red-500 ring-offset-2 dark:ring-offset-gray-950"
+                  : ""
+                }`}
+            >
+              <div className="absolute top-0 right-0 p-4 opacity-[0.05] group-hover:opacity-10 transition-opacity">
+                <XCircle className="h-24 w-24 -mr-8 -mt-8" />
+              </div>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-[11px] font-black uppercase tracking-widest text-red-500 dark:text-red-400">
+                  Cancelled
+                </CardTitle>
+                <div className="h-8 w-8 rounded-lg bg-red-50 dark:bg-red-900/30 flex items-center justify-center">
+                  <XCircle className="h-4 w-4 text-red-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">
+                  {counts.cancelled}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Filters and Search */}
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                    <Filter className="h-5 w-5 text-white" />
+                  </div>
+                  <CardTitle className="text-xl font-semibold">
+                    All Tasks Filters
+                  </CardTitle>
+                </div>
+
+                <div className="flex flex-wrap items-end gap-4">
                   <div className="flex flex-col gap-2">
                     <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      Department
+                      Search
                     </Label>
-                    <Select
-                      value={selectedDepartmentFilter}
-                      onValueChange={setSelectedDepartmentFilter}
-                    >
-                      <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white dark:bg-gray-950">
-                        <SelectValue placeholder="Select Department" />
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        className="pl-9 w-full sm:w-[200px] h-10 bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-violet-500"
+                        placeholder="Search tasks..."
+                        value={searchQuery}
+                        onChange={(e) =>
+                          setSearchQuery(
+                            e.target.value.replace(
+                              /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
+                              "",
+                            ),
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Status
+                    </Label>
+                    <Select value={filterStatus} onValueChange={(val) => {
+                      setFilterStatus(val);
+                      setIsOverdueFilterActive(val === "overdue");
+                    }}>
+                      <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950">
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {(normalizedUserRole === "admin" ||
-                          normalizedUserRole === "manager") && (
-                            <SelectItem value="all">All Departments</SelectItem>
-                          )}
-                        {departments
-                          .filter((dept) => dept && dept.trim() !== "")
-                          .sort((a, b) => a.localeCompare(b))
-                          .map((dept) => (
-                            <SelectItem key={dept} value={dept}>
-                              {dept}
-                            </SelectItem>
-                          ))}
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="todo">To Do</SelectItem>
+                        <SelectItem value="in-progress">In Progress</SelectItem>
+                        <SelectItem value="overdue">Overdue</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                )}
 
-              <div className="flex gap-1">
-                <Button
-                  variant={viewMode === "list" ? "default" : "outline"}
-                  size="icon"
-                  onClick={() => setViewMode("list")}
-                  className={
-                    viewMode === "list"
-                      ? "bg-gradient-to-r from-violet-600 to-purple-600"
-                      : ""
-                  }
-                >
-                  <ListTodo className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "grid" ? "default" : "outline"}
-                  size="icon"
-                  onClick={() => setViewMode("grid")}
-                  className={
-                    viewMode === "grid"
-                      ? "bg-gradient-to-r from-violet-600 to-purple-600"
-                      : ""
-                  }
-                >
-                  <Grid3x3 className="h-4 w-4" />
-                </Button>
-              </div>
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Filter
+                    </Label>
+                    <Select
+                      value={taskOwnershipFilter}
+                      onValueChange={(val: any) => {
+                        setTaskOwnershipFilter(val);
+                        if (val === "all") setSelectedDepartmentFilter("all");
+                        setIsOverdueFilterActive(false);
+                      }}
+                    >
+                      <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(normalizedUserRole === "admin" ||
+                          normalizedUserRole === "hr" ||
+                          normalizedUserRole === "manager" ||
+                          normalizedUserRole === "team_lead") && (
+                            <SelectItem value="all">All Tasks</SelectItem>
+                          )}
+                        {(normalizedUserRole === "admin" ||
+                          normalizedUserRole === "hr" ||
+                          normalizedUserRole === "manager" ||
+                          normalizedUserRole === "team_lead" ||
+                          normalizedUserRole === "employee") && (
+                            <SelectItem value="created">Created Tasks</SelectItem>
+                          )}
+                        {(normalizedUserRole === "hr" ||
+                          normalizedUserRole === "manager" ||
+                          normalizedUserRole === "team_lead" ||
+                          normalizedUserRole === "employee") && (
+                            <SelectItem value="received">Received Tasks</SelectItem>
+                          )}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              {/* Export Buttons */}
-              {user && (
-                <div className="flex items-center gap-2 border-l border-gray-200 dark:border-gray-800 pl-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsExportDialogOpen(true)}
-                    className="gap-2 h-10 bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 hover:border-violet-400 dark:hover:border-violet-600 hover:shadow-md hover:shadow-violet-200 dark:hover:shadow-violet-900/50 transition-all duration-200"
-                  >
-                    <Download className="h-4 w-4" />
-                    Export
-                  </Button>
+                  {/* Department Filter - Show when viewing All Tasks for Admin and Manager */}
+                  {taskOwnershipFilter === "all" &&
+                    (normalizedUserRole === "admin" ||
+                      normalizedUserRole === "hr" ||
+                      normalizedUserRole === "manager" ||
+                      normalizedUserRole === "team_lead") && (
+                      <div className="flex flex-col gap-2">
+                        <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                          Department
+                        </Label>
+                        <Select
+                          value={selectedDepartmentFilter}
+                          onValueChange={setSelectedDepartmentFilter}
+                        >
+                          <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white dark:bg-gray-950">
+                            <SelectValue placeholder="Select Department" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(normalizedUserRole === "admin" ||
+                              normalizedUserRole === "hr" ||
+                              normalizedUserRole === "manager" ||
+                              normalizedUserRole === "team_lead") && (
+                                <SelectItem value="all">All Departments</SelectItem>
+                              )}
+                            {departments
+                              .filter((dept) => dept && dept.trim() !== "")
+                              .sort((a, b) => a.localeCompare(b))
+                              .map((dept) => (
+                                <SelectItem key={dept} value={dept}>
+                                  {dept}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                  <div className="flex gap-1">
+                    <Button
+                      variant={viewMode === "list" ? "default" : "outline"}
+                      size="icon"
+                      onClick={() => setViewMode("list")}
+                      className={
+                        viewMode === "list"
+                          ? "bg-gradient-to-r from-violet-600 to-purple-600"
+                          : ""
+                      }
+                    >
+                      <ListTodo className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === "grid" ? "default" : "outline"}
+                      size="icon"
+                      onClick={() => setViewMode("grid")}
+                      className={
+                        viewMode === "grid"
+                          ? "bg-gradient-to-r from-violet-600 to-purple-600"
+                          : ""
+                      }
+                    >
+                      <Grid3x3 className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {/* Export Buttons */}
+                  {user && (
+                    <div className="flex items-center gap-2 border-l border-gray-200 dark:border-gray-800 pl-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsExportDialogOpen(true)}
+                        className="gap-2 h-10 bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 hover:border-violet-400 dark:hover:border-violet-600 hover:shadow-md hover:shadow-violet-200 dark:hover:shadow-violet-900/50 transition-all duration-200"
+                      >
+                        <Download className="h-4 w-4" />
+                        Export
+                      </Button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6">
-          {viewMode === "list" ? (
-            <div className="space-y-6">
-              <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
-                <Table>
-                  <TableHeader className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead>Task</TableHead>
-                      <TableHead>Assigned By</TableHead>
-                      <TableHead>Assigned To</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Deadline</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Pass</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoadingTasks ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={9}
-                          className="text-center py-8 text-muted-foreground"
-                        >
-                          Loading tasks...
-                        </TableCell>
-                      </TableRow>
-                    ) : visibleTasks.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={9}
-                          className="text-center py-8 text-muted-foreground"
-                        >
-                          {taskOwnershipFilter === "all"
-                            ? "No tasks found in the system"
-                            : taskOwnershipFilter === "created"
-                              ? normalizedUserRole === "admin"
-                                ? "No tasks created yet. Create your first task to get started."
-                                : "No tasks created by you yet"
-                              : "No tasks assigned to you yet"}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      visibleTasks.map((task) => {
-                        const assignedByInfo = getAssignedByInfo(
-                          task.assignedBy,
-                          task.assignedByRole,
-                        );
-                        const assignedToInfo = getAssignedToInfo(
-                          task.assignedTo[0] || "",
-                          task.assignedToRole,
-                        );
-                        // In "All Tasks" view, admin can only manage tasks they created
-                        const canManageTask = Boolean(
-                          userId && task.assignedBy === userId,
-                        );
-                        const isReceivedTask = Boolean(
-                          userId && task.assignedTo.includes(userId),
-                        );
-                        // Don't allow passing completed, cancelled, or overdue tasks
-                        const canPassTask =
-                          isReceivedTask &&
-                          task.assignedTo[0] === userId &&
-                          passEligibleEmployees.length > 0 &&
-                          task.status !== "completed" &&
-                          task.status !== "cancelled" &&
-                          task.status !== "overdue";
-                        const lastPassByLabel = task.lastPassedBy
-                          ? getAssigneeLabel(task.lastPassedBy)
-                          : null;
-                        const lastPassToLabel = task.lastPassedTo
-                          ? getAssigneeLabel(task.lastPassedTo)
-                          : null;
-                        const lastPassTimestamp = task.lastPassedAt
-                          ? formatDateTimeIST(
-                            task.lastPassedAt,
-                            "MMM dd, yyyy HH:mm",
-                          )
-                          : null;
-                        return (
-                          <TableRow
-                            key={task.id}
-                            className="hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
-                          >
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {viewMode === "list" ? (
+                <div className="space-y-6">
+                  <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+                    <Table>
+                      <TableHeader className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead>Task</TableHead>
+                          <TableHead>Assigned By</TableHead>
+                          <TableHead>Assigned To</TableHead>
+                          <TableHead>Priority</TableHead>
+                          <TableHead>Deadline</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Pass</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {isLoadingTasks ? (
+                          <TableRow>
                             <TableCell
-                              className="cursor-pointer group hover:bg-violet-50/30 dark:hover:bg-violet-900/10 transition-colors"
-                              onClick={() => setSelectedTask(task)}
+                              colSpan={9}
+                              className="text-center py-8 text-muted-foreground"
                             >
-                              <div className="max-w-[300px] py-1">
-                                <div className="mb-1">
-                                  <TruncatedText
-                                    text={task.title}
-                                    maxLength={40}
-                                    showToggle={false}
-                                    textClassName="font-semibold text-sm group-hover:text-violet-600 transition-colors"
-                                  />
-                                </div>
-                                <TruncatedText
-                                  text={task.description}
-                                  maxLength={80}
-                                  showToggle={false}
-                                  textClassName="text-xs text-muted-foreground leading-relaxed"
-                                />
-                              </div>
+                              Loading tasks...
                             </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <UserCheck className="h-4 w-4 text-muted-foreground" />
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-medium">
-                                    {assignedByInfo.name}
-                                  </span>
-                                  {assignedByInfo.roleLabel ? (
-                                    <span className="text-xs text-muted-foreground mt-0.5">
-                                      {assignedByInfo.roleLabel}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </div>
+                          </TableRow>
+                        ) : visibleTasks.length === 0 ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={9}
+                              className="text-center py-8 text-muted-foreground"
+                            >
+                              {taskOwnershipFilter === "all"
+                                ? "No tasks found in the system"
+                                : taskOwnershipFilter === "created"
+                                  ? normalizedUserRole === "admin"
+                                    ? "No tasks created yet. Create your first task to get started."
+                                    : "No tasks created by you yet"
+                                  : "No tasks assigned to you yet"}
                             </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-muted-foreground" />
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-medium">
-                                    {assignedToInfo.name}
-                                  </span>
-                                  {assignedToInfo.roleLabel ? (
-                                    <span className="text-xs text-muted-foreground mt-0.5">
-                                      {assignedToInfo.roleLabel}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                className={getPriorityColor(task.priority)}
+                          </TableRow>
+                        ) : (
+                          visibleTasks.map((task) => {
+                            const assignedByInfo = getAssignedByInfo(
+                              task.assignedBy,
+                              task.assignedByRole,
+                            );
+                            const assignedToInfo = getAssignedToInfo(
+                              task.assignedTo[0] || "",
+                              task.assignedToRole,
+                            );
+                            // In "All Tasks" view, admin can only manage tasks they created
+                            const canManageTask = Boolean(
+                              userId && task.assignedBy === userId,
+                            );
+                            const isReceivedTask = Boolean(
+                              userId && task.assignedTo.includes(userId),
+                            );
+                            // Don't allow passing completed, cancelled, or overdue tasks
+                            const canPassTask =
+                              isReceivedTask &&
+                              task.assignedTo[0] === userId &&
+                              passEligibleEmployees.length > 0 &&
+                              task.status !== "completed" &&
+                              task.status !== "cancelled" &&
+                              task.status !== "overdue";
+                            const lastPassByLabel = task.lastPassedBy
+                              ? getAssigneeLabel(task.lastPassedBy)
+                              : null;
+                            const lastPassToLabel = task.lastPassedTo
+                              ? getAssigneeLabel(task.lastPassedTo)
+                              : null;
+                            const lastPassTimestamp = task.lastPassedAt
+                              ? formatDateTimeIST(
+                                task.lastPassedAt,
+                                "MMM dd, yyyy HH:mm",
+                              )
+                              : null;
+                            return (
+                              <TableRow
+                                key={task.id}
+                                className="hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
                               >
-                                {capitalizePriority(task.priority)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2 text-slate-500">
-                                <Calendar className="h-4 w-4" />
-                                <span className="text-sm">
-                                  {formatDisplayDate(task.deadline)}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {["completed", "cancelled", "overdue"].includes(task.status) ? (
-                                <div className="flex items-center gap-2">
-                                  {getStatusBadge(task.status)}
-                                </div>
-                              ) : (
-                                <Select
-                                  value={task.status}
-                                  onValueChange={(value: BaseTask["status"]) =>
-                                    updateTaskStatus(task.id, value)
-                                  }
-                                  disabled={updatingTaskId === task.id}
-                                >
-                                  <SelectTrigger 
-                                    className={`w-[170px] h-10 border-2 bg-white dark:bg-gray-950 px-3 transition-all ${
-                                      task.status === "in-progress" 
-                                        ? "border-blue-200 dark:border-blue-800 shadow-sm" 
-                                        : "border-violet-200 dark:border-violet-800 shadow-sm"
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <div className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
-                                      <SelectValue />
-                                    </div>
-                                  </SelectTrigger>
-                                  <SelectContent className="border-2 shadow-xl">
-                                    <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
-                                    <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
-                                    <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
-                                    {canManageTask && <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>}
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {task.lastPassedBy && task.lastPassedTo ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openPassHistoryDialog(task);
-                                  }}
-                                  className="h-8 px-3 gap-2 text-xs border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-950 hover:border-violet-300 dark:hover:border-violet-700 transition-all"
-                                >
-                                  <Share2 className="h-3.5 w-3.5 text-violet-600" />
-                                  View History
-                                </Button>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">
-                                  —
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <div
-                                className={`flex flex-wrap items-center gap-2 ${task.status === "completed" ? "justify-center" : ""}`}
-                              >
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
+                                <TableCell
+                                  className="cursor-pointer group hover:bg-violet-50/30 dark:hover:bg-violet-900/10 transition-colors"
                                   onClick={() => setSelectedTask(task)}
-                                  className="hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-950 p-2 h-auto"
-                                  title="View task details"
                                 >
-                                  👁
-                                </Button>
-                                {task.status !== "completed" && canPassTask && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => openPassDialog(task)}
-                                    className="flex items-center gap-1"
+                                  <div className="max-w-[300px] py-1">
+                                    <div className="mb-1">
+                                      <TruncatedText
+                                        text={task.title}
+                                        maxLength={40}
+                                        showToggle={false}
+                                        textClassName="font-semibold text-sm group-hover:text-violet-600 transition-colors"
+                                      />
+                                    </div>
+                                    <TruncatedText
+                                      text={task.description}
+                                      maxLength={80}
+                                      showToggle={false}
+                                      textClassName="text-xs text-muted-foreground leading-relaxed"
+                                    />
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <UserCheck className="h-4 w-4 text-muted-foreground" />
+                                    <div className="flex flex-col">
+                                      <span className="text-sm font-medium">
+                                        {assignedByInfo.name}
+                                      </span>
+                                      {assignedByInfo.roleLabel ? (
+                                        <span className="text-xs text-muted-foreground mt-0.5">
+                                          {assignedByInfo.roleLabel}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4 text-muted-foreground" />
+                                    <div className="flex flex-col">
+                                      <span className="text-sm font-medium">
+                                        {assignedToInfo.name}
+                                      </span>
+                                      {assignedToInfo.roleLabel ? (
+                                        <span className="text-xs text-muted-foreground mt-0.5">
+                                          {assignedToInfo.roleLabel}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    className={getPriorityColor(task.priority)}
                                   >
-                                    <Share2 className="h-4 w-4" />
-                                    Pass
-                                  </Button>
-                                )}
-                                {task.status !== "completed" &&
-                                  (task.status as string) !== "cancelled" &&
-                                  canManageTask && (
-                                    <>
-                                      {(task.status as string) !==
-                                        "overdue" && (
+                                    {capitalizePriority(task.priority)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2 text-slate-500">
+                                    <Calendar className="h-4 w-4" />
+                                    <span className="text-sm">
+                                      {formatDisplayDate(task.deadline)}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {["completed", "cancelled", "overdue"].includes(task.status) ? (
+                                    <div className="flex items-center gap-2">
+                                      {getStatusBadge(task.status)}
+                                    </div>
+                                  ) : (
+                                    <Select
+                                      value={task.status}
+                                      onValueChange={(value: BaseTask["status"]) =>
+                                        updateTaskStatus(task.id, value)
+                                      }
+                                      disabled={updatingTaskId === task.id}
+                                    >
+                                      <SelectTrigger
+                                        className={`w-[170px] h-10 border-2 bg-white dark:bg-gray-950 px-3 transition-all ${task.status === "in-progress"
+                                            ? "border-blue-200 dark:border-blue-800 shadow-sm"
+                                            : "border-violet-200 dark:border-violet-800 shadow-sm"
+                                          }`}
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <div className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
+                                          <SelectValue />
+                                        </div>
+                                      </SelectTrigger>
+                                      <SelectContent className="border-2 shadow-xl">
+                                        <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
+                                        <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+                                        <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
+                                        {canManageTask && <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>}
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {task.lastPassedBy && task.lastPassedTo ? (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openPassHistoryDialog(task);
+                                      }}
+                                      className="h-8 px-3 gap-2 text-xs border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-950 hover:border-violet-300 dark:hover:border-violet-700 transition-all"
+                                    >
+                                      <Share2 className="h-3.5 w-3.5 text-violet-600" />
+                                      View History
+                                    </Button>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                      —
+                                    </span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <div
+                                    className={`flex flex-wrap items-center gap-2 ${task.status === "completed" ? "justify-center" : ""}`}
+                                  >
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setSelectedTask(task)}
+                                      className="hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-950 p-2 h-auto"
+                                      title="View task details"
+                                    >
+                                      👁
+                                    </Button>
+                                    {task.status !== "completed" && canPassTask && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => openPassDialog(task)}
+                                        className="flex items-center gap-1"
+                                      >
+                                        <Share2 className="h-4 w-4" />
+                                        Pass
+                                      </Button>
+                                    )}
+                                    {task.status !== "completed" &&
+                                      (task.status as string) !== "cancelled" &&
+                                      canManageTask && (
+                                        <>
+                                          {(task.status as string) !==
+                                            "overdue" && (
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleEditClick(task)}
+                                                className="hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950 p-2 h-auto"
+                                                title="Edit task"
+                                              >
+                                                ✏️
+                                              </Button>
+                                            )}
                                           <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => handleEditClick(task)}
-                                            className="hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950 p-2 h-auto"
-                                            title="Edit task"
+                                            onClick={() =>
+                                              handleDeleteTask(task.id)
+                                            }
+                                            disabled={
+                                              deletingTaskId === task.id ||
+                                              !canDeleteTask(task)
+                                            }
+                                            className="hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 p-2 h-auto disabled:opacity-50"
+                                            title={
+                                              !canDeleteTask(task)
+                                                ? "Cannot delete task once work has started"
+                                                : "Delete task"
+                                            }
                                           >
-                                            ✏️
+                                            {deletingTaskId === task.id ? (
+                                              <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                              "🗑"
+                                            )}
                                           </Button>
-                                        )}
+                                        </>
+                                      )}
+                                    {canReassignTask(task) && (
                                       <Button
-                                        variant="ghost"
+                                        variant="outline"
                                         size="sm"
-                                        onClick={() =>
-                                          handleDeleteTask(task.id)
-                                        }
-                                        disabled={
-                                          deletingTaskId === task.id ||
-                                          !canDeleteTask(task)
-                                        }
-                                        className="hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 p-2 h-auto disabled:opacity-50"
-                                        title={
-                                          !canDeleteTask(task)
-                                            ? "Cannot delete task once work has started"
-                                            : "Delete task"
-                                        }
+                                        onClick={() => handleReassignClick(task)}
+                                        className="flex items-center gap-1 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300"
                                       >
-                                        {deletingTaskId === task.id ? (
-                                          <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : (
-                                          "🗑"
-                                        )}
+                                        <RefreshCcw className="h-4 w-4" />
+                                        Reassign
                                       </Button>
-                                    </>
-                                  )}
-                                {canReassignTask(task) && (
-                                  <Button
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {visibleTasks.length > 0 && (
+                    <div className="mt-6 px-2">
+                      <Pagination
+                        currentPage={taskCurrentPage}
+                        totalPages={taskTotalPages}
+                        totalItems={visibleTasks.length}
+                        itemsPerPage={taskItemsPerPage}
+                        onPageChange={setTaskCurrentPage}
+                        onItemsPerPageChange={setTaskItemsPerPage}
+                        showItemsPerPage={true}
+                        showEntriesInfo={true}
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                    {paginatedTasks.map((task) => {
+                      const assignedByInfo = getAssignedByInfo(
+                        task.assignedBy,
+                        task.assignedByRole,
+                      );
+                      const assignedToInfo = getAssignedToInfo(
+                        task.assignedTo[0] || "",
+                        task.assignedToRole,
+                      );
+                      // In "All Tasks" view, admin can only manage tasks they created
+                      const canManageTask = Boolean(
+                        userId && task.assignedBy === userId,
+                      );
+                      const isReceivedTask = Boolean(
+                        userId && task.assignedTo.includes(userId),
+                      );
+                      // Don't allow passing completed, cancelled, or overdue tasks
+                      const canPassTask =
+                        isReceivedTask &&
+                        task.assignedTo[0] === userId &&
+                        passEligibleEmployees.length > 0 &&
+                        task.status !== "completed" &&
+                        task.status !== "cancelled" &&
+                        task.status !== "overdue";
+                      const lastPassByLabel = task.lastPassedBy
+                        ? getAssigneeLabel(task.lastPassedBy)
+                        : null;
+                      const lastPassToLabel = task.lastPassedTo
+                        ? getAssigneeLabel(task.lastPassedTo)
+                        : null;
+                      return (
+                        <Card
+                          key={task.id}
+                          className={`border transition-all duration-300 cursor-pointer transform hover:scale-[1.02] shadow-sm hover:shadow-xl group relative overflow-hidden ${isTaskOverdue(task)
+                            ? "border-orange-200 bg-orange-50/30 dark:border-orange-900/50 dark:bg-orange-900/10"
+                            : "border-slate-200 bg-white dark:border-gray-800 dark:bg-gray-950/50"
+                            }`}
+                          onClick={() => setSelectedTask(task)}
+                        >
+                          {/* Status Indicator Strip */}
+                          <div
+                            className={`absolute top-0 left-0 w-1 h-full ${task.status === "completed"
+                              ? "bg-green-500"
+                              : task.status === "cancelled"
+                                ? "bg-red-500"
+                                : task.status === "overdue"
+                                  ? "bg-orange-500"
+                                  : task.status === "in-progress"
+                                    ? "bg-blue-500"
+                                    : "bg-slate-400"
+                              }`}
+                          />
+
+                          <CardHeader className="p-4 pb-0">
+                            <div className="flex justify-between items-start gap-3">
+                              <div className="space-y-1.5 flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <Badge
                                     variant="outline"
-                                    size="sm"
-                                    onClick={() => handleReassignClick(task)}
-                                    className="flex items-center gap-1 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300"
+                                    className={`${getPriorityColor(task.priority)} text-[10px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider`}
                                   >
-                                    <RefreshCcw className="h-4 w-4" />
-                                    Reassign
-                                  </Button>
+                                    {task.priority}
+                                  </Badge>
+                                  {isTaskOverdue(task) && (
+                                    <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 text-[10px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider">
+                                      Overdue
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-base font-bold leading-tight pr-1">
+                                  <TruncatedText
+                                    text={task.title}
+                                    maxLength={30}
+                                    showToggle={false}
+                                    textClassName="text-gray-900 dark:text-gray-100"
+                                  />
+                                </div>
+                              </div>
+                              {/* Progress Ring or Simple Status Icon */}
+                              <div
+                                className={`h-8 w-8 rounded-full flex items-center justify-center border-2 ${task.status === "completed"
+                                  ? "border-green-100 bg-green-50 text-green-600 dark:border-green-900/30 dark:bg-green-900/20"
+                                  : task.status === "in-progress"
+                                    ? "border-blue-100 bg-blue-50 text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20"
+                                    : "border-slate-100 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900"
+                                  }`}
+                              >
+                                {typeof task.progress === "number" &&
+                                  task.progress > 0 ? (
+                                  <span className="text-[10px] font-bold">
+                                    {task.progress}%
+                                  </span>
+                                ) : (
+                                  <div
+                                    className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)}`}
+                                  />
                                 )}
                               </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-              {visibleTasks.length > 0 && (
-                <div className="mt-6 px-2">
-                  <Pagination
-                    currentPage={taskCurrentPage}
-                    totalPages={taskTotalPages}
-                    totalItems={visibleTasks.length}
-                    itemsPerPage={taskItemsPerPage}
-                    onPageChange={setTaskCurrentPage}
-                    onItemsPerPageChange={setTaskItemsPerPage}
-                    showItemsPerPage={true}
-                    showEntriesInfo={true}
-                  />
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                {paginatedTasks.map((task) => {
-                  const assignedByInfo = getAssignedByInfo(
-                    task.assignedBy,
-                    task.assignedByRole,
-                  );
-                  const assignedToInfo = getAssignedToInfo(
-                    task.assignedTo[0] || "",
-                    task.assignedToRole,
-                  );
-                  // In "All Tasks" view, admin can only manage tasks they created
-                  const canManageTask = Boolean(
-                    userId && task.assignedBy === userId,
-                  );
-                  const isReceivedTask = Boolean(
-                    userId && task.assignedTo.includes(userId),
-                  );
-                  // Don't allow passing completed, cancelled, or overdue tasks
-                  const canPassTask =
-                    isReceivedTask &&
-                    task.assignedTo[0] === userId &&
-                    passEligibleEmployees.length > 0 &&
-                    task.status !== "completed" &&
-                    task.status !== "cancelled" &&
-                    task.status !== "overdue";
-                  const lastPassByLabel = task.lastPassedBy
-                    ? getAssigneeLabel(task.lastPassedBy)
-                    : null;
-                  const lastPassToLabel = task.lastPassedTo
-                    ? getAssigneeLabel(task.lastPassedTo)
-                    : null;
-                  return (
-                    <Card
-                      key={task.id}
-                      className={`border transition-all duration-300 cursor-pointer transform hover:scale-[1.02] shadow-sm hover:shadow-xl group relative overflow-hidden ${isTaskOverdue(task)
-                          ? "border-orange-200 bg-orange-50/30 dark:border-orange-900/50 dark:bg-orange-900/10"
-                          : "border-slate-200 bg-white dark:border-gray-800 dark:bg-gray-950/50"
-                        }`}
-                      onClick={() => setSelectedTask(task)}
-                    >
-                      {/* Status Indicator Strip */}
-                      <div
-                        className={`absolute top-0 left-0 w-1 h-full ${task.status === "completed"
-                            ? "bg-green-500"
-                            : task.status === "cancelled"
-                              ? "bg-red-500"
-                              : task.status === "overdue"
-                                ? "bg-orange-500"
-                                : task.status === "in-progress"
-                                  ? "bg-blue-500"
-                                  : "bg-slate-400"
-                          }`}
-                      />
-
-                      <CardHeader className="p-4 pb-0">
-                        <div className="flex justify-between items-start gap-3">
-                          <div className="space-y-1.5 flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                variant="outline"
-                                className={`${getPriorityColor(task.priority)} text-[10px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider`}
-                              >
-                                {task.priority}
-                              </Badge>
-                              {isTaskOverdue(task) && (
-                                <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 text-[10px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider">
-                                  Overdue
-                                </Badge>
-                              )}
                             </div>
-                            <div className="text-base font-bold leading-tight pr-1">
+                          </CardHeader>
+
+                          <CardContent className="p-4 pt-3 space-y-4">
+                            <div className="text-xs text-muted-foreground leading-relaxed">
                               <TruncatedText
-                                text={task.title}
-                                maxLength={30}
+                                text={
+                                  task.description || "No description provided."
+                                }
+                                maxLength={70}
                                 showToggle={false}
-                                textClassName="text-gray-900 dark:text-gray-100"
                               />
                             </div>
-                          </div>
-                          {/* Progress Ring or Simple Status Icon */}
-                          <div
-                            className={`h-8 w-8 rounded-full flex items-center justify-center border-2 ${task.status === "completed"
-                                ? "border-green-100 bg-green-50 text-green-600 dark:border-green-900/30 dark:bg-green-900/20"
-                                : task.status === "in-progress"
-                                  ? "border-blue-100 bg-blue-50 text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20"
-                                  : "border-slate-100 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900"
-                              }`}
-                          >
-                            {typeof task.progress === "number" &&
-                              task.progress > 0 ? (
-                              <span className="text-[10px] font-bold">
-                                {task.progress}%
-                              </span>
-                            ) : (
-                              <div
-                                className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)}`}
-                              />
-                            )}
-                          </div>
-                        </div>
-                      </CardHeader>
 
-                      <CardContent className="p-4 pt-3 space-y-4">
-                        <div className="text-xs text-muted-foreground leading-relaxed">
-                          <TruncatedText
-                            text={
-                              task.description || "No description provided."
-                            }
-                            maxLength={70}
-                            showToggle={false}
-                          />
-                        </div>
-
-                        {/* Compact Metadata Grid */}
-                        <div className="grid grid-cols-1 gap-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-800/50">
-                          {/* Assignee Row */}
-                          <div className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                              <User className="h-3.5 w-3.5" />
-                              <span>To:</span>
-                            </div>
-                            <div className="flex flex-col items-end">
-                              <span
-                                className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]"
-                                title={assignedToInfo.name}
-                              >
-                                {assignedToInfo.name}
-                              </span>
-                              {assignedToInfo.roleLabel && (
-                                <span className="text-[10px] text-muted-foreground">
-                                  {assignedToInfo.roleLabel}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Assigner Row */}
-                          <div className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                              <UserCheck className="h-3.5 w-3.5" />
-                              <span>By:</span>
-                            </div>
-                            <div className="flex flex-col items-end">
-                              <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]">
-                                {assignedByInfo.name}
-                              </span>
-                              {assignedByInfo.roleLabel && (
-                                <span className="text-[10px] text-muted-foreground">
-                                  {assignedByInfo.roleLabel}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Deadline Row */}
-                          <div className="flex items-center justify-between text-xs border-t border-slate-200 dark:border-slate-700/50 pt-2 mt-0.5">
-                            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                              <Calendar className="h-3.5 w-3.5" />
-                              <span>Due:</span>
-                            </div>
-                            <span
-                              className={`font-medium ${isTaskOverdue(task) ? "text-orange-600 dark:text-orange-400" : "text-slate-700 dark:text-slate-200"}`}
-                            >
-                              {formatDisplayDate(task.deadline)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Footer Actions */}
-                        <div className="flex items-center justify-between pt-1">
-                          {/* Left Side: Pass History Info (Subtle) */}
-                          <div className="flex items-center">
-                            {task.lastPassedBy ? (
-                              <div
-                                className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-violet-50 text-violet-700 dark:bg-violet-900/20 dark:text-violet-300 border border-violet-100 dark:border-violet-900/30 cursor-pointer hover:bg-violet-100 transition-colors"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openPassHistoryDialog(task);
-                                }}
-                              >
-                                <Share2 className="h-3 w-3" />
-                                <span className="text-[10px] font-medium">
-                                  History
-                                </span>
-                              </div>
-                            ) : (
-                              <div className="text-[10px] text-muted-foreground px-1 italic opacity-50">
-                                No history
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Right Side: Action Buttons */}
-                          <div className="flex items-center gap-1">
-                            {/* Reassign Button */}
-                            {canReassignTask(task) && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleReassignClick(task);
-                                }}
-                                className="h-7 w-7 p-0 rounded-full hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/30 dark:hover:text-green-400 text-slate-400"
-                                title="Reassign Task"
-                              >
-                                <RefreshCcw className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-
-                            {/* Pass Button */}
-                            {task.status !== "completed" && canPassTask && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openPassDialog(task);
-                                }}
-                                className="h-7 w-7 p-0 rounded-full hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/30 dark:hover:text-violet-400 text-slate-400"
-                                title="Pass Task"
-                              >
-                                <Share2 className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-
-                            {/* Edit Button */}
-                            {task.status !== "completed" &&
-                              (task.status as string) !== "cancelled" &&
-                              canManageTask &&
-                              (task.status as string) !== "overdue" && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditClick(task);
-                                  }}
-                                  className="h-7 w-7 p-0 rounded-full hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-900/30 dark:hover:text-amber-400 text-slate-400"
-                                  title="Edit Task"
-                                >
-                                  <div className="h-3.5 w-3.5">✏️</div>
-                                </Button>
-                              )}
-
-                            {/* Delete Button */}
-                            {task.status !== "completed" &&
-                              (task.status as string) !== "cancelled" &&
-                              canManageTask && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteTask(task.id);
-                                  }}
-                                  disabled={
-                                    deletingTaskId === task.id ||
-                                    !canDeleteTask(task)
-                                  }
-                                  className="h-7 w-7 p-0 rounded-full hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 text-slate-400 disabled:opacity-30"
-                                  title={
-                                    !canDeleteTask(task)
-                                      ? "Cannot delete started task"
-                                      : "Delete Task"
-                                  }
-                                >
-                                  {deletingTaskId === task.id ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    "🗑"
+                            {/* Compact Metadata Grid */}
+                            <div className="grid grid-cols-1 gap-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-800/50">
+                              {/* Assignee Row */}
+                              <div className="flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                                  <User className="h-3.5 w-3.5" />
+                                  <span>To:</span>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                  <span
+                                    className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]"
+                                    title={assignedToInfo.name}
+                                  >
+                                    {assignedToInfo.name}
+                                  </span>
+                                  {assignedToInfo.roleLabel && (
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {assignedToInfo.roleLabel}
+                                    </span>
                                   )}
-                                </Button>
-                              )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-              {visibleTasks.length > 0 && (
-                <div className="mt-6 px-2">
-                  <Pagination
-                    currentPage={taskCurrentPage}
-                    totalPages={taskTotalPages}
-                    totalItems={visibleTasks.length}
-                    itemsPerPage={taskItemsPerPage}
-                    onPageChange={setTaskCurrentPage}
-                    onItemsPerPageChange={setTaskItemsPerPage}
-                    showItemsPerPage={true}
-                    showEntriesInfo={true}
-                  />
+                                </div>
+                              </div>
+
+                              {/* Assigner Row */}
+                              <div className="flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                                  <UserCheck className="h-3.5 w-3.5" />
+                                  <span>By:</span>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                  <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]">
+                                    {assignedByInfo.name}
+                                  </span>
+                                  {assignedByInfo.roleLabel && (
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {assignedByInfo.roleLabel}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Deadline Row */}
+                              <div className="flex items-center justify-between text-xs border-t border-slate-200 dark:border-slate-700/50 pt-2 mt-0.5">
+                                <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                                  <Calendar className="h-3.5 w-3.5" />
+                                  <span>Due:</span>
+                                </div>
+                                <span
+                                  className={`font-medium ${isTaskOverdue(task) ? "text-orange-600 dark:text-orange-400" : "text-slate-700 dark:text-slate-200"}`}
+                                >
+                                  {formatDisplayDate(task.deadline)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Footer Actions */}
+                            <div className="flex items-center justify-between pt-1">
+                              {/* Left Side: Pass History Info (Subtle) */}
+                              <div className="flex items-center">
+                                {task.lastPassedBy ? (
+                                  <div
+                                    className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-violet-50 text-violet-700 dark:bg-violet-900/20 dark:text-violet-300 border border-violet-100 dark:border-violet-900/30 cursor-pointer hover:bg-violet-100 transition-colors"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openPassHistoryDialog(task);
+                                    }}
+                                  >
+                                    <Share2 className="h-3 w-3" />
+                                    <span className="text-[10px] font-medium">
+                                      History
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="text-[10px] text-muted-foreground px-1 italic opacity-50">
+                                    No history
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Right Side: Action Buttons */}
+                              <div className="flex items-center gap-1">
+                                {/* Reassign Button */}
+                                {canReassignTask(task) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleReassignClick(task);
+                                    }}
+                                    className="h-7 w-7 p-0 rounded-full hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/30 dark:hover:text-green-400 text-slate-400"
+                                    title="Reassign Task"
+                                  >
+                                    <RefreshCcw className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+
+                                {/* Pass Button */}
+                                {task.status !== "completed" && canPassTask && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openPassDialog(task);
+                                    }}
+                                    className="h-7 w-7 p-0 rounded-full hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/30 dark:hover:text-violet-400 text-slate-400"
+                                    title="Pass Task"
+                                  >
+                                    <Share2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+
+                                {/* Edit Button */}
+                                {task.status !== "completed" &&
+                                  (task.status as string) !== "cancelled" &&
+                                  canManageTask &&
+                                  (task.status as string) !== "overdue" && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditClick(task);
+                                      }}
+                                      className="h-7 w-7 p-0 rounded-full hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-900/30 dark:hover:text-amber-400 text-slate-400"
+                                      title="Edit Task"
+                                    >
+                                      <div className="h-3.5 w-3.5">✏️</div>
+                                    </Button>
+                                  )}
+
+                                {/* Delete Button */}
+                                {task.status !== "completed" &&
+                                  (task.status as string) !== "cancelled" &&
+                                  canManageTask && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteTask(task.id);
+                                      }}
+                                      disabled={
+                                        deletingTaskId === task.id ||
+                                        !canDeleteTask(task)
+                                      }
+                                      className="h-7 w-7 p-0 rounded-full hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 text-slate-400 disabled:opacity-30"
+                                      title={
+                                        !canDeleteTask(task)
+                                          ? "Cannot delete started task"
+                                          : "Delete Task"
+                                      }
+                                    >
+                                      {deletingTaskId === task.id ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        "🗑"
+                                      )}
+                                    </Button>
+                                  )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                  {visibleTasks.length > 0 && (
+                    <div className="mt-6 px-2">
+                      <Pagination
+                        currentPage={taskCurrentPage}
+                        totalPages={taskTotalPages}
+                        totalItems={visibleTasks.length}
+                        itemsPerPage={taskItemsPerPage}
+                        onPageChange={setTaskCurrentPage}
+                        onItemsPerPageChange={setTaskItemsPerPage}
+                        showItemsPerPage={true}
+                        showEntriesInfo={true}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      </>
-    ) : (
-      <div className="space-y-6">
-        {/* Project View Stats */}
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-6">
-          <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(false); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${filterStatus === "all" && !isOverdueFilterActive ? "ring-2 ring-violet-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total Tasks</CardTitle>
-              <ListTodo className="h-4 w-4 text-slate-500" />
-            </CardHeader>
-            <CardContent><div className="text-2xl font-black">{projectCounts.total}</div></CardContent>
+            </CardContent>
           </Card>
-          <Card onClick={() => { setFilterStatus("todo"); setIsOverdueFilterActive(false); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${filterStatus === "todo" ? "ring-2 ring-indigo-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-[10px] font-black uppercase tracking-widest text-indigo-500">To Do</CardTitle>
-              <ClipboardList className="h-4 w-4 text-indigo-500" />
+        </>
+      ) : (
+        <div className="space-y-6">
+          {/* Project View Stats */}
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-6">
+            <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(false); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${filterStatus === "all" && !isOverdueFilterActive ? "ring-2 ring-violet-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total Tasks</CardTitle>
+                <ListTodo className="h-4 w-4 text-slate-500" />
+              </CardHeader>
+              <CardContent><div className="text-2xl font-black">{projectCounts.total}</div></CardContent>
+            </Card>
+            <Card onClick={() => { setFilterStatus("todo"); setIsOverdueFilterActive(false); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${filterStatus === "todo" ? "ring-2 ring-indigo-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-indigo-500">To Do</CardTitle>
+                <ClipboardList className="h-4 w-4 text-indigo-500" />
+              </CardHeader>
+              <CardContent><div className="text-2xl font-black text-indigo-600">{projectCounts.todo}</div></CardContent>
+            </Card>
+            <Card onClick={() => { setFilterStatus("in-progress"); setIsOverdueFilterActive(false); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${filterStatus === "in-progress" ? "ring-2 ring-blue-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-blue-500">In Progress</CardTitle>
+                <Clock className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent><div className="text-2xl font-black text-blue-600">{projectCounts.inProgress}</div></CardContent>
+            </Card>
+            <Card onClick={() => { setFilterStatus("completed"); setIsOverdueFilterActive(false); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${filterStatus === "completed" ? "ring-2 ring-emerald-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Completed</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              </CardHeader>
+              <CardContent><div className="text-2xl font-black text-emerald-600">{projectCounts.completed}</div></CardContent>
+            </Card>
+            <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(true); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${isOverdueFilterActive ? "ring-2 ring-orange-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-orange-500">Overdue</CardTitle>
+                <AlertCircle className="h-4 w-4 text-orange-500" />
+              </CardHeader>
+              <CardContent><div className="text-2xl font-black text-orange-600">{projectCounts.overdue}</div></CardContent>
+            </Card>
+            <Card onClick={() => { setFilterStatus("cancelled"); setIsOverdueFilterActive(false); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${filterStatus === "cancelled" ? "ring-2 ring-red-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-red-500">Cancelled</CardTitle>
+                <XCircle className="h-4 w-4 text-red-500" />
+              </CardHeader>
+              <CardContent><div className="text-2xl font-black text-red-600">{projectCounts.cancelled}</div></CardContent>
+            </Card>
+          </div>
+
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                    <Filter className="h-5 w-5 text-white" />
+                  </div>
+                  <CardTitle className="text-xl font-semibold">Filter Projects</CardTitle>
+                </div>
+                <div className="flex flex-wrap items-end gap-4">
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-sm">Search</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input className="pl-9 w-full sm:w-[200px]" placeholder="Search projects or tasks..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-sm">Status</Label>
+                    <Select value={filterStatus} onValueChange={(val) => { setFilterStatus(val); setIsOverdueFilterActive(val === "overdue"); }}>
+                      <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 px-3 py-2 border-2"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="todo">To Do</SelectItem>
+                        <SelectItem value="in-progress">In Progress</SelectItem>
+                        <SelectItem value="overdue">Overdue</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-sm">Ownership</Label>
+                    <Select
+                      value={taskOwnershipFilter}
+                      onValueChange={(value: "all" | "received" | "created") =>
+                        setTaskOwnershipFilter(value)
+                      }
+                    >
+                      <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 px-3 py-2 border-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="received">Assigned to Me</SelectItem>
+                        <SelectItem value="created">Created by Me</SelectItem>
+                        <SelectItem value="all">Entire View</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent><div className="text-2xl font-black text-indigo-600">{projectCounts.todo}</div></CardContent>
-          </Card>
-          <Card onClick={() => { setFilterStatus("in-progress"); setIsOverdueFilterActive(false); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${filterStatus === "in-progress" ? "ring-2 ring-blue-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-[10px] font-black uppercase tracking-widest text-blue-500">In Progress</CardTitle>
-              <Clock className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent><div className="text-2xl font-black text-blue-600">{projectCounts.inProgress}</div></CardContent>
-          </Card>
-          <Card onClick={() => { setFilterStatus("completed"); setIsOverdueFilterActive(false); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${filterStatus === "completed" ? "ring-2 ring-emerald-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Completed</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-            </CardHeader>
-            <CardContent><div className="text-2xl font-black text-emerald-600">{projectCounts.completed}</div></CardContent>
-          </Card>
-          <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(true); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${isOverdueFilterActive ? "ring-2 ring-orange-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-[10px] font-black uppercase tracking-widest text-orange-500">Overdue</CardTitle>
-              <AlertCircle className="h-4 w-4 text-orange-500" />
-            </CardHeader>
-            <CardContent><div className="text-2xl font-black text-orange-600">{projectCounts.overdue}</div></CardContent>
-          </Card>
-          <Card onClick={() => { setFilterStatus("cancelled"); setIsOverdueFilterActive(false); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${filterStatus === "cancelled" ? "ring-2 ring-red-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-[10px] font-black uppercase tracking-widest text-red-500">Cancelled</CardTitle>
-              <XCircle className="h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent><div className="text-2xl font-black text-red-600">{projectCounts.cancelled}</div></CardContent>
+            <CardContent className="pt-6">
+              {isProjectsLoading ? (
+                <div className="p-8 space-y-4">
+                  {[1, 2, 3].map((i) => (<div key={i} className="h-24 w-full rounded-2xl bg-slate-50 dark:bg-slate-900 animate-pulse" />))}
+                </div>
+              ) : filteredProjects.length === 0 ? (
+                <div className="p-20 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed">
+                  <FolderKanban className="h-10 w-10 text-slate-300 mx-auto mb-4" />
+                  <h3 className="text-2xl font-bold">No projects found</h3>
+                  <p className="text-slate-500 mt-2">Adjust your filters or search query.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredProjects.map((project) => (
+                    <div key={project.project_id} className="group transition-all">
+                      <div className={`p-5 cursor-pointer rounded-2xl transition-all border-2 ${project.isExpanded ? "bg-violet-50/50 border-violet-200" : "bg-white border-slate-100 hover:border-violet-200"}`} onClick={() => toggleProject(project.project_id)}>
+                        <div className="flex items-center justify-between gap-6">
+                          <div className="flex items-center gap-5 flex-1 min-w-0">
+                            <div className={`h-14 w-14 rounded-xl flex items-center justify-center transition-all shadow-md ${project.isExpanded ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white" : "bg-slate-100 text-slate-400 group-hover:text-violet-500"}`}>
+                              <FolderKanban className="h-7 w-7" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h4 className={`text-lg font-bold ${project.isExpanded ? "text-violet-700" : "text-slate-800"}`}>{project.name}</h4>
+                              <div className="flex flex-wrap items-center gap-4 mt-2">
+                                <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full border">
+                                  <ClipboardList className="h-3.5 w-3.5 text-violet-500" />
+                                  {project.task_count} Tasks
+                                </div>
+                                <div className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${(project.status || '').toLowerCase().includes('progress') ? 'text-blue-600 bg-blue-50 border-blue-100' : 'text-slate-500 bg-slate-100 border-slate-200'}`}>
+                                  {project.status || 'Active'}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          {project.isExpanded ? <ChevronUp className="h-6 w-6 text-violet-600" /> : <ChevronDown className="h-6 w-6 text-slate-400" />}
+                        </div>
+                      </div>
+                      {project.isExpanded && (
+                        <div className="px-3 pb-8 pt-2 animate-in slide-in-from-top-4 duration-500">
+                          <div className="bg-white dark:bg-gray-950 rounded-2xl border-2 border-violet-100 overflow-hidden shadow-xl">
+                            <Table>
+                              <TableHeader className="bg-slate-50">
+                                <TableRow>
+                                  <TableHead className="w-[280px] text-xs uppercase font-bold">Task Intelligence</TableHead>
+                                  <TableHead className="text-xs uppercase font-bold">Assigned To</TableHead>
+                                  <TableHead className="text-xs uppercase font-bold">Deadline</TableHead>
+                                  <TableHead className="text-xs uppercase font-bold w-[180px]">Status</TableHead>
+                                  <TableHead className="text-xs uppercase font-bold">Priority</TableHead>
+                                  <TableHead className="text-xs uppercase font-bold">Actions</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {project.filteredTasks && project.filteredTasks.length > 0 ? (
+                                  project.filteredTasks.map((task: any) => (
+                                    <TableRow key={task.id} className="hover:bg-violet-50/30 cursor-pointer" onClick={() => setSelectedTask(task)}>
+                                      <TableCell className="py-4">
+                                        <div className="flex flex-col">
+                                          <span className="font-bold text-sm tracking-tight">{task.title}</span>
+                                          {task.description && <span className="text-[11px] text-slate-500 line-clamp-2 mt-1">{task.description}</span>}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="flex items-center gap-3">
+                                          <div className="h-8 w-8 rounded-lg bg-violet-100 flex items-center justify-center text-[10px] font-black text-violet-700">{(task.assignedToName || 'U')[0].toUpperCase()}</div>
+                                          <span className="text-xs font-bold text-slate-600">{task.assignedToName || 'Unassigned'}</span>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="flex items-center gap-2 text-slate-500">
+                                          <Calendar className="h-3.5 w-3.5 text-violet-400" />
+                                          <span className="text-xs">{task.deadline ? formatDateIST(task.deadline, "MMM dd, yyyy") : "No deadline"}</span>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell onClick={(e) => e.stopPropagation()}>
+                                        {["completed", "cancelled", "overdue"].includes(task.status) ? (
+                                          <div className="flex items-center gap-2">
+                                            {getStatusBadge(task.status)}
+                                          </div>
+                                        ) : (
+                                          <Select
+                                            value={task.status}
+                                            onValueChange={(value: BaseTask["status"]) =>
+                                              updateTaskStatus(task.id, value)
+                                            }
+                                            disabled={updatingTaskId === task.id}
+                                          >
+                                            <SelectTrigger
+                                              className={`w-[160px] h-9 border-2 bg-white dark:bg-gray-950 px-3 transition-all ${task.status === "in-progress"
+                                                  ? "border-blue-200 dark:border-blue-800 shadow-sm"
+                                                  : "border-violet-200 dark:border-violet-800 shadow-sm"
+                                                }`}
+                                            >
+                                              <div className="flex items-center gap-2">
+                                                <div className={`h-2 w-2 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
+                                                <SelectValue className="text-xs" />
+                                              </div>
+                                            </SelectTrigger>
+                                            <SelectContent className="border-2 shadow-xl">
+                                              <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
+                                              <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+                                              <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
+                                              {userId === task.assignedBy && <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>}
+                                            </SelectContent>
+                                          </Select>
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge variant="outline" className={`border-2 ${task.priority === 'high' || task.priority === 'urgent' ? 'border-red-200 text-red-600' : task.priority === 'medium' ? 'border-amber-200 text-amber-600' : 'border-blue-200 text-blue-600'}`}>
+                                          {task.priority || 'Medium'}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell onClick={(e) => e.stopPropagation()}>
+                                        <div className="flex items-center gap-2">
+                                          {task.status !== "completed" && task.status !== "cancelled" && task.status !== "overdue" && task.assignedTo.includes(userId || "") && (
+                                            <Button variant="ghost" size="sm" onClick={() => openPassDialog(task)} className="h-8 w-8 hover:bg-violet-100 text-violet-600" title="Pass task">
+                                              <Share2 className="h-4 w-4" />
+                                            </Button>
+                                          )}
+                                          {userId === task.assignedBy && task.status !== "completed" && task.status !== "cancelled" && (
+                                            <Button variant="ghost" size="sm" onClick={() => handleEditClick(task)} className="h-8 w-8 hover:bg-amber-100 text-amber-600" title="Edit task">
+                                              <Pencil className="h-4 w-4" />
+                                            </Button>
+                                          )}
+                                          {canReassignTask(task) && (
+                                            <Button variant="ghost" size="sm" onClick={() => handleReassignClick(task)} className="h-8 w-8 hover:bg-green-100 text-green-600" title="Reassign task">
+                                              <RefreshCcw className="h-4 w-4" />
+                                            </Button>
+                                          )}
+                                          {userId === task.assignedBy && canDeleteTask(task) && (
+                                            <Button variant="ghost" size="sm" onClick={() => handleDeleteTask(task.id)} disabled={deletingTaskId === task.id} className="h-8 w-8 hover:bg-red-100 text-red-600" title="Delete task">
+                                              {deletingTaskId === task.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                            </Button>
+                                          )}
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))
+                                ) : (
+                                  <TableRow>
+                                    <TableCell colSpan={5} className="h-40 text-center text-slate-400">No matching tasks found in this project.</TableCell>
+                                  </TableRow>
+                                )}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
           </Card>
         </div>
-
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                  <Filter className="h-5 w-5 text-white" />
-                </div>
-                <CardTitle className="text-xl font-semibold">Filter Projects</CardTitle>
-              </div>
-              <div className="flex flex-wrap items-end gap-4">
-                <div className="flex flex-col gap-2">
-                  <Label className="text-sm">Search</Label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input className="pl-9 w-full sm:w-[200px]" placeholder="Search projects or tasks..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label className="text-sm">Status</Label>
-                  <Select value={filterStatus} onValueChange={(val) => { setFilterStatus(val); setIsOverdueFilterActive(val === "overdue"); }}>
-                    <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 px-3 py-2 border-2"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="todo">To Do</SelectItem>
-                      <SelectItem value="in-progress">In Progress</SelectItem>
-                      <SelectItem value="overdue">Overdue</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label className="text-sm">Ownership</Label>
-                  <Select
-                    value={taskOwnershipFilter}
-                    onValueChange={(value: "all" | "received" | "created") =>
-                      setTaskOwnershipFilter(value)
-                    }
-                  >
-                    <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 px-3 py-2 border-2">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="received">Assigned to Me</SelectItem>
-                      <SelectItem value="created">Created by Me</SelectItem>
-                      <SelectItem value="all">Entire View</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-6">
-            {isProjectsLoading ? (
-              <div className="p-8 space-y-4">
-                {[1, 2, 3].map((i) => ( <div key={i} className="h-24 w-full rounded-2xl bg-slate-50 dark:bg-slate-900 animate-pulse" /> ))}
-              </div>
-            ) : filteredProjects.length === 0 ? (
-              <div className="p-20 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed">
-                <FolderKanban className="h-10 w-10 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-2xl font-bold">No projects found</h3>
-                <p className="text-slate-500 mt-2">Adjust your filters or search query.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredProjects.map((project) => (
-                  <div key={project.project_id} className="group transition-all">
-                    <div className={`p-5 cursor-pointer rounded-2xl transition-all border-2 ${project.isExpanded ? "bg-violet-50/50 border-violet-200" : "bg-white border-slate-100 hover:border-violet-200"}`} onClick={() => toggleProject(project.project_id)}>
-                      <div className="flex items-center justify-between gap-6">
-                        <div className="flex items-center gap-5 flex-1 min-w-0">
-                          <div className={`h-14 w-14 rounded-xl flex items-center justify-center transition-all shadow-md ${project.isExpanded ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white" : "bg-slate-100 text-slate-400 group-hover:text-violet-500"}`}>
-                            <FolderKanban className="h-7 w-7" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <h4 className={`text-lg font-bold ${project.isExpanded ? "text-violet-700" : "text-slate-800"}`}>{project.name}</h4>
-                            <div className="flex flex-wrap items-center gap-4 mt-2">
-                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full border">
-                                <ClipboardList className="h-3.5 w-3.5 text-violet-500" />
-                                {project.task_count} Tasks
-                              </div>
-                              <div className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${ (project.status || '').toLowerCase().includes('progress') ? 'text-blue-600 bg-blue-50 border-blue-100' : 'text-slate-500 bg-slate-100 border-slate-200' }`}>
-                                {project.status || 'Active'}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        {project.isExpanded ? <ChevronUp className="h-6 w-6 text-violet-600" /> : <ChevronDown className="h-6 w-6 text-slate-400" />}
-                      </div>
-                    </div>
-                    {project.isExpanded && (
-                      <div className="px-3 pb-8 pt-2 animate-in slide-in-from-top-4 duration-500">
-                        <div className="bg-white dark:bg-gray-950 rounded-2xl border-2 border-violet-100 overflow-hidden shadow-xl">
-                          <Table>
-                            <TableHeader className="bg-slate-50">
-                              <TableRow>
-                                <TableHead className="w-[280px] text-xs uppercase font-bold">Task Intelligence</TableHead>
-                                <TableHead className="text-xs uppercase font-bold">Assigned To</TableHead>
-                                <TableHead className="text-xs uppercase font-bold">Deadline</TableHead>
-                                <TableHead className="text-xs uppercase font-bold w-[180px]">Status</TableHead>
-                                <TableHead className="text-xs uppercase font-bold">Priority</TableHead>
-                                <TableHead className="text-xs uppercase font-bold">Actions</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {project.filteredTasks && project.filteredTasks.length > 0 ? (
-                                project.filteredTasks.map((task: any) => (
-                                  <TableRow key={task.id} className="hover:bg-violet-50/30 cursor-pointer" onClick={() => setSelectedTask(task)}>
-                                    <TableCell className="py-4">
-                                      <div className="flex flex-col">
-                                        <span className="font-bold text-sm tracking-tight">{task.title}</span>
-                                        {task.description && <span className="text-[11px] text-slate-500 line-clamp-2 mt-1">{task.description}</span>}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <div className="flex items-center gap-3">
-                                        <div className="h-8 w-8 rounded-lg bg-violet-100 flex items-center justify-center text-[10px] font-black text-violet-700">{(task.assignedToName || 'U')[0].toUpperCase()}</div>
-                                        <span className="text-xs font-bold text-slate-600 italic">{task.assignedToName || 'Unassigned'}</span>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <div className="flex items-center gap-2 text-slate-500">
-                                        <Calendar className="h-3.5 w-3.5 text-violet-400" />
-                                        <span className="text-xs">{task.deadline ? formatDateIST(task.deadline, "MMM dd, yyyy") : "No deadline"}</span>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell onClick={(e) => e.stopPropagation()}>
-                                      {["completed", "cancelled", "overdue"].includes(task.status) ? (
-                                        <div className="flex items-center gap-2">
-                                          {getStatusBadge(task.status)}
-                                        </div>
-                                      ) : (
-                                        <Select
-                                          value={task.status}
-                                          onValueChange={(value: BaseTask["status"]) =>
-                                            updateTaskStatus(task.id, value)
-                                          }
-                                          disabled={updatingTaskId === task.id}
-                                        >
-                                          <SelectTrigger 
-                                            className={`w-[160px] h-9 border-2 bg-white dark:bg-gray-950 px-3 transition-all ${
-                                              task.status === "in-progress" 
-                                                ? "border-blue-200 dark:border-blue-800 shadow-sm" 
-                                                : "border-violet-200 dark:border-violet-800 shadow-sm"
-                                            }`}
-                                          >
-                                            <div className="flex items-center gap-2">
-                                              <div className={`h-2 w-2 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
-                                              <SelectValue className="text-xs" />
-                                            </div>
-                                          </SelectTrigger>
-                                          <SelectContent className="border-2 shadow-xl">
-                                            <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
-                                            <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
-                                            <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
-                                            {userId === task.assignedBy && <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>}
-                                          </SelectContent>
-                                        </Select>
-                                      )}
-                                    </TableCell>
-                                    <TableCell>
-                                      <Badge variant="outline" className={`border-2 ${task.priority === 'high' || task.priority === 'urgent' ? 'border-red-200 text-red-600' : task.priority === 'medium' ? 'border-amber-200 text-amber-600' : 'border-blue-200 text-blue-600'}`}>
-                                        {task.priority || 'Medium'}
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell onClick={(e) => e.stopPropagation()}>
-                                      <div className="flex items-center gap-2">
-                                        {task.status !== "completed" && task.status !== "cancelled" && task.status !== "overdue" && task.assignedTo.includes(userId || "") && (
-                                          <Button variant="ghost" size="sm" onClick={() => openPassDialog(task)} className="h-8 w-8 hover:bg-violet-100 text-violet-600" title="Pass task">
-                                            <Share2 className="h-4 w-4" />
-                                          </Button>
-                                        )}
-                                        {userId === task.assignedBy && task.status !== "completed" && task.status !== "cancelled" && (
-                                          <Button variant="ghost" size="sm" onClick={() => handleEditClick(task)} className="h-8 w-8 hover:bg-amber-100 text-amber-600" title="Edit task">
-                                            <Pencil className="h-4 w-4" />
-                                          </Button>
-                                        )}
-                                        {canReassignTask(task) && (
-                                          <Button variant="ghost" size="sm" onClick={() => handleReassignClick(task)} className="h-8 w-8 hover:bg-green-100 text-green-600" title="Reassign task">
-                                            <RefreshCcw className="h-4 w-4" />
-                                          </Button>
-                                        )}
-                                        {userId === task.assignedBy && canDeleteTask(task) && (
-                                          <Button variant="ghost" size="sm" onClick={() => handleDeleteTask(task.id)} disabled={deletingTaskId === task.id} className="h-8 w-8 hover:bg-red-100 text-red-600" title="Delete task">
-                                            {deletingTaskId === task.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                          </Button>
-                                        )}
-                                      </div>
-                                    </TableCell>
-                                  </TableRow>
-                                ))
-                              ) : (
-                                <TableRow>
-                                  <TableCell colSpan={5} className="h-40 text-center text-slate-400">No matching tasks found in this project.</TableCell>
-                                </TableRow>
-                              )}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    )}
+      )}
 
       {/* Pass Task Dialog */}
       <Dialog
@@ -5782,7 +5750,7 @@ const TaskManagement: React.FC = () => {
                                 )}
                               </div>
                               {note && (
-                                <div className="italic whitespace-pre-wrap break-words">
+                                <div className="whitespace-pre-wrap break-words">
                                   "{note}"
                                 </div>
                               )}
@@ -6073,8 +6041,8 @@ const TaskManagement: React.FC = () => {
                                 {/* Message Content */}
                                 <div
                                   className={`rounded-lg px-3 py-2 shadow-sm ${isOwnComment
-                                      ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-tr-none"
-                                      : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-tl-none"
+                                    ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-tr-none"
+                                    : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-tl-none"
                                     }`}
                                 >
                                   {/* Role badge for own messages (inside bubble) */}
@@ -6097,8 +6065,8 @@ const TaskManagement: React.FC = () => {
                                       rel="noopener noreferrer"
                                       download={comment.file_name}
                                       className={`flex items-center gap-2 p-2 rounded-lg mb-2 transition-colors ${isOwnComment
-                                          ? "bg-white/10 hover:bg-white/20"
-                                          : "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600"
+                                        ? "bg-white/10 hover:bg-white/20"
+                                        : "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600"
                                         }`}
                                     >
                                       {comment.file_type?.startsWith(
@@ -6750,7 +6718,7 @@ const TaskManagement: React.FC = () => {
                                 <MessageSquare className="h-3 w-3" />
                                 Note
                               </div>
-                              <div className="text-sm italic text-foreground whitespace-pre-wrap break-words">
+                              <div className="text-sm text-foreground whitespace-pre-wrap break-words">
                                 "{note}"
                               </div>
                             </div>

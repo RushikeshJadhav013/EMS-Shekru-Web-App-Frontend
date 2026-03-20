@@ -386,7 +386,7 @@ class ChatService {
   }
 
   getChatPermissions(userRole: UserRole) {
-    const canCreateGroup = ['admin', 'hr', 'manager'].includes(userRole);
+    const canCreateGroup = ['admin', 'hr', 'manager', 'team_lead', 'employee'].includes(userRole);
     return {
       canCreateGroups: canCreateGroup,
       canChatWith: ['admin', 'hr', 'manager', 'team_lead', 'employee'] as UserRole[],

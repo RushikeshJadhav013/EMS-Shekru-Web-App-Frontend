@@ -95,6 +95,18 @@ const AttendancePage: React.FC = () => {
     }
   };
 
+  // Helper function to format work hours from decimal to "HH:MM" format
+  const formatWorkHours = (decimalHours: any): string => {
+    const numericHours = Number(decimalHours);
+    if (isNaN(numericHours) || numericHours <= 0) {
+      return "00:00";
+    }
+    const totalMinutes = Math.round(numericHours * 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+  };
+
   // Helper to fetch today's attendance for current user
   const fetchTodayAttendance = async () => {
     if (!user?.id) return;
@@ -124,7 +136,7 @@ const AttendancePage: React.FC = () => {
           checkInSelfie: todayRecord.checkInSelfie || todayRecord.selfie || '',
           checkOutSelfie: todayRecord.checkOutSelfie || '',
           status: 'present',
-          workHours: todayRecord.total_hours,
+          workHours: todayRecord.total_hours || (todayRecord.check_in && todayRecord.check_out ? (new Date(todayRecord.check_out).getTime() - new Date(todayRecord.check_in).getTime()) / (1000 * 60 * 60) : 0) || 0,
           // New fields
           employeeId: todayRecord.employee_id,
           name: todayRecord.name,
@@ -165,7 +177,7 @@ const AttendancePage: React.FC = () => {
               checkInSelfie: rec.checkInSelfie || rec.selfie || '',
               checkOutSelfie: rec.checkOutSelfie || '',
               status: status,
-              workHours: rec.total_hours,
+              workHours: rec.total_hours || (rec.check_in && rec.check_out ? (new Date(rec.check_out).getTime() - new Date(rec.check_in).getTime()) / (1000 * 60 * 60) : 0) || 0,
               // New fields
               employeeId: rec.employee_id,
               name: rec.name,
@@ -206,7 +218,7 @@ const AttendancePage: React.FC = () => {
               checkInSelfie: rec.checkInSelfie || rec.selfie || '',
               checkOutSelfie: rec.checkOutSelfie || '',
               status: status,
-              workHours: rec.total_hours,
+              workHours: rec.total_hours || (rec.check_in && rec.check_out ? (new Date(rec.check_out).getTime() - new Date(rec.check_in).getTime()) / (1000 * 60 * 60) : 0) || 0,
               // New fields
               employeeId: rec.employee_id,
               name: rec.name,
@@ -920,7 +932,7 @@ const AttendancePage: React.FC = () => {
 
   const formatAttendanceTime = (dateString: string, timeString?: string) => {
     if (!timeString) return '-';
-    return formatDateTimeComponentsIST(dateString, timeString, 'hh:mm a');
+    return formatDateTimeComponentsIST(dateString, timeString, 'h:mm a');
   };
 
   if (showCamera) {
@@ -1192,7 +1204,9 @@ const AttendancePage: React.FC = () => {
                             <Clock className="h-4 w-4 text-blue-500" />
                             <span className="text-sm font-medium">Total Work Hours</span>
                           </div>
-                          <p className="text-lg font-semibold">{currentAttendance.workHours} Hrs</p>
+                          <div className="flex items-baseline text-3xl font-black text-blue-600 dark:text-blue-400 tabular-nums">
+                            {formatWorkHours(currentAttendance.workHours)}
+                          </div>
                         </div>
                       )}
                     </>
@@ -1251,7 +1265,11 @@ const AttendancePage: React.FC = () => {
                               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                 <span>In: {formatAttendanceTime(record.date, record.checkInTime)}</span>
                                 <span>Out: {formatAttendanceTime(record.date, record.checkOutTime)}</span>
-                                {record.workHours && <span>{record.workHours} Hrs</span>}
+                                {record.checkOutTime && (
+                                  <span className="inline-flex items-center font-bold text-slate-900 dark:text-white tabular-nums bg-slate-100 dark:bg-slate-800/50 px-2 py-0.5 rounded text-xs border border-slate-200 dark:border-slate-700">
+                                    {formatWorkHours(record.workHours)}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>

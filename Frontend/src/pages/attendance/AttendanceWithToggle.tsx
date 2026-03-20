@@ -572,40 +572,25 @@ const AttendanceWithToggle: React.FC = () => {
     );
   };
 
-  // Helper function to format time in "X hrs - Y mins" format with tags
+  // Helper function to format time in "HH:MM" format
   const formatTimeDisplay = (totalSeconds: number): string => {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
 
-    if (hours === 0 && minutes === 0) {
-      return "0 hrs - 0 mins";
-    } else if (hours === 0) {
-      return `0 hrs - ${minutes} mins`;
-    } else if (minutes === 0) {
-      return `${hours} hrs - 0 mins`;
-    } else {
-      return `${hours} hrs - ${minutes} mins`;
-    }
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
   };
 
-  // Helper function to format work hours from decimal to "X hrs - Y mins" format
-  const formatWorkHours = (decimalHours: number): string => {
+  // Helper function to format work hours from decimal to "HH:MM" format
+  const formatWorkHours = (decimalHours: any): string => {
     if (!decimalHours || decimalHours === 0) {
-      return "0 hrs - 0 mins";
+      return "00:00";
     }
 
-    const hours = Math.floor(decimalHours);
-    const minutes = Math.round((decimalHours - hours) * 60);
+    const totalMinutes = Math.round(decimalHours * 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
 
-    if (hours === 0 && minutes === 0) {
-      return "0 hrs - 0 mins";
-    } else if (hours === 0) {
-      return `0 hrs - ${minutes} mins`;
-    } else if (minutes === 0) {
-      return `${hours} hrs - 0 mins`;
-    } else {
-      return `${hours} hrs - ${minutes} mins`;
-    }
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
   };
 
   // Filter attendance history based on quick filter
@@ -615,6 +600,9 @@ const AttendanceWithToggle: React.FC = () => {
     if (historyQuickFilter === "today") {
       const today = todayIST();
       filtered = filtered.filter((record) => record.date === today);
+    } else if (historyQuickFilter === "yesterday") {
+      const yesterday = formatDateIST(subDays(new Date(), 1));
+      filtered = filtered.filter((record) => record.date === yesterday);
     } else if (historyQuickFilter === "date") {
       filtered = filtered.filter((record) => {
         if (
@@ -1252,7 +1240,7 @@ const AttendanceWithToggle: React.FC = () => {
               checkInSelfie: rec.checkInSelfie || "",
               checkOutSelfie: rec.checkOutSelfie || "",
               status: status,
-              workHours: rec.total_hours,
+              workHours: rec.total_hours || (rec.check_in && rec.check_out ? (new Date(rec.check_out).getTime() - new Date(rec.check_in).getTime()) / (1000 * 60 * 60) : 0) || 0,
               workSummary: rec.workSummary || rec.work_summary || null,
               taskDeadlineReason:
                 rec.overdue_reason ||
@@ -1363,7 +1351,7 @@ const AttendanceWithToggle: React.FC = () => {
           checkInSelfie: todayRecord.checkInSelfie || todayRecord.selfie || "",
           checkOutSelfie: todayRecord.checkOutSelfie || "",
           status: "present",
-          workHours: todayRecord.total_hours,
+          workHours: todayRecord.total_hours || (todayRecord.check_in && todayRecord.check_out ? (new Date(todayRecord.check_out).getTime() - new Date(todayRecord.check_in).getTime()) / (1000 * 60 * 60) : 0) || 0,
           workSummary:
             todayRecord.workSummary || todayRecord.work_summary || null,
           taskDeadlineReason:
@@ -1791,7 +1779,7 @@ const AttendanceWithToggle: React.FC = () => {
               rec.checkInSelfie || rec.selfie || rec.selfie_url || "",
             checkOutSelfie: rec.checkOutSelfie || rec.check_out_selfie || "",
             status: statusResult,
-            workHours: rec.total_hours || rec.workHours || 0,
+            workHours: rec.total_hours || rec.workHours || (checkInDate && checkOutDate ? (new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60) : 0) || 0,
             name: rec.name || rec.userName || rec.employee_name || undefined,
             email: rec.email || rec.userEmail || undefined,
             department: rec.department || rec.department_name || undefined,
@@ -3026,7 +3014,8 @@ const AttendanceWithToggle: React.FC = () => {
 
   const formatAttendanceTime = (dateString: string, timeString?: string) => {
     if (!timeString) return "-";
-    return formatDateTimeComponentsIST(dateString, timeString, "hh:mm a");
+    // Change to 'h:mm a' to remove leading zero from hours
+    return formatDateTimeComponentsIST(dateString, timeString, "h:mm a");
   };
 
   if (showCamera) {
@@ -3398,6 +3387,22 @@ const AttendanceWithToggle: React.FC = () => {
                       </Button>
                       <Button
                         variant={
+                          historyQuickFilter === "yesterday"
+                            ? "default"
+                            : "outline"
+                        }
+                        size="sm"
+                        onClick={() => setHistoryQuickFilter("yesterday")}
+                        className={
+                          historyQuickFilter === "yesterday"
+                            ? "bg-blue-600 hover:bg-blue-700 font-bold"
+                            : "font-medium"
+                        }
+                      >
+                        Yesterday
+                      </Button>
+                      <Button
+                        variant={
                           historyQuickFilter === "all" ? "default" : "outline"
                         }
                         size="sm"
@@ -3504,7 +3509,7 @@ const AttendanceWithToggle: React.FC = () => {
                               <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
                                 {t.attendance.checkOutTime}
                               </th>
-                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              <th className="text-center p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap min-w-[120px]">
                                 {t.attendance.hours}
                               </th>
                               <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
@@ -3574,32 +3579,63 @@ const AttendanceWithToggle: React.FC = () => {
                                     )}
                                   </td>
                                   <td className="p-3 whitespace-nowrap">
-                                    {(() => {
-                                      if (
-                                        !record.checkOutTime &&
-                                        record.date === todayIST()
-                                      ) {
-                                        return (
-                                          <OnlineStatusIndicator
-                                            isOnline={isOnline}
-                                            size="sm"
-                                            showLabel={true}
-                                          />
-                                        );
-                                      } else if (record.checkOutTime) {
-                                        return (
-                                          <span className="text-xs text-slate-500 dark:text-slate-400">
-                                            Checked Out
-                                          </span>
-                                        );
-                                      } else {
-                                        return (
-                                          <span className="text-xs text-slate-500 dark:text-slate-400">
-                                            Past Date
-                                          </span>
-                                        );
-                                      }
-                                    })()}
+                                    <div className="flex flex-col items-center gap-1">
+                                      {(() => {
+                                        if (
+                                          !record.checkOutTime &&
+                                          record.date === todayIST()
+                                        ) {
+                                          return (
+                                            <OnlineStatusIndicator
+                                              isOnline={isOnline}
+                                              size="sm"
+                                              showLabel={true}
+                                            />
+                                          );
+                                        } else if (record.checkOutTime) {
+                                          return (
+                                            <span className="text-xs text-slate-500 dark:text-slate-400">
+                                              Checked Out
+                                            </span>
+                                          );
+                                        } else {
+                                          return (
+                                            <span className="text-xs text-slate-500 dark:text-slate-400">
+                                              Past Date
+                                            </span>
+                                          );
+                                        }
+                                      })()}
+
+                                      {(record.checkInStatus || record.checkOutStatus) && (
+                                        <div className="flex flex-col items-center gap-1 border-t border-slate-100 dark:border-slate-800 pt-1 mt-1 w-full">
+                                          {record.checkInStatus && (
+                                            <Badge
+                                              variant="outline"
+                                              className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${
+                                                record.checkInStatus.toLowerCase() === "late"
+                                                  ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
+                                                  : "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400"
+                                              }`}
+                                            >
+                                              In: {record.checkInStatus}
+                                            </Badge>
+                                          )}
+                                          {record.checkOutStatus && (
+                                            <Badge
+                                              variant="outline"
+                                              className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${
+                                                record.checkOutStatus.toLowerCase() === "early"
+                                                  ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
+                                                  : "bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-400"
+                                              }`}
+                                            >
+                                              Out: {record.checkOutStatus}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
                                   </td>
                                   <td className="p-3 whitespace-nowrap">
                                     <div className="flex items-center gap-1.5">
@@ -3623,15 +3659,17 @@ const AttendanceWithToggle: React.FC = () => {
                                       </span>
                                     </div>
                                   </td>
-                                  <td className="p-3 whitespace-nowrap">
-                                    {record.workHours ? (
-                                      <span className="text-xs font-semibold text-slate-900 dark:text-white">
-                                        {formatWorkHours(record.workHours).replace(/^0/, "")}
-                                      </span>
+                                  <td className="p-3">
+                                    {record.checkOutTime ? (
+                                      <div className="flex justify-center items-center">
+                                        <span className="inline-flex items-center text-xs font-bold text-slate-950 dark:text-white whitespace-nowrap bg-blue-50/50 dark:bg-blue-950/20 px-2 py-1 rounded-full border border-blue-100 dark:border-blue-900 shadow-sm tabular-nums">
+                                          {formatWorkHours(record.workHours)}
+                                        </span>
+                                      </div>
                                     ) : (
-                                      <span className="text-xs text-slate-400 dark:text-slate-500">
-                                        -
-                                      </span>
+                                      <div className="text-center">
+                                        <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
+                                      </div>
                                     )}
                                   </td>
                                   <td className="p-3 whitespace-nowrap">
@@ -3703,12 +3741,51 @@ const AttendanceWithToggle: React.FC = () => {
                                     </div>
                                   </td>
                                   <td className="p-3 whitespace-nowrap">
-                                    <div className="flex justify-center">
-                                      {getStatusBadge(
-                                        record.status,
-                                        record.checkInTime,
-                                        record.checkOutTime,
-                                      )}
+                                    <div className="flex flex-col items-center gap-1">
+                                      <div className="flex justify-center">
+                                        {getStatusBadge(
+                                          record.status,
+                                          record.checkInTime,
+                                          record.checkOutTime,
+                                        )}
+                                      </div>
+                                      <div className="flex flex-col items-center gap-1 border-t border-slate-100 dark:border-slate-800 pt-1 mt-1 w-full">
+                                        <div className="flex items-center gap-1 text-[10px] font-medium text-slate-500">
+                                          <Timer className="h-2.5 w-2.5 text-blue-400" />
+                                          <span>
+                                            {(record.scheduledStart || "10:00").replace(/^0/, '')} -{" "}
+                                            {(record.scheduledEnd || "19:00").replace(/^0/, '')}
+                                          </span>
+                                        </div>
+                                        <div className="flex flex-col items-center gap-1">
+                                          {record.checkInStatus && (
+                                            <Badge
+                                              variant="outline"
+                                              className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${
+                                                record.checkInStatus.toLowerCase() ===
+                                                "late"
+                                                  ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
+                                                  : "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400"
+                                              }`}
+                                            >
+                                              In: {record.checkInStatus}
+                                            </Badge>
+                                          )}
+                                          {record.checkOutStatus && (
+                                            <Badge
+                                              variant="outline"
+                                              className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${
+                                                record.checkOutStatus.toLowerCase() ===
+                                                "early"
+                                                  ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
+                                                  : "bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-400"
+                                              }`}
+                                            >
+                                              Out: {record.checkOutStatus}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </div>
                                     </div>
                                   </td>
                                   <td className="p-3 text-xs text-slate-600 dark:text-slate-400 max-w-[280px]">
@@ -4112,22 +4189,18 @@ const AttendanceWithToggle: React.FC = () => {
                                   </span>
                                 </div>
                               </td>
-                              <td className="p-3 whitespace-nowrap">
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="text-xs font-semibold text-slate-900 dark:text-white">
-                                    {(record.totalHoursFormatted ||
-                                      (record.workHours
-                                        ? formatWorkHours(record.workHours)
-                                        : "-")).replace(/^0/, "")}
-                                  </span>
-                                  {record.workHours &&
-                                    record.workHours > 0 &&
-                                    record.totalHoursFormatted && (
-                                      <span className="text-[10px] text-slate-400">
-                                        ({formatWorkHours(record.workHours)})
-                                      </span>
-                                    )}
-                                </div>
+                              <td className="p-3">
+                                {record.checkOutTime ? (
+                                  <div className="flex justify-center items-center">
+                                    <span className="inline-flex items-center text-xs font-bold text-slate-950 dark:text-white whitespace-nowrap bg-blue-50/50 dark:bg-blue-950/20 px-2 py-1 rounded-full border border-blue-100 dark:border-blue-900 shadow-sm tabular-nums">
+                                      {formatWorkHours(record.workHours)}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="text-center">
+                                    <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
+                                  </div>
+                                )}
                               </td>
                               <td className="p-3 whitespace-nowrap">
                                 {record.checkInLocation?.address &&
@@ -4212,7 +4285,7 @@ const AttendanceWithToggle: React.FC = () => {
                                         {(record.scheduledEnd || "19:00").replace(/^0/, '')}
                                       </span>
                                     </div>
-                                    <div className="flex flex-wrap items-center justify-center gap-1">
+                                    <div className="flex flex-col items-center gap-1">
                                       {record.checkInStatus && (
                                         <Badge
                                           variant="outline"
