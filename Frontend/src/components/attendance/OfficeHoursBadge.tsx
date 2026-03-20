@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Building2 } from 'lucide-react';
 import { formatTimeIST } from '@/utils/timezone';
-import { API_BASE_URL } from '@/lib/api';
+import { apiService } from '@/lib/api';
 
 interface OfficeTiming {
   id: number;
@@ -32,15 +32,8 @@ const OfficeHoursBadge: React.FC<OfficeHoursBadgeProps> = ({
 
   const fetchGlobalOfficeHours = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/attendance/office-hours`, {
-        headers: {
-          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
-          'Content-Type': 'application/json',
-        },
-      });
-      if (response.ok) {
-        const officeTimings: OfficeTiming[] = await response.json();
+      const officeTimings: OfficeTiming[] = await apiService.getOfficeTimings();
+      if (officeTimings) {
         // Find global office hours (department is null or empty)
         const globalTiming = officeTimings.find(timing =>
           timing.is_active && (!timing.department || timing.department === '')

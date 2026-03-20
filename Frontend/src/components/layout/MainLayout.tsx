@@ -38,7 +38,6 @@ import {
   ClipboardList,
   BarChart3,
   Bell,
-  Settings,
   LogOut,
   Menu,
   X,
@@ -262,14 +261,7 @@ const MainLayout: React.FC = () => {
                   <span className="font-medium">{t.common.profile}</span>
                 </div>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate(`/${user.role}/settings`)} className="cursor-pointer py-3 hover:bg-purple-50 dark:hover:bg-purple-950 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
-                    <Settings className="h-4 w-4 text-white" />
-                  </div>
-                  <span className="font-medium">{t.common.settings}</span>
-                </div>
-              </DropdownMenuItem>
+
               <DropdownMenuSeparator className="my-0" />
               <DropdownMenuItem onClick={handleLogoutClick} className="text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />

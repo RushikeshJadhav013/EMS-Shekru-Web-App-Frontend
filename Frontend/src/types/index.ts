@@ -51,6 +51,17 @@ export interface AttendanceRecord {
   remarks?: string;
   taskDeadlineReason?: string;
   taskPendingReason?: string; // Deprecated: kept for backward compatibility
+
+  // New fields from API
+  checkInLocationLabel?: string | null;
+  checkOutLocationLabel?: string | null;
+  checkInStatus?: string | null;
+  checkOutStatus?: string | null;
+  scheduledStart?: string | null;
+  scheduledEnd?: string | null;
+  employeeId?: string;
+  name?: string;
+  department?: string;
 }
 
 export interface LeaveRequest {

@@ -53,7 +53,7 @@ class ChatService {
           userName: m.name || '',
           userRole: m.role || 'employee',
           isAdmin: m.role === 'admin',
-          department: m.department || 'N/A',
+          branch: m.department || 'N/A',
           joinedAt: this.formatTimestamp(m.joined_at),
           isOnline: false,
         })),
@@ -111,7 +111,24 @@ class ChatService {
         senderName: '',
         senderRole: 'employee',
         content: msg.content,
-        messageType: 'text',
+        messageType: (() => {
+          const type = (msg.message_type || msg.messageType || 'text').toLowerCase();
+          if (type === 'file' || type === 'image' || type === 'emoji') return type as any;
+          
+          const content = msg.content || '';
+          // Sniff content for base64 or data URLs if type is ambiguous
+          if (content.startsWith('data:image/')) return 'image';
+          if (content.includes('|data:') || content.startsWith('data:application/') || content.startsWith('data:text/')) return 'file';
+          
+          // Sniff for common extensions in links if it looks like a URL
+          const lowerContent = content.toLowerCase();
+          if (lowerContent.startsWith('http')) {
+            if (lowerContent.match(/\.(jpg|jpeg|png|gif|webp|svg)($|\?)/)) return 'image';
+            if (lowerContent.match(/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|zip|rar|csv)($|\?)/)) return 'file';
+          }
+          
+          return 'text';
+        })(),
         timestamp: this.formatTimestamp(msg.timestamp),
         isRead: (msg.read_by || []).length > 1,
         replyTo: msg.reply_to?.toString()
@@ -123,7 +140,7 @@ class ChatService {
   }
 
   // Send a message
-  async sendMessage(chatId: string, chatType: 'individual' | 'group', content: string, messageType: 'text' | 'emoji' = 'text', replyTo?: string): Promise<ChatMessage> {
+  async sendMessage(chatId: string, chatType: 'individual' | 'group', content: string, messageType: 'text' | 'emoji' | 'file' | 'image' = 'text', replyTo?: string): Promise<ChatMessage> {
     const typePath = chatType === 'individual' ? 'private' : 'group';
     try {
       const response = await fetch(`${API_BASE_URL}/chats/${typePath}/${chatId}/messages`, {
@@ -133,6 +150,7 @@ class ChatService {
           chat_type: typePath,
           chat_id: chatId,
           content,
+          message_type: messageType,
           reply_to: replyTo
         }),
       });
@@ -148,7 +166,15 @@ class ChatService {
         senderName: 'Me',
         senderRole: 'employee',
         content: data.content,
-        messageType: 'text',
+        messageType: (() => {
+          const type = (data.message_type || messageType || 'text').toLowerCase();
+          if (type === 'file' || type === 'image' || type === 'emoji') return type as any;
+          
+          const content = data.content || '';
+          if (content.startsWith('data:image/')) return 'image';
+          if (content.includes('|data:') || content.startsWith('data:application/') || content.startsWith('data:text/')) return 'file';
+          return 'text';
+        })(),
         timestamp: this.formatTimestamp(data.timestamp),
         isRead: false,
         replyTo: data.reply_to?.toString()
@@ -195,7 +221,7 @@ class ChatService {
           userId: id.toString(),
           userName: '',
           userRole: 'employee' as UserRole,
-          department: 'N/A',
+          branch: 'N/A',
           joinedAt: new Date().toISOString(),
           isOnline: false
         })))
@@ -360,7 +386,7 @@ class ChatService {
   }
 
   getChatPermissions(userRole: UserRole) {
-    const canCreateGroup = ['admin', 'hr', 'manager'].includes(userRole);
+    const canCreateGroup = ['admin', 'hr', 'manager', 'team_lead', 'employee'].includes(userRole);
     return {
       canCreateGroups: canCreateGroup,
       canChatWith: ['admin', 'hr', 'manager', 'team_lead', 'employee'] as UserRole[],
@@ -389,7 +415,7 @@ class ChatService {
     }
   }
 
-  async editMessage(chatId: string, chatType: 'individual' | 'group', messageId: string, newContent: string): Promise<ChatMessage> {
+  async editMessage(chatId: string, chatType: 'individual' | 'group', messageId: string, newContent: string): Promise<void> {
     const typePath = chatType === 'individual' ? 'private' : 'group';
     try {
       const response = await fetch(`${API_BASE_URL}/chats/${typePath}/${chatId}/messages/${messageId}/edit`, {
@@ -404,22 +430,6 @@ class ChatService {
       });
 
       if (!response.ok) throw new Error('Failed to edit message');
-      const data = await response.json();
-
-      // Construct a partial updated message since API only returns ID and status
-      // In a real scenario, you'd want the full updated message from the backend
-      return {
-        id: messageId,
-        chatId: chatId,
-        content: newContent,
-        timestamp: new Date().toISOString(),
-        editedAt: new Date().toISOString(),
-        senderId: '', // These will be merged in context if needed
-        senderName: '',
-        senderRole: 'employee',
-        messageType: 'text',
-        isRead: true
-      } as ChatMessage;
     } catch (error) {
       console.error('Error editing message:', error);
       throw error;

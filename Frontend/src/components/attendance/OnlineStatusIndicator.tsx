@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Clock, Timer, History, User } from 'lucide-react';
 import { formatDateTimeIST } from '@/utils/timezone';
-import { API_BASE_URL } from '@/lib/api';
+import { apiService } from '@/lib/api';
 
 interface OnlineStatusIndicatorProps {
   isOnline: boolean;
@@ -49,31 +49,15 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-
       // Load status history
-      const historyResponse = await fetch(`${API_BASE_URL}/attendance/online-status/${attendanceId}`, {
-        headers: {
-          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (historyResponse.ok) {
-        const historyData = await historyResponse.json();
+      const historyData = await apiService.getOnlineStatusHistory(attendanceId);
+      if (historyData) {
         setStatusHistory(historyData.status_history || []);
       }
 
       // Load working hours calculation
-      const hoursResponse = await fetch(`${API_BASE_URL}/attendance/working-hours/${attendanceId}`, {
-        headers: {
-          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (hoursResponse.ok) {
-        const hoursData = await hoursResponse.json();
+      const hoursData = await apiService.getWorkingHours(attendanceId);
+      if (hoursData) {
         setWorkingHours(hoursData);
       }
     } catch (error) {

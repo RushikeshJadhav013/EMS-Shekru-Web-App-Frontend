@@ -12,7 +12,7 @@ interface ChatContextType {
   isLoading: boolean;
   unreadCount: number;
   setActiveChat: (chat: Chat | null) => void;
-  sendMessage: (content: string, messageType?: 'text' | 'emoji', replyTo?: string) => Promise<void>;
+  sendMessage: (content: string, messageType?: 'text' | 'emoji' | 'file' | 'image', replyTo?: string) => Promise<void>;
   createChat: (type: 'individual' | 'group', participantIds: string[], name?: string, description?: string) => Promise<Chat>;
   loadChats: () => Promise<void>;
   loadMessages: (chatId: string, type?: 'individual' | 'group') => Promise<void>;
@@ -39,7 +39,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
 
   // RBAC Filtering logic
-  const isUserVisible = useCallback((targetUser: { role: string; department: string; id: string }) => {
+  const isUserVisible = useCallback((targetUser: { role: string; department?: string; id: string }) => {
     if (!user) return false;
     if (user.id === targetUser.id) return true;
 
@@ -122,7 +122,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const fetchedMessages = await chatService.getChatMessages(chatId, chatType);
-      setMessages(fetchedMessages);
+      // Reverse messages to show oldest at top and newest at bottom (WhatsApp style)
+      setMessages([...fetchedMessages].reverse());
     } catch (error) {
       console.error('Failed to load messages:', error);
       toast({
@@ -141,9 +142,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const users = await chatService.getAvailableUsers();
-      // Filter available users based on RBAC rules
-      const filteredUsers = users.filter(u => isUserVisible(u));
-      setAvailableUsers(filteredUsers);
+      // Backend automatically returns eligible users, so we can set them directly
+      setAvailableUsers(users);
     } catch (error) {
       console.error('Failed to load available users:', error);
       toast({
@@ -155,7 +155,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, toast]);
 
   // Send message
-  const sendMessage = useCallback(async (content: string, messageType: 'text' | 'emoji' = 'text', replyTo?: string) => {
+  const sendMessage = useCallback(async (content: string, messageType: 'text' | 'emoji' | 'file' | 'image' = 'text', replyTo?: string) => {
     if (!activeChat || !user) return;
 
     try {
@@ -314,9 +314,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!activeChat) return;
 
     try {
-      const updatedMessage = await chatService.editMessage(activeChat.id, activeChat.type, messageId, newContent);
+      await chatService.editMessage(activeChat.id, activeChat.type, messageId, newContent);
       setMessages(prev => prev.map(message =>
-        message.id === messageId ? { ...message, ...updatedMessage, content: newContent, editedAt: new Date().toISOString() } : message
+        message.id === messageId ? { ...message, content: newContent, editedAt: new Date().toISOString() } : message
       ));
 
       toast({
@@ -402,10 +402,26 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const removeParticipants = useCallback(async (chatId: string, userIds: string[]) => {
     try {
       await chatService.removeParticipant(chatId, userIds);
-      loadChats(); // Reload to get updated member list
+      
+      // Update local state for chats list
+      setChats(prev => prev.map(chat => 
+        chat.id === chatId 
+          ? { ...chat, participants: chat.participants.filter(p => !userIds.includes(p.userId)), memberCount: (chat.memberCount || 0) - userIds.length }
+          : chat
+      ));
+
+      // Update active chat if it matches to ensure immediate UI feedback
+      if (activeChat?.id === chatId) {
+        setActiveChat(prev => prev ? {
+          ...prev,
+          participants: prev.participants.filter(p => !userIds.includes(p.userId)),
+          memberCount: (prev.memberCount || 0) - userIds.length
+        } : null);
+      }
+
       toast({
         title: 'Success',
-        description: `Removed ${userIds.length} members`,
+        description: `Removed ${userIds.length} member(s)`,
       });
     } catch (error) {
       console.error('Failed to remove participants:', error);
@@ -415,7 +431,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: 'destructive',
       });
     }
-  }, [loadChats, toast]);
+  }, [activeChat, toast]);
 
   // Handle active chat change
   const handleSetActiveChat = useCallback((chat: Chat | null) => {

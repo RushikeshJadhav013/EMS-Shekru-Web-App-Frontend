@@ -1,0 +1,27 @@
+﻿src/pages/tasks/TaskManagement.tsx(2,25): error TS2307: Cannot find module '@/contexts/AuthContext' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(4,29): error TS2307: Cannot find module '@/contexts/LanguageContext' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(5,34): error TS2307: Cannot find module '@/contexts/NotificationContext' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(6,44): error TS2307: Cannot find module '@/types' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(13,8): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(14,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(15,23): error TS2307: Cannot find module '@/components/ui/badge' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(16,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(17,23): error TS2307: Cannot find module '@/components/ui/label' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(18,26): error TS2307: Cannot find module '@/components/ui/textarea' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(25,8): error TS2307: Cannot find module '@/components/ui/select' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(26,26): error TS2307: Cannot find module '@/components/ui/checkbox' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(34,8): error TS2307: Cannot find module '@/components/ui/dialog' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(42,8): error TS2307: Cannot find module '@/components/ui/table' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(43,58): error TS2307: Cannot find module '@/components/ui/tabs' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(44,28): error TS2307: Cannot find module '@/components/ui/pagination' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(45,26): error TS2307: Cannot find module '@/hooks/use-toast' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(46,27): error TS2307: Cannot find module '@/components/ui/TruncatedText' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(92,8): error TS2307: Cannot find module '@/utils/timezone' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(93,42): error TS2307: Cannot find module '@/lib/api' or its corresponding type declarations.
+src/pages/tasks/TaskManagement.tsx(3643,16): error TS2304: Cannot find name 'counts'.
+src/pages/tasks/TaskManagement.tsx(3672,16): error TS2304: Cannot find name 'counts'.
+src/pages/tasks/TaskManagement.tsx(3701,16): error TS2304: Cannot find name 'counts'.
+src/pages/tasks/TaskManagement.tsx(3730,16): error TS2304: Cannot find name 'counts'.
+src/pages/tasks/TaskManagement.tsx(3759,16): error TS2304: Cannot find name 'counts'.
+src/pages/tasks/TaskManagement.tsx(3788,16): error TS2304: Cannot find name 'counts'.
+

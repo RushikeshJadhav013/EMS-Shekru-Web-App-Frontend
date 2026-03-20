@@ -479,8 +479,8 @@ const MeetingsPage: React.FC = () => {
 
                     <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) resetForm(); }}>
                         <DialogContent className="sm:max-w-[650px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
-                            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 text-white">
-                                <DialogTitle className="text-2xl font-black uppercase tracking-tighter">
+                            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-5 text-white">
+                                <DialogTitle className="text-xl font-black uppercase tracking-tighter">
                                     {selectedMeeting ? 'Edit Meeting' : 'Schedule Meeting'}
                                 </DialogTitle>
                                 <DialogDescription className="text-blue-100 font-medium opacity-80 uppercase text-[10px] tracking-widest mt-1">
@@ -488,8 +488,8 @@ const MeetingsPage: React.FC = () => {
                                 </DialogDescription>
                             </div>
 
-                            <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                                <div className="grid grid-cols-2 gap-6">
+                            <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                                <div className="grid grid-cols-2 gap-4">
                                     <div className="grid gap-2">
                                         <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Meeting Type</Label>
                                         <Select
@@ -533,7 +533,7 @@ const MeetingsPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-6">
+                                <div className="grid grid-cols-2 gap-4">
                                     <div className="grid gap-2">
                                         <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Start Time</Label>
                                         <Input type="datetime-local" className="rounded-xl h-11" value={formData.start_time} onChange={(e) => setFormData({ ...formData, start_time: e.target.value })} />
@@ -647,7 +647,7 @@ const MeetingsPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            <DialogFooter className="p-8 bg-slate-50 flex justify-center gap-3 border-t">
+                            <DialogFooter className="p-5 bg-slate-50 flex justify-center gap-3 border-t">
                                 <Button variant="ghost" onClick={() => setIsCreateDialogOpen(false)} className="rounded-xl h-11 px-6 font-bold text-xs">Cancel</Button>
                                 <Button disabled={isSubmitting} onClick={handleCreateMeeting} className="rounded-xl h-11 bg-blue-600 text-white font-black text-xs px-10">
                                     {isSubmitting ? "Saving..." : selectedMeeting ? "Update Meeting" : "Schedule Meeting"}
