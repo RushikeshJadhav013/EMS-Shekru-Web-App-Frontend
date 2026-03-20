@@ -181,13 +181,13 @@ const MeetingsPage: React.FC = () => {
 
             setMeetings(normalizedAll);
             setMyMeetings(normalizedMy);
-            
+
             // Handle various department response formats
             let finalDepts = [];
             if (Array.isArray(deptsData)) finalDepts = deptsData;
             else if ((deptsData as any)?.departments) finalDepts = (deptsData as any).departments;
             else if ((deptsData as any)?.data) finalDepts = (deptsData as any).data;
-            
+
             // Fallback for departments if empty
             if (finalDepts.length === 0) {
                 try {
@@ -202,7 +202,7 @@ const MeetingsPage: React.FC = () => {
             // Merge employees and managers for a complete list (Admin, HR, Manager, etc.)
             let allEmployees = Array.isArray(empsData) ? empsData : (empsData as any)?.employees || (empsData as any)?.data || [];
             const allManagers = Array.isArray(managersData) ? managersData : (managersData as any)?.managers || (managersData as any)?.data || [];
-            
+
             const chatUsers = Array.isArray(chatUsersData) ? chatUsersData.map((u: any) => ({
                 user_id: u.id,
                 name: u.name,
@@ -235,7 +235,7 @@ const MeetingsPage: React.FC = () => {
                     mergedMap.set(String(id), { ...existing, ...person });
                 }
             });
-            
+
             setEmployees(Array.from(mergedMap.values()));
 
 
@@ -494,9 +494,9 @@ const MeetingsPage: React.FC = () => {
                                         <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Meeting Type</Label>
                                         <Select
                                             value={formData.type || "one-to-one"}
-                                             onValueChange={(v: any) => {
+                                            onValueChange={(v: any) => {
                                                 const newFormData = { ...formData, type: v, team_id: undefined, project_id: undefined, participant_ids: [] };
-                                                
+
                                                 if (v === 'company') {
                                                     newFormData.participant_ids = employees.map(emp => Number(emp.user_id || emp.id)).filter(id => !isNaN(id));
                                                 } else if (v === 'team' && isTeamLead && user?.department) {
@@ -504,8 +504,8 @@ const MeetingsPage: React.FC = () => {
                                                     const userDepts = user.department.split(',').map(d => d.trim().toLowerCase());
                                                     const myDept = departments.find(d => {
                                                         const deptName = (d.name || "").toLowerCase().trim();
-                                                        return userDepts.includes(deptName) || 
-                                                            ( (user as any).department_id && d.id === Number((user as any).department_id) );
+                                                        return userDepts.includes(deptName) ||
+                                                            ((user as any).department_id && d.id === Number((user as any).department_id));
                                                     });
 
                                                     if (myDept) {
@@ -614,14 +614,14 @@ const MeetingsPage: React.FC = () => {
                                             if (formData.type === 'team' && formData.team_id) {
                                                 const dept = departments.find((d: any) => d.id === formData.team_id);
                                                 const targetDeptName = (dept?.name || "").toLowerCase().trim();
-                                                
+
                                                 const empDeptId = Number(emp.department_id || emp.departmentId);
                                                 if (empDeptId === formData.team_id) return true;
 
                                                 const empDeptStr = (emp.department || emp.department_name || emp.branch || "").toLowerCase();
                                                 // Support comma-separated departments (e.g., "Engineering, HR")
                                                 const empDepts = empDeptStr.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
-                                                
+
                                                 return targetDeptName && empDepts.includes(targetDeptName);
                                             }
                                             // Show all employees for other meeting types (Project, 1:1, etc.)
