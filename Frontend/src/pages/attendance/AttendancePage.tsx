@@ -1333,6 +1333,8 @@ const AttendancePage: React.FC = () => {
                       date={wfhStartDate}
                       onDateChange={setWfhStartDate}
                       placeholder="Select start date"
+                      disablePastDates={true}
+                      toDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
                     />
                   </div>
                   <div className="space-y-2">
@@ -1341,6 +1343,9 @@ const AttendancePage: React.FC = () => {
                       date={wfhEndDate}
                       onDateChange={setWfhEndDate}
                       placeholder="Select end date"
+                      disablePastDates={true}
+                      fromDate={wfhStartDate}
+                      toDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
                     />
                   </div>
                 </div>
@@ -1515,14 +1520,19 @@ const AttendancePage: React.FC = () => {
                   date={wfhStartDate}
                   onDateChange={setWfhStartDate}
                   placeholder="Select start date"
+                  disablePastDates={true}
+                  toDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
                 />
               </div>
               <div className="space-y-2">
-                <Label>End Date *</Label>
+                <Label htmlFor="edit-wfh-end-date">End Date <span className="text-red-500">*</span></Label>
                 <DatePicker
                   date={wfhEndDate}
                   onDateChange={setWfhEndDate}
                   placeholder="Select end date"
+                  disablePastDates={true}
+                  fromDate={wfhStartDate}
+                  toDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
                 />
               </div>
             </div>

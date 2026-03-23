@@ -157,10 +157,10 @@ const AttendanceManager: React.FC = () => {
     | "last_12_months"
     | "custom"
   >("today");
-  const [customStartDate, setCustomStartDate] = useState<Date>(
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(
     subDays(nowIST(), 7),
   );
-  const [customEndDate, setCustomEndDate] = useState<Date>(nowIST());
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(nowIST());
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isExporting, setIsExporting] = useState(false);
@@ -372,7 +372,6 @@ const AttendanceManager: React.FC = () => {
 
   useEffect(() => {
     setWfhCurrentPage(1);
-    // If start date becomes after end date, adjust end date
     if (
       wfhDecisionsStartDate &&
       wfhDecisionsEndDate &&
@@ -405,12 +404,27 @@ const AttendanceManager: React.FC = () => {
 
   const parseTimeValue = (value: string) => {
     if (!value) return { hour12: "10", minute: "00", meridiem: "AM" };
-    const [h, m] = value.split(":");
-    const hour = Math.max(0, Math.min(23, Number(h) || 0));
+    
+    // Support formats like "09:30", "09:30 AM", "09:30AM", "21:30"
+    const timeOnly = value.split(/\s|(?=[AP]M)/i)[0];
+    const [h, m] = timeOnly.split(":");
+    
+    let hour = Math.max(0, Math.min(23, Number(h) || 0));
     const minute = Math.max(0, Math.min(59, Number(m) || 0));
-    const meridiem = hour >= 12 ? "PM" : "AM";
+    
+    // Detect meridiem from string if present, otherwise from hour
+    let meridiem: "AM" | "PM" = "AM";
+    if (value.toUpperCase().includes("PM")) {
+      meridiem = "PM";
+    } else if (value.toUpperCase().includes("AM")) {
+      meridiem = "AM";
+    } else {
+      meridiem = hour >= 12 ? "PM" : "AM";
+    }
+    
     let hour12 = hour % 12;
     if (hour12 === 0) hour12 = 12;
+    
     return {
       hour12: hour12.toString().padStart(2, "0"),
       minute: minute.toString().padStart(2, "0"),
@@ -912,8 +926,8 @@ const AttendanceManager: React.FC = () => {
       );
       if (globalTiming) {
         setGlobalTimingForm({
-          startTime: (globalTiming.start_time || "").slice(0, 5) || "10:00 AM",
-          endTime: (globalTiming.end_time || "").slice(0, 5) || "07:00PM",
+          startTime: (globalTiming.start_time || "").slice(0, 5) || "10:00",
+          endTime: (globalTiming.end_time || "").slice(0, 5) || "19:00",
           checkInGrace: globalTiming.check_in_grace_minutes ?? 0,
           checkOutGrace: globalTiming.check_out_grace_minutes ?? 0,
         });
@@ -1012,8 +1026,8 @@ const AttendanceManager: React.FC = () => {
   const handleDepartmentTimingEdit = (timing: OfficeTiming) => {
     setDepartmentTimingForm({
       department: timing.department || "",
-      startTime: (timing.start_time || "").slice(0, 5) || "10:00 AM",
-      endTime: (timing.end_time || "").slice(0, 5) || "07:00 PM",
+      startTime: (timing.start_time || "").slice(0, 5) || "10:00",
+      endTime: (timing.end_time || "").slice(0, 5) || "19:00",
       checkInGrace: timing.check_in_grace_minutes ?? 0,
       checkOutGrace: timing.check_out_grace_minutes ?? 0,
     });
@@ -1382,6 +1396,9 @@ const AttendanceManager: React.FC = () => {
         }
         if (filterStatus === "present") {
           return !!record.checkInTime;
+        }
+        if (filterStatus === "absent") {
+          return statusValue === "absent" || !record.checkInTime;
         }
         return true;
       });
@@ -1805,13 +1822,18 @@ const AttendanceManager: React.FC = () => {
     const normalized = timeValue.includes(":")
       ? timeValue.slice(0, 5)
       : timeValue;
-    const [hour, minute] = normalized.split(":");
-    if (hour === undefined || minute === undefined) return normalized;
     try {
+      const [h, m] = normalized.split(":");
+      const hour = parseInt(h, 10);
+      const minute = parseInt(m, 10);
+      
+      if (isNaN(hour) || isNaN(minute)) return normalized;
+      
       const date = new Date();
-      date.setHours(Number(hour), Number(minute));
+      date.setHours(hour, minute, 0, 0);
       return formatTimeIST(date, "HH:mm");
-    } catch {
+    } catch (e) {
+      console.error("formatTimeDisplay error:", e);
       return normalized;
     }
   };
@@ -2247,7 +2269,6 @@ const AttendanceManager: React.FC = () => {
                     <DatePicker
                       date={customEndDate}
                       onDateChange={setCustomEndDate}
-                      toDate={new Date()}
                       placeholder="End Date"
                       className="w-full bg-white dark:bg-gray-950 border-indigo-200 h-11"
                     />
@@ -4192,7 +4213,6 @@ const AttendanceManager: React.FC = () => {
                             <DatePicker
                               date={wfhDecisionsStartDate}
                               onDateChange={setWfhDecisionsStartDate}
-                              toDate={new Date()}
                               placeholder="Start Date"
                               className="w-full bg-white dark:bg-gray-950 border-blue-200"
                             />
@@ -4206,7 +4226,6 @@ const AttendanceManager: React.FC = () => {
                               date={wfhDecisionsEndDate}
                               onDateChange={setWfhDecisionsEndDate}
                               fromDate={wfhDecisionsStartDate}
-                              toDate={new Date()}
                               placeholder="End Date"
                               className="w-full bg-white dark:bg-gray-950 border-indigo-200"
                             />

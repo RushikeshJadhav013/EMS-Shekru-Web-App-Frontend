@@ -1190,6 +1190,8 @@ const WFHRequests: React.FC = () => {
                     date && setFormData({ ...formData, startDate: date })
                   }
                   placeholder="Select start date"
+                  disablePastDates={true}
+                  toDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
                 />
               </div>
               <div className="space-y-2">
@@ -1200,6 +1202,9 @@ const WFHRequests: React.FC = () => {
                     date && setFormData({ ...formData, endDate: date })
                   }
                   placeholder="Select end date"
+                  disablePastDates={true}
+                  fromDate={formData.startDate}
+                  toDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
                 />
               </div>
             </div>

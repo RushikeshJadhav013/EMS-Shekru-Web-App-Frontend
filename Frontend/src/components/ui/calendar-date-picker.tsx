@@ -11,12 +11,14 @@ type CalendarDatePickerProps = React.ComponentProps<typeof DayPicker> & {
   currentMonth?: Date;
   onMonthChange?: (date: Date) => void;
   minDate?: Date;
+  toDate?: Date;
 };
 
 export function CalendarDatePicker({
   currentMonth = nowIST(),
   onMonthChange,
   minDate,
+  toDate,
   classNames,
   ...props
 }: CalendarDatePickerProps) {
@@ -44,10 +46,10 @@ export function CalendarDatePicker({
       }
     }
 
-    // Prevent navigation to months after toDate (maxDate)
-    if (props.toDate) {
-      const maxYear = props.toDate.getFullYear();
-      const maxMonthIndex = props.toDate.getMonth();
+    // Prevent navigation to months strictly AFTER toDate's month
+    if (toDate) {
+      const maxYear = toDate.getFullYear();
+      const maxMonthIndex = toDate.getMonth();
       const newYear = newMonth.getFullYear();
       const newMonthIndex = newMonth.getMonth();
 
@@ -108,12 +110,13 @@ export function CalendarDatePicker({
   }, [minDate, currentYear, currentMonthIndex]);
 
   // Check if next month button should be disabled
+  // Only disable when we are already AT the toDate's month (moving forward would exceed the cap)
   const isNextMonthDisabled = React.useMemo(() => {
-    if (!props.toDate) return false;
-    const maxYear = props.toDate.getFullYear();
-    const maxMonthIndex = props.toDate.getMonth();
+    if (!toDate) return false; // No cap — always allow forward navigation
+    const maxYear = toDate.getFullYear();
+    const maxMonthIndex = toDate.getMonth();
     return currentYear > maxYear || (currentYear === maxYear && currentMonthIndex >= maxMonthIndex);
-  }, [props.toDate, currentYear, currentMonthIndex]);
+  }, [toDate, currentYear, currentMonthIndex]);
 
   const enhancedClassNames = {
     ...classNames,

@@ -4933,7 +4933,7 @@ const AttendanceWithToggle: React.FC = () => {
                       }}
                       placeholder="Select date"
                       disablePastDates={true}
-                      fromDate={getTodayISTDate()}
+                      toDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
                       className="w-full bg-white dark:bg-slate-950 border-orange-200 h-11 shadow-sm rounded-xl hover:border-orange-300 focus:border-orange-400 focus:ring-orange-500/20"
                     />
                     {wfhStartDate && !isValidWfhDate(wfhStartDate) && (
@@ -4952,6 +4952,7 @@ const AttendanceWithToggle: React.FC = () => {
                       placeholder="Select end date"
                       disablePastDates={true}
                       fromDate={wfhStartDate || getTodayISTDate()}
+                      toDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
                     />
                     {wfhEndDate && !isValidWfhDate(wfhEndDate) && (
                       <p className="text-xs text-red-500 mt-1">
@@ -6281,7 +6282,7 @@ const AttendanceWithToggle: React.FC = () => {
                   }}
                   placeholder="Select date"
                   disablePastDates={true}
-                  fromDate={getTodayISTDate()}
+                  toDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
                   className="w-full bg-white dark:bg-slate-950 border-orange-200 h-9 shadow-sm rounded-lg hover:border-orange-300 focus:border-orange-400 focus:ring-orange-500/20"
                 />
               </div>
@@ -6294,6 +6295,7 @@ const AttendanceWithToggle: React.FC = () => {
                     placeholder="Select end date"
                     disablePastDates={true}
                     fromDate={wfhStartDate || getTodayISTDate()}
+                    toDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
                   />
                 </div>
               )}

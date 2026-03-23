@@ -37,8 +37,15 @@ export function DatePicker({
   toDate,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
-  // Set minimum date to today if disablePastDates is true
-  const minDate = disablePastDates ? nowIST() : fromDate;
+
+  // Memoize minDate so it has a stable reference across renders.
+  // Without useMemo, `nowIST()` creates a new Date object every render,
+  // which causes the useEffect below to fire on every re-render, resetting the month.
+  const minDate = React.useMemo(
+    () => (disablePastDates ? nowIST() : fromDate),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [disablePastDates, fromDate?.getTime?.()],
+  );
 
   const [currentMonth, setCurrentMonth] = React.useState<Date>(() => {
     if (date) return date;
@@ -47,7 +54,10 @@ export function DatePicker({
     return nowIST();
   });
 
-  // Sync current month when date, minDate, or toDate changes
+  // Sync current month only when the dialog opens or when the selected date changes.
+  // Do NOT include minDate or toDate in the deps — they can be new object references
+  // on every render (e.g. `new Date(...)` inline in the parent), which would cause
+  // this effect to fire after every month navigation and reset back to today.
   React.useEffect(() => {
     if (open) {
       if (date) {
@@ -81,7 +91,8 @@ export function DatePicker({
         setCurrentMonth(nowIST());
       }
     }
-  }, [open, date, minDate, toDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, date]);
 
   const handleSelect = (selectedDate: Date | undefined) => {
     onDateChange?.(selectedDate);
