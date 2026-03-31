@@ -84,7 +84,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { AttendanceRecord, UserRole } from "@/types";
-import { format, subMonths, isAfter } from "date-fns";
+import { format, subMonths, isAfter, subDays } from "date-fns";
 import {
   formatIST,
   formatDateTimeIST,
@@ -244,7 +244,7 @@ const AttendanceWithToggle: React.FC = () => {
     Record<string, boolean>
   >({});
   const [historyQuickFilter, setHistoryQuickFilter] = useState<
-    "today" | "all" | "date"
+    "today" | "all" | "date" | "yesterday"
   >("today");
   const [historyCustomDateRange, setHistoryCustomDateRange] = useState<{
     startDate: Date | null;
@@ -1517,23 +1517,19 @@ const AttendanceWithToggle: React.FC = () => {
       const token = localStorage.getItem("token");
       const headers = { Authorization: token ? `Bearer ${token}` : "" };
 
-      let url = `${API_BASE_URL}/attendance/all`;
-      // Attempt backend enforcement by passing manager/team lead ID
+      const attendanceParams: any = {};
       const userRoleLower = (user?.role || '').toLowerCase();
       if (userRoleLower === 'manager') {
-        const params = [];
-        if (user?.department) params.push(`department=${encodeURIComponent(user.department)}`);
-        params.push(`manager_id=${encodeURIComponent(user!.id)}`);
-        url += `?${params.join('&')}`;
+        if (user?.department) attendanceParams.department = user.department;
+        attendanceParams.manager_id = user?.id;
       } else if (userRoleLower === 'team_lead' || userRoleLower === 'teamlead') {
-        const params = [`team_lead_id=${encodeURIComponent(user!.id)}`];
-        if (user?.department) params.push(`department=${encodeURIComponent(user.department)}`);
-        url += `?${params.join('&')}`;
+        if (user?.department) attendanceParams.department = user.department;
+        attendanceParams.team_lead_id = user?.id;
       }
 
       // Fetch attendance and employees in parallel to ensure we have role data
       const [attendanceDataRaw, employeesRaw] = await Promise.all([
-        apiService.getAttendanceRecords(params),
+        apiService.getAttendanceRecords(attendanceParams),
         apiService.getEmployees(),
       ]);
 
@@ -1635,6 +1631,8 @@ const AttendanceWithToggle: React.FC = () => {
 
           return false;
         });
+      }
+
 
         // Calculate date range based on time period filter
         const today = new Date();

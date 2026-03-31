@@ -12,7 +12,7 @@ interface ChatContextType {
   isLoading: boolean;
   unreadCount: number;
   setActiveChat: (chat: Chat | null) => void;
-  sendMessage: (content: string, messageType?: 'text' | 'emoji', replyTo?: string) => Promise<void>;
+  sendMessage: (content: string, messageType?: 'text' | 'emoji' | 'image' | 'file', replyTo?: string) => Promise<void>;
   createChat: (type: 'individual' | 'group', participantIds: string[], name?: string, description?: string) => Promise<Chat>;
   loadChats: () => Promise<void>;
   loadMessages: (chatId: string, type?: 'individual' | 'group') => Promise<void>;
@@ -179,7 +179,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, toast, isUserVisible]);
 
   // Send message
-  const sendMessage = useCallback(async (content: string, messageType: 'text' | 'emoji' = 'text', replyTo?: string) => {
+  const sendMessage = useCallback(async (content: string, messageType: 'text' | 'emoji' | 'image' | 'file' = 'text', replyTo?: string) => {
     if (!activeChat || !user) return;
 
     try {

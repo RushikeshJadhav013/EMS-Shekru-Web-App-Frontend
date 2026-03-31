@@ -297,7 +297,7 @@ const AddEditSalary = () => {
                 // (Variable pay part of CTC is already subtracted in some contexts, but let's be safe)
                 const variablePart = (watchVarType === 'percentage' ? ctc * (parseNumber(watchVarValue) / 100) : parseNumber(watchVarValue));
                 
-                const annualSpecial = Math.max(0, ctc - variablePart - annualBasic - annualHra - annualMedical - annualConveyance - annualOtherAllowance - annualPfOneSide);
+                const annualSpecial = Math.max(0, ctc - annualBasic - annualHra - annualMedical - annualConveyance - annualOtherAllowance);
 
                 // Always populate manual fields regardless of active tab
                 form.setValue('basicAnnual', annualBasic, { shouldValidate: true });
@@ -524,7 +524,7 @@ const AddEditSalary = () => {
                         monthlyPfOneSide = 0;
                     }
 
-                    const monthlySpecial = Math.max(0, monthlyCtc - (monthlyBasic + monthlyHra + monthlyMedical + monthlyConveyance + monthlyOtherAllowance + monthlyPfOneSide + (vType === 'fixed' ? Math.round(vValueVal/12) : 0)));
+                    const monthlySpecial = Math.max(0, monthlyCtc - (monthlyBasic + monthlyHra + monthlyMedical + monthlyConveyance + monthlyOtherAllowance));
 
                     const monthlyGross = monthlyBasic + monthlyHra + monthlySpecial + monthlyMedical + monthlyConveyance + monthlyOtherAllowance;
                     const monthlyDeductions = monthlyPfOneSide + monthlyPt + monthlyOtherTax;
@@ -1244,12 +1244,12 @@ const AddEditSalary = () => {
                                                         <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("professionalTaxAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs uppercase text-muted-foreground">Other Deductions (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("otherDeductionAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
-                                                    </div>
-                                                    <div className="space-y-2">
                                                         <Label className="text-xs uppercase text-muted-foreground">Working Days</Label>
                                                         <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("workingDays")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs uppercase text-muted-foreground">Other Taxes (₹)</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("otherDeductionAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
 
                                                     <div className="space-y-2 lg:col-span-2 p-4 bg-green-50/50 dark:bg-green-950/20 rounded-lg border border-green-100/50 dark:border-green-900/30">
@@ -1506,7 +1506,7 @@ const AddEditSalary = () => {
                                                             </div>
                                                             {previewData.otherDeduction > 0 && (
                                                                 <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
-                                                                    <span className="text-sm">Other Deductions</span>
+                                                                    <span className="text-sm">Other Taxes</span>
                                                                     <span className="font-semibold text-destructive">-{formatCurrency(previewData.otherDeduction)}</span>
                                                                 </div>
                                                             )}

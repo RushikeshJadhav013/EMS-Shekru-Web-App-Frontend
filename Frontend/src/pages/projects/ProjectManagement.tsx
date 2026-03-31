@@ -1041,6 +1041,7 @@ export default function ProjectManagement() {
     start_date: "",
     end_date: "",
     status: "In Progress",
+    person_in_charge_id: "",
   });
   // Multi-select members (for create)
   const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
@@ -1145,6 +1146,7 @@ export default function ProjectManagement() {
       start_date: "",
       end_date: "",
       status: "In Progress",
+      person_in_charge_id: "",
     });
     setSelectedMemberIds([]);
     setMemberSearch("");
@@ -1273,17 +1275,11 @@ export default function ProjectManagement() {
         for (const t of taskList) {
           if (!t.task_name.trim() || t.assigned_to_ids.length === 0) continue;
 
-          let backendTaskStatus: string = t.status;
-          if (t.status === "todo") backendTaskStatus = "Pending";
-          else if (t.status === "in-progress") backendTaskStatus = "In Progress";
-          else if (t.status === "completed") backendTaskStatus = "Completed";
-          else if (t.status === "cancelled") backendTaskStatus = "Cancelled";
-
           try {
             await apiService.assignTasksBulk({
               title: t.task_name,
               description: t.description,
-              status: backendTaskStatus,
+              status: t.status,
               start_date: t.start_date || null,
               due_date: t.due_date || null,
               priority: t.priority,
@@ -1584,17 +1580,10 @@ export default function ProjectManagement() {
     try {
       // Use Bulk API: one API call per task row (which can have multiple assignees)
       for (const task of validTasks) {
-        // Map UI status back to backend-friendly status for tasks
-        let backendStatus: string = task.status;
-        if (task.status === "todo") backendStatus = "Pending";
-        else if (task.status === "in-progress") backendStatus = "In Progress";
-        else if (task.status === "completed") backendStatus = "Completed";
-        else if (task.status === "cancelled") backendStatus = "Cancelled";
-
         await apiService.assignTasksBulk({
           title: task.task_name,
           description: task.description,
-          status: backendStatus,
+          status: task.status,
           start_date: task.start_date || null,
           due_date: task.due_date || null,
           priority: task.priority,
@@ -1877,100 +1866,6 @@ export default function ProjectManagement() {
     setIsViewTaskDialogOpen(true);
   };
 
-  const handleEditTask = (task: ProjectTask, project?: Project) => {
-    if (project) setSelectedProject(project);
-    setEditingTask(task);
-    setEditTaskData({
-      task_name: task.task_name,
-      description: task.description || "",
-      start_date: task.start_date ? task.start_date.split("T")[0] : "",
-      due_date: task.due_date ? task.due_date.split("T")[0] : "",
-      priority: task.priority || "Medium",
-      assigned_to: Number(task.assigned_to || task.user_id || 0),
-      status: normalizeStatus(task.status),
-    });
-    setIsReassignOnly(false);
-    setIsTaskEditOpen(true);
-  };
-
-  const handleReassignTask = (task: ProjectTask, project?: Project) => {
-    if (project) setSelectedProject(project);
-    setEditingTask(task);
-    setEditTaskData({
-      task_name: task.task_name,
-      description: task.description || "",
-      start_date: task.start_date ? task.start_date.split("T")[0] : "",
-      due_date: task.due_date ? task.due_date.split("T")[0] : "",
-      priority: task.priority || "Medium",
-      assigned_to: Number(task.assigned_to || task.user_id || 0),
-      status: normalizeStatus(task.status),
-    });
-    setIsReassignOnly(true);
-    setIsTaskEditOpen(true);
-  };
-
-  const handleDeleteTask = async (projectId: number, taskId: number) => {
-    if (!confirm("Are you sure you want to delete this task?")) return;
-    try {
-      await apiService.deleteProjectTask(taskId);
-      toast({ title: "Success", description: "Task deleted successfully" });
-
-      // Refresh details
-      const updated = await loadFullProjectDetails(projectId);
-      setSelectedProject(updated);
-      setProjects((prev) =>
-        prev.map((p) => (p.project_id === projectId ? updated : p)),
-      );
-    } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.message || "Failed to delete task",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleTaskUpdateSubmit = async () => {
-    if (!editingTask || !selectedProject) return;
-    try {
-      let backendStatus: string = editTaskData.status;
-      if (editTaskData.status === "todo") backendStatus = "Pending";
-      else if (editTaskData.status === "in-progress") backendStatus = "In Progress";
-      else if (editTaskData.status === "completed") backendStatus = "Completed";
-      else if (editTaskData.status === "cancelled") backendStatus = "Cancelled";
-
-      const payload = {
-        title: editTaskData.task_name,
-        description: editTaskData.description,
-        start_date: editTaskData.start_date || null,
-        due_date: editTaskData.due_date || null,
-        priority: editTaskData.priority,
-        assigned_to: editTaskData.assigned_to,
-        status: backendStatus,
-        project_id: selectedProject.project_id
-      };
-
-      const taskId = editingTask.task_id || editingTask.id || 0;
-      await apiService.updateProjectTask(taskId, payload);
-
-      toast({ title: "Success", description: isReassignOnly ? "Task reassigned successfully" : "Task updated successfully" });
-      setIsTaskEditOpen(false);
-      setEditingTask(null);
-
-      // Refresh details
-      const updated = await loadFullProjectDetails(selectedProject.project_id);
-      setSelectedProject(updated);
-      setProjects((prev) =>
-        prev.map((p) => (p.project_id === selectedProject.project_id ? updated : p)),
-      );
-    } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.message || "Failed to update task",
-        variant: "destructive",
-      });
-    }
-  };
 
   const canManageProjects =
     ["admin", "hr", "manager"].includes(normalizeRole(user?.role));
@@ -2147,7 +2042,7 @@ export default function ProjectManagement() {
                   start_date: project.start_date?.split("T")[0] || "",
                   end_date: project.end_date?.split("T")[0] || "",
                   status: normalizeStatus(project.status),
-                  person_in_charge_id: project.person_in_charge_id || project.pic_id || "",
+                  person_in_charge_id: String(project.person_in_charge_id || project.pic_id || ""),
                 });
                 setIsEditDialogOpen(true);
               }}

@@ -442,6 +442,9 @@ const TaskManagement: React.FC = () => {
   const location = useLocation();
   const { addNotification } = useNotifications();
   const [tasks, setTasks] = useState<TaskWithPassMeta[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [isOverdueFilterActive, setIsOverdueFilterActive] = useState(false);
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskWithPassMeta | null>(
     null,
@@ -493,6 +496,8 @@ const TaskManagement: React.FC = () => {
     new Map(),
   );
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+  const [isProjectsLoading, setIsProjectsLoading] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -574,6 +579,16 @@ const TaskManagement: React.FC = () => {
   // Pagination states
   const [taskCurrentPage, setTaskCurrentPage] = useState(1);
   const [taskItemsPerPage, setTaskItemsPerPage] = useState(10);
+
+  const toggleProject = useCallback((projectId: string) => {
+    setProjects((prevProjects) =>
+      prevProjects.map((p) =>
+        p.project_id === projectId || p.id === projectId
+          ? { ...p, isExpanded: !p.isExpanded }
+          : p
+      )
+    );
+  }, []);
 
   const isCreateDisabled =
     !newTask.title.trim() || !newTask.description.trim() || isSubmitting;
@@ -1466,14 +1481,15 @@ const TaskManagement: React.FC = () => {
   }, [searchQuery, tasks, isTaskVisible]);
 
   // 2. Ownership & Department Scoped Filter (Status-independent)
+  // 2. Ownership & Department Scoped Filter (Intermediate list for stats)
   const scopedTasks = useMemo(() => {
     let base = [...baseVisibleTasks];
 
     // Ownership filter
     if (taskOwnershipFilter === "created") {
-      base = base.filter((task) => task.assignedBy === userId);
+      base = base.filter((task) => String(task.assignedBy) === String(userId));
     } else if (taskOwnershipFilter === "received") {
-      base = base.filter((task) => task.assignedTo.includes(userId || ""));
+      base = base.filter((task) => task.assignedTo.some(id => String(id) === String(userId)));
     }
 
     // Department filter
@@ -1486,28 +1502,57 @@ const TaskManagement: React.FC = () => {
         normalizedUserRole === "team_lead")
     ) {
       base = base.filter((task) => {
-        const creator = employees.find((emp) => emp.userId === task.assignedBy);
+        const creator = employees.find((emp) => String(emp.userId) === String(task.assignedBy));
         const assignees = task.assignedTo.map((id) =>
-          employees.find((emp) => emp.userId === id),
+          employees.find((emp) => String(emp.userId) === String(id)),
         );
 
         const creatorDepts =
-          creator?.department?.split(",").map((d) => d.trim()) || [];
+          creator?.department?.split(",").map((d) => d.trim().toLowerCase()) || [];
         const anyAssigneeMatch = assignees.some((assignee) =>
           assignee?.department
             ?.split(",")
-            .map((d) => d.trim())
-            .includes(selectedDepartmentFilter),
+            .map((d) => d.trim().toLowerCase())
+            .includes(selectedDepartmentFilter.toLowerCase()),
         );
 
         return (
-          creatorDepts.includes(selectedDepartmentFilter) || anyAssigneeMatch
+          creatorDepts.includes(selectedDepartmentFilter.toLowerCase()) || anyAssigneeMatch
         );
       });
     }
 
-    // Re-sort tasks
-    return baseTasks.sort((a, b) => {
+    return base;
+  }, [baseVisibleTasks, taskOwnershipFilter, selectedDepartmentFilter, userId, normalizedUserRole, employees]);
+
+  // 3. Stats derived from scoped tasks
+  const taskCountsByStatus = useMemo(() => {
+    return {
+      total: scopedTasks.length,
+      todo: scopedTasks.filter((t: any) => t.status === "todo").length,
+      inProgress: scopedTasks.filter((t: any) => t.status === "in-progress" || t.status === "Pending").length,
+      completed: scopedTasks.filter((t: any) => t.status === "completed").length,
+      overdue: scopedTasks.filter((t: any) => t.status === "overdue").length,
+      cancelled: scopedTasks.filter((t: any) => t.status === "cancelled").length,
+    };
+  }, [scopedTasks]);
+
+  // 4. Final Visible Tasks (Status + Sorting)
+  const visibleTasks = useMemo(() => {
+    let base = [...scopedTasks];
+
+    // Status filter
+    if (filterStatus !== "all") {
+      base = base.filter((t) => t.status === filterStatus);
+    }
+    
+    // Explicit Overdue filter
+    if (isOverdueFilterActive) {
+      base = base.filter((t) => t.status === "overdue");
+    }
+
+    // Sort tasks
+    return base.sort((a, b) => {
       const statusOrder = {
         todo: 0,
         "in-progress": 1,
@@ -1522,29 +1567,12 @@ const TaskManagement: React.FC = () => {
         return aStatusPriority - bStatusPriority;
       }
 
-      // Within same status, sort by creation date (newest first for "created" view, oldest first for others)
-      if (taskOwnershipFilter === "created") {
-        const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return bCreated - aCreated;
-      } else {
-        const aDeadline = a.deadline
-          ? new Date(a.deadline).getTime()
-          : Number.MAX_SAFE_INTEGER;
-        const bDeadline = b.deadline
-          ? new Date(b.deadline).getTime()
-          : Number.MAX_SAFE_INTEGER;
-        return aDeadline - bDeadline;
-      }
+      // Within same status, sort by deadline
+      const aDeadline = a.deadline ? new Date(a.deadline).getTime() : Number.MAX_SAFE_INTEGER;
+      const bDeadline = b.deadline ? new Date(b.deadline).getTime() : Number.MAX_SAFE_INTEGER;
+      return aDeadline - bDeadline;
     });
-  }, [
-    filteredCreatedTasks,
-    filteredReceivedTasks,
-    filteredTasks,
-    taskOwnershipFilter,
-    selectedDepartmentFilter,
-    employees,
-  ]);
+  }, [scopedTasks, filterStatus, isOverdueFilterActive]);
 
   // Paginated tasks
   const paginatedTasks = useMemo(() => {
@@ -1625,6 +1653,20 @@ const TaskManagement: React.FC = () => {
       })
       .filter((p) => p.projectMatchesSearch || p.filteredTasks.length > 0);
   }, [projects, searchQuery, filterStatus, isOverdueFilterActive, isTaskVisible, taskOwnershipFilter, userId]);
+
+  // Counts for the Project View stat cards
+  const projectCounts = useMemo(() => {
+    const allProjectTasks = filteredProjects.flatMap((p) => p.filteredTasks);
+    return {
+      total: allProjectTasks.length,
+      todo: allProjectTasks.filter((t: any) => t.status === "todo").length,
+      inProgress: allProjectTasks.filter((t: any) => t.status === "in-progress").length,
+      completed: allProjectTasks.filter((t: any) => t.status === "completed").length,
+      overdue: allProjectTasks.filter((t: any) => t.status === "overdue").length,
+      cancelled: allProjectTasks.filter((t: any) => t.status === "cancelled").length,
+    };
+  }, [filteredProjects]);
+
 
   const selectedTaskHistory = useMemo(() => {
     if (!selectedTask) return [];
@@ -3575,8 +3617,9 @@ const TaskManagement: React.FC = () => {
           )}
         </div>
       </div>
-
-      {/* Stats Cards - Clickable Filters */}
+      {activeViewTab === "all" ? (
+        <>
+          {/* Stats Cards - Clickable Filters */}
       <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
         <Card
           onClick={() => {
@@ -4481,11 +4524,11 @@ const TaskManagement: React.FC = () => {
           )}
         </CardContent>
       </Card>
-    </>
-  ) : (
-    <div className="space-y-6">
-      {/* Project View Stats */}
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-6">
+        </>
+      ) : (
+        <div className="space-y-6">
+          {/* Project View Stats */}
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-6">
         <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(false); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${filterStatus === "all" && !isOverdueFilterActive ? "ring-2 ring-violet-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total Tasks</CardTitle>
@@ -4734,10 +4777,9 @@ const TaskManagement: React.FC = () => {
             </div>
           )}
         </CardContent>
-      </Card>
-    </div>
-  )
-}
+          </Card>
+        </div>
+      )}
 
 {/* Pass Task Dialog */ }
       <Dialog
