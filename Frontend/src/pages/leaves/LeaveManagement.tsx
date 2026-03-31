@@ -575,7 +575,7 @@ export default function LeaveManagement() {
     return deptKey ? weekOffConfig[deptKey].days : [];
   }, [user?.department, user?.role, weekOffConfig, weekOffForm.department, weekOffForm.days]);
 
-  const canApproveLeaves = ['admin', 'hr', 'manager'].includes(user?.role || '');
+  const canApproveLeaves = ['admin', 'hr', 'manager', 'team_lead'].includes(user?.role || '');
   const canViewTeamLeaves = ['team_lead'].includes(user?.role || '');
   const canExport = ['admin', 'hr'].includes(user?.role || '');
   // Admins should not have an option to apply for leave from the admin dashboard

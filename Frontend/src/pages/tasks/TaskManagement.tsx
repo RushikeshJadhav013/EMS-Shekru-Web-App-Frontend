@@ -439,7 +439,6 @@ const TaskManagement: React.FC = () => {
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
-  const [isOverdueFilterActive, setIsOverdueFilterActive] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskWithPassMeta | null>(null);
   const [editTaskForm, setEditTaskForm] = useState({
@@ -1398,11 +1397,6 @@ const TaskManagement: React.FC = () => {
       });
     }
 
-    // Apply overdue filter if active
-    if (isOverdueFilterActive) {
-      baseTasks = baseTasks.filter((task) => task.status === "overdue");
-    }
-
     // Re-sort tasks by status priority first, then by deadline within each status
     // This ensures consistent ordering regardless of when tasks were updated
     return baseTasks.sort((a, b) => {
@@ -1446,7 +1440,6 @@ const TaskManagement: React.FC = () => {
     taskOwnershipFilter,
     selectedDepartmentFilter,
     employees,
-    isOverdueFilterActive,
   ]);
 
   // Paginated tasks
@@ -1466,7 +1459,6 @@ const TaskManagement: React.FC = () => {
     filterStatus,
     searchQuery,
     selectedDepartmentFilter,
-    isOverdueFilterActive,
   ]);
 
   const selectedTaskAssignerInfo = useMemo(() => {
@@ -3286,10 +3278,9 @@ const TaskManagement: React.FC = () => {
         <Card
           onClick={() => {
             setFilterStatus("all");
-            setIsOverdueFilterActive(false);
           }}
           className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-            filterStatus === "all" && !isOverdueFilterActive
+            filterStatus === "all"
               ? "border-slate-600 dark:border-slate-400 bg-slate-100 dark:bg-slate-800"
               : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-600"
           }`}
@@ -3312,10 +3303,9 @@ const TaskManagement: React.FC = () => {
         <Card
           onClick={() => {
             setFilterStatus("in-progress");
-            setIsOverdueFilterActive(false);
           }}
           className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-            filterStatus === "in-progress" && !isOverdueFilterActive
+            filterStatus === "in-progress"
               ? "border-blue-600 dark:border-blue-400 bg-blue-100 dark:bg-blue-900"
               : "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 hover:border-blue-400 dark:hover:border-blue-600"
           }`}
@@ -3338,10 +3328,9 @@ const TaskManagement: React.FC = () => {
         <Card
           onClick={() => {
             setFilterStatus("completed");
-            setIsOverdueFilterActive(false);
           }}
           className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-            filterStatus === "completed" && !isOverdueFilterActive
+            filterStatus === "completed"
               ? "border-green-600 dark:border-green-400 bg-green-100 dark:bg-green-900"
               : "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 hover:border-green-400 dark:hover:border-green-600"
           }`}
@@ -3363,11 +3352,10 @@ const TaskManagement: React.FC = () => {
 
         <Card
           onClick={() => {
-            setFilterStatus("all");
-            setIsOverdueFilterActive(true);
+            setFilterStatus("overdue");
           }}
           className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-            isOverdueFilterActive
+            filterStatus === "overdue"
               ? "border-orange-600 dark:border-orange-400 bg-orange-100 dark:bg-orange-900"
               : "border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950 hover:border-orange-400 dark:hover:border-orange-600"
           }`}
@@ -3390,10 +3378,9 @@ const TaskManagement: React.FC = () => {
         <Card
           onClick={() => {
             setFilterStatus("cancelled");
-            setIsOverdueFilterActive(false);
           }}
           className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-            filterStatus === "cancelled" && !isOverdueFilterActive
+            filterStatus === "cancelled"
               ? "border-gray-600 dark:border-gray-400 bg-gray-100 dark:bg-gray-800"
               : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:border-gray-400 dark:hover:border-gray-600"
           }`}

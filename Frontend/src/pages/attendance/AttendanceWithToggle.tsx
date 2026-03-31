@@ -658,7 +658,6 @@ const AttendanceWithToggle: React.FC = () => {
     return `${API_BASE_URL}${normalized}`;
   }, []);
 
-<<<<<<< HEAD
   // Determine if user can view employee attendance (management roles)
   const canViewEmployeeAttendance = user?.role && ['admin', 'hr', 'manager', 'team_lead', 'teamlead'].includes(user.role.toLowerCase());
   const canExportAttendance = user?.role && ['admin', 'hr', 'manager'].includes(user.role.toLowerCase());
@@ -670,20 +669,6 @@ const AttendanceWithToggle: React.FC = () => {
     if (role === 'hr') return ['hr', 'manager', 'team_lead', 'employee'];
     if (role === 'manager') return ['team_lead', 'employee'];
     if (role === 'team_lead' || role === 'teamlead') return ['employee'];
-=======
-  // Determine if user can view employee attendance (management roles excluding Team Lead)
-  const canViewEmployeeAttendance =
-    user?.role && ["admin", "hr", "manager"].includes(user.role);
-  const canExportAttendance = user?.role && ["admin", "hr"].includes(user.role);
-
-  // Access rules for attendance viewing
-  const getViewableRoles = (): UserRole[] => {
-    if (user?.role === "admin")
-      return ["admin", "hr", "manager", "team_lead", "employee"];
-    if (user?.role === "hr") return ["hr", "manager", "team_lead", "employee"];
-    if (user?.role === "manager") return ["team_lead", "employee"];
-    if (user?.role === "team_lead") return ["employee"];
->>>>>>> Onkar
     return [];
   };
 
@@ -1272,7 +1257,7 @@ const AttendanceWithToggle: React.FC = () => {
               checkInSelfie: rec.checkInSelfie || "",
               checkOutSelfie: rec.checkOutSelfie || "",
               status: status,
-              workHours: rec.total_hours,
+              workHours: rec.total_online_hours !== undefined ? rec.total_online_hours : ((rec.total_hours || 0) - (rec.total_offline_hours || 0)),
               workSummary: rec.workSummary || rec.work_summary || null,
               taskDeadlineReason:
                 rec.overdue_reason ||
@@ -1373,7 +1358,7 @@ const AttendanceWithToggle: React.FC = () => {
           checkInSelfie: todayRecord.checkInSelfie || todayRecord.selfie || "",
           checkOutSelfie: todayRecord.checkOutSelfie || "",
           status: "present",
-          workHours: todayRecord.total_hours,
+          workHours: todayRecord.total_online_hours !== undefined ? todayRecord.total_online_hours : ((todayRecord.total_hours || 0) - (todayRecord.total_offline_hours || 0)),
           workSummary:
             todayRecord.workSummary || todayRecord.work_summary || null,
           taskDeadlineReason:
@@ -1443,7 +1428,8 @@ const AttendanceWithToggle: React.FC = () => {
             );
           } else {
             // Existing attendance - fetch actual work hours from backend
-            setOnlineStartTime(now);
+            const fetchNow = new Date();
+            setOnlineStartTime(fetchNow);
             setOfflineStartTime(null);
             setIsFreshCheckIn(false);
             setCheckInTime(attendanceCheckInTime);
@@ -1467,7 +1453,7 @@ const AttendanceWithToggle: React.FC = () => {
 
               if (workHoursResponse.ok) {
                 const workHoursData = await workHoursResponse.json();
-                const backendOnlineSeconds = workHoursData.total_seconds || 0;
+                const backendOnlineSeconds = workHoursData.total_online_seconds !== undefined ? workHoursData.total_online_seconds : ((workHoursData.total_seconds || 0) - (workHoursData.total_offline_seconds || 0));
                 const backendOfflineSeconds =
                   workHoursData.total_offline_seconds || 0;
                 const isCurrentlyOnline =
@@ -1536,26 +1522,17 @@ const AttendanceWithToggle: React.FC = () => {
       const headers = { Authorization: token ? `Bearer ${token}` : "" };
 
       let url = `${API_BASE_URL}/attendance/all`;
-<<<<<<< HEAD
       // Attempt backend enforcement by passing manager/team lead ID
       const userRoleLower = (user?.role || '').toLowerCase();
       if (userRoleLower === 'manager') {
-        let params = [];
+        const params = [];
         if (user?.department) params.push(`department=${encodeURIComponent(user.department)}`);
         params.push(`manager_id=${encodeURIComponent(user!.id)}`);
         url += `?${params.join('&')}`;
       } else if (userRoleLower === 'team_lead' || userRoleLower === 'teamlead') {
-        let params = [`team_lead_id=${encodeURIComponent(user!.id)}`];
+        const params = [`team_lead_id=${encodeURIComponent(user!.id)}`];
         if (user?.department) params.push(`department=${encodeURIComponent(user.department)}`);
         url += `?${params.join('&')}`;
-=======
-      // Attempt backend enforcement by passing department scope
-      if (user?.role === "manager" && user?.department) {
-        url += `?department=${encodeURIComponent(user.department)}`;
-        url += `&manager_id=${encodeURIComponent(user.id)}`;
-      } else if (user?.role === "team_lead") {
-        url += `?team_lead_id=${encodeURIComponent(user.id)}`;
->>>>>>> Onkar
       }
 
       // Fetch attendance and employees in parallel to ensure we have role data
@@ -1616,22 +1593,11 @@ const AttendanceWithToggle: React.FC = () => {
           .toLowerCase();
       });
 
-<<<<<<< HEAD
       // Enforce simplified visibility rules (Client-side fail-safe)
       const currentUserRole = (user?.role || '').toLowerCase();
       if ((currentUserRole === 'manager' || currentUserRole === 'team_lead' || currentUserRole === 'teamlead') && user?.id) {
         const currentUserId = String(user.id);
         const userDept = (user.department || '').trim().toLowerCase();
-=======
-      // Enforce strict visibility rules (Client-side fail-safe)
-      if (
-        (user?.role === "manager" || user?.role === "team_lead") &&
-        user?.id
-      ) {
-        const userId = String(user.id);
-        const userDept = (user.department || "").trim().toLowerCase();
-        const hasDept = userDept.length > 0;
->>>>>>> Onkar
 
         data = data.filter((rec: any) => {
           const recUserId = String(
@@ -1641,36 +1607,12 @@ const AttendanceWithToggle: React.FC = () => {
           // 1. Always show Self
           if (recUserId === currentUserId) return true;
 
-<<<<<<< HEAD
           // 2. Determine department (prefer attendance record, fallback to employee map)
           let recDept = (rec.department || '').trim().toLowerCase();
-=======
-          // 2. If the manager has no department set, skip department filter
-          //    (backend already scoped by manager_id / team_lead_id)
-          if (!hasDept) {
-            const role = (userRoleMap[recUserId] || "").toLowerCase();
-            if (user.role === "manager") {
-              // show team leads and employees
-              return (
-                role === "employee" ||
-                role === "teamlead" ||
-                role === "team_lead"
-              );
-            }
-            if (user.role === "team_lead") {
-              return role === "employee";
-            }
-            return true;
-          }
-
-          // 3. Determine department (prefer attendance record, fallback to employee map)
-          let recDept = (rec.department || "").trim().toLowerCase();
->>>>>>> Onkar
           if (!recDept && userDepartmentMap[recUserId]) {
             recDept = userDepartmentMap[recUserId];
           }
 
-<<<<<<< HEAD
           // 3. Role lookup (normalized) and Hierarchy check
           const role = (userRoleMap[recUserId] || '').toLowerCase();
           
@@ -1690,24 +1632,6 @@ const AttendanceWithToggle: React.FC = () => {
           //    Allow observation if record department is missing (rely on backend manager_id scope)
           if (userDept && recDept && recDept !== userDept) {
             return false;
-=======
-          // 4. Department must match
-          if (recDept && recDept !== userDept) return false;
-
-          // 5. Role lookup (normalized: underscores & spaces stripped)
-          const role = (userRoleMap[recUserId] || "").toLowerCase();
-
-          // Managers can see employees and team leads in their department
-          if (user.role === "manager") {
-            return (
-              role === "employee" || role === "teamlead" || role === "team_lead"
-            );
-          }
-
-          // Team leads can see employees in their department
-          if (user.role === "team_lead") {
-            return role === "employee";
->>>>>>> Onkar
           }
 
           return true;
@@ -1795,13 +1719,8 @@ const AttendanceWithToggle: React.FC = () => {
           }
 
           return {
-<<<<<<< HEAD
             id: String(rec.attendance_id || rec.id || ''),
             userId: String(rec.user_id || rec.userId || rec.employee_id || ''),
-=======
-            id: String(rec.attendance_id || rec.id || ""),
-            userId: String(rec.user_id || rec.employee_id || ""),
->>>>>>> Onkar
             date: rec.check_in ? formatDateIST(rec.check_in) : selectedDate,
             checkInTime: rec.check_in || undefined,
             checkOutTime: rec.check_out || undefined,
@@ -1822,7 +1741,7 @@ const AttendanceWithToggle: React.FC = () => {
             checkInSelfie: rec.checkInSelfie || rec.selfie || "",
             checkOutSelfie: rec.checkOutSelfie || "",
             status: statusResult,
-            workHours: rec.total_hours || 0,
+            workHours: rec.total_online_hours !== undefined ? rec.total_online_hours : ((rec.total_hours || 0) - (rec.total_offline_hours || 0)),
             name: rec.name || rec.userName || undefined,
             email: rec.email || rec.userEmail || undefined,
             department: rec.department || undefined,
@@ -2709,7 +2628,7 @@ const AttendanceWithToggle: React.FC = () => {
         // - total_offline_seconds: Total accumulated offline time (paused when online)
         // - is_currently_online: Current online status
         const backendOnlineSeconds =
-          data.total_online_seconds || data.total_seconds || 0;
+          data.total_online_seconds !== undefined ? data.total_online_seconds : ((data.total_seconds || 0) - (data.total_offline_seconds || 0));
         const backendOfflineSeconds = data.total_offline_seconds || 0;
         const backendIsOnline =
           data.is_currently_online !== undefined
@@ -2755,51 +2674,31 @@ const AttendanceWithToggle: React.FC = () => {
         // The backend now properly tracks pause/resume from logout/login
         const now = new Date();
 
-        // Update accumulated times to match backend's pause/resume calculations
         if (isOnline && onlineStartTime) {
-          // Currently online - set accumulated to effective value minus current session
-          const currentSessionSeconds = Math.floor(
-            (now.getTime() - onlineStartTime.getTime()) / 1000,
-          );
-          // Ensure we don't get negative values due to timezone or timing issues
-          const calculatedAccumulated = Math.max(
-            0,
-            effectiveOnlineSeconds - currentSessionSeconds,
-          );
-          setAccumulatedOnlineSeconds(calculatedAccumulated);
-
-          console.log(
-            `Online sync: Effective=${effectiveOnlineSeconds}s, CurrentSession=${currentSessionSeconds}s, Accumulated=${calculatedAccumulated}s`,
-          );
-        } else {
-          // Currently offline - set accumulated to effective value
+          // Currently online - synchronize accumulated to backend total and reset timer to NOW
+          // This "Sync-to-Now" approach prevents doubling by starting the local timer from 0 at the moment of sync
           setAccumulatedOnlineSeconds(effectiveOnlineSeconds);
-          console.log(
-            `Online sync (offline): Effective=${effectiveOnlineSeconds}s, Accumulated=${effectiveOnlineSeconds}s`,
-          );
-        }
-
-        if (!isOnline && offlineStartTime) {
-          // Currently offline - set accumulated to effective value minus current session
-          const currentSessionSeconds = Math.floor(
-            (now.getTime() - offlineStartTime.getTime()) / 1000,
-          );
-          // Ensure we don't get negative values due to timezone or timing issues
-          const calculatedAccumulated = Math.max(
-            0,
-            effectiveOfflineSeconds - currentSessionSeconds,
-          );
-          setAccumulatedOfflineSeconds(calculatedAccumulated);
+          setOnlineStartTime(now);
+          setAccumulatedOfflineSeconds(effectiveOfflineSeconds);
+          setOfflineStartTime(null);
 
           console.log(
-            `Offline sync: Effective=${effectiveOfflineSeconds}s, CurrentSession=${currentSessionSeconds}s, Accumulated=${calculatedAccumulated}s`,
+            `Online sync (Sync-to-Now): Total=${effectiveOnlineSeconds}s, Offline=${effectiveOfflineSeconds}s`,
+          );
+        } else if (!isOnline && offlineStartTime) {
+          // Currently offline - synchronize accumulated to backend total and reset timer to NOW
+          setAccumulatedOnlineSeconds(effectiveOnlineSeconds);
+          setOnlineStartTime(null);
+          setAccumulatedOfflineSeconds(effectiveOfflineSeconds);
+          setOfflineStartTime(now);
+
+          console.log(
+            `Offline sync (Sync-to-Now): Total=${effectiveOnlineSeconds}s, Offline=${effectiveOfflineSeconds}s`,
           );
         } else {
-          // Currently online - set accumulated to effective value
+          // No active session timers - just update accumulated
+          setAccumulatedOnlineSeconds(effectiveOnlineSeconds);
           setAccumulatedOfflineSeconds(effectiveOfflineSeconds);
-          console.log(
-            `Offline sync (online): Effective=${effectiveOfflineSeconds}s, Accumulated=${effectiveOfflineSeconds}s`,
-          );
         }
 
         console.log(
@@ -2860,27 +2759,24 @@ const AttendanceWithToggle: React.FC = () => {
           );
 
           if (wasOnline) {
-            // User was online when they logged back in - resume online timer from last status change
-            setOnlineStartTime(lastStatusChangeTime);
+            // User was online - sync to backend total and start local timer from NOW
+            setOnlineStartTime(now);
             setOfflineStartTime(null);
-            console.log(
-              `User online status preserved: Online (timer resumed from ${lastStatusChangeTime.toLocaleTimeString()})`,
-            );
           } else {
-            // User was offline when they logged back in - resume offline timer from last status change
+            // User was offline - sync to backend total and start local timer from NOW
             setOnlineStartTime(null);
-            setOfflineStartTime(lastStatusChangeTime);
-            console.log(
-              `User online status preserved: Offline (timer resumed from ${lastStatusChangeTime.toLocaleTimeString()})`,
-            );
+            setOfflineStartTime(now);
           }
 
           setLastStatusChangeTime(lastStatusChangeTime);
-
-          // Force a backend sync to get accurate accumulated times
-          // Don't rely on local calculations when resuming from logout
+          
+          // These will be properly set by the subsequent fetchWorkingHours() call
+          // but we initialize them to safe values now to prevent blips
           setAccumulatedOnlineSeconds(0);
           setAccumulatedOfflineSeconds(0);
+          
+          // Trigger immediate sync to get the actual counts from backend
+          setTimeout(fetchWorkingHours, 100);
         } else {
           // If not checked in, set to offline
           setIsOnline(false);

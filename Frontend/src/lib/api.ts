@@ -1779,9 +1779,13 @@ class ApiService {
   }
 
   // 3. View Salary Details
-  async getSalaryDetails(userId: string): Promise<any> {
+  async getSalaryDetails(userId: string, month?: number, year?: number): Promise<any> {
     try {
-      const response = await this.request(`/salary/employee/${userId}`);
+      let endpoint = `/salary/employee/${userId}`;
+      if (month && year) {
+        endpoint += `?month=${month}&year=${year}`;
+      }
+      const response = await this.request(endpoint);
 
       // Validate and normalize the response data
       if (response && typeof response === "object") {
@@ -1795,12 +1799,14 @@ class ApiService {
           ? response.total_deductions_annual / 12
           : response.monthly_deductions || 0;
 
+        // Use actual monthly_in_hand from backend if provided (crucial for month-specific queries like Feb)
         const calculatedInHand = monthlyGross - monthlyDeductions;
-        // Use calculated in-hand if it's available and non-zero, otherwise fallback to response field
         const finalMonthlyInHand =
-          calculatedInHand > 0
+          response.monthly_in_hand !== undefined
+            ? response.monthly_in_hand
+            : calculatedInHand > 0
             ? calculatedInHand
-            : response.monthly_in_hand || 0;
+            : 0;
 
         return {
           ...response,
@@ -1824,7 +1830,9 @@ class ApiService {
           otherAllowance: response.other_allowance_annual
             ? response.other_allowance_annual / 12
             : response.other_allowance || 0,
-          professionalTax: response.professional_tax_annual
+          professionalTax: response.monthly_professional_tax !== undefined
+            ? response.monthly_professional_tax
+            : response.professional_tax_annual
             ? response.professional_tax_annual / 12
             : response.professional_tax || 0,
           pfEmployer: response.pf_annual
@@ -1875,6 +1883,8 @@ class ApiService {
       annualCtc: number;
       variablePayType: string;
       variablePayValue: number;
+      employer_pf_percentage?: number;
+      pf_annual?: number;
     },
   ): Promise<any> {
     return this.request(`/salary/employee/${userId}/update-ctc`, {
@@ -1884,15 +1894,31 @@ class ApiService {
         package_ctc_annual: data.annualCtc,
         variable_pay_type: data.variablePayType,
         variable_pay_value: data.variablePayValue,
+        employer_pf_percentage: data.employer_pf_percentage,
+        pf_annual: data.pf_annual,
       }),
     });
   }
 
-  // Update Non-CTC Fields
+  // Update Non-CTC Fields (Bank Details, PF Details, Variable Pay)
   async updateSalaryDetails(userId: string, data: any): Promise<any> {
     return this.request(`/salary/employee/${userId}`, {
       method: "PUT",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        user_id: Number(userId),
+        ...data,
+      }),
+    });
+  }
+
+  // Update Salary Record Manual (Full-edit without triggering automatic recomputation)
+  async updateSalaryManualFullEdit(userId: string, data: any): Promise<any> {
+    return this.request(`/salary/employee/${userId}/manual-full-edit`, {
+      method: "PUT",
+      body: JSON.stringify({
+        user_id: Number(userId),
+        ...data,
+      }),
     });
   }
 

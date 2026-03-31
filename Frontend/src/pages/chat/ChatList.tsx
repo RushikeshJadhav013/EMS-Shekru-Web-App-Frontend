@@ -116,11 +116,23 @@ const ChatList: React.FC = () => {
   };
 
   const getLastMessagePreview = (chat: any) => {
-    if (!chat.lastMessage) return 'No messages yet';
+    if (!chat.lastMessage) {
+      if (chat.unreadCount > 0) return 'New message received';
+      return 'No messages yet';
+    }
 
-    // If content is empty, show a placeholder
-    const content = chat.lastMessage.content;
-    if (!content || content.trim() === '') return 'No messages yet';
+    // Try to extract content flexibly, in case backend sends it directly as a string or inside an object
+    let content = '';
+    if (typeof chat.lastMessage === 'string') {
+      content = chat.lastMessage;
+    } else if (chat.lastMessage.content) {
+      content = chat.lastMessage.content;
+    }
+
+    if (!content || content.trim() === '') {
+      if (chat.unreadCount > 0) return 'New message received';
+      return 'No messages yet';
+    }
 
     let senderName = '';
     if (chat.type === 'group') {
@@ -136,6 +148,20 @@ const ChatList: React.FC = () => {
     }
 
     const fullPreview = `${senderName}${content}`;
+    
+    // Check if the preview is just a raw media URL or Base64 data and summarize it nicely
+    const isUrlOrPath = content.startsWith('http') || content.startsWith('/') || content.startsWith('data:');
+    const isBase64Document = content.includes('|data:application/') || content.startsWith('data:application/');
+    
+    if (isUrlOrPath || isBase64Document) {
+      if (content.startsWith('data:image/') || content.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || content.includes('staffly_type=image') || chat.lastMessage.messageType === 'image') {
+        return `${senderName}📷 Image`;
+      }
+      if (isBase64Document || content.match(/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv)(\?.*)?$/i) || content.includes('staffly_type=file') || chat.lastMessage.messageType === 'file') {
+        return `${senderName}📄 Document`;
+      }
+    }
+
     return fullPreview.length > 65 ? `${fullPreview.substring(0, 65)}...` : fullPreview;
   };
 

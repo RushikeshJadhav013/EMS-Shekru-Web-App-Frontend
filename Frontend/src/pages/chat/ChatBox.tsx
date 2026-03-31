@@ -20,8 +20,12 @@ import {
   LogOut,
   Info,
   Plus,
-  Search
+  Search,
+  Image as ImageIcon,
+  Paperclip,
+  Loader2
 } from 'lucide-react';
+import { chatService } from '@/services/chatService';
 import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -82,7 +86,8 @@ const ChatBox: React.FC = () => {
     updateGroupName,
     deleteGroup,
     addParticipants,
-    removeParticipants
+    removeParticipants,
+    loadMessages
   } = useChat();
   const { user } = useAuth();
   const { themeMode } = useTheme();
@@ -102,16 +107,40 @@ const ChatBox: React.FC = () => {
   const [isUpdatingGroup, setIsUpdatingGroup] = useState(false);
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const typingPulseRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const typingPulseRef = useRef<NodeJS.Timeout | null>(null);
+  // Track if we need to auto-scroll (only if user is already at bottom or just loaded)
+  const isScrolledToBottom = useRef(true);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 50;
+    isScrolledToBottom.current = isAtBottom;
+  };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Only auto-scroll if user hasn't manually scrolled up
+    if (isScrolledToBottom.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    }
   }, [messages]);
 
-
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    if (activeChat) {
+      // Poll for new messages every 5 seconds while actively looking at a chat
+      intervalId = setInterval(() => {
+        loadMessages(activeChat.id, activeChat.type);
+      }, 5000);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [activeChat, loadMessages]);
 
   useEffect(() => {
     if (chatId && (!activeChat || activeChat.id !== chatId)) {
@@ -158,6 +187,74 @@ const ChatBox: React.FC = () => {
 
     } catch (error) {
       console.error('Failed to send message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !activeChat) return;
+
+    // Check file size (e.g., 10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select a file smaller than 10MB.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // 1. Upload the file
+      let fileUrl = await chatService.uploadFile(file);
+      if (!fileUrl) throw new Error("Upload failed (no URL returned)");
+
+      // 2. Determine type
+      const isImage = file.type.startsWith('image/');
+      const messageType: 'image' | 'file' = isImage ? 'image' : 'file';
+
+      // Ensure the URL has a full origin if it's relative
+      if (!fileUrl.startsWith('http')) {
+         const baseUrl = window.location.origin.includes('localhost') ? 'https://staffly.space' : window.location.origin;
+         fileUrl = fileUrl.startsWith('/') ? `${baseUrl}${fileUrl}` : `${baseUrl}/${fileUrl}`;
+      }
+
+      // 3. Append type hint so we remember it even if backend drops message_type and extensions
+      const urlChar = fileUrl.includes('?') ? '&' : '?';
+      fileUrl = `${fileUrl}${urlChar}staffly_type=${messageType}`;
+
+      // 4. Send the message with the URL as content
+      await sendMessage(fileUrl, messageType, replyingTo || undefined);
+      
+      setReplyingTo(null);
+      toast({
+        title: "Success",
+        description: `${isImage ? 'Image' : 'File'} sent successfully.`,
+      });
+    } catch (error: any) {
+      console.error('Failed to upload/send file:', error);
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload file. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+      // Reset input value to allow selecting same file again
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const triggerFileSelect = (accept: string) => {
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = accept;
+      fileInputRef.current.click();
     }
   };
 
@@ -457,7 +554,10 @@ const ChatBox: React.FC = () => {
       </div>
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-6 relative z-10 custom-scrollbar">
+      <div 
+        className="flex-1 min-h-0 overflow-y-auto px-6 py-6 relative z-10 custom-scrollbar"
+        onScroll={handleScroll}
+      >
         {enrichedMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full space-y-4 animate-in fade-in zoom-in duration-500">
             <div className="p-6 rounded-full bg-slate-100 dark:bg-slate-800/40 text-slate-400">
@@ -518,7 +618,14 @@ const ChatBox: React.FC = () => {
                 </p>
               </div>
               <p className={cn("text-[13px] truncate opacity-80 font-medium italic", themeClasses.text)}>
-                "{enrichedMessages.find(m => m.id === replyingTo)?.content}"
+                {(() => {
+                  const replyMsg = enrichedMessages.find(m => m.id === replyingTo);
+                  if (!replyMsg) return '';
+                  const c = replyMsg.content;
+                  if (c.startsWith('data:image/') || c.includes('staffly_type=image') || replyMsg.messageType === 'image') return '📷 Photo';
+                  if (c.includes('|data:application/') || c.includes('staffly_type=file') || replyMsg.messageType === 'file') return '📄 Document';
+                  return `"${c}"`;
+                })()}
               </p>
             </div>
             <Button
@@ -538,12 +645,42 @@ const ChatBox: React.FC = () => {
             themeClasses.inputFieldBg
           )}>
 
+            {/* Hidden File Input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+
+            <div className="flex items-center gap-1.5 mr-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={isUploading}
+                onClick={() => triggerFileSelect("image/*")}
+                className="h-9 w-9 rounded-full text-slate-400 hover:text-green-500 hover:bg-green-500/10 transition-all active:scale-95"
+              >
+                <ImageIcon className="h-4.5 w-4.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={isUploading}
+                onClick={() => triggerFileSelect(".pdf,.doc,.docx,.xls,.xlsx")}
+                className="h-9 w-9 rounded-full text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 transition-all active:scale-95"
+              >
+                <Paperclip className="h-4.5 w-4.5" />
+              </Button>
+            </div>
+
             <Input
               ref={inputRef}
               value={messageText}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder="Type your message..."
+              disabled={isUploading}
+              placeholder={isUploading ? "Uploading file..." : "Type your message..."}
               className="border-0 bg-transparent focus-visible:ring-0 shadow-none text-[15px] h-11 placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium"
             />
 
@@ -552,13 +689,17 @@ const ChatBox: React.FC = () => {
 
           <Button
             onClick={handleSendMessage}
-            disabled={!messageText.trim()}
+            disabled={!messageText.trim() || isUploading}
             className={cn(
               "rounded-full h-[52px] w-[52px] shadow-xl transition-all hover:scale-105 active:scale-95 p-0",
               messageText.trim() ? "bg-green-500 hover:bg-green-600 shadow-green-500/20" : "bg-slate-100 dark:bg-slate-800 text-slate-400"
             )}
           >
-            <Send className={cn("h-5 w-5 transition-transform", messageText.trim() && "translate-x-0.5 -translate-y-0.5 rotate-[-15deg]")} />
+            {isUploading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Send className={cn("h-5 w-5 transition-transform", messageText.trim() && "translate-x-0.5 -translate-y-0.5 rotate-[-15deg]")} />
+            )}
           </Button>
         </div>
 
@@ -692,7 +833,7 @@ const ChatBox: React.FC = () => {
                         </Avatar>
                         <div>
                           <p className="text-sm font-bold leading-none mb-1">{p.userName} {p.userId === user?.id && <span className="text-[10px] text-green-500 font-black ml-1">(You)</span>}</p>
-                          <p className="text-[10px] font-medium text-slate-500 uppercase tracking-tighter">{p.department} • {p.userRole}</p>
+                          <p className="text-[10px] font-medium text-slate-500 uppercase tracking-tighter">{p.branch} • {p.userRole}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

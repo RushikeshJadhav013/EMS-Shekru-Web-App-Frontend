@@ -43,6 +43,7 @@ class ChatService {
       if (!response.ok) throw new Error('Failed to fetch chats');
 
       const data = await response.json();
+      console.log("CHATS SESSIONS PAYLOAD:", data);
 
       return data.map((session: any) => ({
         id: session.chat_id?.toString(),
@@ -104,26 +105,61 @@ class ChatService {
 
       const data = await response.json();
 
-      return data.map((msg: any) => ({
-        id: msg.id?.toString(),
-        chatId: chatId,
-        senderId: msg.sender_id?.toString(),
-        senderName: '',
-        senderRole: 'employee',
-        content: msg.content,
-        messageType: 'text',
-        timestamp: this.formatTimestamp(msg.timestamp),
-        isRead: (msg.read_by || []).length > 1,
-        replyTo: msg.reply_to?.toString()
-      }));
+      return data.map((msg: any) => {
+        const rawType = (msg.message_type || msg.type || '').toLowerCase();
+        let messageType: ChatMessage['messageType'] = 'text';
+        if (rawType === 'image' || rawType === 'photo') messageType = 'image';
+        else if (rawType === 'file' || rawType === 'document' || rawType === 'pdf') messageType = 'file';
+        else if (rawType === 'emoji') messageType = 'emoji';
+        // Fallback: infer from content URL if backend doesn't send type
+        const content: string = msg.content || '';
+        if (messageType === 'text') {
+          if (/\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(content)) messageType = 'image';
+          else if (/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv)(\?.*)?$/i.test(content)) messageType = 'file';
+        }
+        return {
+          id: msg.id?.toString(),
+          chatId: chatId,
+          senderId: msg.sender_id?.toString(),
+          senderName: '',
+          senderRole: 'employee',
+          content,
+          messageType,
+          timestamp: this.formatTimestamp(msg.timestamp),
+          isRead: (msg.read_by || []).length > 1,
+          replyTo: msg.reply_to?.toString()
+        };
+      });
     } catch (error) {
       console.error('Error fetching messages:', error);
       return [];
     }
   }
 
+  // Upload a file (image / pdf / document) and return the public URL
+  async uploadFile(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/chats/upload`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }, // no Content-Type – browser sets multipart boundary
+      body: formData,
+    });
+    if (!response.ok) throw new Error('File upload failed');
+    const data = await response.json();
+    // Common response shapes: { url }, { file_url }, { path }, { link }
+    return data.url || data.file_url || data.path || data.link || '';
+  }
+
   // Send a message
-  async sendMessage(chatId: string, chatType: 'individual' | 'group', content: string, messageType: 'text' | 'emoji' = 'text', replyTo?: string): Promise<ChatMessage> {
+  async sendMessage(
+    chatId: string,
+    chatType: 'individual' | 'group',
+    content: string,
+    messageType: 'text' | 'emoji' | 'image' | 'file' = 'text',
+    replyTo?: string
+  ): Promise<ChatMessage> {
     const typePath = chatType === 'individual' ? 'private' : 'group';
     try {
       const response = await fetch(`${API_BASE_URL}/chats/${typePath}/${chatId}/messages`, {
@@ -133,6 +169,7 @@ class ChatService {
           chat_type: typePath,
           chat_id: chatId,
           content,
+          message_type: messageType,
           reply_to: replyTo
         }),
       });
@@ -141,14 +178,20 @@ class ChatService {
 
       const data = await response.json();
 
+      // Resolve messageType: prefer what we sent (we know the type), fallback to backend
+      let resolvedType: ChatMessage['messageType'] = messageType;
+      const rawType = (data.message_type || data.type || '').toLowerCase();
+      if (rawType === 'image' || rawType === 'photo') resolvedType = 'image';
+      else if (rawType === 'file' || rawType === 'document') resolvedType = 'file';
+
       return {
         id: data.id?.toString(),
         chatId: chatId,
         senderId: data.sender_id?.toString(),
         senderName: 'Me',
         senderRole: 'employee',
-        content: data.content,
-        messageType: 'text',
+        content: data.content || content,
+        messageType: resolvedType,
         timestamp: this.formatTimestamp(data.timestamp),
         isRead: false,
         replyTo: data.reply_to?.toString()
@@ -195,6 +238,7 @@ class ChatService {
           userId: id.toString(),
           userName: '',
           userRole: 'employee' as UserRole,
+          branch: 'N/A', // Added missing branch property to fix lint error
           department: 'N/A',
           joinedAt: new Date().toISOString(),
           isOnline: false
