@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
 import TruncatedText from "@/components/ui/TruncatedText";
 import { Pagination } from "@/components/ui/pagination";
@@ -737,7 +737,7 @@ export default function LeaveManagement() {
     weekOffForm.days,
   ]);
 
-  const canApproveLeaves = ["admin", "hr", "manager"].includes(
+  const canApproveLeaves = ["admin", "hr", "manager", "team_lead"].includes(
     user?.role || "",
   );
   const canViewTeamLeaves = ["team_lead"].includes(user?.role || "");
@@ -1795,6 +1795,13 @@ export default function LeaveManagement() {
           const isAllowedRole = ["teamlead", "team_lead", "employee"].includes(
             role,
           );
+          const isSameDept =
+            (req.department || "").trim().toLowerCase() === userDept;
+          return isAllowedRole && isSameDept;
+        }
+
+        if (userRole === "teamlead") {
+          const isAllowedRole = role === "employee";
           const isSameDept =
             (req.department || "").trim().toLowerCase() === userDept;
           return isAllowedRole && isSameDept;
