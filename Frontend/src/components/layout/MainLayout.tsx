@@ -6,6 +6,7 @@ import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import TaskDeadlineWarnings from '@/components/tasks/TaskDeadlineWarnings';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Logo } from '@/components/ui/Logo';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -176,25 +177,12 @@ const MainLayout: React.FC = () => {
           </Button>
 
           {/* Logo */}
-          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate(`/${user.role}`)}>
-            <div className="relative">
-              {/* Logo container */}
-              <div className="relative h-10 w-10 rounded-lg bg-gradient-to-br from-purple-500 via-blue-500 to-indigo-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
-                <span className="text-white font-bold text-xl tracking-tight">S</span>
-              </div>
-
-              {/* Corner accent - orange dot */}
-              <div className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-orange-500 shadow-sm"></div>
-            </div>
-
-            <div className="hidden sm:flex flex-col">
-              <span className="font-semibold text-base text-blue-600 dark:text-blue-400 leading-tight">
-                Shekru labs India
-              </span>
-              <span className="text-xs text-gray-500 dark:text-gray-400 font-normal">
-                Employee Management
-              </span>
-            </div>
+          <div className="flex items-center cursor-pointer group" onClick={() => navigate(`/${user.role}`)}>
+            <Logo 
+              className="flex items-center gap-2 group-hover:scale-[1.02] transition-transform duration-200" 
+              iconClassName="h-10 w-10 drop-shadow-sm" 
+              textClassName="text-2xl font-bold tracking-tight hidden sm:block" 
+            />
           </div>
 
           <div className="flex-1" />

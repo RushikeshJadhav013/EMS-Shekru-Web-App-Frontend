@@ -345,7 +345,7 @@ const ManagerDashboard: React.FC = () => {
             bg: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
             cardBg: 'bg-amber-50/40 dark:bg-amber-950/10',
             borderColor: 'border-amber-300/80 dark:border-amber-700/50',
-            hoverBorder: 'group-hover:border-amber-500 dark:group-hover:border-amber-400',
+            hoverBorder: 'group-hover:border-amber-500 dark:hover:border-amber-400',
             path: '/manager/leaves',
             pathState: { tab: 'approvals' }
           },

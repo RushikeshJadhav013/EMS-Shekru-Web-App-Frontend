@@ -740,7 +740,7 @@ export default function LeaveManagement() {
   const canApproveLeaves = ["admin", "hr", "manager"].includes(
     user?.role || "",
   );
-  const canViewTeamLeaves = false;
+  const canViewTeamLeaves = ["team_lead"].includes(user?.role || "");
   const canExport = ["admin", "hr"].includes(user?.role || "");
   // Admins should not have an option to apply for leave from the admin dashboard
   const canApply = user?.role !== "admin";
@@ -940,7 +940,10 @@ export default function LeaveManagement() {
       const fetchApprovals = async () => {
         try {
           if (!(canApproveLeaves || canViewTeamLeaves)) return;
-          const approvals = await apiService.getLeaveApprovals();
+          const [approvals, wfhApprovals] = await Promise.all([
+            apiService.getLeaveApprovals(),
+            apiService.getWFHRequests(),
+          ]);
 
           const formattedLeaves: LeaveRequest[] = approvals.map((req: any) => ({
             id: String(req.leave_id),
@@ -958,10 +961,34 @@ export default function LeaveManagement() {
               req.status || "pending",
             ).toLowerCase() as LeaveRequest["status"],
             requestDate: new Date(req.start_date),
-            isWFH: (req.leave_type || '').toLowerCase() === 'wfh'
+            isWFH: false,
           }));
 
-          setApprovalRequests(formattedLeaves);
+          const formattedWFH: LeaveRequest[] = (
+            Array.isArray(wfhApprovals)
+              ? wfhApprovals
+              : wfhApprovals?.data || wfhApprovals?.requests || []
+          )
+            .filter(
+              (req: any) =>
+                (req.status || "pending").toLowerCase() === "pending",
+            )
+            .map((req: any) => ({
+              id: String(req.wfh_id || req.id),
+              employeeId: String(req.user_id),
+              employeeName: req.employee_name || req.name || "Unknown",
+              department: req.department || req.department_name || "",
+              role: req.role || req.requester_role || "employee",
+              type: "wfh" as any,
+              startDate: new Date(req.start_date),
+              endDate: new Date(req.end_date),
+              reason: req.reason,
+              status: "pending" as const,
+              requestDate: new Date(req.created_at || req.start_date),
+              isWFH: true,
+            }));
+
+          setApprovalRequests([...formattedLeaves, ...formattedWFH]);
         } catch (error) {
           console.error("Error fetching approvals:", error);
         }
@@ -969,7 +996,7 @@ export default function LeaveManagement() {
 
       const fetchApprovalHistory = async () => {
         try {
-          if (!(canApproveLeaves || canViewTeamLeaves)) return;
+          if (!canApproveLeaves) return;
 
           // Prepare parameters based on historyFilter
           const params: {
@@ -989,7 +1016,10 @@ export default function LeaveManagement() {
             params.end_date = format(customHistoryEndDate, "yyyy-MM-dd");
           }
 
-          const history = await apiService.getLeaveApprovalsHistory(params);
+          const [history, wfhHistory] = await Promise.all([
+            apiService.getLeaveApprovalsHistory(params),
+            apiService.getWFHRequests(), // Reusing same endpoint, filtering for processed in map/filter if needed
+          ]);
 
           const formattedLeaves: LeaveRequest[] = history.map((req: any) => ({
             id: String(req.leave_id),
@@ -1007,14 +1037,44 @@ export default function LeaveManagement() {
               req.status || "approved",
             ).toLowerCase() as LeaveRequest["status"],
             requestDate: new Date(req.start_date),
-            isWFH: (req.leave_type || '').toLowerCase() === 'wfh'
+            isWFH: false,
           }));
 
+          const formattedWFH: LeaveRequest[] = (
+            Array.isArray(wfhHistory)
+              ? wfhHistory
+              : wfhHistory?.data || wfhHistory?.requests || []
+          )
+            .filter(
+              (req: any) =>
+                (req.status || "pending").toLowerCase() !== "pending",
+            )
+            .map((req: any) => ({
+              id: String(req.wfh_id || req.id),
+              employeeId: String(req.user_id),
+              employeeName: req.employee_name || req.name || "Unknown",
+              department: req.department || req.department_name || "",
+              role: req.role || req.requester_role || "employee",
+              type: "wfh" as any,
+              startDate: new Date(req.start_date),
+              endDate: new Date(req.end_date),
+              reason: req.reason,
+              status: String(
+                req.status || "approved",
+              ).toLowerCase() as LeaveRequest["status"],
+              requestDate: new Date(req.created_at || req.start_date),
+              isWFH: true,
+            }));
+
+          const allFormatted = [...formattedLeaves, ...formattedWFH];
+
           // Merge with existing history
-          setApprovalHistory(prev => {
-            const existingIds = new Set(formattedLeaves.map(r => r.id));
-            const localDecisions = prev.filter(r => !existingIds.has(r.id) && r.status !== 'pending');
-            const combined = [...localDecisions, ...formattedLeaves];
+          setApprovalHistory((prev) => {
+            const existingIds = new Set(allFormatted.map((r) => r.id));
+            const localDecisions = prev.filter(
+              (r) => !existingIds.has(r.id) && r.status !== "pending",
+            );
+            const combined = [...localDecisions, ...allFormatted];
             return combined.sort((a, b) => {
               const timeA = new Date(a.requestDate).getTime();
               const timeB = new Date(b.requestDate).getTime();
@@ -1243,10 +1303,12 @@ export default function LeaveManagement() {
 
     try {
       // Call API to approve/reject
-      const approved = status === 'approved';
-      await apiService.approveLeaveRequest(id, approved);
-
-
+      const approved = status === "approved";
+      if (request.isWFH) {
+        await apiService.approveWFHRequest(Number(id), approved);
+      } else {
+        await apiService.approveLeaveRequest(id, approved);
+      }
 
       // Update approvals list - move approved/rejected request to the top
       const updatedRequest = { ...request, status, approvedBy: user?.name };
@@ -1337,13 +1399,22 @@ export default function LeaveManagement() {
 
   const getLeaveTypeColor = (type: string) => {
     switch (type) {
-      case 'annual': return 'bg-blue-100 text-blue-800';
-      case 'sick': return 'bg-red-100 text-red-800';
-      case 'casual': return 'bg-green-100 text-green-800';
-      case 'maternity': return 'bg-purple-100 text-purple-800';
-      case 'paternity': return 'bg-indigo-100 text-indigo-800';
-      case 'unpaid': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "annual":
+        return "bg-blue-100 text-blue-800";
+      case "sick":
+        return "bg-red-100 text-red-800";
+      case "casual":
+        return "bg-green-100 text-green-800";
+      case "maternity":
+        return "bg-purple-100 text-purple-800";
+      case "paternity":
+        return "bg-indigo-100 text-indigo-800";
+      case "unpaid":
+        return "bg-gray-100 text-gray-800";
+      case "wfh":
+        return "bg-cyan-100 text-cyan-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -1567,12 +1638,13 @@ export default function LeaveManagement() {
         return ["manager", "teamlead", "team_lead", "employee"].includes(role);
       }
 
-      if (userRole === 'manager') {
-        return ['teamlead', 'team_lead', 'employee', 'manager'].includes(role);
-      }
-
-      if (userRole === 'teamlead' || userRole === 'team_lead') {
-        return ['employee'].includes(role);
+      if (userRole === "manager") {
+        const isAllowedRole = ["teamlead", "team_lead", "employee"].includes(
+          role,
+        );
+        const isSameDept =
+          (req.department || "").trim().toLowerCase() === userDept;
+        return isAllowedRole && isSameDept;
       }
 
       return false;
@@ -1719,12 +1791,13 @@ export default function LeaveManagement() {
           );
         }
 
-        if (userRole === 'manager') {
-          return ['teamlead', 'team_lead', 'employee', 'manager'].includes(role);
-        }
-
-        if (userRole === 'teamlead' || userRole === 'team_lead') {
-          return ['employee'].includes(role);
+        if (userRole === "manager") {
+          const isAllowedRole = ["teamlead", "team_lead", "employee"].includes(
+            role,
+          );
+          const isSameDept =
+            (req.department || "").trim().toLowerCase() === userDept;
+          return isAllowedRole && isSameDept;
         }
 
         return false;
@@ -2055,12 +2128,12 @@ export default function LeaveManagement() {
                       <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
                         <div
                           className={`h-1.5 w-1.5 rounded-full ${item.color === "blue"
-                            ? "bg-blue-500"
-                            : item.color === "rose"
-                              ? "bg-rose-500"
-                              : item.color === "emerald"
-                                ? "bg-emerald-500"
-                                : "bg-slate-500"
+                              ? "bg-blue-500"
+                              : item.color === "rose"
+                                ? "bg-rose-500"
+                                : item.color === "emerald"
+                                  ? "bg-emerald-500"
+                                  : "bg-slate-500"
                             }`}
                         />
                         <span className="text-[10px] font-bold text-muted-foreground uppercase">
@@ -2260,8 +2333,8 @@ export default function LeaveManagement() {
                         <div
                           key={index}
                           className={`p-3 rounded-lg border text-sm flex items-center gap-2 ${msg.type === "error"
-                            ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200"
-                            : "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200"
+                              ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200"
+                              : "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200"
                             }`}
                         >
                           {msg.type === "error" ? (
@@ -2347,48 +2420,78 @@ export default function LeaveManagement() {
                     value={leaveHistoryPeriod}
                     onValueChange={(value) => setLeaveHistoryPeriod(value)}
                   >
-                    <SelectTrigger className={`${leaveHistoryPeriod === 'custom' ? 'md:min-w-[320px]' : 'w-[220px]'} h-11 bg-white dark:bg-slate-800 border-2 shadow-md hover:shadow-lg transition-all rounded-xl`}>
-                      <div className="flex items-center gap-2">
-                        <CalendarIcon className={`h-4 w-4 ${leaveHistoryPeriod === 'custom' ? 'text-indigo-500' : 'text-slate-400'}`} />
-                        <SelectValue placeholder="Select period">
-                          {leaveHistoryPeriod === 'custom'
-                            ? (leaveHistoryCustomStartDate && leaveHistoryCustomEndDate
-                              ? `${format(leaveHistoryCustomStartDate, 'dd MMM yyyy')} - ${format(leaveHistoryCustomEndDate, 'dd MMM yyyy')}`
-                              : 'Custom Range')
-                            : undefined}
-                        </SelectValue>
-                      </div>
+                    <SelectTrigger className="w-[220px] bg-white dark:bg-slate-800 border-2 shadow-md hover:shadow-lg transition-all">
+                      <SelectValue placeholder="Select period" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="current_month">Current Month</SelectItem>
-                      <SelectItem value="last_3_months">Last 3 Months</SelectItem>
-                      <SelectItem value="last_6_months">Last 6 Months</SelectItem>
-                      <SelectItem value="last_1_year">Last 1 Year</SelectItem>
                       <SelectItem value="all">All History</SelectItem>
+                      <SelectItem value="current_month">
+                        Current Month
+                      </SelectItem>
+                      <SelectItem value="last_3_months">
+                        Last 3 Months
+                      </SelectItem>
+                      <SelectItem value="last_6_months">
+                        Last 6 Months
+                      </SelectItem>
+                      <SelectItem value="last_1_year">Last 1 Year</SelectItem>
                       <SelectItem value="custom">Custom Range</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </CardHeader>
-              {leaveHistoryPeriod === 'custom' && (
+              {leaveHistoryPeriod === "custom" && (
                 <div className="border-b bg-slate-50 dark:bg-slate-900 p-4">
                   <div className="flex items-center gap-3 flex-wrap">
                     <div className="flex-1 min-w-[150px]">
                       <Label className="text-xs mb-1 block">From Date</Label>
-                      <DatePicker
-                        date={leaveHistoryCustomStartDate}
-                        onDateChange={setLeaveHistoryCustomStartDate}
-                        placeholder="Select start date"
-                        className="w-full"
+                      <Input
+                        type="date"
+                        value={
+                          leaveHistoryCustomStartDate
+                            ? format(leaveHistoryCustomStartDate, "yyyy-MM-dd")
+                            : ""
+                        }
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            const [y, m, d] = e.target.value
+                              .split("-")
+                              .map(Number);
+                            setLeaveHistoryCustomStartDate(
+                              new Date(y, m - 1, d),
+                            );
+                          } else {
+                            setLeaveHistoryCustomStartDate(undefined);
+                          }
+                        }}
+                        className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all w-full"
                       />
                     </div>
                     <div className="flex-1 min-w-[150px]">
                       <Label className="text-xs mb-1 block">To Date</Label>
-                      <DatePicker
-                        date={leaveHistoryCustomEndDate}
-                        onDateChange={setLeaveHistoryCustomEndDate}
-                        placeholder="Select end date"
-                        className="w-full"
+                      <Input
+                        type="date"
+                        value={
+                          leaveHistoryCustomEndDate
+                            ? format(leaveHistoryCustomEndDate, "yyyy-MM-dd")
+                            : ""
+                        }
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            const [y, m, d] = e.target.value
+                              .split("-")
+                              .map(Number);
+                            setLeaveHistoryCustomEndDate(new Date(y, m - 1, d));
+                          } else {
+                            setLeaveHistoryCustomEndDate(undefined);
+                          }
+                        }}
+                        min={
+                          leaveHistoryCustomStartDate
+                            ? format(leaveHistoryCustomStartDate, "yyyy-MM-dd")
+                            : undefined
+                        }
+                        className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all w-full"
                       />
                     </div>
                   </div>
@@ -2927,8 +3030,8 @@ export default function LeaveManagement() {
                                   })
                                 }
                                 className={`rounded-full px-3 py-1 text-sm border transition ${isSelected
-                                  ? "border-sky-500 bg-white text-sky-600 shadow-sm"
-                                  : "border-slate-300 text-slate-600 hover:bg-white"
+                                    ? "border-sky-500 bg-white text-sky-600 shadow-sm"
+                                    : "border-slate-300 text-slate-600 hover:bg-white"
                                   }`}
                               >
                                 {day.label}
@@ -3280,7 +3383,7 @@ export default function LeaveManagement() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {(getFilteredApprovalRequests.length === 0) ? (
+                  {approvalRequests.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p>No leave requests to display</p>
@@ -3438,11 +3541,14 @@ export default function LeaveManagement() {
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-semibold">Recent Decisions</h3>
                       <div className="flex items-center gap-2">
-                        <Select value={historyFilter} onValueChange={setHistoryFilter}>
+                        <Select
+                          value={historyFilter}
+                          onValueChange={setHistoryFilter}
+                        >
                           <SelectTrigger className="w-[180px] h-9 bg-white dark:bg-gray-950">
                             <SelectValue placeholder="Select period" />
                           </SelectTrigger>
-                          <SelectContent className="border-2 shadow-xl rounded-xl">
+                          <SelectContent>
                             <SelectItem value="all">All History</SelectItem>
                             <SelectItem value="current_month">
                               Current Month
@@ -3485,16 +3591,31 @@ export default function LeaveManagement() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Roles</SelectItem>
-                            <SelectItem value="hr">HR</SelectItem>
-                            <SelectItem value="manager">Manager</SelectItem>
-                            <SelectItem value="team_lead">Team Lead</SelectItem>
-                            <SelectItem value="employee">Employee</SelectItem>
+                            {user?.role === "admin" && (
+                              <SelectItem value="hr">HR</SelectItem>
+                            )}
+                            {(user?.role === "admin" ||
+                              user?.role === "hr") && (
+                                <SelectItem value="manager">Manager</SelectItem>
+                              )}
+                            {(user?.role === "admin" ||
+                              user?.role === "hr" ||
+                              user?.role === "manager") && (
+                                <SelectItem value="team_lead">
+                                  Team Lead
+                                </SelectItem>
+                              )}
+                            {(user?.role === "admin" ||
+                              user?.role === "hr" ||
+                              user?.role === "manager") && (
+                                <SelectItem value="employee">Employee</SelectItem>
+                              )}
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
 
-                    {historyFilter === 'custom' && (
+                    {historyFilter === "custom" && (
                       <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border">
                         <div className="flex items-center gap-3 flex-wrap">
                           <div className="flex-1 min-w-[150px]">
@@ -3502,20 +3623,13 @@ export default function LeaveManagement() {
                             <DatePicker
                               date={customHistoryStartDate}
                               onDateChange={setCustomHistoryStartDate}
-                              placeholder="Select start date"
-                              className="w-full"
                             />
                           </div>
-                          <div className="space-y-2">
-                            <Label className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
-                              <div className="h-1.5 w-1.5 rounded-full bg-slate-500" />
-                              End Date
-                            </Label>
+                          <div className="flex-1 min-w-[150px]">
+                            <Label className="text-xs mb-1">End Date</Label>
                             <DatePicker
                               date={customHistoryEndDate}
                               onDateChange={setCustomHistoryEndDate}
-                              placeholder="Select end date"
-                              className="w-full"
                             />
                           </div>
                         </div>
@@ -3759,18 +3873,26 @@ export default function LeaveManagement() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Start Date</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Start Date</Label>
                 <DatePicker
                   date={editFormData.startDate}
-                  onDateChange={(date) => date && setEditFormData(prev => ({ ...prev, startDate: date }))}
+                  onDateChange={(date) =>
+                    date &&
+                    setEditFormData((prev) => ({ ...prev, startDate: date }))
+                  }
+                  placeholder="Select start date"
                 />
               </div>
-              <div>
-                <Label>End Date</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">End Date</Label>
                 <DatePicker
                   date={editFormData.endDate}
-                  onDateChange={(date) => date && setEditFormData(prev => ({ ...prev, endDate: date }))}
+                  onDateChange={(date) =>
+                    date &&
+                    setEditFormData((prev) => ({ ...prev, endDate: date }))
+                  }
+                  placeholder="Select end date"
                 />
               </div>
             </div>

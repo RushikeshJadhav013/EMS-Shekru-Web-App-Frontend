@@ -359,9 +359,14 @@ const WFHRequests: React.FC = () => {
         return currentUserRole === "admin";
       }
 
-      // Rule 2: TL/Employee requests -> Both Manager and HR can act
-      if (requesterRole === "team_lead" || requesterRole === "employee") {
-        return currentUserRole === "manager" || currentUserRole === "hr";
+      // Rule 2: TL requests -> Manager, HR and Admin can act
+      if (requesterRole === "team_lead") {
+        return currentUserRole === "manager" || currentUserRole === "hr" || currentUserRole === "admin";
+      }
+
+      // Rule 3: Employee requests -> Team Lead, Manager and HR can act
+      if (requesterRole === "employee") {
+        return currentUserRole === "team_lead" || currentUserRole === "manager" || currentUserRole === "hr" || currentUserRole === "admin";
       }
 
       return false;
@@ -658,7 +663,7 @@ const WFHRequests: React.FC = () => {
           >
             My Requests
           </TabsTrigger>
-          {["admin", "hr", "manager"].includes(user?.role || "") && (
+          {["admin", "hr", "manager", "team_lead"].includes(user?.role || "") && (
             <TabsTrigger
               value="pending-approvals"
               className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"

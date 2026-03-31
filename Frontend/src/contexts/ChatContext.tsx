@@ -12,7 +12,7 @@ interface ChatContextType {
   isLoading: boolean;
   unreadCount: number;
   setActiveChat: (chat: Chat | null) => void;
-  sendMessage: (content: string, messageType?: 'text' | 'emoji' | 'file' | 'image', replyTo?: string) => Promise<void>;
+  sendMessage: (content: string, messageType?: 'text' | 'emoji', replyTo?: string) => Promise<void>;
   createChat: (type: 'individual' | 'group', participantIds: string[], name?: string, description?: string) => Promise<Chat>;
   loadChats: () => Promise<void>;
   loadMessages: (chatId: string, type?: 'individual' | 'group') => Promise<void>;
@@ -44,9 +44,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user.id === targetUser.id) return true;
 
     const cr = user.role;
-    const cd = user.department;
+    const cd = user.department || '';
     const tr = targetUser.role;
-    const td = targetUser.department;
+    const td = targetUser.department || '';
 
     // Admin & HR: Can chat with everyone
     if (cr === 'admin' || cr === 'hr') return true;
@@ -88,8 +88,32 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const fetchedChats = await chatService.getChats();
-
       setChats(fetchedChats);
+
+      // aggressively fix 'No messages yet' issues:
+      // if any chat has a timestamp indicating a message exists, but the backend didn't supply the content block:
+      const chatsNeedingSync = fetchedChats.filter(c => c.lastMessage && !c.lastMessage.content && c.lastMessage.timestamp);
+      if (chatsNeedingSync.length > 0) {
+        // Fire and forget: fetch the missing texts natively
+        Promise.all(chatsNeedingSync.map(async chat => {
+          try {
+            // grab the latest chat log (which comes with up to 50 messages to ensure we reach the newest)
+            const msgs = await chatService.getChatMessages(chat.id, chat.type, 1, 5);
+            if (msgs.length > 0) {
+              // The backend returns messages in chronological order, so the latest is the very last item
+              const actualLatestMessage = msgs[msgs.length - 1];
+              setChats(prev => prev.map(c =>
+                c.id === chat.id
+                  ? { ...c, lastMessage: actualLatestMessage }
+                  : c
+              ));
+            }
+          } catch (e) {
+            // Silent catch to prevent console spam
+          }
+        }));
+      }
+
     } catch (error) {
       console.error('Failed to load chats:', error);
       toast({
@@ -152,10 +176,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: 'destructive',
       });
     }
-  }, [user, toast]);
+  }, [user, toast, isUserVisible]);
 
   // Send message
-  const sendMessage = useCallback(async (content: string, messageType: 'text' | 'emoji' | 'file' | 'image' = 'text', replyTo?: string) => {
+  const sendMessage = useCallback(async (content: string, messageType: 'text' | 'emoji' = 'text', replyTo?: string) => {
     if (!activeChat || !user) return;
 
     try {
@@ -402,10 +426,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const removeParticipants = useCallback(async (chatId: string, userIds: string[]) => {
     try {
       await chatService.removeParticipant(chatId, userIds);
-      
+
       // Update local state for chats list
-      setChats(prev => prev.map(chat => 
-        chat.id === chatId 
+      setChats(prev => prev.map(chat =>
+        chat.id === chatId
           ? { ...chat, participants: chat.participants.filter(p => !userIds.includes(p.userId)), memberCount: (chat.memberCount || 0) - userIds.length }
           : chat
       ));
@@ -444,10 +468,21 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [loadMessages]);
 
   useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
     if (user) {
       loadChats();
       loadAvailableUsers();
+
+      // Auto-refresh chat list every 10 seconds to update unread badges & latest messages
+      intervalId = setInterval(() => {
+        loadChats();
+      }, 10000);
     }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [user, loadChats, loadAvailableUsers]);
 
   const value = {

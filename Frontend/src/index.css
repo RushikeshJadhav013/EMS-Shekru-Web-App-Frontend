@@ -102,6 +102,11 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 220 20% 20%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 221 83% 53%;
+
+    /* Brand Identity */
+    --brand-orange: 23 90% 54%;
+    --brand-orange-foreground: 0 0% 100%;
+    --brand-orange-soft: 23 90% 95%;
   }
 
   .dark {
@@ -156,11 +161,10 @@ All colors MUST be HSL.
   }
 
   .theme-orange {
-    --primary: 24 95% 53%;
-    --primary-hover: 24 95% 48%;
-    --ring: 24 95% 53%;
+    --primary: 23 90% 54%;
+    --primary-hover: 23 90% 48%;
+    --ring: 23 90% 54%;
   }
-
   .theme-pink {
     --primary: 330 81% 60%;
     --primary-hover: 330 81% 55%;

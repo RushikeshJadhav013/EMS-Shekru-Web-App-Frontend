@@ -12,6 +12,7 @@ import { LeaveBalanceProvider } from "@/contexts/LeaveBalanceContext";
 import { HolidayProvider } from "@/contexts/HolidayContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import MainLayout from "@/components/layout/MainLayout";
+import LandingPage from "@/pages/LandingPage";
 import Login from "@/pages/Login";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import HRDashboard from "@/pages/hr/HRDashboard";
@@ -68,9 +69,9 @@ const App = () => {
                             <Sonner />
                             <Routes>
                               {/* Public Routes */}
+                              <Route path="/" element={<LandingPage />} />
                               <Route path="/login" element={<Login />} />
                               <Route path="/contact-support" element={<ContactSupport />} />
-                              <Route path="/" element={<Navigate to="/login" replace />} />
 
                               {/* Protected Routes */}
                               <Route element={

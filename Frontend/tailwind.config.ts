@@ -87,6 +87,11 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        brand: {
+          orange: "hsl(var(--brand-orange))",
+          "orange-foreground": "hsl(var(--brand-orange-foreground))",
+          "orange-soft": "hsl(var(--brand-orange-soft))",
+        },
       },
       backgroundImage: {
         'gradient-primary': 'var(--gradient-primary)',

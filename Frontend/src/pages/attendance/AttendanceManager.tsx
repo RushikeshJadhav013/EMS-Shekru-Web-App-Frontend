@@ -404,14 +404,14 @@ const AttendanceManager: React.FC = () => {
 
   const parseTimeValue = (value: string) => {
     if (!value) return { hour12: "10", minute: "00", meridiem: "AM" };
-    
+
     // Support formats like "09:30", "09:30 AM", "09:30AM", "21:30"
     const timeOnly = value.split(/\s|(?=[AP]M)/i)[0];
     const [h, m] = timeOnly.split(":");
-    
+
     let hour = Math.max(0, Math.min(23, Number(h) || 0));
     const minute = Math.max(0, Math.min(59, Number(m) || 0));
-    
+
     // Detect meridiem from string if present, otherwise from hour
     let meridiem: "AM" | "PM" = "AM";
     if (value.toUpperCase().includes("PM")) {
@@ -421,10 +421,10 @@ const AttendanceManager: React.FC = () => {
     } else {
       meridiem = hour >= 12 ? "PM" : "AM";
     }
-    
+
     let hour12 = hour % 12;
     if (hour12 === 0) hour12 = 12;
-    
+
     return {
       hour12: hour12.toString().padStart(2, "0"),
       minute: minute.toString().padStart(2, "0"),
@@ -863,21 +863,7 @@ const AttendanceManager: React.FC = () => {
           if (!isAllowedRole) return false;
 
           // 3. If manager has department, filter by it. Otherwise show all provided by backend.
-          // Support multi-department managers by checking for overlap
-          if (normalizedDept && empDept) {
-            const managerDepts = normalizedDept
-              .split(",")
-              .map((d) => d.trim().toLowerCase())
-              .filter(Boolean);
-            const recordDepts = empDept
-              .split(",")
-              .map((d) => d.trim().toLowerCase())
-              .filter(Boolean);
-            const hasOverlap = recordDepts.some((rd) =>
-              managerDepts.includes(rd),
-            );
-            if (!hasOverlap) return false;
-          }
+          if (normalizedDept && empDept && empDept !== normalizedDept) return false;
 
           return true;
         });
@@ -1144,9 +1130,11 @@ const AttendanceManager: React.FC = () => {
         if (targetDate) params.date = targetDate;
 
         // Enforce backend-level filtering for Managers (Department Scope + Manager ID)
-        if (user?.role === "manager") {
-          if (user.department) params.department = user.department;
-          params.manager_id = user.id;
+        if (user?.role === 'manager') {
+          if (user.department) {
+            query += (query ? '&' : '?') + `department=${encodeURIComponent(user.department)}`;
+          }
+          query += (query ? '&' : '?') + `manager_id=${encodeURIComponent(user.id)}`;
         }
 
         let [data, employeesRaw] = await Promise.all([
@@ -1183,8 +1171,7 @@ const AttendanceManager: React.FC = () => {
         console.log("Attendance data received:", data);
 
         // Enforce simplified visibility validation for Managers
-
-        if (user?.role === "manager") {
+        if (user?.role === 'manager') {
           const managerId = String(user.id);
           const normalizedDept = (user.department || "").trim().toLowerCase();
 
@@ -1826,9 +1813,9 @@ const AttendanceManager: React.FC = () => {
       const [h, m] = normalized.split(":");
       const hour = parseInt(h, 10);
       const minute = parseInt(m, 10);
-      
+
       if (isNaN(hour) || isNaN(minute)) return normalized;
-      
+
       const date = new Date();
       date.setHours(hour, minute, 0, 0);
       return formatTimeIST(date, "HH:mm");
@@ -2426,11 +2413,10 @@ const AttendanceManager: React.FC = () => {
                                   {record.checkInStatus && (
                                     <Badge
                                       variant="outline"
-                                      className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${
-                                        record.checkInStatus.toLowerCase() === "late"
+                                      className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${record.checkInStatus.toLowerCase() === "late"
                                           ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
                                           : "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400"
-                                      }`}
+                                        }`}
                                     >
                                       In: {record.checkInStatus}
                                     </Badge>
@@ -2438,11 +2424,10 @@ const AttendanceManager: React.FC = () => {
                                   {record.checkOutStatus && (
                                     <Badge
                                       variant="outline"
-                                      className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${
-                                        record.checkOutStatus.toLowerCase() === "early"
+                                      className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${record.checkOutStatus.toLowerCase() === "early"
                                           ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
                                           : "bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-400"
-                                      }`}
+                                        }`}
                                     >
                                       Out: {record.checkOutStatus}
                                     </Badge>

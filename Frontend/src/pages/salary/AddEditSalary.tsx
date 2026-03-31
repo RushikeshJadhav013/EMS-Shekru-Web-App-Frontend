@@ -47,6 +47,15 @@ const salarySchema = z.object({
     variablePayType: z.enum(['none', 'percentage', 'fixed']),
     variablePayValue: z.preprocess(preprocessNumber, z.number().min(0).default(0)),
     workingDays: z.preprocess(preprocessNumber, z.number().min(1).max(31).default(22)),
+    pfType: z.enum(['none', 'fixed', 'percentage']).default('none'),
+    pfValue: z.preprocess(preprocessNumber, z.number().min(0).default(0)),
+    // Bank & Statutory Details
+    uanNumber: z.string().optional(),
+    pfNo: z.string().optional(),
+    bankName: z.string().optional(),
+    bankAccount: z.string().optional(),
+    ifscCode: z.string().optional(),
+    paymentMode: z.string().default('bank_transfer'),
     // Manual Entry Fields (Annual)
     basicAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
     hraAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
@@ -119,6 +128,14 @@ const AddEditSalary = () => {
             variablePayType: 'none',
             variablePayValue: 0,
             workingDays: 22,
+            pfType: 'none',
+            pfValue: 0,
+            uanNumber: '',
+            pfNo: '',
+            bankName: '',
+            bankAccount: '',
+            ifscCode: '',
+            paymentMode: 'bank_transfer',
             basicAnnual: 0,
             hraAnnual: 0,
             specialAllowanceAnnual: 0,
@@ -137,6 +154,8 @@ const AddEditSalary = () => {
     const watchVarType = form.watch('variablePayType');
     const watchVarValue = form.watch('variablePayValue');
     const watchWorkingDays = form.watch('workingDays');
+    const watchPfType = form.watch('pfType');
+    const watchPfValue = form.watch('pfValue');
 
     useEffect(() => {
         loadEmployees();
@@ -244,45 +263,41 @@ const AddEditSalary = () => {
                     console.warn('API calculation failed, using fallback:', error);
                 }
 
-                // Fallback to local calculation if API fails
-                // Standard Indian Payroll Proportions (following "Government Rules" logic)
-                // We calculate based on the current CTC and variable pay in the form
-                const variablePart = parseNumber(form.getValues('variablePayAnnual')) || 0;
-                // Fixed CTC available for core components
-                const fixedCtc = ctc - variablePart;
-
-                // 1. Basic: Usually 50% of Fixed CTC
-                const annualBasic = Math.round(fixedCtc * 0.5);
+                // 1. Basic: 50% of CTC
+                const annualBasic = Math.round(ctc * 0.5);
 
                 // 2. HRA: 50% of Basic
                 const annualHra = Math.round(annualBasic * 0.5);
 
-                // 3. PF: 12% of Basic (Employee) + 12% of Basic (Employer) = 24% of Basic Total
-                // The form field 'pfAnnual' expects the TOTAL amount.
-                const annualPfOneSide = Math.round(annualBasic * 0.12);
+                // 3. Medical, Conveyance, Other (Monthly: 1100, 1250, 250)
+                const annualMedical = 1100 * 12;
+                const annualConveyance = 1250 * 12;
+                const annualOtherAllowance = 250 * 12;
+
+                // 4. PF calculation
+                let annualPfOneSide = 0;
+                if (watchPfType === 'percentage') {
+                    annualPfOneSide = Math.round(annualBasic * (parseNumber(watchPfValue) / 100));
+                } else if (watchPfType === 'fixed') {
+                    annualPfOneSide = parseNumber(watchPfValue) * 12;
+                } else if (watchCtc > 0) {
+                   // Default fallback PF if no type selected? Usually 12% of basic
+                   annualPfOneSide = Math.round(annualBasic * 0.12);
+                }
                 const annualPfTotal = annualPfOneSide * 2;
 
-                // 4. Professional Tax: assumed flat ₹2,400/year (₹200/month) as per your reference
-                const annualPt = 2400;
+                // 5. Professional Tax: 200*11 + 300 = 2500
+                const annualPt = 2500;
 
-                // 5. Other Deductions: 0% (start with 0, user can adjust)
-                const annualOtherDed = 0;
+                // 6. Other Taxes / Deductions: 1000 per month
+                const annualOtherDed = 12000;
 
-                // 6. Special Allowance: The balancing figure to match CTC exactly
-                // Sum of core components (Cost to Company) = Basic + HRA + Special + Conveyance + Medical + OtherAllow + PF_Employer + Variable
-                // Fixed CTC = CTC - Variable
-                // Fixed CTC = Basic + HRA + Special + PF_Employer
-                // Special = Fixed CTC - Basic - HRA - PF_Employer
-
-                const annualSpecial = Math.max(0, fixedCtc - annualBasic - annualHra - annualPfOneSide);
-
-                // 7. Variable Pay calculation based on type
-                let annualVariablePay = 0;
-                if (watchVarType === 'percentage') {
-                    annualVariablePay = ctc * (variableValue / 100);
-                } else if (watchVarType === 'fixed') {
-                    annualVariablePay = variableValue;
-                }
+                // 7. Special Allowance: The balancing figure to match CTC exactly
+                // CTC = Basic + HRA + Medical + Conveyance + Other + Special + PF_Employer + Variable
+                // (Variable pay part of CTC is already subtracted in some contexts, but let's be safe)
+                const variablePart = (watchVarType === 'percentage' ? ctc * (parseNumber(watchVarValue) / 100) : parseNumber(watchVarValue));
+                
+                const annualSpecial = Math.max(0, ctc - variablePart - annualBasic - annualHra - annualMedical - annualConveyance - annualOtherAllowance - annualPfOneSide);
 
                 // Always populate manual fields regardless of active tab
                 form.setValue('basicAnnual', annualBasic, { shouldValidate: true });
@@ -291,7 +306,10 @@ const AddEditSalary = () => {
                 form.setValue('professionalTaxAnnual', annualPt, { shouldValidate: true });
                 form.setValue('otherDeductionAnnual', annualOtherDed, { shouldValidate: true });
                 form.setValue('specialAllowanceAnnual', annualSpecial, { shouldValidate: true });
-                form.setValue('variablePayAnnual', annualVariablePay, { shouldValidate: true });
+                form.setValue('medicalAllowanceAnnual', annualMedical, { shouldValidate: true });
+                form.setValue('conveyanceAnnual', annualConveyance, { shouldValidate: true });
+                form.setValue('otherAllowanceAnnual', annualOtherAllowance, { shouldValidate: true });
+                form.setValue('variablePayAnnual', variablePart, { shouldValidate: true });
 
                 // Trigger calculation preview refresh
                 handleCalculatePreview();
@@ -472,47 +490,62 @@ const AddEditSalary = () => {
                     });
                 } catch (error) {
                     console.warn('API calculation failed, using fallback:', error);
-                    // Fallback calculation for guided mode
-                    const fixedCtc = vType === 'percentage' ? ctcVal * (1 - vValueVal / 100) : ctcVal - vValueVal;
-                    const annualBasic = Math.round(fixedCtc * 0.5);
-                    const annualHra = Math.round(annualBasic * 0.5);
-                    const annualPfOneSide = Math.round(annualBasic * 0.12); // One Side
-                    const annualPt = 2400;
+                    // Get current month to handle Feb PT exception
+                    const currentMonth = new Date().getMonth(); // 0-indexed, Jan=0, Feb=1
+                    const monthlyPt = currentMonth === 1 ? 300 : 200;
+                    const annualPt = 2500; // Total per year (200 * 11 + 300)
 
-                    // Note: Special Allowance in fallback was incorrectly subtracting "annualPf" (one side) from CTC?
-                    // CTC = Basic + HRA + Special + PF_Employer + Variable.
-                    // Special = CTC - Variable - Basic - HRA - PF_Employer.
-                    // Correct.
+                    const monthlyCtc = Math.round(ctcVal / 12);
+                    const monthlyBasic = Math.round(monthlyCtc * 0.5);
+                    const monthlyHra = Math.round(monthlyBasic * 0.5);
+                    const monthlyMedical = 1100;
+                    const monthlyConveyance = 1250;
+                    const monthlyOtherAllowance = 250;
+                    const monthlyOtherTax = 1000;
 
-                    const monthlyBasic = Math.round(annualBasic / 12);
-                    const monthlyHra = Math.round(annualHra / 12);
-                    const monthlyPfEmp = Math.round(annualPfOneSide / 12);
-                    const monthlyPfEmpr = Math.round(annualPfOneSide / 12);
-                    const monthlyPt = Math.round(annualPt / 12);
+                    // PF Mapping
+                    let monthlyPfOneSide = 0;
+                    if (vType === 'percentage') {
+                        // Using percentage of Basic for PF usually
+                        monthlyPfOneSide = Math.round(monthlyBasic * (vValueVal / 100)); // Actually PF type is separate, but we handle it here if it's guided fallback
+                    } else {
+                        // Default PF: 12% of monthly Basic
+                        monthlyPfOneSide = Math.round(monthlyBasic * 0.12);
+                    }
+                    
+                    // Actually, guided mode has its own pfType watch
+                    const currentPfType = form.getValues('pfType');
+                    const currentPfValue = parseNumber(form.getValues('pfValue'));
+                    if (currentPfType === 'percentage') {
+                        monthlyPfOneSide = Math.round(monthlyBasic * (currentPfValue / 100));
+                    } else if (currentPfType === 'fixed') {
+                        monthlyPfOneSide = currentPfValue;
+                    } else if (currentPfType === 'none') {
+                        monthlyPfOneSide = 0;
+                    }
 
-                    const annualSpecial = Math.max(0, fixedCtc - annualBasic - annualHra - annualPfOneSide);
-                    const monthlySpecial = Math.round(annualSpecial / 12);
+                    const monthlySpecial = Math.max(0, monthlyCtc - (monthlyBasic + monthlyHra + monthlyMedical + monthlyConveyance + monthlyOtherAllowance + monthlyPfOneSide + (vType === 'fixed' ? Math.round(vValueVal/12) : 0)));
 
-                    const monthlyGross = monthlyBasic + monthlyHra + monthlySpecial;
-                    const monthlyDeductions = monthlyPfEmp + monthlyPt;
+                    const monthlyGross = monthlyBasic + monthlyHra + monthlySpecial + monthlyMedical + monthlyConveyance + monthlyOtherAllowance;
+                    const monthlyDeductions = monthlyPfOneSide + monthlyPt + monthlyOtherTax;
                     const monthlyInHand = monthlyGross - monthlyDeductions;
 
                     setPreviewData({
                         annualCtc: ctcVal,
-                        annualBasic,
+                        annualBasic: monthlyBasic * 12,
                         monthlyBasic,
                         hra: monthlyHra,
                         specialAllowance: monthlySpecial,
-                        medicalAllowance: 0,
-                        conveyanceAllowance: 0,
-                        otherAllowance: 0,
-                        pfEmployer: monthlyPfEmpr,
-                        pfEmployee: monthlyPfEmp,
+                        medicalAllowance: monthlyMedical,
+                        conveyanceAllowance: monthlyConveyance,
+                        otherAllowance: monthlyOtherAllowance,
+                        pfEmployer: monthlyPfOneSide,
+                        pfEmployee: monthlyPfOneSide,
                         professionalTax: monthlyPt,
                         variablePay: vType === 'percentage' ? ctcVal * (vValueVal / 100) : vValueVal,
                         monthlyGross,
                         monthlyDeductions,
-                        otherDeduction: 0,
+                        otherDeduction: monthlyOtherTax,
                         monthlyInHand,
                     });
                 }
@@ -592,6 +625,14 @@ const AddEditSalary = () => {
 
             const userIdInt = parseInt(data.userId);
 
+            // Shared PF Payload Logic (applies to both modes)
+            const pfPayload: Record<string, any> = {};
+            if (data.pfType === 'percentage') {
+                pfPayload.employer_pf_percentage = parseNumber(data.pfValue);
+            } else if (data.pfType === 'fixed') {
+                pfPayload.pf_annual = parseNumber(data.pfValue) * 12;
+            }
+
             if (activeTab === "manual") {
                 // Calculate variable pay for manual mode
                 const calculatedVariablePay = data.variablePayType === 'percentage'
@@ -614,19 +655,23 @@ const AddEditSalary = () => {
                     other_deduction_annual: data.otherDeductionAnnual || 0,
                     pf_annual: data.pfAnnual || 0,
                     variable_pay: calculatedVariablePay,
-                    working_days_per_month: data.workingDays || 22
+                    working_days_per_month: data.workingDays || 22,
+                    ...(data.uanNumber ? { uan_number: data.uanNumber } : {}),
+                    ...(data.pfNo ? { pf_no: data.pfNo } : {}),
+                    ...(data.bankName ? { bank_name: data.bankName } : {}),
+                    ...(data.bankAccount ? { bank_account: data.bankAccount } : {}),
+                    ...(data.ifscCode ? { ifsc_code: data.ifscCode } : {}),
+                    payment_mode: data.paymentMode || 'Bank Transfer',
+                    ...pfPayload
                 };
 
                 let response;
                 if (existingSalary) {
-                    response = await apiService.updateSalaryCtc(data.userId, {
-                        annualCtc: data.annualCtc,
-                        variablePayType: data.variablePayType,
-                        variablePayValue: data.variablePayValue
-                    });
+                    // Use standard PUT endpoint for all manual calculations
+                    response = await apiService.updateSalaryManualFullEdit(data.userId, manualPayload);
                     toast({
                         title: "Success",
-                        description: "Salary structure updated successfully.",
+                        description: "Salary details updated successfully.",
                         variant: "success"
                     });
                 } else {
@@ -650,26 +695,53 @@ const AddEditSalary = () => {
 
             } else {
                 // Guided Mode Payload
+
                 const payload = {
                     user_id: userIdInt,
                     package_ctc_annual: data.annualCtc,
                     variable_pay_type: data.variablePayType,
                     variable_pay_value: data.variablePayValue,
-                    working_days: data.workingDays,
+                    working_days_per_month: data.workingDays,
+                    ...(data.uanNumber ? { uan_number: data.uanNumber } : {}),
+                    ...(data.pfNo ? { pf_no: data.pfNo } : {}),
+                    ...(data.bankName ? { bank_name: data.bankName } : {}),
+                    ...(data.bankAccount ? { bank_account: data.bankAccount } : {}),
+                    ...(data.ifscCode ? { ifsc_code: data.ifscCode } : {}),
+                    payment_mode: data.paymentMode || 'Bank Transfer',
+                    ...pfPayload,
                 };
 
                 let response;
                 if (existingSalary) {
-                    // Update CTC first if changed
-                    response = await apiService.updateSalaryCtc(data.userId, {
-                        annualCtc: payload.package_ctc_annual,
-                        variablePayType: payload.variable_pay_type,
-                        variablePayValue: payload.variable_pay_value
+                    const ctcChanged = parseNumber(data.annualCtc) !== parseNumber(existingSalary.package_ctc_annual);
+
+                    if (ctcChanged) {
+                        // Recalculate components via update-ctc
+                        await apiService.updateSalaryCtc(data.userId, {
+                            annualCtc: payload.package_ctc_annual,
+                            variablePayType: payload.variable_pay_type,
+                            variablePayValue: payload.variable_pay_value,
+                            ...pfPayload
+                        });
+                    }
+
+                    // Update non-calculated fields (Bank details, PF numbers, etc.)
+                    response = await apiService.updateSalaryDetails(data.userId, {
+                        uan_number: data.uanNumber,
+                        pf_no: data.pfNo,
+                        bank_name: data.bankName,
+                        bank_account: data.bankAccount,
+                        ifsc_code: data.ifscCode,
+                        working_days_per_month: data.workingDays,
+                        payment_mode: data.paymentMode,
+                        variable_pay_type: data.variablePayType,
+                        variable_pay_value: data.variablePayValue,
+                        ...pfPayload
                     });
 
                     toast({
                         title: "Updated",
-                        description: "Salary structure updated successfully.",
+                        description: "Salary record and details updated successfully.",
                         variant: "success"
                     });
                 } else {
@@ -681,7 +753,6 @@ const AddEditSalary = () => {
                     });
                 }
 
-                // Update state with backend response
                 if (response) {
                     setExistingSalary(response);
                     await loadExistingSalary(data.userId);
@@ -970,6 +1041,58 @@ const AddEditSalary = () => {
                                                     </div>
                                                 </div>
 
+                                                {/* PF Setup Row */}
+                                                <div className="grid grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <Label className="font-semibold">PF (Provident Fund)</Label>
+                                                        <Controller
+                                                            name="pfType"
+                                                            control={form.control}
+                                                            render={({ field }) => (
+                                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                                    <SelectTrigger className="h-10 bg-white dark:bg-slate-800">
+                                                                        <SelectValue placeholder="Select PF Type" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="none">None</SelectItem>
+                                                                        <SelectItem value="fixed">Fixed (₹)</SelectItem>
+                                                                        <SelectItem value="percentage">Percentage (%)</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            )}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label className="font-semibold">
+                                                            {watchPfType === 'percentage' ? 'PF Percentage (%)' : watchPfType === 'fixed' ? 'PF Amount (₹)' : 'PF Value'}
+                                                        </Label>
+                                                        <div className="relative">
+                                                            {watchPfType === 'fixed' && (
+                                                                <span className="absolute left-3 top-2.5 text-muted-foreground">₹</span>
+                                                            )}
+                                                            <Input
+                                                                type="text"
+                                                                className={`h-10 bg-white dark:bg-slate-800 ${watchPfType === 'fixed' ? 'pl-8' : ''}`}
+                                                                placeholder={watchPfType === 'percentage' ? 'e.g. 12' : watchPfType === 'fixed' ? 'e.g. 1800' : '0'}
+                                                                disabled={watchPfType === 'none'}
+                                                                {...form.register("pfValue")}
+                                                                onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
+                                                            />
+                                                            {watchPfType === 'percentage' && (
+                                                                <span className="absolute right-3 top-2.5 text-muted-foreground">%</span>
+                                                            )}
+                                                        </div>
+                                                        {watchPfType !== 'none' && watchPfValue > 0 && watchCtc > 0 && (
+                                                            <p className="text-xs text-muted-foreground mt-1">
+                                                                {watchPfType === 'percentage'
+                                                                    ? `≈ ${formatCurrency((parseNumber(watchCtc) * parseNumber(watchPfValue)) / 100)} / year`
+                                                                    : `≈ ${formatCurrency(parseNumber(watchPfValue) * 12)} / year`
+                                                                }
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+
                                                 <div className="p-5 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg space-y-5 border border-amber-100/50 dark:border-amber-900/30">
                                                     <div className="flex items-center gap-2 text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
                                                         <TrendingUp className="h-3 w-3" />
@@ -1125,8 +1248,62 @@ const AddEditSalary = () => {
                                                         <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("otherDeductionAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs uppercase text-muted-foreground">PF Annual (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("pfAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Label className="text-xs uppercase text-muted-foreground">Working Days</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("workingDays")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                    </div>
+
+                                                    <div className="space-y-2 lg:col-span-2 p-4 bg-green-50/50 dark:bg-green-950/20 rounded-lg border border-green-100/50 dark:border-green-900/30">
+                                                        <Label className="text-xs uppercase text-green-700 dark:text-green-400">Provident Fund (PF)</Label>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div className="space-y-2">
+                                                                <Label className="text-xs uppercase text-muted-foreground">Type</Label>
+                                                                <Controller
+                                                                    name="pfType"
+                                                                    control={form.control}
+                                                                    render={({ field }) => (
+                                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                                            <SelectTrigger className="h-10 bg-white dark:bg-slate-800">
+                                                                                <SelectValue placeholder="Select PF Type" />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                <SelectItem value="none">None</SelectItem>
+                                                                                <SelectItem value="fixed">Fixed (₹)</SelectItem>
+                                                                                <SelectItem value="percentage">Percentage (%)</SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    )}
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label className="text-xs uppercase text-muted-foreground">
+                                                                    {watchPfType === 'percentage' ? 'PF Percentage (%)' : watchPfType === 'fixed' ? 'PF Amount (₹/month)' : 'PF Value'}
+                                                                </Label>
+                                                                <div className="relative">
+                                                                    {watchPfType === 'fixed' && (
+                                                                        <span className="absolute left-3 top-2.5 text-muted-foreground">₹</span>
+                                                                    )}
+                                                                    <Input
+                                                                        type="text"
+                                                                        className={`h-10 bg-white dark:bg-slate-800 ${watchPfType === 'fixed' ? 'pl-8' : ''}`}
+                                                                        placeholder={watchPfType === 'percentage' ? 'e.g. 12' : watchPfType === 'fixed' ? 'e.g. 1800' : '0'}
+                                                                        disabled={watchPfType === 'none'}
+                                                                        {...form.register("pfValue")}
+                                                                        onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
+                                                                    />
+                                                                    {watchPfType === 'percentage' && (
+                                                                        <span className="absolute right-3 top-2.5 text-muted-foreground">%</span>
+                                                                    )}
+                                                                </div>
+                                                                {watchPfType !== 'none' && watchPfValue > 0 && (
+                                                                    <p className="text-xs text-muted-foreground mt-1">
+                                                                        {watchPfType === 'percentage'
+                                                                            ? `≈ ${formatCurrency((parseNumber(watchCtc) * parseNumber(watchPfValue)) / 100)} / year`
+                                                                            : `≈ ${formatCurrency(parseNumber(watchPfValue) * 12)} / year`
+                                                                        }
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                     <div className="space-y-2 lg:col-span-2 p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-100/50 dark:border-blue-900/30">
                                                         <Label className="text-xs uppercase text-blue-700 dark:text-blue-400">Variable Pay / Performance Bonus</Label>
@@ -1189,17 +1366,66 @@ const AddEditSalary = () => {
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-xs uppercase text-muted-foreground">Working Days</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("workingDays")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
-                                                    </div>
+
                                                 </div>
-
-
                                             </CardContent>
                                         </Card>
                                     </TabsContent>
                                 </Tabs>
+
+                                {/* Bank & Statutory Details Card (Shared) */}
+                                <Card className="border-0 shadow-lg bg-slate-50/30 dark:bg-slate-900/10 mb-6">
+                                    <CardHeader className="bg-white/60 dark:bg-slate-800/60">
+                                        <CardTitle className="flex items-center gap-2 text-base">
+                                            <DollarSign className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                                            Bank &amp; Statutory Details
+                                        </CardTitle>
+                                        <CardDescription>Optional — employee bank account, PF registration, and payment mode.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-5">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs uppercase text-muted-foreground">UAN Number</Label>
+                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" placeholder="e.g. 975610472162" {...form.register("uanNumber")} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs uppercase text-muted-foreground">PF Number</Label>
+                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" placeholder="e.g. MH/PUN/9673924/168/1039756" {...form.register("pfNo")} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs uppercase text-muted-foreground">Bank Name</Label>
+                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" placeholder="e.g. SBI" {...form.register("bankName")} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs uppercase text-muted-foreground">Bank Account Number</Label>
+                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" placeholder="e.g. 910383452746" {...form.register("bankAccount")} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs uppercase text-muted-foreground">IFSC Code</Label>
+                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" placeholder="e.g. SBIN0002638" {...form.register("ifscCode")} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs uppercase text-muted-foreground">Payment Mode</Label>
+                                                <Controller
+                                                    name="paymentMode"
+                                                    control={form.control}
+                                                    render={({ field }) => (
+                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                            <SelectTrigger className="h-10 bg-white dark:bg-slate-800">
+                                                                <SelectValue placeholder="Select payment mode" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                                                                <SelectItem value="Cash">Cash</SelectItem>
+                                                                <SelectItem value="Cheque">Cheque</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
 
 
                                 {/* Section 3: Live Calculation Breakdown */}

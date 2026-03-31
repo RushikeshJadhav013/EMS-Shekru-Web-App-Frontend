@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Mail, Shield, Users, Clock, ClipboardList, Globe, Phone, CheckCircle2, Settings, Home, MessageCircle, HelpCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { Logo } from '@/components/ui/Logo';
 import {
   Select,
   SelectContent,
@@ -379,63 +380,61 @@ const Login: React.FC = () => {
           <div className="absolute bottom-20 right-20 w-80 h-80 bg-purple-300 rounded-full blur-3xl"></div>
         </div>
 
-        <div className="relative z-10 flex flex-col justify-center p-12 lg:p-16 max-w-xl">
+        <div className="relative z-10 flex flex-col justify-center p-8 lg:p-12 max-w-lg">
           {/* Logo */}
-          <div className="flex items-center gap-3 mb-6">
-            <div
-              className="h-12 w-12 bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 flex items-center justify-center shadow-lg rounded-xl relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-400/30 to-transparent"></div>
-              <span className="text-2xl font-bold text-white relative z-10">S</span>
-            </div>
-            <h1 className="text-2xl font-bold text-slate-800">Staffly</h1>
+          <div className="mb-6">
+            <Logo 
+              className="flex items-center gap-3 drop-shadow-sm" 
+              iconClassName="h-10 w-10" 
+              textClassName="text-3xl font-bold tracking-tight" 
+            />
           </div>
 
           {/* Heading */}
-          <h2 className="text-4xl lg:text-5xl font-bold text-slate-800 mb-4 leading-tight">
+          <h2 className="text-3xl lg:text-4xl font-bold text-slate-800 mb-3 leading-tight">
             Welcome to Your{' '}
             <span className="text-blue-600">Workspace</span>
           </h2>
-          <p className="text-lg text-slate-600 mb-8">
+          <p className="text-base text-slate-600 mb-6">
             Streamline your workforce with intelligent attendance tracking, task management, and seamless collaboration.
           </p>
 
           {/* Feature Cards Grid */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
+          <div className="grid grid-cols-2 gap-3 mb-4">
             {/* Smart Attendance Card */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-white/50">
-              <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
-                <Clock className="h-6 w-6 text-blue-600" />
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 border border-white/50">
+              <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center mb-3">
+                <Clock className="h-5 w-5 text-blue-600" />
               </div>
-              <h3 className="text-sm font-semibold text-slate-800 mb-1">Smart Attendance</h3>
-              <p className="text-xs text-slate-600">Real-time tracking</p>
+              <h3 className="text-[13px] font-semibold text-slate-800 mb-0.5">Smart Attendance</h3>
+              <p className="text-[11px] text-slate-500">Real-time tracking</p>
             </div>
 
             {/* Task Manager Card */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-white/50">
-              <div className="h-12 w-12 bg-indigo-100 rounded-xl flex items-center justify-center mb-4">
-                <ClipboardList className="h-6 w-6 text-indigo-600" />
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 border border-white/50">
+              <div className="h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center mb-3">
+                <ClipboardList className="h-5 w-5 text-indigo-600" />
               </div>
-              <h3 className="text-sm font-semibold text-slate-800 mb-1">Task Manager</h3>
-              <p className="text-xs text-slate-600">Stay organized</p>
+              <h3 className="text-[13px] font-semibold text-slate-800 mb-0.5">Task Manager</h3>
+              <p className="text-[11px] text-slate-500">Stay organized</p>
             </div>
 
             {/* Team Sync Card */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-white/50">
-              <div className="h-12 w-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4">
-                <Users className="h-6 w-6 text-purple-600" />
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 border border-white/50">
+              <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center mb-3">
+                <Users className="h-5 w-5 text-purple-600" />
               </div>
-              <h3 className="text-sm font-semibold text-slate-800 mb-1">Team Sync</h3>
-              <p className="text-xs text-slate-600">Collaborate better</p>
+              <h3 className="text-[13px] font-semibold text-slate-800 mb-0.5">Team Sync</h3>
+              <p className="text-[11px] text-slate-500">Collaborate better</p>
             </div>
 
             {/* Secure Access Card */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-white/50">
-              <div className="h-12 w-12 bg-green-100 rounded-xl flex items-center justify-center mb-4">
-                <Shield className="h-6 w-6 text-green-600" />
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 border border-white/50">
+              <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center mb-3">
+                <Shield className="h-5 w-5 text-green-600" />
               </div>
-              <h3 className="text-sm font-semibold text-slate-800 mb-1">Secure Access</h3>
-              <p className="text-xs text-slate-600">Role-based control</p>
+              <h3 className="text-[13px] font-semibold text-slate-800 mb-0.5">Secure Access</h3>
+              <p className="text-[11px] text-slate-500">Role-based control</p>
             </div>
           </div>
         </div>
@@ -463,7 +462,7 @@ const Login: React.FC = () => {
               </div>
 
               <CardTitle className="text-2xl font-bold text-center text-slate-800">
-                Login to Shekru labs India
+                Login to Staffly
               </CardTitle>
               <CardDescription className="text-center text-slate-600">
                 Enter your email to receive a secure OTP
@@ -524,14 +523,6 @@ const Login: React.FC = () => {
                     )}
                   </Button>
 
-                  <div className="text-center mt-4">
-                    <p className="text-xs text-slate-500">
-                      By logging in, you agree to our{' '}
-                      <a href="#" className="text-blue-600 hover:underline">Terms of Service</a>
-                      {' '}and{' '}
-                      <a href="#" className="text-blue-600 hover:underline">Privacy Policy</a>
-                    </p>
-                  </div>
                 </form>
               ) : (
                 <form onSubmit={handleVerifyOtp} className="space-y-5">
@@ -611,15 +602,20 @@ const Login: React.FC = () => {
                 </form>
               )}
 
-              {/* Support Link */}
               <div className="text-center mt-6">
-                <p className="text-sm text-slate-600">
-                  Need help?{' '}
-                  <Link to="/contact-support" className="text-blue-600 hover:underline font-medium">
-                    Contact Support
-                  </Link>
+                <p className="text-[12px] text-slate-400 font-medium">
+                  Powered By{' '}
+                  <a 
+                    href="https://shekruweb.com/" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-blue-600 hover:text-blue-700 font-bold transition-colors"
+                  >
+                    Shekru Lab India Pvt. Ltd
+                  </a>
                 </p>
               </div>
+
             </CardContent>
           </Card>
         </div>
