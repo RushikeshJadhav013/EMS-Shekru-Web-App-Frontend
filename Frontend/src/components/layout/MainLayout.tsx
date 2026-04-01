@@ -48,7 +48,6 @@ import {
   Clock,
   CalendarDays,
   UserPlus,
-  MessageCircle,
   ChevronRight,
   Banknote,
   FolderKanban,
@@ -57,7 +56,6 @@ import {
 import { UserRole } from '@/types';
 import { Language } from '@/i18n/translations';
 import { Badge } from '@/components/ui/badge';
-import ChatNotificationBadge from '@/components/chat/ChatNotificationBadge';
 
 const MainLayout: React.FC = () => {
   const { user, logout, showDeadlineWarnings, setShowDeadlineWarnings } = useAuth();
@@ -89,7 +87,6 @@ const MainLayout: React.FC = () => {
       { icon: CalendarDays, label: t.navigation.leaves, path: `/${user.role}/leaves` },
       { icon: ClipboardList, label: t.navigation.tasks, path: `/${user.role}/tasks` },
       { icon: Banknote, label: t.navigation.salary, path: '/salary' },
-      { icon: MessageCircle, label: t.navigation.chat, path: `/${user.role}/chat` },
       { icon: Video, label: t.navigation.meetings, path: '/meetings' },
     ];
 
@@ -142,7 +139,7 @@ const MainLayout: React.FC = () => {
 
     // For chat and other main management routes, use startsWith to catch sub-routes
     // e.g., /admin/employees should match /admin/employees/new/
-    if (itemPath.includes('/chat') || itemPath.includes('/employees') || itemPath.includes('/branches') || itemPath.includes('/hiring') || itemPath.includes('/projects') || itemPath.includes('/reports')) {
+    if (itemPath.includes('/employees') || itemPath.includes('/branches') || itemPath.includes('/hiring') || itemPath.includes('/projects') || itemPath.includes('/reports')) {
       return currentPath.startsWith(itemPath);
     }
 
@@ -274,7 +271,7 @@ const MainLayout: React.FC = () => {
                   <NavLink
                     key={item.path}
                     to={item.path}
-                    end={!item.path.includes('/chat')}
+                    end={true}
                     title={!sidebarOpen ? item.label : ''}
                     className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-300 ${isActive
                       ? 'bg-blue-600 dark:bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-blue-900/40 font-bold scale-[1.02]'
@@ -295,7 +292,6 @@ const MainLayout: React.FC = () => {
                         ? 'text-white scale-110'
                         : 'text-slate-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400'
                         }`} />
-                      {item.path.includes('/chat') && <ChatNotificationBadge />}
                     </div>
 
                     {/* Label */}
@@ -359,7 +355,7 @@ const MainLayout: React.FC = () => {
                       <NavLink
                         key={item.path}
                         to={item.path}
-                        end={!item.path.includes('/chat')}
+                        end={true}
                         onClick={() => setMobileMenuOpen(false)}
                         className={`group relative flex items-center gap-3.5 rounded-2xl px-3.5 py-3 transition-all duration-300 ${isActive
                           ? 'bg-blue-600 dark:bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-blue-900/40 font-bold'
@@ -380,7 +376,6 @@ const MainLayout: React.FC = () => {
                             ? 'text-white scale-110'
                             : 'text-slate-400 dark:text-slate-500'
                             }`} />
-                          {item.path.includes('/chat') && <ChatNotificationBadge />}
                         </div>
 
                         <span className="font-bold text-sm tracking-tight truncate">{item.label}</span>
@@ -423,18 +418,9 @@ const MainLayout: React.FC = () => {
 
         {/* Main Content */}
         <main
-          className={`flex-1 min-w-0 w-full overflow-x-hidden transition-all duration-500 ${location.pathname.includes('/chat')
-            ? 'overflow-hidden'
-            : 'overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent'
-            }`}
+          className="flex-1 min-w-0 w-full overflow-x-hidden transition-all duration-500 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent"
         >
-          <div
-            className={
-              location.pathname.includes('/chat')
-                ? 'h-full w-full'
-                : 'h-full w-full animate-fade-in px-4 py-6 sm:px-6 lg:px-8'
-            }
-          >
+          <div className="h-full w-full animate-fade-in px-4 py-6 sm:px-6 lg:px-8">
             <Outlet />
           </div>
         </main>

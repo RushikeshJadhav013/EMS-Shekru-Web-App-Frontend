@@ -7,7 +7,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { ChatProvider } from "@/contexts/ChatContext";
 import { LeaveBalanceProvider } from "@/contexts/LeaveBalanceContext";
 import { HolidayProvider } from "@/contexts/HolidayContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -36,7 +35,6 @@ import AccessControl from "@/pages/access/AccessControl";
 import Profile from "@/pages/profile/Profile";
 import SettingsPage from "@/pages/settings/SettingsPage";
 import ContactSupport from "@/pages/ContactSupport";
-import Chat from "@/pages/chat/Chat";
 import WFHRequests from "@/pages/wfh/WFHRequests";
 import RouteRestorer from "@/components/RouteRestorer";
 import SalaryDashboard from "@/pages/salary/SalaryDashboard";
@@ -63,8 +61,7 @@ const App = () => {
                   <RouteRestorer>
                     <LeaveBalanceProvider>
                       <HolidayProvider>
-                        <ChatProvider>
-                          <NotificationProvider>
+                        <NotificationProvider>
                             <Toaster />
                             <Sonner />
                             <Routes>
@@ -180,11 +177,7 @@ const App = () => {
                                     <SettingsPage />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/admin/chat/*" element={
-                                  <ProtectedRoute allowedRoles={['admin']}>
-                                    <Chat />
-                                  </ProtectedRoute>
-                                } />
+
 
 
                                 {/* HR Routes */}
@@ -259,11 +252,7 @@ const App = () => {
                                     <SettingsPage />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/hr/chat/*" element={
-                                  <ProtectedRoute allowedRoles={['hr']}>
-                                    <Chat />
-                                  </ProtectedRoute>
-                                } />
+
 
 
                                 {/* Manager Routes */}
@@ -324,11 +313,7 @@ const App = () => {
                                     <SettingsPage />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/manager/chat/*" element={
-                                  <ProtectedRoute allowedRoles={['manager']}>
-                                    <Chat />
-                                  </ProtectedRoute>
-                                } />
+
 
                                 {/* Team Lead Routes */}
                                 <Route path="/team_lead" element={
@@ -382,11 +367,7 @@ const App = () => {
                                     <SettingsPage />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/team_lead/chat/*" element={
-                                  <ProtectedRoute allowedRoles={['team_lead']}>
-                                    <Chat />
-                                  </ProtectedRoute>
-                                } />
+
 
                                 {/* Employee Routes */}
                                 <Route path="/employee" element={
@@ -435,21 +416,16 @@ const App = () => {
                                     <SettingsPage />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/employee/chat/*" element={
-                                  <ProtectedRoute allowedRoles={['employee']}>
-                                    <Chat />
-                                  </ProtectedRoute>
-                                } />
+
                               </Route>
 
                               {/* 404 Route */}
                               <Route path="*" element={<NotFound />} />
                             </Routes>
                           </NotificationProvider>
-                        </ChatProvider>
-                      </HolidayProvider>
-                    </LeaveBalanceProvider>
-                  </RouteRestorer>
+                         </HolidayProvider>
+                       </LeaveBalanceProvider>
+                   </RouteRestorer>
                 </WFHProvider>
               </AuthProvider>
             </LanguageProvider>

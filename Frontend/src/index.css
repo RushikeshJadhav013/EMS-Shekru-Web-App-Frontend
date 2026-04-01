@@ -338,7 +338,7 @@ All colors MUST be HSL.
     border-color: hsl(var(--info) / 0.2);
   }
 
-  /* Chat-specific scrollbar styles */
+  /* Scrollbar utilities */
   .scrollbar-thin {
     scrollbar-width: thin;
   }
