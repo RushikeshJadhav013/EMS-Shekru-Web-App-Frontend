@@ -17,8 +17,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
-import { chatService } from '@/services/chatService';
-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -210,7 +208,7 @@ const MeetingsPage: React.FC = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [allMeetingsData, participationData, projectMeetingsData, teamMeetingsData, deptsData, projsData, empsData, managersData, chatUsersData] = await Promise.all([
+            const [allMeetingsData, participationData, projectMeetingsData, teamMeetingsData, deptsData, projsData, empsData, managersData] = await Promise.all([
                 apiService.getMeetings(),
                 apiService.getMeetings({ as_creator: 'false' }).catch(() => []),
                 apiService.getMeetings({ type: 'project' }).catch(() => []),
@@ -218,8 +216,7 @@ const MeetingsPage: React.FC = () => {
                 apiService.getBranchs().catch(() => []),
                 apiService.getProjects().catch(() => []),
                 apiService.getEmployees().catch(() => []),
-                apiService.getBranchManagers().catch(() => []),
-                chatService.getAvailableUsers().catch(() => [])
+                apiService.getBranchManagers().catch(() => [])
             ]);
 
             const extractMeetings = (res: any) => {
@@ -273,12 +270,7 @@ const MeetingsPage: React.FC = () => {
             let allEmployees = Array.isArray(empsData) ? empsData : (empsData as any)?.employees || (empsData as any)?.data || [];
             const allManagers = Array.isArray(managersData) ? managersData : (managersData as any)?.managers || (managersData as any)?.data || [];
 
-            const chatUsers = Array.isArray(chatUsersData) ? chatUsersData.map((u: any) => ({
-                user_id: u.id,
-                name: u.name,
-                role: u.designation || u.role,
-                department: u.department
-            })) : [];
+
 
             // To Remove Role Hierarchy for all profiles (especially for 1:1 meetings):
             // We fetch employees from each department to gather everyone and bypass role-based list restrictions.
@@ -298,7 +290,7 @@ const MeetingsPage: React.FC = () => {
 
             // Create a unique list based on ID
             const mergedMap = new Map();
-            [...allEmployees, ...allManagers, ...chatUsers].forEach(person => {
+            [...allEmployees, ...allManagers].forEach(person => {
                 const id = person.user_id || person.userId || person.id || person.employee_id;
                 if (id) {
                     const existing = mergedMap.get(String(id));
