@@ -93,7 +93,7 @@ const MeetingsPage: React.FC = () => {
     const [departments, setDepartments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [mainTab, setMainTab] = useState<"all" | "my">("all");
-    const [typeFilter, setTypeFilter] = useState("all");
+    const [typeFilter, setTypeFilter] = useState("one-to-one");
     const [searchQuery, setSearchQuery] = useState("");
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
@@ -114,12 +114,10 @@ const MeetingsPage: React.FC = () => {
     const normalizeMeeting = (m: any): Meeting => {
         if (!m) return {} as Meeting;
         
-        // Comprehensive ID and Title extraction
         const id = m.id || m.meeting_id || m.meetingId || m.ID || m.meeting_details?.id;
-        const titleText = m.title || m.meeting_title || m.subject || m.display_name || m.name || m.meeting_details?.title || m.description || '';
+        const titleText = m.title || m.meeting_title || m.subject || m.display_name || m.name || m.meeting_details?.title || m.description || m.meeting_details?.description || '';
         const titleLower = String(titleText).toLowerCase().trim();
 
-        // Helper to find data in nested structures
         const deepFind = (obj: any, target: string): any => {
             if (!obj || typeof obj !== 'object') return null;
             if (obj[target]) return obj[target];
@@ -142,56 +140,40 @@ const MeetingsPage: React.FC = () => {
         const teamId = m.team_id || m.teamId || m.department_id || m.departmentId || deepFind(m, 'team_id') || deepFind(m, 'department_id');
         const teamName = m.team_name || m.teamName || m.department_name || m.departmentName || deepFind(m, 'team_name') || deepFind(m, 'department_name');
 
-        let finalType: Meeting['type'];
-
-        const rawTypeField = String(m.type || m.meeting_type || m.meetingType || m.category || '').toLowerCase();
+        const rawTypeField = String(m.type || m.meeting_type || m.meetingType || m.category || m.meeting_details?.type || '').toLowerCase();
         
-        // Deep string scan as a fail-safe for missing fields
-        const rawJsonString = JSON.stringify(m).toLowerCase();
+        let finalType: Meeting['type'] = 'company';
 
-        const isProject = (
-            (projectId && String(projectId) !== '0' && String(projectId) !== 'null') || 
-            (projectName && String(projectName) !== 'null' && String(projectName) !== 'undefined' && projectName !== '') ||
-            (m.project && typeof m.project === 'object') ||
-            titleLower.includes('project') || 
-            titleLower.includes('prj') ||
-            rawTypeField.includes('project') ||
-            rawTypeField.includes('prj') ||
-            (rawJsonString.includes('project_id') && !rawJsonString.includes('"project_id":null') && !rawJsonString.includes('"project_id":0'))
-        );
+        const isProjectKeyword = titleLower.includes('project') || titleLower.includes('prj') || titleLower.includes('sprint') || titleLower.includes('scrum') || titleLower.includes('milestone') || titleLower.includes('development');
+        const isTeamKeyword = titleLower.includes('team') || titleLower.includes('dept') || titleLower.includes('standup') || titleLower.includes('stand up') || titleLower.includes('sync') || titleLower.includes('huddle') || titleLower.includes('meeting') && (titleLower.includes('daily') || titleLower.includes('weekly'));
 
-        const isTeam = (
-            (teamId && String(teamId) !== '0' && String(teamId) !== 'null') || 
-            (teamName && String(teamName) !== 'null' && String(teamName) !== 'undefined' && teamName !== '') || 
-            (m.team && typeof m.team === 'object') ||
-            (m.department && typeof m.department === 'object') ||
-            titleLower.includes('team') || 
-            titleLower.includes('department') || 
-            titleLower.includes('dept') || 
-            titleLower.includes('group') ||
-            titleLower.includes('tribe') ||
-            rawTypeField.includes('team') || 
-            rawTypeField.includes('department') || 
-            rawTypeField.includes('dept') ||
-            rawTypeField.includes('group') ||
-            (rawJsonString.includes('team_id') && !rawJsonString.includes('"team_id":null') && !rawJsonString.includes('"team_id":0')) ||
-            (rawJsonString.includes('department_id') && !rawJsonString.includes('"department_id":null') && !rawJsonString.includes('"department_id":0'))
-        );
-
-        if (isProject) {
+        // 1. Explicit priority for project and team based on IDs or explicit Type fields
+        if (rawTypeField === 'project' || (projectId && String(projectId) !== '0' && String(projectId) !== 'null')) {
             finalType = 'project';
-        } else if (isTeam) {
+        } else if (rawTypeField === 'team' || rawTypeField === 'department' || (teamId && String(teamId) !== '0' && String(teamId) !== 'null')) {
             finalType = 'team';
-        } else if (rawTypeField.includes('1:1') || rawTypeField.includes('individual') || rawTypeField === 'one-to-one' || titleLower.includes('1:1') || titleLower.includes('one to one')) {
+        } 
+        // 2. Name-based matching (if API returns names even without IDs)
+        else if (projectName && String(projectName) !== 'null' && String(projectName) !== '') {
+            finalType = 'project';
+        } else if (teamName && String(teamName) !== 'null' && String(teamName) !== '') {
+            finalType = 'team';
+        }
+        // 3. Keyword-based matching
+        else if (isProjectKeyword) {
+            finalType = 'project';
+        } else if (isTeamKeyword) {
+            finalType = 'team';
+        } else if (titleLower.includes('1:1') || titleLower.includes('one to one') || rawTypeField === 'one-to-one' || rawTypeField === '1:1') {
             finalType = 'one-to-one';
-        } else if (rawTypeField.includes('townhall') || rawTypeField.includes('general') || rawTypeField.includes('company') || titleLower.includes('townhall') || rawTypeField === 'all') {
+        } else if (rawTypeField === 'company' || rawTypeField === 'townhall' || titleLower.includes('townhall')) {
             finalType = 'company';
+        } 
+        // 4. Default heuristics
+        else if (m.participants && Array.isArray(m.participants) && m.participants.length > 0 && m.participants.length <= 2) {
+            finalType = 'one-to-one';
         } else {
-            if (m.participants && Array.isArray(m.participants) && m.participants.length > 0 && m.participants.length <= 2) {
-                finalType = 'one-to-one';
-            } else {
-                finalType = 'company';
-            }
+            finalType = 'company';
         }
 
         return {
@@ -233,8 +215,8 @@ const MeetingsPage: React.FC = () => {
 
             const rawAll = extractMeetings(allMeetingsData);
             const rawMy = extractMeetings(participationData);
-            const rawProject = extractMeetings(projectMeetingsData);
-            const rawTeam = extractMeetings(teamMeetingsData);
+            const rawProject = extractMeetings(projectMeetingsData).map(m => ({ ...m, type: 'project' }));
+            const rawTeam = extractMeetings(teamMeetingsData).map(m => ({ ...m, type: 'team' }));
 
             // Merge all sources to ensure distribution is captured from every possible endpoint
             const mergedAll = [...rawAll, ...rawProject, ...rawTeam];
@@ -722,13 +704,12 @@ const MeetingsPage: React.FC = () => {
 
             <div className="flex-1 overflow-y-auto w-full custom-scrollbar">
                 <div className="max-w-7xl mx-auto px-6 py-8">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
                         {[
-                            { label: "All Meetings", val: meetings.length, icon: CalendarDays, color: "text-blue-600", bg: "bg-blue-50" },
+                            { label: "1:1 Meetings", val: meetings.filter(m => m.type === 'one-to-one').length, icon: Users, color: "text-amber-600", bg: "bg-amber-50" },
                             { label: "Townhall Meetings", val: meetings.filter(m => m.type === 'company').length, icon: Briefcase, color: "text-indigo-600", bg: "bg-indigo-50" },
-                            { label: "Team Meetings", val: meetings.filter(m => m.type === 'team').length, icon: Users2, color: "text-rose-600", bg: "bg-rose-50" },
                             { label: "Project Meetings", val: meetings.filter(m => m.type === 'project').length, icon: FolderKanban, color: "text-blue-600", bg: "bg-blue-50" },
-                            { label: "1:1 Meetings", val: meetings.filter(m => m.type === 'one-to-one').length, icon: Users, color: "text-amber-600", bg: "bg-amber-50" }
+                            { label: "Team Meetings", val: meetings.filter(m => m.type === 'team').length, icon: Users2, color: "text-rose-600", bg: "bg-rose-50" },
                         ].map((stat, i) => (
                             <Card key={i} className="border-none shadow-sm bg-white dark:bg-slate-900 rounded-[2rem]">
                                 <CardContent className="p-6 flex items-center justify-between">
@@ -747,11 +728,10 @@ const MeetingsPage: React.FC = () => {
                     <Tabs value={typeFilter} onValueChange={setTypeFilter} className="w-full">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                             <TabsList className="h-14 p-1.5 rounded-[1.5rem] bg-white dark:bg-slate-900 shadow-sm">
-                                <TabsTrigger value="all" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-white">Distributed View</TabsTrigger>
-                                <TabsTrigger value="company" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-indigo-600 data-[state=active]:text-white">Townhall Meeting</TabsTrigger>
-                                <TabsTrigger value="team" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-rose-600 data-[state=active]:text-white">Team Meeting</TabsTrigger>
-                                <TabsTrigger value="project" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:text-white">Project Meeting</TabsTrigger>
                                 <TabsTrigger value="one-to-one" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-amber-500 data-[state=active]:text-white">1:1 Meeting</TabsTrigger>
+                                <TabsTrigger value="company" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-indigo-600 data-[state=active]:text-white">Townhall Meeting</TabsTrigger>
+                                <TabsTrigger value="project" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:text-white">Project Meeting</TabsTrigger>
+                                <TabsTrigger value="team" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-rose-600 data-[state=active]:text-white">Team Meeting</TabsTrigger>
                             </TabsList>
                             <div className="flex items-center gap-3">
                                 <div className="relative">
@@ -811,12 +791,38 @@ const MeetingsPage: React.FC = () => {
                                                                     <div className="space-y-3">
                                                                         <div className="flex items-center gap-3 text-slate-600"><Calendar className="h-4 w-4" /><span className="text-xs font-black uppercase">{meeting.start_time ? format(new Date(meeting.start_time), 'EEEE, MMM do') : 'TBD'}</span></div>
                                                                         <div className="flex items-center gap-3 text-slate-600"><Clock className="h-4 w-4" /><span className="text-xs font-black">{meeting.start_time ? format(new Date(meeting.start_time), 'hh:mm a') : '--:--'} - {meeting.end_time ? format(new Date(meeting.end_time), 'hh:mm a') : '--:--'}</span></div>
-                                                                        {meeting.project_name && <div className="flex items-center gap-3 text-emerald-600"><Briefcase className="h-4 w-4" /><span className="text-xs font-black uppercase">{meeting.project_name}</span></div>}
-                                                                        {meeting.team_name && <div className="flex items-center gap-3 text-rose-600"><Users2 className="h-4 w-4" /><span className="text-xs font-black uppercase">{meeting.team_name}</span></div>}
+                                                                        {meeting.type === 'team' && meeting.team_name && (
+                                                                            <div className="flex items-center gap-3 text-rose-600">
+                                                                                <Users2 className="h-4 w-4" />
+                                                                                <span className="text-xs font-black uppercase">{meeting.team_name}</span>
+                                                                            </div>
+                                                                        )}
+                                                                        {meeting.type === 'project' && meeting.project_name && (
+                                                                            <div className="flex items-center gap-3 text-emerald-600">
+                                                                                <Briefcase className="h-4 w-4" />
+                                                                                <span className="text-xs font-black uppercase">{meeting.project_name}</span>
+                                                                            </div>
+                                                                        )}
+                                                                        {meeting.type === 'one-to-one' && meeting.created_by_name && (
+                                                                            <div className="flex items-center gap-3 text-amber-600">
+                                                                                <Users className="h-4 w-4" />
+                                                                                <span className="text-xs font-black uppercase">{meeting.created_by_name}</span>
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                     <div className="pt-6 border-t flex items-center justify-between">
                                                                         <div className="flex -space-x-3">{meeting.participants?.slice(0, 3).map((p, i) => <div key={i} className="h-10 w-10 rounded-2xl border-4 border-white bg-slate-100 overflow-hidden"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${p.user_name || p.id}`} className="h-full w-full object-cover" /></div>)}</div>
-                                                                        <Button asChild className="rounded-2xl bg-slate-900 hover:bg-blue-600 text-white font-black text-[10px] uppercase px-6 h-11"><a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer">Join Meeting <ExternalLink className="ml-2 h-3.5 w-3.5" /></a></Button>
+                                                                        {meeting.end_time && new Date(meeting.end_time) < new Date() ? (
+                                                                            <Button disabled className="rounded-2xl bg-slate-200 text-slate-500 font-black text-[10px] uppercase px-6 h-11 cursor-not-allowed">
+                                                                                Expired
+                                                                            </Button>
+                                                                        ) : (
+                                                                            <Button asChild className="rounded-2xl bg-slate-900 hover:bg-blue-600 text-white font-black text-[10px] uppercase px-6 h-11">
+                                                                                <a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer">
+                                                                                    Join Meeting <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                                                                                </a>
+                                                                            </Button>
+                                                                        )}
                                                                     </div>
                                                                 </CardContent>
                                                             </Card>
@@ -852,12 +858,38 @@ const MeetingsPage: React.FC = () => {
                                                         <div className="space-y-3">
                                                             <div className="flex items-center gap-3 text-slate-600"><Calendar className="h-4 w-4" /><span className="text-xs font-black uppercase">{meeting.start_time ? format(new Date(meeting.start_time), 'EEEE, MMM do') : 'TBD'}</span></div>
                                                             <div className="flex items-center gap-3 text-slate-600"><Clock className="h-4 w-4" /><span className="text-xs font-black">{meeting.start_time ? format(new Date(meeting.start_time), 'hh:mm a') : '--:--'} - {meeting.end_time ? format(new Date(meeting.end_time), 'hh:mm a') : '--:--'}</span></div>
-                                                            {meeting.project_name && <div className="flex items-center gap-3 text-emerald-600"><Briefcase className="h-4 w-4" /><span className="text-xs font-black uppercase">{meeting.project_name}</span></div>}
-                                                            {meeting.team_name && <div className="flex items-center gap-3 text-rose-600"><Users2 className="h-4 w-4" /><span className="text-xs font-black uppercase">{meeting.team_name}</span></div>}
+                                                            {meeting.type === 'team' && meeting.team_name && (
+                                                                <div className="flex items-center gap-3 text-rose-600">
+                                                                    <Users2 className="h-4 w-4" />
+                                                                    <span className="text-xs font-black uppercase">{meeting.team_name}</span>
+                                                                </div>
+                                                            )}
+                                                            {meeting.type === 'project' && meeting.project_name && (
+                                                                <div className="flex items-center gap-3 text-emerald-600">
+                                                                    <Briefcase className="h-4 w-4" />
+                                                                    <span className="text-xs font-black uppercase">{meeting.project_name}</span>
+                                                                </div>
+                                                            )}
+                                                            {meeting.type === 'one-to-one' && meeting.created_by_name && (
+                                                                <div className="flex items-center gap-3 text-amber-600">
+                                                                    <Users className="h-4 w-4" />
+                                                                    <span className="text-xs font-black uppercase">{meeting.created_by_name}</span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         <div className="pt-6 border-t flex items-center justify-between">
                                                             <div className="flex -space-x-3">{meeting.participants?.slice(0, 3).map((p, i) => <div key={i} className="h-10 w-10 rounded-2xl border-4 border-white bg-slate-100 overflow-hidden"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${p.user_name || p.id}`} className="h-full w-full object-cover" /></div>)}</div>
-                                                            <Button asChild className="rounded-2xl bg-slate-900 hover:bg-blue-600 text-white font-black text-[10px] uppercase px-6 h-11"><a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer">Join Meeting <ExternalLink className="ml-2 h-3.5 w-3.5" /></a></Button>
+                                                                {meeting.end_time && new Date(meeting.end_time) < new Date() ? (
+                                                                    <Button disabled className="rounded-2xl bg-slate-200 text-slate-500 font-black text-[10px] uppercase px-6 h-11 cursor-not-allowed">
+                                                                        Expired
+                                                                    </Button>
+                                                                ) : (
+                                                                    <Button asChild className="rounded-2xl bg-slate-900 hover:bg-blue-600 text-white font-black text-[10px] uppercase px-6 h-11">
+                                                                        <a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer">
+                                                                            Join Meeting <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                                                                        </a>
+                                                                    </Button>
+                                                                )}
                                                         </div>
                                                     </CardContent>
                                                 </Card>

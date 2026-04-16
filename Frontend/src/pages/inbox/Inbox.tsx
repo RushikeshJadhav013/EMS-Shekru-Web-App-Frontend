@@ -24,7 +24,9 @@ import {
   Calendar,
   Clock,
   Loader2,
-  ChevronRight
+  ChevronRight,
+  Home,
+  Video
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatIST } from '@/utils/timezone';
@@ -70,6 +72,10 @@ export default function Inbox() {
       navigate(`/${userRole}/tasks?taskId=${notification.metadata.taskId}`);
     } else if (notification.type === 'shift' && notification.actionUrl) {
       navigate(notification.actionUrl);
+    } else if (notification.type === 'wfh' && notification.metadata?.wfhId) {
+      navigate(`/${userRole}/wfh?wfhId=${notification.metadata.wfhId}`);
+    } else if (notification.type === 'meeting') {
+      navigate('/meetings');
     } else if (notification.actionUrl) {
       navigate(notification.actionUrl);
     }
@@ -80,6 +86,8 @@ export default function Inbox() {
       case 'leave': return <Calendar className="h-4 w-4" />;
       case 'task': return <FileText className="h-4 w-4" />;
       case 'shift': return <Clock className="h-4 w-4" />;
+      case 'wfh': return <Home className="h-4 w-4 text-teal-500" />;
+      case 'meeting': return <Video className="h-4 w-4 text-indigo-500" />;
       case 'warning': return <AlertCircle className="h-4 w-4 text-red-500" />;
       default: return <Bell className="h-4 w-4" />;
     }
@@ -90,6 +98,8 @@ export default function Inbox() {
       case 'leave': return 'bg-purple-100 text-purple-800';
       case 'task': return 'bg-blue-100 text-blue-800';
       case 'shift': return 'bg-orange-100 text-orange-800';
+      case 'wfh': return 'bg-teal-100 text-teal-800';
+      case 'meeting': return 'bg-indigo-100 text-indigo-800';
       case 'warning': return 'bg-red-100 text-red-800';
       default: return 'bg-slate-100 text-slate-800';
     }
@@ -248,7 +258,9 @@ export default function Inbox() {
                       >
                         {selectedNotification.type === 'task' ? 'Go to Task' :
                           selectedNotification.type === 'leave' ? 'View Leave' :
-                            'View Details'}
+                            selectedNotification.type === 'wfh' ? 'View WFH' :
+                              selectedNotification.type === 'meeting' ? 'View Meeting' :
+                                'View Details'}
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
