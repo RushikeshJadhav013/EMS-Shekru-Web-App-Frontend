@@ -84,7 +84,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { AttendanceRecord, UserRole } from "@/types";
-import { format, subMonths, isAfter } from "date-fns";
+import { format, subMonths, isAfter, subDays } from "date-fns";
 import {
   formatIST,
   formatDateTimeIST,
@@ -244,7 +244,7 @@ const AttendanceWithToggle: React.FC = () => {
     Record<string, boolean>
   >({});
   const [historyQuickFilter, setHistoryQuickFilter] = useState<
-    "today" | "all" | "date"
+    "today" | "yesterday" | "all" | "date"
   >("today");
   const [historyCustomDateRange, setHistoryCustomDateRange] = useState<{
     startDate: Date | null;
@@ -853,7 +853,7 @@ const AttendanceWithToggle: React.FC = () => {
       // Use fast location for immediate access when page loads
       refreshLocationFast();
     }
-  }, [refreshLocationFast]);
+  }, [refreshLocationFast, user?.id]);
 
   // Handle navigation from HR Dashboard with viewMode state or query param
   useEffect(() => {
@@ -1325,9 +1325,9 @@ const AttendanceWithToggle: React.FC = () => {
         }
 
         const attendance: AttendanceRecord = {
-          id: todayRecord.attendance_id.toString(),
-          userId: todayRecord.user_id.toString(),
-          date: formatDateIST(todayRecord.check_in),
+          id: (todayRecord.attendance_id || todayRecord.id || "0").toString(),
+          userId: (todayRecord.user_id || todayRecord.userId || user?.id || "0").toString(),
+          date: todayRecord.check_in ? formatDateIST(todayRecord.check_in) : today,
           checkInTime: todayRecord.check_in, // Use ISO datetime string
           checkOutTime: todayRecord.check_out || undefined, // Use ISO datetime string
           checkInLocation: {
@@ -1497,8 +1497,13 @@ const AttendanceWithToggle: React.FC = () => {
       } else {
         setCurrentAttendance(null);
       }
-    } catch (e) {
-      // ignore
+    } catch (e: any) {
+      console.error("Error loading attendance history:", e);
+      toast({
+        title: "Error",
+        description: e.message || "Failed to load attendance history",
+        variant: "destructive",
+      });
     }
   };
 
@@ -1633,9 +1638,9 @@ const AttendanceWithToggle: React.FC = () => {
             );
             return hasOverlap;
           }
-          // If no department info is available, fallback to true or false? 
-          // Assuming Manager should only see their department.
-          return true; 
+          // If department info is missing on the record, strictly return false for managers
+          // to prevent unauthorized visibility of unassigned employees.
+          return false;
         }
 
         // Team Lead / Others: "Not allowed" according to specified rules
@@ -1779,7 +1784,7 @@ const AttendanceWithToggle: React.FC = () => {
               rec.checkInSelfie || rec.selfie || rec.selfie_url || "",
             checkOutSelfie: rec.checkOutSelfie || rec.check_out_selfie || "",
             status: statusResult,
-            workHours: rec.total_hours || rec.workHours || (checkInDate && checkOutDate ? (new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60) : 0) || 0,
+            workHours: rec.total_hours || rec.workHours || (checkInDate && checkOutDate && !isNaN(new Date(checkInDate).getTime()) && !isNaN(new Date(checkOutDate).getTime()) ? (new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60) : 0) || 0,
             name: rec.name || rec.userName || rec.employee_name || undefined,
             email: rec.email || rec.userEmail || undefined,
             department: rec.department || rec.department_name || undefined,
@@ -2881,15 +2886,6 @@ const AttendanceWithToggle: React.FC = () => {
     }
   }, [canViewEmployeeAttendance]);
 
-  // Fetch online status periodically when viewing employee attendance
-  useEffect(() => {
-    if (viewMode === "employee" && canViewEmployeeAttendance) {
-      fetchAllOnlineStatus();
-      const interval = setInterval(fetchAllOnlineStatus, 15000); // Update every 15 seconds
-      return () => clearInterval(interval);
-    }
-  }, [viewMode, canViewEmployeeAttendance, fetchAllOnlineStatus]);
-
   // Fetch all users' online status (for Admin, HR, Manager viewing employee attendance)
   const fetchAllUsersOnlineStatus = useCallback(async () => {
     if (!canViewEmployeeAttendance) return;
@@ -2906,16 +2902,21 @@ const AttendanceWithToggle: React.FC = () => {
     } catch (error) {
       console.error("Failed to fetch online status:", error);
     }
-  }, [canViewEmployeeAttendance]);
+  }, [canViewEmployeeAttendance, setAllUsersOnlineStatus]);
 
-  // Fetch online status periodically when viewing employee attendance
+  // Unified online status polling for employees
   useEffect(() => {
     if (viewMode === "employee" && canViewEmployeeAttendance) {
-      fetchAllUsersOnlineStatus();
-      const interval = setInterval(fetchAllUsersOnlineStatus, 15000); // Update every 15 seconds
+      const pollOnlineStatus = () => {
+        fetchAllOnlineStatus();
+        fetchAllUsersOnlineStatus();
+      };
+      
+      pollOnlineStatus();
+      const interval = setInterval(pollOnlineStatus, 15000); 
       return () => clearInterval(interval);
     }
-  }, [viewMode, canViewEmployeeAttendance, fetchAllUsersOnlineStatus]);
+  }, [viewMode, canViewEmployeeAttendance, fetchAllOnlineStatus, fetchAllUsersOnlineStatus]);
 
   const getStatusBadge = (
     status: string,
