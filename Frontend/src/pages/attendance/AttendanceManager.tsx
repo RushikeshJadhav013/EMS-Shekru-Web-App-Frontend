@@ -157,10 +157,10 @@ const AttendanceManager: React.FC = () => {
     | "last_12_months"
     | "custom"
   >("today");
-  const [customStartDate, setCustomStartDate] = useState<Date>(
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(
     subDays(nowIST(), 7),
   );
-  const [customEndDate, setCustomEndDate] = useState<Date>(nowIST());
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(nowIST());
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isExporting, setIsExporting] = useState(false);
@@ -372,7 +372,6 @@ const AttendanceManager: React.FC = () => {
 
   useEffect(() => {
     setWfhCurrentPage(1);
-    // If start date becomes after end date, adjust end date
     if (
       wfhDecisionsStartDate &&
       wfhDecisionsEndDate &&
@@ -405,12 +404,27 @@ const AttendanceManager: React.FC = () => {
 
   const parseTimeValue = (value: string) => {
     if (!value) return { hour12: "10", minute: "00", meridiem: "AM" };
-    const [h, m] = value.split(":");
-    const hour = Math.max(0, Math.min(23, Number(h) || 0));
+
+    // Support formats like "09:30", "09:30 AM", "09:30AM", "21:30"
+    const timeOnly = value.split(/\s|(?=[AP]M)/i)[0];
+    const [h, m] = timeOnly.split(":");
+
+    let hour = Math.max(0, Math.min(23, Number(h) || 0));
     const minute = Math.max(0, Math.min(59, Number(m) || 0));
-    const meridiem = hour >= 12 ? "PM" : "AM";
+
+    // Detect meridiem from string if present, otherwise from hour
+    let meridiem: "AM" | "PM" = "AM";
+    if (value.toUpperCase().includes("PM")) {
+      meridiem = "PM";
+    } else if (value.toUpperCase().includes("AM")) {
+      meridiem = "AM";
+    } else {
+      meridiem = hour >= 12 ? "PM" : "AM";
+    }
+
     let hour12 = hour % 12;
     if (hour12 === 0) hour12 = 12;
+
     return {
       hour12: hour12.toString().padStart(2, "0"),
       minute: minute.toString().padStart(2, "0"),
@@ -849,21 +863,7 @@ const AttendanceManager: React.FC = () => {
           if (!isAllowedRole) return false;
 
           // 3. If manager has department, filter by it. Otherwise show all provided by backend.
-          // Support multi-department managers by checking for overlap
-          if (normalizedDept && empDept) {
-            const managerDepts = normalizedDept
-              .split(",")
-              .map((d) => d.trim().toLowerCase())
-              .filter(Boolean);
-            const recordDepts = empDept
-              .split(",")
-              .map((d) => d.trim().toLowerCase())
-              .filter(Boolean);
-            const hasOverlap = recordDepts.some((rd) =>
-              managerDepts.includes(rd),
-            );
-            if (!hasOverlap) return false;
-          }
+          if (normalizedDept && empDept && empDept !== normalizedDept) return false;
 
           return true;
         });
@@ -912,8 +912,8 @@ const AttendanceManager: React.FC = () => {
       );
       if (globalTiming) {
         setGlobalTimingForm({
-          startTime: (globalTiming.start_time || "").slice(0, 5) || "10:00 AM",
-          endTime: (globalTiming.end_time || "").slice(0, 5) || "07:00PM",
+          startTime: (globalTiming.start_time || "").slice(0, 5) || "10:00",
+          endTime: (globalTiming.end_time || "").slice(0, 5) || "19:00",
           checkInGrace: globalTiming.check_in_grace_minutes ?? 0,
           checkOutGrace: globalTiming.check_out_grace_minutes ?? 0,
         });
@@ -1012,8 +1012,8 @@ const AttendanceManager: React.FC = () => {
   const handleDepartmentTimingEdit = (timing: OfficeTiming) => {
     setDepartmentTimingForm({
       department: timing.department || "",
-      startTime: (timing.start_time || "").slice(0, 5) || "10:00 AM",
-      endTime: (timing.end_time || "").slice(0, 5) || "07:00 PM",
+      startTime: (timing.start_time || "").slice(0, 5) || "10:00",
+      endTime: (timing.end_time || "").slice(0, 5) || "19:00",
       checkInGrace: timing.check_in_grace_minutes ?? 0,
       checkOutGrace: timing.check_out_grace_minutes ?? 0,
     });
@@ -1130,9 +1130,11 @@ const AttendanceManager: React.FC = () => {
         if (targetDate) params.date = targetDate;
 
         // Enforce backend-level filtering for Managers (Department Scope + Manager ID)
-        if (user?.role === "manager") {
-          if (user.department) params.department = user.department;
-          params.manager_id = user.id;
+        if (user?.role === 'manager') {
+          if (user.department) {
+            query += (query ? '&' : '?') + `department=${encodeURIComponent(user.department)}`;
+          }
+          query += (query ? '&' : '?') + `manager_id=${encodeURIComponent(user.id)}`;
         }
 
         let [data, employeesRaw] = await Promise.all([
@@ -1169,8 +1171,7 @@ const AttendanceManager: React.FC = () => {
         console.log("Attendance data received:", data);
 
         // Enforce simplified visibility validation for Managers
-
-        if (user?.role === "manager") {
+        if (user?.role === 'manager') {
           const managerId = String(user.id);
           const normalizedDept = (user.department || "").trim().toLowerCase();
 
@@ -1382,6 +1383,9 @@ const AttendanceManager: React.FC = () => {
         }
         if (filterStatus === "present") {
           return !!record.checkInTime;
+        }
+        if (filterStatus === "absent") {
+          return statusValue === "absent" || !record.checkInTime;
         }
         return true;
       });
@@ -1805,13 +1809,18 @@ const AttendanceManager: React.FC = () => {
     const normalized = timeValue.includes(":")
       ? timeValue.slice(0, 5)
       : timeValue;
-    const [hour, minute] = normalized.split(":");
-    if (hour === undefined || minute === undefined) return normalized;
     try {
+      const [h, m] = normalized.split(":");
+      const hour = parseInt(h, 10);
+      const minute = parseInt(m, 10);
+
+      if (isNaN(hour) || isNaN(minute)) return normalized;
+
       const date = new Date();
-      date.setHours(Number(hour), Number(minute));
+      date.setHours(hour, minute, 0, 0);
       return formatTimeIST(date, "HH:mm");
-    } catch {
+    } catch (e) {
+      console.error("formatTimeDisplay error:", e);
       return normalized;
     }
   };
@@ -2139,12 +2148,12 @@ const AttendanceManager: React.FC = () => {
                 <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
                   <div
                     className={`h-1.5 w-1.5 rounded-full ${item.color === "blue"
-                        ? "bg-blue-500"
-                        : item.color === "emerald"
-                          ? "bg-emerald-500"
-                          : item.color === "orange"
-                            ? "bg-orange-500"
-                            : "bg-amber-500"
+                      ? "bg-blue-500"
+                      : item.color === "emerald"
+                        ? "bg-emerald-500"
+                        : item.color === "orange"
+                          ? "bg-orange-500"
+                          : "bg-amber-500"
                       }`}
                   />
                   <span className="text-[10px] font-bold text-muted-foreground uppercase">
@@ -2189,51 +2198,40 @@ const AttendanceManager: React.FC = () => {
                 />
               </div>
             </div>
-            <div className="flex flex-col gap-2">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1">
-                Status
-              </Label>
-              <Select
-                value={filterStatus}
-                onValueChange={(value: any) => setFilterStatus(value)}
-              >
-                <SelectTrigger className="w-[160px] h-11 bg-white dark:bg-gray-950 border-2">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="present">Present</SelectItem>
-                  <SelectItem value="late">Late</SelectItem>
-                  <SelectItem value="early">Early Departure</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1">
-                Duration Filter
-              </Label>
-              <Select
-                value={timePeriodFilter}
-                onValueChange={(value: any) => setTimePeriodFilter(value)}
-              >
-                <SelectTrigger
-                  className={`${timePeriodFilter === "custom" ? "md:w-[320px]" : "md:w-[180px]"} w-full h-11 bg-white dark:bg-gray-950 border-2 text-slate-700 dark:text-slate-200 transition-all duration-300`}
-                >
-                  <Calendar className="h-4 w-4 mr-2 text-blue-500" />
-                  <SelectValue placeholder="Select Duration" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="current_month">Current Month</SelectItem>
-                  <SelectItem value="last_month">Last Month</SelectItem>
-                  <SelectItem value="last_3_months">Last 3 Months</SelectItem>
-                  <SelectItem value="last_6_months">Last 6 Months</SelectItem>
-                  <SelectItem value="last_12_months">Last 1 Year</SelectItem>
-                  <SelectItem value="custom">Custom Range</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
+              <SelectTrigger className="w-[160px] h-11 bg-white dark:bg-gray-950 border-2">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="present">Present</SelectItem>
+                <SelectItem value="late">Late</SelectItem>
+                <SelectItem value="early">Early Departure</SelectItem>
+                <SelectItem value="absent">Absent</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={timePeriodFilter} onValueChange={(value: any) => setTimePeriodFilter(value)}>
+              <SelectTrigger className={`${timePeriodFilter === 'custom' ? 'md:w-[320px]' : 'md:w-[180px]'} w-full h-11 bg-white dark:bg-gray-950 border-2 text-slate-700 dark:text-slate-200 transition-all duration-300`}>
+                <Calendar className="h-4 w-4 mr-2 text-blue-500" />
+                <SelectValue>
+                  {timePeriodFilter === 'custom'
+                    ? (customStartDate && customEndDate
+                      ? `Custom: ${formatDateIST(customStartDate)} - ${formatDateIST(customEndDate)}`
+                      : 'Custom Range')
+                    : undefined}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="current_month">Current Month</SelectItem>
+                <SelectItem value="last_month">Last Month</SelectItem>
+                <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                <SelectItem value="last_12_months">Last 1 Year</SelectItem>
+                <SelectItem value="custom">Custom Range</SelectItem>
+              </SelectContent>
+            </Select>
 
             {timePeriodFilter === "custom" && (
               <div className="w-full mt-2 p-4 border rounded-2xl bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-100 dark:border-blue-800 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
@@ -2247,7 +2245,7 @@ const AttendanceManager: React.FC = () => {
                       date={customStartDate}
                       onDateChange={setCustomStartDate}
                       placeholder="Start Date"
-                      className="w-full bg-white dark:bg-gray-950 border-blue-200"
+                      className="w-full bg-white dark:bg-gray-950 border-blue-200 h-11"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -2259,7 +2257,7 @@ const AttendanceManager: React.FC = () => {
                       date={customEndDate}
                       onDateChange={setCustomEndDate}
                       placeholder="End Date"
-                      className="w-full bg-white dark:bg-gray-950 border-indigo-200"
+                      className="w-full bg-white dark:bg-gray-950 border-indigo-200 h-11"
                     />
                   </div>
                 </div>
@@ -2415,11 +2413,10 @@ const AttendanceManager: React.FC = () => {
                                   {record.checkInStatus && (
                                     <Badge
                                       variant="outline"
-                                      className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${
-                                        record.checkInStatus.toLowerCase() === "late"
+                                      className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${record.checkInStatus.toLowerCase() === "late"
                                           ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
                                           : "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400"
-                                      }`}
+                                        }`}
                                     >
                                       In: {record.checkInStatus}
                                     </Badge>
@@ -2427,11 +2424,10 @@ const AttendanceManager: React.FC = () => {
                                   {record.checkOutStatus && (
                                     <Badge
                                       variant="outline"
-                                      className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${
-                                        record.checkOutStatus.toLowerCase() === "early"
+                                      className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${record.checkOutStatus.toLowerCase() === "early"
                                           ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
                                           : "bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-400"
-                                      }`}
+                                        }`}
                                     >
                                       Out: {record.checkOutStatus}
                                     </Badge>
@@ -2853,8 +2849,8 @@ const AttendanceManager: React.FC = () => {
                   type="button"
                   onClick={() => setReportLayout("basic")}
                   className={`p-2.5 rounded-lg border transition-all ${reportLayout === "basic"
-                      ? "border-blue-600 bg-blue-50 dark:bg-blue-950"
-                      : "border-gray-200 hover:border-blue-300 dark:border-gray-700"
+                    ? "border-blue-600 bg-blue-50 dark:bg-blue-950"
+                    : "border-gray-200 hover:border-blue-300 dark:border-gray-700"
                     }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
@@ -2877,8 +2873,8 @@ const AttendanceManager: React.FC = () => {
                   type="button"
                   onClick={() => setReportLayout("grid")}
                   className={`p-2.5 rounded-lg border transition-all ${reportLayout === "grid"
-                      ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
-                      : "border-gray-200 hover:border-indigo-300 dark:border-gray-700"
+                    ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
+                    : "border-gray-200 hover:border-indigo-300 dark:border-gray-700"
                     }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
@@ -2901,8 +2897,8 @@ const AttendanceManager: React.FC = () => {
                   type="button"
                   onClick={() => setReportLayout("detailed_grid")}
                   className={`p-2.5 rounded-lg border transition-all ${reportLayout === "detailed_grid"
-                      ? "border-purple-600 bg-purple-50 dark:bg-purple-950"
-                      : "border-gray-200 hover:border-purple-300 dark:border-gray-700"
+                    ? "border-purple-600 bg-purple-50 dark:bg-purple-950"
+                    : "border-gray-200 hover:border-purple-300 dark:border-gray-700"
                     }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
@@ -2932,8 +2928,8 @@ const AttendanceManager: React.FC = () => {
                   type="button"
                   onClick={() => setExportType("csv")}
                   className={`p-2.5 rounded-lg border transition-all ${exportType === "csv"
-                      ? "border-green-600 bg-green-50 dark:bg-green-950"
-                      : "border-gray-200 hover:border-green-300 dark:border-gray-700"
+                    ? "border-green-600 bg-green-50 dark:bg-green-950"
+                    : "border-gray-200 hover:border-green-300 dark:border-gray-700"
                     }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
@@ -2954,8 +2950,8 @@ const AttendanceManager: React.FC = () => {
                   type="button"
                   onClick={() => setExportType("pdf")}
                   className={`p-2.5 rounded-lg border transition-all ${exportType === "pdf"
-                      ? "border-red-600 bg-red-50 dark:bg-red-950"
-                      : "border-gray-200 hover:border-red-300 dark:border-gray-700"
+                    ? "border-red-600 bg-red-50 dark:bg-red-950"
+                    : "border-gray-200 hover:border-red-300 dark:border-gray-700"
                     }`}
                 >
                   <div className="flex flex-col items-center gap-1.5">
@@ -2982,9 +2978,16 @@ const AttendanceManager: React.FC = () => {
               <Select value={quickFilter} onValueChange={handleQuickFilter}>
                 <SelectTrigger
                   id="quick-filter"
-                  className="w-full h-10 border-2 border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                  className={`w-full h-11 bg-white dark:bg-gray-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl hover:border-blue-400 focus:ring-blue-500/20 transition-all duration-300 ${quickFilter === 'custom' ? 'md:min-w-[280px]' : ''}`}
                 >
-                  <SelectValue placeholder="Select time period" />
+                  <Calendar className={`h-4 w-4 mr-2 ${quickFilter === 'custom' ? 'text-blue-500' : 'text-slate-400'}`} />
+                  <SelectValue placeholder="Select time period">
+                    {quickFilter === 'custom'
+                      ? (startDate && endDate
+                        ? `${formatDateIST(startDate)} - ${formatDateIST(endDate)}`
+                        : 'Custom Range')
+                      : undefined}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent
                   position="popper"
@@ -3039,24 +3042,39 @@ const AttendanceManager: React.FC = () => {
             </div>
 
             {/* Date Range Selection */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="start-date">Start Date</Label>
-                <DatePicker
-                  date={startDate}
-                  onDateChange={setStartDate}
-                  placeholder="Select start date"
-                />
+            {quickFilter === 'custom' && (
+              <div className="p-4 border rounded-2xl bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-100 dark:border-blue-800 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
+                      <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                      From Date
+                    </Label>
+                    <DatePicker
+                      date={startDate}
+                      onDateChange={setStartDate}
+                      toDate={new Date()}
+                      placeholder="Start Date"
+                      className="w-full bg-white dark:bg-gray-950 border-blue-200 h-11"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
+                      <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                      To Date
+                    </Label>
+                    <DatePicker
+                      date={endDate}
+                      onDateChange={setEndDate}
+                      fromDate={startDate}
+                      toDate={new Date()}
+                      placeholder="End Date"
+                      className="w-full bg-white dark:bg-gray-950 border-indigo-200 h-11"
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="end-date">End Date</Label>
-                <DatePicker
-                  date={endDate}
-                  onDateChange={setEndDate}
-                  placeholder="Select end date"
-                />
-              </div>
-            </div>
+            )}
 
             {/* Employee Filter */}
             <div className="space-y-2">
@@ -3183,8 +3201,8 @@ const AttendanceManager: React.FC = () => {
                               key={emp.user_id}
                               onClick={() => setSelectedEmployee(emp)}
                               className={`w-full text-left p-3 border-b last:border-b-0 transition-colors ${isSelected
-                                  ? "bg-blue-50 dark:bg-blue-900"
-                                  : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                                ? "bg-blue-50 dark:bg-blue-900"
+                                : "hover:bg-gray-100 dark:hover:bg-gray-800"
                                 }`}
                             >
                               <div className="font-medium">{emp.name}</div>
@@ -3582,8 +3600,8 @@ const AttendanceManager: React.FC = () => {
                         type="button"
                         onClick={() => handleDepartmentSelect(dept)}
                         className={`px-3 py-1.5 rounded-full text-sm transition-all ${isSelected
-                            ? "bg-purple-600 text-white shadow-lg"
-                            : "bg-purple-50 text-purple-700 hover:bg-purple-100"
+                          ? "bg-purple-600 text-white shadow-lg"
+                          : "bg-purple-50 text-purple-700 hover:bg-purple-100"
                           }`}
                       >
                         {dept}
@@ -3932,8 +3950,8 @@ const AttendanceManager: React.FC = () => {
                                     <Badge
                                       variant="outline"
                                       className={`text-xs ${request.role === "hr"
-                                          ? "border-green-500 text-green-700 bg-green-50 dark:bg-green-950"
-                                          : "border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950"
+                                        ? "border-green-500 text-green-700 bg-green-50 dark:bg-green-950"
+                                        : "border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950"
                                         }`}
                                     >
                                       {formatRoleDisplay(request.role)}
@@ -4095,23 +4113,11 @@ const AttendanceManager: React.FC = () => {
                           </SelectContent>
                         </Select>
                       </div>
-
-                      <div className="flex flex-col gap-2">
-                        <Label
-                          htmlFor="decision-duration-filter"
-                          className="text-sm font-medium ml-1"
-                        >
-                          Duration Filter
-                        </Label>
-                        <Select
-                          value={wfhDecisionsDurationFilter}
-                          onValueChange={handleWfhDecisionsDurationFilter}
-                        >
-                          <SelectTrigger
-                            id="decision-duration-filter"
-                            className="w-full h-11 bg-white dark:bg-gray-950 border-2"
-                          >
-                            <SelectValue placeholder="Select Duration" />
+                      <div className="flex-1 max-w-xs">
+                        <Label htmlFor="decision-duration-filter">Duration</Label>
+                        <Select value={wfhDecisionsDurationFilter} onValueChange={handleWfhDecisionsDurationFilter}>
+                          <SelectTrigger id="decision-duration-filter" className="mt-1">
+                            <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Time</SelectItem>
@@ -4181,41 +4187,35 @@ const AttendanceManager: React.FC = () => {
                         </div>
                       </div>
                     </div>
-
-                    {wfhDecisionsDurationFilter === "custom" && (
-                      <div className="flex flex-col sm:flex-row items-end gap-3 p-4 bg-slate-50/80 dark:bg-slate-900/40 rounded-xl border border-blue-100/50 dark:border-slate-800/50 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
-                        <div className="w-full sm:flex-1 space-y-1.5">
-                          <Label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-                            From Date
-                          </Label>
-                          <DatePicker
-                            date={tempWfhDecisionsStartDate}
-                            onDateChange={setTempWfhDecisionsStartDate}
-                            placeholder="Start Date"
-                            className="h-11 w-full bg-white dark:bg-slate-950 border-slate-200"
-                          />
+                    {wfhDecisionsDurationFilter === 'custom' && (
+                      <div className="p-4 border rounded-2xl bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-100 dark:border-blue-800 shadow-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
+                              <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                              From Date
+                            </Label>
+                            <DatePicker
+                              date={wfhDecisionsStartDate}
+                              onDateChange={setWfhDecisionsStartDate}
+                              placeholder="Start Date"
+                              className="w-full bg-white dark:bg-gray-950 border-blue-200"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
+                              <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                              To Date
+                            </Label>
+                            <DatePicker
+                              date={wfhDecisionsEndDate}
+                              onDateChange={setWfhDecisionsEndDate}
+                              fromDate={wfhDecisionsStartDate}
+                              placeholder="End Date"
+                              className="w-full bg-white dark:bg-gray-950 border-indigo-200"
+                            />
+                          </div>
                         </div>
-                        <div className="w-full sm:flex-1 space-y-1.5">
-                          <Label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-                            To Date
-                          </Label>
-                          <DatePicker
-                            date={tempWfhDecisionsEndDate}
-                            onDateChange={setTempWfhDecisionsEndDate}
-                            fromDate={tempWfhDecisionsStartDate}
-                            placeholder="End Date"
-                            className="h-11 w-full bg-white dark:bg-slate-950 border-slate-200"
-                          />
-                        </div>
-                        <Button
-                          className="w-full sm:w-32 h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-all duration-200 shadow-sm"
-                          onClick={() => {
-                            setWfhDecisionsStartDate(tempWfhDecisionsStartDate);
-                            setWfhDecisionsEndDate(tempWfhDecisionsEndDate);
-                          }}
-                        >
-                          Apply Filter
-                        </Button>
                       </div>
                     )}
                   </div>
@@ -4251,8 +4251,8 @@ const AttendanceManager: React.FC = () => {
                                       <Badge
                                         variant="outline"
                                         className={`text-xs ${request.role === "hr"
-                                            ? "border-green-500 text-green-700 bg-green-50 dark:bg-green-950"
-                                            : "border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950"
+                                          ? "border-green-500 text-green-700 bg-green-50 dark:bg-green-950"
+                                          : "border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950"
                                           }`}
                                       >
                                         {formatRoleDisplay(request.role)}
@@ -4397,8 +4397,8 @@ const AttendanceManager: React.FC = () => {
                     <Badge
                       variant="outline"
                       className={`text-xs ${selectedWfhRequest.role === "hr"
-                          ? "border-green-500 text-green-700 bg-green-50 dark:bg-green-950"
-                          : "border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950"
+                        ? "border-green-500 text-green-700 bg-green-50 dark:bg-green-950"
+                        : "border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950"
                         }`}
                     >
                       {formatRoleDisplay(selectedWfhRequest.role)}

@@ -1,0 +1,18 @@
+﻿node_modules/react-hook-form/dist/form.d.ts(1,8): error TS1259: Module '"C:/Users/ASUS/OneDrive/Desktop/Staffly/EMS-Shekru-Web-App-Frontend/Frontend/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+node_modules/react-hook-form/dist/types/controller.d.ts(1,13): error TS1259: Module '"C:/Users/ASUS/OneDrive/Desktop/Staffly/EMS-Shekru-Web-App-Frontend/Frontend/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+node_modules/react-hook-form/dist/types/form.d.ts(1,13): error TS1259: Module '"C:/Users/ASUS/OneDrive/Desktop/Staffly/EMS-Shekru-Web-App-Frontend/Frontend/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+node_modules/react-hook-form/dist/useFormContext.d.ts(1,8): error TS1259: Module '"C:/Users/ASUS/OneDrive/Desktop/Staffly/EMS-Shekru-Web-App-Frontend/Frontend/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+src/pages/salary/AddEditSalary.tsx(1,8): error TS1259: Module '"C:/Users/ASUS/OneDrive/Desktop/Staffly/EMS-Shekru-Web-App-Frontend/Frontend/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+src/pages/salary/AddEditSalary.tsx(6,25): error TS2307: Cannot find module '@/contexts/AuthContext' or its corresponding type declarations.
+src/pages/salary/AddEditSalary.tsx(7,38): error TS2307: Cannot find module '@/lib/api' or its corresponding type declarations.
+src/pages/salary/AddEditSalary.tsx(8,48): error TS2307: Cannot find module '@/types' or its corresponding type declarations.
+src/pages/salary/AddEditSalary.tsx(9,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+src/pages/salary/AddEditSalary.tsx(10,87): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.
+src/pages/salary/AddEditSalary.tsx(11,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+src/pages/salary/AddEditSalary.tsx(12,79): error TS2307: Cannot find module '@/components/ui/select' or its corresponding type declarations.
+src/pages/salary/AddEditSalary.tsx(13,23): error TS2307: Cannot find module '@/components/ui/label' or its corresponding type declarations.
+src/pages/salary/AddEditSalary.tsx(14,26): error TS2307: Cannot find module '@/hooks/use-toast' or its corresponding type declarations.
+src/pages/salary/AddEditSalary.tsx(15,23): error TS2307: Cannot find module '@/components/ui/badge' or its corresponding type declarations.
+src/pages/salary/AddEditSalary.tsx(20,55): error TS2307: Cannot find module '@/components/ui/table' or its corresponding type declarations.
+src/pages/salary/AddEditSalary.tsx(29,8): error TS2307: Cannot find module '@/components/ui/dialog' or its corresponding type declarations.
+src/pages/salary/AddEditSalary.tsx(30,58): error TS2307: Cannot find module '@/components/ui/tabs' or its corresponding type declarations.

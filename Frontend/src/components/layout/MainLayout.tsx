@@ -4,8 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import TaskDeadlineWarnings from '@/components/tasks/TaskDeadlineWarnings';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Logo } from '@/components/ui/Logo';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,7 +50,6 @@ import {
   Clock,
   CalendarDays,
   UserPlus,
-  MessageCircle,
   ChevronRight,
   Banknote,
   FolderKanban,
@@ -56,10 +58,10 @@ import {
 import { UserRole } from '@/types';
 import { Language } from '@/i18n/translations';
 import { Badge } from '@/components/ui/badge';
-import ChatNotificationBadge from '@/components/chat/ChatNotificationBadge';
 
 const MainLayout: React.FC = () => {
   const { user, logout, showDeadlineWarnings, setShowDeadlineWarnings } = useAuth();
+  const { notifications } = useNotifications();
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
@@ -79,17 +81,32 @@ const MainLayout: React.FC = () => {
     logout();
   };
 
+  const unreadMeetingsCount = (notifications || []).filter(
+    (n) => n.type === "meeting" && !n.read
+  ).length;
+
+  const unreadLeavesCount = (notifications || []).filter(
+    (n) => n.type === "leave" && !n.read
+  ).length;
+
+  const unreadTasksCount = (notifications || []).filter(
+    (n) => n.type === "task" && !n.read
+  ).length;
+
+  const unreadShiftsCount = (notifications || []).filter(
+    (n) => n.type === "shift" && !n.read
+  ).length;
+
   if (!user) return null;
 
   const getNavigationItems = () => {
     const commonItems = [
       { icon: Home, label: t.navigation.home, path: `/${user.role}` },
       { icon: Clock, label: t.navigation.attendance, path: `/${user.role}/attendance` },
-      { icon: CalendarDays, label: t.navigation.leaves, path: `/${user.role}/leaves` },
-      { icon: ClipboardList, label: t.navigation.tasks, path: `/${user.role}/tasks` },
+      { icon: CalendarDays, label: t.navigation.leaves, path: `/${user.role}/leaves`, badgeCount: unreadLeavesCount },
+      { icon: ClipboardList, label: t.navigation.tasks, path: `/${user.role}/tasks`, badgeCount: unreadTasksCount },
       { icon: Banknote, label: t.navigation.salary, path: '/salary' },
-      { icon: MessageCircle, label: t.navigation.chat, path: `/${user.role}/chat` },
-      { icon: Video, label: t.navigation.meetings, path: '/meetings' },
+      { icon: Video, label: t.navigation.meetings, path: '/meetings', badgeCount: unreadMeetingsCount },
     ];
 
     const roleSpecificItems: Record<UserRole, typeof commonItems> = {
@@ -110,17 +127,17 @@ const MainLayout: React.FC = () => {
       ],
       manager: [
         ...commonItems,
-        { icon: Clock, label: t.navigation.shiftSchedule, path: '/manager/shift-schedule' },
+        { icon: Clock, label: t.navigation.shiftSchedule, path: '/manager/shift-schedule', badgeCount: unreadShiftsCount },
         { icon: FolderKanban, label: 'Projects', path: '/manager/projects' },
       ],
       team_lead: [
         ...commonItems,
-        { icon: Clock, label: t.navigation.shiftSchedule, path: '/team_lead/team' },
+        { icon: Clock, label: t.navigation.shiftSchedule, path: '/team_lead/team', badgeCount: unreadShiftsCount },
         { icon: FolderKanban, label: 'Projects', path: '/team_lead/projects' },
       ],
       employee: [
         ...commonItems,
-        { icon: Clock, label: t.navigation.shiftSchedule, path: '/employee/team' },
+        { icon: Clock, label: t.navigation.shiftSchedule, path: '/employee/team', badgeCount: unreadShiftsCount },
         { icon: FolderKanban, label: 'Projects', path: '/employee/projects' },
       ],
     };
@@ -141,7 +158,7 @@ const MainLayout: React.FC = () => {
 
     // For chat and other main management routes, use startsWith to catch sub-routes
     // e.g., /admin/employees should match /admin/employees/new/
-    if (itemPath.includes('/chat') || itemPath.includes('/employees') || itemPath.includes('/branches') || itemPath.includes('/hiring') || itemPath.includes('/projects') || itemPath.includes('/reports')) {
+    if (itemPath.includes('/employees') || itemPath.includes('/branches') || itemPath.includes('/hiring') || itemPath.includes('/projects') || itemPath.includes('/reports')) {
       return currentPath.startsWith(itemPath);
     }
 
@@ -176,25 +193,12 @@ const MainLayout: React.FC = () => {
           </Button>
 
           {/* Logo */}
-          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate(`/${user.role}`)}>
-            <div className="relative">
-              {/* Logo container */}
-              <div className="relative h-10 w-10 rounded-lg bg-gradient-to-br from-purple-500 via-blue-500 to-indigo-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
-                <span className="text-white font-bold text-xl tracking-tight">S</span>
-              </div>
-
-              {/* Corner accent - orange dot */}
-              <div className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-orange-500 shadow-sm"></div>
-            </div>
-
-            <div className="hidden sm:flex flex-col">
-              <span className="font-semibold text-base text-blue-600 dark:text-blue-400 leading-tight">
-                Shekru labs India
-              </span>
-              <span className="text-xs text-gray-500 dark:text-gray-400 font-normal">
-                Employee Management
-              </span>
-            </div>
+          <div className="flex items-center cursor-pointer group" onClick={() => navigate(`/${user.role}`)}>
+            <Logo 
+              className="flex items-center gap-2 group-hover:scale-[1.02] transition-transform duration-200" 
+              iconClassName="h-10 w-10 drop-shadow-sm" 
+              textClassName="text-2xl font-bold tracking-tight hidden sm:block" 
+            />
           </div>
 
           <div className="flex-1" />
@@ -217,6 +221,11 @@ const MainLayout: React.FC = () => {
               </SelectItem>
             </SelectContent>
           </Select>
+          
+          {/* Notification Bell */}
+          <div className="flex items-center">
+            <NotificationBell />
+          </div>
 
 
           {/* User Menu */}
@@ -286,7 +295,7 @@ const MainLayout: React.FC = () => {
                   <NavLink
                     key={item.path}
                     to={item.path}
-                    end={!item.path.includes('/chat')}
+                    end={true}
                     title={!sidebarOpen ? item.label : ''}
                     className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-300 ${isActive
                       ? 'bg-blue-600 dark:bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-blue-900/40 font-bold scale-[1.02]'
@@ -307,7 +316,13 @@ const MainLayout: React.FC = () => {
                         ? 'text-white scale-110'
                         : 'text-slate-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400'
                         }`} />
-                      {item.path.includes('/chat') && <ChatNotificationBadge />}
+                        
+                      {/* Badge for Collapsed State */}
+                      {!sidebarOpen && 'badgeCount' in item && item.badgeCount > 0 && (
+                        <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full border-2 border-white dark:border-slate-950 flex items-center justify-center">
+                          <span className="text-[8px] font-bold text-white">{item.badgeCount > 9 ? '9+' : item.badgeCount}</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Label */}
@@ -316,6 +331,12 @@ const MainLayout: React.FC = () => {
                         <span className="font-bold text-[13px] tracking-tight truncate">
                           {item.label}
                         </span>
+                        {/* Notification Badge */}
+                        {'badgeCount' in item && item.badgeCount > 0 && (
+                          <Badge className="ml-auto bg-red-500 text-white border-0 text-[10px] h-5 min-w-[20px] px-1 flex items-center justify-center font-bold">
+                            {item.badgeCount > 9 ? '9+' : item.badgeCount}
+                          </Badge>
+                        )}
                       </div>
                     )}
 
@@ -371,7 +392,7 @@ const MainLayout: React.FC = () => {
                       <NavLink
                         key={item.path}
                         to={item.path}
-                        end={!item.path.includes('/chat')}
+                        end={true}
                         onClick={() => setMobileMenuOpen(false)}
                         className={`group relative flex items-center gap-3.5 rounded-2xl px-3.5 py-3 transition-all duration-300 ${isActive
                           ? 'bg-blue-600 dark:bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-blue-900/40 font-bold'
@@ -392,10 +413,14 @@ const MainLayout: React.FC = () => {
                             ? 'text-white scale-110'
                             : 'text-slate-400 dark:text-slate-500'
                             }`} />
-                          {item.path.includes('/chat') && <ChatNotificationBadge />}
                         </div>
 
                         <span className="font-bold text-sm tracking-tight truncate">{item.label}</span>
+                        {'badgeCount' in item && item.badgeCount > 0 && (
+                          <Badge className="ml-auto bg-red-500 text-white border-0 text-[10px] h-5 min-w-[20px] px-1 flex items-center justify-center font-bold">
+                            {item.badgeCount > 9 ? '9+' : item.badgeCount}
+                          </Badge>
+                        )}
                       </NavLink>
                     )
                   })}
@@ -435,18 +460,9 @@ const MainLayout: React.FC = () => {
 
         {/* Main Content */}
         <main
-          className={`flex-1 min-w-0 w-full overflow-x-hidden transition-all duration-500 ${location.pathname.includes('/chat')
-            ? 'overflow-hidden'
-            : 'overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent'
-            }`}
+          className="flex-1 min-w-0 w-full overflow-x-hidden transition-all duration-500 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent"
         >
-          <div
-            className={
-              location.pathname.includes('/chat')
-                ? 'h-full w-full'
-                : 'h-full w-full animate-fade-in px-4 py-6 sm:px-6 lg:px-8'
-            }
-          >
+          <div className="h-full w-full animate-fade-in px-4 py-6 sm:px-6 lg:px-8">
             <Outlet />
           </div>
         </main>

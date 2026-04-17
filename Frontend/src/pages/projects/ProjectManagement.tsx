@@ -56,16 +56,19 @@ import {
   X,
   ArchiveIcon,
   Video,
+  RefreshCcw,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiService, API_BASE_URL } from "@/lib/api";
 import { formatDateIST } from "@/utils/timezone";
 
 const TASK_STATUSES = [
+  "Pending",
+  "In Progress",
+  "Overdue",
+  "Completed",
+  "Cancelled",
   "todo",
-  "in-progress",
-  "completed",
-  "cancelled",
 ] as const;
 type TaskStatus = (typeof TASK_STATUSES)[number];
 
@@ -89,7 +92,7 @@ const emptyTask = (): TaskFormRow => ({
   assigned_to_ids: [],
   start_date: "",
   due_date: "",
-  status: "todo",
+  status: "Pending",
   priority: "Medium",
 });
 
@@ -290,12 +293,12 @@ interface ProjectTask {
   assigned_by_name?: string;
   priority?: "Low" | "Medium" | "High";
   status:
-    | "pending"
-    | "in-progress"
-    | "overdue"
-    | "completed"
-    | "cancelled"
-    | "todo";
+  | "Pending"
+  | "In Progress"
+  | "Overdue"
+  | "Completed"
+  | "Cancelled"
+  | "todo";
 }
 
 interface ProjectMeeting {
@@ -327,16 +330,27 @@ interface Project {
 }
 
 const normalizeStatus = (s?: string): string => {
-  if (!s) return "todo";
-  const low = s.toLowerCase().trim().replace(/[-_\s]+/g, "");
-  if (low === "todo" || low === "pending" || low === "planned") return "todo";
-  if (low === "inprogress" || low === "active" || low === "in_progress") return "in-progress";
-  if (low === "completed" || low === "complete" || low === "achieved") return "completed";
-  if (low === "cancelled" || low === "canceled") return "cancelled";
-  // For Select dropdown compatibility, map everything else to one of the four if needed, 
-  // or return the value and ensure Select has an item for it.
-  if (low === "archived") return "archived";
-  if (low === "overdue") return "overdue";
+  if (!s) return "Pending";
+  const low = s.toLowerCase();
+
+  if (low === "pending" || low === "todo" || low === "planned" || low === "on-hold")
+    return "Pending";
+
+  if (
+    low === "inprogress" ||
+    low === "in-progress" ||
+    low === "in_progress" ||
+    low === "active" ||
+    low === "in progress"
+  )
+    return "In Progress";
+
+  if (low === "completed" || low === "complete" || low === "achieved")
+    return "Completed";
+
+  if (low === "cancelled") return "Cancelled";
+  if (low === "overdue") return "Overdue";
+  if (low === "archived") return "Archived";
   return low;
 };
 
@@ -345,62 +359,72 @@ const normalizeStatus = (s?: string): string => {
 // ─────────────────────────────────────────
 function TaskStatusBadge({ status }: { status: string }) {
   const norm = normalizeStatus(status);
-  if (norm === "todo")
+
+  if (norm === "Pending")
     return (
       <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-0 gap-1 text-[11px]">
         <Clock className="h-3 w-3" />
-        To Do
+        Pending
       </Badge>
     );
-  if (norm === "in-progress")
+
+  if (norm === "In Progress")
     return (
       <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0 gap-1 text-[11px]">
         <Clock className="h-3 w-3" />
         In Progress
       </Badge>
     );
-  if (norm === "overdue")
+
+  if (norm === "Overdue")
     return (
       <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0 gap-1 text-[11px]">
         <AlertCircle className="h-3 w-3" />
         Overdue
       </Badge>
     );
-  if (norm === "completed")
+
+  if (norm === "Completed")
     return (
       <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-0 gap-1 text-[11px]">
         <CheckCircle2 className="h-3 w-3" />
         Completed
       </Badge>
     );
-  if (norm === "cancelled")
+
+  if (norm === "Archived")
+    return (
+      <Badge className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-0 gap-1 text-[11px]">
+        <FolderKanban className="h-3 w-3" />
+        Archived
+      </Badge>
+    );
+
+  if (norm === "Cancelled")
     return (
       <Badge className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-0 gap-1 text-[11px]">
         <XCircle className="h-3 w-3" />
         Canceled
       </Badge>
     );
+
   return (
     <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-0 gap-1 text-[11px]">
       <Clock className="h-3 w-3" />
-      To Do
+      {norm}
     </Badge>
   );
 }
 
 function statusColor(s?: string) {
   const status = normalizeStatus(s);
-  if (status === "todo")
-    return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400";
-  if (status === "in-progress")
-    return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
-  if (status === "completed")
+  if (status === "Pending")
+    return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+  if (status === "Completed")
     return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
-  if (status === "cancelled")
-    return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
-  if (status === "overdue")
-    return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
-  return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400";
+  if (status === "Cancelled" || status === "Archived")
+    return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
+  return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
 }
 
 const normalizeRole = (role: string | null | undefined): string => {
@@ -423,82 +447,46 @@ const normalizeRole = (role: string | null | undefined): string => {
 
 function statusLabel(s?: string) {
   const status = normalizeStatus(s);
-  if (status === "todo") return "To Do";
-  if (status === "in-progress") return "In Progress";
-  if (status === "completed") return "Completed";
-  if (status === "cancelled") return "Canceled";
-  if (status === "archived") return "Archived";
-  if (status === "overdue") return "Overdue";
-  return status.charAt(0).toUpperCase() + status.slice(1);
+  if (status === "Pending") return "Pending";
+  if (status === "In Progress") return "In Progress";
+  if (status === "Completed") return "Completed";
+  if (status === "Archived") return "Archived";
+  if (status === "Cancelled") return "Cancelled";
+  return status;
 }
 
-const isTaskOverdue = (dueDate?: string, currentStatus?: string) => {
-  if (!dueDate) return false;
-  const status = normalizeStatus(currentStatus);
-  if (status === "completed" || status === "cancelled") return false;
-  const due = new Date(dueDate);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return due < today;
-};
-
-// ─────────────────────────────────────────
-// TaskRow sub-component with inline status
-// ─────────────────────────────────────────
 function TaskRow({
   task,
   project,
   canManageProjects,
   onStatusChange,
-  currentUser,
-  onEditTask,
-  onDeleteTask,
-  onReassignTask,
-  onViewTask,
+  onReassign,
 }: {
   task: ProjectTask;
   project?: Project;
   canManageProjects: boolean;
   onStatusChange: (taskId: number, status: string) => void;
-  currentUser: any;
-  onEditTask?: (task: ProjectTask, project?: Project) => void;
-  onDeleteTask?: (projectId: number, taskId: number) => void;
-  onReassignTask?: (task: ProjectTask, project?: Project) => void;
-  onViewTask?: (task: ProjectTask) => void;
+  onReassign?: (task: ProjectTask) => void;
 }) {
   const id = task.task_id ?? task.id ?? 0;
 
-  const isOverdue = useMemo(() => isTaskOverdue(task.due_date, task.status), [task.due_date, task.status]);
+  // Detect overdue automatically
+  const isOverdue = useMemo(() => {
+    const status = normalizeStatus(task.status);
+    if (status === "Completed" || status === "Cancelled")
+      return false;
+    if (!task.due_date) return false;
+    const due = new Date(task.due_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return due < today;
+  }, [task.due_date, task.status]);
 
   const effectiveStatus = isOverdue
-    ? "overdue"
-    : normalizeStatus(task.status);
-
-  const canEditTaskStatus = useMemo(() => {
-    if (!currentUser) return false;
-    if (canManageProjects) return true;
-    
-    // Robust PIC check: compare by name (case-insensitive/trimmed) or by ID if available
-    const curName = currentUser.name?.toLowerCase().trim();
-    const picName1 = project?.person_in_charge_name?.toLowerCase().trim();
-    const picName2 = project?.pic_name?.toLowerCase().trim();
-    
-    const isPIC = (picName1 && curName === picName1) || 
-                  (picName2 && curName === picName2) ||
-                  (project?.person_in_charge_id && String(project.person_in_charge_id) === String(currentUser.id)) ||
-                  (project?.pic_id && String(project.pic_id) === String(currentUser.id));
-                  
-    // Robust Member check
-    const isMember = String(task.assigned_to) === String(currentUser.id) || 
-                     String(task.user_id) === String(currentUser.id);
-                     
-    return isPIC || isMember;
-  }, [currentUser, canManageProjects, project, task.assigned_to, task.user_id]);
-
-  const isAssigner = useMemo(() => {
-    if (!currentUser || !task) return false;
-    return String(task.assigned_by) === String(currentUser.id);
-  }, [currentUser, task.assigned_by]);
+    ? "Overdue"
+    : normalizeStatus(task.status) === "todo"
+      ? "Pending"
+      : normalizeStatus(task.status);
 
   return (
     <TableRow className="hover:bg-slate-50/60 dark:hover:bg-slate-900/30 transition-colors">
@@ -546,100 +534,54 @@ function TaskRow({
         </div>
       </TableCell>
       <TableCell>
-        <div className="flex flex-col gap-1">
-          {canEditTaskStatus ? (
-            <Select
-              value={normalizeStatus(task.status)}
-              onValueChange={(v) => onStatusChange(id, v)}
-            >
-              <SelectTrigger className={`h-7 w-auto min-w-[120px] text-[11px] border-slate-200 dark:border-slate-700 shadow-sm font-medium ${isOverdue ? 'border-red-200 bg-red-50 text-red-600' : ''}`}>
-                <div className="flex items-center gap-2">
-                  <SelectValue />
-                  {isOverdue && (
-                    <span className="flex items-center gap-1 bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded-sm font-bold uppercase tracking-tighter shadow-sm whitespace-nowrap">
-                       <AlertCircle className="h-2.5 w-2.5" /> Overdue
-                    </span>
-                  )}
-                </div>
-              </SelectTrigger>
-              <SelectContent side="bottom" className="shadow-md">
-                <SelectItem value="todo">
-                  <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tight text-[10px]">
-                    <Clock className="h-3 w-3" />
-                    To Do
-                  </span>
-                </SelectItem>
-                <SelectItem value="in-progress">
-                  <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold uppercase tracking-tight text-[10px]">
-                    <Clock className="h-3 w-3" />
-                    In Progress
-                  </span>
-                </SelectItem>
-                <SelectItem value="completed">
-                  <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tight text-[10px]">
-                    <CheckCircle2 className="h-3 w-3" />
-                    Completed
-                  </span>
-                </SelectItem>
-                <SelectItem value="cancelled">
-                  <span className="flex items-center gap-1.5 text-red-500 dark:text-red-400 font-bold uppercase tracking-tight text-[10px]">
-                    <XCircle className="h-3 w-3" />
-                    Canceled
-                  </span>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          ) : (
-            <div className="flex items-center gap-2">
-              <TaskStatusBadge status={isOverdue ? "overdue" : task.status} />
-            </div>
-          )}
-        </div>
+        {(!canManageProjects ||
+          normalizeStatus(task.status) === "Completed" ||
+          normalizeStatus(task.status) === "Cancelled" ||
+          isOverdue) ? (
+          <TaskStatusBadge status={effectiveStatus} />
+        ) : (
+          <Select
+            value={normalizeStatus(task.status) === "Pending" ? "Pending" : task.status}
+            onValueChange={(v) => onStatusChange(id, v)}
+          >
+            <SelectTrigger className="h-7 w-32 text-xs border-slate-200 dark:border-slate-700">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent side="bottom" className="shadow-md">
+              <SelectItem value="Pending">
+                <span className="flex items-center gap-1.5 text-amber-600 font-medium">
+                  <Clock className="h-3 w-3" />
+                  Pending
+                </span>
+              </SelectItem>
+              <SelectItem value="In Progress">
+                <span className="flex items-center gap-1.5 text-blue-600 font-medium">
+                  <Clock className="h-3 w-3" />
+                  In Progress
+                </span>
+              </SelectItem>
+              <SelectItem value="archived">
+                <span className="flex items-center gap-1.5 text-slate-600 font-medium">
+                  <FolderKanban className="h-3 w-3" />
+                  Archived
+                </span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </TableCell>
-      <TableCell className="pr-4">
-        <div className="flex items-center justify-end gap-1">
+      <TableCell className="text-right pr-4">
+        {onReassign && (
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
-            title="View Task Details"
-            onClick={() => onViewTask?.(task)}
+            className="h-7 w-7 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+            onClick={() => onReassign(task)}
+            title="Reassign & Update"
           >
-            <Eye className="h-3.5 w-3.5" />
+            <RefreshCcw className="h-3.5 w-3.5" />
           </Button>
-          
-          {isAssigner && (
-            <>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
-                title="Edit Task"
-                onClick={() => onEditTask?.(task, project)}
-              >
-                <Edit className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-slate-400 hover:text-amber-600 hover:bg-amber-50"
-                title="Reassign Task"
-                onClick={() => onReassignTask?.(task, project)}
-              >
-                <UserPlus className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50"
-                title="Delete Task"
-                onClick={() => onDeleteTask?.(project?.project_id || 0, id)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </>
-          )}
-        </div>
+        )}
       </TableCell>
     </TableRow>
   );
@@ -662,10 +604,7 @@ function ProjectCard({
   onProjectStatusChange,
   onToggleActive,
   onView,
-  onEditTask,
-  onDeleteTask,
   onReassignTask,
-  onViewTask,
 }: {
   project: Project;
   canManageProjects: boolean;
@@ -684,22 +623,15 @@ function ProjectCard({
   onProjectStatusChange: (projectId: number, status: string) => void;
   onToggleActive: (projectId: number, isActive: boolean) => void;
   onView: () => void;
-  onEditTask: (task: ProjectTask, project: Project) => void;
-  onDeleteTask: (projectId: number, taskId: number) => void;
-  onReassignTask: (task: ProjectTask, project: Project) => void;
-  onViewTask: (task: ProjectTask) => void;
+  onReassignTask?: (task: ProjectTask, projectId: number) => void;
 }) {
   const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const tasks = project.tasks || [];
   const members = project.members || [];
-   const todoCount = tasks.filter((t) => {
-    const s = normalizeStatus(t.status);
-    return s === "todo";
-  }).length;
-  const completedCount = tasks.filter((t) => normalizeStatus(t.status) === "completed").length;
-  const cancelledCount = tasks.filter((t) => normalizeStatus(t.status) === "cancelled").length;
-  const inProgressCount = tasks.filter((t) => normalizeStatus(t.status) === "in-progress").length;
+  const todoCount = tasks.filter((t) => normalizeStatus(t.status) === "Pending" || normalizeStatus(t.status) === "todo").length;
+  const completedCount = tasks.filter((t) => normalizeStatus(t.status) === "Completed").length;
+  const cancelledCount = tasks.filter((t) => normalizeStatus(t.status) === "Cancelled").length;
 
   return (
     <Card className="border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
@@ -757,7 +689,7 @@ function ProjectCard({
                 }
                 disabled={
                   !canManageProjects ||
-                  ["completed", "complete", "achieved"].includes(
+                  ["Completed", "Archived", "Cancelled"].includes(
                     normalizeStatus(project.status),
                   )
                 }
@@ -766,22 +698,28 @@ function ProjectCard({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent side="bottom" className="shadow-md">
-                  <SelectItem value="todo">
-                    <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tight text-[10px]">
+                  <SelectItem value="Pending">
+                    <span className="flex items-center gap-1.5 text-amber-600 font-medium">
                       <Clock className="h-3 w-3" />
-                      To Do
+                      Pending
                     </span>
                   </SelectItem>
-                  <SelectItem value="in-progress">
-                    <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold uppercase tracking-tight text-[10px]">
+                  <SelectItem value="In Progress">
+                    <span className="flex items-center gap-1.5 text-blue-600 font-medium">
                       <Clock className="h-3 w-3" />
                       In Progress
                     </span>
                   </SelectItem>
-                  <SelectItem value="completed">
-                    <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tight text-[10px]">
+                  <SelectItem value="Completed">
+                    <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
                       <CheckCircle2 className="h-3 w-3" />
                       Completed
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="Archived">
+                    <span className="flex items-center gap-1.5 text-slate-600 font-medium">
+                      <FolderKanban className="h-3 w-3" />
+                      Archived
                     </span>
                   </SelectItem>
                   <SelectItem value="cancelled">
@@ -897,13 +835,34 @@ function ProjectCard({
             </div>
 
             {/* Task counts */}
-            {tasks.length > 0 && cancelledCount > 0 && (
-              <div className="flex items-center gap-1.5 bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-full">
-                <XCircle className="h-3.5 w-3.5 text-red-400" />
-                <span className="text-xs font-medium text-red-500 dark:text-red-400">
-                  {cancelledCount} Cancelled
-                </span>
-              </div>
+            {tasks.length > 0 && (
+              <>
+                <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-full">
+                  <Clock className="h-3.5 w-3.5 text-amber-500" />
+                  <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                    {
+                      tasks.filter(
+                        (t) => normalizeStatus(t.status) === "Pending" || normalizeStatus(t.status) === "todo",
+                      ).length
+                    }{" "}
+                    Pending
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-full">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                    {completedCount} / {project.task_count ?? tasks.length} Done
+                  </span>
+                </div>
+                {cancelledCount > 0 && (
+                  <div className="flex items-center gap-1.5 bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-full">
+                    <XCircle className="h-3.5 w-3.5 text-red-400" />
+                    <span className="text-xs font-medium text-red-500 dark:text-red-400">
+                      {cancelledCount} Cancelled
+                    </span>
+                  </div>
+                )}
+              </>
             )}
             {/* Meetings */}
             {(project.meetings?.length ?? 0) > 0 && (
@@ -996,12 +955,11 @@ function ProjectCard({
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50/80 dark:bg-slate-900/40">
-                        <TableHead className="pl-4 text-xs font-bold uppercase tracking-tight text-slate-500">Task</TableHead>
-                        <TableHead className="text-xs font-bold uppercase tracking-tight text-slate-500">Assignee</TableHead>
-                        <TableHead className="text-xs font-bold uppercase tracking-tight text-slate-500">Assigned By</TableHead>
-                        <TableHead className="text-xs font-bold uppercase tracking-tight text-slate-500">Dates</TableHead>
-                        <TableHead className="text-xs font-bold uppercase tracking-tight text-slate-500">Status</TableHead>
-                        <TableHead className="text-xs text-right pr-4 font-bold uppercase tracking-tight text-slate-500">Actions</TableHead>
+                        <TableHead className="pl-4 text-xs">Task</TableHead>
+                        <TableHead className="text-xs">Assigned To</TableHead>
+                        <TableHead className="text-xs">Due Date</TableHead>
+                        <TableHead className="text-xs">Status</TableHead>
+                        <TableHead className="text-xs text-right pr-4">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1018,11 +976,9 @@ function ProjectCard({
                               status,
                             )
                           }
-                          currentUser={user}
-                          onEditTask={(t) => onEditTask(t, project)}
-                          onDeleteTask={(tid) => onDeleteTask(project.project_id, tid)}
-                          onReassignTask={(t) => onReassignTask(t, project)}
-                          onViewTask={onViewTask}
+                          onReassign={(t) =>
+                            onReassignTask?.(t, project.project_id)
+                          }
                         />
                       ))}
                     </TableBody>
@@ -1068,19 +1024,14 @@ export default function ProjectManagement() {
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-
-  // Task Edit/Reassign
-  const [isTaskEditOpen, setIsTaskEditOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<ProjectTask | null>(null);
-  const [isReassignOnly, setIsReassignOnly] = useState(false);
-  const [editTaskData, setEditTaskData] = useState({
-    task_name: "",
-    description: "",
-    start_date: "",
-    due_date: "",
-    priority: "Medium" as "Low" | "Medium" | "High",
-    assigned_to: 0,
-    status: "todo" as any,
+  const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
+  const [taskToReassign, setTaskToReassign] = useState<{
+    projectId: number;
+    task: ProjectTask;
+  } | null>(null);
+  const [reassignForm, setReassignForm] = useState({
+    assigned_to: "",
+    status: "",
   });
 
   // Create/Edit form
@@ -1089,8 +1040,8 @@ export default function ProjectManagement() {
     description: "",
     start_date: "",
     end_date: "",
-    status: "in-progress",
-    person_in_charge_id: "" as string | number,
+    status: "In Progress",
+    person_in_charge_id: "",
   });
   // Multi-select members (for create)
   const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
@@ -1109,37 +1060,29 @@ export default function ProjectManagement() {
     try {
       const data = await apiService.getProjects();
       const projectList = Array.isArray(data) ? data : data?.projects || [];
-      
-      setProjects((prevProjects) => 
-        projectList.map((p: any) => {
-          const pid = p.project_id || p.id;
-          const old = prevProjects.find((op) => op.project_id === pid);
-          return {
-            ...p,
-            project_id: pid,
-            members: (p.members || old?.members || []).map((m: any) => ({
-              ...(m || {}),
-              name:
-                m?.name ||
-                m?.employee_name ||
-                m?.full_name ||
-                m?.user_name ||
-                (m?.first_name
-                  ? `${m.first_name} ${m.last_name || ""}`.trim()
-                  : null) ||
-                "Unknown Member",
-            })),
-            tasks: (p.tasks || old?.tasks || []).map((t: any) => ({
-              ...(t || {}),
-              task_id: t?.task_id || t?.id,
-              task_name: t?.task_name || t?.title || t?.name || "Untitled Task",
-            })),
-            person_in_charge_id: p.person_in_charge_id || p.person_in_charge || p.pic_id || old?.person_in_charge_id,
-            person_in_charge_name: p.person_in_charge_name || p.pic_name || old?.person_in_charge_name,
-            pic_id: p.person_in_charge_id || p.person_in_charge || p.pic_id || old?.pic_id,
-          };
-        })
-      );
+      const normalizedProjects = projectList.map((p: any) => ({
+        ...p,
+        members: (p.members || []).map((m: any) => ({
+          ...m,
+          name:
+            m.name ||
+            m.employee_name ||
+            m.full_name ||
+            m.user_name ||
+            (m.first_name
+              ? `${m.first_name} ${m.last_name || ""}`.trim()
+              : null) ||
+            "Unknown Member",
+        })),
+        tasks: (p.tasks || []).filter((t: any) => {
+          const pId = p.project_id || p.id;
+          const tPid = t.project_id ?? t.projectId ?? t.project?.id ?? t.project?.project_id;
+          // If task has no project ID info, we assume it belongs if it was returned in the project's payload
+          if (tPid === undefined || tPid === null) return true;
+          return String(tPid) === String(pId);
+        }),
+      }));
+      setProjects(normalizedProjects);
     } catch (err: any) {
       toast({
         title: "Error",
@@ -1174,7 +1117,7 @@ export default function ProjectManagement() {
           };
         }),
       );
-    } catch (_) {}
+    } catch (_) { }
   };
 
   useEffect(() => {
@@ -1202,7 +1145,7 @@ export default function ProjectManagement() {
       description: "",
       start_date: "",
       end_date: "",
-      status: "in-progress",
+      status: "In Progress",
       person_in_charge_id: "",
     });
     setSelectedMemberIds([]);
@@ -1254,15 +1197,15 @@ export default function ProjectManagement() {
 
       // 3. Managers can assign to anyone in their department(s) or any role below them
       if (userRole === "manager") {
-         const sameDept = userDepts.length === 0 || empDepts.some(d => userDepts.includes(d));
-         const lowerRole = ["team_lead", "employee"].includes(empRole);
-         return sameDept || lowerRole;
+        const sameDept = userDepts.length === 0 || empDepts.some(d => userDepts.includes(d));
+        const lowerRole = ["team_lead", "employee"].includes(empRole);
+        return sameDept || lowerRole;
       }
 
       // 4. Team leads can assign to employees in their department or any employee
       if (userRole === "team_lead") {
-         const sameDept = userDepts.length === 0 || empDepts.some(d => userDepts.includes(d));
-         return empRole === "employee" || sameDept;
+        const sameDept = userDepts.length === 0 || empDepts.some(d => userDepts.includes(d));
+        return empRole === "employee" || sameDept;
       }
 
       // 5. Employees can assign to self (handled by rule 1)
@@ -1331,18 +1274,12 @@ export default function ProjectManagement() {
         // 2. Assign tasks using Bulk API
         for (const t of taskList) {
           if (!t.task_name.trim() || t.assigned_to_ids.length === 0) continue;
-          
-          let backendTaskStatus: string = t.status;
-          if (t.status === "todo") backendTaskStatus = "Pending";
-          else if (t.status === "in-progress") backendTaskStatus = "In Progress";
-          else if (t.status === "completed") backendTaskStatus = "Completed";
-          else if (t.status === "cancelled") backendTaskStatus = "Cancelled";
 
           try {
             await apiService.assignTasksBulk({
               title: t.task_name,
               description: t.description,
-              status: backendTaskStatus,
+              status: t.status,
               start_date: t.start_date || null,
               due_date: t.due_date || null,
               priority: t.priority,
@@ -1396,10 +1333,10 @@ export default function ProjectManagement() {
       else if (formData.status === "cancelled") backendStatus = "cancelled";
 
       const { person_in_charge_id, ...baseData } = formData;
-      const payload = { 
-        ...baseData, 
+      const payload = {
+        ...baseData,
         status: backendStatus,
-        person_in_charge: person_in_charge_id ? Number(person_in_charge_id) : undefined 
+        person_in_charge: person_in_charge_id ? Number(person_in_charge_id) : undefined
       };
       await apiService.updateProject(selectedProject.project_id, payload);
       toast({ title: "Success", description: "Project updated" });
@@ -1469,13 +1406,22 @@ export default function ProjectManagement() {
 
       // Normalise Tasks
       const tasksRaw = tasksRes.status === "fulfilled" ? tasksRes.value : null;
-      const tasksArr = Array.isArray(tasksRaw)
+      const tasksArrRaw = Array.isArray(tasksRaw)
         ? tasksRaw
         : Array.isArray(tasksRaw?.data)
           ? tasksRaw.data
           : Array.isArray(tasksRaw?.tasks)
             ? tasksRaw.tasks
             : [];
+
+      // ✅ Filter logic: explicitly ensure only this project's tasks are included
+      const tasksArr = tasksArrRaw.filter((t: any) => {
+        const pId = t.project_id ?? t.projectId ?? t.project?.id ?? t.project?.project_id;
+        // Since this was fetched from a project-specific query, if pId is missing, 
+        // we trust the endpoint returned relevant tasks.
+        if (pId === undefined || pId === null) return true;
+        return String(pId) === String(projectId);
+      });
 
       // Normalize task field names — backend may use `title` instead of `task_name`,
       // and assignee name may be in several different fields
@@ -1521,11 +1467,14 @@ export default function ProjectManagement() {
         ...projectData,
         project_id: projectId,
         members:
-          normalizedMembers.length > 0
+          membersRes.status === "fulfilled"
             ? normalizedMembers
             : localProject?.members || [],
-        tasks: tasks.length > 0 ? tasks : localProject?.tasks || [],
-        meetings: meetings.length > 0 ? meetings : localProject?.meetings || [],
+        tasks: tasksRes.status === "fulfilled" ? tasks : localProject?.tasks || [],
+        meetings:
+          meetingsRes.status === "fulfilled"
+            ? meetings
+            : localProject?.meetings || [],
         member_count:
           projectData?.member_count ??
           members.length ??
@@ -1631,17 +1580,10 @@ export default function ProjectManagement() {
     try {
       // Use Bulk API: one API call per task row (which can have multiple assignees)
       for (const task of validTasks) {
-        // Map UI status back to backend-friendly status for tasks
-        let backendStatus: string = task.status;
-        if (task.status === "todo") backendStatus = "Pending";
-        else if (task.status === "in-progress") backendStatus = "In Progress";
-        else if (task.status === "completed") backendStatus = "Completed";
-        else if (task.status === "cancelled") backendStatus = "Cancelled";
-
         await apiService.assignTasksBulk({
           title: task.task_name,
           description: task.description,
-          status: backendStatus,
+          status: task.status,
           start_date: task.start_date || null,
           due_date: task.due_date || null,
           priority: task.priority,
@@ -1726,7 +1668,7 @@ export default function ProjectManagement() {
       if (!project) throw new Error("Project context not found");
 
       const taskObj: any = project.tasks?.find(t => (t.task_id === taskId || t.id === taskId));
-      
+
       // Map UI status back to backend-friendly status
       let backendStatus = status;
       if (status === "todo") backendStatus = "Pending";
@@ -1739,31 +1681,12 @@ export default function ProjectManagement() {
         assigned_to: taskObj?.assigned_to || null
       });
       toast({ title: "Success", description: "Task status updated" });
-      
-      // Update the projects list immediately
-      setProjects((prev) =>
-        prev.map((p) => {
-          if (p.project_id !== projectId) return p;
-          return {
-            ...p,
-            tasks: p.tasks?.map((t) =>
-              (t.task_id === taskId || t.id === taskId) ? { ...t, status: backendStatus as any } : t
-            ),
-          };
-        }),
-      );
+      fetchProjects();
 
-      // Also update selected project state if it matches for UI responsiveness in the dialog
-      if (selectedProject?.project_id === projectId) {
-        setSelectedProject((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            tasks: prev.tasks?.map((t) =>
-              (t.task_id === taskId || t.id === taskId) ? { ...t, status: backendStatus as any } : t
-            ),
-          };
-        });
+      // Also update selected project if open
+      if (selectedProject && selectedProject.project_id === projectId) {
+        const updated = await loadFullProjectDetails(projectId);
+        setSelectedProject(updated);
       }
     } catch (err: any) {
       toast({
@@ -1771,6 +1694,86 @@ export default function ProjectManagement() {
         description: err.message || "Failed to update task status",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleOpenReassign = (task: ProjectTask, projectId: number) => {
+    // Ensure we have the project members for the select
+    const proj = projects.find((p) => p.project_id === projectId);
+    if (proj) setSelectedProject(proj);
+
+    setTaskToReassign({ task, projectId });
+    setReassignForm({
+      assigned_to: String(task.assigned_to || ""),
+      status: task.status || "pending",
+    });
+    setIsReassignDialogOpen(true);
+  };
+
+  const handleReassignTask = async () => {
+    if (!taskToReassign) return;
+    const { task, projectId } = taskToReassign;
+    const taskId = task.task_id ?? task.id ?? 0;
+
+    setIsUpdating(true);
+    try {
+      // Create a complete payload for the generic task update to satisfy backend requirements
+      const payload = {
+        title: task.task_name || "Task",
+        description: task.description || "",
+        status: reassignForm.status,
+        assigned_to: Number(reassignForm.assigned_to),
+        project_id: projectId
+      };
+
+      const token = localStorage.getItem("token");
+      const authHeader = token
+        ? { Authorization: token.startsWith("Bearer ") ? token : `Bearer ${token}` }
+        : {};
+
+      // 1. Perform the general task PUT which handles assignee and status
+      const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update task (${response.status})`);
+      }
+
+      // 2. Also call the specific project task status endpoint to ensure project-level sync 
+      if (reassignForm.status !== task.status) {
+        try {
+          await apiService.updateProjectTaskStatus(
+            projectId,
+            taskId,
+            reassignForm.status,
+          );
+        } catch (_) {
+          // Swallow status-specific errors if the main update succeeded
+        }
+      }
+
+      toast({ title: "Success", description: "Task updated successfully" });
+      setIsReassignDialogOpen(false);
+      fetchProjects();
+
+      if (selectedProject && selectedProject.project_id === projectId) {
+        const updated = await loadFullProjectDetails(projectId);
+        setSelectedProject(updated);
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to update task",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -1863,100 +1866,6 @@ export default function ProjectManagement() {
     setIsViewTaskDialogOpen(true);
   };
 
-  const handleEditTask = (task: ProjectTask, project?: Project) => {
-    if (project) setSelectedProject(project);
-    setEditingTask(task);
-    setEditTaskData({
-      task_name: task.task_name,
-      description: task.description || "",
-      start_date: task.start_date ? task.start_date.split("T")[0] : "",
-      due_date: task.due_date ? task.due_date.split("T")[0] : "",
-      priority: task.priority || "Medium",
-      assigned_to: Number(task.assigned_to || task.user_id || 0),
-      status: normalizeStatus(task.status),
-    });
-    setIsReassignOnly(false);
-    setIsTaskEditOpen(true);
-  };
-
-  const handleReassignTask = (task: ProjectTask, project?: Project) => {
-    if (project) setSelectedProject(project);
-    setEditingTask(task);
-    setEditTaskData({
-      task_name: task.task_name,
-      description: task.description || "",
-      start_date: task.start_date ? task.start_date.split("T")[0] : "",
-      due_date: task.due_date ? task.due_date.split("T")[0] : "",
-      priority: task.priority || "Medium",
-      assigned_to: Number(task.assigned_to || task.user_id || 0),
-      status: normalizeStatus(task.status),
-    });
-    setIsReassignOnly(true);
-    setIsTaskEditOpen(true);
-  };
-
-  const handleDeleteTask = async (projectId: number, taskId: number) => {
-    if (!confirm("Are you sure you want to delete this task?")) return;
-    try {
-      await apiService.deleteProjectTask(taskId);
-      toast({ title: "Success", description: "Task deleted successfully" });
-      
-      // Refresh details
-      const updated = await loadFullProjectDetails(projectId);
-      setSelectedProject(updated);
-      setProjects((prev) =>
-        prev.map((p) => (p.project_id === projectId ? updated : p)),
-      );
-    } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.message || "Failed to delete task",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleTaskUpdateSubmit = async () => {
-    if (!editingTask || !selectedProject) return;
-    try {
-      let backendStatus: string = editTaskData.status;
-      if (editTaskData.status === "todo") backendStatus = "Pending";
-      else if (editTaskData.status === "in-progress") backendStatus = "In Progress";
-      else if (editTaskData.status === "completed") backendStatus = "Completed";
-      else if (editTaskData.status === "cancelled") backendStatus = "Cancelled";
-
-      const payload = {
-        title: editTaskData.task_name,
-        description: editTaskData.description,
-        start_date: editTaskData.start_date || null,
-        due_date: editTaskData.due_date || null,
-        priority: editTaskData.priority,
-        assigned_to: editTaskData.assigned_to,
-        status: backendStatus,
-        project_id: selectedProject.project_id
-      };
-
-      const taskId = editingTask.task_id || editingTask.id || 0;
-      await apiService.updateProjectTask(taskId, payload);
-
-      toast({ title: "Success", description: isReassignOnly ? "Task reassigned successfully" : "Task updated successfully" });
-      setIsTaskEditOpen(false);
-      setEditingTask(null);
-
-      // Refresh details
-      const updated = await loadFullProjectDetails(selectedProject.project_id);
-      setSelectedProject(updated);
-      setProjects((prev) =>
-        prev.map((p) => (p.project_id === selectedProject.project_id ? updated : p)),
-      );
-    } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.message || "Failed to update task",
-        variant: "destructive",
-      });
-    }
-  };
 
   const canManageProjects =
     ["admin", "hr", "manager"].includes(normalizeRole(user?.role));
@@ -2012,11 +1921,11 @@ export default function ProjectManagement() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Projects</SelectItem>
-              <SelectItem value="todo">Planned</SelectItem>
-              <SelectItem value="in-progress">In-Progress</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
+              <SelectItem value="Pending">Pending</SelectItem>
+              <SelectItem value="In Progress">In Progress</SelectItem>
+              <SelectItem value="Completed">Completed</SelectItem>
+              <SelectItem value="Cancelled">Cancelled</SelectItem>
+              <SelectItem value="Archived">Archived</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -2032,7 +1941,7 @@ export default function ProjectManagement() {
             icon: FolderKanban,
           },
           {
-            label: "Planned",
+            label: "Pending",
             value: projects.filter(
               (p) => normalizeStatus(p.status) === "todo",
             ).length,
@@ -2040,7 +1949,7 @@ export default function ProjectManagement() {
             icon: Briefcase,
           },
           {
-            label: "In-Progress",
+            label: "In Progress",
             value: projects.filter(
               (p) => normalizeStatus(p.status) === "in-progress",
             ).length,
@@ -2133,7 +2042,7 @@ export default function ProjectManagement() {
                   start_date: project.start_date?.split("T")[0] || "",
                   end_date: project.end_date?.split("T")[0] || "",
                   status: normalizeStatus(project.status),
-                  person_in_charge_id: project.person_in_charge_id || project.pic_id || "",
+                  person_in_charge_id: String(project.person_in_charge_id || project.pic_id || ""),
                 });
                 setIsEditDialogOpen(true);
               }}
@@ -2147,7 +2056,7 @@ export default function ProjectManagement() {
                 try {
                   const full = await loadFullProjectDetails(project.project_id);
                   setSelectedProject(full);
-                } catch (_) {}
+                } catch (_) { }
               }}
               onRemoveMembers={async () => {
                 setSelectedProject(project);
@@ -2156,7 +2065,7 @@ export default function ProjectManagement() {
                 try {
                   const full = await loadFullProjectDetails(project.project_id);
                   setSelectedProject(full);
-                } catch (_) {}
+                } catch (_) { }
               }}
               onRemoveMember={(userId) => {
                 setSelectedProject(project);
@@ -2170,10 +2079,7 @@ export default function ProjectManagement() {
                 handleToggleProjectActive(pid, isActive)
               }
               onView={() => handleView(project.project_id)}
-              onEditTask={handleEditTask}
-              onDeleteTask={handleDeleteTask}
-              onReassignTask={handleReassignTask}
-              onViewTask={handleViewTask}
+              onReassignTask={handleOpenReassign}
             />
           ))}
         </div>
@@ -2203,8 +2109,8 @@ export default function ProjectManagement() {
                     <CalendarDays className="h-3.5 w-3.5" />
                     {selectedProject?.start_date
                       ? new Date(
-                          selectedProject.start_date,
-                        ).toLocaleDateString()
+                        selectedProject.start_date,
+                      ).toLocaleDateString()
                       : "N/A"}{" "}
                     -{" "}
                     {selectedProject?.end_date
@@ -2377,9 +2283,6 @@ export default function ProjectManagement() {
                               Assigned By
                             </TableHead>
                             <TableHead className="text-[10px] font-bold uppercase tracking-wider text-slate-500 text-center">
-                              Dates
-                            </TableHead>
-                            <TableHead className="text-[10px] font-bold uppercase tracking-wider text-slate-500 text-center">
                               Status
                             </TableHead>
                             <TableHead className="text-[10px] font-bold uppercase tracking-wider text-slate-500 pr-6 text-right">
@@ -2389,190 +2292,24 @@ export default function ProjectManagement() {
                         </TableHeader>
                         <TableBody>
                           {selectedProject.tasks.map((task: any) => (
-                            <TableRow
+                            <TaskRow
                               key={task.task_id}
-                              className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors border-slate-50 dark:border-slate-800 last:border-0"
-                            >
-                              <TableCell className="pl-6 py-4">
-                                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                                  {task.task_name}
-                                </p>
-                                {task.description && (
-                                  <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
-                                    {task.description}
-                                  </p>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <div className="h-7 w-7 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-slate-400">
-                                    {task.assigned_to_name?.[0]?.toUpperCase() ||
-                                      "?"}
-                                  </div>
-                                  <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                                    {task.assigned_to_name || "Unassigned"}
-                                  </span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <div className="h-7 w-7 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-[10px] font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-100/50">
-                                    {(() => {
-                                      if (task.assigned_by_name) return task.assigned_by_name[0].toUpperCase();
-                                      const assigner = employees.find(e => String(e.user_id) === String(task.assigned_by));
-                                      return assigner?.name?.[0]?.toUpperCase() || "A";
-                                    })()}
-                                  </div>
-                                  <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                                    {(() => {
-                                      if (task.assigned_by_name) return task.assigned_by_name;
-                                      const assigner = employees.find(e => String(e.user_id) === String(task.assigned_by));
-                                      return assigner?.name || "Admin";
-                                    })()}
-                                  </span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex flex-col items-center gap-1 min-w-[100px]">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none w-8">START</span>
-                                    <span className="text-[10px] text-slate-600 dark:text-slate-400 font-bold bg-slate-50 dark:bg-slate-800/50 px-1.5 py-0.5 rounded border border-slate-100 dark:border-slate-800 tabular-nums">
-                                      {task.start_date ? formatDateIST(task.start_date, "dd-MM-yyyy") : "—"}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none w-8">DUE</span>
-                                    <span className={`text-[10px] font-bold bg-slate-50 dark:bg-slate-800/50 px-1.5 py-0.5 rounded border tabular-nums ${isTaskOverdue(task.due_date, task.status) ? 'text-red-600 border-red-100 bg-red-50/50' : 'text-slate-600 dark:text-slate-400 border-slate-100 dark:border-slate-800'}`}>
-                                      {task.due_date ? formatDateIST(task.due_date, "dd-MM-yyyy") : "—"}
-                                    </span>
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {(() => {
-                                  const isOverdue = isTaskOverdue(task.due_date, task.status);
-                                  
-                                  const curName = user?.name?.toLowerCase().trim();
-                                  const picName1 = selectedProject?.person_in_charge_name?.toLowerCase().trim();
-                                  const picName2 = selectedProject?.pic_name?.toLowerCase().trim();
-                                  const picId = selectedProject?.person_in_charge_id || selectedProject?.pic_id;
-
-                                  const isPIC = (picName1 && curName === picName1) || 
-                                                (picName2 && curName === picName2) ||
-                                                (picId && String(picId) === String(user?.id));
-                                  
-                                  const isMember = String(task.assigned_to) === String(user?.id) || 
-                                                   String(task.user_id) === String(user?.id);
-
-                                  const canEdit = canManageProjects || isPIC || isMember;
-                                  
-                                  if (canEdit) {
-                                    return (
-                                      <div className="flex flex-col items-end gap-1">
-                                        <Select
-                                          value={normalizeStatus(task.status)}
-                                          onValueChange={(v) => handleTaskStatusChange(selectedProject.project_id, task.task_id || task.id, v)}
-                                        >
-                                          <SelectTrigger className={`h-8 w-auto min-w-[130px] ml-auto text-[11px] border-slate-200 dark:border-slate-800 font-medium ${isOverdue ? 'border-red-200 bg-red-50 text-red-600' : ''}`}>
-                                            <div className="flex items-center gap-2">
-                                              <SelectValue />
-                                              {isOverdue && (
-                                                <span className="flex items-center gap-1 bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded-sm font-bold uppercase tracking-tighter shadow-sm whitespace-nowrap">
-                                                  <AlertCircle className="h-2.5 w-2.5" /> Overdue
-                                                </span>
-                                              )}
-                                            </div>
-                                          </SelectTrigger>
-                                          <SelectContent side="bottom" className="shadow-lg min-w-[140px]">
-                                            <SelectItem value="todo">
-                                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tighter text-[10px]">
-                                                <Clock className="h-3 w-3" /> To Do
-                                              </div>
-                                            </SelectItem>
-                                            <SelectItem value="in-progress">
-                                              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold uppercase tracking-tighter text-[10px]">
-                                                <Clock className="h-3 w-3" /> In Progress
-                                              </div>
-                                            </SelectItem>
-                                            <SelectItem value="completed">
-                                              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tighter text-[10px]">
-                                                <CheckCircle2 className="h-3 w-3" /> Completed
-                                              </div>
-                                            </SelectItem>
-                                            <SelectItem value="cancelled">
-                                              <div className="flex items-center gap-2 text-red-500 dark:text-red-400 font-bold uppercase tracking-tighter text-[10px]">
-                                                <XCircle className="h-3 w-3" /> Canceled
-                                              </div>
-                                            </SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    );
-                                  }
-                                  
-                                  return (
-                                    <div className="flex flex-col items-center gap-1">
-                                      <TaskStatusBadge status={isOverdue ? "overdue" : task.status} />
-                                      {isOverdue && task.status !== "completed" && task.status !== "cancelled" && (
-                                        <Badge className="bg-red-50 text-red-600 dark:bg-red-900/20 border-red-100 border text-[9px] height-auto py-0 px-1 w-fit">
-                                          AUTO OVERDUE
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </TableCell>
-                              <TableCell className="pr-6 text-right">
-                                {(() => {
-                                  const isAssigner = String(task.assigned_by) === String(user?.id);
-                                  return (
-                                    <div className="flex items-center justify-end gap-1">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
-                                        title="View Task Details"
-                                        onClick={() => handleViewTask(task)}
-                                      >
-                                        <Eye className="h-4 w-4" />
-                                      </Button>
-                                      
-                                      {isAssigner && (
-                                        <>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
-                                            title="Edit Task"
-                                            onClick={() => handleEditTask(task)}
-                                          >
-                                            <Edit className="h-4 w-4" />
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-slate-400 hover:text-amber-600 hover:bg-amber-50"
-                                            title="Reassign Task"
-                                            onClick={() => handleReassignTask(task)}
-                                          >
-                                            <UserPlus className="h-4 w-4" />
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
-                                            title="Delete Task"
-                                            onClick={() => handleDeleteTask(selectedProject.project_id, task.task_id || task.id)}
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                        </>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </TableCell>
-                            </TableRow>
+                              task={task}
+                              canManageProjects={canManageProjects}
+                              onStatusChange={(taskId, status) =>
+                                handleTaskStatusChange(
+                                  selectedProject.project_id,
+                                  taskId,
+                                  status,
+                                )
+                              }
+                              onReassign={(t) =>
+                                handleOpenReassign(
+                                  t,
+                                  selectedProject.project_id,
+                                )
+                              }
+                            />
                           ))}
                         </TableBody>
                       </Table>
@@ -3273,254 +3010,133 @@ export default function ProjectManagement() {
       </Dialog>
 
       {/* ══════════════════════════════════════
-          EDIT TASK DIALOG
+          REASSIGN TASK DIALOG
          ══════════════════════════════════════ */}
-      <Dialog open={isTaskEditOpen} onOpenChange={setIsTaskEditOpen}>
-        <DialogContent className="max-w-md rounded-3xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-violet-500" />
-              {isReassignOnly ? "Reassign Task" : "Edit Task"}
-            </DialogTitle>
-            <DialogDescription>
-              {isReassignOnly 
-                ? "Assign this task to a different team member."
-                : "Modify task details and assignment."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            {!isReassignOnly && (
-              <>
-                <div className="space-y-1.5">
-                  <Label>Task Name</Label>
-                  <Input
-                    value={editTaskData.task_name}
-                    onChange={(e) => setEditTaskData({ ...editTaskData, task_name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Description</Label>
-                  <Textarea
-                    rows={2}
-                    value={editTaskData.description}
-                    onChange={(e) => setEditTaskData({ ...editTaskData, description: e.target.value })}
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Start Date</Label>
-                    <Input
-                      type="date"
-                      value={editTaskData.start_date}
-                      onChange={(e) => setEditTaskData({ ...editTaskData, start_date: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Due Date</Label>
-                    <Input
-                      type="date"
-                      value={editTaskData.due_date}
-                      onChange={(e) => setEditTaskData({ ...editTaskData, due_date: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Priority</Label>
-                    <Select
-                      value={editTaskData.priority}
-                      onValueChange={(v: any) => setEditTaskData({ ...editTaskData, priority: v })}
-                    >
-                      <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {PRIORITY_OPTIONS.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-            </>
-          )}
+      <Dialog
+        open={isReassignDialogOpen}
+        onOpenChange={setIsReassignDialogOpen}
+      >
+        <DialogContent className="max-w-md rounded-3xl border-0 shadow-2xl overflow-hidden p-0">
+          <div className="bg-gradient-to-br from-violet-600 to-indigo-700 p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <RefreshCcw className="h-5 w-5" />
+                  Reassign & Update Task
+                </h3>
+                <p className="text-white/70 text-xs mt-1">
+                  Modify task ownership and status
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="p-6 space-y-5 bg-white dark:bg-slate-950">
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Task Name
+              </Label>
+              <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 text-sm font-medium text-slate-600">
+                {taskToReassign?.task.task_name}
+              </div>
+            </div>
 
             <div className="space-y-2">
-              <Label className="text-[11px] font-bold text-slate-500 uppercase">
-                Assignee
+              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Assigned To
               </Label>
               <Select
-                value={String(editTaskData.assigned_to)}
-                onValueChange={(v) => setEditTaskData({ ...editTaskData, assigned_to: Number(v) })}
+                value={reassignForm.assigned_to}
+                onValueChange={(v) =>
+                  setReassignForm((f) => ({ ...f, assigned_to: v }))
+                }
               >
-                <SelectTrigger className="h-10 rounded-xl">
-                  <SelectValue placeholder="Select Assignee" />
+                <SelectTrigger className="rounded-xl border-slate-200 h-11 bg-white dark:bg-slate-900">
+                  <SelectValue placeholder="Select member" />
                 </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  {employees.map((emp) => (
-                    <SelectItem key={emp.user_id} value={String(emp.user_id)}>
+                <SelectContent className="max-h-[250px] rounded-xl shadow-xl">
+                  {selectedProject?.members?.map((m) => (
+                    <SelectItem key={m.user_id} value={String(m.user_id)}>
                       <div className="flex items-center gap-2">
-                        <div className="h-5 w-5 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-bold text-slate-600">
-                          {emp.name?.[0]?.toUpperCase()}
+                        <div className="h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-[10px] font-bold text-blue-700">
+                          {m.name?.[0]?.toUpperCase()}
                         </div>
-                        <span className="text-xs">{emp.name}</span>
+                        <span className="text-sm font-medium">{m.name}</span>
+                        {m.role && <span className="text-[10px] text-slate-400 capitalize">({m.role})</span>}
                       </div>
                     </SelectItem>
                   ))}
+                  {(!selectedProject?.members ||
+                    selectedProject.members.length === 0) && (
+                      <p className="text-xs p-3 text-slate-400 text-center">
+                        No members in this project.
+                      </p>
+                    )}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[11px] font-bold text-slate-500 uppercase">
-                Status
+              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Update Status
               </Label>
               <Select
-                value={editTaskData.status}
-                onValueChange={(v: any) => setEditTaskData({ ...editTaskData, status: v })}
+                value={reassignForm.status}
+                onValueChange={(v) =>
+                  setReassignForm((f) => ({ ...f, status: v }))
+                }
               >
-                <SelectTrigger className="h-10 rounded-xl font-medium">
+                <SelectTrigger className="rounded-xl border-slate-200 h-11 bg-white dark:bg-slate-900">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todo">
-                    <div className="flex items-center gap-2 text-slate-600 font-bold uppercase tracking-tighter text-[10px]">
-                      <Clock className="h-3 w-3" /> To Do
-                    </div>
+                <SelectContent className="rounded-xl shadow-xl">
+                  <SelectItem value="Pending">
+                    <span className="flex items-center gap-2 text-amber-600 font-medium">
+                      <Clock className="h-4 w-4" /> Pending
+                    </span>
                   </SelectItem>
-                  <SelectItem value="in-progress">
-                    <div className="flex items-center gap-2 text-blue-600 font-bold uppercase tracking-tighter text-[10px]">
-                      <Clock className="h-3 w-3" /> In Progress
-                    </div>
+                  <SelectItem value="In Progress">
+                    <span className="flex items-center gap-2 text-blue-600 font-medium">
+                      <Clock className="h-4 w-4" /> In Progress
+                    </span>
                   </SelectItem>
-                  <SelectItem value="completed">
-                    <div className="flex items-center gap-2 text-emerald-600 font-bold uppercase tracking-tighter text-[10px]">
-                      <CheckCircle2 className="h-3 w-3" /> Completed
-                    </div>
+                  <SelectItem value="Completed">
+                    <span className="flex items-center gap-2 text-emerald-600 font-medium">
+                      <CheckCircle2 className="h-4 w-4" /> Completed
+                    </span>
                   </SelectItem>
-                  <SelectItem value="cancelled">
-                    <div className="flex items-center gap-2 text-red-500 font-bold uppercase tracking-tighter text-[10px]">
-                      <XCircle className="h-3 w-3" /> Canceled
-                    </div>
+                  <SelectItem value="Archived">
+                    <span className="flex items-center gap-2 text-slate-600 font-medium">
+                      <FolderKanban className="h-4 w-4" /> Archived
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="Cancelled">
+                    <span className="flex items-center gap-2 text-red-500 font-medium">
+                      <XCircle className="h-4 w-4" /> Cancelled
+                    </span>
                   </SelectItem>
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsTaskEditOpen(false)} className="rounded-full">Cancel</Button>
-            <Button 
-              onClick={handleTaskUpdateSubmit}
-              className="rounded-full bg-violet-600 hover:bg-violet-700 text-white"
-            >
-              Update Task
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ══════════════════════════════════════
-          VIEW TASK DETAILS DIALOG
-         ══════════════════════════════════════ */}
-      <Dialog open={isViewTaskDialogOpen} onOpenChange={setIsViewTaskDialogOpen}>
-        <DialogContent className="max-w-md rounded-3xl p-0 overflow-hidden border-0 shadow-2xl">
-          <div className="bg-slate-900 p-6 text-white overflow-hidden relative">
-            <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-violet-600/20 rounded-full blur-3xl" />
-            <div className="relative z-10">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-10 w-10 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/10">
-                  <ClipboardList className="h-5 w-5 text-violet-400" />
-                </div>
-                <div>
-                  <h3 className="font-black text-xl tracking-tight leading-none uppercase">Task Details</h3>
-                  <p className="text-violet-300/60 text-[10px] font-bold tracking-widest mt-1 uppercase">Project: {selectedProject?.name}</p>
-                </div>
-              </div>
-              
-              <div className="p-4 bg-white/5 rounded-2xl backdrop-blur-sm border border-white/10 shadow-inner">
-                <h4 className="text-white font-black text-lg mb-2 leading-tight">{viewingTask?.task_name}</h4>
-                <div className="flex flex-wrap gap-2">
-                  <Badge className={`uppercase text-[9px] font-black tracking-widest px-2 ${statusColor(viewingTask?.status)}`}>
-                    {statusLabel(viewingTask?.status)}
-                  </Badge>
-                  <Badge variant="outline" className="uppercase text-[9px] font-black tracking-widest px-2 text-white/60 border-white/20">
-                    Priority: {viewingTask?.priority || "Medium"}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6 space-y-6 bg-white dark:bg-slate-950">
-            {viewingTask?.description && (
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</Label>
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
-                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-                    "{viewingTask.description}"
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Start Date</Label>
-                <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <Clock className="h-4 w-4 text-emerald-500" />
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    {viewingTask?.start_date ? formatDateIST(viewingTask.start_date, "dd-MM-yyyy") : "—"}
-                  </span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Due Date</Label>
-                <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <Clock className="h-4 w-4 text-rose-500" />
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    {viewingTask?.due_date ? formatDateIST(viewingTask.due_date, "dd-MM-yyyy") : "—"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Assignee</Label>
-                <div className="flex items-center gap-2.5 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <div className="h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400">
-                    {viewingTask?.assigned_to_name?.[0]?.toUpperCase() || "?"}
-                  </div>
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
-                    {viewingTask?.assigned_to_name || "Unassigned"}
-                  </span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Assigned By</Label>
-                <div className="flex items-center gap-2.5 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <div className="h-6 w-6 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-[10px] font-bold text-indigo-700 dark:text-indigo-400">
-                    {(() => {
-                      if (viewingTask?.assigned_by_name) return viewingTask.assigned_by_name[0].toUpperCase();
-                      const assignerId = viewingTask?.assigned_by;
-                      const assigner = employees.find(e => String(e.user_id) === String(assignerId));
-                      return assigner?.name?.[0]?.toUpperCase() || "A";
-                    })()}
-                  </div>
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
-                    {(() => {
-                      if (viewingTask?.assigned_by_name) return viewingTask.assigned_by_name;
-                      const assignerId = viewingTask?.assigned_by;
-                      const assigner = employees.find(e => String(e.user_id) === String(assignerId));
-                      return assigner?.name || "Admin";
-                    })()}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <Button
-              onClick={() => setIsViewTaskDialogOpen(false)}
-              className="w-full h-12 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest text-xs transition-all active:scale-95 shadow-lg shadow-slate-200 dark:shadow-none"
-            >
-              Close Details
-            </Button>
+            <DialogFooter className="pt-4 gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsReassignDialogOpen(false)}
+                className="rounded-xl h-11 font-semibold flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleReassignTask}
+                disabled={isUpdating}
+                className="rounded-xl h-11 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-8 font-bold shadow-lg flex-1"
+              >
+                {isUpdating ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Update Task
+              </Button>
+            </DialogFooter>
           </div>
         </DialogContent>
       </Dialog>

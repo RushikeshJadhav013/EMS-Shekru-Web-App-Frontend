@@ -737,10 +737,10 @@ export default function LeaveManagement() {
     weekOffForm.days,
   ]);
 
-  const canApproveLeaves = ["admin", "hr", "manager"].includes(
+  const canApproveLeaves = ["admin", "hr", "manager", "team_lead"].includes(
     user?.role || "",
   );
-  const canViewTeamLeaves = false;
+  const canViewTeamLeaves = ["team_lead"].includes(user?.role || "");
   const canExport = ["admin", "hr"].includes(user?.role || "");
   // Admins should not have an option to apply for leave from the admin dashboard
   const canApply = user?.role !== "admin";
@@ -940,7 +940,10 @@ export default function LeaveManagement() {
       const fetchApprovals = async () => {
         try {
           if (!(canApproveLeaves || canViewTeamLeaves)) return;
-          const approvals = await apiService.getLeaveApprovals();
+          const [approvals, wfhApprovals] = await Promise.all([
+            apiService.getLeaveApprovals(),
+            apiService.getWFHRequests(),
+          ]);
 
           const formattedLeaves: LeaveRequest[] = approvals.map((req: any) => ({
             id: String(req.leave_id),
@@ -958,10 +961,34 @@ export default function LeaveManagement() {
               req.status || "pending",
             ).toLowerCase() as LeaveRequest["status"],
             requestDate: new Date(req.start_date),
-            isWFH: (req.leave_type || '').toLowerCase() === 'wfh'
+            isWFH: false,
           }));
 
-          setApprovalRequests(formattedLeaves);
+          const formattedWFH: LeaveRequest[] = (
+            Array.isArray(wfhApprovals)
+              ? wfhApprovals
+              : wfhApprovals?.data || wfhApprovals?.requests || []
+          )
+            .filter(
+              (req: any) =>
+                (req.status || "pending").toLowerCase() === "pending",
+            )
+            .map((req: any) => ({
+              id: String(req.wfh_id || req.id),
+              employeeId: String(req.user_id),
+              employeeName: req.employee_name || req.name || "Unknown",
+              department: req.department || req.department_name || "",
+              role: req.role || req.requester_role || "employee",
+              type: "wfh" as any,
+              startDate: new Date(req.start_date),
+              endDate: new Date(req.end_date),
+              reason: req.reason,
+              status: "pending" as const,
+              requestDate: new Date(req.created_at || req.start_date),
+              isWFH: true,
+            }));
+
+          setApprovalRequests([...formattedLeaves, ...formattedWFH]);
         } catch (error) {
           console.error("Error fetching approvals:", error);
         }
@@ -969,7 +996,7 @@ export default function LeaveManagement() {
 
       const fetchApprovalHistory = async () => {
         try {
-          if (!(canApproveLeaves || canViewTeamLeaves)) return;
+          if (!canApproveLeaves) return;
 
           // Prepare parameters based on historyFilter
           const params: {
@@ -989,7 +1016,10 @@ export default function LeaveManagement() {
             params.end_date = format(customHistoryEndDate, "yyyy-MM-dd");
           }
 
-          const history = await apiService.getLeaveApprovalsHistory(params);
+          const [history, wfhHistory] = await Promise.all([
+            apiService.getLeaveApprovalsHistory(params),
+            apiService.getWFHRequests(), // Reusing same endpoint, filtering for processed in map/filter if needed
+          ]);
 
           const formattedLeaves: LeaveRequest[] = history.map((req: any) => ({
             id: String(req.leave_id),
@@ -1007,14 +1037,44 @@ export default function LeaveManagement() {
               req.status || "approved",
             ).toLowerCase() as LeaveRequest["status"],
             requestDate: new Date(req.start_date),
-            isWFH: (req.leave_type || '').toLowerCase() === 'wfh'
+            isWFH: false,
           }));
 
+          const formattedWFH: LeaveRequest[] = (
+            Array.isArray(wfhHistory)
+              ? wfhHistory
+              : wfhHistory?.data || wfhHistory?.requests || []
+          )
+            .filter(
+              (req: any) =>
+                (req.status || "pending").toLowerCase() !== "pending",
+            )
+            .map((req: any) => ({
+              id: String(req.wfh_id || req.id),
+              employeeId: String(req.user_id),
+              employeeName: req.employee_name || req.name || "Unknown",
+              department: req.department || req.department_name || "",
+              role: req.role || req.requester_role || "employee",
+              type: "wfh" as any,
+              startDate: new Date(req.start_date),
+              endDate: new Date(req.end_date),
+              reason: req.reason,
+              status: String(
+                req.status || "approved",
+              ).toLowerCase() as LeaveRequest["status"],
+              requestDate: new Date(req.created_at || req.start_date),
+              isWFH: true,
+            }));
+
+          const allFormatted = [...formattedLeaves, ...formattedWFH];
+
           // Merge with existing history
-          setApprovalHistory(prev => {
-            const existingIds = new Set(formattedLeaves.map(r => r.id));
-            const localDecisions = prev.filter(r => !existingIds.has(r.id) && r.status !== 'pending');
-            const combined = [...localDecisions, ...formattedLeaves];
+          setApprovalHistory((prev) => {
+            const existingIds = new Set(allFormatted.map((r) => r.id));
+            const localDecisions = prev.filter(
+              (r) => !existingIds.has(r.id) && r.status !== "pending",
+            );
+            const combined = [...localDecisions, ...allFormatted];
             return combined.sort((a, b) => {
               const timeA = new Date(a.requestDate).getTime();
               const timeB = new Date(b.requestDate).getTime();
@@ -1243,10 +1303,12 @@ export default function LeaveManagement() {
 
     try {
       // Call API to approve/reject
-      const approved = status === 'approved';
-      await apiService.approveLeaveRequest(id, approved);
-
-
+      const approved = status === "approved";
+      if (request.isWFH) {
+        await apiService.approveWFHRequest(Number(id), approved);
+      } else {
+        await apiService.approveLeaveRequest(id, approved);
+      }
 
       // Update approvals list - move approved/rejected request to the top
       const updatedRequest = { ...request, status, approvedBy: user?.name };
@@ -1337,13 +1399,22 @@ export default function LeaveManagement() {
 
   const getLeaveTypeColor = (type: string) => {
     switch (type) {
-      case 'annual': return 'bg-blue-100 text-blue-800';
-      case 'sick': return 'bg-red-100 text-red-800';
-      case 'casual': return 'bg-green-100 text-green-800';
-      case 'maternity': return 'bg-purple-100 text-purple-800';
-      case 'paternity': return 'bg-indigo-100 text-indigo-800';
-      case 'unpaid': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "annual":
+        return "bg-blue-100 text-blue-800";
+      case "sick":
+        return "bg-red-100 text-red-800";
+      case "casual":
+        return "bg-green-100 text-green-800";
+      case "maternity":
+        return "bg-purple-100 text-purple-800";
+      case "paternity":
+        return "bg-indigo-100 text-indigo-800";
+      case "unpaid":
+        return "bg-gray-100 text-gray-800";
+      case "wfh":
+        return "bg-cyan-100 text-cyan-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -1567,12 +1638,13 @@ export default function LeaveManagement() {
         return ["manager", "teamlead", "team_lead", "employee"].includes(role);
       }
 
-      if (userRole === 'manager') {
-        return ['teamlead', 'team_lead', 'employee', 'manager'].includes(role);
-      }
-
-      if (userRole === 'teamlead' || userRole === 'team_lead') {
-        return ['employee'].includes(role);
+      if (userRole === "manager") {
+        const isAllowedRole = ["teamlead", "team_lead", "employee"].includes(
+          role,
+        );
+        const isSameDept =
+          (req.department || "").trim().toLowerCase() === userDept;
+        return isAllowedRole && isSameDept;
       }
 
       return false;
@@ -1719,12 +1791,20 @@ export default function LeaveManagement() {
           );
         }
 
-        if (userRole === 'manager') {
-          return ['teamlead', 'team_lead', 'employee', 'manager'].includes(role);
+        if (userRole === "manager") {
+          const isAllowedRole = ["teamlead", "team_lead", "employee"].includes(
+            role,
+          );
+          const isSameDept =
+            (req.department || "").trim().toLowerCase() === userDept;
+          return isAllowedRole && isSameDept;
         }
 
-        if (userRole === 'teamlead' || userRole === 'team_lead') {
-          return ['employee'].includes(role);
+        if (userRole === "teamlead") {
+          const isAllowedRole = role === "employee";
+          const isSameDept =
+            (req.department || "").trim().toLowerCase() === userDept;
+          return isAllowedRole && isSameDept;
         }
 
         return false;
@@ -3310,7 +3390,7 @@ export default function LeaveManagement() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {(getFilteredApprovalRequests.length === 0) ? (
+                  {approvalRequests.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p>No leave requests to display</p>

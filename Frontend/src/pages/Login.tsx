@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Mail, Shield, Users, Clock, ClipboardList, Globe, Phone, CheckCircle2, Settings, Home, MessageCircle, HelpCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { Logo } from '@/components/ui/Logo';
 import {
   Select,
   SelectContent,
@@ -370,72 +371,78 @@ const Login: React.FC = () => {
   }, [otp]);
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50">
+    <div className="relative min-h-screen flex overflow-x-hidden">
+      {/* Background Image with Overlay */}
+      <div 
+          className="fixed inset-0 z-0 bg-cover bg-center transition-all duration-1000 scale-105"
+          style={{ 
+              backgroundImage: `url('/landing-bg.png')`, 
+          }}
+      >
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px]" />
+      </div>
+
+      <div className="relative z-10 flex w-full min-h-screen">
+
       {/* Left Panel - Branding and Features with Gradient Background */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-end pr-8 xl:pr-16">
-        {/* Decorative background elements */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-20 w-64 h-64 bg-blue-300 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-20 right-20 w-80 h-80 bg-purple-300 rounded-full blur-3xl"></div>
-        </div>
+        {/* Decorative background removed to maintain clarity with new image background */}
 
-        <div className="relative z-10 flex flex-col justify-center p-12 lg:p-16 max-w-xl">
+        <div className="relative z-10 flex flex-col justify-center p-8 lg:p-12 max-w-lg">
           {/* Logo */}
-          <div className="flex items-center gap-3 mb-6">
-            <div
-              className="h-12 w-12 bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 flex items-center justify-center shadow-lg rounded-xl relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-400/30 to-transparent"></div>
-              <span className="text-2xl font-bold text-white relative z-10">S</span>
-            </div>
-            <h1 className="text-2xl font-bold text-slate-800">Staffly</h1>
+          <div className="mb-6">
+            <Logo 
+              className="flex items-center gap-3 drop-shadow-sm" 
+              iconClassName="h-10 w-10 text-emerald-400" 
+              textClassName="text-3xl font-bold tracking-tight text-white" 
+            />
           </div>
 
           {/* Heading */}
-          <h2 className="text-4xl lg:text-5xl font-bold text-slate-800 mb-4 leading-tight">
+          <h2 className="text-3xl lg:text-4xl font-bold text-white mb-3 leading-tight">
             Welcome to Your{' '}
-            <span className="text-blue-600">Workspace</span>
+            <span className="text-emerald-400">Workspace</span>
           </h2>
-          <p className="text-lg text-slate-600 mb-8">
+          <p className="text-base text-slate-200 mb-6 font-medium">
             Streamline your workforce with intelligent attendance tracking, task management, and seamless collaboration.
           </p>
 
           {/* Feature Cards Grid */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
+          <div className="grid grid-cols-2 gap-3 mb-4">
             {/* Smart Attendance Card */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-white/50">
-              <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
-                <Clock className="h-6 w-6 text-blue-600" />
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 border border-white/20">
+              <div className="h-10 w-10 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-3">
+                <Clock className="h-5 w-5 text-emerald-400" />
               </div>
-              <h3 className="text-sm font-semibold text-slate-800 mb-1">Smart Attendance</h3>
-              <p className="text-xs text-slate-600">Real-time tracking</p>
+              <h3 className="text-[13px] font-bold text-white mb-0.5">Smart Attendance</h3>
+              <p className="text-[11px] text-slate-300">Real-time tracking</p>
             </div>
 
             {/* Task Manager Card */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-white/50">
-              <div className="h-12 w-12 bg-indigo-100 rounded-xl flex items-center justify-center mb-4">
-                <ClipboardList className="h-6 w-6 text-indigo-600" />
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 border border-white/20">
+              <div className="h-10 w-10 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-3">
+                <ClipboardList className="h-5 w-5 text-emerald-400" />
               </div>
-              <h3 className="text-sm font-semibold text-slate-800 mb-1">Task Manager</h3>
-              <p className="text-xs text-slate-600">Stay organized</p>
+              <h3 className="text-[13px] font-bold text-white mb-0.5">Task Manager</h3>
+              <p className="text-[11px] text-slate-300">Stay organized</p>
             </div>
 
             {/* Team Sync Card */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-white/50">
-              <div className="h-12 w-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4">
-                <Users className="h-6 w-6 text-purple-600" />
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 border border-white/20">
+              <div className="h-10 w-10 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-3">
+                <Users className="h-5 w-5 text-emerald-400" />
               </div>
-              <h3 className="text-sm font-semibold text-slate-800 mb-1">Team Sync</h3>
-              <p className="text-xs text-slate-600">Collaborate better</p>
+              <h3 className="text-[13px] font-bold text-white mb-0.5">Team Sync</h3>
+              <p className="text-[11px] text-slate-300">Collaborate better</p>
             </div>
 
             {/* Secure Access Card */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-white/50">
-              <div className="h-12 w-12 bg-green-100 rounded-xl flex items-center justify-center mb-4">
-                <Shield className="h-6 w-6 text-green-600" />
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 border border-white/20">
+              <div className="h-10 w-10 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-3">
+                <Shield className="h-5 w-5 text-emerald-400" />
               </div>
-              <h3 className="text-sm font-semibold text-slate-800 mb-1">Secure Access</h3>
-              <p className="text-xs text-slate-600">Role-based control</p>
+              <h3 className="text-[13px] font-bold text-white mb-0.5">Secure Access</h3>
+              <p className="text-[11px] text-slate-300">Role-based control</p>
             </div>
           </div>
         </div>
@@ -463,7 +470,7 @@ const Login: React.FC = () => {
               </div>
 
               <CardTitle className="text-2xl font-bold text-center text-slate-800">
-                Login to Shekru labs India
+                Login to Staffly
               </CardTitle>
               <CardDescription className="text-center text-slate-600">
                 Enter your email to receive a secure OTP
@@ -496,7 +503,7 @@ const Login: React.FC = () => {
                           setEmail(e.target.value);
                           setSessionMessage(null);
                         }}
-                        className="h-12 pl-10 bg-white border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl"
+                        className="h-12 pl-10 bg-white border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded-xl"
                         required
                         disabled={isLoading}
                       />
@@ -511,7 +518,7 @@ const Login: React.FC = () => {
 
                   <Button
                     type="submit"
-                    className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
+                    className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -524,14 +531,6 @@ const Login: React.FC = () => {
                     )}
                   </Button>
 
-                  <div className="text-center mt-4">
-                    <p className="text-xs text-slate-500">
-                      By logging in, you agree to our{' '}
-                      <a href="#" className="text-blue-600 hover:underline">Terms of Service</a>
-                      {' '}and{' '}
-                      <a href="#" className="text-blue-600 hover:underline">Privacy Policy</a>
-                    </p>
-                  </div>
                 </form>
               ) : (
                 <form onSubmit={handleVerifyOtp} className="space-y-5">
@@ -549,14 +548,14 @@ const Login: React.FC = () => {
                       maxLength={6}
                       required
                       disabled={isLoading}
-                      className="text-center tracking-[0.5em] text-2xl font-semibold h-14 bg-white border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl"
+                      className="text-center tracking-[0.5em] text-2xl font-semibold h-14 bg-white border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded-xl"
                     />
                     <div className="flex items-center justify-between text-xs mt-2">
                       <p className="text-slate-500">
                         OTP sent to <span className="font-medium text-slate-700">{email}</span>
                       </p>
                       {otpExpiryTime > 0 ? (
-                        <p className="text-blue-600 font-medium">
+                        <p className="text-emerald-600 font-medium">
                           {formatTime(otpExpiryTime)}
                         </p>
                       ) : (
@@ -580,7 +579,7 @@ const Login: React.FC = () => {
 
                   <Button
                     type="submit"
-                    className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
+                    className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
                     disabled={isLoading || otpExpiryTime === 0}
                   >
                     {isLoading ? (
@@ -611,18 +610,24 @@ const Login: React.FC = () => {
                 </form>
               )}
 
-              {/* Support Link */}
               <div className="text-center mt-6">
-                <p className="text-sm text-slate-600">
-                  Need help?{' '}
-                  <Link to="/contact-support" className="text-blue-600 hover:underline font-medium">
-                    Contact Support
-                  </Link>
+                <p className="text-[12px] text-slate-400 font-medium">
+                  Powered By{' '}
+                  <a 
+                    href="https://shekruweb.com/" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-emerald-600 hover:text-emerald-700 font-bold transition-colors"
+                  >
+                    Shekru Lab India Pvt. Ltd
+                  </a>
                 </p>
               </div>
+
             </CardContent>
           </Card>
         </div>
+      </div>
       </div>
     </div>
   );

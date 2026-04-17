@@ -152,63 +152,6 @@ export interface DashboardStats {
   totalBranches: number;
 }
 
-// Chat Types
-export interface ChatMessage {
-  id: string;
-  chatId: string;
-  senderId: string;
-  senderName: string;
-  senderRole: UserRole;
-  senderAvatar?: string;
-  content: string;
-  messageType: "text" | "emoji" | "file" | "image";
-  timestamp: string;
-  isRead: boolean;
-  replyTo?: string; // ID of message being replied to
-  editedAt?: string;
-  deletedAt?: string;
-}
-
-export interface Chat {
-  id: string;
-  name: string;
-  type: "individual" | "group";
-  participants: ChatParticipant[];
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-  lastMessage?: ChatMessage;
-  unreadCount: number;
-  isActive: boolean;
-  groupAvatar?: string;
-  description?: string;
-  memberCount?: number;
-}
-
-export interface ChatParticipant {
-  userId: string;
-  userName: string;
-  userRole: UserRole;
-  branch: string;
-  joinedAt: string;
-  isAdmin?: boolean; // For group chats
-  lastSeen?: string;
-  isOnline: boolean;
-}
-
-export interface CreateChatRequest {
-  type: "individual" | "group";
-  name?: string; // Required for group chats
-  description?: string; // Optional for group chats
-  participantIds: string[];
-}
-
-export interface ChatPermissions {
-  canCreateGroups: boolean;
-  canChatWith: UserRole[];
-  canViewUsers: UserRole[];
-}
-
 // Salary Management Types
 export interface SalaryComponent {
   name: string;

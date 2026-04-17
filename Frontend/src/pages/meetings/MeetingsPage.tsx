@@ -17,8 +17,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
-import { chatService } from '@/services/chatService';
-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -95,7 +93,7 @@ const MeetingsPage: React.FC = () => {
     const [departments, setDepartments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [mainTab, setMainTab] = useState<"all" | "my">("all");
-    const [typeFilter, setTypeFilter] = useState("all");
+    const [typeFilter, setTypeFilter] = useState("one-to-one");
     const [searchQuery, setSearchQuery] = useState("");
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
@@ -114,42 +112,68 @@ const MeetingsPage: React.FC = () => {
     });
 
     const normalizeMeeting = (m: any): Meeting => {
-        const id = m.id || m.meeting_id || m.meetingId;
-        const titleLower = (m.title || '').toLowerCase().trim();
+        if (!m) return {} as Meeting;
+        
+        const id = m.id || m.meeting_id || m.meetingId || m.ID || m.meeting_details?.id;
+        const titleText = m.title || m.meeting_title || m.subject || m.display_name || m.name || m.meeting_details?.title || m.description || m.meeting_details?.description || '';
+        const titleLower = String(titleText).toLowerCase().trim();
 
-        const projectId = m.project_id || m.projectId || m.project?.id || m.project?.project_id;
-        const projectName = m.project_name || m.projectName || m.project?.name;
-        const teamId = m.team_id || m.teamId || m.department_id || m.departmentId || m.team?.id || m.department?.id;
-        const teamName = m.team_name || m.teamName || m.department_name || m.departmentName || m.team?.name || m.department?.name;
-
-        let finalType: Meeting['type'];
-
-        if (projectId || projectName || titleLower.includes('project')) {
-            finalType = 'project';
-        } else if (teamId || teamName || titleLower.includes('team') || titleLower.includes('department')) {
-            finalType = 'team';
-        } else {
-            let rawType = (m.type || m.meeting_type || '').toLowerCase().trim();
-
-            if (rawType.includes('project')) {
-                rawType = 'project';
-            } else if (rawType.includes('team') || rawType.includes('department')) {
-                rawType = 'team';
-            } else if (rawType.includes('townhall') || rawType.includes('general') || rawType.includes('company') || rawType === 'all') {
-                rawType = 'company';
-            } else if (rawType.includes('1:1') || rawType.includes('individual') || rawType === 'one-to-one') {
-                rawType = 'one-to-one';
-            }
-
-            if (!rawType || rawType === '' || rawType === 'null' || rawType === 'undefined') {
-                if (m.participants && m.participants.length > 0 && m.participants.length <= 2) {
-                    rawType = 'one-to-one';
-                } else {
-                    rawType = 'company';
+        const deepFind = (obj: any, target: string): any => {
+            if (!obj || typeof obj !== 'object') return null;
+            if (obj[target]) return obj[target];
+            if (Array.isArray(obj)) {
+                for (const item of obj) {
+                    const found = deepFind(item, target);
+                    if (found) return found;
+                }
+            } else {
+                for (const k in obj) {
+                    const found = deepFind(obj[k], target);
+                    if (found) return found;
                 }
             }
+            return null;
+        };
 
-            finalType = rawType as Meeting['type'];
+        const projectId = m.project_id || m.projectId || m.project?.id || deepFind(m, 'project_id') || deepFind(m, 'projectId');
+        const projectName = m.project_name || m.projectName || m.project?.name || deepFind(m, 'project_name') || deepFind(m, 'projectName');
+        const teamId = m.team_id || m.teamId || m.department_id || m.departmentId || deepFind(m, 'team_id') || deepFind(m, 'department_id');
+        const teamName = m.team_name || m.teamName || m.department_name || m.departmentName || deepFind(m, 'team_name') || deepFind(m, 'department_name');
+
+        const rawTypeField = String(m.type || m.meeting_type || m.meetingType || m.category || m.meeting_details?.type || '').toLowerCase();
+        
+        let finalType: Meeting['type'] = 'company';
+
+        const isProjectKeyword = titleLower.includes('project') || titleLower.includes('prj') || titleLower.includes('sprint') || titleLower.includes('scrum') || titleLower.includes('milestone') || titleLower.includes('development');
+        const isTeamKeyword = titleLower.includes('team') || titleLower.includes('dept') || titleLower.includes('standup') || titleLower.includes('stand up') || titleLower.includes('sync') || titleLower.includes('huddle') || titleLower.includes('meeting') && (titleLower.includes('daily') || titleLower.includes('weekly'));
+
+        // 1. Explicit priority for project and team based on IDs or explicit Type fields
+        if (rawTypeField === 'project' || (projectId && String(projectId) !== '0' && String(projectId) !== 'null')) {
+            finalType = 'project';
+        } else if (rawTypeField === 'team' || rawTypeField === 'department' || (teamId && String(teamId) !== '0' && String(teamId) !== 'null')) {
+            finalType = 'team';
+        } 
+        // 2. Name-based matching (if API returns names even without IDs)
+        else if (projectName && String(projectName) !== 'null' && String(projectName) !== '') {
+            finalType = 'project';
+        } else if (teamName && String(teamName) !== 'null' && String(teamName) !== '') {
+            finalType = 'team';
+        }
+        // 3. Keyword-based matching
+        else if (isProjectKeyword) {
+            finalType = 'project';
+        } else if (isTeamKeyword) {
+            finalType = 'team';
+        } else if (titleLower.includes('1:1') || titleLower.includes('one to one') || rawTypeField === 'one-to-one' || rawTypeField === '1:1') {
+            finalType = 'one-to-one';
+        } else if (rawTypeField === 'company' || rawTypeField === 'townhall' || titleLower.includes('townhall')) {
+            finalType = 'company';
+        } 
+        // 4. Default heuristics
+        else if (m.participants && Array.isArray(m.participants) && m.participants.length > 0 && m.participants.length <= 2) {
+            finalType = 'one-to-one';
+        } else {
+            finalType = 'company';
         }
 
         return {
@@ -166,28 +190,53 @@ const MeetingsPage: React.FC = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [allMeetingsData, participationData, deptsData, projsData, empsData, managersData, chatUsersData] = await Promise.all([
+            const [allMeetingsData, participationData, projectMeetingsData, teamMeetingsData, deptsData, projsData, empsData, managersData] = await Promise.all([
                 apiService.getMeetings(),
                 apiService.getMeetings({ as_creator: 'false' }).catch(() => []),
+                apiService.getMeetings({ type: 'project' }).catch(() => []),
+                apiService.getMeetings({ type: 'team' }).catch(() => []),
                 apiService.getBranchs().catch(() => []),
                 apiService.getProjects().catch(() => []),
                 apiService.getEmployees().catch(() => []),
-                apiService.getBranchManagers().catch(() => []),
-                chatService.getAvailableUsers().catch(() => [])
+                apiService.getBranchManagers().catch(() => [])
             ]);
 
-            const normalizedAll = (Array.isArray(allMeetingsData) ? allMeetingsData : []).map(normalizeMeeting);
-            const normalizedMy = (Array.isArray(participationData) ? participationData : []).map(normalizeMeeting);
+            const extractMeetings = (res: any) => {
+                if (Array.isArray(res)) return res;
+                if (res?.data && Array.isArray(res.data)) return res.data;
+                if (res?.meetings && Array.isArray(res.meetings)) return res.meetings;
+                if (res?.results && Array.isArray(res.results)) return res.results;
+                if (res && typeof res === 'object') {
+                    const arrays = Object.values(res).filter(v => Array.isArray(v));
+                    if (arrays.length === 1) return arrays[0] as any[];
+                }
+                return [];
+            };
 
-            setMeetings(normalizedAll);
-            setMyMeetings(normalizedMy);
+            const rawAll = extractMeetings(allMeetingsData);
+            const rawMy = extractMeetings(participationData);
+            const rawProject = extractMeetings(projectMeetingsData).map(m => ({ ...m, type: 'project' }));
+            const rawTeam = extractMeetings(teamMeetingsData).map(m => ({ ...m, type: 'team' }));
+
+            // Merge all sources to ensure distribution is captured from every possible endpoint
+            const mergedAll = [...rawAll, ...rawProject, ...rawTeam];
             
+            const normalizedAll = mergedAll.map(normalizeMeeting).filter((m: Meeting) => m.id);
+            const normalizedMy = rawMy.map(normalizeMeeting).filter((m: Meeting) => m.id);
+
+            // De-duplicate by ID
+            const uniqueAll = Array.from(new Map(normalizedAll.map(m => [m.id, m])).values());
+            const uniqueMy = Array.from(new Map(normalizedMy.map(m => [m.id, m])).values());
+
+            setMeetings(uniqueAll as Meeting[]);
+            setMyMeetings(uniqueMy as Meeting[]);
+
             // Handle various department response formats
             let finalDepts = [];
             if (Array.isArray(deptsData)) finalDepts = deptsData;
             else if ((deptsData as any)?.departments) finalDepts = (deptsData as any).departments;
             else if ((deptsData as any)?.data) finalDepts = (deptsData as any).data;
-            
+
             // Fallback for departments if empty
             if (finalDepts.length === 0) {
                 try {
@@ -202,13 +251,8 @@ const MeetingsPage: React.FC = () => {
             // Merge employees and managers for a complete list (Admin, HR, Manager, etc.)
             let allEmployees = Array.isArray(empsData) ? empsData : (empsData as any)?.employees || (empsData as any)?.data || [];
             const allManagers = Array.isArray(managersData) ? managersData : (managersData as any)?.managers || (managersData as any)?.data || [];
-            
-            const chatUsers = Array.isArray(chatUsersData) ? chatUsersData.map((u: any) => ({
-                user_id: u.id,
-                name: u.name,
-                role: u.designation || u.role,
-                department: u.department
-            })) : [];
+
+
 
             // To Remove Role Hierarchy for all profiles (especially for 1:1 meetings):
             // We fetch employees from each department to gather everyone and bypass role-based list restrictions.
@@ -228,14 +272,14 @@ const MeetingsPage: React.FC = () => {
 
             // Create a unique list based on ID
             const mergedMap = new Map();
-            [...allEmployees, ...allManagers, ...chatUsers].forEach(person => {
+            [...allEmployees, ...allManagers].forEach(person => {
                 const id = person.user_id || person.userId || person.id || person.employee_id;
                 if (id) {
                     const existing = mergedMap.get(String(id));
                     mergedMap.set(String(id), { ...existing, ...person });
                 }
             });
-            
+
             setEmployees(Array.from(mergedMap.values()));
 
 
@@ -408,9 +452,9 @@ const MeetingsPage: React.FC = () => {
         const t = (type || "").toLowerCase();
         switch (t) {
             case "company": return "Townhall Meeting";
-            case "team": return "Team Specific";
+            case "team": return "Team Meeting";
             case "project": return "Project Meeting";
-            case "one-to-one": return "One to One Meeting";
+            case "one-to-one": return "1:1 Meeting";
             default: return "General Meeting";
         }
     };
@@ -494,9 +538,9 @@ const MeetingsPage: React.FC = () => {
                                         <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Meeting Type</Label>
                                         <Select
                                             value={formData.type || "one-to-one"}
-                                             onValueChange={(v: any) => {
+                                            onValueChange={(v: any) => {
                                                 const newFormData = { ...formData, type: v, team_id: undefined, project_id: undefined, participant_ids: [] };
-                                                
+
                                                 if (v === 'company') {
                                                     newFormData.participant_ids = employees.map(emp => Number(emp.user_id || emp.id)).filter(id => !isNaN(id));
                                                 } else if (v === 'team' && isTeamLead && user?.department) {
@@ -504,8 +548,8 @@ const MeetingsPage: React.FC = () => {
                                                     const userDepts = user.department.split(',').map(d => d.trim().toLowerCase());
                                                     const myDept = departments.find(d => {
                                                         const deptName = (d.name || "").toLowerCase().trim();
-                                                        return userDepts.includes(deptName) || 
-                                                            ( (user as any).department_id && d.id === Number((user as any).department_id) );
+                                                        return userDepts.includes(deptName) ||
+                                                            ((user as any).department_id && d.id === Number((user as any).department_id));
                                                     });
 
                                                     if (myDept) {
@@ -520,10 +564,10 @@ const MeetingsPage: React.FC = () => {
                                                 <SelectValue placeholder="Select type" />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl">
-                                                {canCreateCompany && <SelectItem value="company">Townhall (Company Wide)</SelectItem>}
-                                                {canCreateTeam && <SelectItem value="team">Team Specific</SelectItem>}
-                                                {canCreateProject && <SelectItem value="project">Project Specific</SelectItem>}
-                                                {canCreateOneToOne && <SelectItem value="one-to-one">One to One Meeting</SelectItem>}
+                                                {canCreateCompany && <SelectItem value="company">Townhall Meeting</SelectItem>}
+                                                {canCreateTeam && <SelectItem value="team">Team Meeting</SelectItem>}
+                                                {canCreateProject && <SelectItem value="project">Project Meeting</SelectItem>}
+                                                {canCreateOneToOne && <SelectItem value="one-to-one">1:1 Meeting</SelectItem>}
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -614,14 +658,14 @@ const MeetingsPage: React.FC = () => {
                                             if (formData.type === 'team' && formData.team_id) {
                                                 const dept = departments.find((d: any) => d.id === formData.team_id);
                                                 const targetDeptName = (dept?.name || "").toLowerCase().trim();
-                                                
+
                                                 const empDeptId = Number(emp.department_id || emp.departmentId);
                                                 if (empDeptId === formData.team_id) return true;
 
                                                 const empDeptStr = (emp.department || emp.department_name || emp.branch || "").toLowerCase();
                                                 // Support comma-separated departments (e.g., "Engineering, HR")
                                                 const empDepts = empDeptStr.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
-                                                
+
                                                 return targetDeptName && empDepts.includes(targetDeptName);
                                             }
                                             // Show all employees for other meeting types (Project, 1:1, etc.)
@@ -660,13 +704,12 @@ const MeetingsPage: React.FC = () => {
 
             <div className="flex-1 overflow-y-auto w-full custom-scrollbar">
                 <div className="max-w-7xl mx-auto px-6 py-8">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
                         {[
-                            { label: "All Meetings", val: meetings.length, icon: CalendarDays, color: "text-blue-600", bg: "bg-blue-50" },
-                            { label: "Townhall", val: meetings.filter(m => m.type === 'company').length, icon: Briefcase, color: "text-indigo-600", bg: "bg-indigo-50" },
-                            { label: "Team", val: meetings.filter(m => m.type === 'team').length, icon: Users2, color: "text-rose-600", bg: "bg-rose-50" },
-                            { label: "Project", val: meetings.filter(m => m.type === 'project').length, icon: FolderKanban, color: "text-blue-600", bg: "bg-blue-50" },
-                            { label: "1:1", val: meetings.filter(m => m.type === 'one-to-one').length, icon: Users, color: "text-amber-600", bg: "bg-amber-50" }
+                            { label: "1:1 Meetings", val: meetings.filter(m => m.type === 'one-to-one').length, icon: Users, color: "text-amber-600", bg: "bg-amber-50" },
+                            { label: "Townhall Meetings", val: meetings.filter(m => m.type === 'company').length, icon: Briefcase, color: "text-indigo-600", bg: "bg-indigo-50" },
+                            { label: "Project Meetings", val: meetings.filter(m => m.type === 'project').length, icon: FolderKanban, color: "text-blue-600", bg: "bg-blue-50" },
+                            { label: "Team Meetings", val: meetings.filter(m => m.type === 'team').length, icon: Users2, color: "text-rose-600", bg: "bg-rose-50" },
                         ].map((stat, i) => (
                             <Card key={i} className="border-none shadow-sm bg-white dark:bg-slate-900 rounded-[2rem]">
                                 <CardContent className="p-6 flex items-center justify-between">
@@ -685,11 +728,10 @@ const MeetingsPage: React.FC = () => {
                     <Tabs value={typeFilter} onValueChange={setTypeFilter} className="w-full">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                             <TabsList className="h-14 p-1.5 rounded-[1.5rem] bg-white dark:bg-slate-900 shadow-sm">
-                                <TabsTrigger value="all" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-white">All</TabsTrigger>
-                                <TabsTrigger value="company" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-indigo-600 data-[state=active]:text-white">Townhall</TabsTrigger>
-                                <TabsTrigger value="team" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-rose-600 data-[state=active]:text-white">Team</TabsTrigger>
-                                <TabsTrigger value="project" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:text-white">Project</TabsTrigger>
-                                <TabsTrigger value="one-to-one" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-amber-500 data-[state=active]:text-white">1:1</TabsTrigger>
+                                <TabsTrigger value="one-to-one" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-amber-500 data-[state=active]:text-white">1:1 Meeting</TabsTrigger>
+                                <TabsTrigger value="company" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-indigo-600 data-[state=active]:text-white">Townhall Meeting</TabsTrigger>
+                                <TabsTrigger value="project" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:text-white">Project Meeting</TabsTrigger>
+                                <TabsTrigger value="team" className="rounded-2xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-rose-600 data-[state=active]:text-white">Team Meeting</TabsTrigger>
                             </TabsList>
                             <div className="flex items-center gap-3">
                                 <div className="relative">
@@ -711,42 +753,149 @@ const MeetingsPage: React.FC = () => {
                                     <h3 className="text-xl font-black uppercase">No Meetings Found</h3>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                    {filteredMeetings.map((meeting) => (
-                                        <Card key={meeting.id} className="group relative border-none shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden">
-                                            <div className={`absolute top-0 left-0 right-0 h-1.5 ${getBadgeColor(meeting.type).split(' ')[0]}`}></div>
-                                            <CardHeader className="p-8 pb-4">
-                                                <div className="flex justify-between items-start mb-6">
-                                                    <Badge className={`rounded-full px-4 py-1 font-black text-[9px] uppercase tracking-widest ${getBadgeColor(meeting.type)}`}>{getDisplayName(meeting.type)}</Badge>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild><div className="h-10 w-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 cursor-pointer"><MoreVertical className="h-4 w-4" /></div></DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end" className="rounded-xl">
-                                                            {(isAdmin || Number(meeting.created_by_id) === Number(user?.id)) && (
-                                                                <>
-                                                                    <DropdownMenuItem onClick={() => openEditDialog(meeting)} className="gap-2 font-bold text-xs uppercase py-3"><Edit2 className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
-                                                                    <DropdownMenuItem onClick={() => handleDeleteMeeting(meeting)} className="gap-2 font-bold text-xs uppercase py-3 text-destructive"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
-                                                                </>
+                                <div className="space-y-12">
+                                    {typeFilter === 'all' ? (
+                                        (['company', 'team', 'project', 'one-to-one'] as const).map(type => {
+                                            const grouped = filteredMeetings.filter(m => m.type === type);
+                                            if (grouped.length === 0) return null;
+                                            return (
+                                                <div key={type} className="space-y-6">
+                                                    <div className="flex items-center gap-4">
+                                                        <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">{getDisplayName(type)}s</h2>
+                                                        <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1 opacity-50" />
+                                                        <Badge variant="outline" className="rounded-full px-3 py-0.5 text-[9px] font-black opacity-50">{grouped.length}</Badge>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                                        {grouped.map((meeting) => (
+                                                            <Card key={meeting.id} className="group relative border-none shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden">
+                                                                <div className={`absolute top-0 left-0 right-0 h-1.5 ${getBadgeColor(meeting.type).split(' ')[0]}`}></div>
+                                                                <CardHeader className="p-8 pb-4">
+                                                                    <div className="flex justify-between items-start mb-6">
+                                                                        <Badge className={`rounded-full px-4 py-1 font-black text-[9px] uppercase tracking-widest ${getBadgeColor(meeting.type)}`}>{getDisplayName(meeting.type)}</Badge>
+                                                                        <DropdownMenu>
+                                                                            <DropdownMenuTrigger asChild><div className="h-10 w-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 cursor-pointer"><MoreVertical className="h-4 w-4" /></div></DropdownMenuTrigger>
+                                                                            <DropdownMenuContent align="end" className="rounded-xl">
+                                                                                {(isAdmin || Number(meeting.created_by_id) === Number(user?.id)) && (
+                                                                                    <>
+                                                                                        <DropdownMenuItem onClick={() => openEditDialog(meeting)} className="gap-2 font-bold text-xs uppercase py-3"><Edit2 className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
+                                                                                        <DropdownMenuItem onClick={() => handleDeleteMeeting(meeting)} className="gap-2 font-bold text-xs uppercase py-3 text-destructive"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                                                                    </>
+                                                                                )}
+                                                                            </DropdownMenuContent>
+                                                                        </DropdownMenu>
+                                                                    </div>
+                                                                    <CardTitle className="text-xl font-black mb-2">{meeting.title}</CardTitle>
+                                                                    <CardDescription className="line-clamp-2 text-sm">{meeting.description}</CardDescription>
+                                                                </CardHeader>
+                                                                <CardContent className="p-8 pt-0 space-y-6">
+                                                                    <div className="space-y-3">
+                                                                        <div className="flex items-center gap-3 text-slate-600"><Calendar className="h-4 w-4" /><span className="text-xs font-black uppercase">{meeting.start_time ? format(new Date(meeting.start_time), 'EEEE, MMM do') : 'TBD'}</span></div>
+                                                                        <div className="flex items-center gap-3 text-slate-600"><Clock className="h-4 w-4" /><span className="text-xs font-black">{meeting.start_time ? format(new Date(meeting.start_time), 'hh:mm a') : '--:--'} - {meeting.end_time ? format(new Date(meeting.end_time), 'hh:mm a') : '--:--'}</span></div>
+                                                                        {meeting.type === 'team' && meeting.team_name && (
+                                                                            <div className="flex items-center gap-3 text-rose-600">
+                                                                                <Users2 className="h-4 w-4" />
+                                                                                <span className="text-xs font-black uppercase">{meeting.team_name}</span>
+                                                                            </div>
+                                                                        )}
+                                                                        {meeting.type === 'project' && meeting.project_name && (
+                                                                            <div className="flex items-center gap-3 text-emerald-600">
+                                                                                <Briefcase className="h-4 w-4" />
+                                                                                <span className="text-xs font-black uppercase">{meeting.project_name}</span>
+                                                                            </div>
+                                                                        )}
+                                                                        {meeting.type === 'one-to-one' && meeting.created_by_name && (
+                                                                            <div className="flex items-center gap-3 text-amber-600">
+                                                                                <Users className="h-4 w-4" />
+                                                                                <span className="text-xs font-black uppercase">{meeting.created_by_name}</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="pt-6 border-t flex items-center justify-between">
+                                                                        <div className="flex -space-x-3">{meeting.participants?.slice(0, 3).map((p, i) => <div key={i} className="h-10 w-10 rounded-2xl border-4 border-white bg-slate-100 overflow-hidden"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${p.user_name || p.id}`} className="h-full w-full object-cover" /></div>)}</div>
+                                                                        {meeting.end_time && new Date(meeting.end_time) < new Date() ? (
+                                                                            <Button disabled className="rounded-2xl bg-slate-200 text-slate-500 font-black text-[10px] uppercase px-6 h-11 cursor-not-allowed">
+                                                                                Expired
+                                                                            </Button>
+                                                                        ) : (
+                                                                            <Button asChild className="rounded-2xl bg-slate-900 hover:bg-blue-600 text-white font-black text-[10px] uppercase px-6 h-11">
+                                                                                <a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer">
+                                                                                    Join Meeting <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                                                                                </a>
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
+                                                                </CardContent>
+                                                            </Card>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                            {filteredMeetings.map((meeting) => (
+                                                <Card key={meeting.id} className="group relative border-none shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden">
+                                                    <div className={`absolute top-0 left-0 right-0 h-1.5 ${getBadgeColor(meeting.type).split(' ')[0]}`}></div>
+                                                    <CardHeader className="p-8 pb-4">
+                                                        <div className="flex justify-between items-start mb-6">
+                                                            <Badge className={`rounded-full px-4 py-1 font-black text-[9px] uppercase tracking-widest ${getBadgeColor(meeting.type)}`}>{getDisplayName(meeting.type)}</Badge>
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild><div className="h-10 w-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 cursor-pointer"><MoreVertical className="h-4 w-4" /></div></DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end" className="rounded-xl">
+                                                                    {(isAdmin || Number(meeting.created_by_id) === Number(user?.id)) && (
+                                                                        <>
+                                                                            <DropdownMenuItem onClick={() => openEditDialog(meeting)} className="gap-2 font-bold text-xs uppercase py-3"><Edit2 className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
+                                                                            <DropdownMenuItem onClick={() => handleDeleteMeeting(meeting)} className="gap-2 font-bold text-xs uppercase py-3 text-destructive"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                                                        </>
+                                                                    )}
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        </div>
+                                                        <CardTitle className="text-xl font-black mb-2">{meeting.title}</CardTitle>
+                                                        <CardDescription className="line-clamp-2 text-sm">{meeting.description}</CardDescription>
+                                                    </CardHeader>
+                                                    <CardContent className="p-8 pt-0 space-y-6">
+                                                        <div className="space-y-3">
+                                                            <div className="flex items-center gap-3 text-slate-600"><Calendar className="h-4 w-4" /><span className="text-xs font-black uppercase">{meeting.start_time ? format(new Date(meeting.start_time), 'EEEE, MMM do') : 'TBD'}</span></div>
+                                                            <div className="flex items-center gap-3 text-slate-600"><Clock className="h-4 w-4" /><span className="text-xs font-black">{meeting.start_time ? format(new Date(meeting.start_time), 'hh:mm a') : '--:--'} - {meeting.end_time ? format(new Date(meeting.end_time), 'hh:mm a') : '--:--'}</span></div>
+                                                            {meeting.type === 'team' && meeting.team_name && (
+                                                                <div className="flex items-center gap-3 text-rose-600">
+                                                                    <Users2 className="h-4 w-4" />
+                                                                    <span className="text-xs font-black uppercase">{meeting.team_name}</span>
+                                                                </div>
                                                             )}
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </div>
-                                                <CardTitle className="text-xl font-black mb-2">{meeting.title}</CardTitle>
-                                                <CardDescription className="line-clamp-2 text-sm">{meeting.description}</CardDescription>
-                                            </CardHeader>
-                                            <CardContent className="p-8 pt-0 space-y-6">
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center gap-3 text-slate-600"><Calendar className="h-4 w-4" /><span className="text-xs font-black uppercase">{meeting.start_time ? format(new Date(meeting.start_time), 'EEEE, MMM do') : 'TBD'}</span></div>
-                                                    <div className="flex items-center gap-3 text-slate-600"><Clock className="h-4 w-4" /><span className="text-xs font-black">{meeting.start_time ? format(new Date(meeting.start_time), 'hh:mm a') : '--:--'} - {meeting.end_time ? format(new Date(meeting.end_time), 'hh:mm a') : '--:--'}</span></div>
-                                                    {meeting.project_name && <div className="flex items-center gap-3 text-emerald-600"><Briefcase className="h-4 w-4" /><span className="text-xs font-black uppercase">{meeting.project_name}</span></div>}
-                                                    {meeting.team_name && <div className="flex items-center gap-3 text-rose-600"><Users2 className="h-4 w-4" /><span className="text-xs font-black uppercase">{meeting.team_name}</span></div>}
-                                                </div>
-                                                <div className="pt-6 border-t flex items-center justify-between">
-                                                    <div className="flex -space-x-3">{meeting.participants?.slice(0, 3).map((p, i) => <div key={i} className="h-10 w-10 rounded-2xl border-4 border-white bg-slate-100 overflow-hidden"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${p.user_name || p.id}`} className="h-full w-full object-cover" /></div>)}</div>
-                                                    <Button asChild className="rounded-2xl bg-slate-900 hover:bg-blue-600 text-white font-black text-[10px] uppercase px-6 h-11"><a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer">Join Meeting <ExternalLink className="ml-2 h-3.5 w-3.5" /></a></Button>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
+                                                            {meeting.type === 'project' && meeting.project_name && (
+                                                                <div className="flex items-center gap-3 text-emerald-600">
+                                                                    <Briefcase className="h-4 w-4" />
+                                                                    <span className="text-xs font-black uppercase">{meeting.project_name}</span>
+                                                                </div>
+                                                            )}
+                                                            {meeting.type === 'one-to-one' && meeting.created_by_name && (
+                                                                <div className="flex items-center gap-3 text-amber-600">
+                                                                    <Users className="h-4 w-4" />
+                                                                    <span className="text-xs font-black uppercase">{meeting.created_by_name}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="pt-6 border-t flex items-center justify-between">
+                                                            <div className="flex -space-x-3">{meeting.participants?.slice(0, 3).map((p, i) => <div key={i} className="h-10 w-10 rounded-2xl border-4 border-white bg-slate-100 overflow-hidden"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${p.user_name || p.id}`} className="h-full w-full object-cover" /></div>)}</div>
+                                                                {meeting.end_time && new Date(meeting.end_time) < new Date() ? (
+                                                                    <Button disabled className="rounded-2xl bg-slate-200 text-slate-500 font-black text-[10px] uppercase px-6 h-11 cursor-not-allowed">
+                                                                        Expired
+                                                                    </Button>
+                                                                ) : (
+                                                                    <Button asChild className="rounded-2xl bg-slate-900 hover:bg-blue-600 text-white font-black text-[10px] uppercase px-6 h-11">
+                                                                        <a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer">
+                                                                            Join Meeting <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                                                                        </a>
+                                                                    </Button>
+                                                                )}
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </TabsContent>

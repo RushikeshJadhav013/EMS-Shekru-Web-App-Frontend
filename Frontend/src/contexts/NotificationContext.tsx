@@ -13,7 +13,7 @@ export interface Notification {
   userId: string;
   title: string;
   message: string;
-  type: 'leave' | 'task' | 'info' | 'warning' | 'shift';
+  type: 'leave' | 'task' | 'info' | 'warning' | 'shift' | 'wfh' | 'meeting';
   read: boolean;
   actionUrl?: string;
   createdAt: string;
@@ -23,6 +23,8 @@ export interface Notification {
     requesterId?: string;
     requesterName?: string;
     shiftAssignmentId?: string;
+    wfhId?: string;
+    meetingId?: string;
   };
   backendId?: number;
   passDetails?: {
@@ -88,6 +90,28 @@ type BackendShiftNotification = {
   notification_id: number;
   user_id: number;
   shift_assignment_id: number;
+  notification_type: string;
+  title: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+};
+
+type BackendWFHNotification = {
+  notification_id: number;
+  user_id: number;
+  wfh_id: number;
+  notification_type: string;
+  title: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+};
+
+type BackendMeetingNotification = {
+  notification_id: number;
+  user_id: number;
+  meeting_id: number;
   notification_type: string;
   title: string;
   message: string;
@@ -289,23 +313,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, []);
 
   const mapBackendShiftNotification = useCallback((notification: BackendShiftNotification, userRole?: string, currentUserId?: string): Notification | null => {
-    // ✅ Filter out self-notifications: only show if the notification is for the current user
     const notificationUserId = String(notification.user_id);
     if (currentUserId && notificationUserId !== currentUserId) {
-      // This notification is not for the current user, filter it out
-      debugLog('Filtering out shift notification - not for current user', { notificationUserId, currentUserId });
       return null;
     }
 
-    // Determine the team page route based on user role
     let teamRoute = '/employee/team';
     if (userRole === 'team_lead') {
       teamRoute = '/team_lead/team';
-    } else if (userRole === 'employee') {
-      teamRoute = '/employee/team';
     }
-
-    debugLog('Mapping shift notification', { id: notification.notification_id, title: notification.title, is_read: notification.is_read });
 
     return {
       id: `backend-shift-${notification.notification_id}`,
@@ -319,6 +335,49 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       actionUrl: teamRoute,
       metadata: {
         shiftAssignmentId: String(notification.shift_assignment_id),
+      },
+    };
+  }, []);
+
+  const mapBackendWFHNotification = useCallback((notification: BackendWFHNotification, currentUserId?: string): Notification | null => {
+    const notificationUserId = String(notification.user_id);
+    if (currentUserId && notificationUserId !== currentUserId) {
+      return null;
+    }
+
+    return {
+      id: `backend-wfh-${notification.notification_id}`,
+      backendId: notification.notification_id,
+      userId: notificationUserId,
+      title: notification.title,
+      message: notification.message,
+      type: 'wfh',
+      read: notification.is_read,
+      createdAt: notification.created_at,
+      metadata: {
+        wfhId: String(notification.wfh_id),
+      },
+    };
+  }, []);
+
+  const mapBackendMeetingNotification = useCallback((notification: BackendMeetingNotification, currentUserId?: string): Notification | null => {
+    const notificationUserId = String(notification.user_id);
+    if (currentUserId && notificationUserId !== currentUserId) {
+      return null;
+    }
+
+    return {
+      id: `backend-meeting-${notification.notification_id}`,
+      backendId: notification.notification_id,
+      userId: notificationUserId,
+      title: notification.title,
+      message: notification.message,
+      type: 'meeting',
+      read: notification.is_read,
+      createdAt: notification.created_at,
+      actionUrl: '/meetings',
+      metadata: {
+        meetingId: String(notification.meeting_id),
       },
     };
   }, []);
@@ -398,7 +457,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     debugLog('Fetching notifications from API...');
 
     try {
-      const [taskResult, leaveResult, shiftResult] = await Promise.allSettled([
+      const [taskResult, leaveResult, shiftResult, wfhResult, meetingResult] = await Promise.allSettled([
         fetch(`${API_BASE_URL}/tasks/notifications`, {
           headers: {
             Authorization: authHeader,
@@ -435,6 +494,28 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           }
           return { ok: false, status: 0 } as Response;
         }),
+        fetch(`${API_BASE_URL}/wfh/notifications`, {
+          headers: {
+            Authorization: authHeader,
+          },
+          signal,
+        }).catch(err => {
+          if (import.meta.env.DEV && err.name !== 'AbortError') {
+            console.warn('WFH notifications fetch failed:', err.message);
+          }
+          return { ok: false, status: 0 } as Response;
+        }),
+        fetch(`${API_BASE_URL}/meetings/notifications`, {
+          headers: {
+            Authorization: authHeader,
+          },
+          signal,
+        }).catch(err => {
+          if (import.meta.env.DEV && err.name !== 'AbortError') {
+            console.warn('Meeting notifications fetch failed:', err.message);
+          }
+          return { ok: false, status: 0 } as Response;
+        }),
       ]);
 
       // Check for 401 errors — just stop polling, never redirect.
@@ -442,7 +523,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const has401 =
         (taskResult.status === 'fulfilled' && taskResult.value.status === 401) ||
         (leaveResult.status === 'fulfilled' && leaveResult.value.status === 401) ||
-        (shiftResult.status === 'fulfilled' && shiftResult.value.status === 401);
+        (shiftResult.status === 'fulfilled' && shiftResult.value.status === 401) ||
+        (wfhResult.status === 'fulfilled' && wfhResult.value.status === 401) ||
+        (meetingResult.status === 'fulfilled' && meetingResult.value.status === 401);
 
       if (has401) {
         console.warn('Notification polling: received 401, stopping polling silently');
@@ -454,120 +537,67 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const taskData: BackendTaskNotification[] = [];
       const leaveData: BackendLeaveNotification[] = [];
       const shiftData: BackendShiftNotification[] = [];
+      const wfhData: BackendWFHNotification[] = [];
+      const meetingData: BackendMeetingNotification[] = [];
 
       // Handle task notifications
       if (taskResult.status === 'fulfilled' && taskResult.value.ok) {
         try {
           const data = await taskResult.value.json();
-          debugLog('Task notifications API response:', data);
-
-          // API returns direct array: [{ notification_id, user_id, task_id, ... }]
           if (Array.isArray(data)) {
-            // Validate each item has required fields before adding
-            const validNotifications = data.filter((item: unknown) =>
-              item &&
-              typeof item === 'object' &&
-              'notification_id' in item &&
-              'user_id' in item &&
-              'task_id' in item &&
-              'is_read' in item
-            );
-            taskData.push(...validNotifications as BackendTaskNotification[]);
-          } else if (data && typeof data === 'object') {
-            // Handle wrapped responses (fallback)
-            if (Array.isArray(data.notifications)) {
-              taskData.push(...(data.notifications as BackendTaskNotification[]));
-            } else if (Array.isArray(data.data)) {
-              taskData.push(...(data.data as BackendTaskNotification[]));
-            }
+            taskData.push(...data);
           }
-          debugLog('Parsed task notifications:', taskData.length);
         } catch (error) {
-          // Silently handle parse errors and aborts
-          if (import.meta.env.DEV && !(error instanceof Error && error.name === 'AbortError')) {
-            console.error('Failed to parse task notifications', error);
-          }
+          if (import.meta.env.DEV) console.error('Failed to parse task notifications', error);
         }
-      } else if (taskResult.status === 'rejected') {
-        // Silently handle network errors and aborts for notifications
-        if (import.meta.env.DEV && taskResult.reason?.name !== 'AbortError' && !taskResult.reason?.message?.includes('fetch')) {
-          console.error('Failed to fetch task notifications:', taskResult.reason);
-        }
-      } else if (taskResult.status === 'fulfilled') {
-        debugLog('Task notifications API returned non-OK status:', taskResult.value.status);
       }
 
       // Handle leave notifications
       if (leaveResult.status === 'fulfilled' && leaveResult.value.ok) {
         try {
           const data = await leaveResult.value.json();
-          debugLog('Leave notifications API response:', data);
-
-          // API returns direct array: [{ notification_id, user_id, leave_id, ... }]
           if (Array.isArray(data)) {
-            // Validate each item has required fields before adding
-            const validNotifications = data.filter((item: unknown) =>
-              item &&
-              typeof item === 'object' &&
-              'notification_id' in item &&
-              'user_id' in item &&
-              'leave_id' in item &&
-              'is_read' in item
-            );
-            leaveData.push(...validNotifications as BackendLeaveNotification[]);
-          } else if (data && typeof data === 'object') {
-            // Handle wrapped responses (fallback)
-            if (Array.isArray(data.notifications)) {
-              leaveData.push(...(data.notifications as BackendLeaveNotification[]));
-            } else if (Array.isArray(data.data)) {
-              leaveData.push(...(data.data as BackendLeaveNotification[]));
-            }
+            leaveData.push(...data);
           }
-          debugLog('Parsed leave notifications:', leaveData.length);
         } catch (error) {
-          // Silently handle parse errors and aborts
-          if (import.meta.env.DEV && !(error instanceof Error && error.name === 'AbortError')) {
-            console.error('Failed to parse leave notifications', error);
-          }
+          if (import.meta.env.DEV) console.error('Failed to parse leave notifications', error);
         }
-      } else if (leaveResult.status === 'rejected') {
-        // Silently handle network errors and aborts for notifications
-        if (import.meta.env.DEV && leaveResult.reason?.name !== 'AbortError' && !leaveResult.reason?.message?.includes('fetch')) {
-          console.error('Failed to fetch leave notifications:', leaveResult.reason);
-        }
-      } else if (leaveResult.status === 'fulfilled') {
-        debugLog('Leave notifications API returned non-OK status:', leaveResult.value.status);
       }
 
       // Handle shift notifications
       if (shiftResult.status === 'fulfilled' && shiftResult.value.ok) {
         try {
           const data = await shiftResult.value.json();
-          debugLog('Shift notifications API response:', data);
-          // Handle both array and object responses
           if (Array.isArray(data)) {
             shiftData.push(...data);
-          } else if (data && typeof data === 'object') {
-            if (Array.isArray(data.notifications)) {
-              shiftData.push(...data.notifications);
-            } else if (Array.isArray(data.data)) {
-              shiftData.push(...data.data);
-            }
           }
-          debugLog('Parsed shift notifications:', shiftData);
         } catch (error) {
-          // Silently handle parse errors and aborts
-          if (import.meta.env.DEV && !(error instanceof Error && error.name === 'AbortError')) {
-            console.error('Failed to parse shift notifications', error);
+          if (import.meta.env.DEV) console.error('Failed to parse shift notifications', error);
+        }
+      }
+
+      // Handle WFH notifications
+      if (wfhResult.status === 'fulfilled' && wfhResult.value.ok) {
+        try {
+          const data = await wfhResult.value.json();
+          if (Array.isArray(data)) {
+            wfhData.push(...data);
           }
+        } catch (error) {
+          if (import.meta.env.DEV) console.error('Failed to parse WFH notifications', error);
         }
-      } else if (shiftResult.status === 'rejected') {
-        // Silently handle network errors and aborts for notifications
-        if (import.meta.env.DEV && shiftResult.reason?.name !== 'AbortError' && !shiftResult.reason?.message?.includes('fetch')) {
-          console.error('Failed to fetch shift notifications:', shiftResult.reason);
+      }
+
+      // Handle Meeting notifications
+      if (meetingResult.status === 'fulfilled' && meetingResult.value.ok) {
+        try {
+          const data = await meetingResult.value.json();
+          if (Array.isArray(data)) {
+            meetingData.push(...data);
+          }
+        } catch (error) {
+          if (import.meta.env.DEV) console.error('Failed to parse meeting notifications', error);
         }
-      } else if (shiftResult.status === 'fulfilled') {
-        debugLog('Shift notifications API returned non-OK status:', shiftResult.value.status);
       }
 
       // Map all notifications (including read ones for history)
@@ -580,6 +610,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           .filter((n): n is Notification => n !== null),
         ...shiftData
           .map(n => mapBackendShiftNotification(n, user.role, user.id))
+          .filter((n): n is Notification => n !== null),
+        ...wfhData
+          .map(n => mapBackendWFHNotification(n, user.id))
+          .filter((n): n is Notification => n !== null),
+        ...meetingData
+          .map(n => mapBackendMeetingNotification(n, user.id))
           .filter((n): n is Notification => n !== null),
       ];
 
@@ -845,6 +881,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         endpoint = `${API_BASE_URL}/leave/notifications/${backendId}/read`;
       } else if (backendType === 'shift') {
         endpoint = `${API_BASE_URL}/shift/notifications/${backendId}/read`;
+      } else if (backendType === 'wfh') {
+        endpoint = `${API_BASE_URL}/wfh/notifications/${backendId}/read`;
+      } else if (backendType === 'meeting') {
+        endpoint = `${API_BASE_URL}/meetings/notifications/${backendId}/read`;
       } else {
         return;
       }
@@ -889,6 +929,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const taskIds: number[] = [];
     const leaveIds: number[] = [];
     const shiftIds: number[] = [];
+    const wfhIds: number[] = [];
+    const meetingIds: number[] = [];
     const notificationIdsToRemove: string[] = [];
 
     setNotifications((prev) =>
@@ -902,6 +944,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
               taskIds.push(notif.backendId);
             } else if (notif.type === 'shift') {
               shiftIds.push(notif.backendId);
+            } else if (notif.type === 'wfh') {
+              wfhIds.push(notif.backendId);
+            } else if (notif.type === 'meeting') {
+              meetingIds.push(notif.backendId);
             }
           }
         }
@@ -910,7 +956,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       })
     );
 
-    if (!user || (taskIds.length === 0 && leaveIds.length === 0 && shiftIds.length === 0)) {
+    if (!user || (taskIds.length === 0 && leaveIds.length === 0 && shiftIds.length === 0 && wfhIds.length === 0 && meetingIds.length === 0)) {
       // Still remove local notifications even if no backend IDs
       setTimeout(() => {
         setNotifications((prev) => prev.filter((notif) => !notificationIdsToRemove.includes(notif.id)));
@@ -951,6 +997,30 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         ),
         ...shiftIds.map((id) =>
           fetch(`${API_BASE_URL}/shift/notifications/${id}/read`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': authHeader,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              notification_id: id,
+            }),
+          })
+        ),
+        ...meetingIds.map((id) =>
+          fetch(`${API_BASE_URL}/meetings/notifications/${id}/read`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': authHeader,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              notification_id: id,
+            }),
+          })
+        ),
+        ...wfhIds.map((id) =>
+          fetch(`${API_BASE_URL}/wfh/notifications/${id}/read`, {
             method: 'PUT',
             headers: {
               'Authorization': authHeader,
@@ -1010,6 +1080,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             endpoint = `${API_BASE_URL}/leave/notifications/${backendId}/read`;
           } else if (backendType === 'shift') {
             endpoint = `${API_BASE_URL}/shift/notifications/${backendId}/read`;
+          } else if (backendType === 'wfh') {
+            endpoint = `${API_BASE_URL}/wfh/notifications/${backendId}/read`;
+          } else if (backendType === 'meeting') {
+            endpoint = `${API_BASE_URL}/meetings/notifications/${backendId}/read`;
           }
 
           if (endpoint) {

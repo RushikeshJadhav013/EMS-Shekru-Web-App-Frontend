@@ -85,7 +85,7 @@ const mapEmployeeData = (emp: any): EmployeeRecord => {
   const mapped = toCamelCase(emp);
 
   // ✅ Fix photo URLs to include backend base URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://staffly.space';
   if (mapped.profilePhoto && !mapped.profilePhoto.startsWith('http')) {
     mapped.profilePhoto = `${baseUrl}/${mapped.profilePhoto}`;
   }
@@ -617,23 +617,36 @@ export default function EmployeeManagement() {
     return true;
   };
 
-  const validateEmployeeId = (employeeId: string) => {
+  const validateEmployeeId = (employeeId: string, isEdit: boolean = false) => {
     if (!employeeId) {
       return { valid: false, message: 'Employee ID is required' };
     }
 
+    // Force uppercase check
+    const upperId = employeeId.toUpperCase();
+
+    // Check for duplicates in local state
+    if (!isEdit) {
+      const isDuplicate = employees.some(emp => 
+        emp.employeeId && emp.employeeId.toUpperCase() === upperId
+      );
+      if (isDuplicate) {
+        return { valid: false, message: 'Employee ID already exists. Please choose a unique ID.' };
+      }
+    }
+
     // Check if it contains at least one letter
-    if (!/[A-Z]/.test(employeeId)) {
-      return { valid: false, message: 'Employee ID must contain at least one uppercase letter' };
+    if (!/[A-Z]/.test(upperId)) {
+      return { valid: false, message: 'Employee ID must contain at least one letter' };
     }
 
     // Check if it contains at least one number
-    if (!/[0-9]/.test(employeeId)) {
+    if (!/[0-9]/.test(upperId)) {
       return { valid: false, message: 'Employee ID must contain at least one number' };
     }
 
     // Check if it only contains uppercase letters and numbers
-    if (!/^[A-Z0-9]+$/.test(employeeId)) {
+    if (!/^[A-Z0-9]+$/.test(upperId)) {
       return { valid: false, message: 'Employee ID can only contain uppercase letters and numbers' };
     }
 
@@ -940,7 +953,7 @@ export default function EmployeeManagement() {
     }
 
     // Validate Employee ID format
-    const employeeIdValidation = validateEmployeeId(formData.employeeId);
+    const employeeIdValidation = validateEmployeeId(formData.employeeId, true);
     if (!employeeIdValidation.valid) {
       toast({
         title: 'Error',
@@ -1242,7 +1255,7 @@ export default function EmployeeManagement() {
 
     for (const row of parsedRows) {
       const data = row.data;
-      const employeeId = (data.employeeid || `EMP${Date.now()}${row.rowNumber}`).trim();
+      const employeeId = (data.employeeid || `EMP${Date.now()}${row.rowNumber}`).trim().toUpperCase();
       const employeeIdKey = employeeId.toLowerCase();
       const name = (data.name || '').trim().replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '');
       const email = (data.email || '').trim();
@@ -1256,7 +1269,7 @@ export default function EmployeeManagement() {
       const gender = (data.gender || '').trim();
       const employeeType = normalizeEmployeeType(data.employeetype);
       const resignationDate = data.resignationdate || '';
-      const panCard = (data.pancard || '').toUpperCase();
+      const panCard = (data.pancard || '').toUpperCase().trim();
       const aadharCard = (data.aadharcard || '').trim();
       const shift = normalizeShift(data.shift);
       const phoneValue = data.phone || '';
@@ -1613,7 +1626,7 @@ export default function EmployeeManagement() {
 
       let photoUrl = String(data['photoUrl'] ?? data['photo_url'] ?? data['profilePhoto'] ?? data['profile_photo'] ?? '');
       if (photoUrl && !photoUrl.startsWith('http')) {
-        photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}/${photoUrl}`;
+        photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://staffly.space'}/${photoUrl}`;
       }
 
       const rawPhone = String(data['phone'] ?? '');
@@ -2064,7 +2077,7 @@ export default function EmployeeManagement() {
                         value={formData.employeeId || ''}
                         onChange={(e) => {
                           // Convert to uppercase and remove all non-alphanumeric characters
-                          let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                          const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
                           setFormData((prev) => ({ ...prev, employeeId: value }));
                         }}
                         required

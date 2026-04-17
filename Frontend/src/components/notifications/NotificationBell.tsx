@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Check, X, Clock, AlertCircle, CheckCircle, FileText, Calendar, Loader2, IndianRupee } from 'lucide-react';
+import { Bell, Check, X, Clock, AlertCircle, CheckCircle, FileText, Calendar, Loader2, IndianRupee, Home, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -61,7 +61,9 @@ export const NotificationBell: React.FC = () => {
   const leaveNotifications = allNotifications.filter(n => n.type === 'leave');
   const taskNotifications = allNotifications.filter(n => n.type === 'task');
   const shiftNotifications = allNotifications.filter(n => n.type === 'shift');
-  const otherNotifications = allNotifications.filter(n => !['leave', 'task', 'shift'].includes(n.type));
+  const wfhNotifications = allNotifications.filter(n => n.type === 'wfh');
+  const meetingNotifications = allNotifications.filter(n => n.type === 'meeting');
+  const otherNotifications = allNotifications.filter(n => !['leave', 'task', 'shift', 'wfh', 'meeting'].includes(n.type));
 
   const handleNotificationClick = async (notification: any) => {
     // Remove notification from list immediately (clearNotification handles marking as read)
@@ -91,6 +93,14 @@ export const NotificationBell: React.FC = () => {
         }
       }
       setIsOpen(false);
+    } else if (notification.type === 'wfh' && notification.metadata?.wfhId) {
+      // For WFH notifications, go to role-based WFH page
+      navigate(`/${userRole}/wfh?wfhId=${notification.metadata.wfhId}`);
+      setIsOpen(false);
+    } else if (notification.type === 'meeting') {
+      // For meeting notifications, go to meetings page
+      navigate('/meetings');
+      setIsOpen(false);
     } else if (notification.actionUrl) {
       // Fallback to actionUrl if provided
       navigate(notification.actionUrl);
@@ -110,6 +120,10 @@ export const NotificationBell: React.FC = () => {
         return <FileText className="h-5 w-5 text-blue-500" />;
       case 'shift':
         return <Clock className="h-5 w-5 text-orange-500" />;
+      case 'wfh':
+        return <Home className="h-5 w-5 text-teal-500" />;
+      case 'meeting':
+        return <Video className="h-5 w-5 text-indigo-500" />;
       case 'warning':
         return <AlertCircle className="h-5 w-5 text-red-500" />;
       default:
@@ -125,6 +139,10 @@ export const NotificationBell: React.FC = () => {
         return 'bg-blue-50 dark:bg-blue-950/20 border-l-4 border-blue-500';
       case 'shift':
         return 'bg-orange-50 dark:bg-orange-950/20 border-l-4 border-orange-500';
+      case 'wfh':
+        return 'bg-teal-50 dark:bg-teal-950/20 border-l-4 border-teal-500';
+      case 'meeting':
+        return 'bg-indigo-50 dark:bg-indigo-950/20 border-l-4 border-indigo-500';
       case 'warning':
         return 'bg-red-50 dark:bg-red-950/20 border-l-4 border-red-500';
       default:
@@ -140,6 +158,10 @@ export const NotificationBell: React.FC = () => {
         return 'Task';
       case 'shift':
         return 'Shift';
+      case 'wfh':
+        return 'WFH';
+      case 'meeting':
+        return 'Meeting';
       default:
         return 'Other';
     }
@@ -330,6 +352,32 @@ export const NotificationBell: React.FC = () => {
                   </Badge>
                 </TabsTrigger>
               )}
+
+              {wfhNotifications.length > 0 && (
+                <TabsTrigger
+                  value="wfh"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-500 data-[state=active]:bg-transparent px-4 py-2"
+                >
+                  <Home className="h-4 w-4 mr-1 text-teal-500" />
+                  <span className="text-xs font-medium">WFH</span>
+                  <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-teal-500 text-white">
+                    {wfhNotifications.length}
+                  </Badge>
+                </TabsTrigger>
+              )}
+
+              {meetingNotifications.length > 0 && (
+                <TabsTrigger
+                  value="meeting"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:bg-transparent px-4 py-2"
+                >
+                  <Video className="h-4 w-4 mr-1 text-indigo-500" />
+                  <span className="text-xs font-medium">Meetings</span>
+                  <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-indigo-500 text-white">
+                    {meetingNotifications.length}
+                  </Badge>
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <ScrollArea className="h-[400px]">
@@ -376,6 +424,30 @@ export const NotificationBell: React.FC = () => {
                   </div>
                 ) : (
                   shiftNotifications.map((notification) => (
+                    <NotificationItem key={notification.id} notification={notification} />
+                  ))
+                )}
+              </TabsContent>
+
+              <TabsContent value="wfh" className="m-0 divide-y">
+                {wfhNotifications.length === 0 ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground">
+                    <p className="text-sm">No WFH notifications</p>
+                  </div>
+                ) : (
+                  wfhNotifications.map((notification) => (
+                    <NotificationItem key={notification.id} notification={notification} />
+                  ))
+                )}
+              </TabsContent>
+
+              <TabsContent value="meeting" className="m-0 divide-y">
+                {meetingNotifications.length === 0 ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground">
+                    <p className="text-sm">No meeting notifications</p>
+                  </div>
+                ) : (
+                  meetingNotifications.map((notification) => (
                     <NotificationItem key={notification.id} notification={notification} />
                   ))
                 )}
