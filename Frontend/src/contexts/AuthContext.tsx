@@ -191,6 +191,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         setUser(user);
         console.log('Restoration: Session restored successfully');
+
+
       } catch (parseError) {
         console.error('Restoration: Error parsing stored user data:', parseError);
         localStorage.removeItem('token');
@@ -258,6 +260,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         designation: userData.designation || '',
         joiningDate: userData.joining_date || new Date().toISOString(),
         profilePhoto: userData.profile_photo ? `${API_BASE_URL}/${userData.profile_photo}` : undefined,
+        branch_id: (userData as any).branch_id || (userData as any).branchId,
+        company_id: (userData as any).company_id || (userData as any).companyId,
         status: 'active',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -281,7 +285,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(user);
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('token', userData.access_token);
-      localStorage.setItem('userId', user.id.toString()); // Store userId for language persistence
+      localStorage.setItem('userId', user.id.toString());
+      
+      // Store scope IDs if provided by backend
+      const anyUserData = userData as any;
+      const branchId = anyUserData.branch_id || anyUserData.branchId;
+      const companyId = anyUserData.company_id || anyUserData.companyId;
+      
+      if (branchId) localStorage.setItem('branchId', branchId.toString());
+      if (companyId) localStorage.setItem('companyId', companyId.toString());
 
       toast({
         variant: 'success',
@@ -353,7 +365,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
-    localStorage.removeItem('userId'); // Clear userId for language persistence
+    localStorage.removeItem('userId');
+    localStorage.removeItem('branchId');
+    localStorage.removeItem('companyId');
 
     // Clear all session-related data
     sessionStorage.clear();

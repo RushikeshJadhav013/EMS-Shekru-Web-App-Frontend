@@ -1,4 +1,4 @@
-import { Toaster } from "@/components/ui/toaster";
+﻿import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -6,15 +6,14 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
-import { ChatProvider } from "@/contexts/ChatContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ChatProvider } from "@/contexts/ChatContext";
 import { LeaveBalanceProvider } from "@/contexts/LeaveBalanceContext";
 import { HolidayProvider } from "@/contexts/HolidayContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import MainLayout from "@/components/layout/MainLayout";
 import LandingPage from "@/pages/LandingPage";
 import Login from "@/pages/Login";
-import Chat from "@/pages/chat/Chat";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import HRDashboard from "@/pages/hr/HRDashboard";
 import ManagerDashboard from "@/pages/manager/ManagerDashboard";
@@ -37,6 +36,7 @@ import AccessControl from "@/pages/access/AccessControl";
 import Profile from "@/pages/profile/Profile";
 import SettingsPage from "@/pages/settings/SettingsPage";
 import ContactSupport from "@/pages/ContactSupport";
+import Chat from "@/pages/chat/Chat";
 import WFHRequests from "@/pages/wfh/WFHRequests";
 import RouteRestorer from "@/components/RouteRestorer";
 import SalaryDashboard from "@/pages/salary/SalaryDashboard";
@@ -63,8 +63,8 @@ const App = () => {
                   <RouteRestorer>
                     <LeaveBalanceProvider>
                       <HolidayProvider>
-                        <NotificationProvider>
-                          <ChatProvider>
+                        <ChatProvider>
+                          <NotificationProvider>
                             <Toaster />
                             <Sonner />
                             <Routes>
@@ -112,16 +112,6 @@ const App = () => {
                                 <Route path="/admin" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <AdminDashboard />
-                                  </ProtectedRoute>
-                                } />
-                                <Route path="/admin/chat" element={
-                                  <ProtectedRoute allowedRoles={['admin']}>
-                                    <Chat />
-                                  </ProtectedRoute>
-                                } />
-                                <Route path="/admin/chat/:chatId" element={
-                                  <ProtectedRoute allowedRoles={['admin']}>
-                                    <Chat />
                                   </ProtectedRoute>
                                 } />
                                 <Route path="/admin/attendance" element={
@@ -190,23 +180,17 @@ const App = () => {
                                     <SettingsPage />
                                   </ProtectedRoute>
                                 } />
-
+                                <Route path="/admin/chat/*" element={
+                                  <ProtectedRoute allowedRoles={['admin']}>
+                                    <Chat />
+                                  </ProtectedRoute>
+                                } />
 
 
                                 {/* HR Routes */}
                                 <Route path="/hr" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <HRDashboard />
-                                  </ProtectedRoute>
-                                } />
-                                <Route path="/hr/chat" element={
-                                  <ProtectedRoute allowedRoles={['hr']}>
-                                    <Chat />
-                                  </ProtectedRoute>
-                                } />
-                                <Route path="/hr/chat/:chatId" element={
-                                  <ProtectedRoute allowedRoles={['hr']}>
-                                    <Chat />
                                   </ProtectedRoute>
                                 } />
                                 <Route path="/hr/attendance" element={
@@ -275,23 +259,17 @@ const App = () => {
                                     <SettingsPage />
                                   </ProtectedRoute>
                                 } />
-
+                                <Route path="/hr/chat/*" element={
+                                  <ProtectedRoute allowedRoles={['hr']}>
+                                    <Chat />
+                                  </ProtectedRoute>
+                                } />
 
 
                                 {/* Manager Routes */}
                                 <Route path="/manager" element={
                                   <ProtectedRoute allowedRoles={['manager']}>
                                     <ManagerDashboard />
-                                  </ProtectedRoute>
-                                } />
-                                <Route path="/manager/chat" element={
-                                  <ProtectedRoute allowedRoles={['manager']}>
-                                    <Chat />
-                                  </ProtectedRoute>
-                                } />
-                                <Route path="/manager/chat/:chatId" element={
-                                  <ProtectedRoute allowedRoles={['manager']}>
-                                    <Chat />
                                   </ProtectedRoute>
                                 } />
                                 <Route path="/manager/team" element={
@@ -346,22 +324,16 @@ const App = () => {
                                     <SettingsPage />
                                   </ProtectedRoute>
                                 } />
-
+                                <Route path="/manager/chat/*" element={
+                                  <ProtectedRoute allowedRoles={['manager']}>
+                                    <Chat />
+                                  </ProtectedRoute>
+                                } />
 
                                 {/* Team Lead Routes */}
                                 <Route path="/team_lead" element={
                                   <ProtectedRoute allowedRoles={['team_lead']}>
                                     <TeamLeadDashboard />
-                                  </ProtectedRoute>
-                                } />
-                                <Route path="/team_lead/chat" element={
-                                  <ProtectedRoute allowedRoles={['team_lead']}>
-                                    <Chat />
-                                  </ProtectedRoute>
-                                } />
-                                <Route path="/team_lead/chat/:chatId" element={
-                                  <ProtectedRoute allowedRoles={['team_lead']}>
-                                    <Chat />
                                   </ProtectedRoute>
                                 } />
                                 <Route path="/team_lead/attendance" element={
@@ -410,22 +382,16 @@ const App = () => {
                                     <SettingsPage />
                                   </ProtectedRoute>
                                 } />
-
+                                <Route path="/team_lead/chat/*" element={
+                                  <ProtectedRoute allowedRoles={['team_lead']}>
+                                    <Chat />
+                                  </ProtectedRoute>
+                                } />
 
                                 {/* Employee Routes */}
                                 <Route path="/employee" element={
                                   <ProtectedRoute allowedRoles={['employee']}>
                                     <EmployeeDashboard />
-                                  </ProtectedRoute>
-                                } />
-                                <Route path="/employee/chat" element={
-                                  <ProtectedRoute allowedRoles={['employee']}>
-                                    <Chat />
-                                  </ProtectedRoute>
-                                } />
-                                <Route path="/employee/chat/:chatId" element={
-                                  <ProtectedRoute allowedRoles={['employee']}>
-                                    <Chat />
                                   </ProtectedRoute>
                                 } />
                                 <Route path="/employee/attendance" element={
@@ -469,17 +435,21 @@ const App = () => {
                                     <SettingsPage />
                                   </ProtectedRoute>
                                 } />
-
+                                <Route path="/employee/chat/*" element={
+                                  <ProtectedRoute allowedRoles={['employee']}>
+                                    <Chat />
+                                  </ProtectedRoute>
+                                } />
                               </Route>
 
                               {/* 404 Route */}
                               <Route path="*" element={<NotFound />} />
                             </Routes>
-                          </ChatProvider>
-                        </NotificationProvider>
-                         </HolidayProvider>
-                       </LeaveBalanceProvider>
-                   </RouteRestorer>
+                          </NotificationProvider>
+                        </ChatProvider>
+                      </HolidayProvider>
+                    </LeaveBalanceProvider>
+                  </RouteRestorer>
                 </WFHProvider>
               </AuthProvider>
             </LanguageProvider>

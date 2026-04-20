@@ -39,8 +39,11 @@ import {
   FileText,
   Check,
   ChevronsUpDown,
-  Activity
+  Activity,
+  MessageCircle
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useChat } from '@/contexts/ChatContext';
 import { User, type UserRole } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -60,6 +63,10 @@ interface EmployeeRecord extends User {
   panCard?: string;
   aadharCard?: string;
   shift?: ShiftType;
+  company?: string;
+  branches?: string;
+  companyId?: number;
+  branchId?: number;
 }
 
 const toCamelCase = (obj: any): any => {
@@ -85,7 +92,7 @@ const mapEmployeeData = (emp: any): EmployeeRecord => {
   const mapped = toCamelCase(emp);
 
   // ✅ Fix photo URLs to include backend base URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space      ';
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
   if (mapped.profilePhoto && !mapped.profilePhoto.startsWith('http')) {
     mapped.profilePhoto = `${baseUrl}/${mapped.profilePhoto}`;
   }
@@ -333,12 +340,18 @@ const formatDuplicateErrorMessage = (message: string, employeeId?: string, email
 
 export default function EmployeeManagement() {
   const { t } = useLanguage();
+  const navigate = useNavigate();
+  const { createChat } = useChat();
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [selectedRole, setSelectedRole] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedCompany, setSelectedCompany] = useState('all');
+  const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
+  const [companies, setCompanies] = useState<string[]>([]);
+  const [branchFilters, setBranchFilters] = useState<string[]>([]);
   const { user } = useAuth();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -363,7 +376,11 @@ export default function EmployeeManagement() {
     countryCode: '+91',
     panCard: '',
     aadharCard: '',
-    shift: undefined
+    shift: undefined,
+    company: '',
+    branches: '',
+    companyId: undefined,
+    branchId: undefined
   });
 
   // For multiple department assignment (HR and Manager roles)
@@ -413,6 +430,9 @@ export default function EmployeeManagement() {
   const [isCreatingDepartment, setIsCreatingDepartment] = useState(false);
   const [deptSearchValue, setDeptSearchValue] = useState('');
   const [isDeptPopoverOpen, setIsDeptPopoverOpen] = useState(false);
+  const [activeScopeError, setActiveScopeError] = useState(false);
+  const [debugBranchId, setDebugBranchId] = useState(localStorage.getItem('branchId') || '');
+  const [debugCompanyId, setDebugCompanyId] = useState(localStorage.getItem('companyId') || '');
 
   const handleCreateDepartment = async (deptName: string) => {
     if (!deptName.trim()) return;
@@ -502,11 +522,18 @@ export default function EmployeeManagement() {
         console.log('Loaded employees:', mappedData); // ✅ Debug log
         console.log('First employee structure:', mappedData[0]); // ✅ Debug log
         setEmployees(mappedData);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to fetch employees:', error);
+        
+        // Check for 409 Conflict (Multiple scopes found)
+        const errorMessage = error.message || '';
+        if (error.status === 409 || errorMessage.includes('Multiple company') || errorMessage.includes('409') || errorMessage.includes('Scope conflict')) {
+          setActiveScopeError(true);
+        }
+
         toast({
           title: 'Error',
-          description: 'Failed to load employees. Please try again.',
+          description: error.message || 'Failed to load employees. Please try again.',
           variant: 'destructive'
         });
       } finally {
@@ -535,6 +562,17 @@ export default function EmployeeManagement() {
     fetchDepartments();
   }, []);
 
+  // Update filter lists when employees change
+  useEffect(() => {
+    if (employees.length > 0) {
+      const uniqueCompanies = Array.from(new Set(employees.map(emp => emp.company).filter(Boolean))) as string[];
+      setCompanies(uniqueCompanies.sort());
+
+      const uniqueBranchFilters = Array.from(new Set(employees.map(emp => emp.branches).filter(Boolean))) as string[];
+      setBranchFilters(uniqueBranchFilters.sort());
+    }
+  }, [employees]);
+
   const filteredEmployees = useMemo(() => {
     return employees.filter(emp => {
       // ✅ Exclude Admin users - Admin is the boss and should not appear in employee lists
@@ -543,10 +581,14 @@ export default function EmployeeManagement() {
       }
 
       const query = searchQuery.trim().toLowerCase();
+      const name = emp.name || '';
+      const employeeId = emp.employeeId || '';
+      const email = emp.email || '';
+      
       const matchesSearch =
-        emp.name.toLowerCase().includes(query) ||
-        emp.employeeId.toLowerCase().includes(query) ||
-        emp.email.toLowerCase().includes(query);
+        name.toLowerCase().includes(query) ||
+        employeeId.toLowerCase().includes(query) ||
+        email.toLowerCase().includes(query);
       const matchesDepartment = selectedDepartment === 'all' || (
         emp.department
           ? emp.department.split(',').map((d: string) => d.trim().toLowerCase()).includes(selectedDepartment.toLowerCase())
@@ -556,9 +598,13 @@ export default function EmployeeManagement() {
         (emp.role && emp.role.toLowerCase().replace(/[\s_]+/g, '') === selectedRole.toLowerCase().replace(/[\s_]+/g, ''));
       const matchesStatus = selectedStatus === 'all' ||
         (emp.status && emp.status.toLowerCase() === selectedStatus.toLowerCase());
-      return matchesSearch && matchesDepartment && matchesRole && matchesStatus;
+      const matchesCompany = selectedCompany === 'all' ||
+        (emp.company && emp.company === selectedCompany);
+      const matchesBranchFilter = selectedBranchFilter === 'all' ||
+        (emp.branches && emp.branches === selectedBranchFilter);
+      return matchesSearch && matchesDepartment && matchesRole && matchesStatus && matchesCompany && matchesBranchFilter;
     });
-  }, [employees, searchQuery, selectedDepartment, selectedRole, selectedStatus]);
+  }, [employees, searchQuery, selectedDepartment, selectedRole, selectedStatus, selectedCompany, selectedBranchFilter]);
 
   // Paginated employees
   const paginatedEmployees = useMemo(() => {
@@ -572,7 +618,7 @@ export default function EmployeeManagement() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedDepartment, selectedRole, selectedStatus]);
+  }, [searchQuery, selectedDepartment, selectedRole, selectedStatus, selectedCompany, selectedBranchFilter]);
 
   // Reset to first page when items per page changes
   useEffect(() => {
@@ -887,6 +933,10 @@ export default function EmployeeManagement() {
         aadhar_card: formData.aadharCard,
         shift_type: formData.shift,
         employee_type: formData.employeeType,
+        company: formData.company,
+        branches: formData.branches,
+        company_id: formData.companyId,
+        branch_id: formData.branchId,
         profile_photo: imageFile || undefined
       };
 
@@ -1050,6 +1100,10 @@ export default function EmployeeManagement() {
         aadhar_card: formData.aadharCard,
         shift_type: formData.shift,
         employee_type: formData.employeeType,
+        company: formData.company,
+        branches: formData.branches,
+        company_id: formData.companyId,
+        branch_id: formData.branchId,
         profile_photo: imageFile || formData.profilePhoto || (imagePreview === '' ? '' : undefined), // Pass the file or removal signal
         is_verified: true,
         created_at: formData.createdAt || new Date().toISOString(),
@@ -1272,6 +1326,8 @@ export default function EmployeeManagement() {
       const panCard = (data.pancard || '').toUpperCase().trim();
       const aadharCard = (data.aadharcard || '').trim();
       const shift = normalizeShift(data.shift);
+      const company = (data.company || '').trim();
+      const branches = (data.branches || '').trim();
       const phoneValue = data.phone || '';
       const csvCountryCode = data.countrycode || '';
       const { countryCode, digits } = parsePhoneValue(phoneValue, csvCountryCode);
@@ -1346,6 +1402,8 @@ export default function EmployeeManagement() {
         aadhar_card: aadharCard || undefined,
         shift_type: shift || undefined,
         employee_type: employeeType || undefined,
+        company: company || undefined,
+        branches: branches || undefined,
       };
 
       try {
@@ -1441,6 +1499,20 @@ export default function EmployeeManagement() {
   };
 
   // Download CSV Template
+  const handleStartChat = async (employee: EmployeeRecord) => {
+    try {
+      const chat = await createChat('individual', [employee.id.toString()]);
+      navigate(`/${user?.role}/chat/${chat.id}`);
+    } catch (error) {
+      console.error('Failed to start chat:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to start chat with this employee',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const downloadCSVTemplate = () => {
     const headers = [
       'EmployeeID',
@@ -1551,7 +1623,11 @@ export default function EmployeeManagement() {
       countryCode: '+91',
       panCard: '',
       aadharCard: '',
-      shift: undefined
+      shift: undefined,
+      company: '',
+      branches: '',
+      companyId: undefined,
+      branchId: undefined
     });
     setSelectedDepartments([]);
     setAddressFields({
@@ -1623,10 +1699,14 @@ export default function EmployeeManagement() {
       const panCard = String(data['panCard'] ?? data['pan_card'] ?? '');
       const aadharCard = String(data['aadharCard'] ?? data['aadhar_card'] ?? '');
       const shift = String(data['shift'] ?? data['shiftType'] ?? data['shift_type'] ?? '');
+      const company = String(data['company'] ?? '');
+      const branches = String(data['branches'] ?? '');
+      const companyId = data['companyId'] ?? data['company_id'];
+      const branchId = data['branchId'] ?? data['branch_id'];
 
       let photoUrl = String(data['photoUrl'] ?? data['photo_url'] ?? data['profilePhoto'] ?? data['profile_photo'] ?? '');
       if (photoUrl && !photoUrl.startsWith('http')) {
-        photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space      '}/${photoUrl}`;
+        photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}/${photoUrl}`;
       }
 
       const rawPhone = String(data['phone'] ?? '');
@@ -1677,7 +1757,9 @@ export default function EmployeeManagement() {
         employeeType: employeeType as any,
         panCard,
         aadharCard,
-        shift: shift as any,
+        shift: shift as ShiftType,
+        company,
+        branches,
         countryCode,
         phone: formatPhoneNumber(phone.replace(/[^0-9]/g, ''), countryCode),
         photoUrl
@@ -2488,6 +2570,26 @@ export default function EmployeeManagement() {
                       )}
                     </div>
                     <div>
+                      <Label htmlFor="create-company">Company</Label>
+                      <Input
+                        id="create-company"
+                        value={formData.company || ''}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, company: e.target.value }))}
+                        className="mt-1"
+                        placeholder="e.g., Acme Corp"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="create-branches">Branches</Label>
+                      <Input
+                        id="create-branches"
+                        value={formData.branches || ''}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, branches: e.target.value }))}
+                        className="mt-1"
+                        placeholder="e.g., Mumbai, Pune"
+                      />
+                    </div>
+                    <div>
                       <Label htmlFor="create-shift">Shift *</Label>
                       <Select
                         value={formData.shift || ''}
@@ -2569,6 +2671,70 @@ export default function EmployeeManagement() {
                           Create Employee
                         </>
                       )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              {/* Scope Selection Dialog (for resolving 409 Conflicts) */}
+              <Dialog open={activeScopeError} onOpenChange={setActiveScopeError}>
+                <DialogContent className="max-w-md border-2 border-amber-200">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-amber-700">
+                      <Activity className="h-5 w-5" />
+                      Scope Selection Required
+                    </DialogTitle>
+                    <DialogDescription className="font-medium text-slate-600">
+                      Your account is assigned to multiple organizations or branches. 
+                      Please enter a specific ID to continue.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-bold">Current User Role: {user?.role}</Label>
+                      <p className="text-[11px] text-slate-500 italic">
+                        Tip: You can find your Branch ID and Company ID in your profile or from your administrator.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="debug-branch-id">Branch ID</Label>
+                      <Input 
+                        id="debug-branch-id"
+                        value={debugBranchId} 
+                        onChange={(e) => setDebugBranchId(e.target.value)} 
+                        placeholder="e.g. 1"
+                        className="border-2 focus:border-blue-500"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="debug-company-id">Company ID</Label>
+                      <Input 
+                        id="debug-company-id"
+                        value={debugCompanyId} 
+                        onChange={(e) => setDebugCompanyId(e.target.value)} 
+                        placeholder="e.g. 1"
+                        className="border-2 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setActiveScopeError(false)}
+                      className="border-slate-300"
+                    >
+                      Close
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        if (debugBranchId) localStorage.setItem('branchId', debugBranchId);
+                        if (debugCompanyId) localStorage.setItem('companyId', debugCompanyId);
+                        setActiveScopeError(false);
+                        window.location.reload();
+                      }}
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      Apply Scope & Refresh
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -2689,6 +2855,44 @@ export default function EmployeeManagement() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="flex flex-col gap-2 w-full sm:w-44">
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Company</Label>
+              <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+                <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-950 border-2 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
+                  <FileText className="h-4 w-4 mr-2 text-blue-600" />
+                  <SelectValue placeholder="Company" />
+                </SelectTrigger>
+                <SelectContent className="border-2 shadow-2xl">
+                  <SelectItem value="all" className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors font-medium">
+                    All Companies
+                  </SelectItem>
+                  {companies.map((company) => (
+                    <SelectItem key={company} value={company} className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors">
+                      {company}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2 w-full sm:w-44">
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Branches</Label>
+              <Select value={selectedBranchFilter} onValueChange={setSelectedBranchFilter}>
+                <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-950 border-2 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
+                  <Activity className="h-4 w-4 mr-2 text-indigo-600" />
+                  <SelectValue placeholder="Branches" />
+                </SelectTrigger>
+                <SelectContent className="border-2 shadow-2xl">
+                  <SelectItem value="all" className="cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors font-medium">
+                    All Branches
+                  </SelectItem>
+                  {branchFilters.map((branch) => (
+                    <SelectItem key={branch} value={branch} className="cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors">
+                      {branch}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="rounded-xl border-2 border-gray-200 dark:border-gray-800 overflow-hidden shadow-lg">
@@ -2717,6 +2921,8 @@ export default function EmployeeManagement() {
                   <TableHead className="font-semibold">Name</TableHead>
                   <TableHead className="hidden sm:table-cell font-semibold">Email</TableHead>
                   <TableHead className="font-semibold">Department</TableHead>
+                  <TableHead className="font-semibold">Company</TableHead>
+                  <TableHead className="font-semibold">Branches</TableHead>
                   <TableHead className="hidden md:table-cell font-semibold">Role</TableHead>
                   <TableHead className="font-semibold">Status</TableHead>
                   <TableHead className="text-right font-semibold">Actions</TableHead>
@@ -2725,7 +2931,7 @@ export default function EmployeeManagement() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={10} className="text-center py-8">
                       <div className="flex items-center justify-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         <span>Loading employees...</span>
@@ -2734,7 +2940,7 @@ export default function EmployeeManagement() {
                   </TableRow>
                 ) : filteredEmployees.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       No employees found
                     </TableCell>
                   </TableRow>
@@ -2770,6 +2976,12 @@ export default function EmployeeManagement() {
                             ? 'No Dept'
                             : employee.department}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{employee.company || '-'}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{employee.branches || '-'}</span>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-0 shadow-sm rounded-full px-3 py-0.5 font-medium transition-all">
@@ -2819,6 +3031,16 @@ export default function EmployeeManagement() {
                             ) : (
                               <Trash2 className="h-4 w-4" />
                             )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleStartChat(employee)}
+                            disabled={isDeleting === employee.id || employee.id?.toString() === user?.id?.toString()}
+                            className="h-9 w-9 p-0 hover:bg-green-100 hover:text-green-600 dark:hover:bg-green-900 transition-all hover:scale-110 rounded-lg"
+                            title="Chat with employee"
+                          >
+                            <MessageCircle className="h-4 w-4" />
                           </Button>
                           <Button
                             size="sm"
@@ -3309,6 +3531,26 @@ export default function EmployeeManagement() {
               )}
             </div>
             <div>
+              <Label htmlFor="edit-company">Company</Label>
+              <Input
+                id="edit-company"
+                value={formData.company || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, company: e.target.value }))}
+                className="mt-1"
+                placeholder="e.g., Acme Corp"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-branches">Branches</Label>
+              <Input
+                id="edit-branches"
+                value={formData.branches || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, branches: e.target.value }))}
+                className="mt-1"
+                placeholder="e.g., Mumbai, Pune"
+              />
+            </div>
+            <div>
               <Label htmlFor="edit-shift">Shift *</Label>
               <Select
                 value={formData.shift || ''}
@@ -3456,6 +3698,14 @@ export default function EmployeeManagement() {
                         <span>{viewEmployee.department}</span>
                       )}
                     </div>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Company</span>
+                    <span className="font-medium">{viewEmployee.company || viewEmployee.companyId || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Branches</span>
+                    <span className="font-medium">{viewEmployee.branches || viewEmployee.branchId || '-'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Role</span>

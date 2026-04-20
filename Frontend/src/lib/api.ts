@@ -23,6 +23,10 @@ interface EmployeeData {
   user_id?: number;
   is_active?: boolean;
   status?: string;
+  company?: string;
+  branches?: string;
+  company_id?: number;
+  branch_id?: number;
   department?: string;
 }
 
@@ -48,6 +52,10 @@ interface Employee {
   aadhar_card?: string;
   shift_type?: string;
   managerId?: number; // ✅ Added for reporting manager
+  company?: string;
+  branches?: string;
+  company_id?: number;
+  branch_id?: number;
   department?: string;
 }
 
@@ -181,10 +189,70 @@ class ApiService {
     if (token && !token.startsWith("Bearer ")) {
       token = `Bearer ${token}`;
     }
-    return token ? { Authorization: token } : {};
+    
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = token;
+    }
+    
+    // Ensure branchId/companyId are synced from user object or token if available
+    let branchId = localStorage.getItem("branchId");
+    let companyId = localStorage.getItem("companyId");
+    
+    try {
+      const storedUser = localStorage.getItem("user");
+      const token = localStorage.getItem("token");
+      
+      let uBranchId = "";
+      let uCompanyId = "";
+
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        uBranchId = String(user.branch_id || user.branchId || "");
+        uCompanyId = String(user.company_id || user.companyId || "");
+      }
+
+      // If still missing, try decoding token
+      if ((!uBranchId || !uCompanyId) && token) {
+        try {
+          const payloadPart = token.split('.')[1];
+          if (payloadPart) {
+            const decoded = JSON.parse(atob(payloadPart.replace(/-/g, '+').replace(/_/g, '/')));
+            if (!uBranchId) uBranchId = String(decoded.branch_id || decoded.branchId || "");
+            if (!uCompanyId) uCompanyId = String(decoded.company_id || decoded.companyId || "");
+          }
+        } catch (e) { 
+          // Ignore decode errors
+        }
+      }
+
+      if (!branchId && uBranchId) {
+        branchId = uBranchId;
+        localStorage.setItem("branchId", uBranchId);
+      }
+      if (!companyId && uCompanyId) {
+        companyId = uCompanyId;
+        localStorage.setItem("companyId", uCompanyId);
+      }
+    } catch (e) {
+      // Ignore
+    }
+
+    if (branchId && branchId !== "null" && branchId !== "undefined") {
+      headers["X-Branch-Id"] = branchId;
+    }
+    if (companyId && companyId !== "null" && companyId !== "undefined") {
+      headers["X-Company-Id"] = companyId;
+    }
+    
+    if (headers["X-Branch-Id"] || headers["X-Company-Id"]) {
+      console.debug("Scope Headers Sent:", { branchId: headers["X-Branch-Id"], companyId: headers["X-Company-Id"] });
+    }
+    
+    return headers;
   }
 
-  private async request(endpoint: string, options: RequestInit = {}) {
+  public async request(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseURL}${endpoint}`;
 
     const headers: Record<string, string> = {
@@ -234,18 +302,9 @@ class ApiService {
             response.statusText || `HTTP error! status: ${response.status}`;
         }
 
-        if (response.status === 401) {
-          // Just log and throw — never auto-redirect from an API call.
-          // Route guards in AuthContext handle session expiry redirects.
-          console.warn("API returned 401:", errorMessage);
-          throw new Error(errorMessage || "Unauthorized");
-        }
-        if (response.status === 403) {
-          // Just throw — do not redirect.
-          console.warn("API returned 403:", errorMessage);
-          throw new Error(errorMessage || "Access denied");
-        }
-        throw new Error(errorMessage);
+        const error = new Error(errorMessage || `HTTP error! status: ${response.status}`);
+        (error as any).status = response.status;
+        throw error;
       }
 
       // Handle 204 No Content responses (common for DELETE operations)
@@ -297,11 +356,14 @@ class ApiService {
         throw networkError;
       }
 
-      // Log other errors normally if not an expected 403/401
+      // Log other errors normally — suppress expected 401/403/409 to keep console clean
       if (
         import.meta.env.DEV &&
         error.message !== "Access denied" &&
-        !error.message.includes("403")
+        !error.message.includes("403") &&
+        !error.message.includes("409") &&
+        !error.message.includes("Scope conflict") &&
+        !error.message.includes("Multiple company")
       ) {
         console.error("API request failed:", error);
       }
@@ -352,11 +414,120 @@ class ApiService {
     }
   }
 
-  // Get employees with optional branch filter
-  async getEmployees(branch?: string) {
-    const query = branch && branch !== "all" ? `?department=${branch}` : "";
-    const data = await this.request(`/employees/${query}`);
-    return Array.isArray(data) ? data : data?.employees || [];
+  async getEmployees(params?: string | {
+    branch?: string; 
+    search?: string;
+    department?: string;
+    role?: string;
+    is_active?: boolean | string;
+    branch_id?: number;
+    company_id?: number;
+  }) {
+    const queryParams = new URLSearchParams();
+    
+    // Legacy support: if a string is passed, it acts as a department filter
+    if (typeof params === 'string') {
+      if (params && params !== "all") queryParams.append("department", params);
+    } else if (params) {
+      // New object-based parameters
+      if (params.branch && params.branch !== "all") queryParams.append("department", params.branch);
+      if (params.department && params.department !== "all") queryParams.append("department", params.department);
+      if (params.search) queryParams.append("search", params.search);
+      if (params.role) queryParams.append("role", params.role);
+      if (params.is_active !== undefined) queryParams.append("is_active", String(params.is_active));
+    }
+
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
+    
+    try {
+      // Prepare extra headers if explicit IDs are provided
+      const extraHeaders: Record<string, string> = {};
+      if (typeof params === 'object') {
+        if (params.branch_id) extraHeaders['X-Branch-Id'] = String(params.branch_id);
+        if (params.company_id) extraHeaders['X-Company-Id'] = String(params.company_id);
+      }
+
+      const data = await this.request(queryString ? `/employees/${queryString}` : `/employees/`, {
+        headers: extraHeaders
+      });
+      return Array.isArray(data) ? data : data?.employees || [];
+    } catch (error: any) {
+      // If we hit a conflict (409) or forbidden (403) and we don't have a branchId in localStorage,
+      // it means we are an admin/HR with multiple scopes but none selected.
+      if (error.message?.includes("409") || error.message?.includes("403")) {
+         console.warn("Scope conflict/forbidden detected. Attempting to sync branch/company assignment from user profile...");
+         try {
+           const storedUser = localStorage.getItem("user");
+           if (storedUser) {
+             const user = JSON.parse(storedUser);
+             const fallbackBranchId = user.branch_id || user.branchId;
+             const fallbackCompanyId = user.company_id || user.companyId;
+             if (fallbackBranchId) {
+               console.log(`Setting automatic scope fallback -> Branch: ${fallbackBranchId}, Company: ${fallbackCompanyId}`);
+               localStorage.setItem("branchId", String(fallbackBranchId));
+               if (user.company_id || user.companyId) {
+                 localStorage.setItem("companyId", String(user.company_id || user.companyId));
+               }
+               // Retry the request ONCE with the new stored IDs
+               const retryData = await this.request(queryString ? `/employees/${queryString}` : `/employees/`, {
+                 headers: {
+                   "X-Branch-Id": String(fallbackBranchId),
+                   "X-Company-Id": fallbackCompanyId ? String(fallbackCompanyId) : ""
+                 }
+               });
+               return Array.isArray(retryData) ? retryData : retryData?.employees || [];
+             }
+           }
+         } catch (retryError) {
+           console.error("Automatic scope resolution failed:", retryError);
+         }
+      }
+
+      if (error.message?.includes("Scope conflict") || error.message?.includes("Multiple company")) {
+        console.error("Employee Fetch Error: Scope/Branch Conflict detected.");
+        throw error; // Rethrow so UI can show the scope selector
+      }
+      throw error;
+    }
+  }
+
+
+  // Export all employees to PDF
+  async exportEmployeesPDF(params?: {
+    department?: string;
+    role?: string;
+    designation?: string;
+    status?: boolean | string;
+  }): Promise<Blob> {
+    const queryParams = new URLSearchParams();
+    
+    if (params) {
+      if (params.department && params.department !== "all") queryParams.append("department", params.department);
+      if (params.role) queryParams.append("role", params.role);
+      if (params.designation) queryParams.append("designation", params.designation);
+      if (params.status !== undefined) queryParams.append("status", String(params.status));
+    }
+
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
+    return this.download(`/employees/export/pdf${queryString}`);
+  }
+
+  // Export all employees to CSV
+  async exportEmployeesCSV(params?: {
+    department?: string;
+    role?: string;
+    status?: boolean | string;
+  }): Promise<Blob> {
+    const queryParams = new URLSearchParams();
+    
+    if (params) {
+      if (params.department && params.department !== "all") queryParams.append("department", params.department);
+      if (params.role) queryParams.append("role", params.role);
+      if (params.status !== undefined) queryParams.append("status", String(params.status));
+    }
+
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
+    return this.download(`/employees/export/csv${queryString}`);
   }
 
   // Alias for getEmployees to satisfy various component imports
@@ -551,7 +722,7 @@ class ApiService {
       }
     });
 
-    const response = await this.request("/employees/register/", {
+    const response = await this.request("/employees/register", {
       method: "POST",
       body: formData,
       // No standard 'Content-Type' header here, FormData handles it
@@ -612,6 +783,17 @@ class ApiService {
     return this.request(`/employees/${userId}/status`, {
       method: "PUT",
       body: JSON.stringify({ is_active: isActive }),
+    });
+  }
+
+  // Bulk update employees status (activate/deactivate multiple)
+  async updateEmployeesBulkStatus(
+    userIds: number[],
+    isActive: boolean,
+  ): Promise<Employee[]> {
+    return this.request(`/employees/status`, {
+      method: "PUT",
+      body: JSON.stringify({ user_ids: userIds, is_active: isActive }),
     });
   }
 

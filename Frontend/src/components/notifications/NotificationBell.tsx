@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Check, X, Clock, AlertCircle, CheckCircle, FileText, Calendar, Loader2, IndianRupee, Home, Video } from 'lucide-react';
+import { Bell, Check, X, Clock, AlertCircle, CheckCircle, FileText, Calendar, Loader2, IndianRupee, Home, Video, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -63,7 +63,8 @@ export const NotificationBell: React.FC = () => {
   const shiftNotifications = allNotifications.filter(n => n.type === 'shift');
   const wfhNotifications = allNotifications.filter(n => n.type === 'wfh');
   const meetingNotifications = allNotifications.filter(n => n.type === 'meeting');
-  const otherNotifications = allNotifications.filter(n => !['leave', 'task', 'shift', 'wfh', 'meeting'].includes(n.type));
+  const chatNotifications = allNotifications.filter(n => n.type === 'chat');
+  const otherNotifications = allNotifications.filter(n => !['leave', 'task', 'shift', 'wfh', 'meeting', 'chat'].includes(n.type));
 
   const handleNotificationClick = async (notification: any) => {
     // Remove notification from list immediately (clearNotification handles marking as read)
@@ -101,6 +102,10 @@ export const NotificationBell: React.FC = () => {
       // For meeting notifications, go to meetings page
       navigate('/meetings');
       setIsOpen(false);
+    } else if (notification.type === 'chat') {
+      // For chat notifications, go to messages page
+      navigate('/admin/messages');
+      setIsOpen(false);
     } else if (notification.actionUrl) {
       // Fallback to actionUrl if provided
       navigate(notification.actionUrl);
@@ -124,6 +129,8 @@ export const NotificationBell: React.FC = () => {
         return <Home className="h-5 w-5 text-teal-500" />;
       case 'meeting':
         return <Video className="h-5 w-5 text-indigo-500" />;
+      case 'chat':
+        return <MessageSquare className="h-5 w-5 text-emerald-500" />;
       case 'warning':
         return <AlertCircle className="h-5 w-5 text-red-500" />;
       default:
@@ -143,6 +150,8 @@ export const NotificationBell: React.FC = () => {
         return 'bg-teal-50 dark:bg-teal-950/20 border-l-4 border-teal-500';
       case 'meeting':
         return 'bg-indigo-50 dark:bg-indigo-950/20 border-l-4 border-indigo-500';
+      case 'chat':
+        return 'bg-emerald-50 dark:bg-emerald-950/20 border-l-4 border-emerald-500';
       case 'warning':
         return 'bg-red-50 dark:bg-red-950/20 border-l-4 border-red-500';
       default:
@@ -162,6 +171,8 @@ export const NotificationBell: React.FC = () => {
         return 'WFH';
       case 'meeting':
         return 'Meeting';
+      case 'chat':
+        return 'Chat';
       default:
         return 'Other';
     }
@@ -253,28 +264,43 @@ export const NotificationBell: React.FC = () => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[420px] max-h-[600px] bg-background z-50 border-2 shadow-2xl p-0">
-        <div className="flex items-center justify-between p-4 border-b-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 sticky top-0 z-10">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
-              <Bell className="h-4 w-4 text-white" />
+        <div className="flex flex-col p-4 border-b-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 sticky top-0 z-10">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+                <Bell className="h-4 w-4 text-white" />
+              </div>
+              <h3 className="font-bold text-lg">Notifications</h3>
+              {isLoading && (
+                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+              )}
             </div>
-            <h3 className="font-bold text-lg">Notifications</h3>
-            {isLoading && (
-              <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-            )}
           </div>
-          <div className="flex items-center gap-1">
-            {unreadCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={markAllAsRead}
-                className="text-xs hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
-              >
-                <Check className="h-3 w-3 mr-1" />
-                Mark all
-              </Button>
-            )}
+          
+          <div className="flex items-center gap-2 w-full">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => {
+                navigate(`/${user?.role}/inbox`);
+                setIsOpen(false);
+              }}
+              className="flex-1 text-xs bg-blue-600 hover:bg-blue-700 shadow-sm"
+            >
+              <Bell className="h-3 w-3 mr-1.5" />
+              Notifications
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={markAllAsRead}
+              disabled={unreadCount === 0}
+              className="flex-1 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 shadow-sm"
+            >
+              <Check className="h-3 w-3 mr-1.5" />
+              Mark as read
+            </Button>
           </div>
         </div>
 
@@ -378,6 +404,19 @@ export const NotificationBell: React.FC = () => {
                   </Badge>
                 </TabsTrigger>
               )}
+
+              {chatNotifications.length > 0 && (
+                <TabsTrigger
+                  value="chat"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-500 data-[state=active]:bg-transparent px-4 py-2"
+                >
+                  <MessageSquare className="h-4 w-4 mr-1 text-emerald-500" />
+                  <span className="text-xs font-medium">Chat</span>
+                  <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-emerald-500 text-white">
+                    {chatNotifications.length}
+                  </Badge>
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <ScrollArea className="h-[400px]">
@@ -448,6 +487,18 @@ export const NotificationBell: React.FC = () => {
                   </div>
                 ) : (
                   meetingNotifications.map((notification) => (
+                    <NotificationItem key={notification.id} notification={notification} />
+                  ))
+                )}
+              </TabsContent>
+
+              <TabsContent value="chat" className="m-0 divide-y">
+                {chatNotifications.length === 0 ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground">
+                    <p className="text-sm">No chat notifications</p>
+                  </div>
+                ) : (
+                  chatNotifications.map((notification) => (
                     <NotificationItem key={notification.id} notification={notification} />
                   ))
                 )}

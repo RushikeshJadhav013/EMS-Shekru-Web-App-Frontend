@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "hr" | "manager" | "team_lead" | "employee";
+﻿export type UserRole = "admin" | "hr" | "manager" | "team_lead" | "employee";
 
 export interface User {
   id: string;
@@ -15,10 +15,6 @@ export interface User {
   managerId?: string;
   teamLeadId?: string;
   status: "active" | "inactive";
-  company?: string;
-  branches?: string;
-  branch_id?: string | number;
-  company_id?: string | number;
   createdAt: string;
   updatedAt: string;
 }

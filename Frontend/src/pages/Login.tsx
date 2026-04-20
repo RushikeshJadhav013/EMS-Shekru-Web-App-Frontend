@@ -304,6 +304,12 @@ const Login: React.FC = () => {
         setLastShownError('');
         setLastOtpAttempt('');
 
+        // Store scope IDs immediately on successful login
+        if (userData.branch_id) localStorage.setItem('branchId', String(userData.branch_id));
+        if (userData.company_id) localStorage.setItem('companyId', String(userData.company_id));
+        if (userData.branchId) localStorage.setItem('branchId', String(userData.branchId));
+        if (userData.companyId) localStorage.setItem('companyId', String(userData.companyId));
+
         // Call the auth context login method with the verified data
         await login({
           user_id: userData.user_id,
@@ -313,8 +319,10 @@ const Login: React.FC = () => {
           access_token: userData.access_token,
           department: userData.department,
           designation: userData.designation,
-          joining_date: userData.joining_date
-        });
+          joining_date: userData.joining_date,
+          branch_id: userData.branch_id,
+          company_id: userData.company_id,
+        } as any);
       }
     } catch (err: any) {
       console.error('OTP verification error:', err);

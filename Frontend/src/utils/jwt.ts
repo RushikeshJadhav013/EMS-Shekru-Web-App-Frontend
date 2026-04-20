@@ -152,5 +152,7 @@ export const getUserFromToken = (token: string): { userId?: string; email?: stri
     userId: (payload.user_id ?? payload.sub ?? payload.userId ?? payload.id) as string | undefined,
     email: payload.email as string | undefined,
     role: payload.role as string | undefined,
+    branchId: (payload.branch_id || payload.branchId) as string | number | undefined,
+    companyId: (payload.company_id || payload.companyId) as string | number | undefined,
   };
 };

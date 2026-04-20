@@ -80,8 +80,10 @@ export const HolidayProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Initial load on mount
   useEffect(() => {
-    fetchHolidays();
-  }, [fetchHolidays]);
+    if (user) {
+      fetchHolidays();
+    }
+  }, [fetchHolidays, user]);
 
   const addHoliday = useCallback(async (holiday: Omit<Holiday, 'id' | 'created_at' | 'updated_at'>) => {
     try {

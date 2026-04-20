@@ -1,14 +1,12 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import TaskDeadlineWarnings from '@/components/tasks/TaskDeadlineWarnings';
-import { useNotifications } from '@/contexts/NotificationContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Logo } from '@/components/ui/Logo';
-import { NotificationBell } from '@/components/notifications/NotificationBell';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,7 +61,6 @@ import ChatNotificationBadge from '@/components/chat/ChatNotificationBadge';
 
 const MainLayout: React.FC = () => {
   const { user, logout, showDeadlineWarnings, setShowDeadlineWarnings } = useAuth();
-  const { notifications } = useNotifications();
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
@@ -83,33 +80,17 @@ const MainLayout: React.FC = () => {
     logout();
   };
 
-  const unreadMeetingsCount = (notifications || []).filter(
-    (n) => n.type === "meeting" && !n.read
-  ).length;
-
-  const unreadLeavesCount = (notifications || []).filter(
-    (n) => n.type === "leave" && !n.read
-  ).length;
-
-  const unreadTasksCount = (notifications || []).filter(
-    (n) => n.type === "task" && !n.read
-  ).length;
-
-  const unreadShiftsCount = (notifications || []).filter(
-    (n) => n.type === "shift" && !n.read
-  ).length;
-
   if (!user) return null;
 
   const getNavigationItems = () => {
     const commonItems = [
       { icon: Home, label: t.navigation.home, path: `/${user.role}` },
       { icon: Clock, label: t.navigation.attendance, path: `/${user.role}/attendance` },
-      { icon: CalendarDays, label: t.navigation.leaves, path: `/${user.role}/leaves`, badgeCount: unreadLeavesCount },
-      { icon: ClipboardList, label: t.navigation.tasks, path: `/${user.role}/tasks`, badgeCount: unreadTasksCount },
-      { icon: MessageCircle, label: t.navigation.chat, path: `/${user.role}/chat` },
+      { icon: CalendarDays, label: t.navigation.leaves, path: `/${user.role}/leaves` },
+      { icon: ClipboardList, label: t.navigation.tasks, path: `/${user.role}/tasks` },
       { icon: Banknote, label: t.navigation.salary, path: '/salary' },
-      { icon: Video, label: t.navigation.meetings, path: '/meetings', badgeCount: unreadMeetingsCount },
+      { icon: MessageCircle, label: t.navigation.chat, path: `/${user.role}/chat` },
+      { icon: Video, label: t.navigation.meetings, path: '/meetings' },
     ];
 
     const roleSpecificItems: Record<UserRole, typeof commonItems> = {
@@ -130,17 +111,17 @@ const MainLayout: React.FC = () => {
       ],
       manager: [
         ...commonItems,
-        { icon: Clock, label: t.navigation.shiftSchedule, path: '/manager/shift-schedule', badgeCount: unreadShiftsCount },
+        { icon: Clock, label: t.navigation.shiftSchedule, path: '/manager/shift-schedule' },
         { icon: FolderKanban, label: 'Projects', path: '/manager/projects' },
       ],
       team_lead: [
         ...commonItems,
-        { icon: Clock, label: t.navigation.shiftSchedule, path: '/team_lead/team', badgeCount: unreadShiftsCount },
+        { icon: Clock, label: t.navigation.shiftSchedule, path: '/team_lead/team' },
         { icon: FolderKanban, label: 'Projects', path: '/team_lead/projects' },
       ],
       employee: [
         ...commonItems,
-        { icon: Clock, label: t.navigation.shiftSchedule, path: '/employee/team', badgeCount: unreadShiftsCount },
+        { icon: Clock, label: t.navigation.shiftSchedule, path: '/employee/team' },
         { icon: FolderKanban, label: 'Projects', path: '/employee/projects' },
       ],
     };
@@ -217,18 +198,13 @@ const MainLayout: React.FC = () => {
                 <span className="font-medium">English</span>
               </SelectItem>
               <SelectItem value="hi" className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
-                <span className="font-medium">हिंदी</span>
+                <span className="font-medium">αñ╣αñ┐αñéαñªαÑÇ</span>
               </SelectItem>
               <SelectItem value="mr" className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
-                <span className="font-medium">मराठी</span>
+                <span className="font-medium">αñ«αñ░αñ╛αñáαÑÇ</span>
               </SelectItem>
             </SelectContent>
           </Select>
-          
-          {/* Notification Bell */}
-          <div className="flex items-center">
-            <NotificationBell />
-          </div>
 
 
           {/* User Menu */}
@@ -320,13 +296,6 @@ const MainLayout: React.FC = () => {
                         : 'text-slate-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400'
                         }`} />
                       {item.path.includes('/chat') && <ChatNotificationBadge />}
-                        
-                      {/* Badge for Collapsed State */}
-                      {!sidebarOpen && 'badgeCount' in item && item.badgeCount > 0 && (
-                        <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full border-2 border-white dark:border-slate-950 flex items-center justify-center">
-                          <span className="text-[8px] font-bold text-white">{item.badgeCount > 9 ? '9+' : item.badgeCount}</span>
-                        </div>
-                      )}
                     </div>
 
                     {/* Label */}
@@ -335,12 +304,6 @@ const MainLayout: React.FC = () => {
                         <span className="font-bold text-[13px] tracking-tight truncate">
                           {item.label}
                         </span>
-                        {/* Notification Badge */}
-                        {'badgeCount' in item && item.badgeCount > 0 && (
-                          <Badge className="ml-auto bg-red-500 text-white border-0 text-[10px] h-5 min-w-[20px] px-1 flex items-center justify-center font-bold">
-                            {item.badgeCount > 9 ? '9+' : item.badgeCount}
-                          </Badge>
-                        )}
                       </div>
                     )}
 
@@ -421,11 +384,6 @@ const MainLayout: React.FC = () => {
                         </div>
 
                         <span className="font-bold text-sm tracking-tight truncate">{item.label}</span>
-                        {'badgeCount' in item && item.badgeCount > 0 && (
-                          <Badge className="ml-auto bg-red-500 text-white border-0 text-[10px] h-5 min-w-[20px] px-1 flex items-center justify-center font-bold">
-                            {item.badgeCount > 9 ? '9+' : item.badgeCount}
-                          </Badge>
-                        )}
                       </NavLink>
                     )
                   })}

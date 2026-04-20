@@ -1132,9 +1132,9 @@ const AttendanceManager: React.FC = () => {
         // Enforce backend-level filtering for Managers (Department Scope + Manager ID)
         if (user?.role === 'manager') {
           if (user.department) {
-            query += (query ? '&' : '?') + `department=${encodeURIComponent(user.department)}`;
+            params.department = user.department;
           }
-          query += (query ? '&' : '?') + `manager_id=${encodeURIComponent(user.id)}`;
+          params.manager_id = user.id;
         }
 
         let [data, employeesRaw] = await Promise.all([

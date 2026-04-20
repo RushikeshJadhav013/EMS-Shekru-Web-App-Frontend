@@ -248,29 +248,11 @@ const MeetingsPage: React.FC = () => {
 
             setProjects(Array.isArray(projsData) ? projsData : (projsData as any)?.projects || (projsData as any)?.data || []);
 
-            // Merge employees and managers for a complete list (Admin, HR, Manager, etc.)
+            // Merge employees and managers for a complete list
             let allEmployees = Array.isArray(empsData) ? empsData : (empsData as any)?.employees || (empsData as any)?.data || [];
             const allManagers = Array.isArray(managersData) ? managersData : (managersData as any)?.managers || (managersData as any)?.data || [];
 
-
-
-            // To Remove Role Hierarchy for all profiles (especially for 1:1 meetings):
-            // We fetch employees from each department to gather everyone and bypass role-based list restrictions.
-            if (finalDepts.length > 0) {
-                try {
-                    const deptEmployees = await Promise.all(
-                        finalDepts.map(d => apiService.getEmployees(d.name).catch(() => []))
-                    );
-                    const flatDeptEmps = deptEmployees.flat();
-                    if (flatDeptEmps.length > 0) {
-                        allEmployees = [...allEmployees, ...flatDeptEmps];
-                    }
-                } catch (e) {
-                    console.warn("Broad employee fetch failed", e);
-                }
-            }
-
-            // Create a unique list based on ID
+            // Create a unique list based on ID — merge employees + managers
             const mergedMap = new Map();
             [...allEmployees, ...allManagers].forEach(person => {
                 const id = person.user_id || person.userId || person.id || person.employee_id;
