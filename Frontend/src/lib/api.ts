@@ -498,36 +498,64 @@ class ApiService {
     role?: string;
     designation?: string;
     status?: boolean | string;
+    is_active?: boolean | string;
+    branch_id?: number | string;
+    company_id?: number | string;
   }): Promise<Blob> {
     const queryParams = new URLSearchParams();
+    const extraHeaders: Record<string, string> = {};
     
     if (params) {
       if (params.department && params.department !== "all") queryParams.append("department", params.department);
       if (params.role) queryParams.append("role", params.role);
       if (params.designation) queryParams.append("designation", params.designation);
-      if (params.status !== undefined) queryParams.append("status", String(params.status));
+      
+      const activeStatus = params.is_active !== undefined ? params.is_active : params.status;
+      if (activeStatus !== undefined && activeStatus !== "all") {
+        queryParams.append("status", String(activeStatus));
+      }
+
+      if (params.branch_id) extraHeaders['X-Branch-Id'] = String(params.branch_id);
+      if (params.company_id) extraHeaders['X-Company-Id'] = String(params.company_id);
     }
 
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
-    return this.download(`/employees/export/pdf${queryString}`);
+    return this.download(`/employees/export/pdf${queryString}`, {
+      headers: extraHeaders
+    });
   }
 
   // Export all employees to CSV
   async exportEmployeesCSV(params?: {
     department?: string;
     role?: string;
+    designation?: string;
     status?: boolean | string;
+    is_active?: boolean | string;
+    branch_id?: number | string;
+    company_id?: number | string;
   }): Promise<Blob> {
     const queryParams = new URLSearchParams();
+    const extraHeaders: Record<string, string> = {};
     
     if (params) {
       if (params.department && params.department !== "all") queryParams.append("department", params.department);
       if (params.role) queryParams.append("role", params.role);
-      if (params.status !== undefined) queryParams.append("status", String(params.status));
+      if (params.designation) queryParams.append("designation", params.designation);
+      
+      const activeStatus = params.is_active !== undefined ? params.is_active : params.status;
+      if (activeStatus !== undefined && activeStatus !== "all") {
+        queryParams.append("status", String(activeStatus));
+      }
+
+      if (params.branch_id) extraHeaders['X-Branch-Id'] = String(params.branch_id);
+      if (params.company_id) extraHeaders['X-Company-Id'] = String(params.company_id);
     }
 
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
-    return this.download(`/employees/export/csv${queryString}`);
+    return this.download(`/employees/export/csv${queryString}`, {
+      headers: extraHeaders
+    });
   }
 
   // Alias for getEmployees to satisfy various component imports
@@ -956,59 +984,6 @@ class ApiService {
     });
   }
 
-  // Export employees as CSV
-  async exportEmployeesCSV(filters?: {
-    status?: string;
-    designation?: string;
-    department?: string;
-    role?: string;
-  }): Promise<Blob> {
-    const params = new URLSearchParams();
-    if (filters) {
-      if (filters.status && filters.status !== "all") {
-        params.append("status", filters.status === "active" ? "true" : "false");
-      }
-      if (filters.designation && filters.designation !== "all") {
-        params.append("designation", filters.designation);
-      }
-      if (filters.department && filters.department !== "all") {
-        params.append("department", filters.department);
-      }
-      if (filters.role && filters.role !== "all") {
-        params.append("role", filters.role.toUpperCase());
-      }
-    }
-    const queryString = params.toString() ? `?${params.toString()}` : "";
-
-    return this.download(`/employees/export/csv${queryString}`);
-  }
-
-  // Export employees as PDF
-  async exportEmployeesPDF(filters?: {
-    status?: string;
-    designation?: string;
-    department?: string;
-    role?: string;
-  }): Promise<Blob> {
-    const params = new URLSearchParams();
-    if (filters) {
-      if (filters.status && filters.status !== "all") {
-        params.append("status", filters.status === "active" ? "true" : "false");
-      }
-      if (filters.designation) {
-        params.append("designation", filters.designation);
-      }
-      if (filters.department && filters.department !== "all") {
-        params.append("department", filters.department);
-      }
-      if (filters.role && filters.role !== "all") {
-        params.append("role", filters.role.toUpperCase());
-      }
-    }
-    const queryString = params.toString() ? `?${params.toString()}` : "";
-
-    return this.download(`/employees/export/pdf${queryString}`);
-  }
 
   // Hiring Management APIs (Matches SR.NO 1-6)
   async getVacancies(department?: string, status?: string) {

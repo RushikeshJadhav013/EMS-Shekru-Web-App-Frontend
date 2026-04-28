@@ -51,17 +51,32 @@ class ChatService {
         unreadCount: session.unread_count || 0,
         isActive: true,
         memberCount: session.member_count,
-        lastMessage: session.last_message ? {
-          id: session.last_message.id?.toString() || '',
-          chatId: session.chat_id?.toString(),
-          timestamp: this.formatTimestamp(session.last_message.timestamp || session.last_message_at),
-          content: session.last_message.content || '',
-          senderId: session.last_message.sender_id?.toString() || '',
-          senderName: session.last_message.sender_name || '',
-          senderRole: 'employee',
-          messageType: 'text',
-          isRead: true
-        } : (session.last_message_at ? {
+        lastMessage: session.last_message ? (() => {
+          const lm = session.last_message;
+          const rawType = (lm.message_type || lm.type || '').toLowerCase();
+          let messageType: ChatMessage['messageType'] = 'text';
+          if (rawType === 'image' || rawType === 'photo') messageType = 'image';
+          else if (rawType === 'file' || rawType === 'document') messageType = 'file';
+          else if (rawType === 'emoji') messageType = 'emoji';
+
+          let content = lm.content || '';
+          if (messageType === 'text') {
+            if (/\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(content) || content.startsWith('data:image/')) messageType = 'image';
+            else if (/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv)(\?.*)?$/i.test(content) || content.startsWith('data:application/')) messageType = 'file';
+          }
+
+          return {
+            id: lm.id?.toString() || '',
+            chatId: session.chat_id?.toString(),
+            timestamp: this.formatTimestamp(lm.timestamp || session.last_message_at),
+            content,
+            senderId: lm.sender_id?.toString() || '',
+            senderName: lm.sender_name || '',
+            senderRole: 'employee',
+            messageType,
+            isRead: true
+          };
+        })() : (session.last_message_at ? {
           id: '',
           chatId: session.chat_id?.toString(),
           timestamp: this.formatTimestamp(session.last_message_at),
@@ -91,12 +106,31 @@ class ChatService {
         if (rawType === 'image' || rawType === 'photo') messageType = 'image';
         else if (rawType === 'file' || rawType === 'document' || rawType === 'pdf') messageType = 'file';
         else if (rawType === 'emoji') messageType = 'emoji';
-        // Fallback: infer from content URL if backend doesn't send type
-        const content: string = msg.content || '';
+
+        // Support for new with-file API fields
+        const fileUrl = msg.file_url;
+        const fileName = msg.file_name;
+        const fileType = msg.file_type || rawType;
+        
+        // Priority: If it's a file message from the new API, we MUST use file_url as the primary content 
+        // for rendering, even if a text 'content' exists as a caption.
+        let content: string = fileUrl || msg.content || '';
+
         if (messageType === 'text') {
-          if (/\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(content)) messageType = 'image';
-          else if (/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv)(\?.*)?$/i.test(content)) messageType = 'file';
+          // Check for URL extensions
+          if (/\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(content) || (fileType && fileType.startsWith('image/'))) messageType = 'image';
+          else if (/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv)(\?.*)?$/i.test(content) || fileUrl) messageType = 'file';
+          // Check for Base64 data URLs (embedded media)
+          else if (content.startsWith('data:image/')) messageType = 'image';
+          else if (content.startsWith('data:application/') || content.includes('|data:application/')) messageType = 'file';
         }
+
+        // If it's a file but not an image, and we have a filename, format it as "name|url" 
+        // to maintain compatibility with existing MessageBubble component
+        if (messageType === 'file' && fileName && content && !content.includes('|')) {
+          content = `${fileName}|${content}`;
+        }
+
         return {
           id: msg.id?.toString(),
           chatId: chatId,
@@ -129,6 +163,58 @@ class ChatService {
   // Upload a file (now returns Base64 string directly)
   async uploadFile(file: File): Promise<string> {
     return this.fileToBase64(file);
+  }
+
+  // Send a message with a file attachment (using FormData)
+  async sendMessageWithFile(
+    chatId: string,
+    chatType: 'individual' | 'group',
+    file: File,
+    content?: string,
+    replyTo?: string
+  ): Promise<ChatMessage> {
+    const typePath = chatType === 'individual' ? 'private' : 'group';
+    try {
+      const formData = new FormData();
+      formData.append('chat_type', typePath);
+      formData.append('chat_id', chatId);
+      const isImage = file.type.startsWith('image/');
+      formData.append('message_type', isImage ? 'image' : 'file');
+      if (content !== undefined) formData.append('content', content || '');
+      formData.append('file', file);
+      if (replyTo) formData.append('reply_to', replyTo);
+
+      const data = await apiService.request(`/chats/${typePath}/${chatId}/messages/with-file`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      // Map response: prefer file_url for content property if available
+      let finalContent = data.file_url || data.content || '';
+      
+      const fallbackType = isImage ? 'image' : 'file';
+      const resolvedMessageType = (data.file_type || data.message_type || fallbackType).startsWith('image') || (data.file_type || data.message_type || fallbackType).includes('image') ? 'image' : 'file';
+
+      if (resolvedMessageType === 'file' && data.file_name && !finalContent.includes('|')) {
+        finalContent = `${data.file_name}|${finalContent}`;
+      }
+
+      return {
+        id: data.id?.toString(),
+        chatId: chatId,
+        senderId: data.sender_id?.toString(),
+        senderName: 'Me',
+        senderRole: 'employee',
+        content: finalContent,
+        messageType: resolvedMessageType as any,
+        timestamp: this.formatTimestamp(data.timestamp),
+        isRead: false,
+        replyTo: data.reply_to?.toString()
+      };
+    } catch (error) {
+      console.error('Error sending message with file:', error);
+      throw error;
+    }
   }
 
   // Send a message
@@ -164,7 +250,7 @@ class ChatService {
         senderId: data.sender_id?.toString(),
         senderName: 'Me',
         senderRole: 'employee',
-        content: data.content || content,
+        content: data.file_url || data.content || content,
         messageType: resolvedType,
         timestamp: this.formatTimestamp(data.timestamp),
         isRead: false,
@@ -179,22 +265,22 @@ class ChatService {
   // Create a new chat
   async createChat(chatData: CreateChatRequest): Promise<Chat> {
     try {
-      let url = '';
+      let endpoint = '';
       let body: any = {};
 
       if (chatData.type === 'individual') {
         const userId = chatData.participantIds[0];
-        url = `${API_BASE_URL}/chats/private/${userId}`;
+        endpoint = `/chats/private/${userId}`;
         body = { user_id: userId };
       } else {
-        url = `${API_BASE_URL}/chats/group`;
+        endpoint = '/chats/group';
         body = {
           name: chatData.name,
           member_ids: chatData.participantIds
         };
       }
 
-      const data = await apiService.request(url, {
+      const data = await apiService.request(endpoint, {
         method: 'POST',
         body: JSON.stringify(body),
       });
@@ -260,9 +346,8 @@ class ChatService {
   async markMessageAsRead(chatId: string, chatType: 'individual' | 'group', messageId: string): Promise<void> {
     const typePath = chatType === 'individual' ? 'private' : 'group';
     try {
-      await fetch(`${API_BASE_URL}/chats/${typePath}/${chatId}/messages/${messageId}/read`, {
+      await apiService.request(`/chats/${typePath}/${chatId}/messages/${messageId}/read`, {
         method: 'POST',
-        headers: this.getAuthHeaders(),
         body: JSON.stringify({
           chat_type: typePath,
           chat_id: chatId,

@@ -2889,15 +2889,13 @@ const AttendanceWithToggle: React.FC = () => {
     // Only show "Late" or "On Time" as requested.
     // The backend is the source of truth for shift-aware late determination.
 
-    if (status === "late") {
-      return <Badge variant="destructive">Late</Badge>;
-    }
+      return <Badge variant="destructive" className="text-sm">Late</Badge>;
 
     // Default to "On Time" for present/active sessions, 
     // and hide other statuses like "absent" or "early".
     if (status === "present") {
       return (
-        <Badge variant="default" className="bg-green-500">
+        <Badge variant="default" className="bg-green-500 text-sm">
           On Time
         </Badge>
       );
@@ -2986,7 +2984,7 @@ const AttendanceWithToggle: React.FC = () => {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">
+          <h2 className="text-2xl font-bold" style={{ color: '#000000' }}>
             {isCheckingIn ? t.attendance.checkIn : t.attendance.checkOut}
           </h2>
         </div>
@@ -3020,9 +3018,9 @@ const AttendanceWithToggle: React.FC = () => {
               <h1 className="text-3xl font-extrabold tracking-tight text-black">
                 Attendance <span className="text-black">Management</span>
               </h1>
-              <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
-                <Calendar className="h-4 w-4 text-indigo-500" />
-                {formatDateIST(new Date(), "EEEE, dd MMM yyyy")}
+              <p className="font-medium flex items-center gap-2 mt-1 text-sm" style={{ color: '#000000' }}>
+                <Calendar className="h-4 w-4" style={{ color: '#000000' }} />
+                {formatIST(nowIST(), "EEEE, dd MMM yyyy | hh:mm a")}
               </p>
             </div>
           </div>
@@ -3055,28 +3053,28 @@ const AttendanceWithToggle: React.FC = () => {
             >
               <TabsTrigger
                 value="self"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#2b59ff] data-[state=active]:to-[#5c51ff] data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:text-slate-700 transition-all duration-300 rounded-full h-full text-sm font-medium"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#2b59ff] data-[state=active]:to-[#5c51ff] data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-[#000000] dark:data-[state=inactive]:text-slate-200 data-[state=inactive]:hover:text-black transition-all duration-300 rounded-full h-full text-sm font-bold"
               >
                 Self Attendance
               </TabsTrigger>
               {canViewEmployeeAttendance && (
                 <TabsTrigger
                   value="employee"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#2b59ff] data-[state=active]:to-[#5c51ff] data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:text-slate-700 transition-all duration-300 rounded-full h-full text-sm font-medium"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#2b59ff] data-[state=active]:to-[#5c51ff] data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-[#000000] dark:data-[state=inactive]:text-slate-200 data-[state=inactive]:hover:text-black transition-all duration-300 rounded-full h-full text-sm font-bold"
                 >
                   Employee Attendance
                 </TabsTrigger>
               )}
               <TabsTrigger
                 value="wfh"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#2b59ff] data-[state=active]:to-[#5c51ff] data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:text-slate-700 transition-all duration-300 rounded-full h-full text-sm font-medium"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#2b59ff] data-[state=active]:to-[#5c51ff] data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-[#000000] dark:data-[state=inactive]:text-slate-200 data-[state=inactive]:hover:text-black transition-all duration-300 rounded-full h-full text-sm font-bold"
               >
                 Apply WFH
               </TabsTrigger>
               {canViewEmployeeAttendance && (
                 <TabsTrigger
                   value="wfh_requests"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#2b59ff] data-[state=active]:to-[#5c51ff] data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-slate-500 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:text-slate-700 transition-all duration-300 rounded-full h-full text-sm font-medium relative"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#2b59ff] data-[state=active]:to-[#5c51ff] data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-[#000000] dark:data-[state=inactive]:text-slate-200 data-[state=inactive]:hover:text-black transition-all duration-300 rounded-full h-full text-sm font-bold relative"
                 >
                   WFH Requests
                   {getPendingWfhCount() > 0 && (
@@ -3099,25 +3097,27 @@ const AttendanceWithToggle: React.FC = () => {
           {/* Self Attendance View */}
           <Card>
             <CardHeader>
-              <CardTitle>{t.attendance.todayStatus}</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-[24px] font-bold" style={{ color: '#000000' }}>
+                {t.attendance.todayStatus}
+              </CardTitle>
+              <CardDescription className="text-sm" style={{ color: '#000000' }}>
                 Your attendance status for today
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {isGettingFastLocation ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 text-sm text-black">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>Getting location...</span>
                   </div>
                 ) : location ? (
-                  <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-start gap-2 text-sm text-black">
                     <MapPin className="h-4 w-4 mt-0.5" />
                     <span className="flex-1">{location.address}</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 text-sm text-black">
                     <MapPin className="h-4 w-4" />
                     <span>Location not available</span>
                   </div>
@@ -3129,7 +3129,7 @@ const AttendanceWithToggle: React.FC = () => {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <LogIn className="h-4 w-4 text-green-500" />
-                          <span className="text-sm font-medium">
+                          <span className="text-sm font-bold text-black">
                             Check-in Time
                           </span>
                           {getStatusBadge(
@@ -3141,7 +3141,7 @@ const AttendanceWithToggle: React.FC = () => {
                             "work_from_home" ? (
                             <Badge
                               variant="outline"
-                              className="bg-orange-50 border-orange-500 text-orange-700 dark:bg-orange-950 dark:text-orange-300"
+                              className="bg-orange-50 border-orange-500 text-orange-700 text-sm dark:bg-orange-950 dark:text-orange-300"
                             >
                               <Home className="h-3 w-3 mr-1" />
                               Work From Home
@@ -3149,7 +3149,7 @@ const AttendanceWithToggle: React.FC = () => {
                           ) : currentAttendance.workLocation === "office" ? (
                             <Badge
                               variant="outline"
-                              className="bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                              className="bg-blue-50 border-blue-500 text-blue-700 text-sm dark:bg-blue-950 dark:text-blue-300"
                             >
                               <MapPin className="h-3 w-3 mr-1" />
                               Work From Office
@@ -3158,7 +3158,7 @@ const AttendanceWithToggle: React.FC = () => {
                             getTodayWfhStatus()?.hasApprovedWfh ? (
                               <Badge
                                 variant="outline"
-                                className="bg-orange-50 border-orange-500 text-orange-700 dark:bg-orange-950 dark:text-orange-300"
+                                className="bg-orange-50 border-orange-500 text-orange-700 text-sm dark:bg-orange-950 dark:text-orange-300"
                               >
                                 <Home className="h-3 w-3 mr-1" />
                                 Work From Home
@@ -3166,14 +3166,14 @@ const AttendanceWithToggle: React.FC = () => {
                             ) : (
                               <Badge
                                 variant="outline"
-                                className="bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                                className="bg-blue-50 border-blue-500 text-blue-700 text-sm dark:bg-blue-950 dark:text-blue-300"
                               >
                                 <MapPin className="h-3 w-3 mr-1" />
                                 Work From Office
                               </Badge>
                             )}
                         </div>
-                        <p className="text-lg font-semibold">
+                        <p className="text-[18px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                           {formatAttendanceTime(
                             currentAttendance.date,
                             currentAttendance.checkInTime,
@@ -3195,7 +3195,7 @@ const AttendanceWithToggle: React.FC = () => {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <LogOut className="h-4 w-4 text-red-500" />
-                          <span className="text-sm font-medium">
+                          <span className="text-sm font-bold text-black">
                             Check-out Time
                           </span>
                           {(() => {
@@ -3216,7 +3216,8 @@ const AttendanceWithToggle: React.FC = () => {
                               checkOutT < "18:00:00" && (
                                 <Badge
                                   variant="outline"
-                                  className="border-orange-500 text-orange-500"
+                                  className="border-orange-500 text-orange-500 text-[14px]"
+                                  style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                                 >
                                   Early
                                 </Badge>
@@ -3224,7 +3225,7 @@ const AttendanceWithToggle: React.FC = () => {
                             );
                           })()}
                         </div>
-                        <p className="text-lg font-semibold">
+                        <p className="text-[18px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                           {currentAttendance.checkOutTime
                             ? formatAttendanceTime(
                               currentAttendance.date,
@@ -3238,11 +3239,11 @@ const AttendanceWithToggle: React.FC = () => {
                         <div>
                           <div className="flex items-center gap-2 mb-2">
                             <Clock className="h-4 w-4 text-blue-500" />
-                            <span className="text-sm font-medium">
+                            <span className="text-[14px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                               Total Work Hours
                             </span>
                           </div>
-                          <p className="text-lg font-semibold">
+                          <p className="text-[18px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                             {currentAttendance.checkOutTime
                               ? formatWorkHours(
                                 currentAttendance.workHours || 0,
@@ -3255,7 +3256,7 @@ const AttendanceWithToggle: React.FC = () => {
                         {!currentAttendance.checkOutTime && (
                           <div className="flex items-center gap-2 text-sm">
                             <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-                            <span className="text-green-700 dark:text-green-300">
+                            <span className="text-green-900 dark:text-green-300 font-medium">
                               Live tracking - updates in real-time
                             </span>
                           </div>
@@ -3263,9 +3264,9 @@ const AttendanceWithToggle: React.FC = () => {
                       </div>
                     </>
                   ) : (
-                    <div className="col-span-2 text-center py-8 text-muted-foreground">
+                    <div className="col-span-2 text-center py-8 text-black">
                       <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Not checked in yet</p>
+                      <p>Not Checked in Yet.</p>
                     </div>
                   )}
                 </div>
@@ -3292,7 +3293,7 @@ const AttendanceWithToggle: React.FC = () => {
                     </Button>
                   ) : (
                     <div className="flex-1 text-center">
-                      <Badge variant="outline" className="px-4 py-2">
+                      <Badge variant="outline" className="px-4 py-2 text-[12px] font-bold border-black" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Attendance Completed for Today
                       </Badge>
@@ -3324,13 +3325,13 @@ const AttendanceWithToggle: React.FC = () => {
           {/* Attendance History */}
           <Card>
             <CardHeader>
-              <CardTitle>{t.attendance.history}</CardTitle>
-              <CardDescription>Your recent attendance records</CardDescription>
+              <CardTitle className="text-[24px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>{t.attendance.history}</CardTitle>
+              <CardDescription className="text-[14px]" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Your Attendance Records</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
                 <div className="flex flex-col gap-3">
-                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <Label className="text-[14px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                     Quick Filters
                   </Label>
                   <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
@@ -3343,9 +3344,13 @@ const AttendanceWithToggle: React.FC = () => {
                         onClick={() => setHistoryQuickFilter("today")}
                         className={
                           historyQuickFilter === "today"
-                            ? "bg-blue-600 hover:bg-blue-700"
-                            : ""
+                            ? "bg-blue-600 hover:bg-blue-700 text-[14px]"
+                            : "text-[14px]"
                         }
+                        style={{
+                          fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+                          color: historyQuickFilter === "today" ? '#FFFFFF' : '#000000'
+                        }}
                       >
                         Today
                       </Button>
@@ -3359,9 +3364,13 @@ const AttendanceWithToggle: React.FC = () => {
                         onClick={() => setHistoryQuickFilter("yesterday")}
                         className={
                           historyQuickFilter === "yesterday"
-                            ? "bg-blue-600 hover:bg-blue-700 font-bold"
-                            : "font-medium"
+                            ? "bg-blue-600 hover:bg-blue-700 font-bold text-[14px]"
+                            : "font-medium text-[14px]"
                         }
+                        style={{
+                          fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+                          color: historyQuickFilter === "yesterday" ? '#FFFFFF' : '#000000'
+                        }}
                       >
                         Yesterday
                       </Button>
@@ -3373,9 +3382,13 @@ const AttendanceWithToggle: React.FC = () => {
                         onClick={() => setHistoryQuickFilter("all")}
                         className={
                           historyQuickFilter === "all"
-                            ? "bg-blue-600 hover:bg-blue-700"
-                            : ""
+                            ? "bg-blue-600 hover:bg-blue-700 text-[14px]"
+                            : "text-[14px]"
                         }
+                        style={{
+                          fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+                          color: historyQuickFilter === "all" ? '#FFFFFF' : '#000000'
+                        }}
                       >
                         All
                       </Button>
@@ -3387,9 +3400,13 @@ const AttendanceWithToggle: React.FC = () => {
                         onClick={() => setHistoryQuickFilter("date")}
                         className={
                           historyQuickFilter === "date"
-                            ? "bg-blue-600 hover:bg-blue-700"
-                            : ""
+                            ? "bg-blue-600 hover:bg-blue-700 text-[14px]"
+                            : "text-[14px]"
                         }
+                        style={{
+                          fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+                          color: historyQuickFilter === "date" ? '#FFFFFF' : '#000000'
+                        }}
                       >
                         Date
                       </Button>
@@ -3397,7 +3414,7 @@ const AttendanceWithToggle: React.FC = () => {
                       {historyQuickFilter === "date" && (
                         <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 mt-4 animate-in fade-in slide-in-from-left-2 duration-300 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 w-full sm:w-auto">
                           <div className="space-y-1 w-full sm:w-[160px]">
-                            <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
+                            <Label className="text-[12px] font-bold uppercase tracking-wider ml-1" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                               From Date
                             </Label>
                             <DatePicker
@@ -3418,7 +3435,7 @@ const AttendanceWithToggle: React.FC = () => {
                             <History className="h-4 w-4 opacity-30" />
                           </div>
                           <div className="space-y-1 w-full sm:w-[160px]">
-                            <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">
+                            <Label className="text-[12px] font-bold uppercase tracking-wider ml-1" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                               To Date
                             </Label>
                             <DatePicker
@@ -3439,7 +3456,7 @@ const AttendanceWithToggle: React.FC = () => {
                         </div>
                       )}
                     </div>
-                    <div className="text-sm text-muted-foreground bg-muted px-3 py-1.5 rounded-md">
+                    <div className="text-[14px] font-bold bg-muted px-3 py-1.5 rounded-md" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                       Showing {getFilteredAttendanceHistory().length} records
                     </div>
                   </div>
@@ -3455,43 +3472,43 @@ const AttendanceWithToggle: React.FC = () => {
                         >
                           <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
                             <tr>
-                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              <th className="text-left p-3 font-bold text-[12px] text-black dark:text-white whitespace-nowrap">
                                 Date
                               </th>
-                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                                 {t.attendance.department}
                               </th>
-                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                                 Work Location
                               </th>
-                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                                 Online Status
                               </th>
-                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                                 {t.attendance.checkInTime}
                               </th>
-                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                                 {t.attendance.checkOutTime}
                               </th>
-                              <th className="text-center p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap min-w-[120px]">
+                              <th className="text-center p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap min-w-[120px] uppercase">
                                 {t.attendance.hours}
                               </th>
-                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                                 {t.attendance.location}
                               </th>
-                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                                 {t.attendance.selfiePhoto}
                               </th>
-                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                                 {t.common.status}
                               </th>
-                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                                 {t.attendance.workSummary}
                               </th>
-                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                                 {t.attendance.workReport}
                               </th>
-                              <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                                 Overdue
                               </th>
                             </tr>
@@ -3558,14 +3575,14 @@ const AttendanceWithToggle: React.FC = () => {
                                           );
                                         } else if (record.checkOutTime) {
                                           return (
-                                            <span className="text-xs text-slate-500 dark:text-slate-400">
+                                            <span className="text-[12px] font-medium text-black dark:text-white">
                                               Checked Out
                                             </span>
                                           );
                                         } else {
                                           return (
-                                            <span className="text-xs text-slate-500 dark:text-slate-400">
-                                              Past Date
+                                            <span className="text-[12px] font-medium text-black dark:text-white">
+                                              Offline
                                             </span>
                                           );
                                         }
@@ -3576,7 +3593,7 @@ const AttendanceWithToggle: React.FC = () => {
                                           {record.checkInStatus && (
                                             <Badge
                                               variant="outline"
-                                              className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${record.checkInStatus.toLowerCase() === "late"
+                                              className={`text-[12px] px-1 py-0 uppercase font-bold border-0 ${record.checkInStatus.toLowerCase() === "late"
                                                 ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
                                                 : "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400"
                                                 }`}
@@ -3587,7 +3604,7 @@ const AttendanceWithToggle: React.FC = () => {
                                           {record.checkOutStatus && (
                                             <Badge
                                               variant="outline"
-                                              className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${record.checkOutStatus.toLowerCase() === "early"
+                                              className={`text-[12px] px-1 py-0 uppercase font-bold border-0 ${record.checkOutStatus.toLowerCase() === "early"
                                                 ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
                                                 : "bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-400"
                                                 }`}
@@ -3602,7 +3619,7 @@ const AttendanceWithToggle: React.FC = () => {
                                   <td className="p-3 whitespace-nowrap">
                                     <div className="flex items-center gap-1.5">
                                       <Clock className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
-                                      <span className="text-xs font-semibold text-slate-900 dark:text-white">
+                                      <span className="text-[12px] font-semibold text-black dark:text-white">
                                         {formatAttendanceTime(
                                           record.date,
                                           record.checkInTime,
@@ -3613,7 +3630,7 @@ const AttendanceWithToggle: React.FC = () => {
                                   <td className="p-3 whitespace-nowrap">
                                     <div className="flex items-center gap-1.5">
                                       <Clock className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
-                                      <span className="text-xs font-semibold text-slate-900 dark:text-white">
+                                      <span className="text-[12px] font-semibold text-black dark:text-white">
                                         {formatAttendanceTime(
                                           record.date,
                                           record.checkOutTime,
@@ -3624,7 +3641,7 @@ const AttendanceWithToggle: React.FC = () => {
                                   <td className="p-3">
                                     {record.checkOutTime ? (
                                       <div className="flex justify-center items-center">
-                                        <span className="inline-flex items-center text-xs font-bold text-slate-950 dark:text-white whitespace-nowrap bg-blue-50/50 dark:bg-blue-950/20 px-2 py-1 rounded-full border border-blue-100 dark:border-blue-900 shadow-sm tabular-nums">
+                                        <span className="inline-flex items-center text-[12px] font-bold text-black dark:text-white whitespace-nowrap bg-blue-50/50 dark:bg-blue-950/20 px-2 py-1 rounded-full border border-blue-100 dark:border-blue-900 shadow-sm tabular-nums">
                                           {formatWorkHours(record.workHours)}
                                         </span>
                                       </div>
@@ -3712,7 +3729,7 @@ const AttendanceWithToggle: React.FC = () => {
                                         )}
                                       </div>
                                       <div className="flex flex-col items-center gap-1 border-t border-slate-100 dark:border-slate-800 pt-1 mt-1 w-full">
-                                        <div className="flex items-center gap-1 text-[10px] font-medium text-slate-500">
+                                        <div className="flex items-center gap-1 text-[10px] font-medium text-black dark:text-white">
                                           <Timer className="h-2.5 w-2.5 text-blue-400" />
                                           <span>
                                             {(record.scheduledStart || "10:00").replace(/^0/, '')} -{" "}
@@ -3723,7 +3740,7 @@ const AttendanceWithToggle: React.FC = () => {
                                           {record.checkInStatus && (
                                             <Badge
                                               variant="outline"
-                                              className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${record.checkInStatus.toLowerCase() ===
+                                              className={`text-[12px] px-1 py-0 uppercase font-bold border-0 ${record.checkInStatus.toLowerCase() ===
                                                 "late"
                                                 ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
                                                 : "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400"
@@ -3735,7 +3752,7 @@ const AttendanceWithToggle: React.FC = () => {
                                           {record.checkOutStatus && (
                                             <Badge
                                               variant="outline"
-                                              className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${record.checkOutStatus.toLowerCase() ===
+                                              className={`text-[12px] px-1 py-0 uppercase font-bold border-0 ${record.checkOutStatus.toLowerCase() ===
                                                 "early"
                                                 ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
                                                 : "bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-400"
@@ -3748,11 +3765,11 @@ const AttendanceWithToggle: React.FC = () => {
                                       </div>
                                     </div>
                                   </td>
-                                  <td className="p-3 text-xs text-slate-600 dark:text-slate-400 max-w-[280px]">
+                                  <td className="p-3 text-xs text-black dark:text-white max-w-[280px]">
                                     {record.workSummary ? (
                                       <button
                                         type="button"
-                                        className="text-left hover:text-blue-600 dark:hover:text-blue-400 block w-full text-xs leading-relaxed"
+                                        className="text-left hover:text-blue-600 dark:hover:text-blue-400 block w-full text-xs leading-relaxed text-black dark:text-white"
                                         onClick={() => {
                                           setSelectedWorkSummary(
                                             record.workSummary || "",
@@ -3797,7 +3814,7 @@ const AttendanceWithToggle: React.FC = () => {
                                         href={record.workReport}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                                        className="text-xs text-black dark:text-white hover:underline"
                                       >
                                         {t.attendance.viewReport || "View"}
                                       </a>
@@ -3807,7 +3824,7 @@ const AttendanceWithToggle: React.FC = () => {
                                       </span>
                                     )}
                                   </td>
-                                  <td className="p-3 text-xs text-slate-600 dark:text-slate-400 max-w-[280px]">
+                                  <td className="p-3 text-xs text-black dark:text-white max-w-[280px]">
                                     {record.taskDeadlineReason ? (
                                       <div
                                         className="text-left w-full"
@@ -4009,46 +4026,46 @@ const AttendanceWithToggle: React.FC = () => {
                   >
                     <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20">
                       <tr>
-                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700">
+                        <th className="text-left p-3 font-medium text-[12px] text-black dark:text-white whitespace-nowrap sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700">
                           {t.attendance.employee}
                         </th>
-                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <th className="text-left p-3 font-medium text-[12px] text-black dark:text-white whitespace-nowrap">
                           Date
                         </th>
-                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                           {t.attendance.department}
                         </th>
-                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                           Work Location
                         </th>
-                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                           Online Status
                         </th>
-                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                           {t.attendance.checkInTime}
                         </th>
-                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                           {t.attendance.checkOutTime}
                         </th>
-                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                           {t.attendance.hours}
                         </th>
-                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                           {t.attendance.location}
                         </th>
-                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                           {t.attendance.selfiePhoto}
                         </th>
-                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                           {t.common.status}
                         </th>
-                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                           {t.attendance.workSummary}
                         </th>
-                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                           {t.attendance.workReport}
                         </th>
-                        <th className="text-left p-3 font-medium text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                           Overdue
                         </th>
                       </tr>
@@ -4081,7 +4098,7 @@ const AttendanceWithToggle: React.FC = () => {
                                 </span>
                               </td>
                               <td className="p-3 whitespace-nowrap">
-                                <Badge variant="outline" className="text-xs">
+                                <Badge variant="outline" className="text-[12px] text-black dark:text-white border-slate-200">
                                   {record.department || "-"}
                                 </Badge>
                               </td>
@@ -4112,7 +4129,7 @@ const AttendanceWithToggle: React.FC = () => {
                                     statusInfo.label === "Checked Out"
                                   ) {
                                     return (
-                                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                                      <span className="text-[12px] font-medium text-black dark:text-white">
                                         Checked Out
                                       </span>
                                     );
@@ -4152,7 +4169,7 @@ const AttendanceWithToggle: React.FC = () => {
                               <td className="p-3">
                                 {record.checkOutTime ? (
                                   <div className="flex justify-center items-center">
-                                    <span className="inline-flex items-center text-xs font-bold text-slate-950 dark:text-white whitespace-nowrap bg-blue-50/50 dark:bg-blue-950/20 px-2 py-1 rounded-full border border-blue-100 dark:border-blue-900 shadow-sm tabular-nums">
+                                    <span className="inline-flex items-center text-[12px] font-bold text-black dark:text-white whitespace-nowrap bg-blue-50/50 dark:bg-blue-950/20 px-2 py-1 rounded-full border border-blue-100 dark:border-blue-900 shadow-sm tabular-nums">
                                       {formatWorkHours(record.workHours)}
                                     </span>
                                   </div>
@@ -4238,7 +4255,7 @@ const AttendanceWithToggle: React.FC = () => {
                                     )}
                                   </div>
                                   <div className="flex flex-col items-center gap-1 border-t border-slate-100 dark:border-slate-800 pt-1 mt-1 w-full">
-                                    <div className="flex items-center gap-1 text-[10px] font-medium text-slate-500">
+                                    <div className="flex items-center gap-1 text-[10px] font-medium text-black dark:text-white">
                                       <Timer className="h-2.5 w-2.5 text-blue-400" />
                                       <span>
                                         {(record.scheduledStart || "10:00").replace(/^0/, '')} -{" "}
@@ -4249,7 +4266,7 @@ const AttendanceWithToggle: React.FC = () => {
                                       {record.checkInStatus && (
                                         <Badge
                                           variant="outline"
-                                          className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${record.checkInStatus.toLowerCase() ===
+                                          className={`text-[12px] px-1 py-0 uppercase font-bold border-0 ${record.checkInStatus.toLowerCase() ===
                                             "late"
                                             ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
                                             : "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400"
@@ -4261,7 +4278,7 @@ const AttendanceWithToggle: React.FC = () => {
                                       {record.checkOutStatus && (
                                         <Badge
                                           variant="outline"
-                                          className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${record.checkOutStatus.toLowerCase() ===
+                                          className={`text-[12px] px-1 py-0 uppercase font-bold border-0 ${record.checkOutStatus.toLowerCase() ===
                                             "early"
                                             ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
                                             : "bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-400"
@@ -4278,7 +4295,7 @@ const AttendanceWithToggle: React.FC = () => {
                                 {record.workSummary ? (
                                   <button
                                     type="button"
-                                    className="text-left hover:text-blue-600 dark:hover:text-blue-400 block w-full text-xs leading-relaxed"
+                                    className="text-left hover:text-blue-600 dark:hover:text-blue-400 block w-full text-xs leading-relaxed text-black dark:text-white"
                                     onClick={() => {
                                       setSelectedWorkSummary(
                                         record.workSummary || "",
@@ -4323,7 +4340,7 @@ const AttendanceWithToggle: React.FC = () => {
                                     href={record.workReport}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                                    className="text-xs text-black dark:text-white hover:underline"
                                   >
                                     {t.attendance.viewReport || "View"}
                                   </a>
@@ -5223,15 +5240,15 @@ const AttendanceWithToggle: React.FC = () => {
       <Dialog open={showCheckoutDialog} onOpenChange={setShowCheckoutDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Check-out</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-[18px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Confirm Check-out</DialogTitle>
+            <DialogDescription className="text-[14px]" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
               Please provide today's work summary before checking out. You can
               optionally upload a work report PDF.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="work-summary">
+              <Label htmlFor="work-summary" className="text-[14px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                 Today's Work Summary <span className="text-red-500">*</span>
               </Label>
               <Textarea
@@ -5246,13 +5263,14 @@ const AttendanceWithToggle: React.FC = () => {
                     ),
                   )
                 }
-                className="mt-2 resize-none"
+                className="mt-2 resize-none placeholder:text-[#000000] placeholder:text-[14px] text-[14px]"
+                style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                 rows={4}
                 required
               />
             </div>
             <div>
-              <Label htmlFor="work-pdf">
+              <Label htmlFor="work-pdf" className="text-[14px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                 Upload Work Report PDF (Optional)
               </Label>
               <div className="mt-2 flex items-center gap-2">
@@ -5271,7 +5289,7 @@ const AttendanceWithToggle: React.FC = () => {
               </div>
             </div>
             <div>
-              <Label htmlFor="task-deadline-reason">
+              <Label htmlFor="task-deadline-reason" className="text-[14px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                 Task Deadline Reason (Optional)
               </Label>
               <Textarea
@@ -5286,7 +5304,8 @@ const AttendanceWithToggle: React.FC = () => {
                     ),
                   )
                 }
-                className="mt-2 resize-none"
+                className="mt-2 resize-none placeholder:text-[#000000] placeholder:text-[14px] text-[14px]"
+                style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                 rows={3}
               />
             </div>
@@ -5295,6 +5314,7 @@ const AttendanceWithToggle: React.FC = () => {
             <Button
               variant="outline"
               onClick={() => setShowCheckoutDialog(false)}
+              className="text-black border-slate-300"
             >
               Cancel
             </Button>
@@ -5346,7 +5366,7 @@ const AttendanceWithToggle: React.FC = () => {
                     >
                       Basic
                     </span>
-                    <span className="text-[9px] text-muted-foreground text-center line-clamp-1">
+                    <span className="text-[12px] text-muted-foreground text-center line-clamp-1">
                       Standard list
                     </span>
                   </div>
@@ -5371,7 +5391,7 @@ const AttendanceWithToggle: React.FC = () => {
                     >
                       Grid
                     </span>
-                    <span className="text-[9px] text-muted-foreground text-center line-clamp-1">
+                    <span className="text-[12px] text-muted-foreground text-center line-clamp-1">
                       Monthly view
                     </span>
                   </div>
@@ -5396,7 +5416,7 @@ const AttendanceWithToggle: React.FC = () => {
                     >
                       Detailed Grid
                     </span>
-                    <span className="text-[9px] text-muted-foreground text-center line-clamp-1">
+                    <span className="text-[12px] text-muted-foreground text-center line-clamp-1">
                       Full details
                     </span>
                   </div>
@@ -5426,7 +5446,7 @@ const AttendanceWithToggle: React.FC = () => {
                     >
                       CSV
                     </span>
-                    <span className="text-[9px] text-muted-foreground text-center">
+                    <span className="text-[12px] text-muted-foreground text-center">
                       Excel file
                     </span>
                   </div>
@@ -5449,7 +5469,7 @@ const AttendanceWithToggle: React.FC = () => {
                     >
                       PDF
                     </span>
-                    <span className="text-[9px] text-muted-foreground text-center">
+                    <span className="text-[12px] text-muted-foreground text-center">
                       Print file
                     </span>
                   </div>
@@ -5827,7 +5847,7 @@ const AttendanceWithToggle: React.FC = () => {
             <Button
               variant="outline"
               onClick={() => setShowSelfieModal(false)}
-              className="gap-2"
+              className="text-black border-slate-300 gap-2"
             >
               <X className="h-4 w-4" />
               Close
@@ -5926,7 +5946,7 @@ const AttendanceWithToggle: React.FC = () => {
             <Button
               variant="outline"
               onClick={() => setSelectedRecord(null)}
-              className="gap-2"
+              className="text-black border-slate-300 gap-2"
             >
               <X className="h-4 w-4" />
               Close
@@ -5976,6 +5996,7 @@ const AttendanceWithToggle: React.FC = () => {
             <Button
               variant="outline"
               onClick={() => setShowWorkSummaryDialog(false)}
+              className="text-black border-slate-300"
             >
               Close
             </Button>
@@ -6052,6 +6073,7 @@ const AttendanceWithToggle: React.FC = () => {
             <Button
               variant="outline"
               onClick={() => setShowLocationDialog(false)}
+              className="text-black border-slate-300"
             >
               Close
             </Button>
@@ -6197,7 +6219,7 @@ const AttendanceWithToggle: React.FC = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="text-black border-slate-300">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 // Clear all WFH requests from the UI

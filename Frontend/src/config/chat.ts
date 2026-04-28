@@ -21,7 +21,7 @@ export const CHAT_CONFIG = {
 
   // Feature flags
   FEATURES: {
-    FILE_UPLOAD: false, // Will be implemented later
+    FILE_UPLOAD: true, // Enabled
     VOICE_MESSAGES: false, // Will be implemented later
     VIDEO_CALLS: false, // Will be implemented later
     MESSAGE_REACTIONS: false, // Will be implemented later

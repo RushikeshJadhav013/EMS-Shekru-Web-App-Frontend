@@ -310,7 +310,7 @@ const HRDashboard: React.FC = () => {
   const activityFeedContent = useMemo(() => {
     if (isLoadingActivities) {
       return (
-        <div className="p-6 text-center text-muted-foreground text-sm">
+        <div className="p-6 text-center font-bold text-xs" style={{ color: '#000000' }}>
           Loading recent activities...
         </div>
       );
@@ -318,7 +318,7 @@ const HRDashboard: React.FC = () => {
 
     if (!recentActivities.length) {
       return (
-        <div className="p-6 text-center text-muted-foreground text-sm">
+        <div className="p-6 text-center font-bold text-xs" style={{ color: '#000000' }}>
           No recent activities available yet.
         </div>
       );
@@ -344,8 +344,8 @@ const HRDashboard: React.FC = () => {
               {renderActivityIcon(activity.type)}
             </div>
             <div className="flex-1 space-y-1">
-              <p className="text-sm font-medium">{activity.user}</p>
-              <div className="text-xs text-muted-foreground">
+              <p className="text-sm font-bold" style={{ color: '#000000' }}>{activity.user}</p>
+              <div className="text-xs font-medium" style={{ color: '#000000' }}>
                 <TruncatedText
                   text={formatActivityDescription(activity)}
                   maxLength={60}
@@ -354,15 +354,21 @@ const HRDashboard: React.FC = () => {
               </div>
             </div>
             <div className="text-right">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs font-medium" style={{ color: '#000000' }}>
                 {formatActivityTime(activity.time)}
               </p>
-              <Badge
-                variant={getActivityBadgeVariant(getCorrectAttendanceStatus(activity))}
-                className="text-xs mt-1 capitalize"
+              <div 
+                className="text-xs mt-1 capitalize font-bold"
+                style={{ 
+                  color: ['approved', 'new-joiner', 'completed', 'on-time'].includes((getCorrectAttendanceStatus(activity) || '').toLowerCase())
+                    ? '#16a34a' 
+                    : ['late', 'rejected', 'cancelled', 'absent'].includes((getCorrectAttendanceStatus(activity) || '').toLowerCase())
+                      ? '#dc2626'
+                      : '#ca8a04'
+                }}
               >
                 {formatStatusLabel(getCorrectAttendanceStatus(activity))}
-              </Badge>
+              </div>
             </div>
           </div>
         ))}
@@ -417,12 +423,12 @@ const HRDashboard: React.FC = () => {
             <Users className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
-              {t.common.welcome}, <span className="text-purple-600">{user?.name}</span>
+            <h1 className="text-3xl font-bold tracking-tight" style={{ color: '#000000' }}>
+              {t.common.welcome}, <span style={{ color: '#000000' }}>{user?.name}</span>
             </h1>
-            <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
-              <CalendarDays className="h-4 w-4 text-purple-500" />
-              {formatIST(new Date(), 'EEEE, MMMM dd, yyyy')}
+            <p className="font-bold flex items-center gap-2 mt-1 text-sm" style={{ color: '#000000' }}>
+              <CalendarDays className="h-4 w-4" style={{ color: '#000000' }} />
+              {formatIST(new Date(), 'EEEE, MMMM dd, yyyy | hh:mm a')}
             </p>
           </div>
         </div>
@@ -543,15 +549,15 @@ const HRDashboard: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-1">
-                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">{item.label}</h3>
-                <div className="text-xl font-black text-gray-900 dark:text-gray-100 tracking-tight">{item.value}</div>
+                <h3 className="text-xs font-bold uppercase tracking-widest leading-none" style={{ color: '#000000' }}>{item.label}</h3>
+                <div className="text-2xl font-black tracking-tight" style={{ color: '#000000' }}>{item.value}</div>
                 <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
                   <div className={`h-1.5 w-1.5 rounded-full ${item.color === 'blue' ? 'bg-blue-500' :
                     item.color === 'emerald' ? 'bg-emerald-500' :
                       item.color === 'amber' ? 'bg-amber-500' :
                         'bg-purple-500'
                     }`} />
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase">{item.sub}</span>
+                  <span className="text-xs font-bold uppercase" style={{ color: '#000000' }}>{item.sub}</span>
                 </div>
               </div>
             </CardContent>
@@ -564,13 +570,13 @@ const HRDashboard: React.FC = () => {
         {/* Recent Activities */}
         <Card className="lg:col-span-2 border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl">
+            <CardTitle className="flex items-center gap-2 text-base font-bold" style={{ color: '#000000' }}>
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
                 <Activity className="h-5 w-5 text-white" />
               </div>
               {t.dashboard.recentActivities}
             </CardTitle>
-            <CardDescription className="text-base">Latest HR activities and requests</CardDescription>
+            <p className="text-sm font-medium" style={{ color: '#000000' }}>Latest HR activities and requests</p>
           </CardHeader>
           <CardContent className="space-y-3">{activityFeedContent}</CardContent>
         </Card>
@@ -578,41 +584,41 @@ const HRDashboard: React.FC = () => {
         {/* WFH Requests */}
         <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl">
+            <CardTitle className="flex items-center gap-2 text-base font-bold" style={{ color: '#000000' }}>
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                 <Home className="h-5 w-5 text-white" />
               </div>
               WFH Requests
             </CardTitle>
-            <CardDescription className="text-base">Review pending work-from-home requests</CardDescription>
+            <p className="text-sm font-medium" style={{ color: '#000000' }}>Review pending work-from-home requests</p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-4 gap-2">
               <div className="rounded-lg border bg-white/60 dark:bg-gray-900/30 p-3">
-                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total</div>
-                <div className="text-lg font-black text-gray-900 dark:text-gray-100">{wfhSummary.total}</div>
+                <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#000000' }}>Total</div>
+                <div className="text-base font-bold" style={{ color: '#000000' }}>{wfhSummary.total}</div>
               </div>
               <div className="rounded-lg border bg-white/60 dark:bg-gray-900/30 p-3">
-                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Pending</div>
-                <div className="text-lg font-black text-gray-900 dark:text-gray-100">{wfhSummary.pending}</div>
+                <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#000000' }}>Pending</div>
+                <div className="text-base font-bold" style={{ color: '#000000' }}>{wfhSummary.pending}</div>
               </div>
               <div className="rounded-lg border bg-white/60 dark:bg-gray-900/30 p-3">
-                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Approved</div>
-                <div className="text-lg font-black text-gray-900 dark:text-gray-100">{wfhSummary.approved}</div>
+                <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#000000' }}>Approved</div>
+                <div className="text-base font-bold" style={{ color: '#000000' }}>{wfhSummary.approved}</div>
               </div>
               <div className="rounded-lg border bg-white/60 dark:bg-gray-900/30 p-3">
-                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Rejected</div>
-                <div className="text-lg font-black text-gray-900 dark:text-gray-100">{wfhSummary.rejected}</div>
+                <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#000000' }}>Rejected</div>
+                <div className="text-base font-bold" style={{ color: '#000000' }}>{wfhSummary.rejected}</div>
               </div>
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold">Pending (latest)</div>
+              <div className="text-sm font-bold" style={{ color: '#000000' }}>Pending (latest)</div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => navigate('/hr/attendance?tab=wfh_requests')}
-                className="h-8"
+                className="h-8 text-blue-600 border-blue-600 hover:bg-blue-50 hover:text-blue-700 font-bold"
               >
                 View All
                 <ChevronRightIcon className="h-4 w-4 ml-1" />
@@ -620,9 +626,9 @@ const HRDashboard: React.FC = () => {
             </div>
 
             {isLoadingWfhRequests ? (
-              <div className="p-4 text-center text-muted-foreground text-sm">Loading WFH requests...</div>
+              <div className="p-4 text-center font-bold text-xs" style={{ color: '#000000' }}>Loading WFH requests...</div>
             ) : !wfhSummary.pendingList.length ? (
-              <div className="p-4 text-center text-muted-foreground text-sm">No pending requests.</div>
+              <div className="p-4 text-center font-bold text-xs" style={{ color: '#000000' }}>No pending requests.</div>
             ) : (
               <div className="space-y-2">
                 {wfhSummary.pendingList.map((req: any) => (
@@ -632,16 +638,25 @@ const HRDashboard: React.FC = () => {
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <div className="text-sm font-semibold truncate">{req.user_name}</div>
-                        <Badge variant="secondary" className="text-xs capitalize">
+                        <div className="text-sm font-bold truncate" style={{ color: '#000000' }}>{req.user_name}</div>
+                        <div 
+                          className="text-xs capitalize font-bold"
+                          style={{ 
+                            color: (req.status || '').toLowerCase() === 'approved' 
+                              ? '#16a34a' 
+                              : (req.status || '').toLowerCase() === 'rejected'
+                                ? '#dc2626'
+                                : '#ca8a04'
+                          }}
+                        >
                           {formatStatusLabel(req.status)}
-                        </Badge>
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground mt-1">
+                      <div className="text-xs font-medium mt-1" style={{ color: '#000000' }}>
                         {formatShortDate(req.start_date)} → {formatShortDate(req.end_date)} • {req.department}
                       </div>
                       {req.reason ? (
-                        <div className="text-xs text-muted-foreground mt-1">
+                        <div className="text-xs font-medium mt-1" style={{ color: '#000000' }}>
                           <TruncatedText
                             text={req.reason}
                             maxLength={80}
@@ -651,20 +666,19 @@ const HRDashboard: React.FC = () => {
                       ) : null}
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
-                      <Button
-                        size="sm"
-                        disabled={isProcessingWfhRequest}
-                        onClick={() => handleWfhRequestAction(Number(req.id), 'approve')}
-                        className="h-8"
-                      >
+                        <Button
+                          size="sm"
+                          disabled={isProcessingWfhRequest}
+                          onClick={() => handleWfhRequestAction(Number(req.id), 'approve')}
+                          className="h-8 bg-green-600 hover:bg-green-700 text-white font-bold"
+                        >
                         Approve
                       </Button>
                       <Button
                         size="sm"
-                        variant="outline"
                         disabled={isProcessingWfhRequest}
                         onClick={() => openRejectDialog(req)}
-                        className="h-8"
+                        className="h-8 bg-red-600 hover:bg-red-700 text-white font-bold"
                       >
                         Reject
                       </Button>

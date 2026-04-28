@@ -579,12 +579,12 @@ const TeamLeadDashboard: React.FC = () => {
               <Users className="h-8 w-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
-                {t.common.welcome}, <span className="text-emerald-600">{user?.name}</span>
+              <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: '#000000' }}>
+                {t.common.welcome}, <span style={{ color: '#000000' }}>{user?.name}</span>
               </h1>
-              <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
-                <CalendarDays className="h-4 w-4 text-emerald-500" />
-                {formatIST(new Date(), 'EEEE, MMMM dd, yyyy')}
+              <p className="font-medium flex items-center gap-2 mt-1 text-sm" style={{ color: '#000000' }}>
+                <CalendarDays className="h-4 w-4" style={{ color: '#000000' }} />
+                {formatIST(new Date(), 'EEEE, MMMM dd, yyyy | hh:mm a')}
               </p>
             </div>
           </div>
@@ -664,9 +664,9 @@ const TeamLeadDashboard: React.FC = () => {
                 )}
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</h3>
+                <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: '#000000' }}>{stat.label}</h3>
                 <div className="flex items-baseline gap-1">
-                  <div className="text-2xl font-black text-gray-900 dark:text-gray-100">{stat.value}</div>
+                  <div className="text-2xl font-black" style={{ color: '#000000' }}>{stat.value}</div>
                 </div>
                 {stat.progress !== undefined ? (
                   <div className="pt-1.5">
@@ -682,7 +682,7 @@ const TeamLeadDashboard: React.FC = () => {
                       stat.color === 'indigo' ? 'text-indigo-500' :
                         'text-amber-500'
                       }`} />
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">{stat.sub}</span>
+                    <span className="text-xs font-bold uppercase leading-tight" style={{ color: '#000000' }}>{stat.sub}</span>
                   </div>
                 )}
               </div>
@@ -698,14 +698,14 @@ const TeamLeadDashboard: React.FC = () => {
           <CardHeader className="border-b bg-gray-50/50 dark:bg-gray-900/50 px-6 py-4">
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="text-xl font-bold flex items-center gap-2">
-                  <Users className="h-5 w-5 text-emerald-600" />
+                <CardTitle className="text-base font-bold flex items-center gap-2" style={{ color: '#000000' }}>
+                  <Users className="h-5 w-5" style={{ color: '#000000' }} />
                   {t.navigation.teamMembers}
                 </CardTitle>
-                <CardDescription className="text-sm">Real-time status and task monitoring</CardDescription>
+                <CardDescription className="text-sm" style={{ color: '#000000' }}>Real-time status and task monitoring</CardDescription>
               </div>
-              <Badge variant="outline" className="rounded-full px-4 h-7 border-emerald-200 text-emerald-700 bg-emerald-50">
-                {teamMembers.length} Total
+              <Badge variant="outline" className="rounded-full px-4 h-8 bg-white border-gray-200" style={{ color: '#000000' }}>
+                <span className="text-sm font-bold">{teamMembers.length} Total</span>
               </Badge>
             </div>
           </CardHeader>
@@ -748,16 +748,16 @@ const TeamLeadDashboard: React.FC = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <h4 className="font-bold text-gray-900 dark:text-white group-hover:text-emerald-600 transition-colors truncate">
+                            <h4 className="font-bold text-sm truncate" style={{ color: '#000000' }}>
                               {member.name}
                             </h4>
                             <div className="flex items-center gap-1.5 ml-1">
                               {member.isOnline ? (
-                                <Badge className="bg-green-500 hover:bg-green-600 h-5 px-1.5 text-[10px] animate-pulse">
+                                <Badge className="bg-green-500 hover:bg-green-600 h-5.5 px-2 text-xs animate-pulse">
                                   Online
                                 </Badge>
                               ) : (
-                                <Badge variant="secondary" className="h-5 px-1.5 text-[10px] opacity-70">
+                                <Badge className="bg-red-500 hover:bg-red-600 h-5.5 px-2 text-xs text-white">
                                   Offline
                                 </Badge>
                               )}
@@ -785,7 +785,7 @@ const TeamLeadDashboard: React.FC = () => {
                             <div className="space-y-1 mt-1">
                               <div className="flex items-center gap-2">
                                 <ClipboardList className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                                <div className="text-xs font-semibold text-gray-900 dark:text-white flex-1 min-w-0">
+                                <div className="text-xs font-semibold flex-1 min-w-0" style={{ color: '#000000' }}>
                                   <TruncatedText
                                     text={member.deadlineTaskTitle}
                                     maxLength={35}
@@ -818,7 +818,7 @@ const TeamLeadDashboard: React.FC = () => {
                           ) : (
                             <div className="flex items-center gap-2 mt-1">
                               <ClipboardList className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                              <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 flex-1 min-w-0">
+                              <div className="text-xs font-semibold flex-1 min-w-0" style={{ color: '#000000' }}>
                                 <TruncatedText
                                   text={member.task}
                                   maxLength={35}
@@ -868,8 +868,8 @@ const TeamLeadDashboard: React.FC = () => {
         <div className="lg:col-span-4 space-y-6">
           <Card className="border-none shadow-sm bg-white dark:bg-gray-800/50">
             <CardHeader className="pb-4">
-              <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <Activity className="h-5 w-5 text-indigo-500" />
+              <CardTitle className="text-base font-bold flex items-center gap-2" style={{ color: '#000000' }}>
+                <Activity className="h-5 w-5" style={{ color: '#000000' }} />
                 Team Activity
               </CardTitle>
             </CardHeader>
@@ -888,15 +888,15 @@ const TeamLeadDashboard: React.FC = () => {
                     {activity.type === 'info' && <Clock className="h-4 w-4" />}
                   </div>
                   <div className="space-y-0.5">
-                    <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{activity.user}</p>
-                    <div className="text-xs text-muted-foreground leading-relaxed">
+                    <p className="text-sm font-bold" style={{ color: '#000000' }}>{activity.user}</p>
+                    <div className="text-xs leading-relaxed" style={{ color: '#000000' }}>
                       <TruncatedText
                         text={activity.status}
                         maxLength={50}
                         showToggle={false}
                       />
                     </div>
-                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tight pt-1">
+                    <p className="text-xs font-bold uppercase tracking-tight pt-1" style={{ color: '#000000' }}>
                       {activity.time}
                     </p>
                   </div>

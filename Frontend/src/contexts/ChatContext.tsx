@@ -13,6 +13,7 @@ interface ChatContextType {
   unreadCount: number;
   setActiveChat: (chat: Chat | null) => void;
   sendMessage: (content: string, messageType?: 'text' | 'emoji' | 'image' | 'file', replyTo?: string) => Promise<void>;
+  sendMessageWithFile: (file: File, content?: string, replyTo?: string) => Promise<void>;
   createChat: (type: 'individual' | 'group', participantIds: string[], name?: string, description?: string) => Promise<Chat>;
   loadChats: () => Promise<void>;
   loadMessages: (chatId: string, type?: 'individual' | 'group') => Promise<void>;
@@ -88,7 +89,30 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const fetchedChats = await chatService.getChats();
-      setChats(fetchedChats);
+      
+      setChats(prev => {
+        // Prevent recent messages in the sidebar from flickering or reverting to old data
+        return fetchedChats.map(fc => {
+          const localMatch = prev.find(p => p.id === fc.id);
+          if (localMatch && localMatch.lastMessage && fc.lastMessage) {
+            const localTime = new Date(localMatch.lastMessage.timestamp).getTime();
+            const fetchedTime = new Date(fc.lastMessage.timestamp).getTime();
+            
+            // If our local last message is newer AND was sent within the last 20 seconds,
+            // we trust it more than the server's version (which might be lagging).
+            if (localTime > fetchedTime && (Date.now() - localTime < 20000)) {
+              return { 
+                ...fc, 
+                lastMessage: localMatch.lastMessage,
+                updatedAt: localMatch.updatedAt,
+                // Keep the unread count from server, but content from local
+                unreadCount: fc.unreadCount 
+              };
+            }
+          }
+          return fc;
+        });
+      });
 
       // aggressively fix 'No messages yet' issues:
       // if any chat has a timestamp indicating a message exists, but the backend didn't supply the content block:
@@ -144,27 +168,55 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Reverse so oldest are at the top, newest at the bottom (WhatsApp style)
       const serverMessages = [...fetchedMessages].reverse();
 
-      // Preserve LOCAL-ONLY media messages for THIS chat only (optimistic messages
-      // whose large base64 payload the backend didn't persist).
       setMessages(prev => {
+        // 1. Map server messages and potentially restore truncated content from local state
+        const mergedServerMessages = serverMessages.map(sm => {
+          const localMatch = prev.find(pm => pm.id === sm.id);
+          // If we have a local version with the same ID and its content is LONGER,
+          // it strongly suggests the server version was truncated. 
+          // We preserve our full local content and the correct messageType.
+          if (localMatch && localMatch.content.length > sm.content.length) {
+            return { 
+              ...sm, 
+              content: localMatch.content,
+              messageType: localMatch.messageType // Preserve type even if server says 'text'
+            };
+          }
+          return sm;
+        });
+
+        // 2. Preserve LOCAL-ONLY media messages for THIS chat only (optimistic messages
+        // whose large base64 payload the backend didn't persist).
         const localOnly = prev.filter(m =>
           typeof m.id === 'string' &&
           m.id.startsWith('local_') &&
-          m.chatId === chatId          // ← only keep locals that belong to this chat
+          m.chatId === chatId
         );
 
-        if (localOnly.length === 0) return serverMessages;
-
-        // Drop a local message if the server already has it
+        // 3. Filter out local messages that the server now includes 
+        // (Matched by sender, type, and time. Content length check is removed because of truncation.)
         const unsyncedLocals = localOnly.filter(lm =>
-          !serverMessages.some(sm =>
+          !mergedServerMessages.some(sm =>
             sm.senderId === lm.senderId &&
-            sm.content.length === lm.content.length &&
-            Math.abs(new Date(sm.timestamp).getTime() - new Date(lm.timestamp).getTime()) < 120_000
+            sm.messageType === lm.messageType &&
+            Math.abs(new Date(sm.timestamp).getTime() - new Date(lm.timestamp).getTime()) < 120_000 &&
+            (lm.messageType === 'text' ? sm.content === lm.content : true)
           )
         );
 
-        return [...serverMessages, ...unsyncedLocals];
+        // 4. Handle "Sync Gap": If a message was recently confirmed (no longer 'local_')
+        // but the backend pole hasn't returned it yet (due to replica lag or cache slow-burn),
+        // we keep it in the state for 15 seconds so it doesn't vanish and reappear.
+        const existingIds = new Set(mergedServerMessages.map(m => m.id));
+        const missingButRecent = prev.filter(m =>
+          m.chatId === chatId &&
+          typeof m.id === 'string' &&
+          !m.id.startsWith('local_') &&
+          !existingIds.has(m.id) &&
+          Math.abs(Date.now() - new Date(m.timestamp).getTime()) < 15000 // 15s grace period
+        );
+
+        return [...mergedServerMessages, ...unsyncedLocals, ...missingButRecent];
       });
     } catch (error) {
       console.error('Failed to load messages:', error);
@@ -225,6 +277,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const newMessage = await chatService.sendMessage(activeChat.id, activeChat.type, content, messageType, replyTo);
+      
+      // If server version is truncated, keep local version
+      if ((messageType === 'image' || messageType === 'file') && newMessage.content.length < content.length) {
+        newMessage.content = content;
+      }
+
       // Replace optimistic message with server-confirmed one
       setMessages(prev => prev.map(m => m.id === optimisticId ? newMessage : m));
       setChats(prev => prev.map(chat =>
@@ -234,8 +292,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ));
     } catch (error) {
       console.error('Failed to send message:', error);
-      // For media messages – keep the optimistic message visible (file is embedded as base64)
-      // For text – remove optimistic and show error
       if (messageType === 'text' || messageType === 'emoji') {
         setMessages(prev => prev.filter(m => m.id !== optimisticId));
         toast({
@@ -244,7 +300,108 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           variant: 'destructive',
         });
       }
-      // Media messages: silently keep the local copy so the user can see the file
+    }
+  }, [activeChat, user, toast]);
+
+  // Send message with file – using the new with-file API
+  const sendMessageWithFile = useCallback(async (file: File, content?: string, replyTo?: string) => {
+    if (!activeChat || !user) return;
+
+    const isImage = file.type.startsWith('image/');
+    const messageType = isImage ? 'image' : 'file';
+    
+    // Create local preview content
+    const base64 = await chatService.fileToBase64(file);
+    const localContent = isImage ? base64 : `${file.name}|${base64}`;
+
+    // Build an optimistic message
+    const optimisticId = `local_${Date.now()}`;
+    const optimisticMessage: ChatMessage = {
+      id: optimisticId,
+      chatId: activeChat.id,
+      senderId: user.id?.toString(),
+      senderName: 'You',
+      senderRole: user.role,
+      content: localContent,
+      messageType,
+      timestamp: new Date().toISOString(),
+      isRead: false,
+      replyTo,
+    };
+
+    setMessages(prev => [...prev, optimisticMessage]);
+
+    // Update sidebar optimistically as well so the latest image shows as "Image" in the list immediately
+    setChats(prev => prev.map(chat =>
+      chat.id === activeChat.id
+        ? { ...chat, lastMessage: optimisticMessage, updatedAt: optimisticMessage.timestamp }
+        : chat
+    ));
+
+    let fileToSend = file;
+
+    // If it's an image, compress it to avoid 413 "Request Entity Too Large" errors
+    if (isImage && file.size > 1024 * 512) { // Only compress if larger than 0.5MB
+      try {
+        const compressedFile = await new Promise<File>((resolve) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              let width = img.width;
+              let height = img.height;
+              const maxWidth = 1024;
+              if (width > maxWidth) {
+                height = (height * maxWidth) / width;
+                width = maxWidth;
+              }
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx?.drawImage(img, 0, 0, width, height);
+              canvas.toBlob((blob) => {
+                if (blob) {
+                  resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+                } else {
+                  resolve(file);
+                }
+              }, 'image/jpeg', 0.7);
+            };
+            img.src = e.target?.result as string;
+          };
+        });
+        fileToSend = compressedFile;
+      } catch (e) {
+        console.warn("Failed to compress image, sending original:", e);
+      }
+    }
+
+    try {
+      const newMessage = await chatService.sendMessageWithFile(activeChat.id, activeChat.type, fileToSend, content, replyTo);
+      
+      // Replace optimistic message with server-confirmed one
+      setMessages(prev => prev.map(m => m.id === optimisticId ? newMessage : m));
+      setChats(prev => prev.map(chat =>
+        chat.id === activeChat.id
+          ? { ...chat, lastMessage: newMessage, updatedAt: newMessage.timestamp }
+          : chat
+      ));
+    } catch (error: any) {
+      console.error('Failed to send file message:', error);
+      
+      const isTooLarge = error.message?.includes('413') || error.status === 413;
+      
+      toast({
+        title: isTooLarge ? 'File Too Large' : 'Upload Failed',
+        description: isTooLarge 
+          ? 'The file is too large for the server. Please try a smaller file or compress it first.' 
+          : 'Could not send the file. Please try again.',
+        variant: 'destructive',
+      });
+      // Filter out only if it's not a background poll issue
+      setMessages(prev => prev.filter(m => m.id !== optimisticId));
     }
   }, [activeChat, user, toast]);
 
@@ -540,6 +697,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     unreadCount,
     setActiveChat: handleSetActiveChat,
     sendMessage,
+    sendMessageWithFile,
     createChat,
     loadChats,
     loadMessages,

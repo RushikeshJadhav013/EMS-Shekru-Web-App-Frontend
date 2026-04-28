@@ -22,6 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatTimeIST, formatIST, nowIST } from '@/utils/timezone';
 import { apiService, API_BASE_URL } from '@/lib/api';
 import TruncatedText from '@/components/ui/TruncatedText';
+import { cn } from '@/lib/utils';
 
 interface TeamMemberStatus {
   name: string;
@@ -264,12 +265,12 @@ const ManagerDashboard: React.FC = () => {
             <Target className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
-              {t.common.welcome}, <span className="text-teal-600">{user?.name}</span>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#000000' }}>
+              {t.common.welcome}, <span style={{ color: '#000000' }}>{user?.name}</span>
             </h1>
-            <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
-              <CalendarDays className="h-4 w-4 text-teal-500" />
-              {formatIST(nowIST(), 'EEEE, MMMM dd, yyyy')}
+            <p className="font-bold flex items-center gap-2 mt-1 text-sm" style={{ color: '#000000' }}>
+              <CalendarDays className="h-4 w-4" style={{ color: '#000000' }} />
+              {formatIST(nowIST(), 'EEEE, MMMM dd, yyyy | hh:mm a')}
             </p>
           </div>
         </div>
@@ -389,15 +390,15 @@ const ManagerDashboard: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">{item.label}</h3>
-                <div className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">{item.value}</div>
+                <h3 className="text-base font-bold uppercase tracking-widest leading-none" style={{ color: '#000000' }}>{item.label}</h3>
+                <div className="text-2xl font-bold tracking-tight" style={{ color: '#000000' }}>{item.value}</div>
                 <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
                   <div className={`h-1.5 w-1.5 rounded-full ${item.color === 'blue' ? 'bg-blue-500' :
                     item.color === 'emerald' ? 'bg-emerald-500' :
                       item.color === 'indigo' ? 'bg-indigo-500' :
                         'bg-amber-500'
                     }`} />
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase">{item.sub}</span>
+                  <span className="text-xs font-bold uppercase" style={{ color: '#000000' }}>{item.sub}</span>
                 </div>
               </div>
             </CardContent>
@@ -410,13 +411,11 @@ const ManagerDashboard: React.FC = () => {
         {/* Team Activities */}
         <Card className="lg:col-span-2 border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
-                <Activity className="h-5 w-5 text-white" />
-              </div>
+            <CardTitle className="flex items-center gap-2 text-base font-bold" style={{ color: '#000000' }}>
+              <Activity className="h-5 w-5" style={{ color: '#000000' }} />
               {t.navigation.teamActivities}
             </CardTitle>
-            <CardDescription className="text-base">Recent updates from your team</CardDescription>
+            <p className="text-sm font-medium" style={{ color: '#000000' }}>Recent updates from your team</p>
           </CardHeader>
           <CardContent className="space-y-3">
             {teamActivities.length > 0 ? (
@@ -434,8 +433,8 @@ const ManagerDashboard: React.FC = () => {
                         {activity.type === 'check-in' && <Clock className="h-5 w-5 text-white" />}
                       </div>
                       <div className="flex-1 space-y-1">
-                        <p className="text-sm font-medium">{activity.user}</p>
-                        <div className="text-xs text-muted-foreground">
+                        <p className="text-sm font-bold" style={{ color: '#000000' }}>{activity.user}</p>
+                        <div className="text-xs" style={{ color: '#000000' }}>
                           <TruncatedText
                             text={activity.description || ''}
                             maxLength={50}
@@ -444,21 +443,22 @@ const ManagerDashboard: React.FC = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs font-bold" style={{ color: '#000000' }}>
                           {formatTimeIST(activity.time, 'hh:mm a')}
                         </p>
-                        <Badge
-                          variant={
-                            getCorrectAttendanceStatus(activity) === 'completed' || getCorrectAttendanceStatus(activity) === 'on-time' ? 'default' :
-                              getCorrectAttendanceStatus(activity) === 'pending' ? 'secondary' :
-                                getCorrectAttendanceStatus(activity) === 'late' || getCorrectAttendanceStatus(activity) === 'overdue' ? 'destructive' :
-                                  'outline'
-                          }
-                          className={`text-xs mt-1 capitalize`}
+                        <div
+                          className="text-xs font-bold uppercase mt-1"
+                          style={{
+                            color: (getCorrectAttendanceStatus(activity) === 'on-time' || getCorrectAttendanceStatus(activity) === 'completed')
+                              ? '#16a34a'
+                              : (getCorrectAttendanceStatus(activity) === 'late' || getCorrectAttendanceStatus(activity) === 'overdue')
+                                ? '#dc2626'
+                                : '#000000'
+                          }}
                         >
                           {getCorrectAttendanceStatus(activity) === 'on-time' ? 'On Time' :
                              getCorrectAttendanceStatus(activity).replace('-', ' ')}
-                        </Badge>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -497,7 +497,7 @@ const ManagerDashboard: React.FC = () => {
                 )}
               </>
             ) : (
-              <p className="text-sm text-muted-foreground">No recent activities</p>
+              <p className="text-sm font-bold" style={{ color: '#000000' }}>No recent activities</p>
             )}
           </CardContent>
         </Card>
@@ -505,28 +505,29 @@ const ManagerDashboard: React.FC = () => {
         {/* Team Leads Performance */}
         <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-                <Target className="h-5 w-5 text-white" />
-              </div>
+            <CardTitle className="flex items-center gap-2 text-base font-bold" style={{ color: '#000000' }}>
+              <Target className="h-5 w-5" style={{ color: '#000000' }} />
               {t.navigation.teamPerformance}
             </CardTitle>
-            <CardDescription className="text-base">Task completion by team</CardDescription>
+            <p className="text-sm font-medium" style={{ color: '#000000' }}>Task completion by team</p>
           </CardHeader>
           <CardContent className="space-y-4">
             {teamPerformance.length > 0 ? teamPerformance.map((team) => (
               <div key={`${team.team}-${team.lead}`} className="space-y-2">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="font-medium text-sm">{team.team}</p>
-                    <p className="text-xs text-muted-foreground">{team.lead} • {team.members} members</p>
+                    <p className="font-bold text-sm" style={{ color: '#000000' }}>{team.team}</p>
+                    <p className="text-sm" style={{ color: '#000000' }}>
+                      <span className="font-bold">{team.lead}</span>
+                      <span className="font-normal"> • {team.members} members</span>
+                    </p>
                   </div>
-                  <span className="text-sm font-semibold">{team.completion}%</span>
+                  <span className="text-xs" style={{ color: '#000000' }}>{team.completion}%</span>
                 </div>
                 <Progress value={team.completion} className="h-2" />
               </div>
             )) : (
-              <p className="text-sm text-muted-foreground">No performance data available</p>
+              <p className="text-sm font-bold" style={{ color: '#000000' }}>No performance data available</p>
             )}
           </CardContent>
         </Card>
@@ -535,19 +536,17 @@ const ManagerDashboard: React.FC = () => {
       {/* Team Members Current Status */}
       <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-xl">
-            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
-              <Users className="h-5 w-5 text-white" />
-            </div>
+          <CardTitle className="flex items-center gap-2 text-base font-bold" style={{ color: '#000000' }}>
+            <Users className="h-5 w-5" style={{ color: '#000000' }} />
             {t.navigation.teamMembers} Current Status
           </CardTitle>
-          <CardDescription className="text-base">Current status and task progress</CardDescription>
+          <p className="text-sm font-medium" style={{ color: '#000000' }}>Current status and task progress</p>
         </CardHeader>
         <CardContent className="space-y-3">
           {isLoadingTeamMembers ? (
-            <p className="text-sm text-muted-foreground text-center py-4">{t.common.loadingTeamMembers}</p>
+            <p className="text-sm font-bold text-center py-4" style={{ color: '#000000' }}>{t.common.loadingTeamMembers}</p>
           ) : teamMembers.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">{t.common.noTeamMembers}</p>
+            <p className="text-sm font-bold text-center py-4" style={{ color: '#000000' }}>{t.common.noTeamMembers}</p>
           ) : (
             teamMembers.map((member) => (
               <div key={member.userId} className="p-3 rounded-lg border space-y-2">
@@ -556,12 +555,12 @@ const ManagerDashboard: React.FC = () => {
                     <div className={`h-2.5 w-2.5 rounded-full ${member.isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
                     <div>
                       <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm">{member.name}</p>
-                        <Badge variant={member.isOnline ? 'default' : 'secondary'} className={`h-4 px-1 text-[9px] ${member.isOnline ? 'bg-green-500' : 'opacity-70'}`}>
+                        <p className="font-bold text-sm" style={{ color: '#000000' }}>{member.name}</p>
+                        <Badge variant="default" className={`text-xs ${member.isOnline ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}`}>
                           {member.isOnline ? 'Online' : 'Offline'}
                         </Badge>
                       </div>
-                      <div className="text-xs text-muted-foreground flex-1 min-w-0">
+                      <div className="text-xs flex-1 min-w-0" style={{ color: '#000000' }}>
                         <TruncatedText
                           text={member.task}
                           maxLength={35}
@@ -570,30 +569,27 @@ const ManagerDashboard: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  <Badge
-                    variant={
-                      member.status === 'present' || member.isOnline ? 'default' :
-                        member.status === 'completed' ? 'secondary' :
-                          member.status === 'on-leave' ? 'outline' :
-                            'outline'
-                    }
-                    className={
-                      member.status === 'present' || member.isOnline ? 'bg-green-500 hover:bg-green-600' :
-                        member.status === 'completed' ? 'bg-blue-500 hover:bg-blue-600' :
-                          ''
-                    }
+                  <div
+                    className="text-xs font-bold uppercase"
+                    style={{
+                      color: (member.isOnline || member.status === 'present' || member.status === 'completed')
+                        ? '#16a34a'
+                        : (member.status === 'absent')
+                          ? '#dc2626'
+                          : '#000000'
+                    }}
                   >
                     {member.isOnline ? 'Working' :
                       member.status === 'completed' ? 'Completed' :
                         member.status === 'on-leave' ? 'On Leave' :
                           'Absent'}
-                  </Badge>
+                  </div>
                 </div>
                 {(member.status === 'present' || member.status === 'completed') && (
                   <div className="space-y-1">
                     <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span className="font-medium">{member.progress}%</span>
+                      <span style={{ color: '#000000' }}>Progress</span>
+                      <span style={{ color: '#000000' }}>{member.progress}%</span>
                     </div>
                     <Progress value={member.progress} className="h-1" />
                   </div>

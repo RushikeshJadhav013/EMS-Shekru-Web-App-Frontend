@@ -76,6 +76,7 @@ const ChatBox: React.FC = () => {
     messages,
     isLoading,
     sendMessage,
+    sendMessageWithFile,
     setActiveChat,
     chats,
     availableUsers,
@@ -148,20 +149,6 @@ const ChatBox: React.FC = () => {
   }, [activeChat, messages, markAsRead, user?.id]);
 
   // ── All hooks declared above — safe to do conditional render now ────────────
-  if (!activeChat) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center space-y-4 bg-inherit">
-        <div className="relative">
-          <div className="h-20 w-20 rounded-full border-4 border-slate-100 dark:border-slate-800 border-t-green-500 animate-spin" />
-          <MessageCircle className="h-8 w-8 text-green-500 absolute inset-0 m-auto" />
-        </div>
-        <div className="text-center">
-          <p className="text-sm font-bold text-slate-500">Loading conversation...</p>
-          <p className="text-[10px] uppercase tracking-widest text-slate-400 mt-1">Please wait a moment</p>
-        </div>
-      </div>
-    );
-  }
 
   // Tracks whether user is at the bottom so auto-scroll doesn't hijack manual scrolling
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -200,6 +187,7 @@ const ChatBox: React.FC = () => {
     }
   };
 
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !activeChat) return;
@@ -217,20 +205,12 @@ const ChatBox: React.FC = () => {
 
     setIsUploading(true);
     try {
-      const isImage = file.type.startsWith('image/');
-      const messageType: 'image' | 'file' = isImage ? 'image' : 'file';
-
-      // Read as Base64 data URL
-      const base64 = await chatService.fileToBase64(file);
-
-      // Images → plain base64; Documents → "filename|base64" so MessageBubble can show the name
-      const content = isImage ? base64 : `${file.name}|${base64}`;
-
-      await sendMessage(content, messageType, replyingTo || undefined);
+      // Use the new dedicated file upload API
+      await sendMessageWithFile(file, '', replyingTo || undefined);
       setReplyingTo(null);
 
       toast({
-        title: isImage ? '📷 Image sent' : '📄 File sent',
+        title: file.type.startsWith('image/') ? '📷 Image sent' : '📄 File sent',
         description: `${file.name} was sent successfully.`,
       });
     } catch (error: any) {
@@ -438,7 +418,20 @@ const ChatBox: React.FC = () => {
     );
   }
 
-  if (!activeChat) return null;
+  if (!activeChat) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center space-y-4 bg-inherit">
+        <div className="relative">
+          <div className="h-20 w-20 rounded-full border-4 border-slate-100 dark:border-slate-800 border-t-green-500 animate-spin" />
+          <MessageCircle className="h-8 w-8 text-green-500 absolute inset-0 m-auto" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-bold text-slate-500">Loading conversation...</p>
+          <p className="text-[10px] uppercase tracking-widest text-slate-400 mt-1">Please wait a moment</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("flex flex-col h-full relative overflow-hidden", themeClasses.background)}>
@@ -661,7 +654,7 @@ const ChatBox: React.FC = () => {
                 variant="ghost"
                 size="icon"
                 disabled={isUploading}
-                onClick={() => triggerFileSelect(".pdf,.doc,.docx,.xls,.xlsx")}
+                onClick={() => triggerFileSelect(".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar")}
                 className="h-9 w-9 rounded-full text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 transition-all active:scale-95"
               >
                 <Paperclip className="h-4.5 w-4.5" />

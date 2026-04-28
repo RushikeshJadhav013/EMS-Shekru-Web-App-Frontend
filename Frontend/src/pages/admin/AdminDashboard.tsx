@@ -270,18 +270,18 @@ const AdminDashboard: React.FC = () => {
             <Award className="h-6 w-6 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-              {t.common.welcome}, <span className="text-blue-600">{user?.name}</span>
+            <h1 className="text-3xl font-bold tracking-tight" style={{ color: '#000000' }}>
+              {t.common.welcome}, <span style={{ color: '#000000' }}>{user?.name}</span>
             </h1>
-            <p className="text-slate-500 font-bold text-[13px] mt-0.5 flex items-center gap-1.5">
-              <CalendarDays className="h-3.5 w-3.5 text-blue-400" />
-              {formatIST(nowIST(), 'EEEE, MMMM dd, yyyy')}
+            <p className="font-normal text-[12px] mt-0.5 flex items-center gap-1.5" style={{ color: '#2563eb' }}>
+              <CalendarDays className="h-3.5 w-3.5" style={{ color: '#2563eb' }} />
+              {formatIST(nowIST(), 'EEEE, MMMM dd, yyyy | hh:mm a')}
             </p>
           </div>
         </div>
         <Button
           onClick={() => navigate('/admin/employees/', { state: { highlight: true } })}
-          className="h-10 px-6 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200/50 transition-all duration-300 hover:-translate-y-0.5 text-[13px] font-bold gap-2"
+          className="h-10 px-6 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200/50 transition-all duration-300 hover:-translate-y-0.5 text-sm font-bold gap-2"
         >
           <UserPlus className="h-4 w-4" />
           {t.employee.addEmployee}
@@ -342,11 +342,11 @@ const AdminDashboard: React.FC = () => {
         ].map((item, index) => (
           <Card
             key={index}
-            className={`group relative overflow-hidden ${item.cardBg} border-2 ${item.borderColor} ${item.hoverBorder} shadow-sm hover:shadow-xl transition-all duration-500 cursor-pointer rounded-xl`}
+            className={`group relative overflow-hidden bg-white hover:bg-slate-50 border-2 ${item.borderColor} ${item.hoverBorder} shadow-sm hover:shadow-xl transition-all duration-500 cursor-pointer rounded-xl`}
             onClick={() => navigate(item.path)}
           >
             <CardHeader className="flex flex-row items-center justify-between pb-2 p-4">
-              <CardTitle className={`text-[11px] font-black text-${item.color}-900/60 uppercase tracking-widest leading-none`}>
+              <CardTitle className="text-xs font-bold uppercase tracking-widest leading-none" style={{ color: '#000000' }}>
                 {item.title}
               </CardTitle>
               <div className={`h-8 w-8 rounded-lg ${item.bgColor} flex items-center justify-center border border-${item.color}-200/50 group-hover:scale-110 transition-transform duration-500`}>
@@ -354,8 +354,11 @@ const AdminDashboard: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent className="px-4 pb-4">
-              <div className={`text-3xl font-black text-${item.color}-950 tracking-tight leading-none`}>{item.value}</div>
-              <div className={`flex items-center mt-2.5 ${item.iconColor} font-black text-[10px] uppercase tracking-wider group-hover:translate-x-1 transition-all duration-300 opacity-80 group-hover:opacity-100`}>
+              <div className="text-2xl font-bold tracking-tight leading-none" style={{ color: '#000000' }}>{item.value}</div>
+              <div 
+                className="flex items-center mt-2.5 font-bold text-xs uppercase tracking-wider group-hover:translate-x-1 transition-all duration-300 opacity-80 group-hover:opacity-100"
+                style={{ color: '#000000' }}
+              >
                 <span>View Details</span>
                 <ChevronRight className="h-3 w-3 ml-1" />
               </div>
@@ -374,7 +377,7 @@ const AdminDashboard: React.FC = () => {
                   <Building className="h-4.5 w-4.5" />
                 </div>
                 <div>
-                  <CardTitle className="text-sm font-bold text-slate-900">
+                  <CardTitle className="text-base font-bold" style={{ color: '#000000' }}>
                     {t.dashboard.departmentPerformance}
                   </CardTitle>
                 </div>
@@ -382,7 +385,7 @@ const AdminDashboard: React.FC = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-3 rounded-lg text-blue-600 hover:bg-blue-50 font-bold text-[11px]"
+                className="h-8 px-3 rounded-lg text-blue-600 hover:bg-blue-50 font-bold text-sm"
                 onClick={() => navigate('/admin/reports?tab=branch')}
               >
                 VIEW ALL
@@ -403,39 +406,42 @@ const AdminDashboard: React.FC = () => {
                         <Target className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900 text-[13px] leading-tight">{dept.name}</p>
-                        <p className="text-[10px] text-slate-500 font-bold mt-0.5 flex items-center gap-1">
-                          <Users className="h-2.5 w-2.5 text-slate-400" />
-                          <span className="text-blue-600 font-black">{dept.employees}</span>
-                          <span className="text-slate-400 font-bold uppercase tracking-tighter">Employees</span>
+                        <p className="font-bold text-sm leading-tight" style={{ color: '#000000' }}>{dept.name}</p>
+                        <p className="text-xs font-bold mt-0.5 flex items-center gap-1" style={{ color: '#000000' }}>
+                          <Users className="h-3 w-3" style={{ color: '#000000' }} />
+                          <span className="font-black">{dept.employees}</span>
+                          <span className="font-bold uppercase tracking-tighter">Employees</span>
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-base text-slate-900">{dept.performance}%</p>
+                      <p className="font-bold text-sm" style={{ color: '#000000' }}>{dept.performance}%</p>
                       {(() => {
                         const perf = Number(dept.performance);
-                        let statusColor = 'bg-rose-50 text-rose-600';
-                        let statusText = 'POOR';
-
                         if (!isNaN(perf)) {
+                          let statusColor = '';
+                          let statusText = '';
                           if (perf >= 80) {
-                            statusColor = 'bg-emerald-50 text-emerald-600';
+                            statusColor = 'text-emerald-600';
                             statusText = 'EXCELLENT';
                           } else if (perf >= 60) {
-                            statusColor = 'bg-blue-50 text-blue-600';
+                            statusColor = 'text-blue-600';
                             statusText = 'GOOD';
                           } else if (perf >= 40) {
-                            statusColor = 'bg-amber-50 text-amber-600';
+                            statusColor = 'text-amber-600';
                             statusText = 'AVERAGE';
+                          } else {
+                            statusColor = 'text-rose-600';
+                            statusText = 'POOR';
                           }
-                        }
 
-                        return (
-                          <Badge className={`text-[8px] font-bold px-1.5 h-3.5 rounded-full border-0 ${statusColor}`}>
-                            {statusText}
-                          </Badge>
-                        );
+                          return (
+                            <div className={`text-xs font-bold ${statusColor} uppercase`}>
+                              {statusText}
+                            </div>
+                          );
+                        }
+                        return null;
                       })()}
                     </div>
                   </div>
@@ -462,7 +468,7 @@ const AdminDashboard: React.FC = () => {
               <div className="h-9 w-9 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm">
                 <Activity className="h-4.5 w-4.5" />
               </div>
-              <CardTitle className="text-sm font-bold text-slate-900">
+              <CardTitle className="text-base font-bold" style={{ color: '#000000' }}>
                 {t.dashboard.recentActivities}
               </CardTitle>
             </div>
@@ -485,21 +491,30 @@ const AdminDashboard: React.FC = () => {
                           {activity.type === 'task' && <ClipboardList className="h-4 w-4" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[12px] font-bold text-slate-900 truncate">{formatName(activity.user)}</p>
-                          <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                          <p className="text-sm font-bold truncate" style={{ color: '#000000' }}>{formatName(activity.user)}</p>
+                          <p className="text-xs font-medium mt-0.5" style={{ color: '#000000' }}>
                             {activity.type === 'check-in' && 'Checked in'}
                             {activity.type === 'check-out' && 'Checked out'}
                             {activity.type === 'leave' && 'Applied for leave'}
                             {activity.type === 'task' && 'Completed task'}
                           </p>
-                          <p className="text-[9px] text-blue-500 font-bold uppercase mt-1">
+                          <p className="text-xs font-bold uppercase mt-1" style={{ color: '#2563eb' }}>
                             {formatActivityTime(activity.time)}
                           </p>
                         </div>
                         <div className="flex flex-col items-end">
-                          <Badge className={`text-[9px] font-bold px-2 py-0.5 h-4 rounded-full border ${getStatusConfig(activity).className}`}>
+                          <div 
+                            className={`text-xs font-bold px-2 py-0.5 capitalize`}
+                            style={{ 
+                              color: getStatusConfig(activity).label === 'LATE' || getStatusConfig(activity).label === 'EARLY' || getStatusConfig(activity).label === 'ABSENT' 
+                                ? '#dc2626' 
+                                : getStatusConfig(activity).label === 'ON TIME' || getStatusConfig(activity).label === 'PRESENT'
+                                  ? '#16a34a'
+                                  : '#ca8a04' // Amber/Yellow for others
+                            }}
+                          >
                             {getStatusConfig(activity).label}
-                          </Badge>
+                          </div>
                         </div>
                       </div>
                     ))}

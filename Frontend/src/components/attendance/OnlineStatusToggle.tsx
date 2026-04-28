@@ -123,7 +123,7 @@ export const OnlineStatusToggle: React.FC<OnlineStatusToggleProps> = ({
             {/* Status Info */}
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                <h3 className="text-lg font-bold text-black dark:text-slate-100">
                   Work Status
                 </h3>
                 <Badge 
@@ -131,23 +131,28 @@ export const OnlineStatusToggle: React.FC<OnlineStatusToggleProps> = ({
                     isOnline 
                       ? 'bg-green-500 hover:bg-green-600' 
                       : 'bg-slate-500 hover:bg-slate-600'
-                  } text-white border-0`}
+                  } text-white border-0 text-[14px] font-bold`}
+                  style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                 >
                   {isOnline ? 'Online' : 'Offline'}
                 </Badge>
               </div>
               <div className="space-y-2 mt-2">
                 {/* Online Working Hours */}
-                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                  <Clock className="h-4 w-4 text-green-500" />
-                  <span>Online Time: <strong className="text-green-700 dark:text-green-400 font-mono">{workingHours}</strong></span>
+                <div className="flex items-center gap-2 text-sm text-black dark:text-slate-400">
+                  <Clock className="h-4 w-4" style={{ color: '#15803D' }} />
+                  <span className="text-[12px] font-bold" style={{ color: '#15803D', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                    Online Time: <strong className="font-mono text-[18px]" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>{workingHours}</strong>
+                  </span>
                 </div>
                 
                 {/* Total Offline Time */}
                 {totalOfflineTime !== '0 hrs - 0 mins' && (
-                  <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                    <History className="h-4 w-4 text-slate-500" />
-                    <span>Total Offline: <strong className="text-slate-700 dark:text-slate-300 font-mono">{totalOfflineTime}</strong></span>
+                  <div className="flex items-center gap-2 text-[14px] text-black dark:text-slate-100">
+                    <History className="h-4 w-4 text-black dark:text-slate-400" />
+                    <span className="text-[12px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                      Total Offline: <strong className="font-mono text-[18px]" style={{ color: '#000000' }}>{totalOfflineTime}</strong>
+                    </span>
                   </div>
                 )}
                 
@@ -156,13 +161,13 @@ export const OnlineStatusToggle: React.FC<OnlineStatusToggleProps> = ({
                   <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
                     <div className="flex items-center gap-2 text-sm">
                       <Timer className="h-4 w-4 text-amber-500 animate-pulse" />
-                      <span className="text-amber-700 dark:text-amber-300">
-                        Current Offline Session: <strong className="font-mono text-amber-800 dark:text-amber-200">
+                      <span className="text-[14px] font-bold" style={{ color: '#DC2626', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        Current Offline Session: <strong className="font-mono text-[14px]" style={{ color: '#DC2626' }}>
                           {currentSessionOfflineTime}
                         </strong>
                       </span>
                     </div>
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                    <p className="text-[12px] font-medium mt-1 flex items-center gap-1" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                       <span>⚠️</span>
                       <span>Work hours tracking is paused</span>
                     </p>
@@ -174,11 +179,11 @@ export const OnlineStatusToggle: React.FC<OnlineStatusToggleProps> = ({
                   <div className="mt-2 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
                     <div className="flex items-center gap-2 text-sm">
                       <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-                      <span className="text-green-700 dark:text-green-300">
-                        Work hours tracking is active
+                      <span className="text-green-900 dark:text-green-300 font-bold">
+                        Working hours tracking is active
                       </span>
                     </div>
-                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                    <p className="text-xs text-green-900 dark:text-green-300 font-medium mt-1">
                       Only online time counts towards working hours
                     </p>
                   </div>
@@ -223,8 +228,8 @@ export const OnlineStatusToggle: React.FC<OnlineStatusToggleProps> = ({
 
       {/* Time Summary Card */}
       <div className="mt-4 bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-800 dark:to-gray-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-        <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-          <Clock className="h-4 w-4" />
+        <h4 className="text-[14px] font-bold text-black dark:text-white mb-3 flex items-center gap-2" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+          <Clock className="h-4 w-4 text-black dark:text-white" />
           Today's Time Breakdown
         </h4>
         
@@ -232,25 +237,25 @@ export const OnlineStatusToggle: React.FC<OnlineStatusToggleProps> = ({
           {/* Online Time */}
           <div className="bg-white dark:bg-slate-900 rounded-lg p-3 border border-green-200 dark:border-green-800">
             <div className="flex items-center gap-2 mb-1">
-              <div className="h-2 w-2 rounded-full bg-green-500"></div>
-              <span className="text-xs font-medium text-green-700 dark:text-green-300">ONLINE TIME</span>
+              <div className="h-2 w-2 rounded-full" style={{ backgroundColor: '#15803D' }}></div>
+              <span className="text-[12px] font-bold" style={{ color: '#15803D', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Online Time</span>
             </div>
-            <div className="text-lg font-bold text-green-800 dark:text-green-200 font-mono">
+            <div className="text-[18px] font-bold font-mono" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
               {workingHours}
             </div>
-            <p className="text-xs text-green-600 dark:text-green-400">Started from 0 hrs - 0 mins on check-in</p>
+            <p className="text-[12px] font-medium" style={{ color: '#16A34A', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Started from 0 hrs - 0 mins on check-in</p>
           </div>
           
           {/* Offline Time */}
           <div className="bg-white dark:bg-slate-900 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-2 mb-1">
-              <div className="h-2 w-2 rounded-full bg-slate-500"></div>
-              <span className="text-xs font-medium text-slate-700 dark:text-slate-300">OFFLINE TIME</span>
+              <div className="h-2 w-2 rounded-full bg-black"></div>
+              <span className="text-[12px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Offline Time</span>
             </div>
-            <div className="text-lg font-bold text-slate-800 dark:text-slate-200 font-mono">
+            <div className="text-[18px] font-bold font-mono" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
               {totalOfflineTime}
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400">Break time (not counted)</p>
+            <p className="text-[12px] font-medium" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Break time (not counted)</p>
           </div>
         </div>
         
@@ -260,9 +265,9 @@ export const OnlineStatusToggle: React.FC<OnlineStatusToggleProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Timer className="h-4 w-4 text-amber-600 animate-pulse" />
-                <span className="text-sm font-medium text-amber-800 dark:text-amber-200">Current Break</span>
+                <span className="text-[14px] font-bold" style={{ color: '#DC2626', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Current Break</span>
               </div>
-              <div className="text-sm font-bold text-amber-900 dark:text-amber-100 font-mono">
+              <div className="text-[14px] font-bold font-mono" style={{ color: '#DC2626', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                 {currentSessionOfflineTime}
               </div>
             </div>
@@ -270,7 +275,7 @@ export const OnlineStatusToggle: React.FC<OnlineStatusToggleProps> = ({
         )}
         
         <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-          <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+          <p className="text-[14px] font-bold text-center" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
             💡 Timer starts from 0 hrs - 0 mins on check-in and counts only online time
           </p>
         </div>
@@ -285,8 +290,8 @@ export const OnlineStatusToggle: React.FC<OnlineStatusToggleProps> = ({
                 <WifiOff className="h-6 w-6 text-white" />
               </div>
               <div>
-                <DialogTitle className="text-xl">Going Offline</DialogTitle>
-                <DialogDescription className="mt-1">
+                <DialogTitle className="text-[20px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Going Offline</DialogTitle>
+                <DialogDescription className="mt-1 text-[12px] font-medium" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                   Please provide a reason for going offline
                 </DialogDescription>
               </div>
@@ -296,16 +301,16 @@ export const OnlineStatusToggle: React.FC<OnlineStatusToggleProps> = ({
           <div className="space-y-4 py-4">
             {/* Warning Message */}
             <div className="bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-200 dark:border-amber-800 rounded-xl p-4">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                <strong>Note:</strong> Work hours tracking will be paused while you're offline. 
+              <p className="text-[14px] font-medium" style={{ color: '#DC2626', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                <strong style={{ color: '#DC2626' }}>Note:</strong> Work hours tracking will be paused while you're offline. 
                 Your reason will be recorded for attendance records.
               </p>
             </div>
 
             {/* Reason Input */}
             <div className="space-y-2">
-              <Label htmlFor="offlineReason" className="text-sm font-semibold flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-amber-500"></div>
+              <Label htmlFor="offlineReason" className="text-[14px] font-bold flex items-center gap-2" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                <div className="h-2 w-2 rounded-full bg-black"></div>
                 Reason for Going Offline <span className="text-red-500">*</span>
               </Label>
               <Textarea
@@ -314,11 +319,15 @@ export const OnlineStatusToggle: React.FC<OnlineStatusToggleProps> = ({
                 onChange={(e) => setOfflineReason(e.target.value)}
                 placeholder="e.g., Lunch break, Meeting, Personal work, etc. (minimum 10 characters)"
                 rows={4}
-                className="resize-none border-2 focus:border-amber-500 focus:ring-2 focus:ring-amber-500"
+                className="resize-none border-2 focus:border-amber-500 focus:ring-2 focus:ring-amber-500 text-[14px] placeholder:text-black dark:placeholder:text-slate-100"
+                style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                 autoFocus
               />
               <div className="flex items-center justify-between text-xs">
-                <p className={`font-medium ${offlineReason.length >= 10 ? 'text-green-600' : 'text-slate-500'}`}>
+                <p 
+                  className={`font-bold text-[14px] ${offlineReason.length >= 10 ? 'text-green-600' : 'text-black dark:text-slate-300'}`}
+                  style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                >
                   {offlineReason.length} / 10 characters minimum
                 </p>
               </div>
@@ -333,24 +342,26 @@ export const OnlineStatusToggle: React.FC<OnlineStatusToggleProps> = ({
                   setOfflineReason('');
                 }}
                 disabled={isSubmitting}
-                className="flex-1 h-11"
+                className="flex-1 h-11 text-[14px] font-bold text-black border-slate-300 hover:bg-slate-50"
+                style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleGoOffline}
-                disabled={isSubmitting || offlineReason.trim().length < 10}
-                className="flex-1 h-11 gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
+                disabled={isSubmitting || offlineReason.length < 10}
+                className="flex-1 h-11 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-md shadow-amber-100 dark:shadow-none text-[14px] font-bold"
+                style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
               >
                 {isSubmitting ? (
                   <>
                     <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                    Submitting...
+                    Processing...
                   </>
                 ) : (
                   <>
                     <Send className="h-4 w-4" />
-                    Confirm Offline
+                    Go Offline
                   </>
                 )}
               </Button>

@@ -60,7 +60,7 @@ export function Pagination({
 
   return (
     <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 ${className}`}>
-      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+      <div className="flex items-center gap-4 text-sm text-black dark:text-white">
         {showEntriesInfo && (
           <span>
             Showing {startItem} to {endItem} of {totalItems} entries
@@ -89,13 +89,13 @@ export function Pagination({
 
       {/* Hide pagination buttons when all records fit in the selected Show count */}
       {!shouldHidePagination && (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 text-black dark:text-white">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onPageChange(1)}
             disabled={currentPage === 1}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 text-black dark:text-white"
           >
             <ChevronsLeft className="h-4 w-4" />
           </Button>
@@ -104,7 +104,7 @@ export function Pagination({
             size="sm"
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 text-black dark:text-white"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -112,13 +112,13 @@ export function Pagination({
           {getVisiblePages().map((page, index) => (
             <React.Fragment key={index}>
               {page === '...' ? (
-                <span className="px-2 py-1 text-sm text-muted-foreground">...</span>
+                <span className="px-2 py-1 text-sm text-black dark:text-white">...</span>
               ) : (
                 <Button
                   variant={currentPage === page ? "default" : "outline"}
                   size="sm"
                   onClick={() => onPageChange(page as number)}
-                  className="h-8 w-8 p-0"
+                  className={`h-8 w-8 p-0 ${currentPage === page ? '' : 'text-black dark:text-white'}`}
                 >
                   {page}
                 </Button>
@@ -131,7 +131,7 @@ export function Pagination({
             size="sm"
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 text-black dark:text-white"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -140,7 +140,7 @@ export function Pagination({
             size="sm"
             onClick={() => onPageChange(totalPages)}
             disabled={currentPage === totalPages}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 text-black dark:text-white"
           >
             <ChevronsRight className="h-4 w-4" />
           </Button>

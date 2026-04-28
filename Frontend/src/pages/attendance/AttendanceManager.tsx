@@ -2280,43 +2280,43 @@ const AttendanceManager: React.FC = () => {
               <table className="w-full">
                 <thead className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
                   <tr className="hover:bg-transparent">
-                    <th className="text-left p-3 font-medium">Date</th>
-                    <th className="text-left p-3 font-medium">
+                    <th className="text-left p-3 font-medium text-[12px] text-black dark:text-white">Date</th>
+                    <th className="text-left p-3 font-medium text-[12px] text-black dark:text-white">
                       {t.attendance.employeeId}
                     </th>
-                    <th className="text-left p-3 font-medium">
+                    <th className="text-left p-3 font-medium text-[12px] text-black dark:text-white">
                       {t.attendance.employee}
                     </th>
-                    <th className="text-left p-3 font-medium">
+                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
                       {t.attendance.department}
                     </th>
-                    <th className="text-left p-3 font-medium">Work Location</th>
-                    <th className="text-left p-3 font-medium">Online Status</th>
-                    <th className="text-left p-3 font-medium">
+                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">Work Location</th>
+                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">Online Status</th>
+                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
                       {t.attendance.checkInTime}
                     </th>
-                    <th className="text-left p-3 font-medium">
+                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
                       {t.attendance.checkOutTime}
                     </th>
-                    <th className="text-center p-3 font-medium min-w-[120px]">
+                    <th className="text-center p-3 font-medium text-[14px] text-black dark:text-white min-w-[120px] uppercase">
                       {t.attendance.hours}
                     </th>
-                    <th className="text-left p-3 font-medium">
+                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
                       {t.attendance.location}
                     </th>
-                    <th className="text-left p-3 font-medium">
+                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
                       {t.attendance.selfiePhoto}
                     </th>
-                    <th className="text-left p-3 font-medium">
+                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
                       {t.common.status}
                     </th>
-                    <th className="text-left p-3 font-medium">
+                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
                       {t.attendance.workSummary}
                     </th>
-                    <th className="text-left p-3 font-medium">
+                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
                       {t.attendance.workReport}
                     </th>
-                    <th className="text-left p-3 font-medium">Overdue</th>
+                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">Overdue</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2355,20 +2355,20 @@ const AttendanceManager: React.FC = () => {
                             </div>
                           </td>
                           <td className="p-3">
-                            <Badge variant="outline">{record.department}</Badge>
+                            <Badge variant="outline" className="text-[12px] text-black dark:text-white border-slate-200">{record.department}</Badge>
                           </td>
                           <td className="p-3">
                             {record.workLocation === "work_from_home" ? (
                               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
                                 <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse"></div>
-                                <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
+                                <span className="text-sm font-medium text-orange-700 dark:text-orange-300">
                                   Work from Home
                                 </span>
                               </div>
                             ) : (
                               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
                                 <div className="h-2 w-2 rounded-sm bg-blue-500"></div>
-                                <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
                                   Work from Office
                                 </span>
                               </div>
@@ -2383,7 +2383,7 @@ const AttendanceManager: React.FC = () => {
                                   return null;
                                 } else if (statusInfo.label === "Checked Out") {
                                   return (
-                                    <span className="text-xs text-muted-foreground">
+                                    <span className="text-[12px] font-medium text-black dark:text-white">
                                       Checked Out
                                     </span>
                                   );
@@ -2402,7 +2402,7 @@ const AttendanceManager: React.FC = () => {
                                 }
                               })()}
                               <div className="flex flex-col items-center gap-1 border-t border-slate-100 dark:border-slate-800 pt-1 mt-1 w-full">
-                                <div className="flex items-center gap-1 text-[10px] font-medium text-slate-500">
+                                <div className="flex items-center gap-1 text-[10px] font-medium text-black dark:text-white">
                                   <Timer className="h-2.5 w-2.5 text-blue-400" />
                                   <span>
                                     {(record.scheduledStart || "10:00").replace(/^0/, '')} -{" "}
@@ -2413,7 +2413,7 @@ const AttendanceManager: React.FC = () => {
                                   {record.checkInStatus && (
                                     <Badge
                                       variant="outline"
-                                      className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${record.checkInStatus.toLowerCase() === "late"
+                                      className={`text-[12px] px-1 py-0 uppercase font-bold border-0 ${record.checkInStatus.toLowerCase() === "late"
                                           ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
                                           : "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400"
                                         }`}
@@ -2424,7 +2424,7 @@ const AttendanceManager: React.FC = () => {
                                   {record.checkOutStatus && (
                                     <Badge
                                       variant="outline"
-                                      className={`text-[9px] px-1 py-0 uppercase font-bold border-0 ${record.checkOutStatus.toLowerCase() === "early"
+                                      className={`text-[12px] px-1 py-0 uppercase font-bold border-0 ${record.checkOutStatus.toLowerCase() === "early"
                                           ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
                                           : "bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-400"
                                         }`}
@@ -2439,7 +2439,7 @@ const AttendanceManager: React.FC = () => {
                           <td className="p-3">
                             <div className="flex items-center gap-2">
                               <Clock className="h-4 w-4 text-green-500" />
-                              <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                              <span className="text-[12px] font-semibold text-black dark:text-white">
                                 {formatAttendanceTime(
                                   record.date,
                                   record.checkInTime,
@@ -2450,7 +2450,7 @@ const AttendanceManager: React.FC = () => {
                           <td className="p-3">
                             <div className="flex items-center gap-2">
                               <Clock className="h-4 w-4 text-red-500" />
-                              <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                              <span className="text-[12px] font-semibold text-black dark:text-white">
                                 {formatAttendanceTime(
                                   record.date,
                                   record.checkOutTime,
@@ -2461,7 +2461,7 @@ const AttendanceManager: React.FC = () => {
                           <td className="p-3">
                             {record.checkOutTime ? (
                               <div className="flex justify-center items-center">
-                                <span className="inline-flex items-center text-sm font-bold text-slate-950 dark:text-white whitespace-nowrap bg-blue-50/50 dark:bg-blue-950/20 px-3 py-1.5 rounded-full border border-blue-100 dark:border-blue-900 shadow-sm tabular-nums">
+                                <span className="inline-flex items-center text-[12px] font-bold text-black dark:text-white whitespace-nowrap bg-blue-50/50 dark:bg-blue-950/20 px-3 py-1.5 rounded-full border border-blue-100 dark:border-blue-900 shadow-sm tabular-nums">
                                   {formatWorkHours(record.workHours)}
                                 </span>
                               </div>
@@ -2538,7 +2538,7 @@ const AttendanceManager: React.FC = () => {
                             {record.workSummary ? (
                               <button
                                 type="button"
-                                className="text-left truncate max-w-[180px] hover:text-blue-600"
+                                className="text-left truncate max-w-[180px] hover:text-blue-600 text-black dark:text-white"
                                 onClick={() =>
                                   setSummaryModal({
                                     open: true,
@@ -2560,17 +2560,17 @@ const AttendanceManager: React.FC = () => {
                                 href={record.workReport}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-sm text-blue-600 hover:underline"
+                                className="text-sm text-black dark:text-white hover:underline"
                               >
                                 {t.attendance.viewReport}
                               </a>
                             ) : (
-                              <span className="text-muted-foreground text-sm">
+                              <span className="text-black dark:text-white text-sm">
                                 —
                               </span>
                             )}
                           </td>
-                          <td className="p-3 text-sm text-muted-foreground max-w-[200px]">
+                          <td className="p-3 text-sm text-black dark:text-white max-w-[200px]">
                             {record.taskDeadlineReason ? (
                               <div
                                 className="text-left w-full"
@@ -2864,7 +2864,7 @@ const AttendanceManager: React.FC = () => {
                     >
                       Basic
                     </span>
-                    <span className="text-[9px] text-muted-foreground text-center line-clamp-1">
+                    <span className="text-[12px] text-muted-foreground text-center line-clamp-1">
                       Standard list
                     </span>
                   </div>
@@ -2888,7 +2888,7 @@ const AttendanceManager: React.FC = () => {
                     >
                       Grid
                     </span>
-                    <span className="text-[9px] text-muted-foreground text-center line-clamp-1">
+                    <span className="text-[12px] text-muted-foreground text-center line-clamp-1">
                       Monthly view
                     </span>
                   </div>
@@ -2912,7 +2912,7 @@ const AttendanceManager: React.FC = () => {
                     >
                       Detailed Grid
                     </span>
-                    <span className="text-[9px] text-muted-foreground text-center line-clamp-1">
+                    <span className="text-[12px] text-muted-foreground text-center line-clamp-1">
                       Full details
                     </span>
                   </div>
@@ -2941,7 +2941,7 @@ const AttendanceManager: React.FC = () => {
                     >
                       CSV
                     </span>
-                    <span className="text-[9px] text-muted-foreground text-center">
+                    <span className="text-[12px] text-muted-foreground text-center">
                       Excel file
                     </span>
                   </div>
@@ -2963,7 +2963,7 @@ const AttendanceManager: React.FC = () => {
                     >
                       PDF
                     </span>
-                    <span className="text-[9px] text-muted-foreground text-center">
+                    <span className="text-[12px] text-muted-foreground text-center">
                       Print file
                     </span>
                   </div>

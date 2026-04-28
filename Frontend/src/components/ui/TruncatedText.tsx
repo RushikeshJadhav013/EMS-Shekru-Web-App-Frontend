@@ -8,6 +8,7 @@ interface TruncatedTextProps {
     textClassName?: string;
     showMoreClassName?: string;
     showToggle?: boolean;
+    style?: React.CSSProperties;
 }
 
 const TruncatedText: React.FC<TruncatedTextProps> = ({
@@ -16,7 +17,8 @@ const TruncatedText: React.FC<TruncatedTextProps> = ({
     className,
     textClassName,
     showMoreClassName,
-    showToggle = true
+    showToggle = true,
+    style
 }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -29,7 +31,7 @@ const TruncatedText: React.FC<TruncatedTextProps> = ({
 
     return (
         <div className={cn("inline", className)}>
-            <span className={cn(textClassName, "break-words whitespace-pre-wrap")}>
+            <span className={cn(textClassName, "break-words whitespace-pre-wrap")} style={style}>
                 {displayedText}
             </span>
             {showToggle && shouldTruncate && (

@@ -239,7 +239,12 @@ const MessageContent: React.FC<ContentProps> = ({ content, isOwn, isDark, onImag
     // Prevent accidentally prefixing normal text sentences that happen to not start with http
     // Only prefix if it actually looks like a path (has no spaces)
     if (!finalUrl.includes(' ')) {
-      const base = API_BASE_URL.replace(/\/api$/, ''); // typically API is like https://staffly.space/api
+      let base = API_BASE_URL;
+      // If we have a full URL ending in /api, we remove it to get the domain root.
+      // But if we just have "/api" (the proxy path), we keep it so the proxy catches the static file.
+      if (base.includes('://') && base.endsWith('/api')) {
+        base = base.replace(/\/api$/, '');
+      }
       finalUrl = finalUrl.startsWith('/') ? `${base}${finalUrl}` : `${base}/${finalUrl}`;
     }
   }

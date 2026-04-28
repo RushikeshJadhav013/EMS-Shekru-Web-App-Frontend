@@ -129,10 +129,7 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
 
         {showLabel && (
           <span
-            className={`text-xs font-medium ${isOnline
-              ? 'text-green-600 dark:text-green-400'
-              : 'text-gray-500 dark:text-gray-400'
-              }`}
+            className={`text-[12px] font-medium text-black dark:text-white`}
           >
             {isOnline ? 'Online' : 'Offline'}
           </span>

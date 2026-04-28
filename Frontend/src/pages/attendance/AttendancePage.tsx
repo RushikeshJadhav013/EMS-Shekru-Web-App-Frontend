@@ -919,13 +919,13 @@ const AttendancePage: React.FC = () => {
       return <Badge variant="destructive" className="bg-red-600">Absent (No Checkout)</Badge>;
     }
     if (status === 'late' || (checkInTime && checkInTime > '09:30:00')) {
-      return <Badge variant="destructive">Late</Badge>;
+      return <Badge variant="destructive" className="text-sm">Late</Badge>;
     }
     if (checkOutTime && checkOutTime < '18:00:00') {
-      return <Badge variant="outline" className="border-orange-500 text-orange-500">Early</Badge>;
+      return <Badge variant="outline" className="border-orange-500 text-orange-500 text-[14px]" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Early</Badge>;
     }
     if (status === 'present') {
-      return <Badge variant="default" className="bg-green-500">On Time</Badge>;
+      return <Badge variant="default" className="bg-green-500 text-sm">On Time</Badge>;
     }
     return null;
   };
@@ -939,7 +939,7 @@ const AttendancePage: React.FC = () => {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">
+          <h2 className="text-2xl font-bold" style={{ color: '#000000' }}>
             {isCheckingIn ? t.attendance.checkIn : t.attendance.checkOut}
           </h2>
         </div>
@@ -1089,7 +1089,7 @@ const AttendancePage: React.FC = () => {
                       <MapPin className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                       <div className="flex-1 space-y-1">
                         <p className="font-medium text-sm">Address</p>
-                        <p className="text-sm text-muted-foreground">{location.address}</p>
+                        <p className="text-sm text-black">{location.address}</p>
                       </div>
                     </div>
 
@@ -1150,7 +1150,7 @@ const AttendancePage: React.FC = () => {
           <Card className="border-0 shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-xl font-semibold">{t.attendance.todayStatus}</CardTitle>
+                <CardTitle className="text-[24px] font-bold" style={{ color: '#000000' }}>{t.attendance.todayStatus}</CardTitle>
                 <CardDescription>Your attendance status for today</CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -1176,10 +1176,10 @@ const AttendancePage: React.FC = () => {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <LogIn className="h-4 w-4 text-green-500" />
-                          <span className="text-sm font-medium">Check-in Time</span>
+                          <span className="text-sm font-bold text-black">Check-in Time</span>
                           {getStatusBadge(currentAttendance.status, currentAttendance.checkInTime)}
                         </div>
-                        <p className="text-lg font-semibold">
+                        <p className="text-lg font-semibold text-black">
                           {formatAttendanceTime(currentAttendance.date, currentAttendance.checkInTime)}
                         </p>
                       </div>
@@ -1187,11 +1187,11 @@ const AttendancePage: React.FC = () => {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <LogOut className="h-4 w-4 text-red-500" />
-                          <span className="text-sm font-medium">Check-out Time</span>
+                          <span className="text-sm font-bold text-black">Check-out Time</span>
                           {currentAttendance.checkOutTime &&
                             getStatusBadge(currentAttendance.status, undefined, currentAttendance.checkOutTime)}
                         </div>
-                        <p className="text-lg font-semibold">
+                        <p className="text-lg font-semibold text-black">
                           {currentAttendance.checkOutTime
                             ? formatAttendanceTime(currentAttendance.date, currentAttendance.checkOutTime)
                             : '-'}
@@ -1202,7 +1202,7 @@ const AttendancePage: React.FC = () => {
                         <div className="col-span-2">
                           <div className="flex items-center gap-2 mb-2">
                             <Clock className="h-4 w-4 text-blue-500" />
-                            <span className="text-sm font-medium">Total Work Hours</span>
+                            <span className="text-sm font-bold text-black">Total Work Hours</span>
                           </div>
                           <div className="flex items-baseline text-3xl font-black text-blue-600 dark:text-blue-400 tabular-nums">
                             {formatWorkHours(currentAttendance.workHours)}
@@ -1211,9 +1211,9 @@ const AttendancePage: React.FC = () => {
                       )}
                     </>
                   ) : (
-                    <div className="col-span-2 text-center py-8 text-muted-foreground">
+                    <div className="col-span-2 text-center py-8 text-black">
                       <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Not checked in yet</p>
+                      <p>Not Checked in Yet.</p>
                     </div>
                   )}
                 </div>
@@ -1441,7 +1441,7 @@ const AttendancePage: React.FC = () => {
                               <span className="font-medium">
                                 {request.startDate} - {request.endDate}
                               </span>
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className="text-[12px] text-black dark:text-white border-slate-200">
                                 {request.type === 'full_day' || request.type === 'Full Day' ? 'Full Day' : 'Half Day'}
                               </Badge>
                             </div>
@@ -1566,6 +1566,7 @@ const AttendancePage: React.FC = () => {
                 setIsEditDialogOpen(false);
                 setEditingWfhId(null);
               }}
+              className="text-black border-slate-300"
             >
               Cancel
             </Button>

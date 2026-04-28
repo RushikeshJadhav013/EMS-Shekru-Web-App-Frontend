@@ -296,12 +296,12 @@ const EmployeeDashboard: React.FC = () => {
             <Award className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
-              {t.common.welcome}, <span className="text-rose-600">{user?.name}!</span>
+            <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: '#000000' }}>
+              {t.common.welcome}, <span style={{ color: '#000000' }}>{user?.name}!</span>
             </h1>
-            <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
-              <CalendarDays className="h-4 w-4 text-rose-500" />
-              {formatIST(nowIST(), 'EEEE, MMMM dd, yyyy')}
+            <p className="font-medium flex items-center gap-2 mt-1 text-sm" style={{ color: '#000000' }}>
+              <CalendarDays className="h-4 w-4" style={{ color: '#000000' }} />
+              {formatIST(nowIST(), 'EEEE, MMMM dd, yyyy | hh:mm a')}
             </p>
           </div>
         </div>
@@ -385,15 +385,15 @@ const EmployeeDashboard: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">{item.label}</h3>
-                <div className={`text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight ${item.isMono ? 'font-mono' : ''}`}>{item.value}</div>
+                <h3 className="text-xs font-bold uppercase tracking-widest leading-none" style={{ color: '#000000' }}>{item.label}</h3>
+                <div className={`text-2xl font-black tracking-tight ${item.isMono ? 'font-mono' : ''}`} style={{ color: '#000000' }}>{item.value}</div>
                 <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
                   <div className={`h-1.5 w-1.5 rounded-full ${item.color === 'indigo' ? 'bg-indigo-500' :
                     item.color === 'emerald' ? 'bg-emerald-500' :
                       item.color === 'cyan' ? 'bg-cyan-500' :
                         'bg-rose-500'
                     }`} />
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase">{item.sub}</span>
+                  <span className="text-xs font-bold uppercase" style={{ color: '#000000' }}>{item.sub}</span>
                 </div>
               </div>
             </CardContent>
@@ -407,12 +407,12 @@ const EmployeeDashboard: React.FC = () => {
         <Card className="lg:col-span-2 border-0 shadow-lg bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl">
           <CardHeader className="border-b border-gray-100 dark:border-gray-800 pb-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-3 text-xl">
+              <CardTitle className="flex items-center gap-3 text-base">
                 <div className="h-10 w-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
                   <ClipboardList className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900 dark:text-gray-100">{t.dashboard.myTasks}</h3>
+                  <h3 className="font-bold" style={{ color: '#000000' }}>{t.dashboard.myTasks}</h3>
                   <p className="text-sm font-normal text-muted-foreground">{t.dashboard.currentAssignments}</p>
                 </div>
               </CardTitle>
@@ -429,11 +429,11 @@ const EmployeeDashboard: React.FC = () => {
           <CardContent className="p-0">
             <div className="divide-y divide-gray-100 dark:divide-gray-800">
               {myTasks.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
+                <div className="p-8 text-center">
                   <div className="bg-gray-50 dark:bg-gray-800/50 h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-3">
                     <CheckCircle2 className="h-8 w-8 text-gray-400" />
                   </div>
-                  <p>No tasks assigned yet!</p>
+                  <p style={{ color: '#000000' }}>No tasks assigned yet!</p>
                 </div>
               ) : (
                 myTasks.slice(0, 5).map((task, index) => {
@@ -475,7 +475,7 @@ const EmployeeDashboard: React.FC = () => {
                       </Badge>
                     );
                     return (
-                      <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 gap-1.5 pl-1.5 pr-2.5 py-0.5">
+                      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800 gap-1.5 pl-1.5 pr-2.5 py-0.5">
                         <Circle className="h-3.5 w-3.5" />
                         To Do
                       </Badge>
@@ -512,16 +512,19 @@ const EmployeeDashboard: React.FC = () => {
                                 maxLength={35}
                                 showToggle={false}
                                 textClassName={cn(
-                                  "font-semibold text-gray-900 dark:text-gray-100",
+                                  "font-bold text-sm",
+                                  !isCompleted && "text-black",
                                   isCompleted && "text-muted-foreground line-through decoration-slate-400"
                                 )}
+                                style={!isCompleted ? { color: '#000000' } : undefined}
                               />
                               <div className="mt-1">
                                 <TruncatedText
                                   text={task.description}
                                   maxLength={60}
                                   showToggle={false}
-                                  textClassName="text-xs text-muted-foreground"
+                                  textClassName="text-xs"
+                                  style={{ color: '#000000' }}
                                 />
                               </div>
                             </div>
@@ -542,9 +545,7 @@ const EmployeeDashboard: React.FC = () => {
                             {/* Due Date Info */}
                             <div className={cn(
                               "flex items-center gap-1.5 font-medium",
-                              isDueToday ? "text-amber-600 dark:text-amber-500" :
-                                isOverdue ? "text-red-600 dark:text-red-500" :
-                                  ""
+                              isOverdue ? "text-red-600 dark:text-red-500" : "text-emerald-600 dark:text-emerald-500"
                             )}>
                               {isDueToday || isOverdue ? (
                                 <AlertTriangle className="h-3.5 w-3.5" />
@@ -579,17 +580,17 @@ const EmployeeDashboard: React.FC = () => {
         {/* Recent Activities */}
         <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl">
+            <CardTitle className="flex items-center gap-2 text-base" style={{ color: '#000000' }}>
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
                 <Activity className="h-5 w-5 text-white" />
               </div>
               {t.dashboard.recentActivity}
             </CardTitle>
-            <CardDescription className="text-base">{t.dashboard.recentUpdates}</CardDescription>
+            <CardDescription className="text-sm" style={{ color: '#000000' }}>{t.dashboard.recentUpdates}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {recentActivities.length === 0 ? (
-              <div className="p-6 text-center text-muted-foreground">
+              <div className="p-6 text-center" style={{ color: '#000000' }}>
                 <p className="text-sm">No activity recorded today</p>
               </div>
             ) : (
@@ -605,15 +606,15 @@ const EmployeeDashboard: React.FC = () => {
                     {activity.type === 'error' && <XCircle className="h-5 w-5 text-white" />}
                   </div>
                   <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium">{activity.action}</p>
-                    <div className="text-xs text-muted-foreground">
+                    <p className="text-sm font-bold" style={{ color: '#000000' }}>{activity.action}</p>
+                    <div className="text-xs" style={{ color: '#000000' }}>
                       <TruncatedText
                         text={activity.description}
                         maxLength={50}
                         showToggle={false}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground">{activity.time}</p>
+                    <p className="text-xs" style={{ color: '#000000' }}>{activity.time}</p>
                   </div>
                 </div>
               ))

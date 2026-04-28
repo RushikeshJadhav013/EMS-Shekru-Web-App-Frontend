@@ -168,7 +168,7 @@ const AttendanceWithLocation: React.FC<AttendanceWithLocationProps> = ({
             <CheckCircle className="mr-2 h-4 w-4" />
             <span>Location detected: {location.placeName || 'Current location'}</span>
           </div>
-          <div className="flex items-center text-sm text-muted-foreground">
+          <div className="flex items-center text-sm text-black">
             <MapPin className="mr-2 h-3.5 w-3.5" />
             <span className="truncate">{location.address || 'Address not available'}</span>
           </div>
@@ -202,7 +202,7 @@ const AttendanceWithLocation: React.FC<AttendanceWithLocationProps> = ({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="p-4 border rounded-lg bg-muted/20">
-          <h4 className="font-medium mb-2 flex items-center">
+          <h4 className="font-medium mb-2 flex items-center text-black">
             <MapPin className="mr-2 h-4 w-4" />
             Location
           </h4>
