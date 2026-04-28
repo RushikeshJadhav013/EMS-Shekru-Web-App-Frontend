@@ -2280,11 +2280,11 @@ const AttendanceManager: React.FC = () => {
               <table className="w-full">
                 <thead className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
                   <tr className="hover:bg-transparent">
-                    <th className="text-left p-3 font-medium text-[12px] text-black dark:text-white">Date</th>
-                    <th className="text-left p-3 font-medium text-[12px] text-black dark:text-white">
+                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">DATE</th>
+                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
                       {t.attendance.employeeId}
                     </th>
-                    <th className="text-left p-3 font-medium text-[12px] text-black dark:text-white">
+                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
                       {t.attendance.employee}
                     </th>
                     <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
@@ -2332,24 +2332,24 @@ const AttendanceManager: React.FC = () => {
                           className="border-t hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
                         >
                           <td className="p-3">
-                            <span className="text-xs font-medium text-slate-900 dark:text-white">
+                            <span className="text-[12px] font-medium text-black dark:text-white">
                               {formatDateIST(record.date, "dd MMM yyyy")}
                             </span>
                           </td>
                           <td className="p-3">
                             <div>
-                              <p className="font-medium text-sm">
+                              <p className="font-medium text-[12px] text-black dark:text-white">
                                 {record.employeeId || record.userId || "N/A"}
                               </p>
-                              <p className="text-xs text-muted-foreground">
+                              <p className="text-[12px] text-black dark:text-white opacity-70">
                                 ID: {record.userId}
                               </p>
                             </div>
                           </td>
                           <td className="p-3">
                             <div>
-                              <p className="font-medium">{record.userName}</p>
-                              <p className="text-sm text-muted-foreground">
+                              <p className="font-medium text-[12px] text-black dark:text-white">{record.userName}</p>
+                              <p className="text-[12px] text-black dark:text-white opacity-70">
                                 {record.userEmail}
                               </p>
                             </div>
@@ -2361,14 +2361,14 @@ const AttendanceManager: React.FC = () => {
                             {record.workLocation === "work_from_home" ? (
                               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
                                 <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse"></div>
-                                <span className="text-sm font-medium text-orange-700 dark:text-orange-300">
+                                <span className="text-[12px] font-medium text-black dark:text-white">
                                   Work from Home
                                 </span>
                               </div>
                             ) : (
                               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
                                 <div className="h-2 w-2 rounded-sm bg-blue-500"></div>
-                                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                                <span className="text-[12px] font-medium text-black dark:text-white">
                                   Work from Office
                                 </span>
                               </div>

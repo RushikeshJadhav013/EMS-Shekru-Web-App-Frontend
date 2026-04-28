@@ -3526,7 +3526,7 @@ const AttendanceWithToggle: React.FC = () => {
                                   className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900"
                                 >
                                   <td className="p-3 whitespace-nowrap">
-                                    <span className="text-xs font-medium text-slate-900 dark:text-white">
+                                    <span className="text-[12px] font-medium text-black dark:text-white">
                                       {formatDateIST(
                                         record.date,
                                         "dd MMM yyyy",
@@ -3546,15 +3546,15 @@ const AttendanceWithToggle: React.FC = () => {
                                       "work_from_home" ? (
                                       <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
                                         <div className="h-1.5 w-1.5 rounded-full bg-orange-500"></div>
-                                        <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
+                                        <span className="text-[12px] font-medium text-black dark:text-white">
                                           WFH
                                         </span>
                                       </div>
                                     ) : (
                                       <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
                                         <div className="h-1.5 w-1.5 rounded-sm bg-blue-500"></div>
-                                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                                          Office
+                                        <span className="text-[12px] font-medium text-black dark:text-white">
+                                          Work from Office
                                         </span>
                                       </div>
                                     )}
@@ -4026,18 +4026,17 @@ const AttendanceWithToggle: React.FC = () => {
                   >
                     <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20">
                       <tr>
-                        <th className="text-left p-3 font-medium text-[12px] text-black dark:text-white whitespace-nowrap sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700">
+                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700">DATE</th>
+                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
+                          {t.attendance.employeeId}
+                        </th>
+                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
                           {t.attendance.employee}
                         </th>
-                        <th className="text-left p-3 font-medium text-[12px] text-black dark:text-white whitespace-nowrap">
-                          Date
-                        </th>
-                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
+                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
                           {t.attendance.department}
                         </th>
-                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
-                          Work Location
-                        </th>
+                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">WORK LOCATION</th>
                         <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap uppercase">
                           Online Status
                         </th>
@@ -4082,20 +4081,30 @@ const AttendanceWithToggle: React.FC = () => {
                               key={record.id}
                               className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900"
                             >
-                              <td className="p-3 sticky left-0 z-10 bg-white dark:bg-slate-950 border-r border-slate-100 dark:border-slate-800">
-                                <div className="min-w-[150px]">
-                                  <p
-                                    className="font-medium text-sm text-slate-900 dark:text-white truncate"
-                                    title={record.name || "-"}
-                                  >
-                                    {record.name || "-"}
+                              <td className="p-3 sticky left-0 z-10 bg-white dark:bg-slate-950 border-r border-slate-100 dark:border-slate-800 whitespace-nowrap">
+                                <span className="text-[12px] font-medium text-black dark:text-white">
+                                  {formatDateIST(record.date, "dd MMM yyyy")}
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                <div className="min-w-[120px]">
+                                  <p className="font-medium text-[12px] text-black dark:text-white">
+                                    {record.employeeId || record.userId || "N/A"}
+                                  </p>
+                                  <p className="text-[12px] text-black dark:text-white opacity-70">
+                                    ID: {record.userId}
                                   </p>
                                 </div>
                               </td>
-                              <td className="p-3 whitespace-nowrap">
-                                <span className="text-xs font-medium text-slate-900 dark:text-white">
-                                  {formatDateIST(record.date, "dd MMM yyyy")}
-                                </span>
+                              <td className="p-3">
+                                <div className="min-w-[180px]">
+                                  <p className="font-medium text-[12px] text-black dark:text-white truncate" title={record.name || "-"}>
+                                    {record.name || "-"}
+                                  </p>
+                                  <p className="text-[12px] text-black dark:text-white opacity-70 truncate" title={record.email || "-"}>
+                                    {record.email || "-"}
+                                  </p>
+                                </div>
                               </td>
                               <td className="p-3 whitespace-nowrap">
                                 <Badge variant="outline" className="text-[12px] text-black dark:text-white border-slate-200">
@@ -4106,14 +4115,14 @@ const AttendanceWithToggle: React.FC = () => {
                                 {record.workLocation === "work_from_home" ? (
                                   <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
                                     <div className="h-1.5 w-1.5 rounded-full bg-orange-500"></div>
-                                    <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
+                                    <span className="text-[12px] text-black dark:text-white">
                                       WFH
                                     </span>
                                   </div>
                                 ) : (
                                   <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
                                     <div className="h-1.5 w-1.5 rounded-sm bg-blue-500"></div>
-                                    <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                                    <span className="text-[12px] text-black dark:text-white">
                                       Office
                                     </span>
                                   </div>
@@ -4147,7 +4156,7 @@ const AttendanceWithToggle: React.FC = () => {
                               <td className="p-3 whitespace-nowrap">
                                 <div className="flex items-center gap-1.5">
                                   <Clock className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
-                                  <span className="text-xs font-semibold text-slate-900 dark:text-white">
+                                  <span className="text-[12px] text-black dark:text-white">
                                     {formatAttendanceTime(
                                       record.date,
                                       record.checkInTime,
@@ -4158,7 +4167,7 @@ const AttendanceWithToggle: React.FC = () => {
                               <td className="p-3 whitespace-nowrap">
                                 <div className="flex items-center gap-1.5">
                                   <Clock className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
-                                  <span className="text-xs font-semibold text-slate-900 dark:text-white">
+                                  <span className="text-[12px] text-black dark:text-white">
                                     {formatAttendanceTime(
                                       record.date,
                                       record.checkOutTime,
@@ -4800,6 +4809,12 @@ const AttendanceWithToggle: React.FC = () => {
                                   {request.reason}
                                 </p>
                                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                  <p className="font-medium text-[12px] text-black dark:text-white">
+                                    {request.submittedBy || "N/A"}
+                                  </p>
+                                  <p className="text-[12px] text-black dark:text-white opacity-70">
+                                    ID: {request.userId}
+                                  </p>
                                   <span>
                                     Submitted:{" "}
                                     {formatDateTimeIST(
