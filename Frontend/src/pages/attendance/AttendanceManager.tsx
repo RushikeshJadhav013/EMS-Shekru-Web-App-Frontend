@@ -2168,17 +2168,17 @@ const AttendanceManager: React.FC = () => {
 
       <Card className="border-slate-200/60 border shadow-sm bg-white rounded-xl overflow-hidden">
         <CardHeader className="border-b border-slate-100 bg-slate-50/30 px-5 py-4">
-          <CardTitle className="text-sm font-bold text-slate-900">
+          <CardTitle className="text-[16px] font-bold text-black dark:text-white">
             {t.attendance.attendanceRecords}
           </CardTitle>
-          <CardDescription className="text-[11px] font-medium">
+          <CardDescription className="text-[12px] font-medium text-black dark:text-white">
             {t.attendance.viewAndManage}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row md:flex-wrap gap-3 mb-6">
             <div className="w-full md:w-[260px] lg:w-[320px] flex flex-col gap-2">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1">
+              <Label className="text-sm font-medium text-black dark:text-white ml-1">
                 Search
               </Label>
               <div className="relative">

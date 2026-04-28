@@ -1,5 +1,5 @@
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://testing.staffly.space";
+  import.meta.env.VITE_API_BASE_URL || "https://api-testing.staffly.space  ";
 
 interface EmployeeData {
   name: string;
@@ -189,20 +189,20 @@ class ApiService {
     if (token && !token.startsWith("Bearer ")) {
       token = `Bearer ${token}`;
     }
-    
+
     const headers: Record<string, string> = {};
     if (token) {
       headers["Authorization"] = token;
     }
-    
+
     // Ensure branchId/companyId are synced from user object or token if available
     let branchId = localStorage.getItem("branchId");
     let companyId = localStorage.getItem("companyId");
-    
+
     try {
       const storedUser = localStorage.getItem("user");
       const token = localStorage.getItem("token");
-      
+
       let uBranchId = "";
       let uCompanyId = "";
 
@@ -221,7 +221,7 @@ class ApiService {
             if (!uBranchId) uBranchId = String(decoded.branch_id || decoded.branchId || "");
             if (!uCompanyId) uCompanyId = String(decoded.company_id || decoded.companyId || "");
           }
-        } catch (e) { 
+        } catch (e) {
           // Ignore decode errors
         }
       }
@@ -244,11 +244,11 @@ class ApiService {
     if (companyId && companyId !== "null" && companyId !== "undefined") {
       headers["X-Company-Id"] = companyId;
     }
-    
+
     if (headers["X-Branch-Id"] || headers["X-Company-Id"]) {
       console.debug("Scope Headers Sent:", { branchId: headers["X-Branch-Id"], companyId: headers["X-Company-Id"] });
     }
-    
+
     return headers;
   }
 
@@ -415,7 +415,7 @@ class ApiService {
   }
 
   async getEmployees(params?: string | {
-    branch?: string; 
+    branch?: string;
     search?: string;
     department?: string;
     role?: string;
@@ -424,7 +424,7 @@ class ApiService {
     company_id?: number;
   }) {
     const queryParams = new URLSearchParams();
-    
+
     // Legacy support: if a string is passed, it acts as a department filter
     if (typeof params === 'string') {
       if (params && params !== "all") queryParams.append("department", params);
@@ -438,7 +438,7 @@ class ApiService {
     }
 
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
-    
+
     try {
       // Prepare extra headers if explicit IDs are provided
       const extraHeaders: Record<string, string> = {};
@@ -455,32 +455,32 @@ class ApiService {
       // If we hit a conflict (409) or forbidden (403) and we don't have a branchId in localStorage,
       // it means we are an admin/HR with multiple scopes but none selected.
       if (error.message?.includes("409") || error.message?.includes("403")) {
-         console.warn("Scope conflict/forbidden detected. Attempting to sync branch/company assignment from user profile...");
-         try {
-           const storedUser = localStorage.getItem("user");
-           if (storedUser) {
-             const user = JSON.parse(storedUser);
-             const fallbackBranchId = user.branch_id || user.branchId;
-             const fallbackCompanyId = user.company_id || user.companyId;
-             if (fallbackBranchId) {
-               console.log(`Setting automatic scope fallback -> Branch: ${fallbackBranchId}, Company: ${fallbackCompanyId}`);
-               localStorage.setItem("branchId", String(fallbackBranchId));
-               if (user.company_id || user.companyId) {
-                 localStorage.setItem("companyId", String(user.company_id || user.companyId));
-               }
-               // Retry the request ONCE with the new stored IDs
-               const retryData = await this.request(queryString ? `/employees/${queryString}` : `/employees/`, {
-                 headers: {
-                   "X-Branch-Id": String(fallbackBranchId),
-                   "X-Company-Id": fallbackCompanyId ? String(fallbackCompanyId) : ""
-                 }
-               });
-               return Array.isArray(retryData) ? retryData : retryData?.employees || [];
-             }
-           }
-         } catch (retryError) {
-           console.error("Automatic scope resolution failed:", retryError);
-         }
+        console.warn("Scope conflict/forbidden detected. Attempting to sync branch/company assignment from user profile...");
+        try {
+          const storedUser = localStorage.getItem("user");
+          if (storedUser) {
+            const user = JSON.parse(storedUser);
+            const fallbackBranchId = user.branch_id || user.branchId;
+            const fallbackCompanyId = user.company_id || user.companyId;
+            if (fallbackBranchId) {
+              console.log(`Setting automatic scope fallback -> Branch: ${fallbackBranchId}, Company: ${fallbackCompanyId}`);
+              localStorage.setItem("branchId", String(fallbackBranchId));
+              if (user.company_id || user.companyId) {
+                localStorage.setItem("companyId", String(user.company_id || user.companyId));
+              }
+              // Retry the request ONCE with the new stored IDs
+              const retryData = await this.request(queryString ? `/employees/${queryString}` : `/employees/`, {
+                headers: {
+                  "X-Branch-Id": String(fallbackBranchId),
+                  "X-Company-Id": fallbackCompanyId ? String(fallbackCompanyId) : ""
+                }
+              });
+              return Array.isArray(retryData) ? retryData : retryData?.employees || [];
+            }
+          }
+        } catch (retryError) {
+          console.error("Automatic scope resolution failed:", retryError);
+        }
       }
 
       if (error.message?.includes("Scope conflict") || error.message?.includes("Multiple company")) {
@@ -504,12 +504,12 @@ class ApiService {
   }): Promise<Blob> {
     const queryParams = new URLSearchParams();
     const extraHeaders: Record<string, string> = {};
-    
+
     if (params) {
       if (params.department && params.department !== "all") queryParams.append("department", params.department);
       if (params.role) queryParams.append("role", params.role);
       if (params.designation) queryParams.append("designation", params.designation);
-      
+
       const activeStatus = params.is_active !== undefined ? params.is_active : params.status;
       if (activeStatus !== undefined && activeStatus !== "all") {
         queryParams.append("status", String(activeStatus));
@@ -537,12 +537,12 @@ class ApiService {
   }): Promise<Blob> {
     const queryParams = new URLSearchParams();
     const extraHeaders: Record<string, string> = {};
-    
+
     if (params) {
       if (params.department && params.department !== "all") queryParams.append("department", params.department);
       if (params.role) queryParams.append("role", params.role);
       if (params.designation) queryParams.append("designation", params.designation);
-      
+
       const activeStatus = params.is_active !== undefined ? params.is_active : params.status;
       if (activeStatus !== undefined && activeStatus !== "all") {
         queryParams.append("status", String(activeStatus));

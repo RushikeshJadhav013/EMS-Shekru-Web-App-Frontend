@@ -92,7 +92,7 @@ const mapEmployeeData = (emp: any): EmployeeRecord => {
   const mapped = toCamelCase(emp);
 
   // ✅ Fix photo URLs to include backend base URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space';
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api-testing.staffly.space  ';
   if (mapped.profilePhoto && !mapped.profilePhoto.startsWith('http')) {
     mapped.profilePhoto = `${baseUrl}/${mapped.profilePhoto}`;
   }
@@ -524,7 +524,7 @@ export default function EmployeeManagement() {
         setEmployees(mappedData);
       } catch (error: any) {
         console.error('Failed to fetch employees:', error);
-        
+
         // Check for 409 Conflict (Multiple scopes found)
         const errorMessage = error.message || '';
         if (error.status === 409 || errorMessage.includes('Multiple company') || errorMessage.includes('409') || errorMessage.includes('Scope conflict')) {
@@ -584,7 +584,7 @@ export default function EmployeeManagement() {
       const name = emp.name || '';
       const employeeId = emp.employeeId || '';
       const email = emp.email || '';
-      
+
       const matchesSearch =
         name.toLowerCase().includes(query) ||
         employeeId.toLowerCase().includes(query) ||
@@ -1706,7 +1706,7 @@ export default function EmployeeManagement() {
 
       let photoUrl = String(data['photoUrl'] ?? data['photo_url'] ?? data['profilePhoto'] ?? data['profile_photo'] ?? '');
       if (photoUrl && !photoUrl.startsWith('http')) {
-        photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://testing.staffly.space'}/${photoUrl}`;
+        photoUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://api-testing.staffly.space  '}/${photoUrl}`;
       }
 
       const rawPhone = String(data['phone'] ?? '');
@@ -2685,7 +2685,7 @@ export default function EmployeeManagement() {
                       Scope Selection Required
                     </DialogTitle>
                     <DialogDescription className="font-medium text-slate-600">
-                      Your account is assigned to multiple organizations or branches. 
+                      Your account is assigned to multiple organizations or branches.
                       Please enter a specific ID to continue.
                     </DialogDescription>
                   </DialogHeader>
@@ -2698,34 +2698,34 @@ export default function EmployeeManagement() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="debug-branch-id">Branch ID</Label>
-                      <Input 
+                      <Input
                         id="debug-branch-id"
-                        value={debugBranchId} 
-                        onChange={(e) => setDebugBranchId(e.target.value)} 
+                        value={debugBranchId}
+                        onChange={(e) => setDebugBranchId(e.target.value)}
                         placeholder="e.g. 1"
                         className="border-2 focus:border-blue-500"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="debug-company-id">Company ID</Label>
-                      <Input 
+                      <Input
                         id="debug-company-id"
-                        value={debugCompanyId} 
-                        onChange={(e) => setDebugCompanyId(e.target.value)} 
+                        value={debugCompanyId}
+                        onChange={(e) => setDebugCompanyId(e.target.value)}
                         placeholder="e.g. 1"
                         className="border-2 focus:border-blue-500"
                       />
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => setActiveScopeError(false)}
                       className="border-slate-300"
                     >
                       Close
                     </Button>
-                    <Button 
+                    <Button
                       onClick={() => {
                         if (debugBranchId) localStorage.setItem('branchId', debugBranchId);
                         if (debugCompanyId) localStorage.setItem('companyId', debugCompanyId);
