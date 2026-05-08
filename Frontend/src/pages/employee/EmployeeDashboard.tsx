@@ -297,7 +297,7 @@ const EmployeeDashboard: React.FC = () => {
           </div>
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: '#000000' }}>
-              {t.common.welcome}, <span style={{ color: '#000000' }}>{user?.name}!</span>
+              {t.common.welcome}, <span style={{ color: '#E11D48' }}>{user?.name}!</span>
             </h1>
             <p className="font-medium flex items-center gap-2 mt-1 text-sm" style={{ color: '#000000' }}>
               <CalendarDays className="h-4 w-4" style={{ color: '#000000' }} />
@@ -385,7 +385,7 @@ const EmployeeDashboard: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-xs font-bold uppercase tracking-widest leading-none" style={{ color: '#000000' }}>{item.label}</h3>
+                <h3 className="text-[12px] font-bold uppercase tracking-widest leading-none" style={{ color: '#000000' }}>{item.label}</h3>
                 <div className={`text-2xl font-black tracking-tight ${item.isMono ? 'font-mono' : ''}`} style={{ color: '#000000' }}>{item.value}</div>
                 <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
                   <div className={`h-1.5 w-1.5 rounded-full ${item.color === 'indigo' ? 'bg-indigo-500' :
@@ -393,7 +393,7 @@ const EmployeeDashboard: React.FC = () => {
                       item.color === 'cyan' ? 'bg-cyan-500' :
                         'bg-rose-500'
                     }`} />
-                  <span className="text-xs font-bold uppercase" style={{ color: '#000000' }}>{item.sub}</span>
+                  <span className="text-[12px] font-bold uppercase" style={{ color: '#000000' }}>{item.sub}</span>
                 </div>
               </div>
             </CardContent>
@@ -402,18 +402,18 @@ const EmployeeDashboard: React.FC = () => {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* My Tasks */}
-        <Card className="lg:col-span-2 border-0 shadow-lg bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl">
-          <CardHeader className="border-b border-gray-100 dark:border-gray-800 pb-4">
+        <Card className="lg:col-span-3 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+          <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-3 text-base">
                 <div className="h-10 w-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
                   <ClipboardList className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 </div>
                 <div>
-                  <h3 className="font-bold" style={{ color: '#000000' }}>{t.dashboard.myTasks}</h3>
-                  <p className="text-sm font-normal text-muted-foreground">{t.dashboard.currentAssignments}</p>
+                  <h3 className="text-[16px] font-bold" style={{ color: '#000000' }}>{t.dashboard.myTasks}</h3>
+                  <p className="text-[14px] font-normal" style={{ color: '#000000' }}>{t.dashboard.currentAssignments}</p>
                 </div>
               </CardTitle>
               <Button
@@ -484,10 +484,11 @@ const EmployeeDashboard: React.FC = () => {
 
                   const getPriorityColor = (p: string) => {
                     switch (p?.toLowerCase()) {
-                      case 'urgent': return 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 border-blue-200';
-                      case 'high': return 'text-orange-600 bg-orange-100 dark:bg-orange-900/30 border-orange-200';
-                      case 'medium': return 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 border-blue-200';
-                      default: return 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 border-blue-200';
+                      case 'urgent': return 'text-red-600 border-red-200';
+                      case 'high': return 'text-yellow-600 border-yellow-200';
+                      case 'medium': return 'text-blue-600 border-blue-200';
+                      case 'low': return 'text-green-600 border-green-200';
+                      default: return 'text-green-600 border-green-200';
                     }
                   };
 
@@ -536,7 +537,7 @@ const EmployeeDashboard: React.FC = () => {
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
                             {/* Priority */}
                             <span className={cn(
-                              "px-2 py-0.5 rounded border font-medium uppercase tracking-wider text-[10px]",
+                              "text-[12px] font-medium uppercase tracking-wider border-0",
                               getPriorityColor(task.priority)
                             )}>
                               {task.priority || 'Normal'}
@@ -578,15 +579,15 @@ const EmployeeDashboard: React.FC = () => {
         </Card>
 
         {/* Recent Activities */}
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base" style={{ color: '#000000' }}>
+        <Card className="lg:col-span-3 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+          <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
+            <CardTitle className="flex items-center gap-2" style={{ color: '#000000' }}>
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
                 <Activity className="h-5 w-5 text-white" />
               </div>
-              {t.dashboard.recentActivity}
+              <span className="text-[16px] font-bold" style={{ color: '#000000' }}>{t.dashboard.recentActivity}</span>
             </CardTitle>
-            <CardDescription className="text-sm" style={{ color: '#000000' }}>{t.dashboard.recentUpdates}</CardDescription>
+            <CardDescription className="text-[14px]" style={{ color: '#000000' }}>{t.dashboard.recentUpdates}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {recentActivities.length === 0 ? (
@@ -614,7 +615,7 @@ const EmployeeDashboard: React.FC = () => {
                         showToggle={false}
                       />
                     </div>
-                    <p className="text-xs" style={{ color: '#000000' }}>{activity.time}</p>
+                    <p className="text-[12px]" style={{ color: '#000000' }}>{activity.time}</p>
                   </div>
                 </div>
               ))

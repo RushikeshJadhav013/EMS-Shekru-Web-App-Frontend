@@ -542,10 +542,10 @@ export default function BranchManagement() {
               <Building2 className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <h1 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "30px", fontWeight: "bold" }}>
                 Department Management
               </h1>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+              <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-1">
                 Organize teams, assign managers, and maintain your company structure.
               </p>
             </div>
@@ -555,7 +555,7 @@ export default function BranchManagement() {
               variant="outline"
               onClick={handleSyncBranchs}
               disabled={isLoading}
-              className="gap-2 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800"
+              className="gap-2 border-transparent text-white bg-blue-600 hover:bg-blue-700 shadow-md" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -610,10 +610,10 @@ export default function BranchManagement() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-medium">
                     Total Departments
                   </p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{departments.length}</p>
+                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="mt-1">{departments.length}</p>
                 </div>
                 <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
                   <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -626,11 +626,11 @@ export default function BranchManagement() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-medium">
                     Active Departments
                   </p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{activeBranchs}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="mt-1">{activeBranchs}</p>
+                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="mt-1">
                     {departments.length > 0 ? Math.round((activeBranchs / departments.length) * 100) : 0}% active
                   </p>
                 </div>
@@ -645,10 +645,10 @@ export default function BranchManagement() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-medium">
                     Total Employees
                   </p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{totalEmployees}</p>
+                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="mt-1">{totalEmployees}</p>
                 </div>
                 <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
                   <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -664,28 +664,28 @@ export default function BranchManagement() {
         <CardHeader className="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
           <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Departments</CardTitle>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+              <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>Departments</CardTitle>
+              <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-1">
                 Search, filter, and manage departments across your organization.
               </p>
             </div>
             <div className="flex flex-wrap gap-4 w-full xl:w-auto">
               <div className="flex flex-col gap-2 flex-1 min-w-[200px]">
-                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Search</Label>
+                <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Search</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
                     placeholder="Search departments..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
-                    className="pl-10 border-slate-300 dark:border-slate-600 h-10"
+                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="pl-10 border-slate-300 dark:border-slate-600 h-10"
                   />
                 </div>
               </div>
               <div className="flex flex-col gap-2">
-                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Status</Label>
+                <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Status</Label>
                 <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger className="w-[140px] border-slate-300 dark:border-slate-600 h-10">
+                  <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-[140px] border-slate-300 dark:border-slate-600 h-10">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -703,13 +703,13 @@ export default function BranchManagement() {
             <Table>
               <TableHeader className="bg-slate-50 dark:bg-slate-800">
                 <TableRow>
-                  <TableHead className="w-[100px] px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">Code</TableHead>
-                  <TableHead className="px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">Department</TableHead>
-                  <TableHead className="px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">Manager</TableHead>
-                  <TableHead className="px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">Employees</TableHead>
-                  <TableHead className="px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">Location</TableHead>
-                  <TableHead className="px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">Status</TableHead>
-                  <TableHead className="px-6 py-3 text-center text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">Actions</TableHead>
+                  <TableHead className="w-[100px] px-6 py-3 uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>CODE</TableHead>
+                  <TableHead className="px-6 py-3 uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>DEPARTMENT</TableHead>
+                  <TableHead className="px-6 py-3 uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>MANAGER</TableHead>
+                  <TableHead className="px-6 py-3 uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>EMPLOYEES</TableHead>
+                  <TableHead className="px-6 py-3 uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>LOCATION</TableHead>
+                  <TableHead className="px-6 py-3 uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>STATUS</TableHead>
+                  <TableHead className="px-6 py-3 text-center uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ACTIONS</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -744,15 +744,13 @@ export default function BranchManagement() {
                         className="hover:bg-slate-50 dark:hover:bg-slate-800/50"
                       >
                         <TableCell className="px-6 py-4">
-                          <Badge variant="outline" className="font-semibold">
-                            {department.code}
-                          </Badge>
+                          <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{department.code}</span>
                         </TableCell>
                         <TableCell className="px-6 py-4">
                           <div className="space-y-1">
-                            <p className="font-medium text-slate-900 dark:text-slate-100">{department.name}</p>
+                            <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{department.name}</p>
                             {department.description && (
-                              <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 max-w-xs">
+                              <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="line-clamp-2 max-w-xs">
                                 {department.description}
                               </p>
                             )}
@@ -767,9 +765,7 @@ export default function BranchManagement() {
                                     {managerNameStr.charAt(0).toUpperCase()}
                                   </span>
                                 </div>
-                                <span className="text-sm text-slate-700 dark:text-slate-300">
-                                  {managerNameStr}
-                                </span>
+                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{managerNameStr}</span>
                               </>
                             ) : (
                               <span className="text-sm text-slate-400 dark:text-slate-500 italic">Unassigned</span>
@@ -777,25 +773,15 @@ export default function BranchManagement() {
                           </div>
                         </TableCell>
                         <TableCell className="px-6 py-4">
-                          <Badge variant="secondary">
-                            {getEmployeeCountForDept(department.name)}
-                          </Badge>
+                          <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{getEmployeeCountForDept(department.name)}</span>
                         </TableCell>
                         <TableCell className="px-6 py-4">
-                          <span className="text-sm text-slate-700 dark:text-slate-300">
-                            {department.location || <span className="text-slate-400 dark:text-slate-500 italic">Not specified</span>}
-                          </span>
+                          <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{department.location || "Not specified"}</span>
                         </TableCell>
                         <TableCell className="px-6 py-4">
-                          <Badge
-                            className={
-                              isActive
-                                ? 'bg-green-600 text-white'
-                                : 'bg-slate-500 text-white'
-                            }
-                          >
+                          <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: isActive ? "#16A34A" : "#EF4444", fontSize: "14px", fontWeight: "bold" }}>
                             {department.status.charAt(0).toUpperCase() + department.status.slice(1)}
-                          </Badge>
+                          </span>
                         </TableCell>
                         <TableCell className="px-6 py-4">
                           <div className="flex justify-center gap-2">

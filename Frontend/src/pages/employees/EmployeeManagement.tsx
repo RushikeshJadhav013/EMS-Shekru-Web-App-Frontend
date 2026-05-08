@@ -348,10 +348,6 @@ export default function EmployeeManagement() {
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [selectedRole, setSelectedRole] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
-  const [selectedCompany, setSelectedCompany] = useState('all');
-  const [selectedBranchFilter, setSelectedBranchFilter] = useState('all');
-  const [companies, setCompanies] = useState<string[]>([]);
-  const [branchFilters, setBranchFilters] = useState<string[]>([]);
   const { user } = useAuth();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -562,16 +558,6 @@ export default function EmployeeManagement() {
     fetchDepartments();
   }, []);
 
-  // Update filter lists when employees change
-  useEffect(() => {
-    if (employees.length > 0) {
-      const uniqueCompanies = Array.from(new Set(employees.map(emp => emp.company).filter(Boolean))) as string[];
-      setCompanies(uniqueCompanies.sort());
-
-      const uniqueBranchFilters = Array.from(new Set(employees.map(emp => emp.branches).filter(Boolean))) as string[];
-      setBranchFilters(uniqueBranchFilters.sort());
-    }
-  }, [employees]);
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(emp => {
@@ -598,13 +584,9 @@ export default function EmployeeManagement() {
         (emp.role && emp.role.toLowerCase().replace(/[\s_]+/g, '') === selectedRole.toLowerCase().replace(/[\s_]+/g, ''));
       const matchesStatus = selectedStatus === 'all' ||
         (emp.status && emp.status.toLowerCase() === selectedStatus.toLowerCase());
-      const matchesCompany = selectedCompany === 'all' ||
-        (emp.company && emp.company === selectedCompany);
-      const matchesBranchFilter = selectedBranchFilter === 'all' ||
-        (emp.branches && emp.branches === selectedBranchFilter);
-      return matchesSearch && matchesDepartment && matchesRole && matchesStatus && matchesCompany && matchesBranchFilter;
+      return matchesSearch && matchesDepartment && matchesRole && matchesStatus;
     });
-  }, [employees, searchQuery, selectedDepartment, selectedRole, selectedStatus, selectedCompany, selectedBranchFilter]);
+  }, [employees, searchQuery, selectedDepartment, selectedRole, selectedStatus]);
 
   // Paginated employees
   const paginatedEmployees = useMemo(() => {
@@ -618,7 +600,7 @@ export default function EmployeeManagement() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedDepartment, selectedRole, selectedStatus, selectedCompany, selectedBranchFilter]);
+  }, [searchQuery, selectedDepartment, selectedRole, selectedStatus]);
 
   // Reset to first page when items per page changes
   useEffect(() => {
@@ -1820,8 +1802,8 @@ export default function EmployeeManagement() {
               <Users className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Employee Management</h1>
-              <p className="text-sm text-muted-foreground mt-1">Manage your team members efficiently</p>
+              <h1 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "30px", fontWeight: "bold" }}>Employee Management</h1>
+              <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Manage your team members efficiently</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1836,7 +1818,7 @@ export default function EmployeeManagement() {
                 setIsExportDialogOpen(true);
               }}
               variant="outline"
-              className="group gap-2 border-blue-200 text-slate-700 bg-white/70 hover:bg-gradient-to-r hover:from-blue-500 hover:to-indigo-500 hover:text-white hover:border-transparent shadow-sm hover:shadow-lg transition-all dark:text-slate-100 dark:bg-slate-900/60 dark:border-slate-700"
+              className="group gap-2 border-transparent text-white bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow-lg transition-all"
             >
               <Download className="h-4 w-4 text-blue-600 transition-colors group-hover:text-white" />
               Export
@@ -1853,7 +1835,7 @@ export default function EmployeeManagement() {
               <DialogTrigger asChild>
                 <Button
                   variant="outline"
-                  className="group gap-2 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:border-transparent shadow-sm hover:shadow-lg transition-all"
+                  className="group gap-2 border-transparent text-white bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow-lg transition-all"
                 >
                   <Upload className="h-4 w-4 transition-colors group-hover:text-white" />
                   Bulk Upload
@@ -2049,7 +2031,7 @@ export default function EmployeeManagement() {
         <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
-              <CardTitle className="text-lg font-semibold">Employee Directory</CardTitle>
+              <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>Employee Directory</CardTitle>
               {selectedEmployeeIds.length > 0 && (
                 <span className="text-sm bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-full px-3 py-0.5 font-medium text-blue-700 dark:text-blue-300">
                   {selectedEmployeeIds.length} selected
@@ -2063,7 +2045,7 @@ export default function EmployeeManagement() {
                     size="sm"
                     onClick={() => handleBulkStatusChange('active')}
                     disabled={isBulkUpdating}
-                    className="gap-1.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-sm font-medium h-9 px-3 text-xs"
+                    className="gap-1.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-sm font-medium h-9 px-3" style={{ fontSize: "14px" }}
                   >
                     {isBulkUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Activity className="h-3 w-3" />}
                     Bulk Activate
@@ -2072,7 +2054,7 @@ export default function EmployeeManagement() {
                     size="sm"
                     onClick={() => handleBulkStatusChange('inactive')}
                     disabled={isBulkUpdating}
-                    className="gap-1.5 bg-gradient-to-r from-gray-500 to-slate-600 hover:from-gray-600 hover:to-slate-700 text-white shadow-sm font-medium h-9 px-3 text-xs"
+                    className="gap-1.5 bg-gradient-to-r from-gray-500 to-slate-600 hover:from-gray-600 hover:to-slate-700 text-white shadow-sm font-medium h-9 px-3" style={{ fontSize: "14px" }}
                   >
                     {isBulkUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
                     Bulk Deactivate
@@ -2746,23 +2728,23 @@ export default function EmployeeManagement() {
           <div className="flex flex-col sm:flex-row items-end gap-3 mb-6">
             <div className="flex-1 min-w-0 w-full">
               <div className="flex flex-col gap-2">
-                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Search</Label>
+                <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Search</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <Input
                     placeholder="Search by name, ID, or email..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
-                    className="pl-10 pr-4 h-11 w-full bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="pl-10 pr-4 h-11 w-full bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-blue-500" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
                     aria-label="Search employees"
                   />
                 </div>
               </div>
             </div>
             <div className="flex flex-col gap-2 w-full sm:w-44">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Department</Label>
+              <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Department</Label>
               <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                <SelectTrigger className={`w-full h-11 bg-white dark:bg-gray-950 border-2 transition-all duration-300 hover:shadow-md flex-shrink-0 ${selectedDepartment === 'all'
+                <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className={`w-full h-11 bg-white dark:bg-gray-950 border-2 transition-all duration-300 hover:shadow-md flex-shrink-0 ${selectedDepartment === 'all'
                   ? 'border-blue-400 dark:border-blue-600 hover:border-blue-400 dark:hover:border-blue-600'
                   : 'hover:border-blue-300 dark:hover:border-blue-700 border-gray-200 dark:border-gray-800'
                   }`}>
@@ -2791,9 +2773,9 @@ export default function EmployeeManagement() {
               </Select>
             </div>
             <div className="flex flex-col gap-2 w-full sm:w-44">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Role</Label>
+              <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Role</Label>
               <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-950 border-2 hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
+                <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-full h-11 bg-white dark:bg-gray-950 border-2 hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
                   <UserIcon className="h-4 w-4 mr-2 text-purple-600" />
                   <SelectValue placeholder="Role" />
                 </SelectTrigger>
@@ -2836,9 +2818,9 @@ export default function EmployeeManagement() {
               </Select>
             </div>
             <div className="flex flex-col gap-2 w-full sm:w-44">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Status</Label>
+              <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Status</Label>
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-950 border-2 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
+                <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-full h-11 bg-white dark:bg-gray-950 border-2 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
                   <Activity className="h-4 w-4 mr-2 text-emerald-600" />
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -2852,44 +2834,6 @@ export default function EmployeeManagement() {
                   <SelectItem value="inactive" className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950 transition-colors">
                     Inactive
                   </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-2 w-full sm:w-44">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Company</Label>
-              <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-                <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-950 border-2 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
-                  <FileText className="h-4 w-4 mr-2 text-blue-600" />
-                  <SelectValue placeholder="Company" />
-                </SelectTrigger>
-                <SelectContent className="border-2 shadow-2xl">
-                  <SelectItem value="all" className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors font-medium">
-                    All Companies
-                  </SelectItem>
-                  {companies.map((company) => (
-                    <SelectItem key={company} value={company} className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors">
-                      {company}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-2 w-full sm:w-44">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Branches</Label>
-              <Select value={selectedBranchFilter} onValueChange={setSelectedBranchFilter}>
-                <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-950 border-2 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
-                  <Activity className="h-4 w-4 mr-2 text-indigo-600" />
-                  <SelectValue placeholder="Branches" />
-                </SelectTrigger>
-                <SelectContent className="border-2 shadow-2xl">
-                  <SelectItem value="all" className="cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors font-medium">
-                    All Branches
-                  </SelectItem>
-                  {branchFilters.map((branch) => (
-                    <SelectItem key={branch} value={branch} className="cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors">
-                      {branch}
-                    </SelectItem>
-                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -2916,16 +2860,16 @@ export default function EmployeeManagement() {
                       title="Select all on this page"
                     />
                   </TableHead>
-                  <TableHead className="w-[60px] hidden sm:table-cell font-semibold">Photo</TableHead>
-                  <TableHead className="font-semibold">Employee ID</TableHead>
-                  <TableHead className="font-semibold">Name</TableHead>
-                  <TableHead className="hidden sm:table-cell font-semibold">Email</TableHead>
-                  <TableHead className="font-semibold">Department</TableHead>
-                  <TableHead className="font-semibold">Company</TableHead>
-                  <TableHead className="font-semibold">Branches</TableHead>
-                  <TableHead className="hidden md:table-cell font-semibold">Role</TableHead>
-                  <TableHead className="font-semibold">Status</TableHead>
-                  <TableHead className="text-right font-semibold">Actions</TableHead>
+                  <TableHead className="w-[60px] hidden sm:table-cell" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PHOTO</TableHead>
+                  <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>EMPLOYEE ID</TableHead>
+                  <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>NAME</TableHead>
+                  <TableHead className="hidden sm:table-cell" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>EMAIL</TableHead>
+                  <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>DEPARTMENT</TableHead>
+                  <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>COMPANY</TableHead>
+                  <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>BRANCHES</TableHead>
+                  <TableHead className="hidden md:table-cell" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ROLE</TableHead>
+                  <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>STATUS</TableHead>
+                  <TableHead className="text-right" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ACTIONS</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -2967,34 +2911,40 @@ export default function EmployeeManagement() {
                           <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold">{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                         </Avatar>
                       </TableCell>
-                      <TableCell className="font-semibold text-blue-600 dark:text-blue-400">{employee.employeeId}</TableCell>
-                      <TableCell className="font-medium">{employee.name}</TableCell>
-                      <TableCell className="hidden sm:table-cell text-muted-foreground">{employee.email}</TableCell>
+                      <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{employee.employeeId}</TableCell>
+                      <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{employee.name}</TableCell>
+                      <TableCell className="hidden sm:table-cell" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{employee.email}</TableCell>
                       <TableCell>
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 text-sm font-medium">
+                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                           {employee.role?.toLowerCase() === 'hr' || !employee.department
                             ? 'No Dept'
                             : employee.department}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm">{employee.company || '-'}</span>
+                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{employee.company || "-"}</span>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm">{employee.branches || '-'}</span>
+                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{employee.branches || "-"}</span>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-0 shadow-sm rounded-full px-3 py-0.5 font-medium transition-all">
-                          {employee.role ? employee.role.charAt(0).toUpperCase() + employee.role.slice(1).replace('_', ' ') : '-'}
-                        </Badge>
+                        {(() => {
+                        const role = employee.role?.toLowerCase();
+                        let color = "#EF4444"; // Employee: Red
+                        if (role === 'hr') color = "#10B981"; // HR: Green
+                        else if (role === 'manager') color = "#3B82F6"; // Manager: Blue
+                        else if (role === 'team_lead') color = "#EAB308"; // Team Lead: Yellow
+                        return (
+                          <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: color, fontSize: "12px", fontWeight: "bold" }}>
+                            {employee.role ? employee.role.charAt(0).toUpperCase() + employee.role.slice(1).replace('_', ' ') : '-'}
+                          </span>
+                        );
+                      })()}
                       </TableCell>
                       <TableCell>
-                        <Badge className={`${employee.status === 'active'
-                          ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-0 shadow-sm rounded-full px-3 py-0.5'
-                          : 'bg-gray-400 hover:bg-gray-500 text-white border-0 shadow-sm rounded-full px-3 py-0.5'
-                          } font-medium transition-all`}>
+                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: employee.status === 'active' ? "#10B981" : "#EF4444", fontSize: "12px", fontWeight: "bold" }}>
                           {employee.status ? employee.status.charAt(0).toUpperCase() + employee.status.slice(1) : '-'}
-                        </Badge>
+                        </span>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1.5">

@@ -52,6 +52,8 @@ import {
   Send,
   History,
   LayoutGrid,
+  Edit,
+  Trash2,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { AttendanceRecord } from "@/types";
@@ -71,6 +73,7 @@ import {
 import { DatePicker } from "@/components/ui/date-picker";
 import OnlineStatusIndicator from "@/components/attendance/OnlineStatusIndicator";
 import { apiService, API_BASE_URL } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 interface EmployeeAttendance extends AttendanceRecord {
   userName: string;
@@ -146,6 +149,9 @@ const AttendanceManager: React.FC = () => {
   }>({ open: false, location: null });
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [activeScopeError, setActiveScopeError] = useState(false);
+  const [debugBranchId, setDebugBranchId] = useState(localStorage.getItem('branchId') || '');
+  const [debugCompanyId, setDebugCompanyId] = useState(localStorage.getItem('companyId') || '');
   const [filterDate, setFilterDate] = useState(todayIST());
   const [selectedDate, setSelectedDate] = useState<Date>(nowIST());
   const [timePeriodFilter, setTimePeriodFilter] = useState<
@@ -895,8 +901,12 @@ const AttendanceManager: React.FC = () => {
       setDepartments(
         Array.from(departmentSet).sort((a, b) => a.localeCompare(b)),
       );
-    } catch (err) {
+    } catch (err: any) {
       console.error("loadEmployees error", err);
+      const errorMessage = err.message || "";
+      if (err.status === 409 || errorMessage.includes("409") || errorMessage.includes("Scope conflict") || errorMessage.includes("Multiple company")) {
+        setActiveScopeError(true);
+      }
     }
   };
 
@@ -924,8 +934,12 @@ const AttendanceManager: React.FC = () => {
         .filter((dept): dept is string => Boolean(dept && dept.trim()));
       // Intentionally do not merge timing departments into the main `departments` list.
       // The "Department Timing" UI uses `coreDepartments` (from /departments/names) to avoid messy/combined strings.
-    } catch (error) {
+    } catch (error: any) {
       console.error("loadOfficeTimings error", error);
+      const errorMessage = error.message || "";
+      if (error.status === 409 || errorMessage.includes("409") || errorMessage.includes("Scope conflict") || errorMessage.includes("Multiple company")) {
+        setActiveScopeError(true);
+      }
       toast({
         title: "Office timing fetch failed",
         description: "Unable to load configured office timings.",
@@ -1339,8 +1353,14 @@ const AttendanceManager: React.FC = () => {
 
         console.log("Transformed attendance records:", transformedData);
         setAttendanceRecords(transformedData);
-      } catch (err) {
-        console.error("loadAllAttendance error", err);
+      } catch (error: any) {
+        console.error("loadAllAttendance error", error);
+        
+        const errorMessage = error.message || "";
+        if (error.status === 409 || errorMessage.includes("409") || errorMessage.includes("Scope conflict") || errorMessage.includes("Multiple company")) {
+          setActiveScopeError(true);
+        }
+
         toast({
           title: "Error",
           description: "Failed to load attendance records. Please try again.",
@@ -1947,6 +1967,10 @@ const AttendanceManager: React.FC = () => {
       setAllWfhRequests(formattedRequests);
     } catch (error: any) {
       setAllWfhRequests([]);
+      const errorMessage = error.message || "";
+      if (error.status === 409 || errorMessage.includes("409") || errorMessage.includes("Scope conflict") || errorMessage.includes("Multiple company")) {
+        setActiveScopeError(true);
+      }
     } finally {
       setIsLoadingWfhRequests(false);
     }
@@ -2037,21 +2061,21 @@ const AttendanceManager: React.FC = () => {
   };
 
   const attendanceContent = (
-    <div className="space-y-6">
+    <div className="w-full space-y-6">
       <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border shadow-sm mt-1">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-blue-500/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
 
         <div className="relative flex items-center gap-5">
-          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-200 dark:shadow-none">
+          <div className="h-16 w-16 rounded-2xl bg-[#000000] flex items-center justify-center shadow-lg shadow-black/10 transition-transform duration-300 hover:scale-105">
             <Clock className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-black sm:text-3xl">
+            <h1 className="text-2xl font-black tracking-tight text-[#000000] sm:text-3xl uppercase font-inter">
               {t.attendance.employeeAttendance}
             </h1>
-            <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
-              <Users className="h-4 w-4 text-blue-500" />
+            <p className="text-[#5e5b5b] font-bold flex items-center gap-2 mt-1 uppercase text-xs tracking-wider">
+              <Users className="h-4 w-4 text-[#000000]" />
               {t.attendance.monitorTeamAttendance}
             </p>
           </div>
@@ -2061,11 +2085,11 @@ const AttendanceManager: React.FC = () => {
           <Button
             onClick={() => setExportModalOpen(true)}
             size="lg"
-            className="rounded-xl px-6 h-12 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 dark:shadow-none transition-all active:scale-95 gap-2"
+            className="rounded-xl px-6 h-12 bg-[#000000] hover:bg-[#1a1a1a] text-white shadow-md transition-all active:scale-95 gap-2 font-black uppercase text-xs tracking-widest"
             disabled={isExporting}
           >
             <Download className="h-4 w-4" />
-            {isExporting ? t.attendance.exporting : "Export"}
+            {isExporting ? t.attendance.exporting : "Export Report"}
           </Button>
         </div>
       </div>
@@ -2077,86 +2101,69 @@ const AttendanceManager: React.FC = () => {
             value: todayStats.total,
             sub: "Active Workforce",
             icon: Users,
-            color: "blue",
-            bg: "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400",
-            cardBg: "bg-blue-50/40 dark:bg-blue-950/10",
-            borderColor: "border-blue-300/80 dark:border-blue-700/50",
-            hoverBorder:
-              "group-hover:border-blue-500 dark:group-hover:border-blue-400",
+            color: "black",
+            bg: "bg-[#000000] text-white shadow-sm",
+            cardBg: "bg-white",
+            borderColor: "border-[#000000] border-2",
+            hoverBorder: "hover:shadow-xl hover:-translate-y-1",
           },
           {
             title: t.attendance.presentToday,
             value: todayStats.present,
             sub: "Currently Active",
             icon: CheckCircle2,
-            color: "emerald",
-            bg: "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400",
-            cardBg: "bg-emerald-50/40 dark:bg-emerald-950/10",
-            borderColor: "border-emerald-300/80 dark:border-emerald-700/50",
-            hoverBorder:
-              "group-hover:border-emerald-500 dark:group-hover:border-emerald-400",
+            color: "black",
+            bg: "bg-[#000000] text-white shadow-sm",
+            cardBg: "bg-white",
+            borderColor: "border-[#000000] border-2",
+            hoverBorder: "hover:shadow-xl hover:-translate-y-1",
           },
           {
             title: t.attendance.lateArrivals,
             value: todayStats.late,
-            sub: "Beyond Grace Period",
-            icon: Timer,
-            color: "orange",
-            bg: "bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400",
-            cardBg: "bg-orange-50/40 dark:bg-orange-950/10",
-            borderColor: "border-orange-300/80 dark:border-orange-700/50",
-            hoverBorder:
-              "group-hover:border-orange-500 dark:group-hover:border-orange-400",
+            sub: "After Working Hours",
+            icon: Clock,
+            color: "black",
+            bg: "bg-[#000000] text-white shadow-sm",
+            cardBg: "bg-white",
+            borderColor: "border-[#000000] border-2",
+            hoverBorder: "hover:shadow-xl hover:-translate-y-1",
           },
           {
             title: t.attendance.earlyDepartures,
             value: todayStats.early,
             sub: "Before Working Hours",
             icon: LogOut,
-            color: "amber",
-            bg: "bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400",
-            cardBg: "bg-amber-50/40 dark:bg-amber-950/10",
-            borderColor: "border-amber-300/80 dark:border-amber-700/50",
-            hoverBorder:
-              "group-hover:border-amber-500 dark:group-hover:border-amber-400",
+            color: "black",
+            bg: "bg-[#000000] text-white shadow-sm",
+            cardBg: "bg-white",
+            borderColor: "border-[#000000] border-2",
+            hoverBorder: "hover:shadow-xl hover:-translate-y-1",
           },
         ].map((item, i) => (
           <Card
             key={i}
-            className={`border-2 ${item.borderColor} ${item.hoverBorder} shadow-sm ${item.cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative cursor-pointer`}
+            className={`border-2 ${item.borderColor} ${item.hoverBorder} shadow-sm ${item.cardBg} backdrop-blur-sm transition-all duration-300 group overflow-hidden relative cursor-pointer rounded-2xl`}
           >
             {/* Background Accent */}
-            <div
-              className={`absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-5 group-hover:opacity-10 transition-opacity ${item.bg.split(" ")[0]}`}
-            />
+            <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-[0.03] group-hover:opacity-[0.08] transition-opacity bg-black" />
 
-            <CardContent className="p-5 relative">
-              <div className="flex justify-between items-start mb-3">
-                <div
-                  className={`p-2.5 rounded-xl ${item.bg} shadow-sm group-hover:scale-110 transition-transform duration-300`}
-                >
+            <CardContent className="p-6 relative">
+              <div className="flex justify-between items-start mb-4">
+                <div className="p-3 rounded-xl bg-[#000000] text-white shadow-md group-hover:scale-110 transition-transform duration-300">
                   <item.icon className="h-5 w-5" />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest leading-none">
+                <h3 className="text-xs font-bold text-[#000000] uppercase tracking-widest leading-none font-inter">
                   {item.title}
                 </h3>
-                <div className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">
+                <div className="text-2xl font-black text-[#000000] tracking-tight font-inter">
                   {item.value}
                 </div>
-                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
-                  <div
-                    className={`h-1.5 w-1.5 rounded-full ${item.color === "blue"
-                      ? "bg-blue-500"
-                      : item.color === "emerald"
-                        ? "bg-emerald-500"
-                        : item.color === "orange"
-                          ? "bg-orange-500"
-                          : "bg-amber-500"
-                      }`}
-                  />
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase">
+                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 border border-black/5">
+                  <div className="h-1.5 w-1.5 rounded-full bg-black" />
+                  <span className="text-[10px] font-bold text-[#5e5b5b] uppercase tracking-tight">
                     {item.sub}
                   </span>
                 </div>
@@ -2166,12 +2173,12 @@ const AttendanceManager: React.FC = () => {
         ))}
       </div>
 
-      <Card className="border-slate-200/60 border shadow-sm bg-white rounded-xl overflow-hidden">
-        <CardHeader className="border-b border-slate-100 bg-slate-50/30 px-5 py-4">
-          <CardTitle className="text-[16px] font-bold text-black dark:text-white">
+      <Card className="border-2 border-[#000000] shadow-xl bg-white rounded-2xl overflow-hidden">
+        <CardHeader className="border-b border-[#000000]/10 bg-slate-50/30 px-6 py-5">
+          <CardTitle className="text-xl font-black text-[#000000] uppercase tracking-tight font-inter">
             {t.attendance.attendanceRecords}
           </CardTitle>
-          <CardDescription className="text-[12px] font-medium text-black dark:text-white">
+          <CardDescription className="text-xs font-bold text-[#5e5b5b] uppercase tracking-wider mt-1">
             {t.attendance.viewAndManage}
           </CardDescription>
         </CardHeader>
@@ -2275,48 +2282,48 @@ const AttendanceManager: React.FC = () => {
               </p>
             )}
 
-          <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="rounded-2xl border-2 border-[#000000] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+                <thead className="bg-[#000000]">
                   <tr className="hover:bg-transparent">
-                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">DATE</th>
-                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
+                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">DATE</th>
+                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
                       {t.attendance.employeeId}
                     </th>
-                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
+                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
                       {t.attendance.employee}
                     </th>
-                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
+                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
                       {t.attendance.department}
                     </th>
-                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">Work Location</th>
-                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">Online Status</th>
-                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
+                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">Location</th>
+                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">Status</th>
+                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
                       {t.attendance.checkInTime}
                     </th>
-                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
+                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
                       {t.attendance.checkOutTime}
                     </th>
-                    <th className="text-center p-3 font-medium text-[14px] text-black dark:text-white min-w-[120px] uppercase">
+                    <th className="text-center p-4 font-black text-[14px] text-white min-w-[120px] uppercase tracking-widest font-inter">
                       {t.attendance.hours}
                     </th>
-                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
+                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
                       {t.attendance.location}
                     </th>
-                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
-                      {t.attendance.selfiePhoto}
+                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
+                      Photo
                     </th>
-                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
+                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
                       {t.common.status}
                     </th>
-                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
-                      {t.attendance.workSummary}
+                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
+                      Summary
                     </th>
-                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">
-                      {t.attendance.workReport}
+                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
+                      Report
                     </th>
-                    <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white uppercase">Overdue</th>
+                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">Overdue</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -3302,10 +3309,10 @@ const AttendanceManager: React.FC = () => {
             <Clock className="h-6 w-6 text-purple-600" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
-              Office Hours Control Center
+            <h2 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "30px", fontWeight: "bold" }} className="leading-tight">
+              Office Hour Control Center
             </h2>
-            <p className="text-muted-foreground mt-0.5">
+            <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-0.5">
               Define global timings, override specific departments, and keep
               every team aligned.
             </p>
@@ -3352,17 +3359,17 @@ const AttendanceManager: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <h3 className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest leading-none">
+                  <h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest leading-none">
                     {stat.label}
                   </h3>
-                  <div className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">
+                  <div style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="tracking-tight">
                     {stat.value}
                   </div>
                   <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
                     <div
                       className={`h-1.5 w-1.5 rounded-full bg-${color}-500`}
                     />
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase">
+                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-bold uppercase">
                       {sub}
                     </span>
                   </div>
@@ -3376,10 +3383,10 @@ const AttendanceManager: React.FC = () => {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="shadow-xl border border-blue-100 dark:border-slate-800">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl font-semibold">
+            <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
               Global Office Hours
             </CardTitle>
-            <CardDescription>
+            <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
               Default schedule applied to every department unless specifically
               overridden.
             </CardDescription>
@@ -3387,7 +3394,7 @@ const AttendanceManager: React.FC = () => {
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="global-start">Start Time</Label>
+                <Label htmlFor="global-start" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Start Time</Label>
                 <div className="relative">
                   <Input
                     id="global-start"
@@ -3399,7 +3406,7 @@ const AttendanceManager: React.FC = () => {
                         startTime: e.target.value,
                       }))
                     }
-                    className="h-10 border-blue-100 focus:border-blue-400 pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
+                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-blue-100 focus:border-blue-400 pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
                   />
                   <button
                     type="button"
@@ -3423,7 +3430,7 @@ const AttendanceManager: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="global-end">End Time</Label>
+                <Label htmlFor="global-end" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>End Time</Label>
                 <div className="relative">
                   <Input
                     id="global-end"
@@ -3435,7 +3442,7 @@ const AttendanceManager: React.FC = () => {
                         endTime: e.target.value,
                       }))
                     }
-                    className="h-10 border-blue-100 focus:border-blue-400 pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
+                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-blue-100 focus:border-blue-400 pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
                   />
                   <button
                     type="button"
@@ -3459,7 +3466,7 @@ const AttendanceManager: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="global-grace-in">
+                <Label htmlFor="global-grace-in" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                   Check-in Grace (minutes)
                 </Label>
                 <Input
@@ -3475,11 +3482,11 @@ const AttendanceManager: React.FC = () => {
                         e.target.value === "" ? "" : Number(e.target.value),
                     }))
                   }
-                  className="h-10 border-blue-100 focus:border-blue-400"
+                  style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-blue-100 focus:border-blue-400"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="global-grace-out">
+                <Label htmlFor="global-grace-out" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                   Check-out Grace (minutes)
                 </Label>
                 <Input
@@ -3495,14 +3502,15 @@ const AttendanceManager: React.FC = () => {
                         e.target.value === "" ? "" : Number(e.target.value),
                     }))
                   }
-                  className="h-10 border-blue-100 focus:border-blue-400"
+                  style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-blue-100 focus:border-blue-400"
                 />
               </div>
             </div>
             <div className="flex flex-wrap justify-end gap-3">
               <Button
                 variant="outline"
-                className="border-2 border-blue-200 text-blue-600 hover:bg-blue-50 dark:text-blue-300"
+                className="bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-md"
+                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}
                 onClick={() => loadOfficeTimings()}
                 disabled={officeFormLoading}
               >
@@ -3511,7 +3519,8 @@ const AttendanceManager: React.FC = () => {
               <Button
                 onClick={handleGlobalTimingSave}
                 disabled={isGlobalSaving || officeFormLoading}
-                className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md"
+                className="gap-2 bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-md"
+                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}
               >
                 {isGlobalSaving ? "Saving..." : "Save Global Settings"}
               </Button>
@@ -3524,17 +3533,17 @@ const AttendanceManager: React.FC = () => {
           className="shadow-xl border border-purple-100 dark:border-slate-800 transition-all duration-300"
         >
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl font-semibold">
+            <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
               Branch Timing
             </CardTitle>
-            <CardDescription>
+            <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
               Override the global schedule for particular departments or create
               new ones.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label>Branch</Label>
+              <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Branch</Label>
               <Select
                 value={departmentTimingForm.department || undefined}
                 onValueChange={handleDepartmentSelect}
@@ -3543,7 +3552,7 @@ const AttendanceManager: React.FC = () => {
                   !departmentTimingForm.department
                 }
               >
-                <SelectTrigger className="h-10 border-purple-100 focus:border-purple-400">
+                <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-purple-100 focus:border-purple-400">
                   <SelectValue
                     placeholder={
                       coreDepartments.length
@@ -3588,33 +3597,12 @@ const AttendanceManager: React.FC = () => {
                   )}
                 </SelectContent>
               </Select>
-              {coreDepartments.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {coreDepartments.map((dept) => {
-                    const isSelected =
-                      dept.trim().toLowerCase() ===
-                      departmentTimingForm.department?.trim().toLowerCase();
-                    return (
-                      <button
-                        key={dept}
-                        type="button"
-                        onClick={() => handleDepartmentSelect(dept)}
-                        className={`px-3 py-1.5 rounded-full text-sm transition-all ${isSelected
-                          ? "bg-purple-600 text-white shadow-lg"
-                          : "bg-purple-50 text-purple-700 hover:bg-purple-100"
-                          }`}
-                      >
-                        {dept}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+              
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="dept-start">Start Time</Label>
+                <Label htmlFor="dept-start" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Start Time</Label>
                 <div className="relative">
                   <Input
                     id="dept-start"
@@ -3626,7 +3614,7 @@ const AttendanceManager: React.FC = () => {
                         startTime: e.target.value,
                       }))
                     }
-                    className="h-10 border-purple-100 focus:border-purple-400 pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
+                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-purple-100 focus:border-purple-400 pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
                   />
                   <button
                     type="button"
@@ -3650,7 +3638,7 @@ const AttendanceManager: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="dept-end">End Time</Label>
+                <Label htmlFor="dept-end" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>End Time</Label>
                 <div className="relative">
                   <Input
                     id="dept-end"
@@ -3662,7 +3650,7 @@ const AttendanceManager: React.FC = () => {
                         endTime: e.target.value,
                       }))
                     }
-                    className="h-10 border-purple-100 focus:border-purple-400 pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
+                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-purple-100 focus:border-purple-400 pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
                   />
                   <button
                     type="button"
@@ -3686,7 +3674,7 @@ const AttendanceManager: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="dept-grace-in">Check-in Grace (minutes)</Label>
+                <Label htmlFor="dept-grace-in" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Check-in Grace (minutes)</Label>
                 <Input
                   id="dept-grace-in"
                   type="number"
@@ -3700,11 +3688,11 @@ const AttendanceManager: React.FC = () => {
                         e.target.value === "" ? "" : Number(e.target.value),
                     }))
                   }
-                  className="h-10 border-purple-100 focus:border-purple-400"
+                  style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-purple-100 focus:border-purple-400"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="dept-grace-out">
+                <Label htmlFor="dept-grace-out" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                   Check-out Grace (minutes)
                 </Label>
                 <Input
@@ -3720,7 +3708,7 @@ const AttendanceManager: React.FC = () => {
                         e.target.value === "" ? "" : Number(e.target.value),
                     }))
                   }
-                  className="h-10 border-purple-100 focus:border-purple-400"
+                  style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-purple-100 focus:border-purple-400"
                 />
               </div>
             </div>
@@ -3738,7 +3726,8 @@ const AttendanceManager: React.FC = () => {
                     checkOutGrace: globalTimingForm.checkOutGrace,
                   })
                 }
-                className="border-2 border-purple-200 text-purple-600 hover:bg-purple-50 dark:text-purple-300"
+                className="bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-md"
+                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}
               >
                 Reset
               </Button>
@@ -3749,7 +3738,8 @@ const AttendanceManager: React.FC = () => {
                   officeFormLoading ||
                   !departmentTimingForm.department.trim()
                 }
-                className="gap-2 bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 shadow-md"
+                className="gap-2 bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-md"
+                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}
               >
                 {isDeptSaving ? "Saving..." : "Save Branch Timing"}
               </Button>
@@ -3760,10 +3750,10 @@ const AttendanceManager: React.FC = () => {
 
       <Card className="shadow-xl border border-slate-100 dark:border-slate-800">
         <CardHeader className="space-y-1 pb-4">
-          <CardTitle className="text-xl font-semibold">
+          <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
             Configured Schedules
           </CardTitle>
-          <CardDescription>
+          <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
             Overview of current global and department-specific office timings.
           </CardDescription>
         </CardHeader>
@@ -3778,10 +3768,10 @@ const AttendanceManager: React.FC = () => {
                     className="group border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-gradient-to-r from-white to-slate-50 dark:from-slate-900 dark:to-slate-950 shadow-sm hover:shadow-lg transition-shadow"
                   >
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">
+                      <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-medium">
                         {isGlobalTiming ? "Global Schedule" : "Branch"}
                       </p>
-                      <h3 className="text-xl font-semibold">
+                      <h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                         {isGlobalTiming ? "All Branches" : timing.department}
                       </h3>
                       <div className="mt-3 flex flex-wrap gap-3">
@@ -3814,21 +3804,23 @@ const AttendanceManager: React.FC = () => {
                     <div className="flex flex-wrap gap-2">
                       <Button
                         size="sm"
-                        variant="outline"
-                        className="border-2 border-blue-200 text-blue-600 hover:bg-blue-50 dark:text-blue-300"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 hover:bg-blue-100"
                         onClick={() => handleDepartmentTimingEdit(timing)}
+                        title="Edit"
                       >
-                        Edit
+                        <Edit className="h-4 w-4 text-blue-600" />
                       </Button>
                       {!isGlobalTiming && (
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="text-destructive hover:bg-red-50"
+                          className="h-8 w-8 p-0 text-destructive hover:bg-red-50"
                           onClick={() => handleDepartmentTimingDelete(timing)}
                           disabled={officeFormLoading}
+                          title="Remove"
                         >
-                          Remove
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
                     </div>
@@ -3865,34 +3857,45 @@ const AttendanceManager: React.FC = () => {
           }
           className="space-y-6"
         >
-          <TabsList className="flex w-full md:w-auto">
-            <TabsTrigger value="attendance" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Attendance
+        <div className="flex justify-center w-full mb-8">
+          <TabsList className="grid grid-cols-3 h-14 w-full sm:w-[700px] bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-1.5 gap-2 shadow-sm">
+            <TabsTrigger
+              value="attendance"
+              className="flex items-center justify-center gap-2 text-sm font-medium transition-all duration-300 rounded-lg
+                data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:font-bold
+                data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
+            >
+              <Users className="h-5 w-5" />
+              <span>Attendance</span>
             </TabsTrigger>
             <TabsTrigger
               value="office-hours"
-              className="flex items-center gap-2"
+              className="flex items-center justify-center gap-2 text-sm font-medium transition-all duration-300 rounded-lg
+                data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:font-bold
+                data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
             >
-              <Settings className="h-4 w-4" />
-              Office Hours
+              <Settings className="h-5 w-5" />
+              <span>Office Hours</span>
             </TabsTrigger>
             <TabsTrigger
               value="wfh-requests"
-              className="flex items-center gap-2 relative"
+              className="flex items-center justify-center gap-2 text-sm font-medium transition-all duration-300 rounded-lg relative
+                data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:font-bold
+                data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
             >
-              <FileText className="h-4 w-4" />
-              WFH Requests
+              <FileText className="h-5 w-5" />
+              <span>WFH Requests</span>
               {getAdminPendingWfhCount() > 0 && (
                 <Badge
                   variant="destructive"
-                  className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs font-bold bg-red-500 text-white border-2 border-white dark:border-gray-800"
+                  className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] font-bold bg-red-500 text-white border-2 border-white dark:border-gray-800"
                 >
                   {getAdminPendingWfhCount()}
                 </Badge>
               )}
             </TabsTrigger>
           </TabsList>
+        </div>
           <TabsContent value="attendance" className="space-y-6">
             {attendanceContent}
           </TabsContent>
@@ -3903,7 +3906,7 @@ const AttendanceManager: React.FC = () => {
             {/* Pending WFH Requests Section */}
             <Card className="border-slate-200/60 border shadow-sm bg-white rounded-xl overflow-hidden">
               <CardHeader className="border-b border-slate-100 bg-slate-50/30 px-5 py-4">
-                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="flex items-center gap-2">
                   <FileText className="h-4.5 w-4.5 text-blue-600" />
                   WFH Pending Requests
                   {getAdminPendingWfhCount() > 0 && (
@@ -3912,7 +3915,7 @@ const AttendanceManager: React.FC = () => {
                     </Badge>
                   )}
                 </CardTitle>
-                <CardDescription className="text-[11px] font-medium">
+                <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-1">
                   Review and process recent work from home requests.
                 </CardDescription>
               </CardHeader>
@@ -3944,22 +3947,16 @@ const AttendanceManager: React.FC = () => {
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <div className="flex items-center gap-2">
                                     <User className="h-4 w-4 text-blue-600" />
-                                    <span className="font-medium">
+                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                                       {request.submittedBy}
                                     </span>
-                                    <Badge
-                                      variant="outline"
-                                      className={`text-xs ${request.role === "hr"
-                                        ? "border-green-500 text-green-700 bg-green-50 dark:bg-green-950"
-                                        : "border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950"
-                                        }`}
-                                    >
+                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>
                                       {formatRoleDisplay(request.role)}
-                                    </Badge>
+                                    </span>
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <Calendar className="h-4 w-4 text-green-600" />
-                                    <span className="text-sm">
+                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                                       {formatDateIST(
                                         request.startDate,
                                         "dd MMM yyyy",
@@ -3970,20 +3967,17 @@ const AttendanceManager: React.FC = () => {
                                         "dd MMM yyyy",
                                       )}
                                     </span>
-                                    <Badge
-                                      variant="outline"
-                                      className="text-xs"
-                                    >
+                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>
                                       {request.type === "full_day"
                                         ? "Full Day"
                                         : "Half Day"}
-                                    </Badge>
+                                    </span>
                                   </div>
                                 </div>
-                                <p className="text-sm text-muted-foreground">
+                                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                                   {request.reason}
                                 </p>
-                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                <div style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="flex items-center gap-4">
                                   <span>
                                     Submitted:{" "}
                                     {formatRelativeTime(request.submittedAt)} (
@@ -4002,6 +3996,7 @@ const AttendanceManager: React.FC = () => {
                                   <Button
                                     size="sm"
                                     variant="outline"
+                                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}
                                     className="text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-950"
                                     onClick={() =>
                                       handleAdminWfhRequestAction(
@@ -4017,6 +4012,7 @@ const AttendanceManager: React.FC = () => {
                                   <Button
                                     size="sm"
                                     variant="outline"
+                                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}
                                     className="text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-950"
                                     onClick={() => {
                                       setSelectedWfhRequest(request);
@@ -4072,10 +4068,10 @@ const AttendanceManager: React.FC = () => {
                       <History className="h-4.5 w-4.5 text-blue-600" />
                     </div>
                     <div>
-                      <CardTitle className="text-sm font-bold">
+                      <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
                         Recent Decisions
                       </CardTitle>
-                      <CardDescription className="text-[11px] font-medium">
+                      <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-1">
                         History of processed WFH requests.
                       </CardDescription>
                     </div>
@@ -4088,10 +4084,7 @@ const AttendanceManager: React.FC = () => {
                   <div className="space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
                       <div className="flex flex-col gap-2">
-                        <Label
-                          htmlFor="decision-status-filter"
-                          className="text-sm font-medium ml-1"
-                        >
+                        <Label htmlFor="decision-status-filter" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} className="ml-1">
                           Decision Status
                         </Label>
                         <Select
@@ -4102,7 +4095,7 @@ const AttendanceManager: React.FC = () => {
                         >
                           <SelectTrigger
                             id="decision-status-filter"
-                            className="w-full h-11 bg-white dark:bg-gray-950 border-2"
+                            style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-full h-11 bg-white dark:bg-gray-950 border-2"
                           >
                             <SelectValue placeholder="Select Status" />
                           </SelectTrigger>
@@ -4114,9 +4107,9 @@ const AttendanceManager: React.FC = () => {
                         </Select>
                       </div>
                       <div className="flex-1 max-w-xs">
-                        <Label htmlFor="decision-duration-filter">Duration</Label>
+                        <Label htmlFor="decision-duration-filter" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Duration</Label>
                         <Select value={wfhDecisionsDurationFilter} onValueChange={handleWfhDecisionsDurationFilter}>
-                          <SelectTrigger id="decision-duration-filter" className="mt-1">
+                          <SelectTrigger id="decision-duration-filter" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-1">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -4142,10 +4135,7 @@ const AttendanceManager: React.FC = () => {
                       </div>
 
                       <div className="flex flex-col gap-2">
-                        <Label
-                          htmlFor="decision-role-filter"
-                          className="text-sm font-medium ml-1"
-                        >
+                        <Label htmlFor="decision-role-filter" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} className="ml-1">
                           Role Filter
                         </Label>
                         <Select
@@ -4156,7 +4146,7 @@ const AttendanceManager: React.FC = () => {
                         >
                           <SelectTrigger
                             id="decision-role-filter"
-                            className="w-full h-11 bg-white dark:bg-gray-950 border-2"
+                            style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-full h-11 bg-white dark:bg-gray-950 border-2"
                           >
                             <SelectValue placeholder="Select Role" />
                           </SelectTrigger>
@@ -4171,10 +4161,10 @@ const AttendanceManager: React.FC = () => {
                       </div>
 
                       <div className="flex flex-col gap-2">
-                        <Label className="text-sm font-medium ml-1">
+                        <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} className="ml-1">
                           Summary
                         </Label>
-                        <div className="h-11 px-3 py-2 bg-muted rounded-md text-sm flex items-center justify-between">
+                        <div style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-11 px-3 py-2 bg-muted rounded-md flex items-center justify-between">
                           <span>
                             {filteredRecentDecisions.length} of{" "}
                             {
@@ -4245,22 +4235,16 @@ const AttendanceManager: React.FC = () => {
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <div className="flex items-center gap-2">
                                       <User className="h-4 w-4 text-blue-600" />
-                                      <span className="font-medium">
+                                      <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                                         {request.submittedBy}
                                       </span>
-                                      <Badge
-                                        variant="outline"
-                                        className={`text-xs ${request.role === "hr"
-                                          ? "border-green-500 text-green-700 bg-green-50 dark:bg-green-950"
-                                          : "border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950"
-                                          }`}
-                                      >
+                                      <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>
                                         {formatRoleDisplay(request.role)}
-                                      </Badge>
+                                      </span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <Calendar className="h-4 w-4 text-green-600" />
-                                      <span className="text-sm">
+                                      <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                                         {formatDateIST(
                                           request.startDate,
                                           "dd MMM yyyy",
@@ -4271,20 +4255,17 @@ const AttendanceManager: React.FC = () => {
                                           "dd MMM yyyy",
                                         )}
                                       </span>
-                                      <Badge
-                                        variant="outline"
-                                        className="text-xs"
-                                      >
+                                      <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>
                                         {request.type === "full_day"
                                           ? "Full Day"
                                           : "Half Day"}
-                                      </Badge>
+                                      </span>
                                     </div>
                                   </div>
                                   <p className="text-sm text-muted-foreground">
                                     {request.reason}
                                   </p>
-                                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                  <div style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="flex items-center gap-4">
                                     <span>
                                       Submitted:{" "}
                                       {formatDateTimeIST(
@@ -4306,8 +4287,8 @@ const AttendanceManager: React.FC = () => {
                                   </div>
                                   {request.rejectionReason && (
                                     <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
-                                      <p className="text-sm text-red-800 dark:text-red-200">
-                                        <strong>Rejection Reason:</strong>{" "}
+                                      <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#991B1B", fontSize: "14px" }}>
+                                        <strong style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#991B1B", fontSize: "14px", fontWeight: "bold" }}>Rejection Reason:</strong>{" "}
                                         {request.rejectionReason}
                                       </p>
                                     </div>
@@ -4368,132 +4349,65 @@ const AttendanceManager: React.FC = () => {
         attendanceContent
       )}
 
-      {/* WFH Request Rejection Dialog for Admin */}
-      <Dialog
-        open={showWfhRequestDialog}
-        onOpenChange={setShowWfhRequestDialog}
-      >
-        <DialogContent className="sm:max-w-[500px]">
+      {/* Scope Selection Dialog (for resolving 409 Conflicts) */}
+      <Dialog open={activeScopeError} onOpenChange={setActiveScopeError}>
+        <DialogContent className="max-w-md border-2 border-amber-200">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <X className="h-5 w-5 text-red-600" />
-              Reject WFH Request
+            <DialogTitle className="flex items-center gap-2 text-amber-700">
+              <AlertCircle className="h-5 w-5" />
+              Scope Selection Required
             </DialogTitle>
-            <DialogDescription>
-              Please provide a reason for rejecting this work from home request
-              from HR/Manager.
+            <DialogDescription className="font-medium text-slate-600">
+              Your account is assigned to multiple organizations or branches.
+              Please enter a specific ID to continue.
             </DialogDescription>
           </DialogHeader>
-
-          {selectedWfhRequest && (
-            <div className="space-y-4 py-4">
-              <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-blue-600" />
-                    <span className="font-medium">
-                      {selectedWfhRequest.submittedBy}
-                    </span>
-                    <Badge
-                      variant="outline"
-                      className={`text-xs ${selectedWfhRequest.role === "hr"
-                        ? "border-green-500 text-green-700 bg-green-50 dark:bg-green-950"
-                        : "border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950"
-                        }`}
-                    >
-                      {formatRoleDisplay(selectedWfhRequest.role)}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">
-                      {formatDateIST(
-                        selectedWfhRequest.startDate,
-                        "dd MMM yyyy",
-                      )}{" "}
-                      -{" "}
-                      {formatDateIST(selectedWfhRequest.endDate, "dd MMM yyyy")}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedWfhRequest.reason}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="admin-rejection-reason">
-                  Rejection Reason <span className="text-red-500">*</span>
-                </Label>
-                <Textarea
-                  id="admin-rejection-reason"
-                  placeholder="Please provide a clear reason for rejecting this request."
-                  value={selectedWfhRequest?.rejectionReason || ""}
-                  rows={3}
-                  className="resize-none"
-                  onChange={(e) => {
-                    setSelectedWfhRequest((prev) =>
-                      prev
-                        ? {
-                          ...prev,
-                          rejectionReason: e.target.value.replace(
-                            /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
-                            "",
-                          ),
-                        }
-                        : null,
-                    );
-                  }}
-                />
-              </div>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-bold">Current User Role: {user?.role}</Label>
+              <p className="text-[11px] text-slate-500 italic">
+                Tip: You can find your Branch ID and Company ID in your profile or from your administrator.
+              </p>
             </div>
-          )}
-
+            <div className="space-y-2">
+              <Label htmlFor="debug-branch-id">Branch ID</Label>
+              <Input
+                id="debug-branch-id"
+                value={debugBranchId}
+                onChange={(e) => setDebugBranchId(e.target.value)}
+                placeholder="e.g. 1"
+                className="border-2 focus:border-blue-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="debug-company-id">Company ID</Label>
+              <Input
+                id="debug-company-id"
+                value={debugCompanyId}
+                onChange={(e) => setDebugCompanyId(e.target.value)}
+                placeholder="e.g. 1"
+                className="border-2 focus:border-blue-500"
+              />
+            </div>
+          </div>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => {
-                setShowWfhRequestDialog(false);
-                setSelectedWfhRequest(null);
-              }}
-              disabled={isProcessingWfhRequest}
+              onClick={() => setActiveScopeError(false)}
+              className="border-slate-300"
             >
-              Cancel
+              Close
             </Button>
             <Button
-              variant="destructive"
               onClick={() => {
-                if (selectedWfhRequest?.rejectionReason?.trim()) {
-                  handleAdminWfhRequestAction(
-                    selectedWfhRequest.id,
-                    "reject",
-                    selectedWfhRequest.rejectionReason,
-                  );
-                } else {
-                  toast({
-                    title: "Rejection Reason Required",
-                    description:
-                      "Please provide a reason for rejecting this request.",
-                    variant: "destructive",
-                  });
-                }
+                if (debugBranchId) localStorage.setItem('branchId', debugBranchId);
+                if (debugCompanyId) localStorage.setItem('companyId', debugCompanyId);
+                setActiveScopeError(false);
+                window.location.reload();
               }}
-              disabled={
-                isProcessingWfhRequest ||
-                !selectedWfhRequest?.rejectionReason?.trim()
-              }
+              className="bg-amber-600 hover:bg-amber-700 text-white"
             >
-              {isProcessingWfhRequest ? (
-                <>
-                  <Timer className="h-4 w-4 mr-2 animate-spin" />
-                  Rejecting...
-                </>
-              ) : (
-                <>
-                  <X className="h-4 w-4 mr-2" />
-                  Reject Request
-                </>
-              )}
+              Apply Scope & Refresh
             </Button>
           </DialogFooter>
         </DialogContent>

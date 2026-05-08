@@ -580,7 +580,7 @@ const TeamLeadDashboard: React.FC = () => {
             </div>
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: '#000000' }}>
-                {t.common.welcome}, <span style={{ color: '#000000' }}>{user?.name}</span>
+                {t.common.welcome}, <span style={{ color: '#059669' }}>{user?.name}</span>
               </h1>
               <p className="font-medium flex items-center gap-2 mt-1 text-sm" style={{ color: '#000000' }}>
                 <CalendarDays className="h-4 w-4" style={{ color: '#000000' }} />
@@ -664,13 +664,13 @@ const TeamLeadDashboard: React.FC = () => {
                 )}
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: '#000000' }}>{stat.label}</h3>
+                <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: '#000000' }}>{stat.label}</h3>
                 <div className="flex items-baseline gap-1">
                   <div className="text-2xl font-black" style={{ color: '#000000' }}>{stat.value}</div>
                 </div>
                 {stat.progress !== undefined ? (
                   <div className="pt-1.5">
-                    <div className="flex justify-between text-[9px] font-bold text-muted-foreground mb-1">
+                    <div className="flex justify-between text-[12px] font-bold mb-1" style={{ color: '#000000' }}>
                       <span>PROGRESS</span>
                       <span>{stat.progress}%</span>
                     </div>
@@ -682,7 +682,7 @@ const TeamLeadDashboard: React.FC = () => {
                       stat.color === 'indigo' ? 'text-indigo-500' :
                         'text-amber-500'
                       }`} />
-                    <span className="text-xs font-bold uppercase leading-tight" style={{ color: '#000000' }}>{stat.sub}</span>
+                    <span className="text-[12px] font-bold uppercase leading-tight" style={{ color: '#000000' }}>{stat.sub}</span>
                   </div>
                 )}
               </div>
@@ -692,20 +692,20 @@ const TeamLeadDashboard: React.FC = () => {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Team Members Tracker */}
-        <Card className="lg:col-span-8 border-none shadow-sm bg-white dark:bg-gray-800/50 overflow-hidden">
+        <Card className="lg:col-span-3 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
           <CardHeader className="border-b bg-gray-50/50 dark:bg-gray-900/50 px-6 py-4">
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="text-base font-bold flex items-center gap-2" style={{ color: '#000000' }}>
+                <CardTitle className="flex items-center gap-2" style={{ color: '#000000' }}>
                   <Users className="h-5 w-5" style={{ color: '#000000' }} />
-                  {t.navigation.teamMembers}
+                  <span className="text-[16px] font-bold">{t.navigation.teamMembers}</span>
                 </CardTitle>
                 <CardDescription className="text-sm" style={{ color: '#000000' }}>Real-time status and task monitoring</CardDescription>
               </div>
-              <Badge variant="outline" className="rounded-full px-4 h-8 bg-white border-gray-200" style={{ color: '#000000' }}>
-                <span className="text-sm font-bold">{teamMembers.length} Total</span>
+              <Badge variant="outline" className="rounded-full px-4 h-8 bg-white border-gray-200">
+                <span className="text-[14px] font-bold" style={{ color: '#000000' }}>{teamMembers.length} Total</span>
               </Badge>
             </div>
           </CardHeader>
@@ -748,16 +748,16 @@ const TeamLeadDashboard: React.FC = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <h4 className="font-bold text-sm truncate" style={{ color: '#000000' }}>
+                            <h4 className="text-[14px] font-bold truncate" style={{ color: '#000000' }}>
                               {member.name}
                             </h4>
                             <div className="flex items-center gap-1.5 ml-1">
                               {member.isOnline ? (
-                                <Badge className="bg-green-500 hover:bg-green-600 h-5.5 px-2 text-xs animate-pulse">
+                                <Badge className="bg-green-500 hover:bg-green-600 h-5.5 px-2 text-[12px] animate-pulse">
                                   Online
                                 </Badge>
                               ) : (
-                                <Badge className="bg-red-500 hover:bg-red-600 h-5.5 px-2 text-xs text-white">
+                                <Badge className="bg-red-500 hover:bg-red-600 h-5.5 px-2 text-[12px] text-white">
                                   Offline
                                 </Badge>
                               )}
@@ -865,12 +865,12 @@ const TeamLeadDashboard: React.FC = () => {
         </Card>
 
         {/* Activity Sidebar */}
-        <div className="lg:col-span-4 space-y-6">
-          <Card className="border-none shadow-sm bg-white dark:bg-gray-800/50">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base font-bold flex items-center gap-2" style={{ color: '#000000' }}>
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+            <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
+              <CardTitle className="flex items-center gap-2" style={{ color: '#000000' }}>
                 <Activity className="h-5 w-5" style={{ color: '#000000' }} />
-                Team Activity
+                <span className="text-[16px] font-bold">Team Activity</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -896,7 +896,7 @@ const TeamLeadDashboard: React.FC = () => {
                         showToggle={false}
                       />
                     </div>
-                    <p className="text-xs font-bold uppercase tracking-tight pt-1" style={{ color: '#000000' }}>
+                    <p className="text-[12px] font-bold uppercase tracking-tight pt-1" style={{ color: '#000000' }}>
                       {activity.time}
                     </p>
                   </div>

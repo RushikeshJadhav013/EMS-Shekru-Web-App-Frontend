@@ -265,10 +265,10 @@ const ManagerDashboard: React.FC = () => {
             <Target className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#000000' }}>
-              {t.common.welcome}, <span style={{ color: '#000000' }}>{user?.name}</span>
+            <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: '#000000' }}>
+              {t.common.welcome}, <span style={{ color: '#0D9488' }}>{user?.name}</span>
             </h1>
-            <p className="font-bold flex items-center gap-2 mt-1 text-sm" style={{ color: '#000000' }}>
+            <p className="font-medium flex items-center gap-2 mt-1 text-sm" style={{ color: '#000000' }}>
               <CalendarDays className="h-4 w-4" style={{ color: '#000000' }} />
               {formatIST(nowIST(), 'EEEE, MMMM dd, yyyy | hh:mm a')}
             </p>
@@ -298,7 +298,7 @@ const ManagerDashboard: React.FC = () => {
       </div>
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
         {[
           {
             label: 'Total Members',
@@ -349,30 +349,6 @@ const ManagerDashboard: React.FC = () => {
             hoverBorder: 'group-hover:border-amber-500 dark:hover:border-amber-400',
             path: '/manager/leaves',
             pathState: { tab: 'approvals' }
-          },
-          {
-            label: 'Overdue Items',
-            value: stats.overdueItems,
-            sub: 'Requires Attention',
-            icon: AlertCircle,
-            color: 'red',
-            bg: 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400',
-            cardBg: 'bg-red-50/40 dark:bg-red-950/10',
-            borderColor: 'border-red-300/80 dark:border-red-700/50',
-            hoverBorder: 'group-hover:border-red-500 dark:group-hover:border-red-400',
-            path: '/manager/tasks',
-            pathState: { filter: 'overdue' }
-          },
-          {
-            label: 'Team Performance',
-            value: `${stats.teamPerformancePercent}%`,
-            sub: 'Overall Completion',
-            icon: Target,
-            color: 'teal',
-            bg: 'bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400',
-            cardBg: 'bg-teal-50/40 dark:bg-teal-950/10',
-            borderColor: 'border-teal-300/80 dark:border-teal-700/50',
-            hoverBorder: 'group-hover:border-teal-500 dark:group-hover:border-teal-400',
           }
         ].map((item, i) => (
           <Card
@@ -390,7 +366,7 @@ const ManagerDashboard: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-base font-bold uppercase tracking-widest leading-none" style={{ color: '#000000' }}>{item.label}</h3>
+                <h3 className="text-[12px] font-bold uppercase tracking-widest leading-none" style={{ color: '#000000' }}>{item.label}</h3>
                 <div className="text-2xl font-bold tracking-tight" style={{ color: '#000000' }}>{item.value}</div>
                 <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
                   <div className={`h-1.5 w-1.5 rounded-full ${item.color === 'blue' ? 'bg-blue-500' :
@@ -398,7 +374,7 @@ const ManagerDashboard: React.FC = () => {
                       item.color === 'indigo' ? 'bg-indigo-500' :
                         'bg-amber-500'
                     }`} />
-                  <span className="text-xs font-bold uppercase" style={{ color: '#000000' }}>{item.sub}</span>
+                  <span className="text-[12px] font-bold uppercase" style={{ color: '#000000' }}>{item.sub}</span>
                 </div>
               </div>
             </CardContent>
@@ -407,15 +383,15 @@ const ManagerDashboard: React.FC = () => {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Team Activities */}
-        <Card className="lg:col-span-2 border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base font-bold" style={{ color: '#000000' }}>
+        <Card className="lg:col-span-3 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+          <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
+            <CardTitle className="flex items-center gap-2 font-bold" style={{ color: '#000000' }}>
               <Activity className="h-5 w-5" style={{ color: '#000000' }} />
-              {t.navigation.teamActivities}
+              <span className="text-[16px] font-bold">{t.navigation.teamActivities}</span>
             </CardTitle>
-            <p className="text-sm font-medium" style={{ color: '#000000' }}>Recent updates from your team</p>
+            <p className="text-[14px] font-medium" style={{ color: '#000000' }}>Recent updates from your team</p>
           </CardHeader>
           <CardContent className="space-y-3">
             {teamActivities.length > 0 ? (
@@ -503,13 +479,13 @@ const ManagerDashboard: React.FC = () => {
         </Card>
 
         {/* Team Leads Performance */}
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base font-bold" style={{ color: '#000000' }}>
+        <Card className="lg:col-span-2 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+          <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
+            <CardTitle className="flex items-center gap-2 font-bold" style={{ color: '#000000' }}>
               <Target className="h-5 w-5" style={{ color: '#000000' }} />
-              {t.navigation.teamPerformance}
+              <span className="text-[16px] font-bold">{t.navigation.teamPerformance}</span>
             </CardTitle>
-            <p className="text-sm font-medium" style={{ color: '#000000' }}>Task completion by team</p>
+            <p className="text-[14px] font-medium" style={{ color: '#000000' }}>Task completion by team</p>
           </CardHeader>
           <CardContent className="space-y-4">
             {teamPerformance.length > 0 ? teamPerformance.map((team) => (
@@ -534,13 +510,13 @@ const ManagerDashboard: React.FC = () => {
       </div>
 
       {/* Team Members Current Status */}
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base font-bold" style={{ color: '#000000' }}>
-            <Users className="h-5 w-5" style={{ color: '#000000' }} />
-            {t.navigation.teamMembers} Current Status
-          </CardTitle>
-          <p className="text-sm font-medium" style={{ color: '#000000' }}>Current status and task progress</p>
+      <Card className="border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+        <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
+            <CardTitle className="flex items-center gap-2 font-bold" style={{ color: '#000000' }}>
+              <Users className="h-5 w-5" style={{ color: '#000000' }} />
+              <span className="text-[16px] font-bold">{t.navigation.teamMembers} Current Status</span>
+            </CardTitle>
+            <p className="text-[14px] font-medium" style={{ color: '#000000' }}>Current status and task progress</p>
         </CardHeader>
         <CardContent className="space-y-3">
           {isLoadingTeamMembers ? (
@@ -556,7 +532,7 @@ const ManagerDashboard: React.FC = () => {
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-bold text-sm" style={{ color: '#000000' }}>{member.name}</p>
-                        <Badge variant="default" className={`text-xs ${member.isOnline ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}`}>
+                        <Badge variant="default" className={`text-[12px] ${member.isOnline ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}`}>
                           {member.isOnline ? 'Online' : 'Offline'}
                         </Badge>
                       </div>

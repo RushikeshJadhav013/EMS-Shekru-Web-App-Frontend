@@ -63,9 +63,9 @@ export function HolidayCalendar({
       )}
     >
       <div className="flex items-center justify-between mb-4">
-        <button className="flex items-center gap-1 font-semibold text-sm text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1 rounded-md transition-colors">
+        <button className="flex items-center gap-1 font-black text-[16px] text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1 rounded-md transition-colors" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
           {format(month, "MMMM, yyyy")}
-          <ChevronDown className="h-4 w-4 text-slate-500" />
+          <ChevronDown className="h-4 w-4 text-black dark:text-white" />
         </button>
         <div className="flex items-center gap-1">
           <button
@@ -103,12 +103,12 @@ export function HolidayCalendar({
           table: "w-full border-collapse space-y-1",
           head_row: "flex mb-2",
           head_cell:
-            "text-slate-900 dark:text-slate-100 rounded-md w-9 font-medium text-[0.8rem] text-center",
+            "text-black dark:text-white rounded-md w-9 font-black text-[14px] text-center uppercase tracking-wider",
           row: "flex w-full mt-1",
-          cell: "text-center text-sm p-0 relative [&:has([aria-selected])]:bg-transparent focus-within:relative focus-within:z-20",
+          cell: "text-center text-[14px] p-0 relative [&:has([aria-selected])]:bg-transparent focus-within:relative focus-within:z-20",
           day: cn(
             buttonVariants({ variant: "ghost" }),
-            "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-none transition-none",
+            "h-9 w-9 p-0 font-medium text-black dark:text-white aria-selected:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-none transition-none",
           ),
           day_selected:
             "bg-blue-600 text-white hover:bg-blue-600 hover:text-white focus:bg-blue-600 focus:text-white rounded-none border-[1.5px] border-slate-950 dark:border-slate-50 shadow-none z-10 relative",
@@ -126,13 +126,15 @@ export function HolidayCalendar({
       <div className="flex items-center justify-between mt-4 pt-2">
         <button
           onClick={handleClear}
-          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium transition-colors"
+          className="text-[12px] text-[#2563EB] dark:text-blue-400 hover:text-blue-700 font-bold transition-colors"
+          style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
         >
           Clear
         </button>
         <button
           onClick={handleToday}
-          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium transition-colors"
+          className="text-[12px] text-[#2563EB] dark:text-blue-400 hover:text-blue-700 font-bold transition-colors"
+          style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
         >
           Today
         </button>

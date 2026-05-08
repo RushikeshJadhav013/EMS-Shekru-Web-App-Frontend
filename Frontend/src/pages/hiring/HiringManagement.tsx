@@ -1372,25 +1372,25 @@ export default function HiringManagement() {
   };
 
   const getStatusBadge = (status: string) => {
-    if (!status) return <Badge variant="outline">Unknown</Badge>;
+    if (!status) return <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Unknown</span>;
 
-    const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-      open: 'outline',
-      closed: 'secondary',
-      'on-hold': 'outline',
-      applied: 'secondary',
-      screening: 'secondary',
-      'interview': 'default',
-      'offered': 'default',
-      'rejected': 'destructive',
-      'hired': 'default',
-      'withdrawn': 'outline',
+    const colors: Record<string, string> = {
+      open: '#16A34A',      // Green
+      closed: '#DC2626',    // Red
+      'on-hold': '#EAB308', // Yellow
+      applied: '#4B5563',   // Gray
+      screening: '#4B5563',
+      'interview': '#2563EB', // Blue
+      'offered': '#2563EB',
+      'rejected': '#DC2626',
+      'hired': '#16A34A',
+      'withdrawn': '#4B5563',
     };
 
     return (
-      <Badge variant={variants[status] || 'outline'} className="capitalize">
+      <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: colors[status] || "#000000", fontSize: "14px", fontWeight: "bold" }} className="capitalize">
         {status.replace('-', ' ')}
-      </Badge>
+      </span>
     );
   };
 
@@ -1407,7 +1407,7 @@ export default function HiringManagement() {
   const isHR = user?.role === 'hr';
 
   return (
-    <div className="space-y-6 relative min-h-screen">
+    <div className="w-full space-y-6">
       {/* Header */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-md border border-slate-200 dark:border-slate-700">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -1416,8 +1416,8 @@ export default function HiringManagement() {
               <Briefcase className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Hiring Management</h1>
-              <p className="mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+              <h1 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "30px", fontWeight: "bold" }}>Hiring Management</h1>
+              <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-1">
                 Create modern job posts, track candidates, and coordinate your hiring pipeline.
               </p>
             </div>
@@ -1432,7 +1432,7 @@ export default function HiringManagement() {
                   setIsVacancyDialogOpen(true);
                 }}
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-5 w-5" />
                 <span className="text-xs sm:text-sm">New Vacancy</span>
               </Button>
             )}
@@ -1446,7 +1446,7 @@ export default function HiringManagement() {
                   setIsCandidateDialogOpen(true);
                 }}
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-5 w-5" />
                 <span className="text-xs sm:text-sm">New Candidate</span>
               </Button>
             )}
@@ -1460,7 +1460,7 @@ export default function HiringManagement() {
                   setIsInterviewDialogOpen(true);
                 }}
               >
-                <Calendar className="h-4 w-4" />
+                <Calendar className="h-5 w-5" />
                 <span className="text-xs sm:text-sm">Schedule Interview</span>
               </Button>
             )}
@@ -1473,21 +1473,24 @@ export default function HiringManagement() {
         <TabsList className="grid w-full max-w-lg grid-cols-3 rounded-full bg-slate-100/80 dark:bg-slate-900/80 p-1 mx-auto">
           <TabsTrigger
             value="vacancies"
-            className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm rounded-full text-xs sm:text-sm"
+            className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm rounded-full"
+            style={{ color: "#000000", fontSize: "14px" }}
           >
             <Briefcase className="mr-1.5 h-4 w-4" />
             Vacancies
           </TabsTrigger>
           <TabsTrigger
             value="candidates"
-            className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm rounded-full text-xs sm:text-sm"
+            className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-full"
+            style={{ fontSize: "14px" }}
           >
             <Users className="mr-1.5 h-4 w-4" />
             Candidates
           </TabsTrigger>
           <TabsTrigger
             value="interviews"
-            className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm rounded-full text-xs sm:text-sm"
+            className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm rounded-full"
+            style={{ color: "#000000", fontSize: "14px" }}
           >
             <Calendar className="mr-1.5 h-4 w-4" />
             Interviews
@@ -1507,13 +1510,13 @@ export default function HiringManagement() {
                       placeholder="Search vacancies..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
+                      className="pl-10" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
                     />
                   </div>
                 </div>
                 {isAdmin && (
                   <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                    <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-slate-950">
+                    <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-slate-950" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                       <SelectValue placeholder="Department" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1527,7 +1530,7 @@ export default function HiringManagement() {
                   </Select>
                 )}
                 <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-slate-950">
+                  <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-slate-950" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1546,15 +1549,15 @@ export default function HiringManagement() {
             <CardHeader className="border-b bg-slate-50 dark:bg-slate-800 rounded-t-3xl">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <CardTitle className="text-base sm:text-lg">Job Vacancies</CardTitle>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>Job Vacancies</CardTitle>
+                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-1">
                     Overview of all open roles and hiring progress.
                   </p>
                 </div>
-                <Badge variant="outline" className="hidden sm:inline-flex gap-1">
+                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }} className="hidden sm:inline-flex gap-1 items-center">
                   <Briefcase className="h-3 w-3" />
                   {filteredVacancies.length} roles
-                </Badge>
+                </span>
               </div>
             </CardHeader>
             <CardContent>
@@ -1571,34 +1574,32 @@ export default function HiringManagement() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Title</TableHead>
-                        <TableHead>Department</TableHead>
-                        <TableHead>Location</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Candidates</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>TITLE</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>DEPARTMENT</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>LOCATION</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>TYPE</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>CANDIDATES</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>STATUS</TableHead>
 
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead className="text-right" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ACTIONS</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredVacancies.map((vacancy) => {
                         return (
                           <TableRow key={vacancy.vacancy_id}>
-                            <TableCell className="font-medium">{vacancy.title}</TableCell>
-                            <TableCell>{vacancy.department}</TableCell>
-                            <TableCell>
+                            <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{vacancy.title}</TableCell>
+                            <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{vacancy.department}</TableCell>
+                            <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                               <div className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3 text-muted-foreground" />
                                 {vacancy.location}
                               </div>
                             </TableCell>
-                            <TableCell className="capitalize">
-                              {(vacancy.employment_type || '').replace('-', ' ')}
+                            <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="capitalize">
+                              {(vacancy.employment_type || "").replace("-", " ")}
                             </TableCell>
-                            <TableCell>
-                              <Badge variant="outline">{vacancy.candidates_count}</Badge>
-                            </TableCell>
+                            <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{vacancy.candidates_count}</TableCell>
                             <TableCell>{getStatusBadge(vacancy.status)}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-2">
@@ -1607,7 +1608,7 @@ export default function HiringManagement() {
                                   size="icon"
                                   onClick={() => openViewDialog(vacancy)}
                                 >
-                                  <Eye className="h-4 w-4" />
+                                  <Eye className="h-5 w-5" />
                                 </Button>
 
                                 <Button
@@ -1615,7 +1616,7 @@ export default function HiringManagement() {
                                   size="icon"
                                   onClick={() => openEditDialog(vacancy)}
                                 >
-                                  <Edit className="h-4 w-4" />
+                                  <Edit className="h-5 w-5" />
                                 </Button>
                                 <Button
                                   variant="ghost"
@@ -1624,9 +1625,9 @@ export default function HiringManagement() {
                                   disabled={isDeleting === vacancy.vacancy_id}
                                 >
                                   {isDeleting === vacancy.vacancy_id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <Loader2 className="h-5 w-5 animate-spin" />
                                   ) : (
-                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                    <Trash2 className="h-5 w-5 text-destructive" />
                                   )}
                                 </Button>
                               </div>
@@ -1655,12 +1656,12 @@ export default function HiringManagement() {
                       placeholder="Search candidates..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
+                      className="pl-10" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
                     />
                   </div>
                 </div>
                 <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-slate-950">
+                  <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-slate-950" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1683,15 +1684,15 @@ export default function HiringManagement() {
             <CardHeader className="border-b bg-slate-50 dark:bg-slate-800 rounded-t-3xl">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <CardTitle className="text-base sm:text-lg">Candidate Applications</CardTitle>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>Candidate Applications</CardTitle>
+                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-1">
                     Track applicants across stages and manage interviews.
                   </p>
                 </div>
-                <Badge variant="outline" className="hidden sm:inline-flex gap-1">
+                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }} className="hidden sm:inline-flex gap-1 items-center">
                   <Users className="h-3 w-3" />
                   {filteredCandidates.length} candidates
-                </Badge>
+                </span>
               </div>
             </CardHeader>
             <CardContent>
@@ -1708,26 +1709,26 @@ export default function HiringManagement() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Position</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>NAME</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>EMAIL</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PHONE</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>POSITION</TableHead>
                         <TableHead>Department</TableHead>
-                        <TableHead>Applied Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>APPLIED DATE</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>STATUS</TableHead>
+                        <TableHead className="text-right" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ACTIONS</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredCandidates.map((candidate) => (
                         <TableRow key={candidate.candidate_id}>
-                          <TableCell className="font-medium">{candidate.name}</TableCell>
-                          <TableCell>{candidate.email}</TableCell>
-                          <TableCell>{candidate.phone || '-'}</TableCell>
-                          <TableCell>{candidate.vacancy_title || '-'}</TableCell>
-                          <TableCell>{candidate.vacancy_department || '-'}</TableCell>
-                          <TableCell>
-                            {candidate.applied_at ? formatDateIST(candidate.applied_at, 'MMM dd, yyyy') : 'N/A'}
+                          <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{candidate.name}</TableCell>
+                          <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{candidate.email}</TableCell>
+                          <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{candidate.phone || "-"}</TableCell>
+                          <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{candidate.vacancy_title || "-"}</TableCell>
+                          <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{candidate.vacancy_department || "-"}</TableCell>
+                          <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+                            {candidate.applied_at ? formatDateIST(candidate.applied_at, "MMM dd, yyyy") : "N/A"}
                           </TableCell>
                           <TableCell>
                             <Select
@@ -1736,7 +1737,7 @@ export default function HiringManagement() {
                                 handleUpdateCandidateStatus(candidate.candidate_id, value)
                               }
                             >
-                              <SelectTrigger className="w-[140px]">
+                              <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-[140px]">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -1770,7 +1771,7 @@ export default function HiringManagement() {
                                 }}
                                 title="View Details"
                               >
-                                <Eye className="h-4 w-4" />
+                                <Eye className="h-5 w-5" />
                               </Button>
                               <Button
                                 variant="ghost"
@@ -1797,7 +1798,7 @@ export default function HiringManagement() {
                                 }}
                                 title="Edit Candidate"
                               >
-                                <Edit className="h-4 w-4 text-orange-500" />
+                                <Edit className="h-5 w-5 text-orange-500" />
                               </Button>
                               <Button
                                 variant="ghost"
@@ -1811,7 +1812,7 @@ export default function HiringManagement() {
                                 }}
                                 title="Update Resume"
                               >
-                                <FileText className="h-4 w-4 text-green-600" />
+                                <FileText className="h-5 w-5 text-green-600" />
                               </Button>
                               <Button
                                 variant="ghost"
@@ -1821,9 +1822,9 @@ export default function HiringManagement() {
                                 title="Delete Candidate"
                               >
                                 {isDeleting === candidate.candidate_id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  <Loader2 className="h-5 w-5 animate-spin" />
                                 ) : (
-                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                  <Trash2 className="h-5 w-5 text-destructive" />
                                 )}
                               </Button>
                             </div>
@@ -1851,12 +1852,12 @@ export default function HiringManagement() {
                       placeholder="Search interviews by candidate, vacancy or interviewer..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
+                      className="pl-10" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
                     />
                   </div>
                 </div>
                 <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-slate-950">
+                  <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-slate-950" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1877,8 +1878,8 @@ export default function HiringManagement() {
             <CardHeader className="border-b bg-slate-50 dark:bg-slate-800 rounded-t-3xl">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <CardTitle className="text-base sm:text-lg">Interview Schedule</CardTitle>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>Interview Schedule</CardTitle>
+                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-1">
                     Coordinate and monitor all candidate interviews.
                   </p>
                 </div>
@@ -1902,53 +1903,39 @@ export default function HiringManagement() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Candidate</TableHead>
-                        <TableHead>Vacancy</TableHead>
-                        <TableHead>Date & Time</TableHead>
-                        <TableHead>Mode/Location</TableHead>
-                        <TableHead>Interviewer</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>CANDIDATE</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>VACANCY</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>DATE & TIME</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>MODE & LOCATION</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>INTERVIEWER</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>STATUS</TableHead>
+                        <TableHead className="text-right" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ACTIONS</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredInterviews.map((interview) => (
                         <TableRow key={interview.interview_id}>
-                          <TableCell className="font-medium max-w-[150px]">
-                            <p className="truncate" title={interview.candidate_name}>{interview.candidate_name}</p>
+                          <TableCell className="font-medium max-w-[150px]"><p className="truncate" title={interview.candidate_name} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{interview.candidate_name}</p>
                           </TableCell>
                           <TableCell className="max-w-[180px]">
-                            <p className="truncate text-slate-600 dark:text-slate-400" title={interview.vacancy_title}>
-                              {interview.vacancy_title}
-                            </p>
+                            <p className="truncate" title={interview.vacancy_title} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{interview.vacancy_title}</p>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col">
-                              <span className="text-sm font-medium">
-                                {interview.start_time ? formatDateIST(interview.start_time, 'MMM dd, yyyy') : 'N/A'}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {interview.start_time ? formatDateIST(interview.start_time, 'hh:mm a') : ''}
-                                {interview.end_time ? ` - ${formatDateIST(interview.end_time, 'hh:mm a')}` : ''}
-                              </span>
+                              <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{interview.start_time ? formatDateIST(interview.start_time, "MMM dd, yyyy") : "N/A"}</span>
+                              <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>{interview.start_time ? formatDateIST(interview.start_time, "hh:mm a") : ""}{interview.end_time ? ` - ${formatDateIST(interview.end_time, "hh:mm a")}` : ""}</span>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col max-w-[150px]">
-                              <Badge variant="secondary" className="w-fit text-[10px] capitalize mb-1">
-                                {interview.mode}
-                              </Badge>
-                              <span className="text-xs truncate" title={interview.location}>
-                                {interview.location}
-                              </span>
+                              <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="mb-1 capitalize">{interview.mode}</span>
+                              <span className="truncate" title={interview.location} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{interview.location}</span>
                             </div>
                           </TableCell>
                           <TableCell className="max-w-[200px]">
                             <div className="flex flex-col">
                               {interview.interviewer_name ? (
-                                <span className="text-sm font-medium truncate" title={interview.interviewer_name}>
-                                  {interview.interviewer_name}
-                                </span>
+                                <span className="truncate" title={interview.interviewer_name} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{interview.interviewer_name}</span>
                               ) : interview.panel_members && interview.panel_members.length > 0 ? (
                                 <span className="text-sm font-medium truncate" title={interview.panel_members.map(id => {
                                   const emp = allEmployees.find(e => Number(e.id || e.user_id) === Number(id));
@@ -1962,7 +1949,7 @@ export default function HiringManagement() {
                               ) : (
                                 <span className="text-xs text-muted-foreground italic">Not assigned</span>
                               )}
-                              <span className="text-[10px] text-muted-foreground opacity-70 serif truncate">{interview.round_type}</span>
+                              <span className="truncate" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>{interview.round_type}</span>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -1972,8 +1959,7 @@ export default function HiringManagement() {
                                 handleUpdateInterviewStatus(interview.interview_id, value)
                               }
                             >
-                              <SelectTrigger className={cn(
-                                "w-[130px] h-8 text-xs capitalize font-medium",
+                              <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }} className={cn("w-[130px] h-8 capitalize",
                                 interview.status === 'scheduled' && "text-blue-600 bg-blue-50 border-blue-200",
                                 interview.status === 'completed' && "text-emerald-600 bg-emerald-50 border-emerald-200",
                                 interview.status === 'cancelled' && "text-red-600 bg-red-50 border-red-200",
@@ -2018,7 +2004,7 @@ export default function HiringManagement() {
                                 }}
                                 title="View Details & Feedback"
                               >
-                                <Eye className="h-4 w-4" />
+                                <Eye className="h-5 w-5" />
                               </Button>
                               <Button
                                 variant="ghost"
@@ -2056,7 +2042,7 @@ export default function HiringManagement() {
 
                                 title="Edit Interview"
                               >
-                                <Edit className="h-4 w-4" />
+                                <Edit className="h-5 w-5" />
                               </Button>
                               <Button
                                 variant="ghost"
@@ -2067,9 +2053,9 @@ export default function HiringManagement() {
                                 title="Delete Interview"
                               >
                                 {isDeleting === interview.interview_id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  <Loader2 className="h-5 w-5 animate-spin" />
                                 ) : (
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-5 w-5" />
                                 )}
                               </Button>
                             </div>
@@ -2527,7 +2513,7 @@ export default function HiringManagement() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-3">
                   <h4 className="text-sm font-semibold flex items-center gap-2">
-                    <Briefcase className="h-4 w-4 text-blue-500" />
+                    <Briefcase className="h-5 w-5 text-blue-500" />
                     Applied Position
                   </h4>
                   <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
@@ -2541,7 +2527,7 @@ export default function HiringManagement() {
 
                 <div className="space-y-3">
                   <h4 className="text-sm font-semibold flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-orange-500" />
+                    <MapPin className="h-5 w-5 text-orange-500" />
                     Contact Information
                   </h4>
                   <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2">
@@ -2561,12 +2547,12 @@ export default function HiringManagement() {
                       <div className="flex gap-3 pt-2">
                         {selectedCandidate.linkedin_url && (
                           <a href={selectedCandidate.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:opacity-80 transition-opacity">
-                            <Linkedin className="h-4 w-4" />
+                            <Linkedin className="h-5 w-5" />
                           </a>
                         )}
                         {selectedCandidate.portfolio_url && (
                           <a href={selectedCandidate.portfolio_url} target="_blank" rel="noopener noreferrer" className="text-slate-600 dark:text-slate-400 hover:opacity-80 transition-opacity">
-                            <ExternalLink className="h-4 w-4" />
+                            <ExternalLink className="h-5 w-5" />
                           </a>
                         )}
                       </div>
@@ -2578,7 +2564,7 @@ export default function HiringManagement() {
               {selectedCandidate.status === 'interview' && selectedCandidate.interview_date && (
                 <div className="bg-blue-50/50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800/50 space-y-3">
                   <h4 className="text-sm font-semibold flex items-center gap-2 text-blue-700 dark:text-blue-400">
-                    <Calendar className="h-4 w-4" />
+                    <Calendar className="h-5 w-5" />
                     Scheduled Interview
                   </h4>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
@@ -3230,9 +3216,9 @@ export default function HiringManagement() {
               <div className="space-y-4 pt-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="i_duration" className="text-sm font-semibold">Duration</Label>
-                  <span className="text-xs font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">{interviewFormData.duration_minutes} Minutes</span>
+                  <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{interviewFormData.duration_minutes} Minutes</span>
                 </div>
-                <div className="px-2">
+                <div className="w-full overflow-hidden">
                   <Slider
                     id="i_duration"
                     min={15}
@@ -3240,9 +3226,8 @@ export default function HiringManagement() {
                     step={15}
                     value={[interviewFormData.duration_minutes]}
                     onValueChange={(vals) => setInterviewFormData({ ...interviewFormData, duration_minutes: vals[0] })}
-                    className="py-4"
                   />
-                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <div className="flex justify-between text-[10px] text-muted-foreground mt-1 px-2.5">
                     <span>15m</span>
                     <span>1h</span>
                     <span>2h</span>
@@ -3361,7 +3346,7 @@ export default function HiringManagement() {
                     Interview Feedback
                   </h3>
                   <Button
-                    size="sm"
+                    
                     className="gap-2"
                     onClick={() => {
                       resetFeedbackForm();
@@ -3369,7 +3354,7 @@ export default function HiringManagement() {
                       setIsFeedbackDialogOpen(true);
                     }}
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-5 w-5" />
                     {feedback.length > 0 ? 'Add Another Feedback' : 'Submit Feedback'}
                   </Button>
                 </div>
@@ -3414,7 +3399,7 @@ export default function HiringManagement() {
                                 setIsFeedbackDialogOpen(true);
                               }}
                             >
-                              <Edit className="h-3.5 w-3.5" />
+                              <Edit className="h-5 w-5" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -3422,7 +3407,7 @@ export default function HiringManagement() {
                               className="h-7 w-7 text-destructive"
                               onClick={() => handleDeleteFeedback(f.feedback_id)}
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-5 w-5" />
                             </Button>
                           </div>
                         </div>

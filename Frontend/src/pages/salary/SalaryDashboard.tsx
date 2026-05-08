@@ -242,10 +242,10 @@ const SalaryDashboard = () => {
                         <DollarSign className="h-8 w-8 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+                        <h1 className="font-bold tracking-tight" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "30px" }}>
                             Salary Management
                         </h1>
-                        <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
+                        <p className="font-medium flex items-center gap-2 mt-1" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                             <Building2 className="h-4 w-4 text-blue-500" />
                             Manage employee salaries, slips, and increments.
                         </p>
@@ -258,7 +258,8 @@ const SalaryDashboard = () => {
                             variant="outline"
                             size="lg"
                             onClick={() => navigate(`/salary/employee/${user?.id}`)}
-                            className="rounded-xl px-6 h-12 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all active:scale-95"
+                            className="rounded-xl px-6 h-12 transition-all active:scale-95"
+                            style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#FFFFFF', backgroundColor: '#2563EB', fontSize: '14px' }}
                         >
                             <DollarSign className="h-4 w-4 mr-2" />
                             My Salary
@@ -269,7 +270,8 @@ const SalaryDashboard = () => {
                         size="lg"
                         onClick={loadEmployees}
                         disabled={loading}
-                        className="rounded-xl px-6 h-12 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all active:scale-95"
+                        className="rounded-xl px-6 h-12 transition-all active:scale-95"
+                        style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#FFFFFF", backgroundColor: "#2563EB", fontSize: "14px" }}
                     >
                         <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                         Refresh
@@ -392,15 +394,15 @@ const SalaryDashboard = () => {
                                 </div>
                             </div>
                             <div className="space-y-1">
-                                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">{item.label}</h3>
-                                <div className="text-xl font-black text-gray-900 dark:text-gray-100 tracking-tight">{item.value}</div>
+                                <h3 className="font-bold uppercase tracking-widest leading-none" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>{item.label}</h3>
+                                <div className="tracking-tight font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }}>{item.value}</div>
                                 <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
                                     <div className={`h-1.5 w-1.5 rounded-full ${item.color === 'blue' ? 'bg-blue-500' :
                                         item.color === 'emerald' ? 'bg-emerald-500' :
                                             item.color === 'indigo' ? 'bg-indigo-500' :
                                                 'bg-amber-500'
                                         }`} />
-                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{item.sub}</span>
+                                    <span className="font-bold uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>{item.sub}</span>
                                 </div>
                             </div>
                         </CardContent>
@@ -412,15 +414,15 @@ const SalaryDashboard = () => {
                 <CardHeader className="pb-3">
                     <div className="flex justify-between items-center">
                         <div>
-                            <CardTitle>Employee Salaries</CardTitle>
-                            <CardDescription>View and manage salary structures for all employees</CardDescription>
+                            <CardTitle className="font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>Employee Salaries</CardTitle>
+                            <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>View and manage salary structures for all employees</CardDescription>
                         </div>
                         <div className="flex flex-wrap items-center gap-4">
                             <div className="flex items-center gap-2">
                                 <div className="flex flex-col gap-2">
-                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">Department</Label>
+                                    <Label className="uppercase font-bold ml-1" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Department</Label>
                                     <Select value={deptFilter} onValueChange={setDeptFilter}>
-                                        <SelectTrigger className="w-[180px] h-10 bg-white dark:bg-gray-800 border-2 transition-all duration-300 hover:shadow-md">
+                                        <SelectTrigger className="w-[180px] h-10 bg-white dark:bg-gray-800 border-2 transition-all duration-300 hover:shadow-md" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                                             <SelectValue placeholder="All Departments" />
                                         </SelectTrigger>
                                         <SelectContent side="bottom">
@@ -433,9 +435,9 @@ const SalaryDashboard = () => {
                                 </div>
 
                                 <div className="flex flex-col gap-2">
-                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">Role</Label>
+                                    <Label className="uppercase font-bold ml-1" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Role</Label>
                                     <Select value={roleFilter} onValueChange={setRoleFilter}>
-                                        <SelectTrigger className="w-[160px] h-10 bg-white dark:bg-gray-800 border-2 transition-all duration-300 hover:shadow-md">
+                                        <SelectTrigger className="w-[160px] h-10 bg-white dark:bg-gray-800 border-2 transition-all duration-300 hover:shadow-md" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                                             <SelectValue placeholder="All Roles" />
                                         </SelectTrigger>
                                         <SelectContent side="bottom">
@@ -451,14 +453,14 @@ const SalaryDashboard = () => {
                             </div>
 
                             <div className="flex flex-col gap-2">
-                                <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">Search</Label>
+                                <Label className="uppercase font-bold ml-1" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Search</Label>
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         placeholder="Name, ID, or Dept..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
-                                        className="pl-9 w-[220px] h-10 bg-white dark:bg-gray-800 border-2 focus:ring-2 focus:ring-blue-500"
+                                        className="pl-9 w-[220px] h-10 bg-white dark:bg-gray-800 border-2 focus:ring-2 focus:ring-blue-500" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
                                     />
                                 </div>
                             </div>
@@ -470,12 +472,12 @@ const SalaryDashboard = () => {
                         <Table>
                             <TableHeader className="bg-gray-50 dark:bg-gray-900/50">
                                 <TableRow>
-                                    <TableHead className="w-[100px]">Emp ID</TableHead>
-                                    <TableHead>Employee</TableHead>
-                                    <TableHead>Role / Dept</TableHead>
-                                    <TableHead className="text-right">Monthly CTC</TableHead>
-                                    <TableHead className="text-right">In-Hand Pay</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
+                                    <TableHead className="w-[100px] font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>EMP ID</TableHead>
+                                    <TableHead className="font-bold uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>EMPLOYEE</TableHead>
+                                    <TableHead className="font-bold uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ROLE/DEPT</TableHead>
+                                    <TableHead className="text-right font-bold uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>MONTHLY CTC</TableHead>
+                                    <TableHead className="text-right font-bold uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>IN-HAND PAY</TableHead>
+                                    <TableHead className="text-right font-bold uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ACTIONS</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -499,23 +501,23 @@ const SalaryDashboard = () => {
                                 ) : (
                                     paginatedItems.map((item) => (
                                         <TableRow key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                            <TableCell className="font-bold text-slate-700 dark:text-slate-300">{item.employee_id}</TableCell>
+                                            <TableCell className="font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{item.employee_id}</TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-gray-900 dark:text-gray-100">{item.name}</span>
-                                                    <span className="text-[10px] text-muted-foreground lowercase font-medium">{item.email}</span>
+                                                    <span className="font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{item.name}</span>
+                                                    <span className="lowercase font-medium" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>{item.email}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col">
-                                                    <span className="capitalize text-xs font-semibold">{item.role?.replace('_', ' ')}</span>
-                                                    <span className="text-[10px] text-muted-foreground">{item.department || item.branch || '-'}</span>
+                                                    <span className="capitalize font-semibold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{item.role?.replace('_', ' ')}</span>
+                                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>{item.department || item.branch || '-'}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400">
+                                            <TableCell className="text-right font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                                                 {item.salary ? `₹${Math.round(item.salary.monthlyCtc || 0).toLocaleString()}` : '-'}
                                             </TableCell>
-                                            <TableCell className="text-right font-bold text-emerald-600 dark:text-emerald-400">
+                                            <TableCell className="text-right font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                                                 {item.salary ? `₹${Math.round(item.salary.monthlyInHand || 0).toLocaleString()}` : '-'}
                                             </TableCell>
                                             <TableCell className="text-right pointer-events-auto">
@@ -584,6 +586,7 @@ const SalaryDashboard = () => {
 
                     {filteredItems.length > 0 && (
                         <div className="mt-6 px-2">
+                            <div style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                             <Pagination
                                 currentPage={salaryCurrentPage}
                                 totalPages={totalPages}
@@ -594,6 +597,7 @@ const SalaryDashboard = () => {
                                 showItemsPerPage={true}
                                 showEntriesInfo={true}
                             />
+                            </div>
                         </div>
                     )}
                 </CardContent>

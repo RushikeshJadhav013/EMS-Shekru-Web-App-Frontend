@@ -419,10 +419,10 @@ export default function Reports() {
   };
 
   const getPerformanceColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-blue-600';
-    if (score >= 40) return 'text-yellow-600';
-    return 'text-red-600';
+    if (score >= 80) return 'text-green-600'; // Excellent
+    if (score >= 60) return 'text-blue-600';  // Good
+    if (score >= 40) return 'text-yellow-600'; // Average
+    return 'text-red-600';                  // Poor
   };
 
   const getPerformanceBadge = (score: number) => {
@@ -491,7 +491,7 @@ export default function Reports() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 relative">
+    <div className="w-full space-y-6">
       {!['admin', 'hr', 'manager', 'team_lead', 'employee'].includes(user?.role || '') && <V2Overlay fallbackPath="/dashboard" />}
       <div className="w-full space-y-6 pb-20">
         {/* Header Section - aligned with other modern pages */}
@@ -504,20 +504,20 @@ export default function Reports() {
               <FileText className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+              <h1 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "30px", fontWeight: "bold" }} className="tracking-tight">
                 Performance Reports
               </h1>
               <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-blue-500" />
-                <span>{formatIST(currentDate, 'EEEE, dd MMM yyyy')}</span>
+                <Calendar className="h-5 w-5 text-blue-500" />
+                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{formatIST(currentDate, 'EEEE, dd MMM yyyy')}</span>
               </p>
             </div>
           </div>
 
           <div className="relative flex flex-wrap items-center gap-2 sm:gap-3">
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-[140px] h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
-                <Calendar className="h-4 w-4 mr-1.5 text-slate-400" />
+              <SelectTrigger className="w-[140px] h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+                <Calendar className="h-5 w-5 mr-1.5 text-slate-400" />
                 <SelectValue placeholder="Month" />
               </SelectTrigger>
               <SelectContent>
@@ -582,23 +582,24 @@ export default function Reports() {
           <TabsList className="flex items-center gap-1 bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-lg w-fit border border-slate-200/50 dark:border-slate-700/50">
             <TabsTrigger
               value="performance"
-              className="h-9 text-sm font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all"
+              className="h-9 font-medium px-4 rounded-md data-[state=active]:bg-[#2563EB] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
+              style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
             >
-              <Users className="h-4 w-4 mr-1.5" />
+              <Users className="h-5 w-5 mr-1.5" />
               Employee Performance
             </TabsTrigger>
             <TabsTrigger
               value="department"
               className="h-9 text-sm font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 data-[state=active]:shadow-sm transition-all"
             >
-              <PieChart className="h-4 w-4 mr-1.5" />
+              <PieChart className="h-5 w-5 mr-1.5" />
               Department Metrics
             </TabsTrigger>
             <TabsTrigger
               value="summary"
               className="h-9 text-sm font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-sm transition-all"
             >
-              <BarChart3 className="h-4 w-4 mr-1.5" />
+              <BarChart3 className="h-5 w-5 mr-1.5" />
               Executive Summary
             </TabsTrigger>
           </TabsList>
@@ -607,17 +608,17 @@ export default function Reports() {
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Individual Performance</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Comprehensive behavior and task analysis per team member</p>
+                  <h2 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="tracking-tight">Individual Performance</h2>
+                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-0.5">Comprehensive behavior and task analysis per team member</p>
                 </div>
                 <Button
                   onClick={() => openExportDialog()}
                   variant="outline"
-                  size="sm"
+                  
                   className="h-8 text-xs font-medium gap-1.5"
                 >
-                  <Download className="h-3.5 w-3.5" />
-                  Export
+                  <Download className="h-5 w-5" />
+                  <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Export</span>
                 </Button>
               </div>
 
@@ -641,17 +642,19 @@ export default function Reports() {
                     <div className="flex justify-end gap-1.5 mb-4">
                       <Button
                         variant="ghost"
-                        size="sm"
+                        
                         onClick={expandAllDepartments}
-                        className="h-7 text-xs font-medium uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                        className="h-7 uppercase tracking-wider bg-[#2563EB] text-white hover:bg-blue-700"
+                        style={{ fontSize: "14px" }}
                       >
                         Expand All
                       </Button>
                       <Button
                         variant="ghost"
-                        size="sm"
+                        
                         onClick={collapseAllDepartments}
-                        className="h-7 text-xs font-medium uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                        className="h-7 uppercase tracking-wider bg-[#2563EB] text-white hover:bg-blue-700"
+                        style={{ fontSize: "14px" }}
                       >
                         Collapse All
                       </Button>
@@ -674,11 +677,11 @@ export default function Reports() {
                             >
                               <div className="flex items-center gap-3">
                                 <div className="p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-md">
-                                  <Users className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                  <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                 </div>
                                 <div className="text-left">
-                                  <h3 className="text-lg font-black tracking-tight text-slate-800 dark:text-white">{department}</h3>
-                                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                                  <h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>{department}</h3>
+                                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                                     {employees.length} {employees.length === 1 ? 'member' : 'members'} • Performance Avg {deptAvgScore}%
                                   </p>
                                 </div>
@@ -731,21 +734,21 @@ export default function Reports() {
                                             {badge.text}
                                           </Badge>
                                           <Button
-                                            size="sm"
+                                            
                                             variant="ghost"
                                             onClick={() => openRatingDialog(employee)}
                                             className="h-8 px-3 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                                           >
-                                            <Edit className="h-4 w-4 mr-1.5" />
+                                            <Edit className="h-5 w-5 mr-1.5" />
                                             {hasRating ? 'Update' : 'Rate'}
                                           </Button>
                                           <Button
-                                            size="sm"
+                                            
                                             variant="ghost"
                                             onClick={() => openExportDialog({ id: employee.id, name: employee.name, employee_id: employee.employeeId })}
                                             className="h-8 px-3 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
                                           >
-                                            <Download className="h-4 w-4 mr-1.5" />
+                                            <Download className="h-5 w-5 mr-1.5" />
                                             Export
                                           </Button>
                                         </div>
@@ -753,11 +756,11 @@ export default function Reports() {
                                       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
                                           <div className="flex items-center gap-1.5 mb-1.5">
-                                            <Clock className="h-4 w-4 text-blue-500" />
-                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Attendance</p>
+                                            <Clock className="h-5 w-5 text-blue-500" />
+                                            <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest">Attendance</p>
                                           </div>
                                           <div className="flex items-baseline gap-1">
-                                            <span className={`text-2xl font-black ${getPerformanceColor(employee.attendanceScore)}`}>
+                                            <span style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>
                                               {employee.attendanceScore}
                                             </span>
                                             <span className="text-xs text-slate-400 font-medium">%</span>
@@ -767,11 +770,11 @@ export default function Reports() {
 
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
                                           <div className="flex items-center gap-1.5 mb-1.5">
-                                            <Target className="h-4 w-4 text-emerald-500" />
-                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Tasks %</p>
+                                            <Target className="h-5 w-5 text-emerald-500" />
+                                            <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest">Tasks %</p>
                                           </div>
                                           <div className="flex items-baseline gap-1">
-                                            <span className={`text-2xl font-black ${getPerformanceColor(employee.taskCompletionRate)}`}>
+                                            <span style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>
                                               {employee.taskCompletionRate}
                                             </span>
                                             <span className="text-xs text-slate-400 font-medium">%</span>
@@ -781,11 +784,11 @@ export default function Reports() {
 
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
                                           <div className="flex items-center gap-1.5 mb-1.5">
-                                            <Check className="h-4 w-4 text-orange-500" />
-                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Tasks</p>
+                                            <Check className="h-5 w-5 text-orange-500" />
+                                            <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest">Tasks</p>
                                           </div>
                                           <div className="flex items-baseline gap-1">
-                                            <span className="text-2xl font-black text-slate-700 dark:text-slate-300">
+                                            <span style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>
                                               {employee.completedTasks || 0}
                                             </span>
                                             <span className="text-xs text-slate-400 font-medium">/ {employee.totalTasks || 0}</span>
@@ -794,11 +797,11 @@ export default function Reports() {
 
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
                                           <div className="flex items-center gap-1.5 mb-1.5">
-                                            <Calendar className="h-4 w-4 text-indigo-500" />
-                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Days</p>
+                                            <Calendar className="h-5 w-5 text-indigo-500" />
+                                            <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest">Days</p>
                                           </div>
                                           <div className="flex items-baseline gap-1">
-                                            <span className="text-2xl font-black text-slate-700 dark:text-slate-300">
+                                            <span style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>
                                               {employee.attendanceDays || 0}
                                             </span>
                                             <span className="text-xs text-slate-400 font-medium">/ {employee.workingDays || 0}</span>
@@ -807,13 +810,13 @@ export default function Reports() {
 
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
                                           <div className="flex items-center gap-1.5 mb-1.5">
-                                            <Activity className="h-4 w-4 text-purple-500" />
-                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Productivity</p>
+                                            <Activity className="h-5 w-5 text-purple-500" />
+                                            <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest">Productivity</p>
                                           </div>
                                           {hasRating ? (
                                             <>
                                               <div className="flex items-baseline gap-1">
-                                                <span className={`text-2xl font-black ${getPerformanceColor(productivity)}`}>
+                                                <span style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>
                                                   {Math.round(productivity)}
                                                 </span>
                                                 <span className="text-xs text-slate-400 font-medium">%</span>
@@ -837,13 +840,13 @@ export default function Reports() {
 
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
                                           <div className="flex items-center gap-1.5 mb-1.5">
-                                            <Award className="h-4 w-4 text-pink-500" />
-                                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Quality</p>
+                                            <Award className="h-5 w-5 text-pink-500" />
+                                            <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest">Quality</p>
                                           </div>
                                           {hasRating ? (
                                             <>
                                               <div className="flex items-baseline gap-1">
-                                                <span className={`text-2xl font-black ${getPerformanceColor(qualityScore)}`}>
+                                                <span style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>
                                                   {Math.round(qualityScore)}
                                                 </span>
                                                 <span className="text-xs text-slate-400 font-medium">%</span>
@@ -867,11 +870,11 @@ export default function Reports() {
 
                                         <div className="bg-blue-600 rounded-lg p-2.5 shadow-sm col-span-2 md:col-span-4 lg:col-span-1">
                                           <div className="flex items-center gap-1.5 mb-1.5">
-                                            <BarChart3 className="h-4 w-4 text-white/80" />
-                                            <p className="text-sm font-bold text-white/80 uppercase tracking-widest">Score</p>
+                                            <BarChart3 className="h-5 w-5 text-white/80" />
+                                            <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest">Score</p>
                                           </div>
                                           <div className="flex items-baseline gap-1">
-                                            <span className="text-3xl font-black text-white">
+                                            <span style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>
                                               {overallRating > 0 ? overallRating : '-'}
                                             </span>
                                             <span className="text-xs text-white/70 font-semibold">%</span>
@@ -916,16 +919,16 @@ export default function Reports() {
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Department Overview</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Comparative analytics and cross-department efficiency metrics</p>
+                  <h2 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="tracking-tight">Department Overview</h2>
+                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-0.5">Comparative analytics and cross-department efficiency metrics</p>
                 </div>
                 <Button
                   onClick={() => openExportDialog()}
                   variant="outline"
-                  size="sm"
+                  
                   className="h-8 text-xs font-medium gap-1.5"
                 >
-                  <Download className="h-3.5 w-3.5" />
+                  <Download className="h-5 w-5" />
                   Export
                 </Button>
               </div>
@@ -948,32 +951,32 @@ export default function Reports() {
                               <div className="p-2 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
                                 <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                               </div>
-                              <h3 className="text-lg font-black tracking-tight text-slate-800 dark:text-white truncate max-w-[150px]">{dept.department}</h3>
+                              <h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} className="truncate max-w-[150px]">{dept.department}</h3>
                             </div>
-                            <Badge variant={badge.variant} className="h-6 text-xs shadow-none uppercase font-bold tracking-tighter">
+                            <span className={cn("h-6 text-xs uppercase font-bold tracking-tighter", getPerformanceColor(dept.performanceScore))} style={{ background: "transparent" }}>
                               {badge.text}
-                            </Badge>
+                            </span>
                           </div>
 
                           <div className="space-y-3">
                             <div className="flex justify-between items-center px-3 py-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-100/50 dark:border-slate-800/50 shadow-sm">
-                              <span className="text-sm font-bold text-slate-500 flex items-center gap-2">
-                                <Users className="h-4 w-4" />
+                              <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="font-bold flex items-center gap-2">
+                                <Users className="h-5 w-5" />
                                 Department Members
                               </span>
-                              <span className="text-lg font-black text-slate-900 dark:text-white">{dept.totalEmployees}</span>
+                              <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>{dept.totalEmployees}</span>
                             </div>
 
                             <div className="grid grid-cols-2 gap-2">
                               <div className="p-2.5 bg-purple-50/50 dark:bg-purple-900/10 rounded-md">
-                                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Productivity</p>
-                                <p className={`text-lg font-black ${getPerformanceColor(dept.avgProductivity)}`}>
+                                <p style={{ color: "#000000", fontSize: "12px" }} className="uppercase font-black tracking-widest mb-1">Productivity</p>
+                                <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>
                                   {dept.avgProductivity}%
                                 </p>
                               </div>
                               <div className="p-2.5 bg-blue-50/50 dark:bg-blue-900/10 rounded-md">
-                                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Attendance</p>
-                                <p className={`text-lg font-black ${getPerformanceColor(dept.avgAttendance)}`}>
+                                <p style={{ color: "#000000", fontSize: "12px" }} className="uppercase font-black tracking-widest mb-1">Attendance</p>
+                                <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>
                                   {dept.avgAttendance}%
                                 </p>
                               </div>
@@ -981,19 +984,19 @@ export default function Reports() {
 
                             <div className="grid grid-cols-2 gap-2">
                               <div className="p-2.5 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-md">
-                                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Completed</p>
-                                <p className="text-lg font-black text-emerald-600">{dept.tasksCompleted}</p>
+                                <p style={{ color: "#000000", fontSize: "12px" }} className="uppercase font-black tracking-widest mb-1">Completed</p>
+                                <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>{dept.tasksCompleted}</p>
                               </div>
                               <div className="p-2.5 bg-amber-50/50 dark:bg-amber-900/10 rounded-md">
-                                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Pending</p>
-                                <p className="text-lg font-black text-amber-600">{dept.tasksPending}</p>
+                                <p style={{ color: "#000000", fontSize: "12px" }} className="uppercase font-black tracking-widest mb-1">Pending</p>
+                                <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>{dept.tasksPending}</p>
                               </div>
                             </div>
 
                             <div className="pt-2">
                               <div className="flex justify-between items-center mb-1.5">
-                                <span className="text-sm font-black text-slate-500 uppercase tracking-widest">Efficiency Score</span>
-                                <span className={`text-xl font-black ${getPerformanceColor(dept.performanceScore)}`}>
+                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="font-black uppercase tracking-widest">Efficiency Score</span>
+                                <span style={{ color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
                                   {dept.performanceScore}%
                                 </span>
                               </div>
@@ -1021,45 +1024,45 @@ export default function Reports() {
                   <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center gap-2.5 mb-3">
                       <div className="p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-md">
-                        <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                       </div>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Avg Performance</p>
+                      <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-wider">Avg Performance</p>
                     </div>
-                    <p className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white">{executiveSummary?.avgPerformance || 0}%</p>
-                    <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mt-1">Company Average</p>
+                    <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="tracking-tighter">{executiveSummary?.avgPerformance || 0}%</p>
+                    <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest mt-1">Company Average</p>
                   </div>
 
                   <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center gap-2.5 mb-3">
                       <div className="p-1.5 bg-purple-50 dark:bg-purple-900/30 rounded-md">
-                        <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                        <Target className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                       </div>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tasks Done</p>
+                      <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-wider">Tasks Done</p>
                     </div>
-                    <p className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white">{executiveSummary?.totalTasksCompleted || 0}</p>
-                    <p className="text-[10px] font-bold text-purple-500 uppercase tracking-widest mt-1">Completion Count</p>
+                    <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="tracking-tighter">{executiveSummary?.totalTasksCompleted || 0}</p>
+                    <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest mt-1">Completion Count</p>
                   </div>
 
                   <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center gap-2.5 mb-3">
                       <div className="p-1.5 bg-amber-50 dark:bg-amber-900/30 rounded-md">
-                        <Award className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                        <Award className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                       </div>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Top Dept</p>
+                      <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-wider">Top Dept</p>
                     </div>
-                    <p className="text-2xl font-black tracking-tight text-slate-900 dark:text-white truncate">{executiveSummary?.bestDepartment?.name || 'N/A'}</p>
-                    <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mt-1">{executiveSummary?.bestDepartment?.score || 0}% Efficiency</p>
+                    <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="tracking-tight truncate">{executiveSummary?.bestDepartment?.name || 'N/A'}</p>
+                    <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest mt-1">{executiveSummary?.bestDepartment?.score || 0}% Efficiency</p>
                   </div>
 
                   <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center gap-2.5 mb-3">
                       <div className="p-1.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-md">
-                        <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        <Users className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                       </div>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Analyzed</p>
+                      <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-wider">Analyzed</p>
                     </div>
-                    <p className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white">{executiveSummary?.totalEmployeesAnalyzed || 0}</p>
-                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mt-1">Total Verified</p>
+                    <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="tracking-tighter">{executiveSummary?.totalEmployeesAnalyzed || 0}</p>
+                    <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest mt-1">Total Verified</p>
                   </div>
                 </div>
 
@@ -1070,7 +1073,7 @@ export default function Reports() {
                       <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg">
                         <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                       </div>
-                      <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Elite Performers</h2>
+                      <h2 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="tracking-tight">Elite Performers</h2>
                     </div>
                     <Badge variant="outline" className="h-6 text-xs border-emerald-200 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tighter">Verified Metrics</Badge>
                   </div>
@@ -1096,33 +1099,33 @@ export default function Reports() {
                                 {rankIcons[index]}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-lg tracking-tight text-slate-800 dark:text-white truncate">{performer.name}</h3>
-                                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 truncate">{performer.department} • {performer.role}</p>
+                                <h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} className="truncate">{performer.name}</h3>
+                                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="truncate">{performer.department} • {performer.role}</p>
                               </div>
                             </div>
 
                             <div className="flex items-center gap-6 mt-3 md:mt-0 w-full md:w-auto">
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
                                 <div className="text-center">
-                                  <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-tighter mb-1">TASKS</p>
-                                  <p className="text-base font-bold text-slate-700 dark:text-slate-300">{performer.taskCompletionScore || 0}%</p>
+                                  <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-tighter mb-1">TASKS</p>
+                                  <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>{performer.taskCompletionScore || 0}%</p>
                                 </div>
                                 <div className="text-center">
-                                  <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-tighter mb-1">ATTEND.</p>
-                                  <p className="text-base font-bold text-slate-700 dark:text-slate-300">{performer.attendanceScore || 0}%</p>
+                                  <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-tighter mb-1">ATTENDANCE</p>
+                                  <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>{performer.attendanceScore || 0}%</p>
                                 </div>
                                 <div className="text-center border-l border-slate-200 dark:border-slate-800 pl-4">
-                                  <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-tighter mb-1">DONE</p>
-                                  <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">{performer.completedTasks || 0}</p>
+                                  <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-tighter mb-1">DONE</p>
+                                  <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>{performer.completedTasks || 0}</p>
                                 </div>
                                 <div className="text-center border-l border-slate-200 dark:border-slate-800 pl-4">
-                                  <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-tighter mb-1">EFF.</p>
-                                  <p className="text-base font-bold text-blue-600 dark:text-blue-400">{performer.taskEfficiency || 0}</p>
+                                  <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-tighter mb-1">EFFECTIVITY</p>
+                                  <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>{performer.taskEfficiency || 0}</p>
                                 </div>
                               </div>
                               <div className="pl-6 border-l border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center min-w-[90px]">
-                                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1.5">RATING</p>
-                                <p className="text-2xl font-black text-blue-600 dark:text-blue-400 leading-none">{performer.score || 0}</p>
+                                <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest mb-1.5">RATING</p>
+                                <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="leading-none">{performer.score || 0}</p>
                               </div>
                             </div>
                           </div>
@@ -1145,11 +1148,12 @@ export default function Reports() {
                       <div className="bg-blue-50/50 dark:bg-blue-900/10 p-5 rounded-2xl border border-blue-100 dark:border-blue-900/30">
                         <div className="flex items-center gap-2.5 mb-4">
                           <BarChart3 className="h-5 w-5 text-blue-600" />
-                          <h3 className="text-lg font-bold tracking-tight text-slate-800 dark:text-white">Key Findings</h3>
+                          <h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="tracking-tight">Key Findings</h3>
                         </div>
                         <ul className="space-y-3">
                           {executiveSummary.keyFindings?.slice(0, 3).map((finding: string, i: number) => (
-                            <li key={i} className="flex gap-2.5 text-sm font-medium text-slate-600 dark:text-slate-400 leading-relaxed">
+                            <li key={i} className="flex gap-2.5 leading-relaxed"
+                              style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                               <span className="text-blue-500 font-black shrink-0">·</span>
                               <span>{finding}</span>
                             </li>
@@ -1160,11 +1164,12 @@ export default function Reports() {
                       <div className="bg-purple-50/50 dark:bg-purple-900/10 p-5 rounded-2xl border border-purple-100 dark:border-purple-900/30">
                         <div className="flex items-center gap-2.5 mb-4">
                           <Target className="h-5 w-5 text-purple-600" />
-                          <h3 className="text-lg font-bold tracking-tight text-slate-800 dark:text-white">Recommendations</h3>
+                          <h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="tracking-tight">Recommendations</h3>
                         </div>
                         <ul className="space-y-3">
                           {executiveSummary.recommendations?.slice(0, 3).map((rec: string, i: number) => (
-                            <li key={i} className="flex gap-2.5 text-sm font-medium text-slate-600 dark:text-slate-400 leading-relaxed">
+                            <li key={i} className="flex gap-2.5 leading-relaxed"
+                              style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                               <span className="text-purple-500 font-black shrink-0">·</span>
                               <span>{rec}</span>
                             </li>
@@ -1175,11 +1180,12 @@ export default function Reports() {
                       <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-5 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
                         <div className="flex items-center gap-2.5 mb-4">
                           <FileText className="h-5 w-5 text-emerald-600" />
-                          <h3 className="text-lg font-bold tracking-tight text-slate-800 dark:text-white">Action Items</h3>
+                          <h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="tracking-tight">Action Items</h3>
                         </div>
                         <ul className="space-y-3">
                           {executiveSummary.actionItems?.slice(0, 3).map((item: string, i: number) => (
-                            <li key={i} className="flex gap-2.5 text-sm font-medium text-slate-600 dark:text-slate-400 leading-relaxed">
+                            <li key={i} className="flex gap-2.5 leading-relaxed"
+                              style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                               <span className="text-emerald-500 font-black shrink-0">·</span>
                               <span>{item}</span>
                             </li>

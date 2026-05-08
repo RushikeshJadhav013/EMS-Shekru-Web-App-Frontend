@@ -339,6 +339,24 @@ const Profile: React.FC = () => {
                     className="disabled:opacity-60"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="branchId" className="text-blue-600 font-bold">Branch ID</Label>
+                  <Input
+                    id="branchId"
+                    value={user?.branch_id || 'Not assigned'}
+                    disabled
+                    className="disabled:opacity-60 border-blue-100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="companyId" className="text-blue-600 font-bold">Company ID</Label>
+                  <Input
+                    id="companyId"
+                    value={user?.company_id || 'Not assigned'}
+                    disabled
+                    className="disabled:opacity-60 border-blue-100"
+                  />
+                </div>
               </CardContent>
             </Card>
 

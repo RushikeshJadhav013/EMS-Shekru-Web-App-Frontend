@@ -973,20 +973,10 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                         <FileText className="h-8 w-8 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+                        <h1 className="font-bold tracking-tight" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '30px' }}>
                             {userName ? `${userName}'s Salary Details` : 'Salary Details'}
                         </h1>
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-x-3 gap-y-1 text-xs font-bold text-muted-foreground mt-1 uppercase tracking-tight">
-                            <span className="flex items-center gap-1">
-                                <CalendarDays className="h-3.5 w-3.5 text-emerald-500" />
-                                Created: {displaySalaryData?.createdAt ? new Date(displaySalaryData.createdAt).toLocaleDateString() : 'N/A'}
-                            </span>
-                            <span className="hidden sm:inline opacity-30">|</span>
-                            <span className="flex items-center gap-1">
-                                <Clock className="h-3.5 w-3.5 text-emerald-500" />
-                                Effective: {displaySalaryData?.effectiveDate ? new Date(displaySalaryData.effectiveDate).toLocaleDateString() : 'N/A'}
-                            </span>
-                        </div>
+                        
                     </div>
                 </div>
 
@@ -1000,7 +990,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     navigate(`/salary/add?userId=${targetUserId}&edit=true`);
                                 }
                             }}
-                            className="rounded-xl px-6 h-12 border-gray-200 dark:border-gray-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 hover:border-emerald-200 transition-all active:scale-95"
+                            className="rounded-xl px-6 h-12 transition-all active:scale-95"
+                            style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#FFFFFF', backgroundColor: '#10B981', fontSize: '14px' }}
                         >
                             <Edit className="mr-2 h-4 w-4" /> Edit Structure
                         </Button>
@@ -1096,8 +1087,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 </div>
 
                                 <div className="mt-6 space-y-1">
-                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">{item.label}</h3>
-                                    <div className={`text-2xl font-black text-slate-900 dark:text-white tracking-tighter ${item.isCap ? 'capitalize' : ''}`}>
+                                    <h3 className="uppercase tracking-[0.2em] leading-none mb-1 font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>{item.label}</h3>
+                                    <div className={`tracking-tighter font-bold ${item.isCap ? 'capitalize' : ''}`} style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
                                         {item.value}
                                     </div>
 
@@ -1107,7 +1098,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                 <div key={dot} className={`h-1 w-1 rounded-full ${item.accent} opacity-${20 * dot}`} />
                                             ))}
                                         </div>
-                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{item.sub}</span>
+                                        <span className="uppercase tracking-widest font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>{item.sub}</span>
                                     </div>
                                 </div>
 
@@ -1129,15 +1120,15 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     <History className="h-5 w-5 text-emerald-600" />
                                 </div>
                                 <div>
-                                    <CardTitle className="text-xl">Salary Slips Archive</CardTitle>
-                                    <CardDescription className="text-xs font-medium">History of generated payslips and payment statuses</CardDescription>
+                                    <CardTitle className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '16px', fontWeight: 'bold' }}>Salary Slips Archive</CardTitle>
+                                    <CardDescription className="font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}>History of generated payslips and payment statuses</CardDescription>
                                 </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-3">
                                 <div className="flex items-center gap-3">
-                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Year</Label>
+                                    <Label className="uppercase font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Year</Label>
                                     <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
-                                        <SelectTrigger className="w-[85px] h-9 text-xs font-bold border dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm">
+                                        <SelectTrigger className="w-[85px] h-9 border dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}>
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -1148,9 +1139,9 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     </Select>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Month</Label>
+                                    <Label className="uppercase font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Month</Label>
                                     <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                                        <SelectTrigger className="w-[120px] h-9 text-xs font-bold border dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm">
+                                        <SelectTrigger className="w-[120px] h-9 border dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}>
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -1184,10 +1175,10 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 <Table>
                                     <TableHeader className="bg-gray-50/50 dark:bg-gray-900/20">
                                         <TableRow className="hover:bg-transparent">
-                                            <TableHead className="font-bold text-[10px] uppercase tracking-wider pl-6 py-4">Period</TableHead>
-                                            <TableHead className="font-bold text-[10px] uppercase tracking-wider py-4">Payment Summary</TableHead>
-                                            <TableHead className="font-bold text-[10px] uppercase tracking-wider py-4 text-center">Status</TableHead>
-                                            <TableHead className="text-right font-bold text-[10px] uppercase tracking-wider pr-6 py-4">Actions</TableHead>
+                                            <TableHead className="uppercase tracking-wider pl-6 py-4 font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>PERIOD</TableHead>
+                                            <TableHead className="uppercase tracking-wider py-4 font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>PAYMENT SUMMARY</TableHead>
+                                            <TableHead className="uppercase tracking-wider py-4 text-center font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>STATUS</TableHead>
+                                            <TableHead className="text-right uppercase tracking-wider pr-6 py-4 font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>ACTIONS</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -1233,20 +1224,18 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                     return (
                                                         <TableRow key={slip.id} className="group hover:bg-gray-50/80 dark:hover:bg-gray-900/40 transition-colors">
                                                             <TableCell className="pl-6 py-4">
-                                                                <div className="font-black text-sm text-gray-900 dark:text-gray-100 tracking-tight">{monthName} {slip.year}</div>
-                                                                <div className="text-[10px] text-muted-foreground font-bold mt-1.5">
-                                                                    ID: {String(slip.id).slice(0, 8)} | Generated: {date.toLocaleDateString()}
-                                                                </div>
+                                                                <div className="tracking-tight font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}>{monthName} {slip.year}</div>
+                                                                <div className="mt-1.5 font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>ID: {String(slip.id).slice(0, 8)} | Generated: {date.toLocaleDateString()}</div>
                                                             </TableCell>
                                                             <TableCell className="py-4">
                                                                 <div className="flex gap-4">
                                                                     <div className="flex flex-col">
-                                                                        <span className="text-[9px] font-bold text-muted-foreground uppercase">Gross Earnings</span>
-                                                                        <span className="font-bold text-xs text-slate-700 dark:text-slate-300">₹{slip.gross_salary?.toLocaleString('en-IN')}</span>
+                                                                        <span className="uppercase" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>GROSS EARNINGS</span>
+                                                                        <span className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}>₹{slip.gross_salary?.toLocaleString('en-IN')}</span>
                                                                     </div>
                                                                     <div className="flex flex-col">
-                                                                        <span className="text-[9px] font-bold text-muted-foreground uppercase">Net Selection</span>
-                                                                        <span className="font-bold text-xs text-emerald-600 dark:text-emerald-400 font-black">₹{slip.net_salary?.toLocaleString('en-IN')}</span>
+                                                                        <span className="uppercase" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>NET SELECTION</span>
+                                                                        <span className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}>₹{slip.net_salary?.toLocaleString('en-IN')}</span>
                                                                     </div>
                                                                 </div>
                                                             </TableCell>
@@ -1254,17 +1243,13 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                                 <div className="flex flex-col items-center gap-1">
                                                                     <Badge
                                                                         variant={slip.email_sent ? "default" : "secondary"}
-                                                                        className={`text-[9px] font-black border-none px-2.5 py-0.5 ${slip.email_sent
-                                                                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400"
-                                                                            : "bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400 shadow-sm"
-                                                                            }`}
+                                                                        className={`border-none px-2.5 py-0.5 ${slip.email_sent ? "bg-emerald-50" : "bg-blue-50 shadow-sm"}`}
+                                                                        style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: slip.email_sent ? '#16A34A' : '#2563EB', fontSize: '12px', fontWeight: 'bold' }}
                                                                     >
                                                                         {slip.email_sent ? "EMAIL SENT" : "READY"}
                                                                     </Badge>
                                                                     {slip.email_sent_at && (
-                                                                        <div className="text-[8px] text-muted-foreground font-bold uppercase tracking-tighter">
-                                                                            Ref: {new Date(slip.email_sent_at).toLocaleDateString()}
-                                                                        </div>
+                                                                        <div className="uppercase tracking-tighter font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>Ref: {new Date(slip.email_sent_at).toLocaleDateString()}</div>
                                                                     )}
                                                                 </div>
                                                             </TableCell>
@@ -1274,11 +1259,10 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                                         variant="outline"
                                                                         size="sm"
                                                                         onClick={() => handleDownloadSlip(slip.month, slip.year)}
-                                                                        className="h-8 px-3 rounded-lg border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white transition-all active:scale-95"
+                                                                        className="h-8 w-8 p-0 rounded-lg border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white transition-all active:scale-95"
                                                                         title="Download Salary Slip"
                                                                     >
-                                                                        <Download className="h-3.5 w-3.5 mr-1.5" />
-                                                                        Download
+                                                                        <Download className="h-4 w-4" />
                                                                     </Button>
                                                                     {isAdminOrHr && (
                                                                         <Button
@@ -1286,11 +1270,10 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                                             size="sm"
                                                                             onClick={() => handleSendSlip(slip.month, slip.year)}
                                                                             disabled={isSalarySlipSending}
-                                                                            className="h-8 px-3 rounded-lg border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white transition-all active:scale-95"
+                                                                            className="h-8 w-8 p-0 rounded-lg border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white transition-all active:scale-95"
                                                                             title="Send via Email"
                                                                         >
-                                                                            <Send className="h-3.5 w-3.5 mr-1.5" />
-                                                                            Send
+                                                                            <Send className="h-4 w-4" />
                                                                         </Button>
                                                                     )}
                                                                 </div>
@@ -1326,20 +1309,23 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                         <TabsList className="h-14 p-1.5 bg-slate-100/50 dark:bg-slate-800/50 backdrop-blur-lg border border-slate-200/50 dark:border-slate-700/50 rounded-2xl shadow-inner w-fit">
                             <TabsTrigger
                                 value="breakdown"
-                                className="px-8 h-full rounded-xl text-xs font-black uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-indigo-600 data-[state=active]:shadow-lg active:scale-95"
+                                className="px-8 h-full rounded-xl uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-black data-[state=active]:shadow-lg active:scale-95"
+                                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "900", color: "#000000" }}
                             >
                                 Breakdown
                             </TabsTrigger>
                             <TabsTrigger
                                 value="documents"
-                                className="px-8 h-full rounded-xl text-xs font-black uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-indigo-600 data-[state=active]:shadow-lg active:scale-95"
+                                className="px-8 h-full rounded-xl uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-black data-[state=active]:shadow-lg active:scale-95"
+                                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "900", color: "#000000" }}
                             >
                                 Documents
                             </TabsTrigger>
                             {isAdminOrHr && (
                                 <TabsTrigger
                                     value="history"
-                                    className="px-8 h-full rounded-xl text-xs font-black uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-indigo-600 data-[state=active]:shadow-lg active:scale-95"
+                                    className="px-8 h-full rounded-xl uppercase tracking-widest transition-all data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg active:scale-95"
+                                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "900" }}
                                 >
                                     Increment
                                 </TabsTrigger>
@@ -1363,8 +1349,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                 <TrendingUp className="h-6 w-6" />
                                             </div>
                                             <div>
-                                                <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Earnings</h3>
-                                                <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">Monthly Breakdown</p>
+                                                <h3 className="tracking-tight" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>Earnings</h3>
+                                                <p className="uppercase tracking-widest" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>Monthly Breakdown</p>
                                             </div>
                                         </div>
                                     </div>
@@ -1374,44 +1360,44 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                             <TableBody>
                                                 <TableRow className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-none group">
                                                     <TableCell className="pl-6 py-4">
-                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Basic Salary</span>
+                                                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Basic Salary</span>
                                                     </TableCell>
-                                                    <TableCell className="text-right pr-6 font-black text-slate-900 dark:text-white">{formatCurrency(displaySalaryData.monthlyBasic)}</TableCell>
+                                                    <TableCell className="text-right pr-6 font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{formatCurrency(displaySalaryData.monthlyBasic)}</TableCell>
                                                 </TableRow>
                                                 <TableRow className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-none group">
                                                     <TableCell className="pl-6 py-4">
-                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">HRA</span>
+                                                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>HRA</span>
                                                     </TableCell>
-                                                    <TableCell className="text-right pr-6 font-black text-slate-900 dark:text-white">{formatCurrency(displaySalaryData.hra)}</TableCell>
+                                                    <TableCell className="text-right pr-6 font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{formatCurrency(displaySalaryData.hra)}</TableCell>
                                                 </TableRow>
                                                 <TableRow className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-none group">
                                                     <TableCell className="pl-6 py-4">
-                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Special Allowance</span>
+                                                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Special Allowance</span>
                                                     </TableCell>
-                                                    <TableCell className="text-right pr-6 font-black text-slate-900 dark:text-white">{formatCurrency(displaySalaryData.specialAllowance)}</TableCell>
+                                                    <TableCell className="text-right pr-6 font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{formatCurrency(displaySalaryData.specialAllowance)}</TableCell>
                                                 </TableRow>
                                                 {displaySalaryData.medicalAllowance > 0 && (
                                                     <TableRow className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-none group">
                                                         <TableCell className="pl-6 py-4">
-                                                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Medical Allowance</span>
+                                                            <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Medical Allowance</span>
                                                         </TableCell>
-                                                        <TableCell className="text-right pr-6 font-black text-slate-900 dark:text-white">{formatCurrency(displaySalaryData.medicalAllowance)}</TableCell>
+                                                        <TableCell className="text-right pr-6 font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{formatCurrency(displaySalaryData.medicalAllowance)}</TableCell>
                                                     </TableRow>
                                                 )}
                                                 {displaySalaryData.conveyanceAllowance > 0 && (
                                                     <TableRow className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-none group">
                                                         <TableCell className="pl-6 py-4">
-                                                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Conveyance Allowance</span>
+                                                            <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Conveyance Allowance</span>
                                                         </TableCell>
-                                                        <TableCell className="text-right pr-6 font-black text-slate-900 dark:text-white">{formatCurrency(displaySalaryData.conveyanceAllowance)}</TableCell>
+                                                        <TableCell className="text-right pr-6 font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{formatCurrency(displaySalaryData.conveyanceAllowance)}</TableCell>
                                                     </TableRow>
                                                 )}
                                             </TableBody>
                                         </Table>
                                         <div className="p-6 bg-emerald-50/40 dark:bg-emerald-900/10 border-t border-emerald-100 dark:border-emerald-800/50 rounded-b-3xl">
                                             <div className="flex justify-between items-center">
-                                                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Gross Total</span>
-                                                <h4 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{formatCurrency(displaySalaryData.monthlyGross)}</h4>
+                                                <span className="uppercase tracking-widest font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Gross Total</span>
+                                                <h4 className="tracking-tight font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{formatCurrency(displaySalaryData.monthlyGross)}</h4>
                                             </div>
                                         </div>
                                     </div>
@@ -1427,8 +1413,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                 <TrendingUp className="h-6 w-6 rotate-180" />
                                             </div>
                                             <div>
-                                                <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Deductions</h3>
-                                                <p className="text-[10px] text-rose-600 font-bold uppercase tracking-widest">Mandatory & Others</p>
+                                                <h3 className="tracking-tight" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>Deductions</h3>
+                                                <p className="uppercase tracking-widest" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>Mandatory & Others</p>
                                             </div>
                                         </div>
                                     </div>
@@ -1438,36 +1424,36 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                             <TableBody>
                                                 <TableRow className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-none group">
                                                     <TableCell className="pl-6 py-4">
-                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Professional Tax</span>
+                                                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Professional Tax</span>
                                                     </TableCell>
-                                                    <TableCell className="text-right pr-6 font-black text-rose-600 dark:text-rose-400">-{formatCurrency(displaySalaryData.professionalTax)}</TableCell>
+                                                    <TableCell className="text-right pr-6 font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>-{formatCurrency(displaySalaryData.professionalTax)}</TableCell>
                                                 </TableRow>
                                                 <TableRow className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-none group">
                                                     <TableCell className="pl-6 py-4">
-                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Provident Fund (EPF)</span>
+                                                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Provident Fund (EPF)</span>
                                                     </TableCell>
-                                                    <TableCell className="text-right pr-6 font-black text-rose-600 dark:text-rose-400">-{formatCurrency(displaySalaryData.pfEmployee)}</TableCell>
+                                                    <TableCell className="text-right pr-6 font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>-{formatCurrency(displaySalaryData.pfEmployee)}</TableCell>
                                                 </TableRow>
                                                 <TableRow className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-none group">
                                                     <TableCell className="pl-6 py-4">
-                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Income Tax (TDS)</span>
+                                                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Income Tax (TDS)</span>
                                                     </TableCell>
-                                                    <TableCell className="text-right pr-6 font-black text-rose-600 dark:text-rose-400">-{formatCurrency(0)}</TableCell>
+                                                    <TableCell className="text-right pr-6 font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>-{formatCurrency(0)}</TableCell>
                                                 </TableRow>
                                                 {displaySalaryData.otherDeduction > 0 && (
                                                     <TableRow className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-none group">
                                                         <TableCell className="pl-6 py-4">
-                                                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Other Deductions</span>
+                                                            <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Other Deductions</span>
                                                         </TableCell>
-                                                        <TableCell className="text-right pr-6 font-black text-rose-600 dark:text-rose-400">-{formatCurrency(displaySalaryData.otherDeduction)}</TableCell>
+                                                        <TableCell className="text-right pr-6 font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>-{formatCurrency(displaySalaryData.otherDeduction)}</TableCell>
                                                     </TableRow>
                                                 )}
                                             </TableBody>
                                         </Table>
                                         <div className="p-6 bg-rose-50/40 dark:bg-rose-900/10 border-t border-rose-100 dark:border-rose-800/50 rounded-b-3xl">
                                             <div className="flex justify-between items-center">
-                                                <span className="text-[10px] font-black text-rose-600 uppercase tracking-widest">Total Deductions</span>
-                                                <h4 className="text-xl font-black text-rose-600 dark:text-rose-400 tracking-tight">{formatCurrency(displaySalaryData.monthlyDeductions)}</h4>
+                                                <span className="uppercase tracking-widest font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Total Deductions</span>
+                                                <h4 className="tracking-tight font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{formatCurrency(displaySalaryData.monthlyDeductions)}</h4>
                                             </div>
                                         </div>
                                     </div>
@@ -1484,8 +1470,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                             <TrendingUp className="h-7 w-7 text-white" />
                                         </div>
                                         <div className="mt-6">
-                                            <p className="text-xs font-black text-indigo-100 uppercase tracking-[0.2em]">Net Take Home</p>
-                                            <h2 className="text-4xl font-black tracking-tighter mt-2">{formatCurrency(displaySalaryData.monthlyInHand)}</h2>
+                                            <p className="uppercase tracking-[0.2em]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#FFFFFF", fontSize: "12px", fontWeight: "900" }}>Net Take Home</p>
+                                            <h2 className="tracking-tighter mt-2 font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px" }}>{formatCurrency(displaySalaryData.monthlyInHand)}</h2>
                                         </div>
                                     </div>
 
@@ -1494,9 +1480,9 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                                                <span className="text-[10px] font-bold text-indigo-100 uppercase tracking-widest">Payment Processed</span>
+                                                <span className="uppercase tracking-widest" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#FFFFFF", fontSize: "12px", fontWeight: "bold" }}>Payment Processed</span>
                                             </div>
-                                            <div className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[10px] font-black uppercase tracking-tighter">Verified</div>
+                                            <div className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 uppercase tracking-tighter" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#FFFFFF", fontSize: "12px", fontWeight: "900" }}>Verified</div>
                                         </div>
                                     </div>
                                 </div>
@@ -1508,12 +1494,12 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                             <Calendar className="h-5 w-5 text-indigo-400" />
                                             <span className="text-sm font-bold tracking-tight">Annual Summary</span>
                                         </div>
-                                        <Badge variant="outline" className="text-[10px] text-slate-400 border-slate-700 px-2 py-0">FY 24-25</Badge>
+                                        <Badge variant="outline" className="border-slate-700 px-2 py-0" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#FFFFFF", fontSize: "12px" }}>FY 24-25</Badge>
                                     </div>
                                     <div className="space-y-3">
                                         <div className="flex justify-between items-center">
-                                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Total CTC</span>
-                                            <span className="text-lg font-black text-white">{formatCurrency(displaySalaryData.ctc_annual || displaySalaryData.annualCtc)}</span>
+                                            <span className="uppercase tracking-widest font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#FFFFFF", fontSize: "12px" }}>Total CTC</span>
+                                            <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#FFFFFF", fontSize: "14px", fontWeight: "900" }}>{formatCurrency(displaySalaryData.ctc_annual || displaySalaryData.annualCtc)}</span>
                                         </div>
                                         <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
                                             <div className="h-full bg-indigo-500 rounded-full" style={{ width: '100%' }} />
@@ -1533,8 +1519,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                 <CreditCard className="h-7 w-7 text-indigo-600 dark:text-indigo-400" />
                                             </div>
                                             <div>
-                                                <h3 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Bank & Statutory Details</h3>
-                                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Payment endpoints & identification numbers</p>
+                                                <h3 className="tracking-tight font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px" }}>Bank & Statutory Details</h3>
+                                                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "500" }}>Payment endpoints & identification numbers</p>
                                             </div>
                                         </div>
 
@@ -1542,7 +1528,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                             <Button
                                                 variant="outline"
                                                 onClick={toggleSensitive}
-                                                className="h-11 px-6 rounded-2xl border-slate-100 dark:border-slate-800 text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all active:scale-95"
+                                                className="h-11 px-6 rounded-2xl transition-all active:scale-95"
+                                                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#FFFFFF", backgroundColor: "#10B981", fontSize: "14px", fontWeight: "900", textTransform: "uppercase", letterSpacing: "0.1em" }}
                                             >
                                                 {showSensitive ? <EyeSlashIcon className="h-4 w-4 mr-2" /> : <EyeIcon className="h-4 w-4 mr-2" />}
                                                 {showSensitive ? 'Hide' : 'Show'} Protected
@@ -1550,7 +1537,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                             {isAdminOrHr && (
                                                 <Button
                                                     onClick={openBankEditDialog}
-                                                    className="h-11 px-6 rounded-2xl bg-slate-900 dark:bg-white dark:text-slate-900 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-slate-200 dark:shadow-none hover:translate-y-[-2px] transition-all active:scale-95"
+                                                    className="h-11 px-6 rounded-2xl shadow-lg shadow-slate-200 dark:shadow-none hover:translate-y-[-2px] transition-all active:scale-95"
+                                                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#FFFFFF", backgroundColor: "#10B981", fontSize: "14px", fontWeight: "900", textTransform: "uppercase", letterSpacing: "0.1em" }}
                                                 >
                                                     <Edit className="h-4 w-4 mr-2" />
                                                     Modify Records
@@ -1571,7 +1559,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                 <div key={idx} className="group relative">
                                                     <div className="relative z-10 p-5 rounded-3xl bg-slate-50/50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800 transition-all duration-300 hover:bg-white dark:hover:bg-slate-800 shadow-sm hover:shadow-xl">
                                                         <div className="flex items-center justify-between mb-3">
-                                                            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em]">{item.label}</span>
+                                                            <span className="uppercase tracking-[0.15em] font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{item.label}</span>
                                                             <span className="text-lg grayscale group-hover:grayscale-0 transition-all">{item.icon}</span>
                                                         </div>
                                                         <p className="text-base font-black text-slate-800 dark:text-white tracking-tight break-all">
@@ -1588,14 +1576,14 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                     <Calendar className="h-6 w-6 text-indigo-600" />
                                                 </div>
                                                 <div>
-                                                    <h4 className="text-sm font-black text-slate-900 dark:text-white tracking-tight">Standard Working Cycle</h4>
-                                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Performance is assessed based on this standard monthly cycle.</p>
+                                                    <h4 className="tracking-tight font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Standard Working Cycle</h4>
+                                                    <p className="mt-0.5" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>Performance is assessed based on this standard monthly cycle.</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-3">
                                                 <div className="text-right hidden sm:block">
-                                                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Monthly Quota</p>
-                                                    <p className="text-lg font-black text-slate-900 dark:text-white leading-none">{displaySalaryData.workingDays} Days</p>
+                                                    <p className="uppercase tracking-widest font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>Monthly Quota</p>
+                                                    <p className="leading-none font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{displaySalaryData.workingDays} Days</p>
                                                 </div>
                                                 <div className="h-10 w-px bg-indigo-100 dark:bg-indigo-800 mx-2 hidden sm:block" />
                                                 <div className={`h-12 px-6 rounded-2xl flex items-center gap-3 shadow-lg font-black text-xs uppercase tracking-widest transition-all duration-300 ${displaySalaryData.is_active !== false
@@ -1603,7 +1591,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                     : 'bg-amber-600 text-white shadow-amber-200/50 dark:shadow-none'
                                                     }`}>
                                                     {displaySalaryData.is_active !== false ? <CheckCircle2 className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
-                                                    {displaySalaryData.is_active !== false ? 'Active Structure' : 'Inactive Structure'}
+                                                    <span style={{ fontSize: '14px' }}>{displaySalaryData.is_active !== false ? 'Active Structure' : 'Inactive Structure'}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -1626,10 +1614,10 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                         <Briefcase className="h-7 w-7 text-white" />
                                     </div>
                                     <div>
-                                        <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Foundation Documents</h3>
+                                        <h3 className="tracking-tight" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>Foundation Documents</h3>
                                         <div className="flex items-center gap-2 mt-0.5">
                                             <div className="h-1.5 w-4 rounded-full bg-blue-500" />
-                                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Onboarding & Salary Structure</p>
+                                            <p className="uppercase tracking-widest" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>ONBOARDING & SALARY STRUCTURE</p>
                                         </div>
                                     </div>
                                 </div>
@@ -1645,10 +1633,10 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                         <FileText className="h-6 w-6 text-blue-600" />
                                                     </div>
                                                     <div>
-                                                        <h4 className="font-bold text-sm text-slate-900 dark:text-white">Offer Letter</h4>
+                                                        <h4 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Offer Letter</h4>
                                                         <div className="flex items-center gap-2 mt-1">
-                                                            <Badge variant="secondary" className="text-[9px] font-black uppercase tracking-tighter h-4.5 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 border-none px-2">Official Contract</Badge>
-                                                            <span className="text-[10px] text-muted-foreground font-medium">PDF • 1.2 MB</span>
+                                                            <Badge variant="secondary" className="uppercase tracking-tighter h-4.5 bg-blue-50 dark:bg-blue-900/40 border-none px-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>Official Contract</Badge>
+                                                            <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>PDF • 1.2 MB</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1673,12 +1661,12 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                     <LayoutGrid className="h-6 w-6 text-purple-600" />
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-bold text-sm text-slate-900 dark:text-white">Salary Annexure</h4>
+                                                    <h4 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Salary Annexure</h4>
                                                     <div className="flex items-center gap-2 mt-1">
-                                                        <Badge variant="secondary" className="text-[9px] font-black uppercase tracking-tighter h-4.5 bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400 border-none px-2">Current CTC Structure</Badge>
+                                                        <Badge variant="secondary" className="uppercase tracking-tighter h-4.5 bg-purple-50 dark:bg-purple-900/40 border-none px-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>Current CTC Structure</Badge>
                                                         <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50">
                                                             <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                                            <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-black uppercase tracking-tighter">Active</span>
+                                                            <span className="uppercase tracking-tighter font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#10B981", fontSize: "12px" }}>Active</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1710,10 +1698,10 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     </div>
                                 </div>
 
-                                <div className="mt-8 p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100/50 dark:border-blue-800/30">
+                                <div className="mt-8 p-4 rounded-2xl bg-yellow-50/50 dark:bg-yellow-950/20 border border-yellow-100/50 dark:border-yellow-900/30">
                                     <div className="flex gap-3">
-                                        <AlertCircle className="h-5 w-5 text-blue-500 shrink-0" />
-                                        <p className="text-[11px] text-blue-700 dark:text-blue-300 font-medium leading-relaxed">
+                                        <AlertCircle className="h-5 w-5 text-yellow-600 shrink-0" />
+                                        <p className="leading-relaxed" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#A16207", fontSize: "12px" }}>
                                             Foundation documents are issued during the hiring process. If you notice any discrepancies, please reach out to the HR department immediately.
                                         </p>
                                     </div>
@@ -1733,17 +1721,17 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                             <TrendingUp className="h-7 w-7 text-white" />
                                         </div>
                                         <div>
-                                            <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Growth Journey</h3>
+                                            <h3 className="tracking-tight" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>Growth Journey</h3>
                                             <div className="flex items-center gap-2 mt-0.5">
                                                 <div className="h-1.5 w-4 rounded-full bg-emerald-500" />
-                                                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Revision & Increment Letters</p>
+                                                <p className="uppercase tracking-widest" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>REVISION & INCREMENT LETTERS</p>
                                             </div>
                                         </div>
                                     </div>
                                     {increments.length > 0 && (
                                         <div className="flex flex-col items-end">
-                                            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Total Growth</span>
-                                            <span className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                                            <span className="uppercase tracking-widest" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>TOTAL GROWTH</span>
+                                            <span className="tracking-tight" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
                                                 +{increments.reduce((acc, inc) => acc + inc.increment_percentage, 0).toFixed(1)}%
                                             </span>
                                         </div>
@@ -1767,7 +1755,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                             }`}>
                                                             {isLatest && (
                                                                 <div className="absolute -top-3 left-6">
-                                                                    <Badge className="bg-emerald-600 text-white border-none text-[8px] font-black uppercase tracking-widest px-2 shadow-lg shadow-emerald-600/20">Active Revision</Badge>
+                                                                    <Badge className="border-none uppercase tracking-widest px-2 shadow-lg shadow-emerald-600/20" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", backgroundColor: "#10B981", color: "#FFFFFF", fontSize: "12px" }}>Active Revision</Badge>
                                                                 </div>
                                                             )}
 
@@ -1782,16 +1770,16 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                                     <div>
                                                                         <div className="flex items-center gap-3">
                                                                             <h4 className={`font-bold text-sm ${isLatest ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
-                                                                                Revision: {effectiveDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Revision: {effectiveDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
                                                                             </h4>
-                                                                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full ${isLatest ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-700'} transition-all`}>
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full transition-all`} style={{ backgroundColor: "#FFFFFF", color: "#10B981", fontSize: "12px", border: "1px solid #10B981" }}>
                                                                                 <TrendingUp className="h-3 w-3" />
-                                                                                <span className="text-[10px] font-black uppercase tracking-tighter">+{inc.increment_percentage}%</span>
+                                                                                <span className="uppercase tracking-tighter font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#10B981", fontSize: "12px" }}>+{inc.increment_percentage}%</span>
                                                                             </div>
                                                                         </div>
                                                                         <div className="flex items-center gap-2 mt-1.5">
-                                                                            <Badge variant="outline" className="text-[8px] border-slate-200 dark:border-slate-700 font-bold uppercase tracking-tighter h-4 px-1">{inc.reason}</Badge>
-                                                                            <span className="text-[9px] text-muted-foreground font-medium">• Issued on {createdDate.toLocaleDateString()}</span>
+                                                                            <Badge variant="outline" className="border-slate-200 dark:border-slate-700 uppercase tracking-tighter h-4 px-1" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>{inc.reason}</Badge>
+                                                                            <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>• Issued on {createdDate.toLocaleDateString()}</span>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -1800,13 +1788,12 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                                         variant="outline"
                                                                         size="sm"
                                                                         onClick={() => handleDownloadIncrementLetter(inc.id.toString(), inc.effective_date)}
-                                                                        className={`h-10 px-4 rounded-xl border-2 transition-all font-bold ${isLatest
+                                                                        className={`h-10 w-10 rounded-xl border-2 transition-all font-bold ${isLatest
                                                                             ? 'bg-white dark:bg-slate-900 border-emerald-200 hover:bg-emerald-600 hover:border-emerald-600 hover:text-white'
                                                                             : 'border-slate-100 dark:border-slate-800 hover:bg-slate-900 dark:hover:bg-slate-100 hover:text-white dark:hover:text-black hover:border-transparent'
                                                                             }`}
                                                                     >
-                                                                        <Download className="h-4 w-4 mr-2" />
-                                                                        <span className="text-[11px]">Download</span>
+                                                                        <Download className="h-5 w-5" />
                                                                     </Button>
                                                                     {isAdminOrHr && (
                                                                         <Button
@@ -1846,12 +1833,12 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                     <History className="h-10 w-10 text-slate-300" />
                                                 </div>
                                             </div>
-                                            <h4 className="text-lg font-bold text-slate-900 dark:text-white">Growth Journey Awaits</h4>
+                                            <h4 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Growth Journey Awaits</h4>
                                             <div className="mt-2 space-y-1">
-                                                <p className="text-xs text-muted-foreground max-w-[280px]">Your professional growth records will be cataloged here sequentially.</p>
+                                                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>Your professional growth records will be cataloged here sequentially.</p>
                                                 <div className="flex items-center justify-center gap-2 mt-4">
                                                     <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Verified by HR Operations</span>
+                                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>Verified by HR Operations</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -1874,8 +1861,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                         <History className="h-6 w-6" />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Revision Timeline</h3>
-                                        <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-widest">Growth Tracking & Historical Data</p>
+                                        <h3 className="tracking-tight" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>Revision Timeline</h3>
+                                        <p className="uppercase tracking-widest" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>GROWTH TRACKING & HISTORICAL DATA</p>
                                     </div>
                                 </div>
                                 {canEdit && (
@@ -1889,11 +1876,11 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 <Table>
                                     <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50">
                                         <TableRow className="border-b border-slate-100 dark:border-slate-800 hover:bg-transparent">
-                                            <TableHead className="font-black text-[10px] uppercase tracking-widest pl-8 py-5">Date & Impact</TableHead>
-                                            <TableHead className="font-black text-[10px] uppercase tracking-widest py-5">CTC Transformation</TableHead>
-                                            <TableHead className="font-black text-[10px] uppercase tracking-widest py-5 text-center">Growth Factor</TableHead>
-                                            <TableHead className="font-black text-[10px] uppercase tracking-widest py-5">Reasoning</TableHead>
-                                            <TableHead className="text-right font-black text-[10px] uppercase tracking-widest pr-8 py-5">Actions</TableHead>
+                                            <TableHead className="pl-8 py-5" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold", textTransform: "uppercase" }}>Date & Impact</TableHead>
+                                            <TableHead className="py-5" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold", textTransform: "uppercase" }}>CTC Transformation</TableHead>
+                                            <TableHead className="py-5 text-center" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold", textTransform: "uppercase" }}>Growth Factor</TableHead>
+                                            <TableHead className="py-5" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold", textTransform: "uppercase" }}>Reasoning</TableHead>
+                                            <TableHead className="text-right pr-8 py-5" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold", textTransform: "uppercase" }}>Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -1920,17 +1907,17 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                                 <div className="flex items-center gap-4">
                                                                     <div className={`h-2.5 w-2.5 rounded-full ${isTop ? 'bg-indigo-600 animate-pulse ring-4 ring-indigo-600/10' : 'bg-slate-300 dark:bg-slate-700'}`} />
                                                                     <div>
-                                                                        <div className="font-black text-sm text-slate-800 dark:text-white leading-none mb-1.5">{effectiveDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-                                                                        <div className="text-[9px] text-muted-foreground font-black uppercase tracking-tighter">Effective From</div>
+                                                                        <div className="leading-none mb-1.5" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{effectiveDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                                                                        <div className="uppercase tracking-tighter" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>Effective From</div>
                                                                     </div>
                                                                 </div>
                                                             </TableCell>
                                                             <TableCell className="py-5">
                                                                 <div className="flex flex-col gap-1">
-                                                                    <span className="text-[10px] text-slate-400 font-bold line-through flex items-center gap-1.5 leading-none">
+                                                                    <span className="line-through flex items-center gap-1.5 leading-none" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>
                                                                         {formatCurrency(inc.previous_salary)}
                                                                     </span>
-                                                                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 leading-none">
+                                                                    <span className="flex items-center gap-1.5 leading-none" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                                                                         {formatCurrency(inc.new_salary)}
                                                                         <TrendingUp className="h-3 w-3" />
                                                                     </span>
@@ -1938,14 +1925,14 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                             </TableCell>
                                                             <TableCell className="py-5">
                                                                 <div className="flex justify-center">
-                                                                    <Badge className="bg-emerald-600 text-white dark:bg-emerald-500 font-black border-none text-[10px] rounded-full px-3 py-0.5 shadow-sm">
+                                                                    <Badge className="border-none rounded-full px-3 py-0.5 shadow-sm" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", backgroundColor: "transparent" }}>
                                                                         +{inc.increment_percentage}%
                                                                     </Badge>
                                                                 </div>
                                                             </TableCell>
                                                             <TableCell className="py-5">
                                                                 <div className="max-w-[200px]">
-                                                                    <p className="text-xs font-bold text-slate-600 dark:text-slate-400 truncate group-hover:whitespace-normal group-hover:overflow-visible transition-all">{inc.reason}</p>
+                                                                    <p className="truncate group-hover:whitespace-normal group-hover:overflow-visible transition-all" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{inc.reason}</p>
                                                                     <p className="text-[8px] text-muted-foreground font-black uppercase tracking-tighter mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Record UUID: {inc.id.toString().slice(0, 8)}...</p>
                                                                 </div>
                                                             </TableCell>
@@ -1990,9 +1977,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 </Table>
                             </div>
 
-                            <div className="p-4 bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em] text-center">
-                                End of Official Growth Logs
-                            </div>
+                            
                         </div>
                     </TabsContent>
                 )}

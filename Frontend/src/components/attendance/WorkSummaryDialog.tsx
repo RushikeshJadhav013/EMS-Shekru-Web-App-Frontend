@@ -151,11 +151,11 @@ const WorkSummaryDialog: React.FC<WorkSummaryDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="text-[16px] font-bold flex items-center gap-2" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
             <FileText className="h-5 w-5 text-blue-500" />
             Work Summary
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-[14px]" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
             Please provide a summary of your work before checking out.
             {hasOverdueTasks && ' You also need to explain why tasks due today are not completed.'}
           </DialogDescription>
@@ -203,18 +203,19 @@ const WorkSummaryDialog: React.FC<WorkSummaryDialogProps> = ({
 
           {/* Work Summary */}
           <div className="space-y-2">
-            <Label htmlFor="work-summary" className="text-sm font-medium">
-              Work Summary *
+            <Label htmlFor="work-summary" className="text-[14px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+              Today's Work Summary *
             </Label>
             <Textarea
               id="work-summary"
               placeholder="Describe what you accomplished today, key tasks completed, challenges faced, and any important updates..."
               value={workSummary}
               onChange={(e) => setWorkSummary(sanitizeAlphaNumText(e.target.value))}
-              className="min-h-[120px] resize-none"
+              className="min-h-[120px] resize-none placeholder:text-black placeholder:text-[14px] text-[14px]"
+              style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
               disabled={isSubmitting}
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-[12px] font-medium" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
               Provide a brief summary of your work activities for today.
             </p>
           </div>
@@ -222,21 +223,22 @@ const WorkSummaryDialog: React.FC<WorkSummaryDialogProps> = ({
           {/* Deadline Reason (only if there are overdue tasks) */}
           {hasOverdueTasks && (
             <div className="space-y-2">
-              <Label htmlFor="deadline-reason" className="text-sm font-medium text-orange-800">
-                Reason for Incomplete Tasks *
+              <Label htmlFor="deadline-reason" className="text-[14px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                Task Deadline Reason (Optional)
               </Label>
               <Textarea
                 id="deadline-reason"
                 placeholder="Explain why the task(s) due today could not be completed. Be specific about the challenges, dependencies, or circumstances that prevented completion..."
                 value={deadlineReason}
                 onChange={(e) => handleDeadlineReasonChange(e.target.value)}
-                className={`min-h-[100px] resize-none ${reasonError ? 'border-red-300 focus:border-red-500' : ''}`}
+                className={`min-h-[100px] resize-none placeholder:text-black placeholder:text-[14px] text-[14px] ${reasonError ? 'border-red-300 focus:border-red-500' : ''}`}
+                style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                 disabled={isSubmitting}
               />
               {reasonError && (
                 <p className="text-sm text-red-600">{reasonError}</p>
               )}
-              <p className="text-xs text-gray-500">
+              <p className="text-[12px] font-medium" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                 Minimum 15 characters required. Cannot contain only numbers.
               </p>
             </div>
@@ -256,6 +258,8 @@ const WorkSummaryDialog: React.FC<WorkSummaryDialogProps> = ({
             variant="outline"
             onClick={onClose}
             disabled={isSubmitting}
+            className="text-[14px] font-bold text-black border-slate-300"
+            style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
           >
             Cancel
           </Button>

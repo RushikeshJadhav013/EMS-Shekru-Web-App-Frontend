@@ -64,8 +64,8 @@ All colors MUST be HSL.
     --info-soft: 199 89% 95%;
 
     /* Borders & Input */
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
+    --border: 220 13% 82%; /* Slightly more visible medium gray for cards/modules */
+    --input: 220 13% 82%;
     --ring: 221 83% 53%;
     --focus: 221 83% 53%;
 

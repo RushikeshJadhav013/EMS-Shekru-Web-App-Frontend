@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { cn } from "../../lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -31,6 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -293,49 +295,43 @@ const formatDisplayDate = (date?: string | null) => {
 const getStatusBadge = (status: BaseTask["status"] | string) => {
   const s = typeof status === "string" ? status.toLowerCase().trim().replace(/[-_\s]+/g, "") : status;
 
-  switch (s) {
-    case "completed":
-    case "done":
-      return (
-        <Badge variant="outline" className="bg-emerald-50 text-emerald-600 gap-1.5 border-emerald-200 px-2.5 py-1 flex items-center w-fit shadow-sm">
-          <CheckCircle2 className="h-3.5 w-3.5" /> <span className="text-[10px] font-bold uppercase tracking-tight">Completed</span>
-        </Badge>
-      );
-    case "inprogress":
-    case "active":
-    case "in-progress":
-      return (
-        <Badge variant="outline" className="bg-blue-50 text-blue-600 gap-1.5 border-blue-200 px-2.5 py-1 flex items-center w-fit shadow-sm">
-          <Clock className="h-3.5 w-3.5" /> <span className="text-[10px] font-bold uppercase tracking-tight">In Progress</span>
-        </Badge>
-      );
-    case "todo":
-    case "pending":
-      return (
-        <Badge variant="outline" className="bg-slate-50 text-slate-600 gap-1.5 border-slate-200 px-2.5 py-1 flex items-center w-fit shadow-sm">
-          <Clock className="h-3.5 w-3.5" /> <span className="text-[10px] font-bold uppercase tracking-tight">To Do</span>
-        </Badge>
-      );
-    case "overdue":
-      return (
-        <Badge variant="outline" className="bg-amber-50 text-amber-600 gap-1.5 border-amber-200 px-2.5 py-1 flex items-center w-fit shadow-sm">
-          <AlertCircle className="h-3.5 w-3.5" /> <span className="text-[10px] font-bold uppercase tracking-tight">Overdue</span>
-        </Badge>
-      );
-    case "cancelled":
-    case "canceled":
-      return (
-        <Badge variant="outline" className="bg-red-50 text-red-600 gap-1.5 border-red-200 px-2.5 py-1 flex items-center w-fit shadow-sm">
-          <XCircle className="h-3.5 w-3.5" /> <span className="text-[10px] font-bold uppercase tracking-tight">Cancelled</span>
-        </Badge>
-      );
-    default:
-      return (
-        <Badge variant="outline" className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-tight w-fit shadow-sm">
-          {status}
-        </Badge>
-      );
-  }
+  const getStatusInfo = (type: string) => {
+    switch (type) {
+      case "completed":
+      case "done":
+        return { label: "Completed", color: "bg-emerald-500", text: "text-black dark:text-white" };
+      case "inprogress":
+      case "active":
+      case "in-progress":
+        return { label: "In Progress", color: "bg-blue-500", text: "text-black dark:text-white" };
+      case "todo":
+      case "pending":
+        return { label: "To Do", color: "bg-slate-400", text: "text-black dark:text-white" };
+      case "overdue":
+        return { label: "Overdue", color: "bg-rose-500", text: "text-black dark:text-white" };
+      case "cancelled":
+      case "canceled":
+        return { label: "Cancelled", color: "bg-red-500", text: "text-black dark:text-white" };
+      default:
+        return { label: String(status), color: "bg-slate-400", text: "text-black dark:text-white" };
+    }
+  };
+
+  const info = getStatusInfo(s || "");
+
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "gap-2 border-0 bg-transparent px-0 py-1 flex items-center w-fit shadow-none transition-all duration-200",
+        info.text
+      )}
+      style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+    >
+      <div className={cn("h-2.5 w-2.5 rounded-full shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.1)]", info.color)} />
+      <span className="text-[14px] font-bold capitalize whitespace-nowrap">{info.label}</span>
+    </Badge>
+  );
 };
 
 const formatDateForInput = (date?: string | null) => {
@@ -579,6 +575,9 @@ const TaskManagement: React.FC = () => {
   // Pagination states
   const [taskCurrentPage, setTaskCurrentPage] = useState(1);
   const [taskItemsPerPage, setTaskItemsPerPage] = useState(10);
+  const [activeScopeError, setActiveScopeError] = useState(false);
+  const [debugBranchId, setDebugBranchId] = useState(localStorage.getItem('branchId') || '');
+  const [debugCompanyId, setDebugCompanyId] = useState(localStorage.getItem('companyId') || '');
 
   const toggleProject = useCallback((projectId: string) => {
     setProjects((prevProjects) =>
@@ -700,19 +699,8 @@ const TaskManagement: React.FC = () => {
       // Now all roles including employee can fetch (at least their own list or filtered list if required)
       // Removed role check to allow employee role to load necessary data for task creation
 
-      const response = await fetch(`${API_BASE_URL}/employees/`, {
-        headers: authorizedHeaders,
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch employees: ${response.status}`);
-      }
-      let data = await response.json();
-      if (!Array.isArray(data) && data?.employees) {
-        data = data.employees;
-      } else if (!Array.isArray(data)) {
-        data = [];
-      }
-      const formatted = data.map((emp) => ({
+      const data = await apiService.getEmployees();
+      const formatted = data.map((emp: any) => ({
         userId: String(emp.user_id),
         employeeId: emp.employee_id ? String(emp.employee_id) : "",
         name: emp.name,
@@ -739,11 +727,17 @@ const TaskManagement: React.FC = () => {
         });
       }
       setDepartments(Array.from(uniqueDepartments));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch employees", error);
+      
+      const errorMessage = error.message || "";
+      if (error.status === 409 || errorMessage.includes("409") || errorMessage.includes("Scope conflict") || errorMessage.includes("Multiple company")) {
+        setActiveScopeError(true);
+      }
+
       toast({
         title: "Employee fetch failed",
-        description: "Unable to load employees from server.",
+        description: error.message || "Unable to load employees from server.",
         variant: "destructive",
       });
     }
@@ -2871,15 +2865,15 @@ const TaskManagement: React.FC = () => {
   const getPriorityColor = (priority: BaseTask["priority"]) => {
     switch (priority) {
       case "low":
-        return "bg-gray-100 text-gray-800";
+        return "bg-emerald-500 text-white";
       case "medium":
-        return "bg-gray-100 text-gray-800";
+        return "bg-blue-500 text-white";
       case "high":
-        return "bg-gray-100 text-gray-800";
+        return "bg-yellow-500 text-black";
       case "urgent":
-        return "bg-gray-100 text-gray-800";
+        return "bg-red-500 text-white";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-slate-400 text-white";
     }
   };
 
@@ -2959,18 +2953,19 @@ const TaskManagement: React.FC = () => {
   ]);
 
   return (
-    <div className="space-y-6 animate-fade-in p-4 sm:p-6">
+    <div className="w-full space-y-6">
       {/* Modern Header */}
       <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800 rounded-2xl p-6 shadow-sm border">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex items-center gap-4">
-            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
-              <ListTodo className="h-7 w-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                Task Management
-              </h1>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-[30px] font-black text-black dark:text-white tracking-tight" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+            Task Management
+          </h1>
+          <p className="text-[14px] text-black dark:text-white font-medium mt-1" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+            Efficiently organize, track, and manage all your tasks in one place
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-4 mt-2">
                 <Button
                   onClick={() => setActiveViewTab("all")}
@@ -2979,6 +2974,7 @@ const TaskManagement: React.FC = () => {
                     ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
                     : "border-2 hover:border-violet-300"
                     }`}
+                  style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
                 >
                   All Tasks
                 </Button>
@@ -3616,7 +3612,7 @@ const TaskManagement: React.FC = () => {
             </Dialog>
           )}
         </div>
-      </div>
+      {/* </div> */}
       {activeViewTab === "all" ? (
         <>
           {/* Stats Cards - Clickable Filters */}
@@ -3626,20 +3622,20 @@ const TaskManagement: React.FC = () => {
             setFilterStatus("all");
           }}
           className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "all"
-              ? "border-slate-600 dark:border-slate-400 bg-slate-100 dark:bg-slate-800"
-              : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-600"
+              ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800"
+              : "border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-950 hover:border-slate-400"
             }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-slate-700 dark:text-slate-300">
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>
               Total Tasks
             </CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
-              <ListTodo className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+            <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <ListTodo className="h-4 w-4 text-black dark:text-white" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+            <div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
               {taskCountsByStatus.total}
             </div>
           </CardContent>
@@ -3650,20 +3646,20 @@ const TaskManagement: React.FC = () => {
             setFilterStatus("in-progress");
           }}
           className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "in-progress"
-              ? "border-blue-600 dark:border-blue-400 bg-blue-100 dark:bg-blue-900"
-              : "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 hover:border-blue-400 dark:hover:border-blue-600"
+              ? "border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/40"
+              : "border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-950 hover:border-blue-400"
             }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-blue-700 dark:text-blue-300">
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>
               In Progress
             </CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-blue-200 dark:bg-blue-800 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
               <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+            <div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
               {taskCountsByStatus.inProgress}
             </div>
           </CardContent>
@@ -3674,20 +3670,20 @@ const TaskManagement: React.FC = () => {
             setFilterStatus("completed");
           }}
           className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "completed"
-              ? "border-green-600 dark:border-green-400 bg-green-100 dark:bg-green-900"
-              : "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 hover:border-green-400 dark:hover:border-green-600"
+              ? "border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-900/40"
+              : "border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-950 hover:border-green-400"
             }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-green-700 dark:text-green-300">
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>
               Completed
             </CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-green-200 dark:bg-green-800 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
               <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-900 dark:text-green-100">
+            <div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
               {taskCountsByStatus.completed}
             </div>
           </CardContent>
@@ -3698,20 +3694,20 @@ const TaskManagement: React.FC = () => {
             setFilterStatus("overdue");
           }}
           className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "overdue"
-              ? "border-orange-600 dark:border-orange-400 bg-orange-100 dark:bg-orange-900"
-              : "border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950 hover:border-orange-400 dark:hover:border-orange-600"
+              ? "border-rose-600 dark:border-rose-400 bg-rose-50 dark:bg-rose-900/40"
+              : "border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-950 hover:border-rose-400"
             }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-orange-700 dark:text-orange-300">
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>
               Overdue
             </CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-orange-200 dark:bg-orange-800 flex items-center justify-center">
-              <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+            <div className="h-8 w-8 rounded-lg bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center">
+              <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-900 dark:text-orange-100">
+            <div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
               {taskCountsByStatus.overdue}
             </div>
           </CardContent>
@@ -3722,20 +3718,20 @@ const TaskManagement: React.FC = () => {
             setFilterStatus("cancelled");
           }}
           className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "cancelled"
-              ? "border-gray-600 dark:border-gray-400 bg-gray-100 dark:bg-gray-800"
-              : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:border-gray-400 dark:hover:border-gray-600"
+              ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800"
+              : "border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-950 hover:border-slate-400"
             }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>
               Cancelled
             </CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
-              <XCircle className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+            <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <XCircle className="h-4 w-4 text-black dark:text-white" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
               {taskCountsByStatus.cancelled}
             </div>
           </CardContent>
@@ -3747,24 +3743,25 @@ const TaskManagement: React.FC = () => {
         <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-2">
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                <Filter className="h-5 w-5 text-white" />
+              <div className="h-10 w-10 rounded-lg bg-slate-950 dark:bg-slate-50 flex items-center justify-center">
+                <Filter className="h-5 w-5 text-white dark:text-black" />
               </div>
-              <CardTitle className="text-xl font-semibold">
+              <CardTitle className="text-[16px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                 All Tasks Filters
               </CardTitle>
             </div>
 
             <div className="flex flex-wrap items-end gap-4">
               <div className="flex flex-col gap-2">
-                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                <Label className="text-[14px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                   Search
                 </Label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black dark:text-white" />
                   <Input
-                    className="pl-9 w-full sm:w-[200px] h-10 bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-violet-500"
+                    className="pl-9 w-full sm:w-[200px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 text-[14px] text-black dark:text-white font-medium focus:ring-1 focus:ring-black"
                     placeholder="Search tasks..."
+                    style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                     value={searchQuery}
                     onChange={(e) =>
                       setSearchQuery(
@@ -3779,14 +3776,14 @@ const TaskManagement: React.FC = () => {
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                <Label className="text-[14px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                   Status
                 </Label>
                 <Select value={filterStatus} onValueChange={(val) => {
                   setFilterStatus(val);
                   setIsOverdueFilterActive(val === "overdue");
                 }}>
-                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950">
+                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -3801,7 +3798,7 @@ const TaskManagement: React.FC = () => {
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                <Label className="text-[14px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                   Filter
                 </Label>
                 <Select
@@ -3812,7 +3809,7 @@ const TaskManagement: React.FC = () => {
                     setIsOverdueFilterActive(false);
                   }}
                 >
-                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950">
+                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -3846,14 +3843,14 @@ const TaskManagement: React.FC = () => {
                   normalizedUserRole === "manager" ||
                   normalizedUserRole === "team_lead") && (
                   <div className="flex flex-col gap-2">
-                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <Label className="text-[14px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                       Department
                     </Label>
                     <Select
                       value={selectedDepartmentFilter}
                       onValueChange={setSelectedDepartmentFilter}
                     >
-                      <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white dark:bg-gray-950">
+                      <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 text-[14px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                         <SelectValue placeholder="Select Department" />
                       </SelectTrigger>
                       <SelectContent>
@@ -3910,7 +3907,8 @@ const TaskManagement: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => setIsExportDialogOpen(true)}
-                    className="gap-2 h-10 bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 hover:border-violet-400 dark:hover:border-violet-600 hover:shadow-md hover:shadow-violet-200 dark:hover:shadow-violet-900/50 transition-all duration-200"
+                    className="gap-2 h-10 bg-white dark:bg-gray-950 border-black/20 dark:border-white/20 text-black dark:text-white text-[14px] font-black hover:bg-slate-50 dark:hover:bg-slate-900 transition-all duration-200"
+                    style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                   >
                     <Download className="h-4 w-4" />
                     Export
@@ -3925,16 +3923,16 @@ const TaskManagement: React.FC = () => {
             <div className="space-y-6">
               <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
                 <Table>
-                  <TableHeader className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+                  <TableHeader className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 border-b-2 border-black/10">
                     <TableRow className="hover:bg-transparent">
-                      <TableHead>Task</TableHead>
-                      <TableHead>Assigned By</TableHead>
-                      <TableHead>Assigned To</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Deadline</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Pass</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>TASK</TableHead>
+                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>ASSIGNED BY</TableHead>
+                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>ASSIGNED TO</TableHead>
+                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>PRIORITY</TableHead>
+                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>DEADLINE</TableHead>
+                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>STATUS</TableHead>
+                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>PASS</TableHead>
+                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>ACTIONS</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -4005,7 +4003,7 @@ const TaskManagement: React.FC = () => {
                             className="hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
                           >
                             <TableCell
-                              className="cursor-pointer group hover:bg-violet-50/30 dark:hover:bg-violet-900/10 transition-colors"
+                              className="cursor-pointer group hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
                               onClick={() => setSelectedTask(task)}
                             >
                               <div className="max-w-[300px] py-1">
@@ -4014,26 +4012,26 @@ const TaskManagement: React.FC = () => {
                                     text={task.title}
                                     maxLength={40}
                                     showToggle={false}
-                                    textClassName="font-semibold text-sm group-hover:text-violet-600 transition-colors"
+                                    textClassName="text-[14px] font-bold text-black dark:text-white group-hover:underline transition-colors"
                                   />
                                 </div>
                                 <TruncatedText
                                   text={task.description}
                                   maxLength={80}
                                   showToggle={false}
-                                  textClassName="text-xs text-muted-foreground leading-relaxed"
+                                  textClassName="text-[12px] text-black dark:text-slate-400 font-medium leading-relaxed"
                                 />
                               </div>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
-                                <UserCheck className="h-4 w-4 text-muted-foreground" />
+                                <UserCheck className="h-4 w-4 text-black dark:text-white" />
                                 <div className="flex flex-col">
-                                  <span className="text-sm font-medium">
+                                  <span className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                                     {assignedByInfo.name}
                                   </span>
                                   {assignedByInfo.roleLabel ? (
-                                    <span className="text-xs text-muted-foreground mt-0.5">
+                                    <span className="text-[12px] text-black dark:text-slate-400 font-medium mt-0.5" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                                       {assignedByInfo.roleLabel}
                                     </span>
                                   ) : null}
@@ -4042,13 +4040,13 @@ const TaskManagement: React.FC = () => {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-muted-foreground" />
+                                <User className="h-4 w-4 text-black dark:text-white" />
                                 <div className="flex flex-col">
-                                  <span className="text-sm font-medium">
+                                  <span className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                                     {assignedToInfo.name}
                                   </span>
                                   {assignedToInfo.roleLabel ? (
-                                    <span className="text-xs text-muted-foreground mt-0.5">
+                                    <span className="text-[12px] text-black dark:text-slate-400 font-medium mt-0.5" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                                       {assignedToInfo.roleLabel}
                                     </span>
                                   ) : null}
@@ -4057,15 +4055,16 @@ const TaskManagement: React.FC = () => {
                             </TableCell>
                             <TableCell>
                               <Badge
-                                className={getPriorityColor(task.priority)}
+                                className={cn(getPriorityColor(task.priority), "text-[12px] font-bold uppercase tracking-wider border-0 shadow-sm")}
+                                style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                               >
                                 {capitalizePriority(task.priority)}
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-2 text-slate-500">
+                              <div className="flex items-center gap-2 text-black dark:text-white">
                                 <Calendar className="h-4 w-4" />
-                                <span className="text-sm">
+                                <span className="text-[14px] font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                                   {formatDisplayDate(task.deadline)}
                                 </span>
                               </div>
@@ -4084,10 +4083,8 @@ const TaskManagement: React.FC = () => {
                                   disabled={updatingTaskId === task.id}
                                 >
                                   <SelectTrigger
-                                    className={`w-[170px] h-10 border-2 bg-white dark:bg-gray-950 px-3 transition-all ${task.status === "in-progress"
-                                      ? "border-blue-200 dark:border-blue-800 shadow-sm"
-                                      : "border-violet-200 dark:border-violet-800 shadow-sm"
-                                      }`}
+                                    className={`w-[170px] h-10 border-2 bg-white dark:bg-gray-950 px-3 transition-all text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm`}
+                                    style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                                   >
                                     <div className="flex items-center gap-2">
                                       <div className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
@@ -4112,9 +4109,10 @@ const TaskManagement: React.FC = () => {
                                     e.stopPropagation();
                                     openPassHistoryDialog(task);
                                   }}
-                                  className="h-8 px-3 gap-2 text-xs border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-950 hover:border-violet-300 dark:hover:border-violet-700 transition-all"
+                                  className="h-8 px-3 gap-2 text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all"
+                                  style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                                 >
-                                  <Share2 className="h-3.5 w-3.5 text-violet-600" />
+                                  <Share2 className="h-3.5 w-3.5" />
                                   View History
                                 </Button>
                               ) : (
@@ -4129,22 +4127,22 @@ const TaskManagement: React.FC = () => {
                               >
                                 <Button
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
                                   onClick={() => setSelectedTask(task)}
-                                  className="hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-950 p-2 h-auto"
+                                  className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
                                   title="View task details"
                                 >
                                   👁
                                 </Button>
                                 {task.status !== "completed" && canPassTask && (
                                   <Button
-                                    variant="outline"
-                                    size="sm"
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={() => openPassDialog(task)}
-                                    className="flex items-center gap-1"
+                                    className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                                    title="Pass task"
                                   >
                                     <Share2 className="h-4 w-4" />
-                                    Pass
                                   </Button>
                                 )}
                                 {task.status !== "completed" &&
@@ -4155,17 +4153,17 @@ const TaskManagement: React.FC = () => {
                                         "overdue" && (
                                           <Button
                                             variant="ghost"
-                                            size="sm"
+                                            size="icon"
                                             onClick={() => handleEditClick(task)}
-                                            className="hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950 p-2 h-auto"
+                                            className="h-8 w-8 text-blue-600 hover:bg-blue-50"
                                             title="Edit task"
                                           >
-                                            ✏️
+                                            <Pencil className="h-4 w-4" />
                                           </Button>
                                         )}
                                       <Button
                                         variant="ghost"
-                                        size="sm"
+                                        size="icon"
                                         onClick={() =>
                                           handleDeleteTask(task.id)
                                         }
@@ -4173,7 +4171,7 @@ const TaskManagement: React.FC = () => {
                                           deletingTaskId === task.id ||
                                           !canDeleteTask(task)
                                         }
-                                        className="hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 p-2 h-auto disabled:opacity-50"
+                                        className="h-8 w-8 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
                                         title={
                                           !canDeleteTask(task)
                                             ? "Cannot delete task once work has started"
@@ -4183,20 +4181,20 @@ const TaskManagement: React.FC = () => {
                                         {deletingTaskId === task.id ? (
                                           <Loader2 className="h-4 w-4 animate-spin" />
                                         ) : (
-                                          "🗑"
+                                          <Trash2 className="h-4 w-4" />
                                         )}
                                       </Button>
                                     </>
                                   )}
                                 {canReassignTask(task) && (
                                   <Button
-                                    variant="outline"
-                                    size="sm"
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={() => handleReassignClick(task)}
-                                    className="flex items-center gap-1 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300"
+                                    className="h-8 w-8 text-emerald-600 hover:bg-emerald-50"
+                                    title="Reassign task"
                                   >
                                     <RefreshCcw className="h-4 w-4" />
-                                    Reassign
                                   </Button>
                                 )}
                               </div>
@@ -4259,8 +4257,8 @@ const TaskManagement: React.FC = () => {
                   return (
                     <Card
                       key={task.id}
-                      className={`border transition-all duration-300 cursor-pointer transform hover:scale-[1.02] shadow-sm hover:shadow-xl group relative overflow-hidden ${isTaskOverdue(task)
-                        ? "border-orange-200 bg-orange-50/30 dark:border-orange-900/50 dark:bg-orange-900/10"
+                      className={`border-2 transition-all duration-300 cursor-pointer transform hover:scale-[1.02] shadow-sm hover:shadow-xl group relative overflow-hidden ${isTaskOverdue(task)
+                        ? "border-rose-200 bg-rose-50/10 dark:border-rose-900/50"
                         : "border-slate-200 bg-white dark:border-gray-800 dark:bg-gray-950/50"
                         }`}
                       onClick={() => setSelectedTask(task)}
@@ -4282,25 +4280,25 @@ const TaskManagement: React.FC = () => {
                       <CardHeader className="p-4 pb-0">
                         <div className="flex justify-between items-start gap-3">
                           <div className="space-y-1.5 flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
+                             <div className="flex items-center gap-2">
                               <Badge
                                 variant="outline"
-                                className={`${getPriorityColor(task.priority)} text-[10px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider`}
+                                className={cn(getPriorityColor(task.priority), "text-[12px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider")}
                               >
                                 {task.priority}
                               </Badge>
                               {isTaskOverdue(task) && (
-                                <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 text-[10px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider">
+                                <Badge className="bg-rose-500 text-white text-[12px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider">
                                   Overdue
                                 </Badge>
                               )}
                             </div>
-                            <div className="text-base font-bold leading-tight pr-1">
+                            <div className="text-[14px] font-black leading-tight pr-1 text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                               <TruncatedText
                                 text={task.title}
                                 maxLength={30}
                                 showToggle={false}
-                                textClassName="text-gray-900 dark:text-gray-100"
+                                textClassName="text-black dark:text-white"
                               />
                             </div>
                           </div>
@@ -4328,7 +4326,7 @@ const TaskManagement: React.FC = () => {
                       </CardHeader>
 
                       <CardContent className="p-4 pt-3 space-y-4">
-                        <div className="text-xs text-muted-foreground leading-relaxed">
+                        <div className="text-[12px] text-black dark:text-slate-400 font-medium leading-relaxed" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                           <TruncatedText
                             text={
                               task.description || "No description provided."
@@ -4341,20 +4339,21 @@ const TaskManagement: React.FC = () => {
                         {/* Compact Metadata Grid */}
                         <div className="grid grid-cols-1 gap-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-800/50">
                           {/* Assignee Row */}
-                          <div className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5 text-black dark:text-white font-medium text-[14px]" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                               <User className="h-3.5 w-3.5" />
                               <span>To:</span>
                             </div>
                             <div className="flex flex-col items-end">
                               <span
-                                className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]"
+                                className="text-[14px] font-black text-black dark:text-white truncate max-w-[120px]"
+                                style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                                 title={assignedToInfo.name}
                               >
                                 {assignedToInfo.name}
                               </span>
                               {assignedToInfo.roleLabel && (
-                                <span className="text-[10px] text-muted-foreground">
+                                <span className="text-[12px] text-black dark:text-slate-400 font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                                   {assignedToInfo.roleLabel}
                                 </span>
                               )}
@@ -4362,17 +4361,17 @@ const TaskManagement: React.FC = () => {
                           </div>
 
                           {/* Assigner Row */}
-                          <div className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5 text-black dark:text-white font-medium text-[14px]" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                               <UserCheck className="h-3.5 w-3.5" />
                               <span>By:</span>
                             </div>
                             <div className="flex flex-col items-end">
-                              <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px]">
+                              <span className="text-[14px] font-black text-black dark:text-white truncate max-w-[120px]" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                                 {assignedByInfo.name}
                               </span>
                               {assignedByInfo.roleLabel && (
-                                <span className="text-[10px] text-muted-foreground">
+                                <span className="text-[12px] text-black dark:text-slate-400 font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                                   {assignedByInfo.roleLabel}
                                 </span>
                               )}
@@ -4380,13 +4379,14 @@ const TaskManagement: React.FC = () => {
                           </div>
 
                           {/* Deadline Row */}
-                          <div className="flex items-center justify-between text-xs border-t border-slate-200 dark:border-slate-700/50 pt-2 mt-0.5">
-                            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                          <div className="flex items-center justify-between border-t border-black/10 dark:border-white/10 pt-2 mt-0.5">
+                            <div className="flex items-center gap-1.5 text-black dark:text-white font-medium text-[14px]" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                               <Calendar className="h-3.5 w-3.5" />
                               <span>Due:</span>
                             </div>
                             <span
-                              className={`font-medium ${isTaskOverdue(task) ? "text-orange-600 dark:text-orange-400" : "text-slate-700 dark:text-slate-200"}`}
+                              className={`text-[14px] font-black ${isTaskOverdue(task) ? "text-rose-600" : "text-black dark:text-white"}`}
+                              style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                             >
                               {formatDisplayDate(task.deadline)}
                             </span>
@@ -4395,59 +4395,54 @@ const TaskManagement: React.FC = () => {
 
                         {/* Footer Actions */}
                         <div className="flex items-center justify-between pt-1">
-                          {/* Left Side: Pass History Info (Subtle) */}
+                          {/* Left Side: Pass History Info */}
                           <div className="flex items-center">
                             {task.lastPassedBy ? (
                               <div
-                                className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-violet-50 text-violet-700 dark:bg-violet-900/20 dark:text-violet-300 border border-violet-100 dark:border-violet-900/30 cursor-pointer hover:bg-violet-100 transition-colors"
+                                className="flex items-center gap-1.5 px-2 py-1 rounded-md text-blue-600 text-[12px] font-black cursor-pointer hover:underline transition-all"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   openPassHistoryDialog(task);
                                 }}
+                                style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                               >
-                                <Share2 className="h-3 w-3" />
-                                <span className="text-[10px] font-medium">
-                                  History
-                                </span>
+                                <Share2 className="h-3.5 w-3.5" />
+                                View History
                               </div>
                             ) : (
-                              <div className="text-[10px] text-muted-foreground px-1 italic opacity-50">
-                                No history
-                              </div>
+                              <span className="text-[12px] text-black/40 font-medium">—</span>
                             )}
                           </div>
 
                           {/* Right Side: Action Buttons */}
                           <div className="flex items-center gap-1">
-                            {/* Reassign Button */}
-                            {canReassignTask(task) && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleReassignClick(task);
-                                }}
-                                className="h-7 w-7 p-0 rounded-full hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/30 dark:hover:text-green-400 text-slate-400"
-                                title="Reassign Task"
-                              >
-                                <RefreshCcw className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
+                            {/* View Details Button */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedTask(task);
+                              }}
+                              className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                              title="View task details"
+                            >
+                              👁
+                            </Button>
 
                             {/* Pass Button */}
                             {task.status !== "completed" && canPassTask && (
                               <Button
                                 variant="ghost"
-                                size="sm"
+                                size="icon"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   openPassDialog(task);
                                 }}
-                                className="h-7 w-7 p-0 rounded-full hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/30 dark:hover:text-violet-400 text-slate-400"
-                                title="Pass Task"
+                                className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                                title="Pass task"
                               >
-                                <Share2 className="h-3.5 w-3.5" />
+                                ↪️
                               </Button>
                             )}
 
@@ -4458,17 +4453,33 @@ const TaskManagement: React.FC = () => {
                               (task.status as string) !== "overdue" && (
                                 <Button
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleEditClick(task);
                                   }}
-                                  className="h-7 w-7 p-0 rounded-full hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-900/30 dark:hover:text-amber-400 text-slate-400"
+                                  className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
                                   title="Edit Task"
                                 >
-                                  <div className="h-3.5 w-3.5">✏️</div>
+                                  ✏️
                                 </Button>
                               )}
+
+                            {/* Reassign Button */}
+                            {canReassignTask(task) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleReassignClick(task);
+                                }}
+                                className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                                title="Reassign Task"
+                              >
+                                🔄
+                              </Button>
+                            )}
 
                             {/* Delete Button */}
                             {task.status !== "completed" &&
@@ -4476,7 +4487,7 @@ const TaskManagement: React.FC = () => {
                               canManageTask && (
                                 <Button
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleDeleteTask(task.id);
@@ -4485,7 +4496,7 @@ const TaskManagement: React.FC = () => {
                                     deletingTaskId === task.id ||
                                     !canDeleteTask(task)
                                   }
-                                  className="h-7 w-7 p-0 rounded-full hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 text-slate-400 disabled:opacity-30"
+                                  className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
                                   title={
                                     !canDeleteTask(task)
                                       ? "Cannot delete started task"
@@ -4493,7 +4504,7 @@ const TaskManagement: React.FC = () => {
                                   }
                                 >
                                   {deletingTaskId === task.id ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                    <Loader2 className="h-4 w-4 animate-spin" />
                                   ) : (
                                     "🗑"
                                   )}
@@ -4529,47 +4540,59 @@ const TaskManagement: React.FC = () => {
         <div className="space-y-6">
           {/* Project View Stats */}
           <div className="grid gap-3 grid-cols-2 lg:grid-cols-6">
-        <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(false); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${filterStatus === "all" && !isOverdueFilterActive ? "ring-2 ring-violet-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total Tasks</CardTitle>
-            <ListTodo className="h-4 w-4 text-slate-500" />
+        <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "all" && !isOverdueFilterActive ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800" : "border-slate-200 bg-white dark:bg-gray-950 hover:border-slate-400"}`}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>Total Tasks</CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <ListTodo className="h-4 w-4 text-black dark:text-white" />
+            </div>
           </CardHeader>
-          <CardContent><div className="text-2xl font-black">{projectCounts.total}</div></CardContent>
+          <CardContent><div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.total}</div></CardContent>
         </Card>
-        <Card onClick={() => { setFilterStatus("todo"); setIsOverdueFilterActive(false); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${filterStatus === "todo" ? "ring-2 ring-indigo-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-indigo-500">To Do</CardTitle>
-            <ClipboardList className="h-4 w-4 text-indigo-500" />
+        <Card onClick={() => { setFilterStatus("todo"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "todo" ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800" : "border-slate-200 bg-white dark:bg-gray-950 hover:border-slate-400"}`}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>To Do</CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <ClipboardList className="h-4 w-4 text-black dark:text-white" />
+            </div>
           </CardHeader>
-          <CardContent><div className="text-2xl font-black text-indigo-600">{projectCounts.todo}</div></CardContent>
+          <CardContent><div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.todo}</div></CardContent>
         </Card>
-        <Card onClick={() => { setFilterStatus("in-progress"); setIsOverdueFilterActive(false); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${filterStatus === "in-progress" ? "ring-2 ring-blue-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-blue-500">In Progress</CardTitle>
-            <Clock className="h-4 w-4 text-blue-500" />
+        <Card onClick={() => { setFilterStatus("in-progress"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "in-progress" ? "border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/40" : "border-slate-200 bg-white dark:bg-gray-950 hover:border-blue-400"}`}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>In Progress</CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+              <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            </div>
           </CardHeader>
-          <CardContent><div className="text-2xl font-black text-blue-600">{projectCounts.inProgress}</div></CardContent>
+          <CardContent><div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.inProgress}</div></CardContent>
         </Card>
-        <Card onClick={() => { setFilterStatus("completed"); setIsOverdueFilterActive(false); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${filterStatus === "completed" ? "ring-2 ring-emerald-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Completed</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+        <Card onClick={() => { setFilterStatus("completed"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "completed" ? "border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-900/40" : "border-slate-200 bg-white dark:bg-gray-950 hover:border-green-400"}`}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>Completed</CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+            </div>
           </CardHeader>
-          <CardContent><div className="text-2xl font-black text-emerald-600">{projectCounts.completed}</div></CardContent>
+          <CardContent><div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.completed}</div></CardContent>
         </Card>
-        <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(true); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${isOverdueFilterActive ? "ring-2 ring-orange-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-orange-500">Overdue</CardTitle>
-            <AlertCircle className="h-4 w-4 text-orange-500" />
+        <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(true); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${isOverdueFilterActive ? "border-rose-600 dark:border-rose-400 bg-rose-50 dark:bg-rose-900/40" : "border-slate-200 bg-white dark:bg-gray-950 hover:border-rose-400"}`}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>Overdue</CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center">
+              <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+            </div>
           </CardHeader>
-          <CardContent><div className="text-2xl font-black text-orange-600">{projectCounts.overdue}</div></CardContent>
+          <CardContent><div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.overdue}</div></CardContent>
         </Card>
-        <Card onClick={() => { setFilterStatus("cancelled"); setIsOverdueFilterActive(false); }} className={`group overflow-hidden relative border-0 transition-all duration-300 cursor-pointer hover:shadow-lg active:scale-[0.98] ${filterStatus === "cancelled" ? "ring-2 ring-red-500 shadow-md" : "bg-white dark:bg-gray-900 border"}`}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-red-500">Cancelled</CardTitle>
-            <XCircle className="h-4 w-4 text-red-500" />
+        <Card onClick={() => { setFilterStatus("cancelled"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "cancelled" ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800" : "border-slate-200 bg-white dark:bg-gray-950 hover:border-slate-400"}`}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>Cancelled</CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <XCircle className="h-4 w-4 text-black dark:text-white" />
+            </div>
           </CardHeader>
-          <CardContent><div className="text-2xl font-black text-red-600">{projectCounts.cancelled}</div></CardContent>
+          <CardContent><div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.cancelled}</div></CardContent>
         </Card>
       </div>
 
@@ -4577,23 +4600,29 @@ const TaskManagement: React.FC = () => {
         <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-2">
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                <Filter className="h-5 w-5 text-white" />
+              <div className="h-10 w-10 rounded-lg bg-slate-950 dark:bg-slate-50 flex items-center justify-center">
+                <Filter className="h-5 w-5 text-white dark:text-black" />
               </div>
-              <CardTitle className="text-xl font-semibold">Filter Projects</CardTitle>
+              <CardTitle className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '16px', fontWeight: 'bold' }}>Filter Projects</CardTitle>
             </div>
             <div className="flex flex-wrap items-end gap-4">
               <div className="flex flex-col gap-2">
-                <Label className="text-sm">Search</Label>
+                <Label className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Search</Label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input className="pl-9 w-full sm:w-[200px]" placeholder="Search projects or tasks..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black dark:text-white" />
+                  <Input
+                    className="pl-9 w-full sm:w-[200px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 focus:ring-1 focus:ring-black"
+                    placeholder="Search projects or tasks..."
+                    style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                 </div>
               </div>
               <div className="flex flex-col gap-2">
-                <Label className="text-sm">Status</Label>
+                <Label className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Status</Label>
                 <Select value={filterStatus} onValueChange={(val) => { setFilterStatus(val); setIsOverdueFilterActive(val === "overdue"); }}>
-                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 px-3 py-2 border-2"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 text-[14px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="todo">To Do</SelectItem>
@@ -4605,14 +4634,14 @@ const TaskManagement: React.FC = () => {
                 </Select>
               </div>
               <div className="flex flex-col gap-2">
-                <Label className="text-sm">Ownership</Label>
+                <Label className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Ownership</Label>
                 <Select
                   value={taskOwnershipFilter}
                   onValueChange={(value: "all" | "received" | "created") =>
                     setTaskOwnershipFilter(value)
                   }
                 >
-                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 px-3 py-2 border-2">
+                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 text-[14px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -4647,13 +4676,13 @@ const TaskManagement: React.FC = () => {
                           <FolderKanban className="h-7 w-7" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h4 className={`text-lg font-bold ${project.isExpanded ? "text-violet-700" : "text-slate-800"}`}>{project.name}</h4>
+                          <h4 className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>{project.name}</h4>
                           <div className="flex flex-wrap items-center gap-4 mt-2">
-                            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full border">
-                              <ClipboardList className="h-3.5 w-3.5 text-violet-500" />
+                            <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-3 py-1 rounded-full border-2 border-black/5" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>
+                              <ClipboardList className="h-3.5 w-3.5" />
                               {project.task_count} Tasks
                             </div>
-                            <div className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${(project.status || '').toLowerCase().includes('progress') ? 'text-blue-600 bg-blue-50 border-blue-100' : 'text-slate-500 bg-slate-100 border-slate-200'}`}>
+                            <div className={`flex items-center gap-1.5 uppercase tracking-widest px-3 py-1 rounded-full border-2 ${(project.status || '').toLowerCase().includes('progress') ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-black/5'}`} style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', fontSize: '12px', color: (project.status || '').toLowerCase().includes('progress') ? '#2563EB' : (project.status || '').toLowerCase().includes('completed') ? '#16A34A' : (project.status || '').toLowerCase().includes('cancelled') ? '#DC2626' : (project.status || '').toLowerCase().includes('archived') ? '#EAB308' : '#000000' }}>
                               {project.status || 'Active'}
                             </div>
                           </div>
@@ -4666,14 +4695,14 @@ const TaskManagement: React.FC = () => {
                     <div className="px-3 pb-8 pt-2 animate-in slide-in-from-top-4 duration-500">
                       <div className="bg-white dark:bg-gray-950 rounded-2xl border-2 border-violet-100 overflow-hidden shadow-xl">
                         <Table>
-                          <TableHeader className="bg-slate-50">
+                          <TableHeader className="bg-slate-50 dark:bg-slate-900 border-b-2 border-black/10">
                             <TableRow>
-                              <TableHead className="w-[280px] text-xs uppercase font-bold">Task Intelligence</TableHead>
-                              <TableHead className="text-xs uppercase font-bold">Assigned To</TableHead>
-                              <TableHead className="text-xs uppercase font-bold">Deadline</TableHead>
-                              <TableHead className="text-xs uppercase font-bold w-[180px]">Status</TableHead>
-                              <TableHead className="text-xs uppercase font-bold">Priority</TableHead>
-                              <TableHead className="text-xs uppercase font-bold">Actions</TableHead>
+                              <TableHead className="w-[280px] uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Task Intelligence</TableHead>
+                              <TableHead className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Assigned To</TableHead>
+                              <TableHead className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Deadline</TableHead>
+                              <TableHead className="w-[180px] uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Status</TableHead>
+                              <TableHead className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Priority</TableHead>
+                              <TableHead className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -4682,20 +4711,20 @@ const TaskManagement: React.FC = () => {
                                 <TableRow key={task.id} className="hover:bg-violet-50/30 cursor-pointer" onClick={() => setSelectedTask(task)}>
                                   <TableCell className="py-4">
                                     <div className="flex flex-col">
-                                      <span className="font-bold text-sm tracking-tight">{task.title}</span>
-                                      {task.description && <span className="text-[11px] text-slate-500 line-clamp-2 mt-1">{task.description}</span>}
+                                      <span className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>{task.title}</span>
+                                      {task.description && <span className="text-[12px] text-black dark:text-slate-400 font-medium line-clamp-2 mt-1" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>{task.description}</span>}
                                     </div>
                                   </TableCell>
                                   <TableCell>
                                     <div className="flex items-center gap-3">
-                                      <div className="h-8 w-8 rounded-lg bg-violet-100 flex items-center justify-center text-[10px] font-black text-violet-700">{(task.assignedToName || 'U')[0].toUpperCase()}</div>
-                                      <span className="text-xs font-bold text-slate-600">{task.assignedToName || 'Unassigned'}</span>
+                                      <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[12px] font-black text-black dark:text-white">{(task.assignedToName || 'U')[0].toUpperCase()}</div>
+                                      <span className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>{task.assignedToName || 'Unassigned'}</span>
                                     </div>
                                   </TableCell>
                                   <TableCell>
-                                    <div className="flex items-center gap-2 text-slate-500">
-                                      <Calendar className="h-3.5 w-3.5 text-violet-400" />
-                                      <span className="text-xs">{task.deadline ? formatDateIST(task.deadline, "MMM dd, yyyy") : "No deadline"}</span>
+                                    <div className="flex items-center gap-2 text-black dark:text-white">
+                                      <Calendar className="h-3.5 w-3.5" />
+                                      <span className="text-[14px] font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>{task.deadline ? formatDateIST(task.deadline, "MMM dd, yyyy") : "No deadline"}</span>
                                     </div>
                                   </TableCell>
                                   <TableCell onClick={(e) => e.stopPropagation()}>
@@ -4712,14 +4741,12 @@ const TaskManagement: React.FC = () => {
                                         disabled={updatingTaskId === task.id}
                                       >
                                         <SelectTrigger
-                                          className={`w-[160px] h-9 border-2 bg-white dark:bg-gray-950 px-3 transition-all ${task.status === "in-progress"
-                                            ? "border-blue-200 dark:border-blue-800 shadow-sm"
-                                            : "border-violet-200 dark:border-violet-800 shadow-sm"
-                                            }`}
+                                          className={`w-[160px] h-9 border-2 bg-white dark:bg-gray-950 px-3 transition-all text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm`}
+                                          style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                                         >
                                           <div className="flex items-center gap-2">
                                             <div className={`h-2 w-2 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
-                                            <SelectValue className="text-xs" />
+                                            <SelectValue />
                                           </div>
                                         </SelectTrigger>
                                         <SelectContent className="border-2 shadow-xl">
@@ -4732,29 +4759,29 @@ const TaskManagement: React.FC = () => {
                                     )}
                                   </TableCell>
                                   <TableCell>
-                                    <Badge variant="outline" className={`border-2 ${task.priority === 'high' || task.priority === 'urgent' ? 'border-red-200 text-red-600' : task.priority === 'medium' ? 'border-amber-200 text-amber-600' : 'border-blue-200 text-blue-600'}`}>
+                                    <Badge variant="outline" className={cn(getPriorityColor(task.priority), "text-[12px] font-bold uppercase tracking-wider border-0 shadow-sm")} style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                                       {task.priority || 'Medium'}
                                     </Badge>
                                   </TableCell>
                                   <TableCell onClick={(e) => e.stopPropagation()}>
                                     <div className="flex items-center gap-2">
                                       {task.status !== "completed" && task.status !== "cancelled" && task.status !== "overdue" && task.assignedTo.includes(userId || "") && (
-                                        <Button variant="ghost" size="sm" onClick={() => openPassDialog(task)} className="h-8 w-8 hover:bg-violet-100 text-violet-600" title="Pass task">
+                                        <Button variant="ghost" size="icon" onClick={() => openPassDialog(task)} className="h-8 w-8 text-black dark:text-white hover:bg-slate-100" title="Pass task">
                                           <Share2 className="h-4 w-4" />
                                         </Button>
                                       )}
                                       {userId === task.assignedBy && task.status !== "completed" && task.status !== "cancelled" && (
-                                        <Button variant="ghost" size="sm" onClick={() => handleEditClick(task)} className="h-8 w-8 hover:bg-amber-100 text-amber-600" title="Edit task">
+                                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(task)} className="h-8 w-8 text-blue-600 hover:bg-blue-50" title="Edit task">
                                           <Pencil className="h-4 w-4" />
                                         </Button>
                                       )}
                                       {canReassignTask(task) && (
-                                        <Button variant="ghost" size="sm" onClick={() => handleReassignClick(task)} className="h-8 w-8 hover:bg-green-100 text-green-600" title="Reassign task">
+                                        <Button variant="ghost" size="icon" onClick={() => handleReassignClick(task)} className="h-8 w-8 text-emerald-600 hover:bg-emerald-50" title="Reassign task">
                                           <RefreshCcw className="h-4 w-4" />
                                         </Button>
                                       )}
                                       {userId === task.assignedBy && canDeleteTask(task) && (
-                                        <Button variant="ghost" size="sm" onClick={() => handleDeleteTask(task.id)} disabled={deletingTaskId === task.id} className="h-8 w-8 hover:bg-red-100 text-red-600" title="Delete task">
+                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(task.id)} disabled={deletingTaskId === task.id} className="h-8 w-8 text-rose-600 hover:bg-rose-50" title="Delete task">
                                           {deletingTaskId === task.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                         </Button>
                                       )}
@@ -4764,7 +4791,7 @@ const TaskManagement: React.FC = () => {
                               ))
                             ) : (
                               <TableRow>
-                                <TableCell colSpan={5} className="h-40 text-center text-slate-400">No matching tasks found in this project.</TableCell>
+                                <TableCell colSpan={6} className="h-40 text-center font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>No matching tasks found in this project.</TableCell>
                               </TableRow>
                             )}
                           </TableBody>
@@ -6591,7 +6618,72 @@ const TaskManagement: React.FC = () => {
     </div>
   </DialogContent>
 </Dialog>
-    </div >
+
+      
+      {/* Scope Selection Dialog (for resolving 409 Conflicts) */}
+      <Dialog open={activeScopeError} onOpenChange={setActiveScopeError}>
+        <DialogContent className="max-w-md border-2 border-amber-200">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-700">
+              <AlertCircle className="h-5 w-5" />
+              Scope Selection Required
+            </DialogTitle>
+            <DialogDescription className="font-medium text-slate-600">
+              Your account is assigned to multiple organizations or branches.
+              Please enter a specific ID to continue.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-bold">Current User Role: {user?.role}</Label>
+              <p className="text-[11px] text-slate-500 italic">
+                Tip: You can find your Branch ID and Company ID in your profile or from your administrator.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="debug-branch-id">Branch ID</Label>
+              <Input
+                id="debug-branch-id"
+                value={debugBranchId}
+                onChange={(e) => setDebugBranchId(e.target.value)}
+                placeholder="e.g. 1"
+                className="border-2 focus:border-blue-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="debug-company-id">Company ID</Label>
+              <Input
+                id="debug-company-id"
+                value={debugCompanyId}
+                onChange={(e) => setDebugCompanyId(e.target.value)}
+                placeholder="e.g. 1"
+                className="border-2 focus:border-blue-500"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setActiveScopeError(false)}
+              className="border-slate-300"
+            >
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                if (debugBranchId) localStorage.setItem('branchId', debugBranchId);
+                if (debugCompanyId) localStorage.setItem('companyId', debugCompanyId);
+                setActiveScopeError(false);
+                window.location.reload();
+              }}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              Apply Scope & Refresh
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 

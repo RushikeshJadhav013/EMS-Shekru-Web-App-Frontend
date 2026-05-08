@@ -302,6 +302,11 @@ const AttendanceWithToggle: React.FC = () => {
     setWfhHistoryPage(1);
   }, [wfhHistoryTimeFilter, wfhHistoryStartDate, wfhHistoryEndDate]);
 
+  // Scope Conflict resolution state
+  const [activeScopeError, setActiveScopeError] = useState(false);
+  const [debugBranchId, setDebugBranchId] = useState(localStorage.getItem('branchId') || "");
+  const [debugCompanyId, setDebugCompanyId] = useState(localStorage.getItem('companyId') || "");
+
   const filteredWfhHistory = useMemo(() => {
     let filtered = [...wfhRequests];
 
@@ -827,8 +832,14 @@ const AttendanceWithToggle: React.FC = () => {
         : [];
 
       setAllWfhRequests(mappedRequests);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to load WFH requests:", error);
+      
+      const errorMessage = error.message || "";
+      if (error.status === 409 || errorMessage.includes("409") || errorMessage.includes("Scope conflict") || errorMessage.includes("Multiple company")) {
+        setActiveScopeError(true);
+      }
+
       toast({
         title: "Error",
         description: "Failed to load WFH requests",
@@ -1823,6 +1834,12 @@ const AttendanceWithToggle: React.FC = () => {
       setEmployeeAttendanceData(records);
     } catch (e: any) {
       console.error("Error loading employee attendance:", e);
+      
+      const errorMessage = e.message || "";
+      if (e.status === 409 || errorMessage.includes("409") || errorMessage.includes("Scope conflict") || errorMessage.includes("Multiple company")) {
+        setActiveScopeError(true);
+      }
+
       toast({
         title: "Error",
         description: e.message || "Failed to load employee attendance",
@@ -2984,7 +3001,7 @@ const AttendanceWithToggle: React.FC = () => {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold" style={{ color: '#000000' }}>
+          <h2 className="text-[16px] font-bold" style={{ color: '#000000' }}>
             {isCheckingIn ? t.attendance.checkIn : t.attendance.checkOut}
           </h2>
         </div>
@@ -3097,7 +3114,7 @@ const AttendanceWithToggle: React.FC = () => {
           {/* Self Attendance View */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-[24px] font-bold" style={{ color: '#000000' }}>
+              <CardTitle className="text-[16px] font-bold" style={{ color: '#000000' }}>
                 {t.attendance.todayStatus}
               </CardTitle>
               <CardDescription className="text-sm" style={{ color: '#000000' }}>
@@ -3173,7 +3190,7 @@ const AttendanceWithToggle: React.FC = () => {
                               </Badge>
                             )}
                         </div>
-                        <p className="text-[18px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <p className="text-[16px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                           {formatAttendanceTime(
                             currentAttendance.date,
                             currentAttendance.checkInTime,
@@ -3185,11 +3202,7 @@ const AttendanceWithToggle: React.FC = () => {
                           <p className="text-xs text-orange-600 dark:text-orange-400">
                             Working from home today
                           </p>
-                        ) : (
-                          <p className="text-xs text-blue-600 dark:text-blue-400">
-                            Working from office today
-                          </p>
-                        )}
+                        ) : null}
                       </div>
 
                       <div className="space-y-2">
@@ -3225,7 +3238,7 @@ const AttendanceWithToggle: React.FC = () => {
                             );
                           })()}
                         </div>
-                        <p className="text-[18px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <p className="text-[16px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                           {currentAttendance.checkOutTime
                             ? formatAttendanceTime(
                               currentAttendance.date,
@@ -3243,7 +3256,7 @@ const AttendanceWithToggle: React.FC = () => {
                               Total Work Hours
                             </span>
                           </div>
-                          <p className="text-[18px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                          <p className="text-[16px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                             {currentAttendance.checkOutTime
                               ? formatWorkHours(
                                 currentAttendance.workHours || 0,
@@ -3256,7 +3269,7 @@ const AttendanceWithToggle: React.FC = () => {
                         {!currentAttendance.checkOutTime && (
                           <div className="flex items-center gap-2 text-sm">
                             <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-                            <span className="text-green-900 dark:text-green-300 font-medium">
+                            <span style={{ color: '#15803D' }} className="font-medium">
                               Live tracking - updates in real-time
                             </span>
                           </div>
@@ -3325,7 +3338,7 @@ const AttendanceWithToggle: React.FC = () => {
           {/* Attendance History */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-[24px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>{t.attendance.history}</CardTitle>
+              <CardTitle className="text-[16px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>{t.attendance.history}</CardTitle>
               <CardDescription className="text-[14px]" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Your Attendance Records</CardDescription>
             </CardHeader>
             <CardContent>
@@ -3729,7 +3742,7 @@ const AttendanceWithToggle: React.FC = () => {
                                         )}
                                       </div>
                                       <div className="flex flex-col items-center gap-1 border-t border-slate-100 dark:border-slate-800 pt-1 mt-1 w-full">
-                                        <div className="flex items-center gap-1 text-[10px] font-medium text-black dark:text-white">
+                                        <div className="flex items-center gap-1 text-[12px] font-medium text-black dark:text-white">
                                           <Timer className="h-2.5 w-2.5 text-blue-400" />
                                           <span>
                                             {(record.scheduledStart || "10:00").replace(/^0/, '')} -{" "}
@@ -4138,7 +4151,7 @@ const AttendanceWithToggle: React.FC = () => {
                                     statusInfo.label === "Checked Out"
                                   ) {
                                     return (
-                                      <span className="text-[12px] font-medium text-black dark:text-white">
+                                      <span className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                                         Checked Out
                                       </span>
                                     );
@@ -4203,7 +4216,8 @@ const AttendanceWithToggle: React.FC = () => {
                                       });
                                       setShowLocationDialog(true);
                                     }}
-                                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-7 px-2 text-xs"
+                                    className="text-black hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-7 px-2 text-[12px] font-bold"
+                                    style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                                   >
                                     <MapPin className="h-3 w-3 mr-1" />
                                     View
@@ -4264,7 +4278,7 @@ const AttendanceWithToggle: React.FC = () => {
                                     )}
                                   </div>
                                   <div className="flex flex-col items-center gap-1 border-t border-slate-100 dark:border-slate-800 pt-1 mt-1 w-full">
-                                    <div className="flex items-center gap-1 text-[10px] font-medium text-black dark:text-white">
+                                    <div className="flex items-center gap-1 text-[12px] font-medium text-black dark:text-white">
                                       <Timer className="h-2.5 w-2.5 text-blue-400" />
                                       <span>
                                         {(record.scheduledStart || "10:00").replace(/^0/, '')} -{" "}
@@ -4300,11 +4314,11 @@ const AttendanceWithToggle: React.FC = () => {
                                   </div>
                                 </div>
                               </td>
-                              <td className="p-3 text-xs text-slate-600 dark:text-slate-400 max-w-[280px]">
+                              <td className="p-3 text-[12px] font-bold text-black dark:text-slate-400 max-w-[280px]" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                                 {record.workSummary ? (
                                   <button
                                     type="button"
-                                    className="text-left hover:text-blue-600 dark:hover:text-blue-400 block w-full text-xs leading-relaxed text-black dark:text-white"
+                                    className="text-left truncate max-w-[250px] hover:text-blue-600 text-black"
                                     onClick={() => {
                                       setSelectedWorkSummary(
                                         record.workSummary || "",
@@ -4312,35 +4326,11 @@ const AttendanceWithToggle: React.FC = () => {
                                       setSelectedOverdueReason("");
                                       setShowWorkSummaryDialog(true);
                                     }}
-                                    title={record.workSummary}
-                                    style={{
-                                      wordBreak: "break-word",
-                                      overflowWrap: "break-word",
-                                      display: "block",
-                                      textAlign: "left",
-                                    }}
                                   >
-                                    <span
-                                      style={{
-                                        display: "-webkit-box",
-                                        WebkitLineClamp: 2,
-                                        WebkitBoxOrient: "vertical",
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                      }}
-                                    >
-                                      {record.workSummary}
-                                    </span>
-                                    {record.workSummary.length > 60 && (
-                                      <span className="text-blue-600 dark:text-blue-400 font-medium mt-1 block">
-                                        View more...
-                                      </span>
-                                    )}
+                                    {record.workSummary}
                                   </button>
                                 ) : (
-                                  <span className="text-slate-400 dark:text-slate-500">
-                                    —
-                                  </span>
+                                  "-"
                                 )}
                               </td>
                               <td className="p-3 whitespace-nowrap">
@@ -4349,33 +4339,17 @@ const AttendanceWithToggle: React.FC = () => {
                                     href={record.workReport}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-xs text-black dark:text-white hover:underline"
+                                    className="text-[12px] font-bold text-black dark:text-white hover:underline"
+                                    style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                                   >
-                                    {t.attendance.viewReport || "View"}
+                                    View Report
                                   </a>
                                 ) : (
-                                  <span className="text-slate-400 dark:text-slate-500 text-xs">
-                                    —
-                                  </span>
+                                  <span className="text-[12px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>-</span>
                                 )}
                               </td>
-                              <td className="p-3 text-xs text-slate-600 dark:text-slate-400 max-w-[280px]">
-                                {record.taskDeadlineReason ? (
-                                  <div
-                                    className="text-left w-full"
-                                    title={record.taskDeadlineReason}
-                                  >
-                                    <TruncatedText
-                                      text={record.taskDeadlineReason || ""}
-                                      maxLength={40}
-                                      showToggle={true}
-                                    />
-                                  </div>
-                                ) : (
-                                  <span className="text-slate-400 dark:text-slate-500">
-                                    —
-                                  </span>
-                                )}
+                              <td className="p-3 text-[12px] font-bold text-black dark:text-slate-400 max-w-[280px]" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                {record.taskDeadlineReason || "-"}
                               </td>
                             </tr>
                           ))
@@ -4729,7 +4703,7 @@ const AttendanceWithToggle: React.FC = () => {
                       <Label className="text-sm font-medium ml-1">
                         Summary
                       </Label>
-                      <div className="h-11 px-3 py-2 bg-muted rounded-md text-sm flex items-center justify-between">
+                      <div className="h-11 px-3 py-2 bg-muted rounded-md text-sm font-bold text-black dark:text-white flex items-center justify-between" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                         <span>
                           {filteredRecentDecisions.length} of{" "}
                           {
@@ -4805,11 +4779,11 @@ const AttendanceWithToggle: React.FC = () => {
                                     </Badge>
                                   </div>
                                 </div>
-                                <p className="text-sm text-muted-foreground break-words overflow-wrap-anywhere whitespace-pre-wrap">
+                                <p className="text-[14px] font-bold text-black dark:text-white break-words overflow-wrap-anywhere whitespace-pre-wrap" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                                   {request.reason}
                                 </p>
-                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                  <p className="font-medium text-[12px] text-black dark:text-white">
+                                <div className="flex items-center gap-4 text-[12px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                  <p className="font-bold text-[12px] text-black dark:text-white">
                                     {request.submittedBy || "N/A"}
                                   </p>
                                   <p className="text-[12px] text-black dark:text-white opacity-70">
@@ -4881,10 +4855,10 @@ const AttendanceWithToggle: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
+                  <div className="text-center py-8 text-black dark:text-white font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                     <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No decisions yet</p>
-                    <p className="text-sm">
+                    <p className="text-[14px]">No decisions yet</p>
+                    <p className="text-[12px] font-medium">
                       {wfhRequestTimeFilter === "all"
                         ? wfhRequestFilter === "all"
                           ? "No requests have been approved or rejected"
@@ -4902,11 +4876,11 @@ const AttendanceWithToggle: React.FC = () => {
           {/* Work From Home Request View */}
           <Card className="border-0 shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950 dark:to-red-950">
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+              <CardTitle className="text-[20px] font-bold flex items-center gap-2 text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                 <Home className="h-5 w-5 text-orange-600" />
                 Apply for Work From Home
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-[14px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                 Submit a request to work from home
               </CardDescription>
             </CardHeader>
@@ -4916,7 +4890,7 @@ const AttendanceWithToggle: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="wfh-start-date">
+                    <Label htmlFor="wfh-start-date" className="text-[14px] text-black dark:text-white font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                       Start Date <span className="text-red-500">*</span>
                     </Label>
                     <DatePicker
@@ -4939,7 +4913,7 @@ const AttendanceWithToggle: React.FC = () => {
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="wfh-end-date">
+                    <Label htmlFor="wfh-end-date" className="text-[14px] text-black dark:text-white font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                       End Date <span className="text-red-500">*</span>
                     </Label>
                     <DatePicker
@@ -4966,7 +4940,7 @@ const AttendanceWithToggle: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="wfh-reason">
+                  <Label htmlFor="wfh-reason" className="text-[14px] text-black dark:text-white font-black" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                     Reason for WFH Request{" "}
                     <span className="text-red-500">*</span>
                   </Label>
@@ -4987,7 +4961,8 @@ const AttendanceWithToggle: React.FC = () => {
                   />
                   <div className="flex items-center justify-between">
                     <p
-                      className={`text-xs ${wfhReason.trim().length < 10 && wfhReason.length > 0 ? "text-red-500" : "text-gray-500"}`}
+                      className={`text-[12px] font-bold ${wfhReason.trim().length < 10 ? "text-[#991B1B]" : "text-[#059669]"}`}
+                      style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
                     >
                       Characters must be more than 10 (Current:{" "}
                       {wfhReason.length})
@@ -4998,9 +4973,9 @@ const AttendanceWithToggle: React.FC = () => {
                 <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                   <div className="flex items-start gap-3">
                     <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm text-blue-800 dark:text-blue-200">
-                      <p className="font-medium mb-1">Request Guidelines:</p>
-                      <ul className="list-disc list-inside space-y-1 text-xs">
+                    <div className="text-sm text-black dark:text-blue-200">
+                      <p className="font-bold text-[14px] mb-1" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Request Guidelines:</p>
+                      <ul className="list-disc list-inside space-y-1 text-[12px] font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                         <li>Submit requests in advance</li>
                         <li>
                           Provide a clear and valid reason for the request
@@ -5052,10 +5027,10 @@ const AttendanceWithToggle: React.FC = () => {
                   <History className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <CardTitle className="text-xl font-semibold">
+                  <CardTitle className="text-[20px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                     Your WFH Requests
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-[14px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                     Track the status of your work from home requests
                   </CardDescription>
                 </div>
@@ -5065,7 +5040,7 @@ const AttendanceWithToggle: React.FC = () => {
               <div className="space-y-4">
                 <div className="flex flex-col md:flex-row justify-between items-end gap-4">
                   <div className="w-full md:w-auto">
-                    <Label className="text-sm font-medium mb-1.5 block">
+                    <Label className="text-[14px] font-bold text-black dark:text-white mb-1.5 block" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                       Time Period
                     </Label>
                     <Select
@@ -5095,7 +5070,7 @@ const AttendanceWithToggle: React.FC = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="text-sm text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-lg font-medium">
+                  <div className="text-[14px] text-black bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-lg font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                     Showing {filteredWfhHistory.length} requests
                   </div>
                 </div>
@@ -5103,7 +5078,7 @@ const AttendanceWithToggle: React.FC = () => {
                 {wfhHistoryTimeFilter === "custom" && (
                   <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 animate-in fade-in slide-in-from-top-2 duration-300 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
                     <div className="flex-1 w-full space-y-1.5">
-                      <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">
+                      <Label className="text-[12px] font-bold text-black dark:text-slate-500 uppercase tracking-wider ml-1" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                         From Date
                       </Label>
                       <DatePicker
@@ -5117,7 +5092,7 @@ const AttendanceWithToggle: React.FC = () => {
                       <History className="h-4 w-4 opacity-50" />
                     </div>
                     <div className="flex-1 w-full space-y-1.5">
-                      <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">
+                      <Label className="text-[12px] font-bold text-black dark:text-slate-500 uppercase tracking-wider ml-1" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                         To Date
                       </Label>
                       <DatePicker
@@ -5149,17 +5124,17 @@ const AttendanceWithToggle: React.FC = () => {
                                 -{" "}
                                 {formatDateIST(request.endDate, "dd MMM yyyy")}
                               </span>
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className="text-[12px] font-bold text-black dark:text-white border-slate-200" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                                 {request.type === "full_day" ||
                                   request.type === "Full Day"
                                   ? "Full Day"
                                   : "Half Day"}
                               </Badge>
                             </div>
-                            <p className="text-sm text-muted-foreground break-words overflow-wrap-anywhere whitespace-pre-wrap">
+                            <p className="text-[14px] font-bold text-black dark:text-white break-words overflow-wrap-anywhere whitespace-pre-wrap" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                               {request.reason}
                             </p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-[12px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                               Submitted{" "}
                               {formatRelativeTime(request.submittedAt)} (
                               {formatDateTimeIST(
@@ -5237,10 +5212,10 @@ const AttendanceWithToggle: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
+                  <div className="text-center py-8 text-black dark:text-white font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
                     <Home className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No WFH requests found for the selected period</p>
-                    <p className="text-sm">
+                    <p className="text-[14px]">No WFH requests found for the selected period</p>
+                    <p className="text-[12px] font-medium">
                       Try adjusting your filters or submit a new request
                     </p>
                   </div>
@@ -5255,7 +5230,7 @@ const AttendanceWithToggle: React.FC = () => {
       <Dialog open={showCheckoutDialog} onOpenChange={setShowCheckoutDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-[18px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Confirm Check-out</DialogTitle>
+            <DialogTitle className="text-[16px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Confirm Check-out</DialogTitle>
             <DialogDescription className="text-[14px]" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
               Please provide today's work summary before checking out. You can
               optionally upload a work report PDF.
@@ -6344,6 +6319,69 @@ const AttendanceWithToggle: React.FC = () => {
               ) : (
                 "Update Request"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Scope Selection Dialog (for resolving 409 Conflicts) */}
+      <Dialog open={activeScopeError} onOpenChange={setActiveScopeError}>
+        <DialogContent className="max-w-md border-2 border-amber-200">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-700">
+              <AlertCircle className="h-5 w-5" />
+              Scope Selection Required
+            </DialogTitle>
+            <DialogDescription className="font-medium text-slate-600">
+              Your account is assigned to multiple organizations or branches.
+              Please enter a specific ID to continue.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-bold">Current User Role: {user?.role}</Label>
+              <p className="text-[11px] text-slate-500 italic">
+                Tip: You can find your Branch ID and Company ID in your profile or from your administrator.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="debug-branch-id">Branch ID</Label>
+              <Input
+                id="debug-branch-id"
+                value={debugBranchId}
+                onChange={(e) => setDebugBranchId(e.target.value)}
+                placeholder="e.g. 1"
+                className="border-2 focus:border-blue-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="debug-company-id">Company ID</Label>
+              <Input
+                id="debug-company-id"
+                value={debugCompanyId}
+                onChange={(e) => setDebugCompanyId(e.target.value)}
+                placeholder="e.g. 1"
+                className="border-2 focus:border-blue-500"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setActiveScopeError(false)}
+              className="border-slate-300"
+            >
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                if (debugBranchId) localStorage.setItem('branchId', debugBranchId);
+                if (debugCompanyId) localStorage.setItem('companyId', debugCompanyId);
+                setActiveScopeError(false);
+                window.location.reload();
+              }}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              Apply Scope & Refresh
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -262,7 +262,7 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       {/* Header */}
-      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-5 rounded-2xl bg-gradient-to-br from-white to-blue-50/30 border border-blue-100/50 shadow-sm mt-1">
+      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 rounded-2xl bg-white border-2 border-[#5e5b5b] shadow-xl mt-1">
         <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-blue-100/20 rounded-full blur-3xl -z-10" />
 
         <div className="flex items-center gap-4">
@@ -270,18 +270,18 @@ const AdminDashboard: React.FC = () => {
             <Award className="h-6 w-6 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight" style={{ color: '#000000' }}>
-              {t.common.welcome}, <span style={{ color: '#000000' }}>{user?.name}</span>
+            <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: '#000000' }}>
+              {t.common.welcome}, <span style={{ color: '#2563EB' }}>{user?.name}</span>
             </h1>
-            <p className="font-normal text-[12px] mt-0.5 flex items-center gap-1.5" style={{ color: '#2563eb' }}>
-              <CalendarDays className="h-3.5 w-3.5" style={{ color: '#2563eb' }} />
+            <p className="font-normal text-[14px] mt-0.5 flex items-center gap-1.5" style={{ color: '#000000' }}>
+              <CalendarDays className="h-3.5 w-3.5" style={{ color: '#000000' }} />
               {formatIST(nowIST(), 'EEEE, MMMM dd, yyyy | hh:mm a')}
             </p>
           </div>
         </div>
         <Button
           onClick={() => navigate('/admin/employees/', { state: { highlight: true } })}
-          className="h-10 px-6 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200/50 transition-all duration-300 hover:-translate-y-0.5 text-sm font-bold gap-2"
+          className="h-12 px-8 rounded-xl bg-black hover:bg-slate-900 text-white shadow-xl border-2 border-black transition-all duration-300 hover:-translate-y-1 text-xs font-black uppercase tracking-widest gap-3"
         >
           <UserPlus className="h-4 w-4" />
           {t.employee.addEmployee}
@@ -342,11 +342,11 @@ const AdminDashboard: React.FC = () => {
         ].map((item, index) => (
           <Card
             key={index}
-            className={`group relative overflow-hidden bg-white hover:bg-slate-50 border-2 ${item.borderColor} ${item.hoverBorder} shadow-sm hover:shadow-xl transition-all duration-500 cursor-pointer rounded-xl`}
+            className={`group relative overflow-hidden bg-white border-2 border-black shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer rounded-2xl`}
             onClick={() => navigate(item.path)}
           >
             <CardHeader className="flex flex-row items-center justify-between pb-2 p-4">
-              <CardTitle className="text-xs font-bold uppercase tracking-widest leading-none" style={{ color: '#000000' }}>
+              <CardTitle className="text-[12px] font-bold uppercase tracking-widest leading-none" style={{ color: '#000000' }}>
                 {item.title}
               </CardTitle>
               <div className={`h-8 w-8 rounded-lg ${item.bgColor} flex items-center justify-center border border-${item.color}-200/50 group-hover:scale-110 transition-transform duration-500`}>
@@ -367,25 +367,25 @@ const AdminDashboard: React.FC = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Department Performance */}
-        <Card className="lg:col-span-2 border-slate-200/60 border shadow-sm bg-white rounded-xl overflow-hidden flex flex-col">
-          <CardHeader className="border-b border-slate-100 bg-slate-50/30 px-5 py-4">
+        <Card className="lg:col-span-3 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+          <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-sm">
                   <Building className="h-4.5 w-4.5" />
                 </div>
                 <div>
-                  <CardTitle className="text-base font-bold" style={{ color: '#000000' }}>
-                    {t.dashboard.departmentPerformance}
-                  </CardTitle>
+                  <CardTitle className="text-[16px] font-bold" style={{ color: '#000000' }}>
+                  {t.dashboard.departmentPerformance}
+                </CardTitle>
                 </div>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-3 rounded-lg text-blue-600 hover:bg-blue-50 font-bold text-sm"
+                className="h-8 px-3 rounded-lg text-blue-600 hover:bg-blue-50 font-bold text-[14px]"
                 onClick={() => navigate('/admin/reports?tab=branch')}
               >
                 VIEW ALL
@@ -397,7 +397,7 @@ const AdminDashboard: React.FC = () => {
               {branchPerformance.map((dept) => (
                 <div
                   key={dept.name}
-                  className="group relative p-3.5 rounded-lg border border-slate-100 hover:border-blue-200 hover:bg-blue-50/20 transition-all duration-300 cursor-pointer"
+                  className="group relative p-4 rounded-xl border-2 border-[#5e5b5b]/20 hover:border-black hover:bg-slate-50 transition-all duration-300 cursor-pointer"
                   onClick={() => navigate('/admin/reports?tab=branch')}
                 >
                   <div className="flex justify-between items-center mb-3">
@@ -406,8 +406,8 @@ const AdminDashboard: React.FC = () => {
                         <Target className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
-                        <p className="font-bold text-sm leading-tight" style={{ color: '#000000' }}>{dept.name}</p>
-                        <p className="text-xs font-bold mt-0.5 flex items-center gap-1" style={{ color: '#000000' }}>
+                        <p className="font-bold text-[14px] leading-tight" style={{ color: '#000000' }}>{dept.name}</p>
+                        <p className="text-[12px] font-bold mt-0.5 flex items-center gap-1" style={{ color: '#000000' }}>
                           <Users className="h-3 w-3" style={{ color: '#000000' }} />
                           <span className="font-black">{dept.employees}</span>
                           <span className="font-bold uppercase tracking-tighter">Employees</span>
@@ -415,7 +415,7 @@ const AdminDashboard: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-sm" style={{ color: '#000000' }}>{dept.performance}%</p>
+                      <p className="font-bold text-[14px]" style={{ color: '#000000' }}>{dept.performance}%</p>
                       {(() => {
                         const perf = Number(dept.performance);
                         if (!isNaN(perf)) {
@@ -462,13 +462,13 @@ const AdminDashboard: React.FC = () => {
         </Card>
 
         {/* Recent Activities */}
-        <Card className="border-slate-200/60 border shadow-sm bg-white rounded-xl overflow-hidden flex flex-col">
-          <CardHeader className="border-b border-slate-100 bg-slate-50/30 px-5 py-4">
+        <Card className="lg:col-span-2 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+          <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm">
                 <Activity className="h-4.5 w-4.5" />
               </div>
-              <CardTitle className="text-base font-bold" style={{ color: '#000000' }}>
+              <CardTitle className="text-[16px] font-bold" style={{ color: '#000000' }}>
                 {t.dashboard.recentActivities}
               </CardTitle>
             </div>
@@ -480,7 +480,7 @@ const AdminDashboard: React.FC = () => {
                   {recentActivities
                     .slice((activitiesPage - 1) * ACTIVITIES_PER_PAGE, activitiesPage * ACTIVITIES_PER_PAGE)
                     .map((activity) => (
-                      <div key={activity.id} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-slate-100/50 transition-all duration-300 border border-transparent hover:border-slate-200/60">
+                      <div key={activity.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50 transition-all duration-300 border-2 border-transparent hover:border-[#5e5b5b]/30">
                         <div className={`h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 border ${activity.type === 'check-in' ? 'bg-emerald-50/80 border-emerald-100/50 text-emerald-600 shadow-sm' :
                           activity.type === 'leave' ? 'bg-amber-50/80 border-amber-100/50 text-amber-600 shadow-sm' :
                             'bg-blue-50/80 border-blue-100/50 text-blue-600 shadow-sm'
@@ -491,14 +491,14 @@ const AdminDashboard: React.FC = () => {
                           {activity.type === 'task' && <ClipboardList className="h-4 w-4" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold truncate" style={{ color: '#000000' }}>{formatName(activity.user)}</p>
-                          <p className="text-xs font-medium mt-0.5" style={{ color: '#000000' }}>
+                          <p className="text-[14px] font-bold truncate" style={{ color: '#000000' }}>{formatName(activity.user)}</p>
+                          <p className="text-[12px] font-medium mt-0.5" style={{ color: '#000000' }}>
                             {activity.type === 'check-in' && 'Checked in'}
                             {activity.type === 'check-out' && 'Checked out'}
                             {activity.type === 'leave' && 'Applied for leave'}
                             {activity.type === 'task' && 'Completed task'}
                           </p>
-                          <p className="text-xs font-bold uppercase mt-1" style={{ color: '#2563eb' }}>
+                          <p className="text-[12px] font-bold uppercase mt-1" style={{ color: '#2563eb' }}>
                             {formatActivityTime(activity.time)}
                           </p>
                         </div>

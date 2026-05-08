@@ -253,7 +253,7 @@ export const NotificationBell: React.FC = () => {
         <Button
           variant="ghost"
           size="icon"
-          className="relative h-10 w-10 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 transition-all duration-300 hover:scale-110"
+          className="relative h-10 w-10 rounded-lg border border-[#5e5b5b] hover:bg-blue-50 dark:hover:bg-blue-950 transition-all duration-300 hover:scale-110"
         >
           <Bell className={`h-5 w-5 text-blue-600 dark:text-blue-400 ${unreadCount > 0 ? 'animate-shake' : ''}`} />
           {unreadCount > 0 && (
@@ -263,7 +263,7 @@ export const NotificationBell: React.FC = () => {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[420px] max-h-[600px] bg-background z-50 border-2 shadow-2xl p-0">
+      <DropdownMenuContent align="end" className="w-[420px] max-h-[600px] bg-background z-50 border-2 border-[#5e5b5b] shadow-2xl p-0">
         <div className="flex flex-col p-4 border-b-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 sticky top-0 z-10">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">

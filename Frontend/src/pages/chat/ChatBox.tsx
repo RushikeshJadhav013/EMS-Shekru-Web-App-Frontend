@@ -469,10 +469,10 @@ const ChatBox: React.FC = () => {
           </div>
 
           <div className="flex-1 min-w-0">
-            <h2 className={cn("font-black truncate text-[15px] tracking-tight leading-none", themeClasses.text)}>{chatName}</h2>
+            <h2 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} className="truncate tracking-tight leading-none">{chatName}</h2>
             <div className="flex items-center gap-1.5 mt-1">
               <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-              <p className="text-[10px] font-black text-green-500 uppercase tracking-widest leading-none">
+              <p style={{ color: "#22C55E", fontSize: "12px", fontWeight: "bold" }} className="uppercase tracking-widest leading-none">
                 Online
               </p>
             </div>
@@ -487,7 +487,7 @@ const ChatBox: React.FC = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 rounded-2xl border-2 shadow-xl p-2">
-              <DropdownMenuLabel className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+              <DropdownMenuLabel style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} className="flex items-center gap-2 px-3 py-2 uppercase tracking-widest">
                 <Info className="h-3 w-3" />
                 Chat Options
               </DropdownMenuLabel>
@@ -502,7 +502,7 @@ const ChatBox: React.FC = () => {
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     <Settings className="h-4 w-4 text-slate-500" />
-                    <span className="font-bold text-sm">Group Settings</span>
+                    <span style={{ color: "#000000", fontSize: "14px" }}>Group Settings</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => {
@@ -512,7 +512,7 @@ const ChatBox: React.FC = () => {
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     <UserPlus className="h-4 w-4 text-slate-500" />
-                    <span className="font-bold text-sm">Add Members</span>
+                    <span style={{ color: "#000000", fontSize: "14px" }}>Add Members</span>
                   </DropdownMenuItem>
                 </>
               )}
@@ -521,7 +521,7 @@ const ChatBox: React.FC = () => {
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <LogOut className="h-4 w-4 text-slate-500" />
-                <span className="font-bold text-sm">Exit Chat</span>
+                <span style={{ color: "#000000", fontSize: "14px" }}>Exit Chat</span>
               </DropdownMenuItem>
               {activeChat.type === 'group' && (activeChat.participants.find(p => p.userId === user?.id)?.isAdmin || user?.role === 'admin' || user?.role === 'hr') && (
                 <>
@@ -531,7 +531,7 @@ const ChatBox: React.FC = () => {
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                   >
                     <TrashIcon className="h-4 w-4" />
-                    <span className="font-bold text-sm">Delete Group</span>
+                    <span style={{ color: "#EF4444", fontSize: "14px" }}>Delete Group</span>
                   </DropdownMenuItem>
                 </>
               )}
@@ -566,10 +566,8 @@ const ChatBox: React.FC = () => {
                       <div className="absolute inset-0 flex items-center" aria-hidden="true">
                         <div className="w-full border-t border-slate-100 dark:border-slate-800/50"></div>
                       </div>
-                      <span className={cn(
-                        "relative text-[10px] uppercase tracking-widest font-black px-4 py-1.5 rounded-full border shadow-sm backdrop-blur-md",
-                        isDark ? "bg-[#0f172a] border-slate-800 text-slate-400" : "bg-white border-slate-100 text-slate-500"
-                      )}>
+                      <span className="relative px-4 py-1.5 rounded-full border shadow-sm backdrop-blur-md bg-white border-slate-100 uppercase tracking-widest"
+                      style={{ color: "#000000", fontSize: "12px", fontWeight: "bold" }}>
                         {formatDateIST(message.timestamp, 'MMMM d, yyyy')}
                       </span>
                     </div>
@@ -668,7 +666,8 @@ const ChatBox: React.FC = () => {
               onKeyDown={handleKeyDown}
               disabled={isUploading}
               placeholder={isUploading ? "Uploading file..." : "Type your message..."}
-              className="border-0 bg-transparent focus-visible:ring-0 shadow-none text-[15px] h-11 placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium"
+              className="border-0 bg-transparent focus-visible:ring-0 shadow-none h-11 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
             />
           </div>
 

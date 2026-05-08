@@ -540,11 +540,11 @@ export default function ShiftScheduleManagement() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl flex items-center gap-3">
+          <h1 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "30px", fontWeight: "bold" }} className="flex items-center gap-3">
             <Clock className="h-8 w-8 text-blue-600" />
             Shift Schedule Management
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-1">
             Manage shift schedules and assignments for your department
           </p>
         </div>
@@ -700,15 +700,15 @@ export default function ShiftScheduleManagement() {
 
       <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'daily' | 'weekly')} className="space-y-6">
         <TabsList>
-          <TabsTrigger value="daily">Daily View</TabsTrigger>
-          <TabsTrigger value="weekly">Weekly View</TabsTrigger>
+          <TabsTrigger value="daily" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm" style={{ fontSize: "14px" }}>Daily View</TabsTrigger>
+          <TabsTrigger value="weekly" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm" style={{ color: "#000000", fontSize: "14px" }}>Weekly View</TabsTrigger>
         </TabsList>
 
         <TabsContent value="daily" className="space-y-6">
           {/* Date Selector */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
                 Select Date
               </CardTitle>
@@ -716,18 +716,18 @@ export default function ShiftScheduleManagement() {
             <CardContent>
               <div className="flex flex-wrap items-end gap-4">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="daily_date" className="text-sm font-medium text-slate-700 dark:text-slate-300">Select Date</Label>
+                  <Label htmlFor="daily_date" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Select Date</Label>
                   <Input
                     id="daily_date"
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
-                    className="w-[200px] h-11"
+                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-[200px] h-11"
                   />
                 </div>
                 {(user?.role === 'admin' || user?.role === 'hr') && (
                   <div className="flex flex-col gap-2">
-                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Department</Label>
+                    <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Department</Label>
                     <Select value={selectedDepartmentFilter} onValueChange={setSelectedDepartmentFilter}>
                       <SelectTrigger className="w-[180px] h-11">
                         <SelectValue placeholder="All Departments" />
@@ -742,18 +742,18 @@ export default function ShiftScheduleManagement() {
                   </div>
                 )}
                 <div className="flex flex-col gap-2 flex-1 min-w-[200px]">
-                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Search User</Label>
+                  <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Search User</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input
                       placeholder="Search by name, ID..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
-                      className="pl-10 h-11"
+                      style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="pl-10 h-11"
                     />
                   </div>
                 </div>
-                <Button onClick={loadSchedule} variant="outline" className="h-11 shadow-sm">
+                <Button onClick={loadSchedule} className="h-11 shadow-md bg-blue-600 hover:bg-blue-700 text-white border-transparent" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}>
                   Load Schedule
                 </Button>
               </div>
@@ -780,9 +780,9 @@ export default function ShiftScheduleManagement() {
           {filteredDailySchedule && (
             <Tabs defaultValue="schedule" className="space-y-4">
               <TabsList>
-                <TabsTrigger value="schedule">Shift Schedule</TabsTrigger>
-                <TabsTrigger value="leaves">On Leave</TabsTrigger>
-                <TabsTrigger value="unassigned">Unassigned Users</TabsTrigger>
+                <TabsTrigger value="schedule" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm" style={{ fontSize: "14px" }}>Shift Schedule</TabsTrigger>
+                <TabsTrigger value="leaves" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm" style={{ color: "#000000", fontSize: "14px" }}>On Leave</TabsTrigger>
+                <TabsTrigger value="unassigned" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm" style={{ color: "#000000", fontSize: "14px" }}>Unassigned Users</TabsTrigger>
               </TabsList>
 
               <TabsContent value="schedule" className="space-y-4">
@@ -791,22 +791,26 @@ export default function ShiftScheduleManagement() {
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div>
-                          <CardTitle className="flex items-center gap-2">
+                          <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="flex items-center gap-2">
                             <Clock className="h-5 w-5" />
                             {shiftData.shift.name}
                           </CardTitle>
-                          <CardDescription>
-                            {shiftData.shift.start_time} - {shiftData.shift.end_time}
-                            {shiftData.shift.description && ` • ${shiftData.shift.description}`}
+                          <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}>
+                            <span style={{ color: "#000000", fontSize: "12px" }}>{shiftData.shift.start_time} - {shiftData.shift.end_time}</span>
+                            {shiftData.shift.description && (
+                              <span style={{ color: "#000000", fontSize: "14px" }}>{` • ${shiftData.shift.description}`}</span>
+                            )}
                           </CardDescription>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge variant="secondary">
+                          <Badge variant="secondary" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>
                             {shiftData.total_assigned} assigned
                           </Badge>
                           <Button
                             size="sm"
                             variant="outline"
+                            className="bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-md"
+                            style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}
                             onClick={() => openAssignDialog(shiftData.shift.shift_id)}
                           >
                             <UserPlus className="h-4 w-4 mr-2" />
@@ -820,31 +824,32 @@ export default function ShiftScheduleManagement() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Employee</TableHead>
-                              <TableHead>Employee ID</TableHead>
-                              <TableHead>Designation</TableHead>
-                              <TableHead>Notes</TableHead>
-                              <TableHead>Actions</TableHead>
+                              <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>EMPLOYEE</TableHead>
+                              <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>EMPLOYEE ID</TableHead>
+                              <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>DESIGNATION</TableHead>
+                              <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>NOTES</TableHead>
+                              <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ACTIONS</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {shiftData.assignments.map((assignment) => (
                               <TableRow key={assignment.assignment_id}>
-                                <TableCell className="font-medium">
+                                <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                                   {assignment.user?.name || 'Unknown'}
                                 </TableCell>
-                                <TableCell>{assignment.user?.employee_id || 'N/A'}</TableCell>
-                                <TableCell>{assignment.user?.designation || 'N/A'}</TableCell>
-                                <TableCell>{assignment.notes || '-'}</TableCell>
+                                <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{assignment.user?.employee_id || 'N/A'}</TableCell>
+                                <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{assignment.user?.designation || 'N/A'}</TableCell>
+                                <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{assignment.notes || '-'}</TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-2">
                                     <Button
                                       size="sm"
-                                      variant="outline"
+                                      variant="ghost"
+                                      className="h-8 w-8 p-0 hover:bg-blue-100"
                                       onClick={() => openReassignDialog(assignment)}
+                                      title="Reassign"
                                     >
-                                      <ArrowRight className="h-3 w-3 mr-1" />
-                                      Reassign
+                                      <ArrowRight className="h-4 w-4 text-blue-600" />
                                     </Button>
                                     <Button
                                       size="sm"
@@ -886,8 +891,8 @@ export default function ShiftScheduleManagement() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Name</TableHead>
-                            <TableHead>Employee ID</TableHead>
-                            <TableHead>Designation</TableHead>
+                            <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>EMPLOYEE ID</TableHead>
+                            <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>DESIGNATION</TableHead>
                             <TableHead>Status</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -918,7 +923,7 @@ export default function ShiftScheduleManagement() {
               <TabsContent value="unassigned">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="flex items-center gap-2">
                       <Users className="h-5 w-5 text-blue-500" />
                       Unassigned Users
                     </CardTitle>
@@ -931,29 +936,30 @@ export default function ShiftScheduleManagement() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Employee ID</TableHead>
-                            <TableHead>Designation</TableHead>
-                            <TableHead>Actions</TableHead>
+                            <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>NAME</TableHead>
+                            <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>EMPLOYEE ID</TableHead>
+                            <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>DESIGNATION</TableHead>
+                            <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ACTIONS</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {filteredDailySchedule.unassigned_users.map((user) => (
                             <TableRow key={user.user_id}>
-                              <TableCell className="font-medium">{user.name}</TableCell>
-                              <TableCell>{user.employee_id || 'N/A'}</TableCell>
-                              <TableCell>{user.designation || 'N/A'}</TableCell>
+                              <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{user.name}</TableCell>
+                              <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{user.employee_id || 'N/A'}</TableCell>
+                              <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{user.designation || 'N/A'}</TableCell>
                               <TableCell>
                                 <Button
                                   size="sm"
-                                  variant="outline"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 hover:bg-blue-100"
                                   onClick={() => {
                                     setSelectedUsers([user.user_id]);
                                     setIsAssignDialogOpen(true);
                                   }}
+                                  title="Assign"
                                 >
-                                  <UserPlus className="h-3 w-3 mr-1" />
-                                  Assign
+                                  <UserPlus className="h-4 w-4 text-blue-600" />
                                 </Button>
                               </TableCell>
                             </TableRow>
@@ -975,18 +981,18 @@ export default function ShiftScheduleManagement() {
         <TabsContent value="weekly" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="flex items-center gap-2">
                 <CalendarDays className="h-5 w-5" />
                 Select Week Range
               </CardTitle>
-              <CardDescription>
+              <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                 Choose the start and end dates to generate a weekly calendar of shifts.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap items-end gap-4">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="week_start" className="text-sm font-medium text-slate-700 dark:text-slate-300">Week Start *</Label>
+                  <Label htmlFor="week_start" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Week Start *</Label>
                   <Input
                     id="week_start"
                     type="date"
@@ -1001,7 +1007,7 @@ export default function ShiftScheduleManagement() {
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="week_end" className="text-sm font-medium text-slate-700 dark:text-slate-300">Week End</Label>
+                  <Label htmlFor="week_end" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Week End</Label>
                   <Input
                     id="week_end"
                     type="date"
@@ -1011,7 +1017,7 @@ export default function ShiftScheduleManagement() {
                     className="w-[200px] h-11"
                   />
                 </div>
-                <Button onClick={loadWeeklySchedule} disabled={isWeeklyLoading} className="h-11 shadow-sm">
+                <Button onClick={loadWeeklySchedule} disabled={isWeeklyLoading} className="h-11 shadow-md bg-blue-600 hover:bg-blue-700 text-white border-transparent" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}>
                   {isWeeklyLoading ? 'Loading...' : 'Load Weekly Schedule'}
                 </Button>
               </div>
@@ -1031,11 +1037,11 @@ export default function ShiftScheduleManagement() {
             <div className="space-y-4">
               <Card className="border border-dashed">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="flex items-center gap-2">
                     <CalendarDays className="h-5 w-5" />
                     {formatDateIST(weeklySchedule.start_date, 'MMM dd, yyyy')} - {formatDateIST(weeklySchedule.end_date, 'MMM dd, yyyy')}
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                     {weeklySchedule.days.length} days of coverage • {weeklySchedule.department} department
                   </CardDescription>
                 </CardHeader>
@@ -1046,15 +1052,15 @@ export default function ShiftScheduleManagement() {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="flex items-center gap-2">
                           <Calendar className="h-5 w-5" />
                           {formatDateIST(day.date, 'EEEE, MMM dd')}
                         </CardTitle>
-                        <CardDescription>
+                        <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                           {day.shifts.length} shifts • {day.users_on_leave.length} on leave
                         </CardDescription>
                       </div>
-                      <Badge variant="secondary">
+                      <Badge variant="secondary" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>
                         {day.unassigned_users.length} unassigned
                       </Badge>
                     </div>
@@ -1064,25 +1070,25 @@ export default function ShiftScheduleManagement() {
                       <div key={`${day.date}-${shiftData.shift.shift_id}`} className="rounded-lg border p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-semibold">{shiftData.shift.name}</p>
-                            <p className="text-sm text-muted-foreground">
+                            <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>{shiftData.shift.name}</p>
+                            <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                               {shiftData.shift.start_time} - {shiftData.shift.end_time}
                               {shiftData.shift.description && ` • ${shiftData.shift.description}`}
                             </p>
                           </div>
-                          <Badge variant="outline">{shiftData.total_assigned} assigned</Badge>
+                          <Badge variant="outline" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>{shiftData.total_assigned} assigned</Badge>
                         </div>
                         {shiftData.assignments.length > 0 ? (
                           <div className="space-y-2">
                             {shiftData.assignments.map((assignment) => (
                               <div key={assignment.assignment_id} className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm">
                                 <div>
-                                  <p className="font-medium">{assignment.user?.name || 'Unknown'}</p>
-                                  <p className="text-muted-foreground text-xs">
+                                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{assignment.user?.name || 'Unknown'}</p>
+                                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>
                                     {assignment.user?.designation || 'N/A'}
                                   </p>
                                 </div>
-                                <span className="text-xs text-muted-foreground">{assignment.user?.employee_id || 'N/A'}</span>
+                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{assignment.user?.employee_id || 'N/A'}</span>
                               </div>
                             ))}
                           </div>
@@ -1122,7 +1128,7 @@ export default function ShiftScheduleManagement() {
                 View and manage all shifts for your department
               </CardDescription>
             </div>
-            <Button onClick={loadShifts} variant="outline" size="sm" disabled={isLoading} className="shadow-sm">
+            <Button onClick={loadShifts} className="shadow-md bg-blue-600 hover:bg-blue-700 text-white border-transparent" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }} size="sm" disabled={isLoading}>
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
@@ -1140,32 +1146,32 @@ export default function ShiftScheduleManagement() {
                 <Card key={shift.shift_id} className="border-l-4 border-l-blue-500 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] bg-gradient-to-br from-white to-blue-50/50 dark:from-gray-900 dark:to-blue-950/20">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg font-semibold">{shift.name}</CardTitle>
-                      <Badge variant={shift.is_active ? "default" : "secondary"} className="shadow-sm">
+                      <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>{shift.name}</CardTitle>
+                      <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "12px", color: shift.is_active ? "#16A34A" : "#DC2626", fontWeight: "bold" }}>
                         {shift.is_active ? "Active" : "Inactive"}
-                      </Badge>
+                      </span>
                     </div>
-                    <CardDescription className="text-sm">
+                    <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                       {shift.department || "Global Shift"}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm bg-blue-50 dark:bg-blue-950/30 px-3 py-2 rounded-lg">
+                      <div style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/30 px-3 py-2 rounded-lg">
                         <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <span className="font-semibold text-blue-700 dark:text-blue-300">{shift.start_time}</span>
+                        <span className="font-semibold">{shift.start_time}</span>
                         <span className="text-muted-foreground">-</span>
-                        <span className="font-semibold text-blue-700 dark:text-blue-300">{shift.end_time}</span>
+                        <span className="font-semibold">{shift.end_time}</span>
                       </div>
                       {shift.description && (
-                        <p className="text-sm text-muted-foreground italic">{shift.description}</p>
+                        <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="italic">{shift.description}</p>
                       )}
                       <div className="flex items-center gap-2 pt-2 border-t">
                         <Button
                           size="sm"
-                          variant="outline"
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-md"
+                          style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}
                           onClick={() => openEditDialog(shift)}
-                          className="flex-1 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
                         >
                           <Edit className="h-3 w-3 mr-1" />
                           Edit

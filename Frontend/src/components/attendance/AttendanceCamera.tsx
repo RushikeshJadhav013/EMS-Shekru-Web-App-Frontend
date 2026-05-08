@@ -103,7 +103,7 @@ const AttendanceCamera: React.FC<AttendanceCameraProps> = ({ onCapture, onCancel
   return (
     <Card className="p-6 max-w-2xl mx-auto">
       <div className="space-y-4">
-        <h3 className="text-[18px] font-bold text-center" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>{t.attendance.capturePhoto}</h3>
+        <h3 className="text-[14px] font-bold text-center" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>{t.attendance.capturePhoto}</h3>
         
         <div className="relative rounded-lg overflow-hidden bg-muted aspect-[4/3]">
           {isLoading && (

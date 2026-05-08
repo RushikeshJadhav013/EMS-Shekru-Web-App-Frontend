@@ -423,10 +423,10 @@ const HRDashboard: React.FC = () => {
             <Users className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight" style={{ color: '#000000' }}>
-              {t.common.welcome}, <span style={{ color: '#000000' }}>{user?.name}</span>
+            <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: '#000000' }}>
+              {t.common.welcome}, <span style={{ color: '#9333EA' }}>{user?.name}</span>
             </h1>
-            <p className="font-bold flex items-center gap-2 mt-1 text-sm" style={{ color: '#000000' }}>
+            <p className="font-medium flex items-center gap-2 mt-1 text-sm" style={{ color: '#000000' }}>
               <CalendarDays className="h-4 w-4" style={{ color: '#000000' }} />
               {formatIST(new Date(), 'EEEE, MMMM dd, yyyy | hh:mm a')}
             </p>
@@ -456,7 +456,7 @@ const HRDashboard: React.FC = () => {
       </div>
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
         {[
           {
             label: t.dashboard.totalEmployees,
@@ -507,31 +507,6 @@ const HRDashboard: React.FC = () => {
             borderColor: 'border-purple-300/80 dark:border-purple-700/50',
             hoverBorder: 'group-hover:border-purple-500 dark:group-hover:border-purple-400',
             path: '/hr/tasks'
-          },
-          {
-            label: 'New Joiners (Month)',
-            value: stats.newJoinersThisMonth,
-            sub: `${stats.exitingThisMonth} Exiting Soon`,
-            icon: UserPlus,
-            color: 'green',
-            bg: 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400',
-            cardBg: 'bg-green-50/40 dark:bg-green-950/10',
-            borderColor: 'border-green-300/80 dark:border-green-700/50',
-            hoverBorder: 'group-hover:border-green-500 dark:group-hover:border-green-400',
-            path: '/hr/employees'
-          },
-          {
-            label: 'Late Arrivals',
-            value: stats.lateArrivals,
-            sub: `${stats.openPositions} Open Positions`,
-            icon: Clock,
-            color: 'red',
-            bg: 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400',
-            cardBg: 'bg-red-50/40 dark:bg-red-950/10',
-            borderColor: 'border-red-300/80 dark:border-red-700/50',
-            hoverBorder: 'group-hover:border-red-500 dark:group-hover:border-red-400',
-            path: '/hr/attendance',
-            pathState: { filter: 'late' }
           }
         ].map((item, i) => (
           <Card
@@ -549,7 +524,7 @@ const HRDashboard: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-1">
-                <h3 className="text-xs font-bold uppercase tracking-widest leading-none" style={{ color: '#000000' }}>{item.label}</h3>
+                <h3 className="text-[12px] font-bold uppercase tracking-widest leading-none" style={{ color: '#000000' }}>{item.label}</h3>
                 <div className="text-2xl font-black tracking-tight" style={{ color: '#000000' }}>{item.value}</div>
                 <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
                   <div className={`h-1.5 w-1.5 rounded-full ${item.color === 'blue' ? 'bg-blue-500' :
@@ -557,7 +532,7 @@ const HRDashboard: React.FC = () => {
                       item.color === 'amber' ? 'bg-amber-500' :
                         'bg-purple-500'
                     }`} />
-                  <span className="text-xs font-bold uppercase" style={{ color: '#000000' }}>{item.sub}</span>
+                  <span className="text-[12px] font-bold uppercase" style={{ color: '#000000' }}>{item.sub}</span>
                 </div>
               </div>
             </CardContent>
@@ -566,31 +541,31 @@ const HRDashboard: React.FC = () => {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Recent Activities */}
-        <Card className="lg:col-span-2 border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base font-bold" style={{ color: '#000000' }}>
+        <Card className="lg:col-span-3 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+          <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
+            <CardTitle className="flex items-center gap-2 font-bold" style={{ color: '#000000' }}>
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
                 <Activity className="h-5 w-5 text-white" />
               </div>
-              {t.dashboard.recentActivities}
+              <span className="text-[16px] font-bold">{t.dashboard.recentActivities}</span>
             </CardTitle>
-            <p className="text-sm font-medium" style={{ color: '#000000' }}>Latest HR activities and requests</p>
+            <p className="text-[14px] font-medium" style={{ color: '#000000' }}>Latest HR activities and requests</p>
           </CardHeader>
           <CardContent className="space-y-3">{activityFeedContent}</CardContent>
         </Card>
 
         {/* WFH Requests */}
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base font-bold" style={{ color: '#000000' }}>
+        <Card className="lg:col-span-2 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+          <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
+            <CardTitle className="flex items-center gap-2 font-bold" style={{ color: '#000000' }}>
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                 <Home className="h-5 w-5 text-white" />
               </div>
-              WFH Requests
+              <span className="text-[16px] font-bold">WFH Requests</span>
             </CardTitle>
-            <p className="text-sm font-medium" style={{ color: '#000000' }}>Review pending work-from-home requests</p>
+            <p className="text-[14px] font-medium" style={{ color: '#000000' }}>Review pending work-from-home requests</p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-4 gap-2">

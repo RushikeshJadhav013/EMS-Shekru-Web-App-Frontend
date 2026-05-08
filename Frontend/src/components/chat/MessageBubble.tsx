@@ -157,38 +157,38 @@ const ImageLightbox: React.FC<LightboxProps> = ({ src, alt, onClose }) => {
     >
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/70 to-transparent z-10">
-        <span className="text-white/80 text-sm font-medium truncate max-w-[200px]">{fileNameFromUrl(src)}</span>
+        <span className="text-black/80 text-sm font-medium truncate max-w-[200px]">{fileNameFromUrl(src)}</span>
         <div className="flex items-center gap-2">
           <button
-            className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90"
+            className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-black transition-all active:scale-90"
             onClick={() => setScale(s => Math.min(s + 0.5, 4))}
             title="Zoom in"
           >
             <ZoomIn className="h-4 w-4" />
           </button>
           <button
-            className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90"
+            className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-black transition-all active:scale-90"
             onClick={handleCopy}
             title="Copy image"
           >
             <Copy className="h-4 w-4" />
           </button>
           <button
-            className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90"
+            className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-black transition-all active:scale-90"
             onClick={handleShare}
             title="Share"
           >
             <Share2 className="h-4 w-4" />
           </button>
           <button
-            className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90"
+            className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-black transition-all active:scale-90"
             onClick={handleDownload}
             title="Download"
           >
             <Download className="h-4 w-4" />
           </button>
           <button
-            className="h-9 w-9 rounded-full bg-white/10 hover:bg-red-500/60 flex items-center justify-center text-white transition-all active:scale-90"
+            className="h-9 w-9 rounded-full bg-white/10 hover:bg-red-500/60 flex items-center justify-center text-black transition-all active:scale-90"
             onClick={onClose}
             title="Close"
           >
@@ -209,7 +209,7 @@ const ImageLightbox: React.FC<LightboxProps> = ({ src, alt, onClose }) => {
 
       {/* Bottom hint */}
       <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-        <span className="text-white/40 text-xs">Click image to zoom · Click outside to close</span>
+        <span className="text-black/40 text-xs">Click image to zoom · Click outside to close</span>
       </div>
     </div>
   );
@@ -264,7 +264,7 @@ const MessageContent: React.FC<ContentProps> = ({ content, isOwn, isDark, onImag
           }}
         />
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none rounded-2xl bg-black/20">
-          <ZoomIn className="h-8 w-8 text-white drop-shadow-lg" />
+          <ZoomIn className="h-8 w-8 text-black drop-shadow-lg" />
         </div>
       </div>
     );
@@ -286,18 +286,18 @@ const MessageContent: React.FC<ContentProps> = ({ content, isOwn, isDark, onImag
           "h-12 w-12 rounded-xl flex items-center justify-center flex-shrink-0",
           isOwn ? "bg-white/20" : "bg-red-100"
         )}>
-          <FileText className={cn("h-6 w-6", isOwn ? "text-white" : "text-red-500")} />
+          <FileText className={cn("h-6 w-6", isOwn ? "text-black" : "text-red-500")} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className={cn("text-xs font-black truncate", isOwn ? "text-white" : isDark ? "text-slate-100" : "text-slate-800")}>{finalName}</p>
-          <p className={cn("text-[9px] mt-0.5 uppercase tracking-tighter font-black opacity-50", isOwn ? "text-white" : "text-slate-500")}>Document · {ext}</p>
+          <p className={cn("text-xs font-black truncate", isOwn ? "text-black" : isDark ? "text-slate-100" : "text-slate-800")}>{finalName}</p>
+          <p className={cn("text-[9px] mt-0.5 uppercase tracking-tighter font-black opacity-50", isOwn ? "text-black" : "text-slate-500")}>Document · {ext}</p>
           <div className="flex gap-4 mt-3">
             <button
               type="button"
               onClick={() => openInTab(finalUrl)}
               className={cn(
                 "text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 hover:scale-105 transition-all active:scale-95 cursor-pointer",
-                isOwn ? "text-white/90" : "text-blue-500"
+                isOwn ? "text-black/90" : "text-blue-500"
               )}
             >
               <ExternalLink className="h-3.5 w-3.5" /> View
@@ -307,7 +307,7 @@ const MessageContent: React.FC<ContentProps> = ({ content, isOwn, isDark, onImag
               onClick={() => downloadBlob(finalUrl, finalName)}
               className={cn(
                 "text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 hover:scale-105 transition-all active:scale-95 cursor-pointer",
-                isOwn ? "text-white/90" : "text-green-600"
+                isOwn ? "text-black/90" : "text-green-600"
               )}
             >
               <Download className="h-3.5 w-3.5" /> Save
@@ -327,7 +327,7 @@ const MessageContent: React.FC<ContentProps> = ({ content, isOwn, isDark, onImag
         rel="noreferrer"
         className={cn(
           "text-[14.5px] leading-snug font-medium tracking-tight underline break-all",
-          isOwn ? "text-white" : "text-blue-500"
+          isOwn ? "text-black" : "text-blue-500"
         )}
       >
         {finalUrl}
@@ -337,7 +337,7 @@ const MessageContent: React.FC<ContentProps> = ({ content, isOwn, isDark, onImag
 
   // Plain text
   return (
-    <div className="text-[14.5px] leading-snug font-medium tracking-tight pr-2 break-words whitespace-pre-wrap">
+    <div className="text-[14px] leading-snug font-medium tracking-tight pr-2 break-words whitespace-pre-wrap" style={{ color: "#000000" }}>
       {content}
     </div>
   );
@@ -365,7 +365,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     setShowActions(false);
   };
 
-  const formatTime = (timestamp: string) => formatTimeIST(timestamp, 'h:mm a') + ' IST';
+  const formatTime = (timestamp: string) => formatTimeIST(timestamp, 'h:mm a');
 
   const getUserAvatar = () => isOwn ? user?.profilePhoto || '' : message.senderAvatar || '';
 
@@ -396,7 +396,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         )}>
           <AvatarImage src={getUserAvatar()} />
           <AvatarFallback className={cn(
-            "text-white text-[10px] font-black uppercase",
+            "text-black text-[10px] font-black uppercase",
             isOwn ? "bg-green-600" : "bg-gradient-to-br from-indigo-500 to-purple-600"
           )}>
             {message.senderName?.charAt(0).toUpperCase() || '?'}
@@ -407,12 +407,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           {/* Sender label */}
           {!isOwn && (
             <div className="flex items-center gap-2 mb-1.5 ml-1">
-              <span className={cn("text-[10px] font-black uppercase tracking-widest", isDark ? "text-emerald-400" : "text-emerald-600")}>
+              <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>
                 {message.senderName}
               </span>
               {message.senderRole && (
                 <span className={cn(
-                  "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter border",
+                  "px-2 py-0.5 rounded-full text-[12px] font-black uppercase tracking-tighter border",
                   message.senderRole === 'admin' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
                     message.senderRole === 'hr' ? 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20' :
                       message.senderRole === 'manager' ? 'bg-violet-500/10 text-violet-500 border-violet-500/20' :
@@ -512,10 +512,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     ? 'bg-[#1a1b1e] border-lime-500/80'
                     : 'bg-slate-100 border-lime-500/80'
               )}>
-                <p className={cn("font-bold text-[10px] mb-0.5 leading-tight", isOwn ? "text-white/80" : "text-lime-500")}>
+                <p className={cn("font-bold text-[10px] mb-0.5 leading-tight", isOwn ? "text-black/80" : "text-lime-500")}>
                   @{replyMessage.senderId?.toString() === user?.id?.toString() ? 'You' : replyMessage.senderName}
                 </p>
-                <p className={cn("line-clamp-1 opacity-90 text-[11px] leading-snug", isOwn ? "text-white/90" : "text-slate-300")}>
+                <p className={cn("line-clamp-1 opacity-90 text-[11px] leading-snug", isOwn ? "text-black/90" : "text-slate-300")}>
                   {replyMessage.messageType === 'image' || isImageUrl(replyMessage.content.trim())
                     ? '📷 Photo'
                     : replyMessage.messageType === 'file' || isPdfUrl(replyMessage.content.trim())
@@ -534,16 +534,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   ? cn(
                     'rounded-[22px]',
                     isOwn
-                      ? 'bg-green-500 text-white rounded-tr-none shadow-green-500/20 p-1.5'
+                      ? 'bg-green-500 text-black rounded-tr-none shadow-green-500/20 p-1.5'
                       : isDark
                         ? 'bg-[#1e1f23] border border-slate-800 text-slate-100 rounded-tl-none p-1.5'
                         : 'bg-white border border-slate-100 text-slate-900 rounded-tl-none shadow-slate-200/50 p-1.5'
                   )
                   : isOwn
-                    ? 'bg-green-600 text-white rounded-[20px] rounded-tr-[4px] shadow-green-600/10'
+                    ? 'bg-green-100 text-black rounded-[20px] rounded-tr-[4px] shadow-green-600/10'
                     : isDark
-                      ? 'bg-[#1e1f23] border border-slate-800 text-slate-100 rounded-[20px] rounded-tl-[4px]'
-                      : 'bg-white border border-slate-100 text-slate-900 rounded-[20px] rounded-tl-[4px] shadow-slate-200/50'
+                      ? 'bg-[#dcf8c6] border border-slate-800 text-black rounded-[20px] rounded-tl-[4px]'
+                      : 'bg-[#dcf8c6] border border-slate-100 text-black rounded-[20px] rounded-tl-[4px] shadow-slate-200/50'
             )}>
               <div className="break-words">
                 {message.messageType === 'emoji' ? (
@@ -562,14 +562,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               {/* Timestamp + read receipt — hidden for media (shown below separately) */}
               {!isMediaMsg && (
                 <div className={cn("flex items-center gap-1.5 mt-1.5 h-4 justify-end select-none", message.messageType === 'emoji' && "hidden")}>
-                  <span className={cn('text-[9px] font-bold tracking-tight opacity-70 uppercase', isOwn ? 'text-white/90' : 'text-slate-400')}>
+                  <span style={{ color: "#000000", fontSize: "12px" }}>
                     {formatTime(message.timestamp)}
                   </span>
                   {isOwn && (
                     <div className="flex items-center">
                       {message.isRead
-                        ? <CheckCheck className="h-3.5 w-3.5 text-white" />
-                        : <Check className="h-3.5 w-3.5 text-white/70" />}
+                        ? <CheckCheck className="h-3.5 w-3.5 text-black" />
+                        : <Check className="h-3.5 w-3.5 text-black/70" />}
                     </div>
                   )}
                 </div>
@@ -579,7 +579,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             {/* Timestamp below for media messages */}
             {isMediaMsg && (
               <div className={cn("flex items-center gap-1.5 mt-1 h-4 select-none", isOwn ? "justify-end" : "justify-start", "px-1")}>
-                <span className={cn('text-[9px] font-bold tracking-tight opacity-70 uppercase', isOwn ? 'text-green-600' : 'text-slate-400')}>
+                <span style={{ color: "#000000", fontSize: "12px" }}>
                   {formatTime(message.timestamp)}
                 </span>
                 {isOwn && (

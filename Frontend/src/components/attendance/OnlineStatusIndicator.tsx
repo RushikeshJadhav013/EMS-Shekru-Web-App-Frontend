@@ -129,7 +129,8 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
 
         {showLabel && (
           <span
-            className={`text-[12px] font-medium text-black dark:text-white`}
+            className={`text-[14px] font-bold`}
+            style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
           >
             {isOnline ? 'Online' : 'Offline'}
           </span>
@@ -145,8 +146,8 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
                 <User className="h-5 w-5 text-white" />
               </div>
               <div>
-                <div className="text-lg font-semibold">{userName}'s Online Status</div>
-                <div className="text-sm text-muted-foreground">Today's activity timeline</div>
+                <div className="text-[16px] font-bold" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>{userName}'s Online Status</div>
+                <div className="text-[12px] font-medium" style={{ color: '#000000', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Today's activity timeline</div>
               </div>
             </DialogTitle>
           </DialogHeader>

@@ -196,7 +196,7 @@ const ChatList: React.FC = () => {
             <div className="flex items-center justify-center h-9 w-9 rounded-xl bg-green-500 shadow-lg shadow-green-500/20">
               <MessageCircle className="h-4.5 w-4.5 text-white" />
             </div>
-            <h1 className={cn("text-lg font-black tracking-tight", themeClasses.text)}>Messages</h1>
+            <h1 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>Messages</h1>
           </div>
           <Button
             variant="ghost"
@@ -212,7 +212,7 @@ const ChatList: React.FC = () => {
           <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 transition-colors",
             searchTerm ? "text-green-500" : themeClasses.textSecondary)} />
           <Input
-            placeholder="Search team..."
+            placeholder="Search team..." style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className={cn(
@@ -236,13 +236,14 @@ const ChatList: React.FC = () => {
                 key={type.id}
                 onClick={() => setFilter(type.id as any)}
                 className={cn(
-                  "flex items-center gap-2 px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 border flex-shrink-0 animate-in fade-in slide-in-from-left-2",
+                  "flex items-center gap-2 px-3.5 py-2 rounded-xl uppercase tracking-wider transition-all duration-300 border flex-shrink-0 animate-in fade-in slide-in-from-left-2",
                   isSelected
                     ? "bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/20"
                     : isDark
                       ? "bg-slate-800/40 border-slate-700/50 text-slate-400 hover:border-slate-600 hover:bg-slate-800/60"
                       : "bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-gray-50"
                 )}
+                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: isSelected ? "#FFFFFF" : "#000000", fontSize: "14px", fontWeight: "bold" }}
               >
                 <Icon className={cn("h-3 w-3", isSelected ? "text-white" : "text-green-500")} />
                 <span>{type.label}</span>
@@ -311,21 +312,17 @@ const ChatList: React.FC = () => {
 
                 <div className="flex-1 ml-3 min-w-0">
                   <div className="flex items-center justify-between mb-0.5">
-                    <h3 className={cn(
-                      "font-bold truncate text-[13px] tracking-tight transition-colors",
-                      isActive ? "text-green-500" : themeClasses.text
-                    )}>
+                    <h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: isActive ? "#22C55E" : "#000000", fontSize: "14px", fontWeight: "bold" }} className="truncate tracking-tight transition-colors">
                       {getChatName(chat)}
                     </h3>
                     {chat.lastMessage && (
-                      <span className={cn("text-[10px] font-medium opacity-50", themeClasses.textSecondary)}>
+                      <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>
                         {formatChatTimestampIST(chat.lastMessage.timestamp)}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center justify-between">
-                    <p className={cn("text-[11px] truncate font-medium max-w-[200px] lg:max-w-[280px]",
-                      isActive ? "text-slate-500" : themeClasses.textSecondary)}>
+                    <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="truncate font-medium max-w-[200px] lg:max-w-[280px]">
                       {getLastMessagePreview(chat)}
                     </p>
                     {chat.unreadCount > 0 && (

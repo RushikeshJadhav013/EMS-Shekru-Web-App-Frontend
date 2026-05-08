@@ -60,7 +60,7 @@ export function Pagination({
 
   return (
     <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 ${className}`}>
-      <div className="flex items-center gap-4 text-sm text-black dark:text-white">
+      <div className="flex items-center gap-4 text-sm font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
         {showEntriesInfo && (
           <span>
             Showing {startItem} to {endItem} of {totalItems} entries
@@ -112,7 +112,7 @@ export function Pagination({
           {getVisiblePages().map((page, index) => (
             <React.Fragment key={index}>
               {page === '...' ? (
-                <span className="px-2 py-1 text-sm text-black dark:text-white">...</span>
+                <span className="px-2 py-1 text-sm font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>...</span>
               ) : (
                 <Button
                   variant={currentPage === page ? "default" : "outline"}

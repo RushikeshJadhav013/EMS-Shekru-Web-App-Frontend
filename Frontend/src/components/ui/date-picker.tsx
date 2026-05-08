@@ -106,7 +106,7 @@ export function DatePicker({
         className={cn(
           "w-full justify-start text-left font-normal h-11 bg-white dark:bg-gray-950 border-2 border-solid border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 hover:border-blue-400 dark:hover:border-blue-500 hover:text-slate-900 dark:hover:text-slate-100 transition-none",
           !date && "text-muted-foreground hover:text-muted-foreground",
-          date && "text-foreground hover:text-foreground",
+          date && "text-black dark:text-white font-bold hover:text-black dark:hover:text-white",
           className,
         )}
         disabled={disabled}

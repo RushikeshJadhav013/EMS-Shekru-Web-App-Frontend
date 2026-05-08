@@ -823,13 +823,13 @@ const AddEditSalary = () => {
                                 navigate(-1);
                             }
                         }}
-                        className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all active:scale-95"
+                        className="hover:scale-105 active:scale-95 transition-all border-none shadow-lg shadow-orange-500/20" style={{ backgroundColor: "#F97316", fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", color: "#FFFFFF" }}
                     >
                         <ArrowLeft className="h-4 w-4 mr-2" /> Back
                     </Button>
                     <div>
                         <div className="flex items-center gap-3">
-                            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                            <h1 className="tracking-tight" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "30px", fontWeight: "bold" }}>
                                 {existingSalary ? 'Salary Structure' : 'Create Salary Structure'}
                             </h1>
                             {existingSalary && (
@@ -838,7 +838,7 @@ const AddEditSalary = () => {
                                 </Badge>
                             )}
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">Define compensation, benefits, and statutory details.</p>
+                        <p className="mt-1" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Define compensation, benefits, and statutory details.</p>
                     </div>
                 </div>
             </div>
@@ -990,7 +990,7 @@ const AddEditSalary = () => {
                                 }} className="w-full">
                                     {userRole === 'admin' && (
                                         <TabsList className="grid w-full grid-cols-2 mb-6 bg-slate-100/50 dark:bg-slate-800/50">
-                                            <TabsTrigger value="auto" className="data-[state=active]:bg-blue-100 dark:data-[state=active]:bg-blue-900/30 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-300">
+                                            <TabsTrigger value="auto" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
                                                 <Calculator className="h-4 w-4 mr-2" /> Guided Mode
                                             </TabsTrigger>
                                             <TabsTrigger value="manual" className="data-[state=active]:bg-orange-100 dark:data-[state=active]:bg-orange-900/30 data-[state=active]:text-orange-700 dark:data-[state=active]:text-orange-300">
@@ -1003,23 +1003,23 @@ const AddEditSalary = () => {
                                         {/* Section 1: Core Compensation - AUTO */}
                                         <Card className="border-0 shadow-lg bg-blue-50/30 dark:bg-blue-950/10">
                                             <CardHeader className="bg-white/60 dark:bg-slate-800/60">
-                                                <CardTitle className="flex items-center gap-2">
+                                                <CardTitle className="flex items-center gap-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
                                                     <Calculator className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                                     Guided Salary Setup
                                                 </CardTitle>
-                                                <CardDescription>Automated compensation structuring based on annual CTC and statutory norms.</CardDescription>
+                                                <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Automated compensation structuring based on annual CTC and statutory norms.</CardDescription>
                                             </CardHeader>
                                             <CardContent className="space-y-6">
                                                 <div className="grid grid-cols-2 gap-6">
                                                     <div className="space-y-2">
-                                                        <Label className="flex items-center gap-2 font-semibold">
+                                                        <Label className="flex items-center gap-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                                                             Annual CTC (₹) <span className="text-red-500">*</span>
                                                         </Label>
                                                         <div className="relative">
                                                             <span className="absolute left-3 top-2.5 text-muted-foreground font-medium">₹</span>
                                                             <Input
                                                                 type="text"
-                                                                className="pl-8 h-10 bg-white dark:bg-slate-800"
+                                                                className="pl-8 h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}
                                                                 placeholder="e.g. 12 00 000"
                                                                 disabled={false}
                                                                 {...form.register("annualCtc")}
@@ -1029,10 +1029,10 @@ const AddEditSalary = () => {
                                                         {form.formState.errors.annualCtc && <p className="text-red-500 text-xs mt-1">{form.formState.errors.annualCtc.message}</p>}
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="font-semibold">Working Days (Month)</Label>
+                                                        <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Working Days (Month)</Label>
                                                         <Input
                                                             type="text"
-                                                            className="h-10 bg-white dark:bg-slate-800"
+                                                            className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}
                                                             placeholder="e.g. 22"
                                                             disabled={false}
                                                             {...form.register("workingDays")}
@@ -1044,13 +1044,13 @@ const AddEditSalary = () => {
                                                 {/* PF Setup Row */}
                                                 <div className="grid grid-cols-2 gap-6">
                                                     <div className="space-y-2">
-                                                        <Label className="font-semibold">PF (Provident Fund)</Label>
+                                                        <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PF (Provident Fund)</Label>
                                                         <Controller
                                                             name="pfType"
                                                             control={form.control}
                                                             render={({ field }) => (
                                                                 <Select onValueChange={field.onChange} value={field.value}>
-                                                                    <SelectTrigger className="h-10 bg-white dark:bg-slate-800">
+                                                                    <SelectTrigger className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                                                                         <SelectValue placeholder="Select PF Type" />
                                                                     </SelectTrigger>
                                                                     <SelectContent>
@@ -1063,7 +1063,7 @@ const AddEditSalary = () => {
                                                         />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="font-semibold">
+                                                        <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                                                             {watchPfType === 'percentage' ? 'PF Percentage (%)' : watchPfType === 'fixed' ? 'PF Amount (₹)' : 'PF Value'}
                                                         </Label>
                                                         <div className="relative">
@@ -1072,7 +1072,7 @@ const AddEditSalary = () => {
                                                             )}
                                                             <Input
                                                                 type="text"
-                                                                className={`h-10 bg-white dark:bg-slate-800 ${watchPfType === 'fixed' ? 'pl-8' : ''}`}
+                                                                className={`h-10 bg-white dark:bg-slate-800 ${watchPfType === 'fixed' ? 'pl-8' : ''}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}
                                                                 placeholder={watchPfType === 'percentage' ? 'e.g. 12' : watchPfType === 'fixed' ? 'e.g. 1800' : '0'}
                                                                 disabled={watchPfType === 'none'}
                                                                 {...form.register("pfValue")}
@@ -1094,19 +1094,19 @@ const AddEditSalary = () => {
                                                 </div>
 
                                                 <div className="p-5 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg space-y-5 border border-amber-100/50 dark:border-amber-900/30">
-                                                    <div className="flex items-center gap-2 text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                                                    <div className="flex items-center gap-2 uppercase tracking-wider" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                                                         <TrendingUp className="h-3 w-3" />
                                                         Variable Pay Setup
                                                     </div>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                         <div className="space-y-2">
-                                                            <Label className="text-xs uppercase">Type</Label>
+                                                            <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Type</Label>
                                                             <Controller
                                                                 name="variablePayType"
                                                                 control={form.control}
                                                                 render={({ field }) => (
                                                                     <Select onValueChange={field.onChange} value={field.value} disabled={false}>
-                                                                        <SelectTrigger className="h-10 bg-white dark:bg-slate-800">
+                                                                        <SelectTrigger className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                                                                             <SelectValue placeholder="Select Type" />
                                                                         </SelectTrigger>
                                                                         <SelectContent>
@@ -1119,7 +1119,7 @@ const AddEditSalary = () => {
                                                             />
                                                         </div>
                                                         <div className="space-y-2">
-                                                            <Label className="text-xs uppercase">
+                                                            <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                                                                 {watchVarType === 'percentage' ? 'Percentage (%)' : watchVarType === 'fixed' ? 'Amount (₹)' : 'Value'}
                                                             </Label>
                                                             <div className="relative">
@@ -1128,7 +1128,7 @@ const AddEditSalary = () => {
                                                                 )}
                                                                 <Input
                                                                     type="text"
-                                                                    className={`h-10 bg-white dark:bg-slate-800 ${watchVarType === 'fixed' ? 'pl-8' : ''}`}
+                                                                    className={`h-10 bg-white dark:bg-slate-800 ${watchVarType === 'fixed' ? 'pl-8' : ''}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}
                                                                     placeholder={watchVarType === 'percentage' ? "e.g. 10" : "e.g. 50 000"}
                                                                     disabled={watchVarType === 'none'}
                                                                     {...form.register("variablePayValue")}
@@ -1195,74 +1195,73 @@ const AddEditSalary = () => {
                                         {/* Section 1: Core Compensation - MANUAL */}
                                         <Card className="border-0 shadow-lg bg-orange-50/30 dark:bg-orange-950/10">
                                             <CardHeader className="bg-white/60 dark:bg-slate-800/60">
-                                                <CardTitle className="flex items-center gap-2">
+                                                <CardTitle className="flex items-center gap-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
                                                     <FileText className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                                                     Manual Compensation Entry
                                                     <Badge variant="destructive" className="ml-2">Admin Only</Badge>
                                                 </CardTitle>
-                                                <CardDescription>Provide exact annual values for each salary component.</CardDescription>
+                                                <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Provide exact annual values for each salary component.</CardDescription>
                                             </CardHeader>
                                             <CardContent className="space-y-6">
                                                 <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border border-amber-100/50 dark:border-amber-900/30">
-                                                    <p className="text-xs text-amber-800 dark:text-amber-300">
-                                                        <strong>Note:</strong> Enter exact annual values for each salary component. The system will automatically calculate total CTC and monthly breakdowns.
+                                                    <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+                                                        <strong style={{ color: "#1E40AF" }}>Note:</strong> Enter exact annual values for each salary component. The system will automatically calculate total CTC and monthly breakdowns.
                                                     </p>
                                                 </div>
 
                                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs uppercase text-muted-foreground">Basic Annual (₹)</Label>
+                                                        <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Basic Annual (₹)</Label>
                                                         <Input
                                                             type="text"
-                                                            className="h-10"
-                                                            {...form.register("basicAnnual")}
+                                                            className="h-10" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("basicAnnual")}
                                                             onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
                                                         />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs uppercase text-muted-foreground">HRA Annual (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("hraAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>HRA Annual (₹)</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("hraAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs uppercase text-muted-foreground">Special Allowance (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("specialAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Special Allowance (₹)</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("specialAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs uppercase text-muted-foreground">Conveyance (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("conveyanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Conveyance (₹)</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("conveyanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs uppercase text-muted-foreground">Medical (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("medicalAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Medical (₹)</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("medicalAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs uppercase text-muted-foreground">Other Allowance (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("otherAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Other Allowance (₹)</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("otherAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs uppercase text-muted-foreground">Professional Tax (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("professionalTaxAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Professional Tax (₹)</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("professionalTaxAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs uppercase text-muted-foreground">Working Days</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("workingDays")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Working Days</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("workingDays")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs uppercase text-muted-foreground">Other Taxes (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" {...form.register("otherDeductionAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Other Taxes (₹)</Label>
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("otherDeductionAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
 
                                                     <div className="space-y-2 lg:col-span-2 p-4 bg-green-50/50 dark:bg-green-950/20 rounded-lg border border-green-100/50 dark:border-green-900/30">
-                                                        <Label className="text-xs uppercase text-green-700 dark:text-green-400">Provident Fund (PF)</Label>
+                                                        <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Provident Fund (PF)</Label>
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div className="space-y-2">
-                                                                <Label className="text-xs uppercase text-muted-foreground">Type</Label>
+                                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Type</Label>
                                                                 <Controller
                                                                     name="pfType"
                                                                     control={form.control}
                                                                     render={({ field }) => (
                                                                         <Select onValueChange={field.onChange} value={field.value}>
-                                                                            <SelectTrigger className="h-10 bg-white dark:bg-slate-800">
+                                                                            <SelectTrigger className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                                                                                 <SelectValue placeholder="Select PF Type" />
                                                                             </SelectTrigger>
                                                                             <SelectContent>
@@ -1275,16 +1274,14 @@ const AddEditSalary = () => {
                                                                 />
                                                             </div>
                                                             <div className="space-y-2">
-                                                                <Label className="text-xs uppercase text-muted-foreground">
-                                                                    {watchPfType === 'percentage' ? 'PF Percentage (%)' : watchPfType === 'fixed' ? 'PF Amount (₹/month)' : 'PF Value'}
-                                                                </Label>
+                                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>{watchPfType === 'percentage' ? 'PF Percentage (%)' : watchPfType === 'fixed' ? 'PF Amount (₹/month)' : 'PF Value'}</Label>
                                                                 <div className="relative">
                                                                     {watchPfType === 'fixed' && (
                                                                         <span className="absolute left-3 top-2.5 text-muted-foreground">₹</span>
                                                                     )}
                                                                     <Input
                                                                         type="text"
-                                                                        className={`h-10 bg-white dark:bg-slate-800 ${watchPfType === 'fixed' ? 'pl-8' : ''}`}
+                                                                        className={`h-10 bg-white dark:bg-slate-800 ${watchPfType === 'fixed' ? 'pl-8' : ''}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}
                                                                         placeholder={watchPfType === 'percentage' ? 'e.g. 12' : watchPfType === 'fixed' ? 'e.g. 1800' : '0'}
                                                                         disabled={watchPfType === 'none'}
                                                                         {...form.register("pfValue")}
@@ -1306,10 +1303,10 @@ const AddEditSalary = () => {
                                                         </div>
                                                     </div>
                                                     <div className="space-y-2 lg:col-span-2 p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-100/50 dark:border-blue-900/30">
-                                                        <Label className="text-xs uppercase text-blue-700 dark:text-blue-400">Variable Pay / Performance Bonus</Label>
+                                                        <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Variable Pay / Performance Bonus</Label>
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div className="space-y-2">
-                                                                <Label className="text-xs uppercase text-muted-foreground">Type</Label>
+                                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Type</Label>
                                                                 <Controller
                                                                     name="variablePayType"
                                                                     control={form.control}
@@ -1319,7 +1316,7 @@ const AddEditSalary = () => {
                                                                             value={field.value}
                                                                             disabled={false}
                                                                         >
-                                                                            <SelectTrigger className="h-10 bg-white dark:bg-slate-800">
+                                                                            <SelectTrigger className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                                                                                 <SelectValue placeholder="Select type" />
                                                                             </SelectTrigger>
                                                                             <SelectContent>
@@ -1376,42 +1373,42 @@ const AddEditSalary = () => {
                                 {/* Bank & Statutory Details Card (Shared) */}
                                 <Card className="border-0 shadow-lg bg-slate-50/30 dark:bg-slate-900/10 mb-6">
                                     <CardHeader className="bg-white/60 dark:bg-slate-800/60">
-                                        <CardTitle className="flex items-center gap-2 text-base">
+                                        <CardTitle className="flex items-center gap-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
                                             <DollarSign className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                                             Bank &amp; Statutory Details
                                         </CardTitle>
-                                        <CardDescription>Optional — employee bank account, PF registration, and payment mode.</CardDescription>
+                                        <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Optional — employee bank account, PF registration, and payment mode.</CardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-5">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                             <div className="space-y-2">
-                                                <Label className="text-xs uppercase text-muted-foreground">UAN Number</Label>
-                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" placeholder="e.g. 975610472162" {...form.register("uanNumber")} />
+                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>UAN Number</Label>
+                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. 975610472162" {...form.register("uanNumber")} />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs uppercase text-muted-foreground">PF Number</Label>
-                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" placeholder="e.g. MH/PUN/9673924/168/1039756" {...form.register("pfNo")} />
+                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PF Number</Label>
+                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. MH/PUN/9673924/168/1039756" {...form.register("pfNo")} />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs uppercase text-muted-foreground">Bank Name</Label>
-                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" placeholder="e.g. SBI" {...form.register("bankName")} />
+                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Bank Name</Label>
+                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. SBI" {...form.register("bankName")} />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs uppercase text-muted-foreground">Bank Account Number</Label>
-                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" placeholder="e.g. 910383452746" {...form.register("bankAccount")} />
+                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Bank Account Number</Label>
+                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. 910383452746" {...form.register("bankAccount")} />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs uppercase text-muted-foreground">IFSC Code</Label>
-                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" placeholder="e.g. SBIN0002638" {...form.register("ifscCode")} />
+                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>IFSC Code</Label>
+                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. SBIN0002638" {...form.register("ifscCode")} />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs uppercase text-muted-foreground">Payment Mode</Label>
+                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Payment Mode</Label>
                                                 <Controller
                                                     name="paymentMode"
                                                     control={form.control}
                                                     render={({ field }) => (
                                                         <Select onValueChange={field.onChange} value={field.value}>
-                                                            <SelectTrigger className="h-10 bg-white dark:bg-slate-800">
+                                                            <SelectTrigger className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                                                                 <SelectValue placeholder="Select payment mode" />
                                                             </SelectTrigger>
                                                             <SelectContent>
@@ -1434,11 +1431,11 @@ const AddEditSalary = () => {
                                         <CardTitle className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <Calculator className="h-5 w-5 text-green-600 dark:text-green-400" />
-                                                Estimated Payroll Breakdown
+                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>Estimated Payroll Breakdown</span>
                                             </div>
                                             {isCalculating && <Loader2 className="h-4 w-4 animate-spin" />}
                                         </CardTitle>
-                                        <CardDescription>Detailed earnings and statutory deductions based on CTC.</CardDescription>
+                                        <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Detailed earnings and statutory deductions based on CTC.</CardDescription>
                                     </CardHeader>
                                     <CardContent>
                                         {!previewData ? (
@@ -1450,77 +1447,77 @@ const AddEditSalary = () => {
                                             <div className="space-y-6">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                                     <div className="space-y-4 p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-100/50 dark:border-blue-900/30">
-                                                        <h4 className="text-sm font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-400">Monthly Earnings</h4>
+                                                        <h4 className="uppercase tracking-wider" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>MONTHLY EARNING</h4>
                                                         <div className="space-y-3">
                                                             <div className="flex justify-between items-center py-2 border-b border-blue-100/50 dark:border-blue-900/30">
-                                                                <span className="text-sm">Basic Salary</span>
-                                                                <span className="font-semibold">{formatCurrency(previewData.monthlyBasic)}</span>
+                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Basic Salary</span>
+                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>{formatCurrency(previewData.monthlyBasic)}</span>
                                                             </div>
                                                             <div className="flex justify-between items-center py-2 border-b border-blue-100/50 dark:border-blue-900/30">
-                                                                <span className="text-sm">HRA</span>
-                                                                <span className="font-semibold">{formatCurrency(previewData.hra)}</span>
+                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>HRA</span>
+                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>{formatCurrency(previewData.hra)}</span>
                                                             </div>
                                                             <div className="flex justify-between items-center py-2 border-b border-blue-100/50 dark:border-blue-900/30">
-                                                                <span className="text-sm">Special Allowance</span>
-                                                                <span className="font-semibold">{formatCurrency(previewData.specialAllowance)}</span>
+                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Special Allowance</span>
+                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>{formatCurrency(previewData.specialAllowance)}</span>
                                                             </div>
                                                             {previewData.medicalAllowance > 0 && (
                                                                 <div className="flex justify-between items-center py-2 border-b border-blue-100/50 dark:border-blue-900/30">
-                                                                    <span className="text-sm">Medical Allowance</span>
+                                                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Medical Allowance</span>
                                                                     <span className="font-semibold">{formatCurrency(previewData.medicalAllowance)}</span>
                                                                 </div>
                                                             )}
                                                             {previewData.conveyanceAllowance > 0 && (
                                                                 <div className="flex justify-between items-center py-2 border-b border-blue-100/50 dark:border-blue-900/30">
-                                                                    <span className="text-sm">Conveyance Allowance</span>
+                                                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Conveyance Allowance</span>
                                                                     <span className="font-semibold">{formatCurrency(previewData.conveyanceAllowance)}</span>
                                                                 </div>
                                                             )}
                                                             {previewData.otherAllowance > 0 && (
                                                                 <div className="flex justify-between items-center py-2 border-b border-blue-100/50 dark:border-blue-900/30">
-                                                                    <span className="text-sm">Other Allowance</span>
+                                                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Other Allowance</span>
                                                                     <span className="font-semibold">{formatCurrency(previewData.otherAllowance)}</span>
                                                                 </div>
                                                             )}
                                                             <div className="flex justify-between items-center py-2 mt-4 bg-blue-100/50 dark:bg-blue-900/30 px-2 rounded font-semibold">
-                                                                <span>Monthly Gross</span>
-                                                                <span>{formatCurrency(previewData.monthlyGross)}</span>
+                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Monthly Gross</span>
+                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>{formatCurrency(previewData.monthlyGross)}</span>
                                                             </div>
                                                         </div>
                                                     </div>
 
                                                     <div className="space-y-4 p-4 bg-rose-50/50 dark:bg-rose-950/20 rounded-lg border border-rose-100/50 dark:border-rose-900/30">
-                                                        <h4 className="text-sm font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-400">Statutory Deductions</h4>
+                                                        <h4 className="uppercase tracking-wider" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>STATUTARY DEDUCTION</h4>
                                                         <div className="space-y-3">
                                                             <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
                                                                 <span className="text-sm text-muted-foreground line-through">EPF (Employer)</span>
                                                                 <span className="text-xs italic text-muted-foreground">Incl. in CTC</span>
                                                             </div>
                                                             <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
-                                                                <span className="text-sm">EPF (Employee)</span>
-                                                                <span className="font-semibold text-destructive">-{formatCurrency(previewData.pfEmployee)}</span>
+                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>EPF (Employee)</span>
+                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>-{formatCurrency(previewData.pfEmployee)}</span>
                                                             </div>
                                                             <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
-                                                                <span className="text-sm">Professional Tax</span>
-                                                                <span className="font-semibold text-destructive">-{formatCurrency(previewData.professionalTax)}</span>
+                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Professional Tax</span>
+                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>-{formatCurrency(previewData.professionalTax)}</span>
                                                             </div>
                                                             {previewData.otherDeduction > 0 && (
                                                                 <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
-                                                                    <span className="text-sm">Other Taxes</span>
+                                                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Other Taxes</span>
                                                                     <span className="font-semibold text-destructive">-{formatCurrency(previewData.otherDeduction)}</span>
                                                                 </div>
                                                             )}
                                                             <div className="flex justify-between items-center py-2 mt-4 bg-rose-100/50 dark:bg-rose-900/30 px-2 rounded font-semibold">
-                                                                <span>Total Deductions</span>
-                                                                <span className="text-destructive">-{formatCurrency(previewData.monthlyDeductions)}</span>
+                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Total Deductions</span>
+                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>-{formatCurrency(previewData.monthlyDeductions)}</span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border border-amber-100/50 dark:border-amber-900/30 flex items-start gap-3">
                                                     <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                                                    <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-                                                        Values are estimates based on standard Indian payroll regulations. Employer Provident Fund (EPF) of {formatCurrency(previewData.pfEmployer)} is included in the Annual CTC but deducted before calculating Monthly Gross.
+                                                    <p className="leading-relaxed" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#A16207", fontSize: "14px" }}>
+                                                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000" }}>Values are estimates based on standard Indian payroll regulations.</span> Employer Provident Fund (EPF) of {formatCurrency(previewData.pfEmployer)} is included in the Annual CTC but deducted before calculating Monthly Gross.
                                                     </p>
                                                 </div>
                                             </div>
@@ -1534,39 +1531,39 @@ const AddEditSalary = () => {
                                 <Card className="border-0 shadow-lg bg-indigo-50/30 dark:bg-indigo-950/10">
                                     <CardHeader className="bg-white/60 dark:bg-slate-800/60">
                                         <div className="flex items-center justify-between mb-4">
-                                            <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">Live Preview</Badge>
-                                            <span className="text-xs text-muted-foreground">
+                                            <Badge variant="outline" className="rounded-full" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#2563EB", fontSize: "12px", border: "1px solid #BFDBFE", backgroundColor: "#EFF6FF" }}>Live Preview</Badge>
+                                            <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>
                                                 {new Date().toLocaleDateString('default', { month: 'short', day: 'numeric' })}
                                             </span>
                                         </div>
                                         <div className="mb-4">
                                             <p className="text-sm text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
                                                 <DollarSign className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                                                Estimated In-Hand Pay
+                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Estimated In-Hand Pay</span>
                                             </p>
                                             <div className="flex items-baseline gap-2">
-                                                <h2 className="text-3xl font-bold tracking-tight text-indigo-700 dark:text-indigo-300">
+                                                <h2 className="tracking-tight" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }}>
                                                     {previewData ? formatCurrency(previewData.monthlyInHand) : '₹0'}
                                                 </h2>
-                                                <span className="text-sm text-muted-foreground">per month</span>
+                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>per month</span>
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg border border-indigo-100/50 dark:border-indigo-900/30">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <TrendingUp className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                                                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Annual CTC</p>
+                                                    <p className="uppercase tracking-wider" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Annual CTC</p>
                                                 </div>
-                                                <p className="text-lg font-semibold">
+                                                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
                                                     {previewData ? formatCurrency(previewData.annualCtc) : formatCurrency(parseNumber(watchCtc))}
                                                 </p>
                                             </div>
                                             <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg border border-indigo-100/50 dark:border-indigo-900/30">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <Calculator className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                                                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Monthly Gross</p>
+                                                    <p className="uppercase tracking-wider" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Monthly Gross</p>
                                                 </div>
-                                                <p className="text-lg font-semibold">
+                                                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
                                                     {previewData ? formatCurrency(previewData.monthlyGross) : '₹0'}
                                                 </p>
                                             </div>
@@ -1579,16 +1576,16 @@ const AddEditSalary = () => {
                                             <div className="flex items-center gap-4 p-4 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-lg border border-emerald-100/50 dark:border-emerald-900/30">
                                                 <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                                                 <div>
-                                                    <p className="font-semibold text-sm text-emerald-800 dark:text-emerald-300">Structure Validation Passed</p>
-                                                    <p className="text-xs text-emerald-700/80 dark:text-emerald-400/80 mt-1">All salary components are compliant</p>
+                                                    <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Structure Validation Passed</p>
+                                                    <p className="mt-1" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>All salary components are compliant</p>
                                                 </div>
                                             </div>
 
                                             <div className="flex items-center gap-4 p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-100/50 dark:border-blue-900/30">
                                                 <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                                 <div>
-                                                    <p className="font-semibold text-sm text-blue-800 dark:text-blue-300">Effective Date</p>
-                                                    <p className="text-xs text-blue-700/80 dark:text-blue-400/80 mt-1">Starting {new Date().toLocaleDateString('default', { month: 'long', year: 'numeric' })}</p>
+                                                    <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Effective Date</p>
+                                                    <p className="mt-1" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>Starting {new Date().toLocaleDateString('default', { month: 'long', year: 'numeric' })}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -1621,7 +1618,7 @@ const AddEditSalary = () => {
 
                                         {/* Footer Note */}
                                         <div className="text-center">
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                                            <p className="leading-relaxed" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>
                                                 By saving, you confirm this salary structure complies with internal policies and tax regulations.
                                             </p>
                                         </div>

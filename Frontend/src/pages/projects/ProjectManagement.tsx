@@ -192,7 +192,7 @@ const TaskFormSection = ({
                       className="h-10 w-10 hover:bg-red-50 hover:text-red-600 border border-slate-100 dark:border-slate-800 rounded-lg flex-shrink-0"
                       onClick={() => removeTaskRow(index)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-5 w-5" />
                     </Button>
                   )}
                 </div>
@@ -236,7 +236,7 @@ const TaskFormSection = ({
                         onCheckedChange={() =>
                           toggleTaskAssignee(index, emp.user_id)
                         }
-                        className="h-4 w-4 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
+                        className="h-5 w-5 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
                       />
                       <div className="h-6 w-6 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 shadow-sm">
                         {emp.name?.[0]?.toUpperCase()}
@@ -259,11 +259,11 @@ const TaskFormSection = ({
       </div>
       <Button
         variant="outline"
-        size="sm"
+        
         onClick={addTaskRow}
         className="gap-2 w-full border-dashed py-5 border-slate-300 dark:border-slate-600 text-slate-500 hover:text-violet-600 hover:border-violet-300 hover:bg-violet-50 transition-all rounded-xl"
       >
-        <Plus className="h-4 w-4" /> Add Another Task Row
+        <Plus className="h-5 w-5" /> Add Another Task Row
       </Button>
     </div>
   );
@@ -579,7 +579,7 @@ function TaskRow({
             onClick={() => onReassign(task)}
             title="Reassign & Update"
           >
-            <RefreshCcw className="h-3.5 w-3.5" />
+            <RefreshCcw className="h-5 w-5" />
           </Button>
         )}
       </TableCell>
@@ -641,23 +641,24 @@ function ProjectCard({
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-bold text-slate-900 dark:text-white text-base truncate">
+                <h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} className="truncate">
                   {project.name}
                 </h3>
                 <Badge
-                  className={`capitalize border-0 text-[10px] px-2 py-0.5 ${statusColor(project.status)}`}
+                  className={`capitalize border-0 text-[12px] px-2 py-0.5 ${statusColor(project.status)}`}
                 >
                   {statusLabel(project.status)}
                 </Badge>
               </div>
               {project.description && (
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                <p style={{ color: "#000000", fontSize: "12px" }} className="mt-1 line-clamp-2">
                   {project.description}
                 </p>
               )}
               {/* Dates */}
               {(project.start_date || project.end_date) && (
-                <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
+                <div className="flex items-center gap-3 mt-2"
+                  style={{ color: "#000000", fontSize: "12px" }}>
                   <span className="flex items-center gap-1">
                     <CalendarDays className="h-3 w-3" />
                     {project.start_date
@@ -674,7 +675,7 @@ function ProjectCard({
               {(project.person_in_charge_name || project.pic_name) && (
                 <div className="flex items-center gap-1.5 mt-2 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-md w-fit border border-indigo-100 dark:border-indigo-800">
                   <User className="h-3 w-3 text-indigo-500" />
-                  <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
+                  <span style={{ color: "#000000", fontSize: "12px", fontWeight: "bold" }} className="uppercase tracking-tighter">
                     PIC: {project.person_in_charge_name || project.pic_name}
                   </span>
                 </div>
@@ -694,7 +695,7 @@ function ProjectCard({
                   )
                 }
               >
-                <SelectTrigger className="h-7 w-32 text-xs border-slate-200 dark:border-slate-700 font-medium">
+                <SelectTrigger className="h-7 w-32 border-slate-200 dark:border-slate-700 font-medium" style={{ fontSize: "12px" }}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent side="bottom" className="shadow-md">
@@ -741,7 +742,7 @@ function ProjectCard({
                 title="View project details"
                 onClick={onView}
               >
-                <Eye className="h-4 w-4" />
+                <Eye className="h-5 w-5" />
               </Button>
 
               {canManageProjects && (
@@ -753,7 +754,7 @@ function ProjectCard({
                     title="Manage Team Members"
                     onClick={onManageMembers}
                   >
-                    <UserPlus className="h-4 w-4" />
+                    <UserPlus className="h-5 w-5" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -762,7 +763,7 @@ function ProjectCard({
                     title="Remove Employee"
                     onClick={onRemoveMembers}
                   >
-                    <UserMinus className="h-4 w-4" />
+                    <UserMinus className="h-5 w-5" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -771,7 +772,7 @@ function ProjectCard({
                     title="Assign Tasks"
                     onClick={onAssignTasks}
                   >
-                    <ClipboardList className="h-4 w-4" />
+                    <ClipboardList className="h-5 w-5" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -780,7 +781,7 @@ function ProjectCard({
                     title="Edit Project"
                     onClick={onEdit}
                   >
-                    <Edit className="h-4 w-4" />
+                    <Edit className="h-5 w-5" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -791,9 +792,9 @@ function ProjectCard({
                     onClick={onDelete}
                   >
                     {isDeleting === project.project_id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-5 w-5" />
                     )}
                   </Button>
                   <Button
@@ -813,9 +814,9 @@ function ProjectCard({
                     }
                   >
                     {project.is_active === false ? (
-                      <CheckCircle2 className="h-4 w-4" />
+                      <CheckCircle2 className="h-5 w-5" />
                     ) : (
-                      <XCircle className="h-4 w-4" />
+                      <XCircle className="h-5 w-5" />
                     )}
                   </Button>
                 </>
@@ -827,8 +828,8 @@ function ProjectCard({
           <div className="flex items-center gap-3 mt-3 flex-wrap">
             {/* Members */}
             <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
-              <Users className="h-3.5 w-3.5 text-slate-500" />
-              <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+              <Users className="h-5 w-5 text-slate-500" />
+              <span style={{ color: "#000000", fontSize: "12px", fontWeight: "bold" }}>
                 {project.member_count ?? members.length ?? 0} Member
                 {(project.member_count ?? members.length ?? 0) !== 1 ? "s" : ""}
               </span>
@@ -838,7 +839,7 @@ function ProjectCard({
             {tasks.length > 0 && (
               <>
                 <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-full">
-                  <Clock className="h-3.5 w-3.5 text-amber-500" />
+                  <Clock className="h-5 w-5 text-amber-500" />
                   <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
                     {
                       tasks.filter(
@@ -849,14 +850,14 @@ function ProjectCard({
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-full">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                   <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
                     {completedCount} / {project.task_count ?? tasks.length} Done
                   </span>
                 </div>
                 {cancelledCount > 0 && (
                   <div className="flex items-center gap-1.5 bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-full">
-                    <XCircle className="h-3.5 w-3.5 text-red-400" />
+                    <XCircle className="h-5 w-5 text-red-400" />
                     <span className="text-xs font-medium text-red-500 dark:text-red-400">
                       {cancelledCount} Cancelled
                     </span>
@@ -867,7 +868,7 @@ function ProjectCard({
             {/* Meetings */}
             {(project.meetings?.length ?? 0) > 0 && (
               <div className="flex items-center gap-1.5 bg-rose-50 dark:bg-rose-900/20 px-2.5 py-1 rounded-full">
-                <Video className="h-3.5 w-3.5 text-rose-500" />
+                <Video className="h-5 w-5 text-rose-500" />
                 <span className="text-xs font-medium text-rose-600 dark:text-rose-400">
                   {project.meetings?.length} Meeting
                   {(project.meetings?.length ?? 0) !== 1 ? "s" : ""}
@@ -888,9 +889,9 @@ function ProjectCard({
                 title={expanded ? "Hide quick view" : "Show quick view"}
               >
                 {expanded ? (
-                  <ChevronUp className="h-4 w-4" />
+                  <ChevronUp className="h-5 w-5" />
                 ) : (
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-5 w-5" />
                 )}
               </button>
             )}
@@ -898,9 +899,10 @@ function ProjectCard({
             {/* Full View Details Link (Always visible for all profiles) */}
             <button
               onClick={onView}
-              className="ml-auto flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 font-bold hover:underline decoration-violet-300 underline-offset-4"
+              className="ml-auto flex items-center gap-1.5 font-bold hover:underline decoration-violet-300 underline-offset-4"
+              style={{ color: "#2563EB", fontSize: "12px" }}
             >
-              <Eye className="h-3.5 w-3.5" />
+              <Eye className="h-5 w-5" />
               View details
             </button>
           </div>
@@ -913,7 +915,7 @@ function ProjectCard({
             {members.length > 0 && (
               <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800">
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Users className="h-3.5 w-3.5" /> Team Members
+                  <Users className="h-5 w-5" /> Team Members
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {members.map((m) => (
@@ -949,7 +951,7 @@ function ProjectCard({
             {tasks.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-5 pt-3 mb-2 flex items-center gap-1.5">
-                  <ClipboardList className="h-3.5 w-3.5" /> Tasks
+                  <ClipboardList className="h-5 w-5" /> Tasks
                 </p>
                 <div className="overflow-x-auto">
                   <Table>
@@ -1874,7 +1876,7 @@ export default function ProjectManagement() {
   // Render
   // ─────────────────────────────────────────
   return (
-    <div className="space-y-6 min-h-screen">
+    <div className="w-full space-y-6">
       {/* ── Header Card ── */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-md border border-slate-200 dark:border-slate-700">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -1883,10 +1885,10 @@ export default function ProjectManagement() {
               <FolderKanban className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <h1 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "30px", fontWeight: "bold" }}>
                 Project Management
               </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+              <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-0.5">
                 Build teams, assign tasks, and track progress.
               </p>
             </div>
@@ -1899,7 +1901,7 @@ export default function ProjectManagement() {
                 setIsCreateDialogOpen(true);
               }}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-5 w-5" />
               <span className="hidden sm:inline">New Project</span>
               <span className="sm:hidden">New</span>
             </Button>
@@ -1911,12 +1913,13 @@ export default function ProjectManagement() {
             <Input
               placeholder="Search projects..."
               className="pl-9 rounded-xl"
+              style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[160px] rounded-xl h-10">
+            <SelectTrigger className="w-[160px] rounded-xl h-10" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
@@ -1992,10 +1995,10 @@ export default function ProjectManagement() {
                 <s.icon className="h-5 w-5 text-white" />
               </div>
               <div className="min-w-0">
-                <p className="text-2xl font-bold text-slate-900 dark:text-white truncate">
+                <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="truncate">
                   {s.value}
                 </p>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase truncate">
+                <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase truncate">
                   {s.label}
                 </p>
               </div>
@@ -2022,7 +2025,7 @@ export default function ProjectManagement() {
                 setIsCreateDialogOpen(true);
               }}
             >
-              <Plus className="h-4 w-4" /> Create your first project
+              <Plus className="h-5 w-5" /> Create your first project
             </Button>
           )}
         </div>
@@ -2106,7 +2109,7 @@ export default function ProjectManagement() {
                     {statusLabel(selectedProject?.status || "")}
                   </Badge>
                   <span className="text-white/60 text-xs flex items-center gap-1">
-                    <CalendarDays className="h-3.5 w-3.5" />
+                    <CalendarDays className="h-5 w-5" />
                     {selectedProject?.start_date
                       ? new Date(
                         selectedProject.start_date,
@@ -2240,7 +2243,7 @@ export default function ProjectManagement() {
                               }}
                               title="Remove member"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-5 w-5" />
                             </Button>
                           )}
                         </div>
@@ -2363,13 +2366,13 @@ export default function ProjectManagement() {
                               )}
                               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
                                 <span className="flex items-center gap-1.5 font-medium">
-                                  <CalendarDays className="h-3.5 w-3.5" />
+                                  <CalendarDays className="h-5 w-5" />
                                   {new Date(
                                     meeting.start_time,
                                   ).toLocaleDateString()}
                                 </span>
                                 <span className="flex items-center gap-1.5 font-medium">
-                                  <Clock className="h-3.5 w-3.5" />
+                                  <Clock className="h-5 w-5" />
                                   {new Date(
                                     meeting.start_time,
                                   ).toLocaleTimeString([], {
@@ -2383,13 +2386,13 @@ export default function ProjectManagement() {
                               {meeting.meeting_url && (
                                 <Button
                                   variant="outline"
-                                  size="sm"
+                                  
                                   className="h-8 rounded-full text-xs font-bold border-rose-200 text-rose-600 hover:bg-rose-50 gap-1.5"
                                   onClick={() =>
                                     window.open(meeting.meeting_url, "_blank")
                                   }
                                 >
-                                  <Video className="h-3.5 w-3.5" /> Join Meeting
+                                  <Video className="h-5 w-5" /> Join Meeting
                                 </Button>
                               )}
                             </div>
@@ -2822,7 +2825,7 @@ export default function ProjectManagement() {
                   disabled={selectedMemberIds.length === 0}
                   className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
                 >
-                  <UserPlus className="h-4 w-4" /> Add Selected Members (
+                  <UserPlus className="h-5 w-5" /> Add Selected Members (
                   {selectedMemberIds.length})
                 </Button>
               </div>
@@ -2857,12 +2860,12 @@ export default function ProjectManagement() {
                       </div>
                       <Button
                         variant="ghost"
-                        size="sm"
+                        
                         className="h-8 px-2 hover:bg-red-50 hover:text-red-600 gap-1 rounded-lg"
                         onClick={() => handleRemoveMember(m.user_id)}
                         title="Remove from project"
                       >
-                        <UserMinus className="h-3.5 w-3.5" />
+                        <UserMinus className="h-5 w-5" />
                         <span className="text-xs font-medium">Remove</span>
                       </Button>
                     </div>
@@ -2931,7 +2934,7 @@ export default function ProjectManagement() {
                       </div>
                       <Button
                         variant="ghost"
-                        size="sm"
+                        
                         className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl"
                         onClick={() => handleRemoveMember(m.user_id)}
                       >
@@ -3091,27 +3094,27 @@ export default function ProjectManagement() {
                 <SelectContent className="rounded-xl shadow-xl">
                   <SelectItem value="Pending">
                     <span className="flex items-center gap-2 text-amber-600 font-medium">
-                      <Clock className="h-4 w-4" /> Pending
+                      <Clock className="h-5 w-5" /> Pending
                     </span>
                   </SelectItem>
                   <SelectItem value="In Progress">
                     <span className="flex items-center gap-2 text-blue-600 font-medium">
-                      <Clock className="h-4 w-4" /> In Progress
+                      <Clock className="h-5 w-5" /> In Progress
                     </span>
                   </SelectItem>
                   <SelectItem value="Completed">
                     <span className="flex items-center gap-2 text-emerald-600 font-medium">
-                      <CheckCircle2 className="h-4 w-4" /> Completed
+                      <CheckCircle2 className="h-5 w-5" /> Completed
                     </span>
                   </SelectItem>
                   <SelectItem value="Archived">
                     <span className="flex items-center gap-2 text-slate-600 font-medium">
-                      <FolderKanban className="h-4 w-4" /> Archived
+                      <FolderKanban className="h-5 w-5" /> Archived
                     </span>
                   </SelectItem>
                   <SelectItem value="Cancelled">
                     <span className="flex items-center gap-2 text-red-500 font-medium">
-                      <XCircle className="h-4 w-4" /> Cancelled
+                      <XCircle className="h-5 w-5" /> Cancelled
                     </span>
                   </SelectItem>
                 </SelectContent>
@@ -3132,7 +3135,7 @@ export default function ProjectManagement() {
                 className="rounded-xl h-11 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-8 font-bold shadow-lg flex-1"
               >
                 {isUpdating ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
                 ) : null}
                 Update Task
               </Button>

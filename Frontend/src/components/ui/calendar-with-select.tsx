@@ -96,13 +96,13 @@ export function CalendarWithSelect({
     table: "w-full border-collapse",
     head_row: "grid grid-cols-7 gap-1 mb-1",
     head_cell:
-      "h-7 flex items-center justify-center text-[11px] font-medium tracking-wide text-slate-400 uppercase",
+      "h-7 flex items-center justify-center text-[14px] font-black tracking-wide text-black dark:text-white uppercase",
     row: "grid grid-cols-7 gap-1",
     cell:
-      "relative h-9 flex items-center justify-center text-sm focus-within:z-20",
+      "relative h-9 flex items-center justify-center text-[14px] focus-within:z-20",
     day: cn(
-      "h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors",
-      "text-slate-700 dark:text-slate-100",
+      "h-8 w-8 rounded-full flex items-center justify-center text-[14px] font-black transition-colors",
+      "text-black dark:text-white",
       "hover:bg-slate-100 dark:hover:bg-slate-800",
       classNames?.day
     ),
@@ -142,10 +142,10 @@ export function CalendarWithSelect({
         </Button>
 
         <div className="flex flex-col items-center">
-          <span className="text-xs font-medium text-slate-400">
+          <span className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
             {format(headerDate, "EEEE")}
           </span>
-          <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+          <span className="text-[14px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
             {format(headerDate, "MMMM d yyyy")}
           </span>
         </div>

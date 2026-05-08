@@ -937,7 +937,7 @@ const AttendancePage: React.FC = () => {
 
   if (showCamera) {
     return (
-      <div className="space-y-6">
+      <div className="w-full space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold" style={{ color: '#000000' }}>
             {isCheckingIn ? t.attendance.checkIn : t.attendance.checkOut}
@@ -978,22 +978,26 @@ const AttendancePage: React.FC = () => {
       </div>
 
       {/* Tabs for Self Attendance and WFH */}
-      <div className="flex justify-center w-full">
+      <div className="flex justify-center w-full mb-8">
         <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'self' | 'wfh')} className="w-full sm:w-auto">
-          <TabsList className="grid grid-cols-2 h-14 w-full sm:w-[500px] bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm">
+          <TabsList className="grid grid-cols-2 h-14 w-full sm:w-[600px] bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-1.5 gap-2 shadow-sm">
             <TabsTrigger
               value="self"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+              className="flex items-center justify-center gap-2 text-sm font-medium transition-all duration-300 rounded-lg
+                data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:font-bold
+                data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
             >
-              <User className="h-4 w-4 mr-2" />
-              Self Attendance
+              <User className="h-5 w-5" />
+              <span>Self Attendance</span>
             </TabsTrigger>
             <TabsTrigger
               value="wfh"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700 transition-all duration-300 rounded-md"
+              className="flex items-center justify-center gap-2 text-sm font-medium transition-all duration-300 rounded-lg
+                data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:font-bold
+                data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
             >
-              <Home className="h-4 w-4 mr-2" />
-              Apply WFH
+              <Home className="h-5 w-5" />
+              <span>Apply WFH</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
