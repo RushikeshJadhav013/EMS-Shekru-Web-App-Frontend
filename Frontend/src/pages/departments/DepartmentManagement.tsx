@@ -535,7 +535,7 @@ export default function BranchManagement() {
   return (
     <div className="w-full space-y-6 pb-24">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg p-6 shadow-md border border-slate-200 dark:border-slate-700">
+      <div className="bg-white dark:bg-slate-900 rounded-lg p-6 shadow-md border border-[#858282]">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 rounded-lg bg-blue-600 dark:bg-blue-500 flex items-center justify-center">
@@ -603,64 +603,64 @@ export default function BranchManagement() {
             </Dialog>
           </div>
         </div>
+      </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-          <Card className="border border-slate-200 dark:border-slate-700">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-medium">
-                    Total Departments
-                  </p>
-                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="mt-1">{departments.length}</p>
-                </div>
-                <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                  <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="border-2 border-[#858282] shadow-lg bg-white dark:bg-slate-900 rounded-[2rem]">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }} className="uppercase">
+                  Total Departments
+                </p>
+                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="mt-1">{departments.length}</p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card className="border border-slate-200 dark:border-slate-700">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-medium">
-                    Active Departments
-                  </p>
-                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="mt-1">{activeBranchs}</p>
-                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="mt-1">
-                    {departments.length > 0 ? Math.round((activeBranchs / departments.length) * 100) : 0}% active
-                  </p>
-                </div>
-                <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                  <ChevronRight className="h-5 w-5 text-green-600 dark:text-green-400" />
-                </div>
+        <Card className="border-2 border-[#858282] shadow-lg bg-white dark:bg-slate-900 rounded-[2rem]">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }} className="uppercase">
+                  Active Departments
+                </p>
+                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="mt-1">{activeBranchs}</p>
+                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="mt-1">
+                  {departments.length > 0 ? Math.round((activeBranchs / departments.length) * 100) : 0}% active
+                </p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                <ChevronRight className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card className="border border-slate-200 dark:border-slate-700">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-medium">
-                    Total Employees
-                  </p>
-                  <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="mt-1">{totalEmployees}</p>
-                </div>
-                <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
-                  <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                </div>
+        <Card className="border-2 border-[#858282] shadow-lg bg-white dark:bg-slate-900 rounded-[2rem]">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }} className="uppercase">
+                  Total Employees
+                </p>
+                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="mt-1">{totalEmployees}</p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Main Management Card */}
-      <Card className="border border-slate-200 dark:border-slate-700 shadow-md">
+      <Card className="border-2 border-[#858282] shadow-lg rounded-[2rem] overflow-hidden bg-white dark:bg-slate-900">
         <CardHeader className="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
           <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
             <div>
@@ -864,7 +864,7 @@ export default function BranchManagement() {
             </Table>
           </div>
 
-          <div className="mt-6">
+          <div className="px-6 py-5 border-t border-slate-200 dark:border-slate-800">
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}

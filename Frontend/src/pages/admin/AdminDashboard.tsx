@@ -262,7 +262,7 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       {/* Header */}
-      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 rounded-2xl bg-white border-2 border-[#5e5b5b] shadow-xl mt-1">
+      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 rounded-2xl bg-white border border-[#858282] shadow-xl mt-1">
         <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-blue-100/20 rounded-full blur-3xl -z-10" />
 
         <div className="flex items-center gap-4">
@@ -281,15 +281,17 @@ const AdminDashboard: React.FC = () => {
         </div>
         <Button
           onClick={() => navigate('/admin/employees/', { state: { highlight: true } })}
-          className="h-12 px-8 rounded-xl bg-black hover:bg-slate-900 text-white shadow-xl border-2 border-black transition-all duration-300 hover:-translate-y-1 text-xs font-black uppercase tracking-widest gap-3"
+          className="h-12 px-8 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white shadow-xl shadow-blue-200 border-2 border-[#2563EB] transition-all duration-300 hover:-translate-y-1 text-xs font-bold uppercase tracking-widest gap-3"
+          style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
         >
           <UserPlus className="h-4 w-4" />
           {t.employee.addEmployee}
         </Button>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Quick Stats Grid Wrapper */}
+      <div className="border border-[#858282] p-4 rounded-2xl bg-white/50 mb-8 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           {
             title: t.dashboard.totalEmployees,
@@ -342,7 +344,7 @@ const AdminDashboard: React.FC = () => {
         ].map((item, index) => (
           <Card
             key={index}
-            className={`group relative overflow-hidden bg-white border-2 border-black shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer rounded-2xl`}
+            className={`group relative overflow-hidden bg-white border border-[#858282] shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer rounded-2xl`}
             onClick={() => navigate(item.path)}
           >
             <CardHeader className="flex flex-row items-center justify-between pb-2 p-4">
@@ -366,11 +368,12 @@ const AdminDashboard: React.FC = () => {
           </Card>
         ))}
       </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Department Performance */}
-        <Card className="lg:col-span-3 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
-          <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
+        <Card className="lg:col-span-3 border border-[#858282] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+          <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-sm">
@@ -397,7 +400,7 @@ const AdminDashboard: React.FC = () => {
               {branchPerformance.map((dept) => (
                 <div
                   key={dept.name}
-                  className="group relative p-4 rounded-xl border-2 border-[#5e5b5b]/20 hover:border-black hover:bg-slate-50 transition-all duration-300 cursor-pointer"
+                  className="group relative p-4 rounded-xl border border-slate-200 hover:border-black hover:bg-slate-50 transition-all duration-300 cursor-pointer"
                   onClick={() => navigate('/admin/reports?tab=branch')}
                 >
                   <div className="flex justify-between items-center mb-3">
@@ -462,8 +465,8 @@ const AdminDashboard: React.FC = () => {
         </Card>
 
         {/* Recent Activities */}
-        <Card className="lg:col-span-2 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
-          <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
+        <Card className="lg:col-span-2 border border-[#858282] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+          <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm">
                 <Activity className="h-4.5 w-4.5" />
@@ -480,7 +483,7 @@ const AdminDashboard: React.FC = () => {
                   {recentActivities
                     .slice((activitiesPage - 1) * ACTIVITIES_PER_PAGE, activitiesPage * ACTIVITIES_PER_PAGE)
                     .map((activity) => (
-                      <div key={activity.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50 transition-all duration-300 border-2 border-transparent hover:border-[#5e5b5b]/30">
+                      <div key={activity.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50 transition-all duration-300 border border-transparent hover:border-slate-200">
                         <div className={`h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 border ${activity.type === 'check-in' ? 'bg-emerald-50/80 border-emerald-100/50 text-emerald-600 shadow-sm' :
                           activity.type === 'leave' ? 'bg-amber-50/80 border-amber-100/50 text-amber-600 shadow-sm' :
                             'bg-blue-50/80 border-blue-100/50 text-blue-600 shadow-sm'

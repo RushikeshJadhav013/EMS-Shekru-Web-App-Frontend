@@ -1,0 +1,1 @@
+const fs = require("fs"); const p = "src/pages/salary/SalaryDetails.tsx"; let c = fs.readFileSync(p, "utf8"); c = c.replace(/Download\r?\n\s*<\/>\r?\n\s*<\/DialogFooter>/, "Download\n                                </>\n                            )}\n                        </Button>\n                    </DialogFooter>"); fs.writeFileSync(p, c);

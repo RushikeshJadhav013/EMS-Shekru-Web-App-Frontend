@@ -104,16 +104,16 @@ export function DatePicker({
       <Button
         variant="ghost"
         className={cn(
-          "w-full justify-start text-left font-normal h-11 bg-white dark:bg-gray-950 border-2 border-solid border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 hover:border-blue-400 dark:hover:border-blue-500 hover:text-slate-900 dark:hover:text-slate-100 transition-none",
-          !date && "text-muted-foreground hover:text-muted-foreground",
-          date && "text-black dark:text-white font-bold hover:text-black dark:hover:text-white",
+          "w-full justify-between items-center text-left font-normal h-10 bg-white dark:bg-gray-950 border border-slate-300 rounded-xl shadow-md shadow-slate-100/50 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all",
+          !date && "text-slate-400 italic",
+          date && "text-black dark:text-white font-semibold",
           className,
         )}
         disabled={disabled}
         onClick={() => setOpen(true)}
       >
-        <CalendarIcon className="mr-2 h-4 w-4" />
-        {date ? format(date, "dd MMM yyyy") : <span>{placeholder}</span>}
+        {date ? format(date, "dd-MM-yyyy") : <span>{placeholder}</span>}
+        <CalendarIcon className="h-4 w-4 text-slate-400" />
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>

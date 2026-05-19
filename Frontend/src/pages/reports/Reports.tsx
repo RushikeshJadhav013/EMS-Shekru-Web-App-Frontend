@@ -495,7 +495,7 @@ export default function Reports() {
       {!['admin', 'hr', 'manager', 'team_lead', 'employee'].includes(user?.role || '') && <V2Overlay fallbackPath="/dashboard" />}
       <div className="w-full space-y-6 pb-20">
         {/* Header Section - aligned with other modern pages */}
-        <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-sm mt-1">
+        <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-[#858282] dark:border-[#858282] shadow-sm mt-1">
           <div className="absolute top-0 right-0 -mr-16 -mt-16 h-40 w-40 bg-blue-500/5 rounded-full blur-3xl" />
           <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-40 w-40 bg-indigo-500/5 rounded-full blur-3xl" />
 
@@ -605,7 +605,7 @@ export default function Reports() {
           </TabsList>
 
           <TabsContent value="performance" className="mt-0 outline-none">
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border-2 border-[#858282] shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div>
                   <h2 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="tracking-tight">Individual Performance</h2>
@@ -916,7 +916,7 @@ export default function Reports() {
           </TabsContent>
 
           <TabsContent value="department" className="mt-0 outline-none">
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border-2 border-[#858282] shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div>
                   <h2 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="tracking-tight">Department Overview</h2>
@@ -1021,7 +1021,7 @@ export default function Reports() {
               <div className="space-y-8 pb-10">
                 {/* Quick Stats */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border-2 border-[#858282] shadow-sm">
                     <div className="flex items-center gap-2.5 mb-3">
                       <div className="p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-md">
                         <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -1032,7 +1032,7 @@ export default function Reports() {
                     <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest mt-1">Company Average</p>
                   </div>
 
-                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border-2 border-[#858282] shadow-sm">
                     <div className="flex items-center gap-2.5 mb-3">
                       <div className="p-1.5 bg-purple-50 dark:bg-purple-900/30 rounded-md">
                         <Target className="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -1043,7 +1043,7 @@ export default function Reports() {
                     <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest mt-1">Completion Count</p>
                   </div>
 
-                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border-2 border-[#858282] shadow-sm">
                     <div className="flex items-center gap-2.5 mb-3">
                       <div className="p-1.5 bg-amber-50 dark:bg-amber-900/30 rounded-md">
                         <Award className="h-5 w-5 text-amber-600 dark:text-amber-400" />
@@ -1054,7 +1054,7 @@ export default function Reports() {
                     <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest mt-1">{executiveSummary?.bestDepartment?.score || 0}% Efficiency</p>
                   </div>
 
-                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border-2 border-[#858282] shadow-sm">
                     <div className="flex items-center gap-2.5 mb-3">
                       <div className="p-1.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-md">
                         <Users className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />

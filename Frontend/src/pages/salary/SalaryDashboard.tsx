@@ -233,7 +233,7 @@ const SalaryDashboard = () => {
 
     return (
         <div className="p-6 space-y-6 animate-in fade-in duration-500">
-            <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border shadow-sm mt-1">
+            <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border border-[#858282] shadow-sm mt-1">
                 <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-blue-500/5 rounded-full blur-3xl" />
                 <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
 
@@ -259,7 +259,7 @@ const SalaryDashboard = () => {
                             size="lg"
                             onClick={() => navigate(`/salary/employee/${user?.id}`)}
                             className="rounded-xl px-6 h-12 transition-all active:scale-95"
-                            style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#FFFFFF', backgroundColor: '#2563EB', fontSize: '14px' }}
+                            style={{ color: '#FFFFFF', backgroundColor: '#2563EB', fontSize: '14px' }}
                         >
                             <DollarSign className="h-4 w-4 mr-2" />
                             My Salary
@@ -607,3 +607,4 @@ const SalaryDashboard = () => {
 };
 
 export default SalaryDashboard;
+

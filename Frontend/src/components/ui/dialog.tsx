@@ -36,14 +36,14 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-0 !border-2 !border-[#858282] !bg-[#f4f5f6] p-0 shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] !rounded-[1.5rem] overflow-hidden [&>*:not(.dialog-header):not(.dialog-footer):not(button)]:p-6",
         className,
       )}
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-accent data-[state=open]:text-muted-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
-        <X className="h-4 w-4" />
+      <DialogPrimitive.Close className="absolute right-5 top-5 rounded-full p-1 text-slate-800 hover:bg-slate-200/50 transition-colors z-50">
+        <X className="h-5 w-5" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
@@ -52,33 +52,85 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)} {...props} />
+  <div className={cn("dialog-header flex flex-col space-y-1 text-left !bg-[#bae6fd] !text-slate-900 !px-6 !py-5 !border-b-2 !border-[#858282] !w-full relative", className)} {...props} />
 );
 DialogHeader.displayName = "DialogHeader";
 
-const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props} />
-);
+const DialogFooter = ({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
+  const mappedChildren = React.Children.map(children, (child) => {
+    if (React.isValidElement(child)) {
+      const checkText = (node: any): boolean => {
+        if (!node) return false;
+        if (typeof node === "string") {
+          const lower = node.toLowerCase();
+          return lower.includes("cancel") || lower.includes("close") || lower.includes("back") || lower.includes("reject") || lower.includes("no");
+        }
+        if (Array.isArray(node)) {
+          return node.some(checkText);
+        }
+        if (typeof node === "object" && node.props && node.props.children) {
+          return checkText(node.props.children);
+        }
+        return false;
+      };
+
+      const isCancel = child.props.variant === "outline" || child.props.variant === "ghost" || child.props.variant === "secondary" || checkText(child.props.children);
+
+      if (isCancel) {
+        return React.cloneElement(child as React.ReactElement<any>, {
+          className: cn(
+            "!bg-[#f97316] hover:!bg-orange-600 !text-white !rounded-xl !shadow-md !border-none !h-10 !px-6 !font-bold transition-all active:scale-95",
+            child.props.className
+          )
+        });
+      } else {
+        return React.cloneElement(child as React.ReactElement<any>, {
+          className: cn(
+            "!bg-[#0082f6] hover:!bg-blue-600 !text-white !rounded-xl !shadow-md !border-none !h-10 !px-6 !font-bold transition-all active:scale-95",
+            child.props.className
+          )
+        });
+      }
+    }
+    return child;
+  });
+
+  return (
+    <div
+      className={cn(
+        "dialog-footer flex flex-col-reverse sm:flex-row sm:justify-end sm:gap-3 !px-6 !pb-6 !pt-2",
+        className
+      )}
+      {...props}
+    >
+      {mappedChildren}
+    </div>
+  );
+};
 DialogFooter.displayName = "DialogFooter";
 
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
->(({ className, ...props }, ref) => (
+>((({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-semibold leading-none tracking-tight", className)}
+    className={cn("text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2", className)}
     {...props}
   />
-));
+)));
 DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
 const DialogDescription = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Description ref={ref} className={cn("text-sm text-muted-foreground", className)} {...props} />
-));
+>((({ className, ...props }, ref) => (
+  <DialogPrimitive.Description
+    ref={ref}
+    className={cn("text-sm text-slate-600 font-semibold mt-1", className)}
+    {...props}
+  />
+)));
 DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
 export {

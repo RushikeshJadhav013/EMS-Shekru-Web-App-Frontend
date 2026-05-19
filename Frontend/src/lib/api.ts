@@ -2265,10 +2265,30 @@ class ApiService {
     userId: string,
     month: number,
     year: number,
+    options?: {
+      optional_deduction_1_label?: string;
+      optional_deduction_1_amount?: number;
+      optional_deduction_2_label?: string;
+      optional_deduction_2_amount?: number;
+      optional_deduction_3_label?: string;
+      optional_deduction_3_amount?: number;
+      manual_leave_days?: number;
+      inline?: boolean;
+      preview?: boolean;
+    }
   ): Promise<Blob> {
-    return this.download(
-      `/salary/slip/download/${userId}?month=${month}&year=${year}`,
-    );
+    const query = new URLSearchParams({
+      month: String(month),
+      year: String(year)
+    });
+    if (options) {
+      Object.entries(options).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          query.append(key, String(value));
+        }
+      });
+    }
+    return this.download(`/salary/slip/download/${userId}?${query.toString()}`);
   }
 
   async sendSalarySlip(

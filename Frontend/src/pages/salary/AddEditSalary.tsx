@@ -846,7 +846,7 @@ const AddEditSalary = () => {
             {/* Step 1: Employee Selection */}
             {
                 !watchUserId && (
-                    <Card className="max-w-2xl mx-auto mt-10 border-0 shadow-lg bg-slate-50/50 dark:bg-slate-900/50">
+                    <Card className="max-w-2xl mx-auto mt-10 border border-[#858282] shadow-lg bg-slate-50/50 dark:bg-slate-900/50">
                         <CardHeader className="bg-white/50 dark:bg-slate-800/50">
                             <CardTitle>Select Employee</CardTitle>
                             <CardDescription>Choose an employee to configure their salary structure.</CardDescription>
@@ -1001,7 +1001,7 @@ const AddEditSalary = () => {
 
                                     <TabsContent value="auto">
                                         {/* Section 1: Core Compensation - AUTO */}
-                                        <Card className="border-0 shadow-lg bg-blue-50/30 dark:bg-blue-950/10">
+                                        <Card className="border border-[#858282] shadow-lg bg-blue-50/30 dark:bg-blue-950/10">
                                             <CardHeader className="bg-white/60 dark:bg-slate-800/60">
                                                 <CardTitle className="flex items-center gap-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
                                                     <Calculator className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -1193,7 +1193,7 @@ const AddEditSalary = () => {
 
                                     <TabsContent value="manual">
                                         {/* Section 1: Core Compensation - MANUAL */}
-                                        <Card className="border-0 shadow-lg bg-orange-50/30 dark:bg-orange-950/10">
+                                        <Card className="border border-[#858282] shadow-lg bg-orange-50/30 dark:bg-orange-950/10">
                                             <CardHeader className="bg-white/60 dark:bg-slate-800/60">
                                                 <CardTitle className="flex items-center gap-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
                                                     <FileText className="h-5 w-5 text-orange-600 dark:text-orange-400" />
@@ -1371,7 +1371,7 @@ const AddEditSalary = () => {
                                 </Tabs>
 
                                 {/* Bank & Statutory Details Card (Shared) */}
-                                <Card className="border-0 shadow-lg bg-slate-50/30 dark:bg-slate-900/10 mb-6">
+                                <Card className="border border-[#858282] shadow-lg bg-slate-50/30 dark:bg-slate-900/10 mb-6">
                                     <CardHeader className="bg-white/60 dark:bg-slate-800/60">
                                         <CardTitle className="flex items-center gap-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
                                             <DollarSign className="h-5 w-5 text-slate-600 dark:text-slate-400" />
@@ -1426,7 +1426,7 @@ const AddEditSalary = () => {
 
 
                                 {/* Section 3: Live Calculation Breakdown */}
-                                <Card className="border-0 shadow-lg bg-green-50/30 dark:bg-green-950/10">
+                                <Card className="border border-[#858282] shadow-lg bg-green-50/30 dark:bg-green-950/10">
                                     <CardHeader className="bg-white/60 dark:bg-slate-800/60">
                                         <CardTitle className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
@@ -1528,7 +1528,7 @@ const AddEditSalary = () => {
 
                             {/* Right Column: Sticky Summary & Sidebar */}
                             <div className="lg:col-span-4 lg:sticky lg:top-8 space-y-6">
-                                <Card className="border-0 shadow-lg bg-indigo-50/30 dark:bg-indigo-950/10">
+                                <Card className="border border-[#858282] shadow-lg bg-indigo-50/30 dark:bg-indigo-950/10">
                                     <CardHeader className="bg-white/60 dark:bg-slate-800/60">
                                         <div className="flex items-center justify-between mb-4">
                                             <Badge variant="outline" className="rounded-full" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#2563EB", fontSize: "12px", border: "1px solid #BFDBFE", backgroundColor: "#EFF6FF" }}>Live Preview</Badge>

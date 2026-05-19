@@ -634,7 +634,7 @@ function ProjectCard({
   const cancelledCount = tasks.filter((t) => normalizeStatus(t.status) === "Cancelled").length;
 
   return (
-    <Card className="border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+    <Card className="border-2 border-[#858282] rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
       <CardContent className="p-0">
         {/* ── Card Header ── */}
         <div className="p-5">
@@ -1878,7 +1878,7 @@ export default function ProjectManagement() {
   return (
     <div className="w-full space-y-6">
       {/* ── Header Card ── */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-md border border-slate-200 dark:border-slate-700">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-md border border-[#858282]">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-4">
             <div className="h-12 w-12 rounded-2xl bg-violet-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-violet-200 dark:shadow-violet-900">
@@ -1986,7 +1986,7 @@ export default function ProjectManagement() {
         ].map((s) => (
           <Card
             key={s.label}
-            className="border-0 shadow-md rounded-2xl overflow-hidden min-w-0"
+            className="border-2 border-[#858282] shadow-md rounded-2xl overflow-hidden min-w-0"
           >
             <CardContent className="p-4 flex items-center gap-3">
               <div

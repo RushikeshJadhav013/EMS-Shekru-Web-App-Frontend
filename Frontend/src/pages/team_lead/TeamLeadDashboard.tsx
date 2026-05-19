@@ -569,7 +569,7 @@ const TeamLeadDashboard: React.FC = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       {/* Header Section */}
-      <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border shadow-sm p-8">
+      <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border border-[#858282] shadow-sm p-8">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-emerald-500/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-teal-500/5 rounded-full blur-3xl" />
 
@@ -590,7 +590,8 @@ const TeamLeadDashboard: React.FC = () => {
           </div>
           <Button
             onClick={() => navigate('/team_lead/tasks')}
-            className="rounded-xl px-6 h-12 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 dark:shadow-none transition-all hover:scale-105 active:scale-95"
+            className="rounded-xl px-6 h-12 bg-[#2563EB] hover:bg-blue-700 text-white shadow-lg shadow-blue-200 border-2 border-[#2563EB] transition-all hover:scale-105 active:scale-95"
+            style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
           >
             <Plus className="h-5 w-5 mr-2" />
             Create Task
@@ -648,7 +649,7 @@ const TeamLeadDashboard: React.FC = () => {
             action: true
           },
         ].map((stat, i) => (
-          <Card key={i} className={`border-2 ${stat.borderColor} ${stat.hoverBorder} shadow-sm ${stat.cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative`}>
+          <Card key={i} className={`border-2 border-[#858282] hover:border-black shadow-sm ${stat.cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative`}>
             {/* Background Accent */}
             <div className={`absolute -right-3 -top-3 w-16 h-16 rounded-full opacity-5 group-hover:opacity-10 transition-opacity ${stat.bg.split(' ')[0]}`} />
 
@@ -694,17 +695,19 @@ const TeamLeadDashboard: React.FC = () => {
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Team Members Tracker */}
-        <Card className="lg:col-span-3 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
-          <CardHeader className="border-b bg-gray-50/50 dark:bg-gray-900/50 px-6 py-4">
+        <Card className="lg:col-span-3 border border-[#858282] shadow-xl bg-white dark:bg-gray-900 rounded-2xl overflow-hidden flex flex-col h-full">
+          <CardHeader className="border-b border-slate-100 bg-slate-50 dark:bg-gray-950 px-6 py-4">
             <div className="flex justify-between items-center">
               <div>
                 <CardTitle className="flex items-center gap-2" style={{ color: '#000000' }}>
-                  <Users className="h-5 w-5" style={{ color: '#000000' }} />
-                  <span className="text-[16px] font-bold">{t.navigation.teamMembers}</span>
+                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm">
+                    <Users className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="text-[16px] font-bold uppercase tracking-tight">{t.navigation.teamMembers}</span>
                 </CardTitle>
-                <CardDescription className="text-sm" style={{ color: '#000000' }}>Real-time status and task monitoring</CardDescription>
+                <CardDescription className="text-xs font-medium mt-1" style={{ color: '#000000' }}>Real-time status and task monitoring</CardDescription>
               </div>
-              <Badge variant="outline" className="rounded-full px-4 h-8 bg-white border-gray-200">
+              <Badge variant="outline" className="rounded-full px-4 h-8 bg-white dark:bg-gray-800 border border-slate-200">
                 <span className="text-[14px] font-bold" style={{ color: '#000000' }}>{teamMembers.length} Total</span>
               </Badge>
             </div>
@@ -865,13 +868,16 @@ const TeamLeadDashboard: React.FC = () => {
         </Card>
 
         {/* Activity Sidebar */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
-            <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
+        <div className="lg:col-span-2 space-y-6 flex flex-col h-full">
+          <Card className="border border-[#858282] shadow-xl bg-white dark:bg-gray-900 rounded-2xl overflow-hidden flex flex-col h-full">
+            <CardHeader className="border-b border-slate-100 bg-slate-50 dark:bg-gray-950 px-6 py-4">
               <CardTitle className="flex items-center gap-2" style={{ color: '#000000' }}>
-                <Activity className="h-5 w-5" style={{ color: '#000000' }} />
-                <span className="text-[16px] font-bold">Team Activity</span>
+                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
+                  <Activity className="h-5 w-5 text-white" />
+                </div>
+                <span className="text-[16px] font-bold uppercase tracking-tight">Team Activity</span>
               </CardTitle>
+              <CardDescription className="text-xs font-medium mt-1" style={{ color: '#000000' }}>Recent updates from your team</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {recentActivities.map((activity, i) => (

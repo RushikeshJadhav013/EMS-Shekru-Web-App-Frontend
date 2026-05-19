@@ -126,6 +126,17 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
     const [selectedMonth, setSelectedMonth] = useState<string>("all");
     const [isAnnexureSending, setIsAnnexureSending] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+    
+    const [isGenerateSlipDialogOpen, setIsGenerateSlipDialogOpen] = useState(false);
+    const [generateSlipForm, setGenerateSlipForm] = useState({
+        optional_deduction_1_label: '',
+        optional_deduction_1_amount: '',
+        optional_deduction_2_label: '',
+        optional_deduction_2_amount: '',
+        optional_deduction_3_label: '',
+        optional_deduction_3_amount: '',
+        manual_leave_days: '',
+    });
 
     // Pagination states
     const [growthPage, setGrowthPage] = useState(1);
@@ -691,7 +702,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         }
     };
 
-    const handleGenerateSlip = async () => {
+    const handleOpenGenerateSlip = () => {
         if (selectedMonth === 'all') {
             toast({
                 title: "Selection Required",
@@ -700,24 +711,54 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             });
             return;
         }
+        setGenerateSlipForm({
+            optional_deduction_1_label: '',
+            optional_deduction_1_amount: '',
+            optional_deduction_2_label: '',
+            optional_deduction_2_amount: '',
+            optional_deduction_3_label: '',
+            optional_deduction_3_amount: '',
+            manual_leave_days: '',
+        });
+        setIsGenerateSlipDialogOpen(true);
+    };
 
+    const handleGenerateSlipAction = async (action: 'preview' | 'download') => {
         try {
             setIsGenerating(true);
             const month = parseInt(selectedMonth);
-            // Use the sendSalarySlip API to generate and email the slip
-            const response = await apiService.sendSalarySlip(targetUserId!, month, selectedYear);
+            
+            const options = {
+                optional_deduction_1_label: generateSlipForm.optional_deduction_1_label || undefined,
+                optional_deduction_1_amount: generateSlipForm.optional_deduction_1_amount ? Number(generateSlipForm.optional_deduction_1_amount) : undefined,
+                optional_deduction_2_label: generateSlipForm.optional_deduction_2_label || undefined,
+                optional_deduction_2_amount: generateSlipForm.optional_deduction_2_amount ? Number(generateSlipForm.optional_deduction_2_amount) : undefined,
+                optional_deduction_3_label: generateSlipForm.optional_deduction_3_label || undefined,
+                optional_deduction_3_amount: generateSlipForm.optional_deduction_3_amount ? Number(generateSlipForm.optional_deduction_3_amount) : undefined,
+                manual_leave_days: generateSlipForm.manual_leave_days ? Number(generateSlipForm.manual_leave_days) : undefined,
+                inline: action === 'preview',
+                preview: action === 'preview'
+            };
 
-            if (response?.success) {
-                toast({
-                    title: 'Generated & Sent',
-                    description: response.message || `Salary slip for ${months[month - 1]} ${selectedYear} generated and sent to employee.`,
-                    variant: 'success'
-                });
-
-                // Reload history to show the newly generated slip in the table
-                await loadSalarySlipHistory();
+            toast({ title: action === 'preview' ? 'Generating Preview' : 'Generating Slip', description: 'Preparing PDF...', variant: 'default' });
+            
+            const blob = await apiService.downloadSalarySlip(targetUserId!, month, selectedYear, options);
+            const url = window.URL.createObjectURL(blob);
+            
+            if (action === 'preview') {
+                window.open(url, '_blank');
+                toast({ title: 'Success', description: 'Preview opened in a new tab.', variant: 'success' });
             } else {
-                throw new Error(response?.message || 'Failed to generate salary slip');
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Salary_Slip_${months[month - 1]}_${selectedYear}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                toast({ title: 'Success', description: 'Salary slip generated and downloaded.', variant: 'success' });
+                setIsGenerateSlipDialogOpen(false);
+                loadSalarySlipHistory();
             }
         } catch (err: any) {
             toast({
@@ -964,7 +1005,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
 
     return (
         <div className="p-6 space-y-6 animate-in fade-in duration-500">
-            <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border shadow-sm mt-1">
+            <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border border-[#858282] shadow-sm mt-1">
                 <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-emerald-500/5 rounded-full blur-3xl" />
                 <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-teal-500/5 rounded-full blur-3xl" />
 
@@ -973,7 +1014,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                         <FileText className="h-8 w-8 text-white" />
                     </div>
                     <div>
-                        <h1 className="font-bold tracking-tight" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '30px' }}>
+                        <h1 className="font-bold tracking-tight" style={{  color: '#000000', fontSize: '30px' }}>
                             {userName ? `${userName}'s Salary Details` : 'Salary Details'}
                         </h1>
                         
@@ -991,7 +1032,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 }
                             }}
                             className="rounded-xl px-6 h-12 transition-all active:scale-95"
-                            style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#FFFFFF', backgroundColor: '#10B981', fontSize: '14px' }}
+                            style={{  color: '#FFFFFF', backgroundColor: '#10B981', fontSize: '14px' }}
                         >
                             <Edit className="mr-2 h-4 w-4" /> Edit Structure
                         </Button>
@@ -1087,8 +1128,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 </div>
 
                                 <div className="mt-6 space-y-1">
-                                    <h3 className="uppercase tracking-[0.2em] leading-none mb-1 font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>{item.label}</h3>
-                                    <div className={`tracking-tighter font-bold ${item.isCap ? 'capitalize' : ''}`} style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
+                                    <h3 className="uppercase tracking-[0.2em] leading-none mb-1 font-bold" style={{  color: '#000000', fontSize: '12px' }}>{item.label}</h3>
+                                    <div className={`tracking-tighter font-bold ${item.isCap ? 'capitalize' : ''}`} style={{  color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
                                         {item.value}
                                     </div>
 
@@ -1098,7 +1139,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                 <div key={dot} className={`h-1 w-1 rounded-full ${item.accent} opacity-${20 * dot}`} />
                                             ))}
                                         </div>
-                                        <span className="uppercase tracking-widest font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>{item.sub}</span>
+                                        <span className="uppercase tracking-widest font-bold" style={{  color: '#000000', fontSize: '12px' }}>{item.sub}</span>
                                     </div>
                                 </div>
 
@@ -1120,15 +1161,15 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     <History className="h-5 w-5 text-emerald-600" />
                                 </div>
                                 <div>
-                                    <CardTitle className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '16px', fontWeight: 'bold' }}>Salary Slips Archive</CardTitle>
-                                    <CardDescription className="font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}>History of generated payslips and payment statuses</CardDescription>
+                                    <CardTitle className="font-bold" style={{  color: '#000000', fontSize: '16px', fontWeight: 'bold' }}>Salary Slips Archive</CardTitle>
+                                    <CardDescription className="font-medium" style={{  color: '#000000', fontSize: '14px' }}>History of generated payslips and payment statuses</CardDescription>
                                 </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-3">
                                 <div className="flex items-center gap-3">
-                                    <Label className="uppercase font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Year</Label>
+                                    <Label className="uppercase font-bold" style={{  color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Year</Label>
                                     <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
-                                        <SelectTrigger className="w-[85px] h-9 border dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}>
+                                        <SelectTrigger className="w-[85px] h-9 border dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm" style={{  color: '#000000', fontSize: '14px' }}>
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -1139,9 +1180,9 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     </Select>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <Label className="uppercase font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Month</Label>
+                                    <Label className="uppercase font-bold" style={{  color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Month</Label>
                                     <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                                        <SelectTrigger className="w-[120px] h-9 border dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}>
+                                        <SelectTrigger className="w-[120px] h-9 border dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm" style={{  color: '#000000', fontSize: '14px' }}>
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -1157,7 +1198,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     <Button
                                         size="default"
                                         className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 shadow-sm shadow-emerald-200 dark:shadow-none transition-all active:scale-95"
-                                        onClick={handleGenerateSlip}
+                                        onClick={handleOpenGenerateSlip}
                                         disabled={selectedMonth === 'all' || isLoadingHistory || isGenerating}
                                     >
                                         {isGenerating ? (
@@ -1175,10 +1216,10 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 <Table>
                                     <TableHeader className="bg-gray-50/50 dark:bg-gray-900/20">
                                         <TableRow className="hover:bg-transparent">
-                                            <TableHead className="uppercase tracking-wider pl-6 py-4 font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>PERIOD</TableHead>
-                                            <TableHead className="uppercase tracking-wider py-4 font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>PAYMENT SUMMARY</TableHead>
-                                            <TableHead className="uppercase tracking-wider py-4 text-center font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>STATUS</TableHead>
-                                            <TableHead className="text-right uppercase tracking-wider pr-6 py-4 font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>ACTIONS</TableHead>
+                                            <TableHead className="uppercase tracking-wider pl-6 py-4 font-bold" style={{  color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>PERIOD</TableHead>
+                                            <TableHead className="uppercase tracking-wider py-4 font-bold" style={{  color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>PAYMENT SUMMARY</TableHead>
+                                            <TableHead className="uppercase tracking-wider py-4 text-center font-bold" style={{  color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>STATUS</TableHead>
+                                            <TableHead className="text-right uppercase tracking-wider pr-6 py-4 font-bold" style={{  color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>ACTIONS</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -1224,18 +1265,18 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                     return (
                                                         <TableRow key={slip.id} className="group hover:bg-gray-50/80 dark:hover:bg-gray-900/40 transition-colors">
                                                             <TableCell className="pl-6 py-4">
-                                                                <div className="tracking-tight font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}>{monthName} {slip.year}</div>
-                                                                <div className="mt-1.5 font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>ID: {String(slip.id).slice(0, 8)} | Generated: {date.toLocaleDateString()}</div>
+                                                                <div className="tracking-tight font-bold" style={{  color: '#000000', fontSize: '14px' }}>{monthName} {slip.year}</div>
+                                                                <div className="mt-1.5 font-bold" style={{  color: '#000000', fontSize: '12px' }}>ID: {String(slip.id).slice(0, 8)} | Generated: {date.toLocaleDateString()}</div>
                                                             </TableCell>
                                                             <TableCell className="py-4">
                                                                 <div className="flex gap-4">
                                                                     <div className="flex flex-col">
-                                                                        <span className="uppercase" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>GROSS EARNINGS</span>
-                                                                        <span className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}>₹{slip.gross_salary?.toLocaleString('en-IN')}</span>
+                                                                        <span className="uppercase" style={{  color: '#000000', fontSize: '12px' }}>GROSS EARNINGS</span>
+                                                                        <span className="font-bold" style={{  color: '#000000', fontSize: '14px' }}>₹{slip.gross_salary?.toLocaleString('en-IN')}</span>
                                                                     </div>
                                                                     <div className="flex flex-col">
-                                                                        <span className="uppercase" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>NET SELECTION</span>
-                                                                        <span className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}>₹{slip.net_salary?.toLocaleString('en-IN')}</span>
+                                                                        <span className="uppercase" style={{  color: '#000000', fontSize: '12px' }}>NET SELECTION</span>
+                                                                        <span className="font-bold" style={{  color: '#000000', fontSize: '14px' }}>₹{slip.net_salary?.toLocaleString('en-IN')}</span>
                                                                     </div>
                                                                 </div>
                                                             </TableCell>
@@ -1244,12 +1285,12 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                                     <Badge
                                                                         variant={slip.email_sent ? "default" : "secondary"}
                                                                         className={`border-none px-2.5 py-0.5 ${slip.email_sent ? "bg-emerald-50" : "bg-blue-50 shadow-sm"}`}
-                                                                        style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: slip.email_sent ? '#16A34A' : '#2563EB', fontSize: '12px', fontWeight: 'bold' }}
+                                                                        style={{  color: slip.email_sent ? '#16A34A' : '#2563EB', fontSize: '12px', fontWeight: 'bold' }}
                                                                     >
                                                                         {slip.email_sent ? "EMAIL SENT" : "READY"}
                                                                     </Badge>
                                                                     {slip.email_sent_at && (
-                                                                        <div className="uppercase tracking-tighter font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>Ref: {new Date(slip.email_sent_at).toLocaleDateString()}</div>
+                                                                        <div className="uppercase tracking-tighter font-bold" style={{  color: '#000000', fontSize: '12px' }}>Ref: {new Date(slip.email_sent_at).toLocaleDateString()}</div>
                                                                     )}
                                                                 </div>
                                                             </TableCell>
@@ -2419,11 +2460,134 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                             )}
                         </Button>
                     </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div >
-    );
-};
+                            </DialogContent>
+                        </Dialog>
+                        <Dialog open={isGenerateSlipDialogOpen} onOpenChange={setIsGenerateSlipDialogOpen}>
+                            <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden bg-white dark:bg-slate-900 border-none rounded-3xl shadow-2xl">
+                                <div className="bg-emerald-600 p-6 text-white text-center rounded-t-3xl relative">
+                                    <div className="absolute top-0 right-0 -mr-12 -mt-12 h-32 w-32 bg-white/10 rounded-full blur-2xl" />
+                                    <h2 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>Generate Salary Slip</h2>
+                                    <p className="mt-2 text-emerald-100 opacity-90 font-medium">Add manual deductions before generating</p>
+                                </div>
+                                <div className="p-8 space-y-6">
+                                    {/* Other Deduction 1 */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Other Deduction 1 (Label)</Label>
+                                            <Input
+                                                value={generateSlipForm.optional_deduction_1_label}
+                                                onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_1_label: e.target.value }))}
+                                                placeholder="e.g. Gratuity"
+                                                className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Amount (₹)</Label>
+                                            <Input
+                                                type="number"
+                                                value={generateSlipForm.optional_deduction_1_amount}
+                                                onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_1_amount: e.target.value }))}
+                                                placeholder="0"
+                                                className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                                            />
+                                        </div>
+                                    </div>
 
-export default SalaryDetails;
+                                    {/* Other Deduction 2 */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Other Deduction 2 (Label)</Label>
+                                            <Input
+                                                value={generateSlipForm.optional_deduction_2_label}
+                                                onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_2_label: e.target.value }))}
+                                                placeholder="e.g. Insurance"
+                                                className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Amount (₹)</Label>
+                                            <Input
+                                                type="number"
+                                                value={generateSlipForm.optional_deduction_2_amount}
+                                                onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_2_amount: e.target.value }))}
+                                                placeholder="0"
+                                                className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                                            />
+                                        </div>
+                                    </div>
 
+                                    {/* Other Deduction 3 */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Other Deduction 3 (Label)</Label>
+                                            <Input
+                                                value={generateSlipForm.optional_deduction_3_label}
+                                                onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_3_label: e.target.value }))}
+                                                placeholder="e.g. Loan Recovery"
+                                                className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Amount (₹)</Label>
+                                            <Input
+                                                type="number"
+                                                value={generateSlipForm.optional_deduction_3_amount}
+                                                onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_3_amount: e.target.value }))}
+                                                placeholder="0"
+                                                className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Leave Deduction */}
+                                    <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                        <Label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                            <Calendar className="h-4 w-4 text-emerald-600" />
+                                            Manual Leave Days Deduction
+                                        </Label>
+                                        <Input
+                                            type="number"
+                                            step="0.5"
+                                            value={generateSlipForm.manual_leave_days}
+                                            onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, manual_leave_days: e.target.value }))}
+                                            placeholder="Number of days (e.g. 1.5)"
+                                            className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 w-full"
+                                        />
+                                        <p className="text-xs text-slate-500 mt-1">Leave deduction will be calculated automatically based on monthly gross.</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3 rounded-b-3xl border-t border-slate-100 dark:border-slate-800">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setIsGenerateSlipDialogOpen(false)}
+                                        className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest text-slate-500"
+                                        disabled={isGenerating}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => handleGenerateSlipAction('preview')}
+                                        className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest border-emerald-200 text-emerald-600 hover:bg-emerald-50"
+                                        disabled={isGenerating}
+                                    >
+                                        {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <EyeIcon className="h-4 w-4 mr-2" />}
+                                        Preview
+                                    </Button>
+                                    <Button
+                                        onClick={() => handleGenerateSlipAction('download')}
+                                        className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 dark:shadow-none"
+                                        disabled={isGenerating}
+                                    >
+                                        {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                                        Download
+                                    </Button>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+                    </div >
+                );
+            };
+
+            export default SalaryDetails;

@@ -1795,7 +1795,7 @@ export default function EmployeeManagement() {
   return (
     <div className="w-full space-y-6">
       {/* Modern Header Section */}
-      <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800 rounded-2xl p-6 shadow-sm border">
+      <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800 rounded-2xl p-6 shadow-sm border border-[#858282]">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
@@ -3598,7 +3598,7 @@ export default function EmployeeManagement() {
       </Dialog>
 
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-[450px] max-h-[85vh] flex flex-col p-0">
+        <DialogContent className="w-[95vw] max-w-[450px] max-h-[85vh] flex flex-col p-0 border border-slate-200">
           <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0 border-b">
             <DialogTitle className="text-xl font-semibold">Employee Profile</DialogTitle>
             <DialogDescription>Quick profile preview</DialogDescription>

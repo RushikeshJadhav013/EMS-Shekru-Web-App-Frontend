@@ -119,7 +119,7 @@ export default function SettingsPage() {
 
         <div className="grid gap-6">
           {/* Theme Mode Section (Light/Dark) */}
-          <Card className="border-0 shadow-xl overflow-hidden">
+          <Card className="border border-slate-200 shadow-xl overflow-hidden">
             <div className="h-2 bg-gradient-to-r from-slate-500 via-gray-500 to-zinc-500"></div>
             <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent pb-4">
               <CardTitle className="flex items-center gap-2 text-2xl">
@@ -174,7 +174,7 @@ export default function SettingsPage() {
           </Card>
 
           {/* Color Theme Section */}
-          <Card className="border-0 shadow-xl overflow-hidden">
+          <Card className="border border-slate-200 shadow-xl overflow-hidden">
             <div className="h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
             <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent pb-4">
               <CardTitle className="flex items-center gap-2 text-2xl">
@@ -216,7 +216,7 @@ export default function SettingsPage() {
           </Card>
 
           {/* Language Settings */}
-          <Card className="border-0 shadow-xl">
+          <Card className="border border-slate-200 shadow-xl">
             <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent pb-4">
               <CardTitle className="flex items-center gap-2 text-2xl">
                 <Globe className="h-6 w-6 text-primary" />
@@ -254,7 +254,7 @@ export default function SettingsPage() {
           </Card>
 
           {/* Notifications */}
-          <Card className="border-0 shadow-xl">
+          <Card className="border border-slate-200 shadow-xl">
             <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent pb-4">
               <CardTitle className="flex items-center gap-2 text-2xl">
                 <Bell className="h-6 w-6 text-primary" />
@@ -305,7 +305,7 @@ export default function SettingsPage() {
           </Card>
 
           {/* Security */}
-          <Card className="border-0 shadow-xl">
+          <Card className="border border-slate-200 shadow-xl">
             <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent pb-4">
               <CardTitle className="flex items-center gap-2 text-2xl">
                 <Lock className="h-6 w-6 text-primary" />

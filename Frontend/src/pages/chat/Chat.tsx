@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useChat } from '@/contexts/ChatContext';
+import { Logo } from '@/components/ui/Logo';
 
 const ChatPlaceholder = () => {
   const { themeMode } = useTheme();
@@ -24,10 +25,10 @@ const ChatPlaceholder = () => {
           "relative p-10 rounded-full border shadow-2xl backdrop-blur-sm transition-transform hover:scale-105 duration-700",
           isDark ? "bg-[#1f2c33]/40 border-slate-700/50" : "bg-white border-slate-100"
         )}>
-          <img 
-            src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" 
-            alt="Chat Logo" 
-            className="h-28 w-28 opacity-90"
+          <Logo 
+            showText={false} 
+            iconClassName="h-28 w-28 opacity-90" 
+            className="flex items-center justify-center"
           />
           <div className="absolute -top-1 -right-1">
             <div className="flex items-center justify-center h-10 w-10 rounded-full bg-green-500 shadow-xl shadow-green-500/50 animate-bounce">

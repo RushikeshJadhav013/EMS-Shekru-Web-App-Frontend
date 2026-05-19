@@ -414,7 +414,7 @@ const HRDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border shadow-sm mt-1">
+      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border border-[#858282] shadow-sm mt-1">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-purple-500/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
 
@@ -447,7 +447,8 @@ const HRDashboard: React.FC = () => {
           <Button
             onClick={() => navigate('/hr/employees/', { state: { highlight: true } })}
             size="lg"
-            className="rounded-xl px-6 h-12 bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-200 dark:shadow-none transition-all active:scale-95 gap-2"
+            className="rounded-xl px-6 h-12 bg-[#2563EB] hover:bg-blue-700 text-white shadow-lg shadow-blue-200 border-2 border-[#2563EB] transition-all active:scale-95 gap-2"
+            style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
           >
             <UserPlus className="h-4 w-4" />
             {t.employee.addEmployee}
@@ -456,7 +457,8 @@ const HRDashboard: React.FC = () => {
       </div>
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="border border-[#858282] p-4 rounded-2xl bg-white/50 mb-8 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
         {[
           {
             label: t.dashboard.totalEmployees,
@@ -511,7 +513,7 @@ const HRDashboard: React.FC = () => {
         ].map((item, i) => (
           <Card
             key={i}
-            className={`border-2 ${item.borderColor} ${item.hoverBorder} shadow-sm ${item.cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative cursor-pointer`}
+            className={`border-2 border-[#858282] hover:border-black shadow-lg rounded-2xl ${item.cardBg} backdrop-blur-sm hover:shadow-xl transition-all duration-300 group overflow-hidden relative cursor-pointer`}
             onClick={() => navigate(item.path, { state: item.pathState })}
           >
             {/* Background Accent */}
@@ -539,12 +541,13 @@ const HRDashboard: React.FC = () => {
           </Card>
         ))}
       </div>
+      </div>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Recent Activities */}
-        <Card className="lg:col-span-3 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
-          <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
+        <Card className="lg:col-span-3 border border-[#858282] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+          <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
             <CardTitle className="flex items-center gap-2 font-bold" style={{ color: '#000000' }}>
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
                 <Activity className="h-5 w-5 text-white" />
@@ -557,8 +560,8 @@ const HRDashboard: React.FC = () => {
         </Card>
 
         {/* WFH Requests */}
-        <Card className="lg:col-span-2 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
-          <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
+        <Card className="lg:col-span-2 border border-[#858282] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+          <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
             <CardTitle className="flex items-center gap-2 font-bold" style={{ color: '#000000' }}>
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                 <Home className="h-5 w-5 text-white" />

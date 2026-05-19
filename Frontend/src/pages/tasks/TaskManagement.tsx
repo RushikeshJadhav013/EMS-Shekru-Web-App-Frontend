@@ -326,7 +326,7 @@ const getStatusBadge = (status: BaseTask["status"] | string) => {
         "gap-2 border-0 bg-transparent px-0 py-1 flex items-center w-fit shadow-none transition-all duration-200",
         info.text
       )}
-      style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+      style={{  }}
     >
       <div className={cn("h-2.5 w-2.5 rounded-full shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.1)]", info.color)} />
       <span className="text-[14px] font-bold capitalize whitespace-nowrap">{info.label}</span>
@@ -2955,55 +2955,31 @@ const TaskManagement: React.FC = () => {
   return (
     <div className="w-full space-y-6">
       {/* Modern Header */}
-      <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800 rounded-2xl p-6 shadow-sm border">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+      <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800 rounded-2xl p-6 shadow-sm border border-[#858282]">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-[30px] font-black text-black dark:text-white tracking-tight" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+          <h1 className="text-[30px] font-black text-black dark:text-white tracking-tight">
             Task Management
           </h1>
-          <p className="text-[14px] text-black dark:text-white font-medium mt-1" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+          <p className="text-[14px] text-black dark:text-white font-medium mt-1">
             Efficiently organize, track, and manage all your tasks in one place
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-4 mt-2">
-                <Button
-                  onClick={() => setActiveViewTab("all")}
-                  variant={activeViewTab === "all" ? "default" : "outline"}
-                  className={`h-9 px-6 rounded-full font-bold transition-all ${activeViewTab === "all"
-                    ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
-                    : "border-2 hover:border-violet-300"
-                    }`}
-                  style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
-                >
-                  All Tasks
-                </Button>
-                <Button
-                  onClick={() => setActiveViewTab("project")}
-                  variant={activeViewTab === "project" ? "default" : "outline"}
-                  className={`h-9 px-6 rounded-full font-bold transition-all ${activeViewTab === "project"
-                    ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md"
-                    : "border-2 hover:border-violet-300"
-                    }`}
-                >
-                  Project Tasks
-                </Button>
-              </div>
-            </div>
-          </div>
+        <div className="flex items-center gap-3">
 
-          {canAssignTasks() && (
-            <Dialog
-              open={isCreateDialogOpen}
-              onOpenChange={setIsCreateDialogOpen}
-            >
-              <DialogTrigger asChild>
-                <Button className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-md">
-                  <Plus className="h-4 w-4" />
-                  Create Task
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-2 shadow-2xl">
+
+            {canAssignTasks() && (
+              <Dialog
+                open={isCreateDialogOpen}
+                onOpenChange={setIsCreateDialogOpen}
+              >
+                <DialogTrigger asChild>
+                  <Button className="h-9 px-6 rounded-full font-bold gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-md text-white transition-all" style={{ fontSize: "14px" }}>
+                    <Plus className="h-4 w-4" />
+                    Create Task
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-2 shadow-2xl p-0">
                 <DialogHeader className="pb-4 border-b bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 -m-6 mb-0 p-6 rounded-t-lg">
                   <div className="flex items-center gap-3">
                     <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
@@ -3612,22 +3588,43 @@ const TaskManagement: React.FC = () => {
             </Dialog>
           )}
         </div>
-      {/* </div> */}
-      {activeViewTab === "all" ? (
-        <>
+      </div>
+    </div>
+
+      <Tabs value={activeViewTab} onValueChange={setActiveViewTab} className="w-full">
+        <TabsList
+          className="grid w-full grid-cols-2 h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm"
+        >
+          <TabsTrigger
+            value="all"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold text-black dark:text-white data-[state=inactive]:font-bold text-[14px] transition-all duration-300 rounded-md"
+            style={{  }}
+          >
+            All Tasks
+          </TabsTrigger>
+          <TabsTrigger
+            value="project"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold text-black dark:text-white data-[state=inactive]:font-bold text-[14px] transition-all duration-300 rounded-md"
+            style={{  }}
+          >
+            Project Tasks
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="all" className="space-y-6 mt-6">
           {/* Stats Cards - Clickable Filters */}
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
+          <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
         <Card
           onClick={() => {
             setFilterStatus("all");
           }}
           className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "all"
               ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800"
-              : "border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-950 hover:border-slate-400"
+              : "border-[#858282] bg-white dark:bg-gray-950 hover:border-slate-400"
             }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>
               Total Tasks
             </CardTitle>
             <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
@@ -3635,7 +3632,7 @@ const TaskManagement: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
+            <div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
               {taskCountsByStatus.total}
             </div>
           </CardContent>
@@ -3647,11 +3644,11 @@ const TaskManagement: React.FC = () => {
           }}
           className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "in-progress"
               ? "border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/40"
-              : "border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-950 hover:border-blue-400"
+              : "border-[#858282] bg-white dark:bg-gray-950 hover:border-blue-400"
             }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>
               In Progress
             </CardTitle>
             <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
@@ -3659,7 +3656,7 @@ const TaskManagement: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
+            <div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
               {taskCountsByStatus.inProgress}
             </div>
           </CardContent>
@@ -3671,11 +3668,11 @@ const TaskManagement: React.FC = () => {
           }}
           className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "completed"
               ? "border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-900/40"
-              : "border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-950 hover:border-green-400"
+              : "border-[#858282] bg-white dark:bg-gray-950 hover:border-green-400"
             }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>
               Completed
             </CardTitle>
             <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
@@ -3683,7 +3680,7 @@ const TaskManagement: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
+            <div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
               {taskCountsByStatus.completed}
             </div>
           </CardContent>
@@ -3695,11 +3692,11 @@ const TaskManagement: React.FC = () => {
           }}
           className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "overdue"
               ? "border-rose-600 dark:border-rose-400 bg-rose-50 dark:bg-rose-900/40"
-              : "border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-950 hover:border-rose-400"
+              : "border-[#858282] bg-white dark:bg-gray-950 hover:border-rose-400"
             }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>
               Overdue
             </CardTitle>
             <div className="h-8 w-8 rounded-lg bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center">
@@ -3707,7 +3704,7 @@ const TaskManagement: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
+            <div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
               {taskCountsByStatus.overdue}
             </div>
           </CardContent>
@@ -3719,11 +3716,11 @@ const TaskManagement: React.FC = () => {
           }}
           className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "cancelled"
               ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800"
-              : "border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-950 hover:border-slate-400"
+              : "border-[#858282] bg-white dark:bg-gray-950 hover:border-slate-400"
             }`}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>
               Cancelled
             </CardTitle>
             <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
@@ -3731,7 +3728,7 @@ const TaskManagement: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
+            <div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
               {taskCountsByStatus.cancelled}
             </div>
           </CardContent>
@@ -3739,21 +3736,21 @@ const TaskManagement: React.FC = () => {
       </div>
 
       {/* Filters and Search */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+      <Card className="border-2 border-[#858282] shadow-lg rounded-xl overflow-hidden">
+        <CardHeader className="border-b-2 border-[#858282] bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="h-10 w-10 rounded-lg bg-slate-950 dark:bg-slate-50 flex items-center justify-center">
                 <Filter className="h-5 w-5 text-white dark:text-black" />
               </div>
-              <CardTitle className="text-[16px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+              <CardTitle className="text-[16px] font-black text-black dark:text-white" style={{  }}>
                 All Tasks Filters
               </CardTitle>
             </div>
 
             <div className="flex flex-wrap items-end gap-4">
               <div className="flex flex-col gap-2">
-                <Label className="text-[14px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                <Label className="text-[14px] font-black text-black dark:text-white" style={{  }}>
                   Search
                 </Label>
                 <div className="relative">
@@ -3761,7 +3758,7 @@ const TaskManagement: React.FC = () => {
                   <Input
                     className="pl-9 w-full sm:w-[200px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 text-[14px] text-black dark:text-white font-medium focus:ring-1 focus:ring-black"
                     placeholder="Search tasks..."
-                    style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                    style={{  }}
                     value={searchQuery}
                     onChange={(e) =>
                       setSearchQuery(
@@ -3776,14 +3773,14 @@ const TaskManagement: React.FC = () => {
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label className="text-[14px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                <Label className="text-[14px] font-black text-black dark:text-white" style={{  }}>
                   Status
                 </Label>
                 <Select value={filterStatus} onValueChange={(val) => {
                   setFilterStatus(val);
                   setIsOverdueFilterActive(val === "overdue");
                 }}>
-                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}>
+                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10" style={{ color: '#000000', fontSize: '14px' }}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -3798,7 +3795,7 @@ const TaskManagement: React.FC = () => {
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label className="text-[14px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                <Label className="text-[14px] font-black text-black dark:text-white" style={{  }}>
                   Filter
                 </Label>
                 <Select
@@ -3809,7 +3806,7 @@ const TaskManagement: React.FC = () => {
                     setIsOverdueFilterActive(false);
                   }}
                 >
-                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}>
+                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10" style={{ color: '#000000', fontSize: '14px' }}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -3843,14 +3840,14 @@ const TaskManagement: React.FC = () => {
                   normalizedUserRole === "manager" ||
                   normalizedUserRole === "team_lead") && (
                   <div className="flex flex-col gap-2">
-                    <Label className="text-[14px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                    <Label className="text-[14px] font-black text-black dark:text-white" style={{  }}>
                       Department
                     </Label>
                     <Select
                       value={selectedDepartmentFilter}
                       onValueChange={setSelectedDepartmentFilter}
                     >
-                      <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 text-[14px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                      <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 text-[14px] text-black dark:text-white font-medium" style={{  }}>
                         <SelectValue placeholder="Select Department" />
                       </SelectTrigger>
                       <SelectContent>
@@ -3908,7 +3905,7 @@ const TaskManagement: React.FC = () => {
                     size="sm"
                     onClick={() => setIsExportDialogOpen(true)}
                     className="gap-2 h-10 bg-white dark:bg-gray-950 border-black/20 dark:border-white/20 text-black dark:text-white text-[14px] font-black hover:bg-slate-50 dark:hover:bg-slate-900 transition-all duration-200"
-                    style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                    style={{  }}
                   >
                     <Download className="h-4 w-4" />
                     Export
@@ -3921,18 +3918,19 @@ const TaskManagement: React.FC = () => {
         <CardContent className="pt-6">
           {viewMode === "list" ? (
             <div className="space-y-6">
-              <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
-                <Table>
+              <div className="rounded-xl border-2 border-[#858282] shadow-lg overflow-hidden bg-white dark:bg-gray-950">
+                <div className="w-full overflow-x-auto pb-4 [&>div]:border-0 [&>div]:shadow-none [&>div]:rounded-none">
+                  <Table>
                   <TableHeader className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 border-b-2 border-black/10">
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>TASK</TableHead>
-                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>ASSIGNED BY</TableHead>
-                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>ASSIGNED TO</TableHead>
-                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>PRIORITY</TableHead>
-                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>DEADLINE</TableHead>
-                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>STATUS</TableHead>
-                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>PASS</TableHead>
-                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>ACTIONS</TableHead>
+                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{  }}>TASK</TableHead>
+                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{  }}>ASSIGNED BY</TableHead>
+                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{  }}>ASSIGNED TO</TableHead>
+                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{  }}>PRIORITY</TableHead>
+                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{  }}>DEADLINE</TableHead>
+                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{  }}>STATUS</TableHead>
+                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{  }}>PASS</TableHead>
+                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{  }}>ACTIONS</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -4027,11 +4025,11 @@ const TaskManagement: React.FC = () => {
                               <div className="flex items-center gap-2">
                                 <UserCheck className="h-4 w-4 text-black dark:text-white" />
                                 <div className="flex flex-col">
-                                  <span className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                  <span className="text-[14px] font-bold text-black dark:text-white" style={{  }}>
                                     {assignedByInfo.name}
                                   </span>
                                   {assignedByInfo.roleLabel ? (
-                                    <span className="text-[12px] text-black dark:text-slate-400 font-medium mt-0.5" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                    <span className="text-[12px] text-black dark:text-slate-400 font-medium mt-0.5" style={{  }}>
                                       {assignedByInfo.roleLabel}
                                     </span>
                                   ) : null}
@@ -4042,11 +4040,11 @@ const TaskManagement: React.FC = () => {
                               <div className="flex items-center gap-2">
                                 <User className="h-4 w-4 text-black dark:text-white" />
                                 <div className="flex flex-col">
-                                  <span className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                  <span className="text-[14px] font-bold text-black dark:text-white" style={{  }}>
                                     {assignedToInfo.name}
                                   </span>
                                   {assignedToInfo.roleLabel ? (
-                                    <span className="text-[12px] text-black dark:text-slate-400 font-medium mt-0.5" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                    <span className="text-[12px] text-black dark:text-slate-400 font-medium mt-0.5" style={{  }}>
                                       {assignedToInfo.roleLabel}
                                     </span>
                                   ) : null}
@@ -4056,7 +4054,7 @@ const TaskManagement: React.FC = () => {
                             <TableCell>
                               <Badge
                                 className={cn(getPriorityColor(task.priority), "text-[12px] font-bold uppercase tracking-wider border-0 shadow-sm")}
-                                style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                                style={{  }}
                               >
                                 {capitalizePriority(task.priority)}
                               </Badge>
@@ -4064,7 +4062,7 @@ const TaskManagement: React.FC = () => {
                             <TableCell>
                               <div className="flex items-center gap-2 text-black dark:text-white">
                                 <Calendar className="h-4 w-4" />
-                                <span className="text-[14px] font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                <span className="text-[14px] font-bold" style={{  }}>
                                   {formatDisplayDate(task.deadline)}
                                 </span>
                               </div>
@@ -4084,7 +4082,7 @@ const TaskManagement: React.FC = () => {
                                 >
                                   <SelectTrigger
                                     className={`w-[170px] h-10 border-2 bg-white dark:bg-gray-950 px-3 transition-all text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm`}
-                                    style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                                    style={{  }}
                                   >
                                     <div className="flex items-center gap-2">
                                       <div className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
@@ -4110,7 +4108,7 @@ const TaskManagement: React.FC = () => {
                                     openPassHistoryDialog(task);
                                   }}
                                   className="h-8 px-3 gap-2 text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all"
-                                  style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                                  style={{  }}
                                 >
                                   <Share2 className="h-3.5 w-3.5" />
                                   View History
@@ -4207,7 +4205,7 @@ const TaskManagement: React.FC = () => {
                 </Table>
               </div>
               {visibleTasks.length > 0 && (
-                <div className="mt-6 px-2">
+                <div className="border-t-2 border-[#858282] px-6 py-4 w-full overflow-x-auto bg-slate-50 dark:bg-slate-900">
                   <Pagination
                     currentPage={taskCurrentPage}
                     totalPages={taskTotalPages}
@@ -4221,6 +4219,7 @@ const TaskManagement: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
           ) : (
             <div className="space-y-6">
               <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
@@ -4259,7 +4258,7 @@ const TaskManagement: React.FC = () => {
                       key={task.id}
                       className={`border-2 transition-all duration-300 cursor-pointer transform hover:scale-[1.02] shadow-sm hover:shadow-xl group relative overflow-hidden ${isTaskOverdue(task)
                         ? "border-rose-200 bg-rose-50/10 dark:border-rose-900/50"
-                        : "border-slate-200 bg-white dark:border-gray-800 dark:bg-gray-950/50"
+                        : "border-[#858282] bg-white dark:border-gray-800 dark:bg-gray-950/50"
                         }`}
                       onClick={() => setSelectedTask(task)}
                     >
@@ -4293,7 +4292,7 @@ const TaskManagement: React.FC = () => {
                                 </Badge>
                               )}
                             </div>
-                            <div className="text-[14px] font-black leading-tight pr-1 text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                            <div className="text-[14px] font-black leading-tight pr-1 text-black dark:text-white" style={{  }}>
                               <TruncatedText
                                 text={task.title}
                                 maxLength={30}
@@ -4326,7 +4325,7 @@ const TaskManagement: React.FC = () => {
                       </CardHeader>
 
                       <CardContent className="p-4 pt-3 space-y-4">
-                        <div className="text-[12px] text-black dark:text-slate-400 font-medium leading-relaxed" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <div className="text-[12px] text-black dark:text-slate-400 font-medium leading-relaxed" style={{  }}>
                           <TruncatedText
                             text={
                               task.description || "No description provided."
@@ -4340,20 +4339,20 @@ const TaskManagement: React.FC = () => {
                         <div className="grid grid-cols-1 gap-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-800/50">
                           {/* Assignee Row */}
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5 text-black dark:text-white font-medium text-[14px]" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                            <div className="flex items-center gap-1.5 text-black dark:text-white font-medium text-[14px]" style={{  }}>
                               <User className="h-3.5 w-3.5" />
                               <span>To:</span>
                             </div>
                             <div className="flex flex-col items-end">
                               <span
                                 className="text-[14px] font-black text-black dark:text-white truncate max-w-[120px]"
-                                style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                                style={{  }}
                                 title={assignedToInfo.name}
                               >
                                 {assignedToInfo.name}
                               </span>
                               {assignedToInfo.roleLabel && (
-                                <span className="text-[12px] text-black dark:text-slate-400 font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                <span className="text-[12px] text-black dark:text-slate-400 font-medium" style={{  }}>
                                   {assignedToInfo.roleLabel}
                                 </span>
                               )}
@@ -4362,16 +4361,16 @@ const TaskManagement: React.FC = () => {
 
                           {/* Assigner Row */}
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5 text-black dark:text-white font-medium text-[14px]" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                            <div className="flex items-center gap-1.5 text-black dark:text-white font-medium text-[14px]" style={{  }}>
                               <UserCheck className="h-3.5 w-3.5" />
                               <span>By:</span>
                             </div>
                             <div className="flex flex-col items-end">
-                              <span className="text-[14px] font-black text-black dark:text-white truncate max-w-[120px]" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                              <span className="text-[14px] font-black text-black dark:text-white truncate max-w-[120px]" style={{  }}>
                                 {assignedByInfo.name}
                               </span>
                               {assignedByInfo.roleLabel && (
-                                <span className="text-[12px] text-black dark:text-slate-400 font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                <span className="text-[12px] text-black dark:text-slate-400 font-medium" style={{  }}>
                                   {assignedByInfo.roleLabel}
                                 </span>
                               )}
@@ -4380,13 +4379,13 @@ const TaskManagement: React.FC = () => {
 
                           {/* Deadline Row */}
                           <div className="flex items-center justify-between border-t border-black/10 dark:border-white/10 pt-2 mt-0.5">
-                            <div className="flex items-center gap-1.5 text-black dark:text-white font-medium text-[14px]" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                            <div className="flex items-center gap-1.5 text-black dark:text-white font-medium text-[14px]" style={{  }}>
                               <Calendar className="h-3.5 w-3.5" />
                               <span>Due:</span>
                             </div>
                             <span
                               className={`text-[14px] font-black ${isTaskOverdue(task) ? "text-rose-600" : "text-black dark:text-white"}`}
-                              style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                              style={{  }}
                             >
                               {formatDisplayDate(task.deadline)}
                             </span>
@@ -4404,7 +4403,7 @@ const TaskManagement: React.FC = () => {
                                   e.stopPropagation();
                                   openPassHistoryDialog(task);
                                 }}
-                                style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                                style={{  }}
                               >
                                 <Share2 className="h-3.5 w-3.5" />
                                 View History
@@ -4518,7 +4517,7 @@ const TaskManagement: React.FC = () => {
                 })}
               </div>
               {visibleTasks.length > 0 && (
-                <div className="mt-6 px-2">
+                <div className="mt-6 px-2 w-full overflow-x-auto pb-2">
                   <Pagination
                     currentPage={taskCurrentPage}
                     totalPages={taskTotalPages}
@@ -4535,94 +4534,94 @@ const TaskManagement: React.FC = () => {
           )}
         </CardContent>
       </Card>
-        </>
-      ) : (
+        </TabsContent>
+        <TabsContent value="project" className="space-y-6 mt-6">
         <div className="space-y-6">
           {/* Project View Stats */}
           <div className="grid gap-3 grid-cols-2 lg:grid-cols-6">
-        <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "all" && !isOverdueFilterActive ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800" : "border-slate-200 bg-white dark:bg-gray-950 hover:border-slate-400"}`}>
+        <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "all" && !isOverdueFilterActive ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800" : "border-[#858282] bg-white dark:bg-gray-950 hover:border-slate-400"}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>Total Tasks</CardTitle>
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Total Tasks</CardTitle>
             <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
               <ListTodo className="h-4 w-4 text-black dark:text-white" />
             </div>
           </CardHeader>
-          <CardContent><div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.total}</div></CardContent>
+          <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.total}</div></CardContent>
         </Card>
-        <Card onClick={() => { setFilterStatus("todo"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "todo" ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800" : "border-slate-200 bg-white dark:bg-gray-950 hover:border-slate-400"}`}>
+        <Card onClick={() => { setFilterStatus("todo"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "todo" ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800" : "border-[#858282] bg-white dark:bg-gray-950 hover:border-slate-400"}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>To Do</CardTitle>
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>To Do</CardTitle>
             <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
               <ClipboardList className="h-4 w-4 text-black dark:text-white" />
             </div>
           </CardHeader>
-          <CardContent><div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.todo}</div></CardContent>
+          <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.todo}</div></CardContent>
         </Card>
-        <Card onClick={() => { setFilterStatus("in-progress"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "in-progress" ? "border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/40" : "border-slate-200 bg-white dark:bg-gray-950 hover:border-blue-400"}`}>
+        <Card onClick={() => { setFilterStatus("in-progress"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "in-progress" ? "border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/40" : "border-[#858282] bg-white dark:bg-gray-950 hover:border-blue-400"}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>In Progress</CardTitle>
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>In Progress</CardTitle>
             <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
               <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </div>
           </CardHeader>
-          <CardContent><div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.inProgress}</div></CardContent>
+          <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.inProgress}</div></CardContent>
         </Card>
-        <Card onClick={() => { setFilterStatus("completed"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "completed" ? "border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-900/40" : "border-slate-200 bg-white dark:bg-gray-950 hover:border-green-400"}`}>
+        <Card onClick={() => { setFilterStatus("completed"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "completed" ? "border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-900/40" : "border-[#858282] bg-white dark:bg-gray-950 hover:border-green-400"}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>Completed</CardTitle>
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Completed</CardTitle>
             <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
               <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
             </div>
           </CardHeader>
-          <CardContent><div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.completed}</div></CardContent>
+          <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.completed}</div></CardContent>
         </Card>
-        <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(true); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${isOverdueFilterActive ? "border-rose-600 dark:border-rose-400 bg-rose-50 dark:bg-rose-900/40" : "border-slate-200 bg-white dark:bg-gray-950 hover:border-rose-400"}`}>
+        <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(true); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${isOverdueFilterActive ? "border-rose-600 dark:border-rose-400 bg-rose-50 dark:bg-rose-900/40" : "border-[#858282] bg-white dark:bg-gray-950 hover:border-rose-400"}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>Overdue</CardTitle>
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Overdue</CardTitle>
             <div className="h-8 w-8 rounded-lg bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center">
               <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
             </div>
           </CardHeader>
-          <CardContent><div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.overdue}</div></CardContent>
+          <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.overdue}</div></CardContent>
         </Card>
-        <Card onClick={() => { setFilterStatus("cancelled"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "cancelled" ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800" : "border-slate-200 bg-white dark:bg-gray-950 hover:border-slate-400"}`}>
+        <Card onClick={() => { setFilterStatus("cancelled"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "cancelled" ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800" : "border-[#858282] bg-white dark:bg-gray-950 hover:border-slate-400"}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>Cancelled</CardTitle>
+            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Cancelled</CardTitle>
             <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
               <XCircle className="h-4 w-4 text-black dark:text-white" />
             </div>
           </CardHeader>
-          <CardContent><div className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.cancelled}</div></CardContent>
+          <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.cancelled}</div></CardContent>
         </Card>
       </div>
 
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
+      <Card className="border-2 border-[#858282] shadow-lg rounded-xl overflow-hidden">
+        <CardHeader className="border-b-2 border-[#858282] bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="h-10 w-10 rounded-lg bg-slate-950 dark:bg-slate-50 flex items-center justify-center">
                 <Filter className="h-5 w-5 text-white dark:text-black" />
               </div>
-              <CardTitle className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '16px', fontWeight: 'bold' }}>Filter Projects</CardTitle>
+              <CardTitle className="font-bold" style={{ color: '#000000', fontSize: '16px', fontWeight: 'bold' }}>Filter Projects</CardTitle>
             </div>
             <div className="flex flex-wrap items-end gap-4">
               <div className="flex flex-col gap-2">
-                <Label className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Search</Label>
+                <Label className="font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Search</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black dark:text-white" />
                   <Input
                     className="pl-9 w-full sm:w-[200px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 focus:ring-1 focus:ring-black"
                     placeholder="Search projects or tasks..."
-                    style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px' }}
+                    style={{ color: '#000000', fontSize: '14px' }}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
               </div>
               <div className="flex flex-col gap-2">
-                <Label className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Status</Label>
+                <Label className="font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Status</Label>
                 <Select value={filterStatus} onValueChange={(val) => { setFilterStatus(val); setIsOverdueFilterActive(val === "overdue"); }}>
-                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 text-[14px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 text-[14px] text-black dark:text-white font-medium" style={{  }}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="todo">To Do</SelectItem>
@@ -4634,14 +4633,14 @@ const TaskManagement: React.FC = () => {
                 </Select>
               </div>
               <div className="flex flex-col gap-2">
-                <Label className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Ownership</Label>
+                <Label className="font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Ownership</Label>
                 <Select
                   value={taskOwnershipFilter}
                   onValueChange={(value: "all" | "received" | "created") =>
                     setTaskOwnershipFilter(value)
                   }
                 >
-                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 text-[14px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 text-[14px] text-black dark:text-white font-medium" style={{  }}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -4676,13 +4675,13 @@ const TaskManagement: React.FC = () => {
                           <FolderKanban className="h-7 w-7" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h4 className="font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>{project.name}</h4>
+                          <h4 className="font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>{project.name}</h4>
                           <div className="flex flex-wrap items-center gap-4 mt-2">
-                            <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-3 py-1 rounded-full border-2 border-black/5" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '12px' }}>
+                            <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-3 py-1 rounded-full border-2 border-black/5" style={{ color: '#000000', fontSize: '12px' }}>
                               <ClipboardList className="h-3.5 w-3.5" />
                               {project.task_count} Tasks
                             </div>
-                            <div className={`flex items-center gap-1.5 uppercase tracking-widest px-3 py-1 rounded-full border-2 ${(project.status || '').toLowerCase().includes('progress') ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-black/5'}`} style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', fontSize: '12px', color: (project.status || '').toLowerCase().includes('progress') ? '#2563EB' : (project.status || '').toLowerCase().includes('completed') ? '#16A34A' : (project.status || '').toLowerCase().includes('cancelled') ? '#DC2626' : (project.status || '').toLowerCase().includes('archived') ? '#EAB308' : '#000000' }}>
+                            <div className={`flex items-center gap-1.5 uppercase tracking-widest px-3 py-1 rounded-full border-2 ${(project.status || '').toLowerCase().includes('progress') ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-black/5'}`} style={{ fontSize: '12px', color: (project.status || '').toLowerCase().includes('progress') ? '#2563EB' : (project.status || '').toLowerCase().includes('completed') ? '#16A34A' : (project.status || '').toLowerCase().includes('cancelled') ? '#DC2626' : (project.status || '').toLowerCase().includes('archived') ? '#EAB308' : '#000000' }}>
                               {project.status || 'Active'}
                             </div>
                           </div>
@@ -4697,12 +4696,12 @@ const TaskManagement: React.FC = () => {
                         <Table>
                           <TableHeader className="bg-slate-50 dark:bg-slate-900 border-b-2 border-black/10">
                             <TableRow>
-                              <TableHead className="w-[280px] uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Task Intelligence</TableHead>
-                              <TableHead className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Assigned To</TableHead>
-                              <TableHead className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Deadline</TableHead>
-                              <TableHead className="w-[180px] uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Status</TableHead>
-                              <TableHead className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Priority</TableHead>
-                              <TableHead className="uppercase tracking-wider font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Actions</TableHead>
+                              <TableHead className="w-[280px] uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Task Intelligence</TableHead>
+                              <TableHead className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Assigned To</TableHead>
+                              <TableHead className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Deadline</TableHead>
+                              <TableHead className="w-[180px] uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Status</TableHead>
+                              <TableHead className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Priority</TableHead>
+                              <TableHead className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -4711,20 +4710,20 @@ const TaskManagement: React.FC = () => {
                                 <TableRow key={task.id} className="hover:bg-violet-50/30 cursor-pointer" onClick={() => setSelectedTask(task)}>
                                   <TableCell className="py-4">
                                     <div className="flex flex-col">
-                                      <span className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>{task.title}</span>
-                                      {task.description && <span className="text-[12px] text-black dark:text-slate-400 font-medium line-clamp-2 mt-1" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>{task.description}</span>}
+                                      <span className="text-[14px] font-bold text-black dark:text-white" style={{  }}>{task.title}</span>
+                                      {task.description && <span className="text-[12px] text-black dark:text-slate-400 font-medium line-clamp-2 mt-1" style={{  }}>{task.description}</span>}
                                     </div>
                                   </TableCell>
                                   <TableCell>
                                     <div className="flex items-center gap-3">
                                       <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[12px] font-black text-black dark:text-white">{(task.assignedToName || 'U')[0].toUpperCase()}</div>
-                                      <span className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>{task.assignedToName || 'Unassigned'}</span>
+                                      <span className="text-[14px] font-bold text-black dark:text-white" style={{  }}>{task.assignedToName || 'Unassigned'}</span>
                                     </div>
                                   </TableCell>
                                   <TableCell>
                                     <div className="flex items-center gap-2 text-black dark:text-white">
                                       <Calendar className="h-3.5 w-3.5" />
-                                      <span className="text-[14px] font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>{task.deadline ? formatDateIST(task.deadline, "MMM dd, yyyy") : "No deadline"}</span>
+                                      <span className="text-[14px] font-bold" style={{  }}>{task.deadline ? formatDateIST(task.deadline, "MMM dd, yyyy") : "No deadline"}</span>
                                     </div>
                                   </TableCell>
                                   <TableCell onClick={(e) => e.stopPropagation()}>
@@ -4742,7 +4741,7 @@ const TaskManagement: React.FC = () => {
                                       >
                                         <SelectTrigger
                                           className={`w-[160px] h-9 border-2 bg-white dark:bg-gray-950 px-3 transition-all text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm`}
-                                          style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                                          style={{  }}
                                         >
                                           <div className="flex items-center gap-2">
                                             <div className={`h-2 w-2 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
@@ -4759,7 +4758,7 @@ const TaskManagement: React.FC = () => {
                                     )}
                                   </TableCell>
                                   <TableCell>
-                                    <Badge variant="outline" className={cn(getPriorityColor(task.priority), "text-[12px] font-bold uppercase tracking-wider border-0 shadow-sm")} style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                    <Badge variant="outline" className={cn(getPriorityColor(task.priority), "text-[12px] font-bold uppercase tracking-wider border-0 shadow-sm")} style={{  }}>
                                       {task.priority || 'Medium'}
                                     </Badge>
                                   </TableCell>
@@ -4791,7 +4790,7 @@ const TaskManagement: React.FC = () => {
                               ))
                             ) : (
                               <TableRow>
-                                <TableCell colSpan={6} className="h-40 text-center font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif', color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>No matching tasks found in this project.</TableCell>
+                                <TableCell colSpan={6} className="h-40 text-center font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>No matching tasks found in this project.</TableCell>
                               </TableRow>
                             )}
                           </TableBody>
@@ -4804,9 +4803,10 @@ const TaskManagement: React.FC = () => {
             </div>
           )}
         </CardContent>
-          </Card>
-        </div>
-      )}
+      </Card>
+    </div>
+  </TabsContent>
+</Tabs>
 
 {/* Pass Task Dialog */ }
       <Dialog
@@ -6688,3 +6688,4 @@ const TaskManagement: React.FC = () => {
 };
 
 export default TaskManagement;
+

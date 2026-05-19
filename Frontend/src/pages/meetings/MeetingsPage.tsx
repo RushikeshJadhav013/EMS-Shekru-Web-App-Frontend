@@ -60,9 +60,10 @@ interface Meeting {
     created_by_name: string;
     created_by_id: number;
     participants?: {
-        id: number;
-        user_id: number;
-        user_name: string;
+        id?: number;
+        user_id?: number;
+        user_name?: string;
+        name?: string;
     }[];
     type?: "company" | "team" | "project" | "one-to-one";
     team_name?: string;
@@ -433,11 +434,11 @@ const MeetingsPage: React.FC = () => {
     const getDisplayName = (type?: string) => {
         const t = (type || "").toLowerCase();
         switch (t) {
-            case "company": return "Townhall Meeting";
-            case "team": return "Team Meeting";
-            case "project": return "Project Meeting";
-            case "one-to-one": return "1:1 Meeting";
-            default: return "General Meeting";
+            case "company": return "Townhall meeting";
+            case "team": return "Team meeting";
+            case "project": return "Project meeting";
+            case "one-to-one": return "1:1 meeting";
+            default: return "General meeting";
         }
     };
 
@@ -482,26 +483,25 @@ const MeetingsPage: React.FC = () => {
 
     return (
         <div className="flex-1 flex flex-col h-full bg-[#f8fafc] dark:bg-[#020617] overflow-hidden">
-            <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-                <div className="max-w-7xl mx-auto px-8 py-8">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-6">
-                            <div className="h-16 w-16 bg-blue-600 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
-                                <Video className="h-8 w-8" />
-                            </div>
-                            <div>
-                                <h1 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "30px", fontWeight: "bold" }}>Meetings</h1>
-                                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Schedule and manage your meetings</p>
-                            </div>
-                        </div>
-                        <Button
-                            onClick={() => { resetForm(); setIsCreateDialogOpen(true); }}
-                            className="h-14 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-500/10 transition-all active:scale-95"
-                        >
-                            <Plus className="h-5 w-5 mr-2" />
-                            Schedule Meeting
-                        </Button>
+            <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-slate-900 border border-[#858282] shadow-sm mt-1">
+                <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-blue-500/5 rounded-full blur-3xl" />
+                <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
+                <div className="flex items-center gap-6">
+                    <div className="h-16 w-16 bg-blue-600 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
+                        <Video className="h-8 w-8" />
                     </div>
+                    <div>
+                        <h1 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "30px", fontWeight: "bold" }}>Meetings</h1>
+                        <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Schedule and manage your meetings</p>
+                    </div>
+                </div>
+                <Button
+                    onClick={() => { resetForm(); setIsCreateDialogOpen(true); }}
+                    className="h-14 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-500/10 transition-all active:scale-95"
+                >
+                    <Plus className="h-5 w-5 mr-2" />
+                    Schedule Meeting
+                </Button>
 
                     <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) resetForm(); }}>
                         <DialogContent className="sm:max-w-[650px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
@@ -546,10 +546,10 @@ const MeetingsPage: React.FC = () => {
                                                 <SelectValue placeholder="Select type" />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl">
-                                                {canCreateCompany && <SelectItem value="company">Townhall Meeting</SelectItem>}
-                                                {canCreateTeam && <SelectItem value="team">Team Meeting</SelectItem>}
-                                                {canCreateProject && <SelectItem value="project">Project Meeting</SelectItem>}
-                                                {canCreateOneToOne && <SelectItem value="one-to-one">1:1 Meeting</SelectItem>}
+                                                {canCreateCompany && <SelectItem value="company">Townhall meeting</SelectItem>}
+                                                {canCreateTeam && <SelectItem value="team">Team meeting</SelectItem>}
+                                                {canCreateProject && <SelectItem value="project">Project meeting</SelectItem>}
+                                                {canCreateOneToOne && <SelectItem value="one-to-one">1:1 meeting</SelectItem>}
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -681,21 +681,20 @@ const MeetingsPage: React.FC = () => {
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
-                </div>
             </div>
 
             <div className="flex-1 overflow-y-auto w-full custom-scrollbar">
                 <div className="max-w-7xl mx-auto px-6 py-8">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
                         {[
-                            { label: "1:1 Meetings", val: meetings.filter(m => m.type === 'one-to-one').length, icon: Users, color: "text-amber-600", bg: "bg-amber-50" },
-                            { label: "Townhall Meetings", val: meetings.filter(m => m.type === 'company').length, icon: Briefcase, color: "text-indigo-600", bg: "bg-indigo-50" },
-                            { label: "Project Meetings", val: meetings.filter(m => m.type === 'project').length, icon: FolderKanban, color: "text-blue-600", bg: "bg-blue-50" },
-                            { label: "Team Meetings", val: meetings.filter(m => m.type === 'team').length, icon: Users2, color: "text-rose-600", bg: "bg-rose-50" },
+                            { label: "1:1 meetings", val: meetings.filter(m => m.type === 'one-to-one').length, icon: Users, color: "text-amber-600", bg: "bg-amber-50" },
+                            { label: "Townhall meetings", val: meetings.filter(m => m.type === 'company').length, icon: Briefcase, color: "text-indigo-600", bg: "bg-indigo-50" },
+                            { label: "Project meetings", val: meetings.filter(m => m.type === 'project').length, icon: FolderKanban, color: "text-blue-600", bg: "bg-blue-50" },
+                            { label: "Team meetings", val: meetings.filter(m => m.type === 'team').length, icon: Users2, color: "text-rose-600", bg: "bg-rose-50" },
                         ].map((stat, i) => (
-                            <Card key={i} className="border-none shadow-sm bg-white dark:bg-slate-900 rounded-[2rem]">
+                            <Card key={i} className="border-2 border-[#858282] shadow-lg bg-white dark:bg-slate-900 rounded-[2rem]">
                                 <CardContent className="p-6 flex items-center justify-between">
-                                    <div><p className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>{stat.label}</p><h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }}>{stat.val}</h3></div>
+                                    <div><p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>{stat.label}</p><h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }}>{stat.val}</h3></div>
                                     <div className={`h-12 w-12 rounded-2xl ${stat.bg} flex items-center justify-center ${stat.color}`}><stat.icon className="h-6 w-6" /></div>
                                 </CardContent>
                             </Card>
@@ -703,24 +702,24 @@ const MeetingsPage: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2 mb-6">
-                        <button onClick={() => setMainTab("all")} className={`h-10 px-6 rounded-2xl uppercase tracking-widest transition-all ${mainTab === "all" ? "bg-slate-900 text-white" : "bg-white text-slate-500 shadow-sm"}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>All Meetings</button>
-                        <button onClick={() => setMainTab("my")} className={`h-10 px-6 rounded-2xl uppercase tracking-widest transition-all ${mainTab === "my" ? "bg-slate-900 text-white" : "bg-white text-slate-500 shadow-sm"}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>My Meetings {myMeetings.length > 0 && <span className="ml-2 bg-blue-600 text-white px-2 rounded-full">{myMeetings.length}</span>}</button>
+                        <button onClick={() => setMainTab("all")} className={`h-10 px-6 rounded-2xl transition-all ${mainTab === "all" ? "bg-slate-900 text-white" : "bg-white text-slate-500 shadow-sm"}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>All meetings</button>
+                        <button onClick={() => setMainTab("my")} className={`h-10 px-6 rounded-2xl transition-all ${mainTab === "my" ? "bg-slate-900 text-white" : "bg-white text-slate-500 shadow-sm"}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>My meetings {myMeetings.length > 0 && <span className="ml-2 bg-blue-600 text-white px-2 rounded-full">{myMeetings.length}</span>}</button>
                     </div>
 
                     <Tabs value={typeFilter} onValueChange={setTypeFilter} className="w-full">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                            <TabsList className="h-14 p-1.5 rounded-[1.5rem] bg-white dark:bg-slate-900 shadow-sm">
-                                <TabsTrigger value="one-to-one" className="rounded-2xl px-6 uppercase tracking-widest data-[state=active]:bg-amber-500 data-[state=active]:text-white" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>1:1 Meeting</TabsTrigger>
-                                <TabsTrigger value="company" className="rounded-2xl px-6 uppercase tracking-widest data-[state=active]:bg-indigo-600 data-[state=active]:text-white" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>Townhall Meeting</TabsTrigger>
-                                <TabsTrigger value="project" className="rounded-2xl px-6 uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:text-white" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>Project Meeting</TabsTrigger>
-                                <TabsTrigger value="team" className="rounded-2xl px-6 uppercase tracking-widest data-[state=active]:bg-rose-600 data-[state=active]:text-white" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>Team Meeting</TabsTrigger>
+                            <TabsList className="h-14 p-1.5 rounded-[1.5rem] bg-white dark:bg-slate-900 shadow-sm border-2 border-[#858282]">
+                                <TabsTrigger value="one-to-one" className="rounded-2xl px-6 data-[state=active]:bg-amber-500 data-[state=active]:text-white" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>1:1 meeting</TabsTrigger>
+                                <TabsTrigger value="company" className="rounded-2xl px-6 data-[state=active]:bg-indigo-600 data-[state=active]:text-white" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>Townhall meeting</TabsTrigger>
+                                <TabsTrigger value="project" className="rounded-2xl px-6 data-[state=active]:bg-blue-600 data-[state=active]:text-white" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>Project meeting</TabsTrigger>
+                                <TabsTrigger value="team" className="rounded-2xl px-6 data-[state=active]:bg-rose-600 data-[state=active]:text-white" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>Team meeting</TabsTrigger>
                             </TabsList>
                             <div className="flex items-center gap-3">
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                    <Input placeholder="Search..." className="pl-9 h-11 rounded-2xl border-none shadow-sm" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                                    <Input placeholder="Search..." className="pl-9 h-11 rounded-2xl border-2 border-[#858282] shadow-sm" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                                 </div>
-                                <Input type="date" className="h-11 border-none shadow-sm rounded-2xl w-[150px]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} />
+                                <Input type="date" className="h-11 border-2 border-[#858282] shadow-sm rounded-2xl w-[150px]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} />
                             </div>
                         </div>
 
@@ -730,7 +729,7 @@ const MeetingsPage: React.FC = () => {
                                     {[1, 2, 3].map(i => <div key={i} className="h-64 rounded-[2.5rem] bg-slate-100 animate-pulse" />)}
                                 </div>
                             ) : filteredMeetings.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-900 rounded-[3rem] border border-dashed">
+                                <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-900 rounded-[3rem] border-2 border-[#858282]">
                                     <Video className="h-10 w-10 text-slate-200 mb-6" />
                                     <h3 className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>No Meetings Found</h3>
                                 </div>
@@ -743,7 +742,7 @@ const MeetingsPage: React.FC = () => {
                                             return (
                                                 <div key={type} className="space-y-6">
                                                     <div className="flex items-center gap-4">
-                                                        <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">{getDisplayName(type)}s</h2>
+                                                        <h2 className="text-sm font-black text-slate-400">{getDisplayName(type)}s</h2>
                                                         <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1 opacity-50" />
                                                         <Badge variant="outline" className="rounded-full px-3 py-0.5 text-[9px] font-black opacity-50">{grouped.length}</Badge>
                                                     </div>
@@ -753,7 +752,7 @@ const MeetingsPage: React.FC = () => {
                                                                 <div className={`absolute top-0 left-0 right-0 h-1.5 ${getBadgeColor(meeting.type).split(' ')[0]}`}></div>
                                                                 <CardHeader className="p-8 pb-4">
                                                                     <div className="flex justify-between items-start mb-6">
-                                                                        <Badge className={`rounded-full px-4 py-1 uppercase tracking-widest ${getBadgeColor(meeting.type)}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "12px", fontWeight: "bold" }}>{getDisplayName(meeting.type)}</Badge>
+                                                                        <Badge className={`rounded-full px-4 py-1 ${getBadgeColor(meeting.type)}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "12px", fontWeight: "bold" }}>{getDisplayName(meeting.type)}</Badge>
                                                                         <DropdownMenu>
                                                                             <DropdownMenuTrigger asChild><div className="h-10 w-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 cursor-pointer"><MoreVertical className="h-4 w-4" /></div></DropdownMenuTrigger>
                                                                             <DropdownMenuContent align="end" className="rounded-xl">
@@ -793,7 +792,7 @@ const MeetingsPage: React.FC = () => {
                                                                         )}
                                                                     </div>
                                                                     <div className="pt-6 border-t flex items-center justify-between">
-                                                                        <div className="flex -space-x-3">{meeting.participants?.slice(0, 3).map((p, i) => <div key={i} className="h-10 w-10 rounded-2xl border-4 border-white bg-slate-100 flex items-center justify-center font-bold text-xs" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", backgroundColor: "#F1F5F9" }}>{(p.user_name || p.name || "?")[0].toUpperCase()}</div>)}</div>
+                                                                        <div className="flex -space-x-3">{meeting.participants?.slice(0, 3).map((p, i) => <div key={i} className="h-10 w-10 rounded-2xl border-4 border-white bg-slate-100 flex items-center justify-center font-bold text-xs" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", backgroundColor: "#F1F5F9" }}>{((p.user_name || p.name || "?")[0] || "?").toUpperCase()}</div>)}</div>
                                                                         {meeting.end_time && new Date(meeting.end_time) < new Date() ? (
                                                                             <Button disabled className="rounded-2xl bg-slate-200 px-6 h-11 cursor-not-allowed" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>
                                                                                 Expired
@@ -820,13 +819,12 @@ const MeetingsPage: React.FC = () => {
                                                     <div className={`absolute top-0 left-0 right-0 h-1.5 ${getBadgeColor(meeting.type).split(' ')[0]}`}></div>
                                                     <CardHeader className="p-8 pb-4">
                                                         <div className="flex justify-between items-start mb-6">
-                                                            <Badge className={`rounded-full px-4 py-1 font-black text-[9px] uppercase tracking-widest ${getBadgeColor(meeting.type)}`}>{getDisplayName(meeting.type)}</Badge>
+                                                            <Badge className={`rounded-full px-4 py-1 font-black text-[9px] ${getBadgeColor(meeting.type)}`}>{getDisplayName(meeting.type)}</Badge>
                                                             <DropdownMenu>
                                                                 <DropdownMenuTrigger asChild><div className="h-10 w-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 cursor-pointer"><MoreVertical className="h-4 w-4" /></div></DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end" className="rounded-xl">
                                                                     {(isAdmin || Number(meeting.created_by_id) === Number(user?.id)) && (
                                                                         <>
-                                                                            <DropdownMenuItem onClick={() => openEditDialog(meeting)} className="gap-2 font-bold text-xs uppercase py-3"><Edit2 className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
                                                                             <DropdownMenuItem onClick={() => handleDeleteMeeting(meeting)} className="gap-2 font-bold text-xs uppercase py-3 text-destructive"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                                                                         </>
                                                                     )}
@@ -860,7 +858,7 @@ const MeetingsPage: React.FC = () => {
                                                             )}
                                                         </div>
                                                         <div className="pt-6 border-t flex items-center justify-between">
-                                                            <div className="flex -space-x-3">{meeting.participants?.slice(0, 3).map((p, i) => <div key={i} className="h-10 w-10 rounded-2xl border-4 border-white bg-slate-100 flex items-center justify-center font-bold text-xs" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", backgroundColor: "#F1F5F9" }}>{(p.user_name || p.name || "?")[0].toUpperCase()}</div>)}</div>
+                                                            <div className="flex -space-x-3">{meeting.participants?.slice(0, 3).map((p, i) => <div key={i} className="h-10 w-10 rounded-2xl border-4 border-white bg-slate-100 flex items-center justify-center font-bold text-xs" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", backgroundColor: "#F1F5F9" }}>{((p.user_name || p.name || "?")[0] || "?").toUpperCase()}</div>)}</div>
                                                                 {meeting.end_time && new Date(meeting.end_time) < new Date() ? (
                                                                     <Button disabled className="rounded-2xl bg-slate-200 text-slate-500 font-black text-[10px] uppercase px-6 h-11 cursor-not-allowed">
                                                                         Expired

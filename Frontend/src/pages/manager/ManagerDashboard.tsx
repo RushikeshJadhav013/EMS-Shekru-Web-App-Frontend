@@ -17,6 +17,7 @@ import {
   Activity,
   Target,
   RefreshCw,
+  UserPlus,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatTimeIST, formatIST, nowIST } from '@/utils/timezone';
@@ -256,7 +257,7 @@ const ManagerDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border shadow-sm mt-1">
+      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border border-[#858282] shadow-sm mt-1">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-teal-500/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-cyan-500/5 rounded-full blur-3xl" />
 
@@ -287,18 +288,19 @@ const ManagerDashboard: React.FC = () => {
             <RefreshCw className={`h-5 w-5 text-teal-500 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
           <Button
-            onClick={() => navigate('/manager/tasks')}
-            size="lg"
-            className="rounded-xl px-6 h-12 bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-200 dark:shadow-none transition-all active:scale-95 gap-2"
+            onClick={() => navigate('/manager/employees/', { state: { highlight: true } })}
+            className="rounded-xl px-6 h-12 bg-[#2563EB] hover:bg-blue-700 text-white shadow-lg shadow-blue-200 border-2 border-[#2563EB] transition-all active:scale-95 gap-2"
+            style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
           >
-            <ClipboardList className="h-4 w-4" />
-            Create Task
+            <UserPlus className="h-4 w-4" />
+            {t.employee.addEmployee}
           </Button>
         </div>
       </div>
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="border border-[#858282] p-4 rounded-2xl bg-white/50 mb-8 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
         {[
           {
             label: 'Total Members',
@@ -353,7 +355,7 @@ const ManagerDashboard: React.FC = () => {
         ].map((item, i) => (
           <Card
             key={i}
-            className={`border-2 ${item.borderColor} ${item.hoverBorder} shadow-sm ${item.cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative ${item.path ? 'cursor-pointer' : ''}`}
+            className={`border-2 border-[#858282] hover:border-black shadow-lg rounded-2xl ${item.cardBg} backdrop-blur-sm hover:shadow-xl transition-all duration-300 group overflow-hidden relative ${item.path ? 'cursor-pointer' : ''}`}
             onClick={() => item.path && navigate(item.path, { state: item.pathState })}
           >
             {/* Background Accent */}
@@ -381,12 +383,13 @@ const ManagerDashboard: React.FC = () => {
           </Card>
         ))}
       </div>
+      </div>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Team Activities */}
-        <Card className="lg:col-span-3 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
-          <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
+        <Card className="lg:col-span-3 border border-[#858282] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+          <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
             <CardTitle className="flex items-center gap-2 font-bold" style={{ color: '#000000' }}>
               <Activity className="h-5 w-5" style={{ color: '#000000' }} />
               <span className="text-[16px] font-bold">{t.navigation.teamActivities}</span>
@@ -479,8 +482,8 @@ const ManagerDashboard: React.FC = () => {
         </Card>
 
         {/* Team Leads Performance */}
-        <Card className="lg:col-span-2 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
-          <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
+        <Card className="lg:col-span-2 border border-[#858282] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+          <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
             <CardTitle className="flex items-center gap-2 font-bold" style={{ color: '#000000' }}>
               <Target className="h-5 w-5" style={{ color: '#000000' }} />
               <span className="text-[16px] font-bold">{t.navigation.teamPerformance}</span>
@@ -510,8 +513,8 @@ const ManagerDashboard: React.FC = () => {
       </div>
 
       {/* Team Members Current Status */}
-      <Card className="border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
-        <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
+      <Card className="border border-[#858282] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+        <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
             <CardTitle className="flex items-center gap-2 font-bold" style={{ color: '#000000' }}>
               <Users className="h-5 w-5" style={{ color: '#000000' }} />
               <span className="text-[16px] font-bold">{t.navigation.teamMembers} Current Status</span>

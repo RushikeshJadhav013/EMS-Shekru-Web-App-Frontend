@@ -287,7 +287,7 @@ const EmployeeDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border shadow-md mt-1 mb-8">
+      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border border-[#858282] shadow-md mt-1 mb-8">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-indigo-500/10 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-purple-500/10 rounded-full blur-3xl" />
 
@@ -404,8 +404,8 @@ const EmployeeDashboard: React.FC = () => {
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* My Tasks */}
-        <Card className="lg:col-span-3 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
-          <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
+        <Card className="lg:col-span-3 border border-slate-200 shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+          <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-3 text-base">
                 <div className="h-10 w-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
@@ -579,8 +579,8 @@ const EmployeeDashboard: React.FC = () => {
         </Card>
 
         {/* Recent Activities */}
-        <Card className="lg:col-span-3 border-2 border-[#5e5b5b] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
-          <CardHeader className="border-b-2 border-[#5e5b5b] bg-slate-50 px-6 py-5">
+        <Card className="lg:col-span-3 border border-slate-200 shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+          <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
             <CardTitle className="flex items-center gap-2" style={{ color: '#000000' }}>
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
                 <Activity className="h-5 w-5 text-white" />

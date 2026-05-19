@@ -117,7 +117,7 @@ export const translations = {
       locationRequired: 'Location access required',
       cameraRequired: 'Camera access required',
       // Attendance Manager specific
-      employeeAttendance: 'Employee Attendance',
+      employeeAttendance: 'Employee Management',
       monitorTeamAttendance: 'Monitor team attendance and export reports',
       exportCSV: 'Export CSV',
       exportPDF: 'Export PDF',
@@ -505,7 +505,7 @@ export const translations = {
       locationRequired: 'स्थान एक्सेस आवश्यक',
       cameraRequired: 'कैमरा एक्सेस आवश्यक',
       // Attendance Manager specific
-      employeeAttendance: 'कर्मचारी उपस्थिति',
+      employeeAttendance: 'कर्मचारी प्रबंधन',
       monitorTeamAttendance: 'टीम की उपस्थिति की निगरानी करें और रिपोर्ट निर्यात करें',
       exportCSV: 'CSV निर्यात करें',
       exportPDF: 'PDF निर्यात करें',
@@ -850,7 +850,7 @@ export const translations = {
       locationRequired: 'स्थान प्रवेश आवश्यक',
       cameraRequired: 'कॅमेरा प्रवेश आवश्यक',
       // Attendance Manager specific
-      employeeAttendance: 'कर्मचारी उपस्थिती',
+      employeeAttendance: 'कर्मचारी व्यवस्थापन',
       monitorTeamAttendance: 'टीम उपस्थितीचे निरीक्षण करा आणि अहवाल निर्यात करा',
       exportCSV: 'CSV निर्यात करा',
       exportPDF: 'PDF निर्यात करा',

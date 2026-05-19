@@ -1409,7 +1409,7 @@ export default function HiringManagement() {
   return (
     <div className="w-full space-y-6">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-md border border-slate-200 dark:border-slate-700">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-md border border-[#858282]">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-4">
             <div className="h-12 w-12 rounded-2xl bg-blue-600 dark:bg-blue-500 flex items-center justify-center">
@@ -1545,7 +1545,7 @@ export default function HiringManagement() {
           </Card>
 
           {/* Vacancies Table */}
-          <Card className="border border-slate-200 dark:border-slate-700 shadow-md rounded-3xl">
+          <Card className="border-2 border-[#858282] shadow-lg rounded-[2rem] overflow-hidden bg-white dark:bg-slate-900">
             <CardHeader className="border-b bg-slate-50 dark:bg-slate-800 rounded-t-3xl">
               <div className="flex items-center justify-between gap-2">
                 <div>
@@ -1680,7 +1680,7 @@ export default function HiringManagement() {
           </Card>
 
           {/* Candidates Table */}
-          <Card className="border border-slate-200 dark:border-slate-700 shadow-md rounded-3xl">
+          <Card className="border-2 border-[#858282] shadow-lg rounded-[2rem] overflow-hidden bg-white dark:bg-slate-900">
             <CardHeader className="border-b bg-slate-50 dark:bg-slate-800 rounded-t-3xl">
               <div className="flex items-center justify-between gap-2">
                 <div>
@@ -1874,7 +1874,7 @@ export default function HiringManagement() {
           </Card>
 
           {/* Interviews Table */}
-          <Card className="border border-slate-200 dark:border-slate-700 shadow-md rounded-3xl">
+          <Card className="border-2 border-[#858282] shadow-lg rounded-[2rem] overflow-hidden bg-white dark:bg-slate-900">
             <CardHeader className="border-b bg-slate-50 dark:bg-slate-800 rounded-t-3xl">
               <div className="flex items-center justify-between gap-2">
                 <div>
@@ -2474,7 +2474,7 @@ export default function HiringManagement() {
 
       {/* View Candidate Dialog */}
       < Dialog open={isViewCandidateDialogOpen} onOpenChange={setIsViewCandidateDialogOpen} >
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border border-slate-200">
           <DialogHeader>
             <DialogTitle>Candidate Profile: {selectedCandidate?.name}</DialogTitle>
             <DialogDescription>{selectedCandidate?.email}</DialogDescription>

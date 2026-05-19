@@ -1998,7 +1998,7 @@ export default function LeaveManagement() {
   return (
     <div className="w-full space-y-6">
       {/* Modern Header */}
-      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border shadow-sm mt-1">
+      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border border-[#858282] shadow-xl mt-1">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-purple-500/5 rounded-full blur-3xl" />
 
@@ -2007,10 +2007,10 @@ export default function LeaveManagement() {
             <CalendarDays className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h1 className="text-[30px] font-black tracking-tight text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+            <h1 className="text-[30px] font-black tracking-tight text-black dark:text-white" style={{  }}>
               Leave Management
             </h1>
-            <p className="text-[14px] text-black dark:text-white font-bold flex items-center gap-2 mt-1" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+            <p className="text-[14px] text-black dark:text-white font-bold flex items-center gap-2 mt-1" style={{  }}>
               <Clock className="h-4 w-4 text-indigo-500" />
               Manage leave requests and view calendar
             </p>
@@ -2020,13 +2020,13 @@ export default function LeaveManagement() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList
-          className={`grid w-full ${colsClass} h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm`}
+          className={`grid w-full ${colsClass} h-14 bg-white dark:bg-gray-900 border-2 border-[#858282] rounded-2xl p-1 gap-1 shadow-lg`}
         >
           {canApply && (
             <TabsTrigger
               value="request"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold text-black dark:text-white data-[state=inactive]:font-bold text-[14px] transition-all duration-300 rounded-md"
-              style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+              style={{  }}
             >
               Apply Leave
             </TabsTrigger>
@@ -2035,7 +2035,7 @@ export default function LeaveManagement() {
             <TabsTrigger
               value="approvals"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-600 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold text-black dark:text-white data-[state=inactive]:font-bold text-[14px] transition-all duration-300 rounded-md"
-              style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+              style={{  }}
             >
               {canApproveLeaves ? "Approvals" : "Team Leaves"}
             </TabsTrigger>
@@ -2043,7 +2043,7 @@ export default function LeaveManagement() {
           <TabsTrigger
             value="calendar"
             className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold text-black dark:text-white data-[state=inactive]:font-bold text-[14px] transition-all duration-300 rounded-md"
-            style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+            style={{  }}
           >
             Leave Calendar
           </TabsTrigger>
@@ -2051,7 +2051,7 @@ export default function LeaveManagement() {
             <TabsTrigger
               value="export"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-amber-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold text-black dark:text-white data-[state=inactive]:font-bold text-[14px] transition-all duration-300 rounded-md"
-              style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+              style={{  }}
             >
               Export
             </TabsTrigger>
@@ -2115,7 +2115,7 @@ export default function LeaveManagement() {
               ].map((item, i) => (
                 <Card
                   key={i}
-                  className={`border-2 ${item.borderColor} ${item.hoverBorder} shadow-sm ${item.cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative cursor-pointer`}
+                  className={`border-2 border-[#858282] hover:border-black shadow-lg rounded-2xl ${item.cardBg} backdrop-blur-sm hover:shadow-xl transition-all duration-300 group overflow-hidden relative cursor-pointer`}
                 >
                   {/* Background Accent */}
                   <div
@@ -2131,10 +2131,10 @@ export default function LeaveManagement() {
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <h3 className="text-[12px] font-bold text-black dark:text-white uppercase tracking-widest leading-none" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                      <h3 className="text-[12px] font-bold text-black dark:text-white uppercase tracking-widest leading-none" style={{  }}>
                         {item.label}
                       </h3>
-                      <div className="text-[24px] font-black text-black dark:text-white tracking-tight" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                      <div className="text-[24px] font-black text-black dark:text-white tracking-tight" style={{  }}>
                         {item.value}
                       </div>
                       <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
@@ -2148,7 +2148,7 @@ export default function LeaveManagement() {
                                   : "bg-slate-500"
                             }`}
                         />
-                        <span className="text-[12px] font-bold text-black dark:text-white uppercase" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <span className="text-[12px] font-bold text-black dark:text-white uppercase" style={{  }}>
                           {item.sub}
                         </span>
                       </div>
@@ -2159,25 +2159,25 @@ export default function LeaveManagement() {
             </div>
 
             {/* Leave Request Form */}
-            <Card className="border-0 shadow-lg">
+            <Card className="border border-[#858282] shadow-xl rounded-2xl overflow-hidden">
               <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-                <CardTitle className="text-[16px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                <CardTitle className="text-[16px] font-bold text-black dark:text-white" style={{  }}>
                   Request Leave
                 </CardTitle>
                 <div className="mt-2 space-y-3">
                   <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-                    <p className="text-[14px] text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                    <p className="text-[14px] text-black dark:text-white" style={{  }}>
                       <strong style={{ color: '#1E40AF' }}>Note:</strong> Sick and Casual leave requests will
                       deduct from your Annual Leave balance. Only Unpaid Leave
                       does not affect your Annual Leave balance.
                     </p>
                   </div>
                   <div className="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
-                    <p className="text-[14px] text-black dark:text-white flex items-center gap-2 mb-2" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                    <p className="text-[14px] text-black dark:text-white flex items-center gap-2 mb-2" style={{  }}>
                       <AlertCircle className="h-4 w-4" />
                       <strong style={{ color: '#92400E' }}>Leave Restrictions:</strong>
                     </p>
-                    <div className="text-[14px] text-black dark:text-white space-y-2 pl-1 font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                    <div className="text-[14px] text-black dark:text-white space-y-2 pl-1 font-medium" style={{  }}>
                       {/* Sick Leave Warning Removed */}
                       <div className="flex items-start gap-2">
                         <div className="h-1 w-1 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
@@ -2193,14 +2193,14 @@ export default function LeaveManagement() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Leave Type</Label>
+                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Leave Type</Label>
                     <Select
                       value={formData.type}
                       onValueChange={(value) =>
                         setFormData({ ...formData, type: value })
                       }
                     >
-                      <SelectTrigger className="text-[14px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                      <SelectTrigger className="text-[14px] text-black dark:text-white font-medium" style={{  }}>
                         <SelectValue placeholder="Select Leave Type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -2233,8 +2233,8 @@ export default function LeaveManagement() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Duration</Label>
-                    <div className="flex gap-2 text-[14px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Duration</Label>
+                    <div className="flex gap-2 text-[14px] text-black dark:text-white font-medium" style={{  }}>
                       <div className="flex-1">
                         <DatePicker
                           date={formData.startDate}
@@ -2342,7 +2342,7 @@ export default function LeaveManagement() {
                 })()}
 
                 <div className="space-y-2">
-                  <Label className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Reason *</Label>
+                  <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Reason *</Label>
                   <Textarea
                     maxLength={200}
                     value={formData.reason}
@@ -2364,12 +2364,12 @@ export default function LeaveManagement() {
                         ? "border-red-500"
                         : ""
                     )}
-                    style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                    style={{  }}
                   />
                   <div className="flex justify-between text-sm">
                     <span
                       className={`text-[12px] font-bold ${formData.reason.trim().length < 10 ? "text-[#EF4444]" : "text-[#16A34A]"}`}
-                      style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                      style={{  }}
                     >
                       {formData.reason.trim().length < 10
                         ? `${formData.reason.trim().length}/10 characters (minimum required)`
@@ -2387,7 +2387,7 @@ export default function LeaveManagement() {
                   onClick={handleSubmitRequest}
                   disabled={isSubmitting || formData.reason.trim().length < 10}
                   className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md disabled:opacity-50 text-[14px]"
-                  style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                  style={{  }}
                 >
                   <CalendarIcon className="h-4 w-4" />
                   {isSubmitting ? "Submitting..." : "Submit Request"}
@@ -2396,7 +2396,7 @@ export default function LeaveManagement() {
             </Card>
 
             {/* My Leave History - Premium UI */}
-            <Card className="border-0 shadow-xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 overflow-hidden">
+            <Card className="border border-[#858282] shadow-xl rounded-2xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 overflow-hidden">
               <CardHeader className="border-b bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950 dark:via-purple-950 dark:to-pink-950">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -2404,10 +2404,10 @@ export default function LeaveManagement() {
                       <CalendarDays className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-[16px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                      <CardTitle className="text-[16px] font-black text-black dark:text-white" style={{  }}>
                         My Leave History
                       </CardTitle>
-                      <p className="text-[14px] text-black dark:text-white font-bold mt-1" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                      <p className="text-[14px] text-black dark:text-white font-bold mt-1" style={{  }}>
                         Track all your leave requests and their status
                       </p>
                     </div>
@@ -2416,7 +2416,7 @@ export default function LeaveManagement() {
                     value={leaveHistoryPeriod}
                     onValueChange={(value) => setLeaveHistoryPeriod(value)}
                   >
-                    <SelectTrigger className="w-[220px] bg-white dark:bg-slate-800 border-2 shadow-md hover:shadow-lg transition-all text-[14px] text-black dark:text-white font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                    <SelectTrigger className="w-[220px] bg-white dark:bg-slate-800 border-2 shadow-md hover:shadow-lg transition-all text-[14px] text-black dark:text-white font-bold" style={{  }}>
                       <SelectValue placeholder="Select period" />
                     </SelectTrigger>
                     <SelectContent>
@@ -2440,7 +2440,7 @@ export default function LeaveManagement() {
                 <div className="border-b bg-slate-50 dark:bg-slate-900 p-4">
                   <div className="flex items-center gap-3 flex-wrap">
                     <div className="flex-1 min-w-[150px]">
-                      <Label className="text-[14px] font-bold text-black dark:text-white mb-1 block" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>From Date</Label>
+                      <Label className="text-[14px] font-bold text-black dark:text-white mb-1 block" style={{  }}>From Date</Label>
                       <Input
                         type="date"
                         value={
@@ -2464,7 +2464,7 @@ export default function LeaveManagement() {
                       />
                     </div>
                     <div className="flex-1 min-w-[150px]">
-                      <Label className="text-[14px] font-bold text-black dark:text-white mb-1 block" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>To Date</Label>
+                      <Label className="text-[14px] font-bold text-black dark:text-white mb-1 block" style={{  }}>To Date</Label>
                       <Input
                         type="date"
                         value={
@@ -2580,7 +2580,7 @@ export default function LeaveManagement() {
                                     {daysCount === 1 ? "day" : "days"}
                                   </span>
                                 </div>
-                                <p className="text-[12px] font-bold text-black dark:text-white flex items-start gap-2" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                <p className="text-[12px] font-bold text-black dark:text-white flex items-start gap-2" style={{  }}>
                                   <FileText className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
                                   <span className="line-clamp-2 break-words overflow-wrap-anywhere whitespace-pre-wrap">
                                     {request.reason}
@@ -2591,7 +2591,7 @@ export default function LeaveManagement() {
                             <div className="flex flex-col items-end gap-1">
                               <Badge
                                 className={`px-3 py-1 text-[12px] font-bold capitalize ${getStatusBadgeStyle(request.status)}`}
-                                style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                                style={{  }}
                               >
                                 {request.status}
                               </Badge>
@@ -2657,9 +2657,9 @@ export default function LeaveManagement() {
         )}
 
         <TabsContent value="calendar">
-          <Card className="border-0 shadow-lg">
+          <Card className="border border-[#858282] shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-              <CardTitle className="text-[16px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+              <CardTitle className="text-[16px] font-black text-black dark:text-white" style={{  }}>
                 Leave Calendar
               </CardTitle>
             </CardHeader>
@@ -2671,11 +2671,11 @@ export default function LeaveManagement() {
                   <div className="p-6 border-2 rounded-xl bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-950 dark:via-indigo-950 dark:to-blue-950 shadow-lg">
                     <div className="flex items-start justify-between gap-3 mb-4">
                       <div>
-                        <h3 className="text-[16px] font-black text-black dark:text-white mb-1 flex items-center gap-2" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <h3 className="text-[16px] font-black text-black dark:text-white mb-1 flex items-center gap-2" style={{  }}>
                           <FileText className="h-6 w-6 text-purple-600" />
                           Leave Allocation Configuration
                         </h3>
-                        <p className="text-[14px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <p className="text-[14px] text-black dark:text-white font-medium" style={{  }}>
                           Set the total annual leave and distribute it across
                           different leave types. Changes apply to all users
                           immediately.
@@ -2685,7 +2685,7 @@ export default function LeaveManagement() {
 
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-6">
                       <div className="space-y-2">
-                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>
                           Total Annual Leave
                         </Label>
                         <Input
@@ -2700,7 +2700,7 @@ export default function LeaveManagement() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>
                           Sick Leave
                         </Label>
                         <Input
@@ -2726,7 +2726,7 @@ export default function LeaveManagement() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>
                           Casual Leave
                         </Label>
                         <Input
@@ -2752,7 +2752,7 @@ export default function LeaveManagement() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>
                           Other Leave
                         </Label>
                         <Input
@@ -2780,7 +2780,7 @@ export default function LeaveManagement() {
                     </div>
 
                     <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-                      <p className="text-[14px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                      <p className="text-[14px] text-black dark:text-white font-medium" style={{  }}>
                         <span className="text-[#1E40AF] font-black">Note:</span> Sick and Casual leave requests will deduct from
                         the Total Annual Leave balance. The individual
                         allocations (Sick and Casual) are for reference and
@@ -2799,15 +2799,15 @@ export default function LeaveManagement() {
                           ? "Saving..."
                           : "Save Configuration"}
                       </Button>
-                      <p className="text-[14px] text-black dark:text-white font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                      <p className="text-[14px] text-black dark:text-white font-bold" style={{  }}>
                         Changes will apply to all users immediately
                       </p>
                     </div>
                   </div>
 
                   {user?.role === "admin" && (
-                    <div className="p-4 border rounded-lg bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950">
-                      <h3 className="text-[16px] font-black text-black dark:text-white mb-3 flex items-center gap-2" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                    <div className="p-6 border-2 border-[#858282] rounded-2xl bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950 shadow-md">
+                      <h3 className="text-[16px] font-black text-black dark:text-white mb-3 flex items-center gap-2" style={{  }}>
                         Set Company Holidays
                       </h3>
                       <div className="space-y-3">
@@ -2827,7 +2827,7 @@ export default function LeaveManagement() {
                           </div>
                           <div className="flex-1 space-y-4 w-full">
                             <div className="space-y-2">
-                              <Label className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Holiday Name</Label>
+                              <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Holiday Name</Label>
                               <Input
                                 type="text"
                                 placeholder="e.g., Diwali, New Year"
@@ -2845,7 +2845,7 @@ export default function LeaveManagement() {
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Description</Label>
+                              <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Description</Label>
                               <Textarea
                                 placeholder="Description (optional) - e.g., Festival of Lights celebration"
                                 value={holidayForm.description || ""}
@@ -2863,7 +2863,7 @@ export default function LeaveManagement() {
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Recurring</Label>
+                              <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Recurring</Label>
                               <Select
                                 value={holidayForm.is_recurring ? "yes" : "no"}
                                 onValueChange={(value) =>
@@ -2892,7 +2892,7 @@ export default function LeaveManagement() {
                         </div>
                       </div>
                       <div className="mt-4">
-                        <h4 className="text-[16px] font-black text-black dark:text-white mb-2" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Current Holidays:</h4>
+                        <h4 className="text-[16px] font-black text-black dark:text-white mb-2" style={{  }}>Current Holidays:</h4>
                         {holidays.length === 0 ? (
                           <p className="text-sm text-muted-foreground">
                             No holidays configured yet.
@@ -2904,7 +2904,7 @@ export default function LeaveManagement() {
                                 key={h.id || h.date.toISOString()}
                                 className="flex items-center justify-between gap-2 p-2 bg-white dark:bg-slate-800 rounded border"
                               >
-                                <span className="flex-1 text-[14px] text-black dark:text-white font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                <span className="flex-1 text-[14px] text-black dark:text-white font-bold" style={{  }}>
                                   {h.name} -{" "}
                                   <span className="font-medium">{format(h.date, "MMMM dd, yyyy")}</span>
                                   {h.description && (
@@ -2916,7 +2916,7 @@ export default function LeaveManagement() {
                                     <Badge
                                       variant="secondary"
                                       className="ml-2 text-[12px] text-black dark:text-white font-medium bg-slate-100 dark:bg-slate-700"
-                                      style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                                      style={{  }}
                                     >
                                       Recurring
                                     </Badge>
@@ -2940,13 +2940,13 @@ export default function LeaveManagement() {
                     </div>
                   )}
 
-                  <div className="p-4 border rounded-lg bg-gradient-to-r from-sky-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950">
+                  <div className="p-6 border-2 border-[#858282] rounded-2xl bg-gradient-to-r from-sky-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950 shadow-md">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <h3 className="text-[16px] font-black text-black dark:text-white mb-1 flex items-center gap-2" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <h3 className="text-[16px] font-black text-black dark:text-white mb-1 flex items-center gap-2" style={{  }}>
                           Department Week-off Planner
                         </h3>
-                        <p className="text-[14px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <p className="text-[14px] text-black dark:text-white font-medium" style={{  }}>
                           Define weekly off days for each department to keep
                           schedules aligned.
                         </p>
@@ -2954,7 +2954,7 @@ export default function LeaveManagement() {
                     </div>
                     <div className="mt-4 grid gap-4 md:grid-cols-3">
                       <div className="space-y-2">
-                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Department</Label>
+                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Department</Label>
                         {departmentOptions.length > 0 ? (
                           <Select
                             value={weekOffForm.department}
@@ -2993,7 +2993,7 @@ export default function LeaveManagement() {
                         )}
                       </div>
                       <div className="space-y-2 md:col-span-2">
-                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Weekly Off Days</Label>
+                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Weekly Off Days</Label>
                         <div className="flex flex-wrap gap-2">
                           {weekDayOptions.map((day) => {
                             const isSelected = weekOffForm.days.includes(
@@ -3035,14 +3035,14 @@ export default function LeaveManagement() {
                                     ? "border-[#0284C7] bg-white text-[#0284C7] shadow-sm"
                                     : "border-slate-300 text-black dark:text-white hover:bg-white"
                                   }`}
-                                  style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                                  style={{  }}
                               >
                                 {day.label}
                               </button>
                             );
                           })}
                         </div>
-                        <p className="text-[12px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <p className="text-[12px] text-black dark:text-white font-medium" style={{  }}>
                           Tip: Select up to two days if the department enjoys a
                           long weekend.
                         </p>
@@ -3057,7 +3057,7 @@ export default function LeaveManagement() {
                       </div>
                     </div>
                     <div className="mt-4">
-                      <h4 className="text-[16px] font-black text-black dark:text-white mb-2" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                      <h4 className="text-[16px] font-black text-black dark:text-white mb-2" style={{  }}>
                         Active Week-off Rules
                       </h4>
                       {Object.keys(weekOffConfig).length === 0 ? (
@@ -3073,10 +3073,10 @@ export default function LeaveManagement() {
                                 className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/60 px-3 py-2 text-sm"
                               >
                                 <div>
-                                  <p className="text-[14px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                  <p className="text-[14px] font-black text-black dark:text-white" style={{  }}>
                                     {dept}
                                   </p>
-                                  <p className="text-[12px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                  <p className="text-[12px] text-black dark:text-white font-medium" style={{  }}>
                                     Weekly off:{" "}
                                     {config.days
                                       .map((day) => {
@@ -3112,7 +3112,7 @@ export default function LeaveManagement() {
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
                 {/* Left Column: Calendar */}
                 <div className="xl:col-span-5 space-y-6">
-                  <div className="relative group p-4 rounded-3xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 shadow-2xl shadow-indigo-100 dark:shadow-none transition-all duration-300">
+                  <div className="relative group p-6 rounded-3xl bg-white dark:bg-slate-900 border-2 border-[#858282] shadow-2xl shadow-indigo-100 dark:shadow-none transition-all duration-300">
                     {/* Decorative Background Blobs */}
                     <div className="absolute top-0 left-0 -mt-4 -ml-4 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors" />
                     <div className="absolute bottom-0 right-0 -mb-4 -mr-4 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-colors" />
@@ -3160,9 +3160,9 @@ export default function LeaveManagement() {
                   </div>
 
                   {/* Enhanced Legend Card */}
-                  <Card className="rounded-2xl border-0 shadow-lg bg-white dark:bg-slate-900 overflow-hidden">
+                  <Card className="rounded-2xl border-2 border-[#858282] shadow-xl bg-white dark:bg-slate-900 overflow-hidden">
                     <CardHeader className="pb-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/30">
-                      <CardTitle className="text-[16px] font-black text-black dark:text-white flex items-center gap-2 uppercase tracking-widest" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                      <CardTitle className="text-[16px] font-black text-black dark:text-white flex items-center gap-2 uppercase tracking-widest" style={{  }}>
                         <AlertCircle className="h-4 w-4 text-black dark:text-white" />
                         Color Guide
                       </CardTitle>
@@ -3170,31 +3170,31 @@ export default function LeaveManagement() {
                     <CardContent className="pt-4 space-y-4">
                       <div className="flex items-center gap-3">
                         <div className="h-4 w-4 rounded bg-gradient-to-br from-rose-500 to-red-600 shadow-sm" />
-                        <span className="text-[14px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <span className="text-[14px] text-black dark:text-white font-medium" style={{  }}>
                           Company Holidays
                         </span>
                         <div className="flex-1 border-t border-dashed border-slate-200 dark:border-slate-800 mx-2" />
-                        <span className="text-[12px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <span className="text-[12px] text-black dark:text-white font-medium" style={{  }}>
                           Off Work
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="h-4 w-4 rounded border-2 border-dashed border-black dark:border-white bg-slate-50 dark:bg-slate-900/10" />
-                        <span className="text-[14px] text-black dark:text-white font-black uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <span className="text-[14px] text-black dark:text-white font-black uppercase tracking-wider" style={{  }}>
                           Weekly-Off Days
                         </span>
                         <div className="flex-1 border-t border-dashed border-black/10 dark:border-white/10 mx-2" />
-                        <span className="text-[12px] text-black dark:text-white font-black uppercase" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <span className="text-[12px] text-black dark:text-white font-black uppercase" style={{  }}>
                           Department
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="h-4 w-4 rounded bg-slate-100 border border-black/10 dark:bg-slate-800" />
-                        <span className="text-[14px] text-black dark:text-white font-black uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <span className="text-[14px] text-black dark:text-white font-black uppercase tracking-wider" style={{  }}>
                           Your Approved Leaves
                         </span>
                         <div className="flex-1 border-t border-dashed border-black/10 dark:border-white/10 mx-2" />
-                        <span className="text-[12px] text-black dark:text-white font-black uppercase" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <span className="text-[12px] text-black dark:text-white font-black uppercase" style={{  }}>
                           Private
                         </span>
                       </div>
@@ -3211,15 +3211,15 @@ export default function LeaveManagement() {
                         <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
                           <CalendarIcon className="h-6 w-6 text-white" />
                         </div>
-                        <Badge className="bg-white/20 hover:bg-white/30 border-0 text-white text-[12px] font-bold backdrop-blur-md" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <Badge className="bg-white/20 hover:bg-white/30 border-0 text-white text-[12px] font-bold backdrop-blur-md" style={{  }}>
                           {format(displayedMonth, "yyyy")}
                         </Badge>
                       </div>
                       <div>
-                        <h3 className="text-[24px] font-black text-black dark:text-white tracking-tight uppercase" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <h3 className="text-[24px] font-black text-black dark:text-white tracking-tight uppercase" style={{  }}>
                           {format(displayedMonth, "MMMM")}
                         </h3>
-                        <p className="text-black dark:text-white text-[12px] font-black uppercase tracking-widest mt-1" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <p className="text-black dark:text-white text-[12px] font-black uppercase tracking-widest mt-1" style={{  }}>
                           Month overview and holidays
                         </p>
                       </div>
@@ -3228,7 +3228,7 @@ export default function LeaveManagement() {
                     {/* Quick Stats Grid */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="p-4 rounded-3xl bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-800/50 flex flex-col justify-center items-center text-center group hover:scale-[1.05] transition-transform">
-                        <div className="text-[24px] font-black text-rose-600 dark:text-rose-400 mb-1" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <div className="text-[24px] font-black text-rose-600 dark:text-rose-400 mb-1" style={{  }}>
                           {
                             holidays.filter(
                               (h) =>
@@ -3236,15 +3236,15 @@ export default function LeaveManagement() {
                             ).length
                           }
                         </div>
-                        <div className="text-[12px] font-bold text-rose-500 uppercase tracking-widest" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <div className="text-[12px] font-bold text-rose-500 uppercase tracking-widest" style={{  }}>
                           Holidays
                         </div>
                       </div>
                       <div className="p-4 rounded-3xl bg-sky-50 dark:bg-sky-900/10 border border-sky-100 dark:border-sky-800/50 flex flex-col justify-center items-center text-center group hover:scale-[1.05] transition-transform">
-                        <div className="text-[24px] font-black text-sky-600 dark:text-sky-400 mb-1" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <div className="text-[24px] font-black text-sky-600 dark:text-sky-400 mb-1" style={{  }}>
                           {userWeekOffDays.length}
                         </div>
-                        <div className="text-[12px] font-bold text-sky-500 uppercase tracking-widest" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <div className="text-[12px] font-bold text-sky-500 uppercase tracking-widest" style={{  }}>
                           Off Days
                         </div>
                       </div>
@@ -3252,10 +3252,10 @@ export default function LeaveManagement() {
                   </div>
 
                   {/* Detailed Holiday List */}
-                  <Card className="rounded-3xl border-0 shadow-xl bg-white dark:bg-slate-900 overflow-hidden">
+                  <Card className="rounded-3xl border-2 border-[#858282] shadow-xl bg-white dark:bg-slate-900 overflow-hidden">
                     <CardHeader className="pb-4 border-b border-slate-50 dark:border-slate-800">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-[16px] font-black text-black dark:text-white flex items-center gap-2" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <CardTitle className="text-[16px] font-black text-black dark:text-white flex items-center gap-2" style={{  }}>
                           <CalendarIcon className="h-5 w-5 text-red-500" />
                           Upcoming Festivals & Holidays
                         </CardTitle>
@@ -3278,10 +3278,10 @@ export default function LeaveManagement() {
                               <div className="h-20 w-20 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center mb-4">
                                 <CalendarIcon className="h-10 w-10 text-slate-300 dark:text-slate-600" />
                               </div>
-                              <p className="text-[14px] text-black dark:text-white font-medium" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                              <p className="text-[14px] text-black dark:text-white font-medium" style={{  }}>
                                 No company holidays scheduled for this month
                               </p>
-                              <p className="text-[12px] text-black dark:text-white font-medium mt-1" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                              <p className="text-[12px] text-black dark:text-white font-medium mt-1" style={{  }}>
                                 Check back later for updates
                               </p>
                             </div>
@@ -3300,23 +3300,23 @@ export default function LeaveManagement() {
                                 }}
                               >
                                 <div className="flex flex-col items-center justify-center h-16 w-16 rounded-xl bg-white dark:bg-slate-800 border-2 border-red-100 dark:border-red-900 shadow-sm group-hover:scale-110 transition-transform">
-                                  <span className="text-[12px] font-bold text-black dark:text-white uppercase" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                  <span className="text-[12px] font-bold text-black dark:text-white uppercase" style={{  }}>
                                     {format(h.date, "MMM")}
                                   </span>
-                                  <span className="text-[24px] font-black text-black dark:text-white leading-none" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                  <span className="text-[24px] font-black text-black dark:text-white leading-none" style={{  }}>
                                     {format(h.date, "dd")}
                                   </span>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="text-[14px] font-black text-black dark:text-white group-hover:text-red-600 transition-colors truncate" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                  <h4 className="text-[14px] font-black text-black dark:text-white group-hover:text-red-600 transition-colors truncate" style={{  }}>
                                     {h.name}
                                   </h4>
-                                  <p className="text-[12px] text-black dark:text-white mt-0.5 font-medium flex items-center gap-1" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                  <p className="text-[12px] text-black dark:text-white mt-0.5 font-medium flex items-center gap-1" style={{  }}>
                                     <Clock className="h-3 w-3" />
                                     {format(h.date, "EEEE")}
                                   </p>
                                   {h.description && (
-                                    <p className="text-[12px] text-black dark:text-white mt-1 line-clamp-1" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                    <p className="text-[12px] text-black dark:text-white mt-1 line-clamp-1" style={{  }}>
                                       {h.description}
                                     </p>
                                   )}
@@ -3343,10 +3343,10 @@ export default function LeaveManagement() {
                         <Clock className="h-6 w-6 text-sky-600" />
                       </div>
                       <div>
-                        <p className="text-[14px] font-black text-[#4F46E5] dark:text-[#4F46E5] uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <p className="text-[14px] font-black text-[#4F46E5] dark:text-[#4F46E5] uppercase tracking-wider" style={{  }}>
                           Weekly-Off Reminder
                         </p>
-                        <p className="text-[14px] font-medium text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                        <p className="text-[14px] font-medium text-black dark:text-white" style={{  }}>
                           {user?.role === "employee" ? (
                             <>
                               Your department ({user?.department}) enjoys off on{" "}
@@ -3376,9 +3376,9 @@ export default function LeaveManagement() {
 
         {(canApproveLeaves || canViewTeamLeaves) && (
           <TabsContent value="approvals">
-            <Card className="border-0 shadow-lg">
+            <Card className="border border-[#858282] shadow-xl rounded-2xl overflow-hidden">
               <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-                <CardTitle className="text-[16px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                <CardTitle className="text-[16px] font-bold text-black dark:text-white" style={{  }}>
                   {canApproveLeaves
                     ? "Leave Approval Requests"
                     : "Team Leave Requests"}
@@ -3403,29 +3403,29 @@ export default function LeaveManagement() {
                             <div className="space-y-3 flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <User className="h-4 w-4 flex-shrink-0" />
-                                <span className="text-[14px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                <span className="text-[14px] font-black text-black dark:text-white" style={{  }}>
                                   {request.employeeName}
                                 </span>
                                 {request.role && (
                                   <Badge
                                     variant="outline"
                                     className="text-[12px] uppercase font-bold text-black dark:text-white border-black/10"
-                                    style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                                    style={{  }}
                                   >
                                     {request.role}
                                   </Badge>
                                 )}
                                 <Badge
                                   className={cn(getLeaveTypeColor(request.type), "text-[12px] font-bold bg-transparent border-0 p-0 text-black dark:text-white shadow-none")}
-                                  style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                                  style={{  }}
                                 >
                                   {request.type}
                                 </Badge>
-                                <span className="text-[12px] text-black dark:text-white font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                <span className="text-[12px] text-black dark:text-white font-bold" style={{  }}>
                                   ID: {request.employeeId}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-4 text-[12px] text-black dark:text-white font-bold flex-wrap" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                              <div className="flex items-center gap-4 text-[12px] text-black dark:text-white font-bold flex-wrap" style={{  }}>
                                 <div className="flex items-center gap-1">
                                   <FileText className="h-3 w-3" />
                                   <span>{request.department}</span>
@@ -3450,9 +3450,9 @@ export default function LeaveManagement() {
                                 </div>
                               </div>
                               <div className="text-sm space-y-1">
-                                <span className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Reason:</span>
+                                <span className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Reason:</span>
                                 <div className="mt-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 max-h-48 overflow-y-auto">
-                                  <div className="text-black dark:text-white text-[12px] font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                  <div className="text-black dark:text-white text-[12px] font-bold" style={{  }}>
                                     <TruncatedText
                                       text={request.reason}
                                       maxLength={200}
@@ -3469,7 +3469,7 @@ export default function LeaveManagement() {
                                   <Button
                                     size="sm"
                                     className="px-4 h-9 gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-[12px]"
-                                    style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                                    style={{  }}
                                     onClick={() =>
                                       handleApproveReject(
                                         request.id,
@@ -3488,7 +3488,7 @@ export default function LeaveManagement() {
                                   <Button
                                     size="sm"
                                     className="px-4 h-9 gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-[12px]"
-                                    style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                                    style={{  }}
                                     onClick={() =>
                                       handleApproveReject(
                                         request.id,
@@ -3509,14 +3509,14 @@ export default function LeaveManagement() {
                                 <div className="flex flex-col gap-2 w-full">
                                   <Badge
                                     className={`w-full px-4 py-1.5 text-[12px] font-bold capitalize transition-all duration-300 text-center ${getStatusBadgeStyle(request.status)}`}
-                                    style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                                    style={{  }}
                                   >
                                     {request.status.charAt(0).toUpperCase() +
                                       request.status.slice(1)}
                                   </Badge>
                                   {request.status !== "pending" &&
                                     request.approvedBy && (
-                                      <span className="text-[12px] text-black dark:text-white font-bold text-center" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                      <span className="text-[12px] text-black dark:text-white font-bold text-center" style={{  }}>
                                         by {request.approvedBy}
                                       </span>
                                     )}
@@ -3547,13 +3547,13 @@ export default function LeaveManagement() {
 
                   <div className="pt-6 border-t mt-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-[16px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Recent Decisions</h3>
+                      <h3 className="text-[16px] font-black text-black dark:text-white" style={{  }}>Recent Decisions</h3>
                       <div className="flex items-center gap-2">
                         <Select
                           value={historyFilter}
                           onValueChange={setHistoryFilter}
                         >
-                          <SelectTrigger className="w-[180px] h-9 bg-white dark:bg-gray-950 text-[14px] text-black dark:text-white font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                          <SelectTrigger className="w-[180px] h-9 bg-white dark:bg-gray-950 text-[14px] text-black dark:text-white font-bold" style={{  }}>
                             <SelectValue placeholder="Select period" />
                           </SelectTrigger>
                           <SelectContent>
@@ -3579,7 +3579,7 @@ export default function LeaveManagement() {
                             setHistoryStatusFilter(val)
                           }
                         >
-                          <SelectTrigger className="w-[140px] h-9 bg-white dark:bg-gray-950 text-[14px] text-black dark:text-white font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                          <SelectTrigger className="w-[140px] h-9 bg-white dark:bg-gray-950 text-[14px] text-black dark:text-white font-bold" style={{  }}>
                             <SelectValue placeholder="Status" />
                           </SelectTrigger>
                           <SelectContent>
@@ -3594,7 +3594,7 @@ export default function LeaveManagement() {
                             setHistoryRoleFilter(val)
                           }
                         >
-                          <SelectTrigger className="w-[140px] h-9 bg-white dark:bg-gray-950 text-[14px] text-black dark:text-white font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                          <SelectTrigger className="w-[140px] h-9 bg-white dark:bg-gray-950 text-[14px] text-black dark:text-white font-bold" style={{  }}>
                             <SelectValue placeholder="Role" />
                           </SelectTrigger>
                           <SelectContent>
@@ -3661,22 +3661,22 @@ export default function LeaveManagement() {
                             >
                               <div className="text-sm flex-1">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-[14px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                  <span className="text-[14px] font-black text-black dark:text-white" style={{  }}>
                                     {request.employeeName}
                                   </span>
                                   {request.role && (
-                                    <span className="text-[12px] uppercase font-bold text-black dark:text-white bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                    <span className="text-[12px] uppercase font-bold text-black dark:text-white bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded" style={{  }}>
                                       {request.role}
                                     </span>
                                   )}
                                   <Badge
                                     className={cn(getLeaveTypeColor(request.type), "text-[12px] font-bold bg-transparent border-0 p-0 text-black dark:text-white shadow-none")}
-                                    style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                                    style={{  }}
                                   >
                                     {request.type}
                                   </Badge>
                                 </div>
-                                <div className="text-black dark:text-white text-[12px] font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                                <div className="text-black dark:text-white text-[12px] font-bold" style={{  }}>
                                   {format(request.startDate, "MMM dd")} -{" "}
                                   {format(request.endDate, "MMM dd, yyyy")} •{" "}
                                   {request.department}
@@ -3685,7 +3685,7 @@ export default function LeaveManagement() {
                               <div className="flex items-center gap-2">
                                 <Badge
                                   className={`px-4 py-1.5 text-[12px] font-bold capitalize transition-all duration-300 flex items-center gap-2 ${getStatusBadgeStyle(request.status)}`}
-                                  style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                                  style={{  }}
                                 >
                                   {request.status === "approved" ? (
                                     <CheckCircle className="h-4 w-4" />
@@ -3724,13 +3724,13 @@ export default function LeaveManagement() {
         )}
         {["admin", "hr"].includes(user?.role || "") && (
           <TabsContent value="export" className="space-y-4">
-            <Card className="border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <Card className="border border-[#858282] shadow-xl rounded-2xl overflow-hidden">
               <CardHeader className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
                     <CalendarIcon className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                   </div>
-                  <CardTitle className="text-[16px] font-black text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                  <CardTitle className="text-[16px] font-black text-black dark:text-white" style={{  }}>
                     Export Leave Report
                   </CardTitle>
                 </div>
@@ -3738,32 +3738,32 @@ export default function LeaveManagement() {
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div className="space-y-2">
-                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Start Date</Label>
+                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Start Date</Label>
                     <Input
                       type="date"
                       value={leaveStartDate}
                       onChange={(e) => setLeaveStartDate(e.target.value)}
                       className="bg-white dark:bg-slate-950 text-[14px] text-black dark:text-white font-medium"
-                      style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                      style={{  }}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>End Date</Label>
+                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>End Date</Label>
                     <Input
                       type="date"
                       value={leaveEndDate}
                       onChange={(e) => setLeaveEndDate(e.target.value)}
                       className="bg-white dark:bg-slate-950 text-[14px] text-black dark:text-white font-medium"
-                      style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+                      style={{  }}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Department</Label>
+                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Department</Label>
                     <Select
                       value={leaveDepartment}
                       onValueChange={setLeaveDepartment}
                     >
-                      <SelectTrigger className="bg-white dark:bg-slate-950 text-[14px] text-black dark:text-white font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                      <SelectTrigger className="bg-white dark:bg-slate-950 text-[14px] text-black dark:text-white font-bold" style={{  }}>
                         <SelectValue placeholder="All Departments" />
                       </SelectTrigger>
                       <SelectContent>
@@ -3777,14 +3777,14 @@ export default function LeaveManagement() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Format</Label>
+                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Format</Label>
                     <Select
                       value={leaveFormat}
                       onValueChange={(val: "pdf" | "csv") =>
                         setLeaveFormat(val)
                       }
                     >
-                      <SelectTrigger className="bg-white dark:bg-slate-950 text-[14px] text-black dark:text-white font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                      <SelectTrigger className="bg-white dark:bg-slate-950 text-[14px] text-black dark:text-white font-bold" style={{  }}>
                         <SelectValue placeholder="PDF" />
                       </SelectTrigger>
                       <SelectContent>
@@ -3853,7 +3853,7 @@ export default function LeaveManagement() {
 
                   <div className="flex-1 flex items-center gap-3 p-4 bg-orange-50/50 dark:bg-orange-950/20 rounded-xl border border-orange-100 dark:border-orange-900/30">
                     <AlertCircle className="h-5 w-5 text-orange-500 shrink-0" />
-                    <p className="text-[14px] text-[#1E40AF] dark:text-blue-300 font-bold" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+                    <p className="text-[14px] text-[#1E40AF] dark:text-blue-300 font-bold" style={{  }}>
                       Report includes leave counts, types, and approval status
                       across the selected period and departments.
                     </p>
@@ -4103,3 +4103,4 @@ export default function LeaveManagement() {
     </div>
   );
 }
+

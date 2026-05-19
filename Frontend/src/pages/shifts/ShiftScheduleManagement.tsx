@@ -538,6 +538,7 @@ export default function ShiftScheduleManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-[#858282] shadow-sm">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "30px", fontWeight: "bold" }} className="flex items-center gap-3">
@@ -696,6 +697,7 @@ export default function ShiftScheduleManagement() {
             </div>
           </DialogContent>
         </Dialog>
+      </div>
       </div>
 
       <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'daily' | 'weekly')} className="space-y-6">
