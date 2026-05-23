@@ -12,9 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Calendar, CalendarDays, Clock, Users, Plus, Edit, Trash2, UserPlus, ArrowRight, AlertCircle, RefreshCw, Search } from 'lucide-react';
+import { Calendar, CalendarDays, Clock, Users, Plus, Edit, Trash2, UserPlus, ArrowRight, AlertCircle, RefreshCw, Search, UserMinus, History } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { formatIST, formatDateIST, nowIST } from '@/utils/timezone';
+import SummaryCard from '@/components/ui/SummaryCard';
 
 interface Shift {
   shift_id: number;
@@ -538,173 +539,207 @@ export default function ShiftScheduleManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-[#858282] shadow-sm">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "30px", fontWeight: "bold" }} className="flex items-center gap-3">
-            <Clock className="h-8 w-8 text-blue-600" />
-            Shift Schedule Management
-          </h1>
-          <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-1">
-            Manage shift schedules and assignments for your department
-          </p>
-        </div>
-        <Dialog open={isShiftDialogOpen} onOpenChange={(open) => {
-          setIsShiftDialogOpen(open);
-          if (!open) resetShiftForm();
-        }}>
-          <DialogTrigger asChild>
-            <Button className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
-              <Plus className="h-4 w-4" />
-              Create Shift
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New Shift</DialogTitle>
-              <DialogDescription>
-                Define a new shift for your department
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Shift Name *</Label>
-                <Input
-                  id="name"
-                  value={shiftFormData.name}
-                  onChange={(e) => setShiftFormData({ ...shiftFormData, name: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
-                  placeholder="e.g., Morning Shift, Evening Shift"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border-2 border-[#000000] shadow-sm">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "30px", fontWeight: "bold" }} className="flex items-center gap-3">
+              <Clock className="h-8 w-8 text-blue-600" />
+              Shift Schedule Management
+            </h1>
+            <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-1">
+              Manage shift schedules and assignments for your department
+            </p>
+          </div>
+          <Dialog open={isShiftDialogOpen} onOpenChange={(open) => {
+            setIsShiftDialogOpen(open);
+            if (!open) resetShiftForm();
+          }}>
+            <DialogTrigger asChild>
+              <Button className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
+                <Plus className="h-4 w-4" />
+                Create Shift
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Create New Shift</DialogTitle>
+                <DialogDescription>
+                  Define a new shift for your department
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="start_time">Start Time *</Label>
+                  <Label htmlFor="name">Shift Name *</Label>
                   <Input
-                    id="start_time"
-                    type="time"
-                    value={shiftFormData.start_time}
-                    onChange={(e) => setShiftFormData({ ...shiftFormData, start_time: e.target.value })}
+                    id="name"
+                    value={shiftFormData.name}
+                    onChange={(e) => setShiftFormData({ ...shiftFormData, name: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
+                    placeholder="e.g., Morning Shift, Evening Shift"
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="start_time">Start Time *</Label>
+                    <Input
+                      id="start_time"
+                      type="time"
+                      value={shiftFormData.start_time}
+                      onChange={(e) => setShiftFormData({ ...shiftFormData, start_time: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="end_time">End Time *</Label>
+                    <Input
+                      id="end_time"
+                      type="time"
+                      value={shiftFormData.end_time}
+                      onChange={(e) => setShiftFormData({ ...shiftFormData, end_time: e.target.value })}
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="end_time">End Time *</Label>
+                  <Label htmlFor="description">Description</Label>
                   <Input
-                    id="end_time"
-                    type="time"
-                    value={shiftFormData.end_time}
-                    onChange={(e) => setShiftFormData({ ...shiftFormData, end_time: e.target.value })}
+                    id="description"
+                    value={shiftFormData.description}
+                    onChange={(e) => setShiftFormData({ ...shiftFormData, description: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
+                    placeholder="Optional description"
                   />
                 </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => {
+                    setIsShiftDialogOpen(false);
+                    resetShiftForm();
+                  }}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreateShift} disabled={isCreating}>
+                    {isCreating ? 'Creating...' : 'Create Shift'}
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={shiftFormData.description}
-                  onChange={(e) => setShiftFormData({ ...shiftFormData, description: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') })}
-                  placeholder="Optional description"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => {
-                  setIsShiftDialogOpen(false);
-                  resetShiftForm();
-                }}>
-                  Cancel
-                </Button>
-                <Button onClick={handleCreateShift} disabled={isCreating}>
-                  {isCreating ? 'Creating...' : 'Create Shift'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
 
-        {/* Edit Shift Dialog */}
-        <Dialog open={isEditShiftDialogOpen} onOpenChange={(open) => {
-          setIsEditShiftDialogOpen(open);
-          if (!open) resetShiftForm();
-        }}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Edit Shift</DialogTitle>
-              <DialogDescription>
-                Update shift details for your department
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit_name">Shift Name *</Label>
-                <Input
-                  id="edit_name"
-                  value={shiftFormData.name}
-                  onChange={(e) => setShiftFormData({ ...shiftFormData, name: e.target.value })}
-                  placeholder="e.g., Morning Shift, Evening Shift"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+          {/* Edit Shift Dialog */}
+          <Dialog open={isEditShiftDialogOpen} onOpenChange={(open) => {
+            setIsEditShiftDialogOpen(open);
+            if (!open) resetShiftForm();
+          }}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Edit Shift</DialogTitle>
+                <DialogDescription>
+                  Update shift details for your department
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit_start_time">Start Time *</Label>
+                  <Label htmlFor="edit_name">Shift Name *</Label>
                   <Input
-                    id="edit_start_time"
-                    type="time"
-                    value={shiftFormData.start_time}
-                    onChange={(e) => setShiftFormData({ ...shiftFormData, start_time: e.target.value })}
+                    id="edit_name"
+                    value={shiftFormData.name}
+                    onChange={(e) => setShiftFormData({ ...shiftFormData, name: e.target.value })}
+                    placeholder="e.g., Morning Shift, Evening Shift"
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_start_time">Start Time *</Label>
+                    <Input
+                      id="edit_start_time"
+                      type="time"
+                      value={shiftFormData.start_time}
+                      onChange={(e) => setShiftFormData({ ...shiftFormData, start_time: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_end_time">End Time *</Label>
+                    <Input
+                      id="edit_end_time"
+                      type="time"
+                      value={shiftFormData.end_time}
+                      onChange={(e) => setShiftFormData({ ...shiftFormData, end_time: e.target.value })}
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit_end_time">End Time *</Label>
+                  <Label htmlFor="edit_description">Description</Label>
                   <Input
-                    id="edit_end_time"
-                    type="time"
-                    value={shiftFormData.end_time}
-                    onChange={(e) => setShiftFormData({ ...shiftFormData, end_time: e.target.value })}
+                    id="edit_description"
+                    value={shiftFormData.description}
+                    onChange={(e) => setShiftFormData({ ...shiftFormData, description: e.target.value })}
+                    placeholder="Optional description"
                   />
                 </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="edit_is_active"
+                    checked={shiftFormData.is_active}
+                    onChange={(e) => setShiftFormData({ ...shiftFormData, is_active: e.target.checked })}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="edit_is_active" className="cursor-pointer">
+                    Active Shift
+                  </Label>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => {
+                    setIsEditShiftDialogOpen(false);
+                    resetShiftForm();
+                  }}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleUpdateShift} disabled={isUpdating}>
+                    {isUpdating ? 'Updating...' : 'Update Shift'}
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit_description">Description</Label>
-                <Input
-                  id="edit_description"
-                  value={shiftFormData.description}
-                  onChange={(e) => setShiftFormData({ ...shiftFormData, description: e.target.value })}
-                  placeholder="Optional description"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="edit_is_active"
-                  checked={shiftFormData.is_active}
-                  onChange={(e) => setShiftFormData({ ...shiftFormData, is_active: e.target.checked })}
-                  className="h-4 w-4 rounded border-gray-300"
-                />
-                <Label htmlFor="edit_is_active" className="cursor-pointer">
-                  Active Shift
-                </Label>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => {
-                  setIsEditShiftDialogOpen(false);
-                  resetShiftForm();
-                }}>
-                  Cancel
-                </Button>
-                <Button onClick={handleUpdateShift} disabled={isUpdating}>
-                  {isUpdating ? 'Updating...' : 'Update Shift'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <SummaryCard
+          title="Total Shifts"
+          value={shifts.length}
+          icon={Clock}
+          iconColor="text-blue-600"
+          iconBg="bg-blue-50"
+        />
+        <SummaryCard
+          title="Assigned Users"
+          value={schedule?.shifts.reduce((acc, s) => acc + s.total_assigned, 0) || 0}
+          icon={UserPlus}
+          iconColor="text-green-600"
+          iconBg="bg-green-50"
+        />
+        <SummaryCard
+          title="Unassigned Users"
+          value={schedule?.unassigned_users.length || 0}
+          icon={UserMinus}
+          iconColor="text-amber-600"
+          iconBg="bg-amber-50"
+        />
+        <SummaryCard
+          title="Users on Leave"
+          value={schedule?.users_on_leave.length || 0}
+          icon={CalendarDays}
+          iconColor="text-red-600"
+          iconBg="bg-red-50"
+        />
       </div>
 
       <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'daily' | 'weekly')} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="daily" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm" style={{ fontSize: "14px" }}>Daily View</TabsTrigger>
-          <TabsTrigger value="weekly" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm" style={{ color: "#000000", fontSize: "14px" }}>Weekly View</TabsTrigger>
-        </TabsList>
+        <div className="flex justify-center">
+          <TabsList>
+            <TabsTrigger value="daily" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm" style={{ fontSize: "14px" }}>Daily View</TabsTrigger>
+            <TabsTrigger value="weekly" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm" style={{ color: "#000000", fontSize: "14px" }}>Weekly View</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="daily" className="space-y-6">
           {/* Date Selector */}
@@ -781,11 +816,13 @@ export default function ShiftScheduleManagement() {
           {/* Schedule View */}
           {filteredDailySchedule && (
             <Tabs defaultValue="schedule" className="space-y-4">
-              <TabsList>
-                <TabsTrigger value="schedule" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm" style={{ fontSize: "14px" }}>Shift Schedule</TabsTrigger>
-                <TabsTrigger value="leaves" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm" style={{ color: "#000000", fontSize: "14px" }}>On Leave</TabsTrigger>
-                <TabsTrigger value="unassigned" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm" style={{ color: "#000000", fontSize: "14px" }}>Unassigned Users</TabsTrigger>
-              </TabsList>
+              <div className="flex justify-center">
+                <TabsList>
+                  <TabsTrigger value="schedule" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm" style={{ fontSize: "14px" }}>Shift Schedule</TabsTrigger>
+                  <TabsTrigger value="leaves" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm" style={{ color: "#000000", fontSize: "14px" }}>On Leave</TabsTrigger>
+                  <TabsTrigger value="unassigned" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm" style={{ color: "#000000", fontSize: "14px" }}>Unassigned Users</TabsTrigger>
+                </TabsList>
+              </div>
 
               <TabsContent value="schedule" className="space-y-4">
                 {filteredDailySchedule.shifts.map((shiftData) => (
@@ -817,6 +854,25 @@ export default function ShiftScheduleManagement() {
                           >
                             <UserPlus className="h-4 w-4 mr-2" />
                             Assign Users
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-9 w-9 p-0 hover:bg-blue-50 border-blue-200"
+                            onClick={() => openEditDialog(shiftData.shift)}
+                            title="Edit Shift"
+                          >
+                            <Edit className="h-4 w-4 text-blue-600" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-9 w-9 p-0 hover:bg-red-50 border-red-200"
+                            onClick={() => handleDeleteShift(shiftData.shift.shift_id)}
+                            disabled={isDeleting === shiftData.shift.shift_id}
+                            title="Delete Shift"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-600" />
                           </Button>
                         </div>
                       </div>
@@ -1115,94 +1171,6 @@ export default function ShiftScheduleManagement() {
         </TabsContent>
       </Tabs>
 
-      {/* All Shifts List */}
-      <Card className="border-2 border-blue-100 dark:border-blue-900 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
-                  <Clock className="h-5 w-5 text-white" />
-                </div>
-                All Shifts ({shifts.length})
-              </CardTitle>
-              <CardDescription className="mt-2">
-                View and manage all shifts for your department
-              </CardDescription>
-            </div>
-            <Button onClick={loadShifts} className="shadow-md bg-blue-600 hover:bg-blue-700 text-white border-transparent" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }} size="sm" disabled={isLoading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6">
-          {isLoading ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <RefreshCw className="h-8 w-8 mx-auto mb-3 animate-spin opacity-50" />
-              <p>Loading shifts...</p>
-            </div>
-          ) : shifts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {shifts.map((shift) => (
-                <Card key={shift.shift_id} className="border-l-4 border-l-blue-500 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] bg-gradient-to-br from-white to-blue-50/50 dark:from-gray-900 dark:to-blue-950/20">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>{shift.name}</CardTitle>
-                      <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "12px", color: shift.is_active ? "#16A34A" : "#DC2626", fontWeight: "bold" }}>
-                        {shift.is_active ? "Active" : "Inactive"}
-                      </span>
-                    </div>
-                    <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
-                      {shift.department || "Global Shift"}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/30 px-3 py-2 rounded-lg">
-                        <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <span className="font-semibold">{shift.start_time}</span>
-                        <span className="text-muted-foreground">-</span>
-                        <span className="font-semibold">{shift.end_time}</span>
-                      </div>
-                      {shift.description && (
-                        <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="italic">{shift.description}</p>
-                      )}
-                      <div className="flex items-center gap-2 pt-2 border-t">
-                        <Button
-                          size="sm"
-                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-md"
-                          style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}
-                          onClick={() => openEditDialog(shift)}
-                        >
-                          <Edit className="h-3 w-3 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDeleteShift(shift.shift_id)}
-                          disabled={isDeleting === shift.shift_id}
-                          className="flex-1 hover:bg-red-600 transition-colors"
-                        >
-                          <Trash2 className="h-3 w-3 mr-1" />
-                          {isDeleting === shift.shift_id ? 'Deleting...' : 'Delete'}
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <Clock className="h-16 w-16 mx-auto mb-4 opacity-30" />
-              <p className="text-lg font-medium mb-2">No shifts created yet</p>
-              <p className="text-sm">Create your first shift to get started</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Assign Users Dialog */}
       <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>

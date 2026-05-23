@@ -15,6 +15,7 @@ import {
     ExternalLink,
     Users
 } from 'lucide-react';
+import SummaryCard from "@/components/ui/SummaryCard";
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -114,7 +115,7 @@ const MeetingsPage: React.FC = () => {
 
     const normalizeMeeting = (m: any): Meeting => {
         if (!m) return {} as Meeting;
-        
+
         const id = m.id || m.meeting_id || m.meetingId || m.ID || m.meeting_details?.id;
         const titleText = m.title || m.meeting_title || m.subject || m.display_name || m.name || m.meeting_details?.title || m.description || m.meeting_details?.description || '';
         const titleLower = String(titleText).toLowerCase().trim();
@@ -142,7 +143,7 @@ const MeetingsPage: React.FC = () => {
         const teamName = m.team_name || m.teamName || m.department_name || m.departmentName || deepFind(m, 'team_name') || deepFind(m, 'department_name');
 
         const rawTypeField = String(m.type || m.meeting_type || m.meetingType || m.category || m.meeting_details?.type || '').toLowerCase();
-        
+
         let finalType: Meeting['type'] = 'company';
 
         const isProjectKeyword = titleLower.includes('project') || titleLower.includes('prj') || titleLower.includes('sprint') || titleLower.includes('scrum') || titleLower.includes('milestone') || titleLower.includes('development');
@@ -153,7 +154,7 @@ const MeetingsPage: React.FC = () => {
             finalType = 'project';
         } else if (rawTypeField === 'team' || rawTypeField === 'department' || (teamId && String(teamId) !== '0' && String(teamId) !== 'null')) {
             finalType = 'team';
-        } 
+        }
         // 2. Name-based matching (if API returns names even without IDs)
         else if (projectName && String(projectName) !== 'null' && String(projectName) !== '') {
             finalType = 'project';
@@ -169,7 +170,7 @@ const MeetingsPage: React.FC = () => {
             finalType = 'one-to-one';
         } else if (rawTypeField === 'company' || rawTypeField === 'townhall' || titleLower.includes('townhall')) {
             finalType = 'company';
-        } 
+        }
         // 4. Default heuristics
         else if (m.participants && Array.isArray(m.participants) && m.participants.length > 0 && m.participants.length <= 2) {
             finalType = 'one-to-one';
@@ -221,7 +222,7 @@ const MeetingsPage: React.FC = () => {
 
             // Merge all sources to ensure distribution is captured from every possible endpoint
             const mergedAll = [...rawAll, ...rawProject, ...rawTeam];
-            
+
             const normalizedAll = mergedAll.map(normalizeMeeting).filter((m: Meeting) => m.id);
             const normalizedMy = rawMy.map(normalizeMeeting).filter((m: Meeting) => m.id);
 
@@ -483,7 +484,7 @@ const MeetingsPage: React.FC = () => {
 
     return (
         <div className="flex-1 flex flex-col h-full bg-[#f8fafc] dark:bg-[#020617] overflow-hidden">
-            <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-slate-900 border border-[#858282] shadow-sm mt-1">
+            <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-slate-900 border-2 border-[#000000] shadow-sm mt-1">
                 <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-blue-500/5 rounded-full blur-3xl" />
                 <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
                 <div className="flex items-center gap-6">
@@ -503,212 +504,231 @@ const MeetingsPage: React.FC = () => {
                     Schedule Meeting
                 </Button>
 
-                    <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) resetForm(); }}>
-                        <DialogContent className="sm:max-w-[650px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
-                            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-5 text-white">
-                                <DialogTitle className="text-xl font-black uppercase tracking-tighter">
-                                    {selectedMeeting ? 'Edit Meeting' : 'Schedule Meeting'}
-                                </DialogTitle>
-                                <DialogDescription className="text-blue-100 font-medium opacity-80 uppercase text-[10px] tracking-widest mt-1">
-                                    {selectedMeeting ? 'Update meeting details.' : 'Create a new meeting.'}
-                                </DialogDescription>
-                            </div>
+                <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) resetForm(); }}>
+                    <DialogContent className="sm:max-w-[650px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
+                        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-5 text-white">
+                            <DialogTitle className="text-xl font-black uppercase tracking-tighter">
+                                {selectedMeeting ? 'Edit Meeting' : 'Schedule Meeting'}
+                            </DialogTitle>
+                            <DialogDescription className="text-blue-100 font-medium opacity-80 uppercase text-[10px] tracking-widest mt-1">
+                                {selectedMeeting ? 'Update meeting details.' : 'Create a new meeting.'}
+                            </DialogDescription>
+                        </div>
 
-                            <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="grid gap-2">
-                                        <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Meeting Type</Label>
-                                        <Select
-                                            value={formData.type || "one-to-one"}
-                                            onValueChange={(v: any) => {
-                                                const newFormData = { ...formData, type: v, team_id: undefined, project_id: undefined, participant_ids: [] };
-
-                                                if (v === 'company') {
-                                                    newFormData.participant_ids = employees.map(emp => Number(emp.user_id || emp.id)).filter(id => !isNaN(id));
-                                                } else if (v === 'team' && isTeamLead && user?.department) {
-                                                    // Handle multi-department strings (e.g., "Engineering, HR")
-                                                    const userDepts = user.department.split(',').map(d => d.trim().toLowerCase());
-                                                    const myDept = departments.find(d => {
-                                                        const deptName = (d.name || "").toLowerCase().trim();
-                                                        return userDepts.includes(deptName) ||
-                                                            ((user as any).department_id && d.id === Number((user as any).department_id));
-                                                    });
-
-                                                    if (myDept) {
-                                                        newFormData.team_id = myDept.id;
-                                                    }
-                                                }
-                                                setFormData(newFormData);
-                                            }}
-
-                                        >
-                                            <SelectTrigger className="rounded-xl h-11 border-slate-200">
-                                                <SelectValue placeholder="Select type" />
-                                            </SelectTrigger>
-                                            <SelectContent className="rounded-xl">
-                                                {canCreateCompany && <SelectItem value="company">Townhall meeting</SelectItem>}
-                                                {canCreateTeam && <SelectItem value="team">Team meeting</SelectItem>}
-                                                {canCreateProject && <SelectItem value="project">Project meeting</SelectItem>}
-                                                {canCreateOneToOne && <SelectItem value="one-to-one">1:1 meeting</SelectItem>}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Meeting Title</Label>
-                                        <Input placeholder="Meeting title" className="rounded-xl h-11" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="grid gap-2">
-                                        <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Start Time</Label>
-                                        <Input type="datetime-local" className="rounded-xl h-11" value={formData.start_time} onChange={(e) => setFormData({ ...formData, start_time: e.target.value })} />
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">End Time</Label>
-                                        <Input type="datetime-local" className="rounded-xl h-11" value={formData.end_time} onChange={(e) => setFormData({ ...formData, end_time: e.target.value })} />
-                                    </div>
-                                </div>
-
-                                {formData.type === 'team' && !isTeamLead && (
-                                    <div className="grid gap-2">
-                                        <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Select Department</Label>
-                                        <Select value={formData.team_id?.toString() || ""} onValueChange={(v) => setFormData({ ...formData, team_id: v ? parseInt(v) : undefined })}>
-                                            <SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Choose Department" /></SelectTrigger>
-                                            <SelectContent>
-                                                {departments.map((d: any) => <SelectItem key={d.id} value={d.id?.toString()}>{d.name || "Unnamed"}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
-
-                                {formData.type === 'project' && (
-                                    <div className="grid gap-2">
-                                        <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Select Project</Label>
-                                        <Select
-                                            value={formData.project_id?.toString() || ""}
-                                            onValueChange={async (v) => {
-                                                const pId = v ? parseInt(v) : undefined;
-                                                const newFormData = { ...formData, project_id: pId, participant_ids: [] };
-                                                if (pId) {
-                                                    try {
-                                                        const members = await apiService.getProjectMembers(pId);
-                                                        const memberList = Array.isArray(members) ? members : (members?.members || []);
-                                                        newFormData.participant_ids = memberList.map((m: any) => {
-                                                            const mId = m.user_id || m.userId || m.id || m.employee_id;
-                                                            return Number(mId);
-                                                        }).filter((id: number) => !isNaN(id));
-                                                    } catch (e) { console.error('Project member fetch error:', e); }
-                                                }
-
-                                                setFormData(newFormData);
-                                            }}
-                                        >
-                                            <SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Choose Project" /></SelectTrigger>
-                                            <SelectContent>
-                                                {projects.map((p: any) => <SelectItem key={p.project_id || p.id} value={(p.project_id || p.id)?.toString()}>{p.name}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
-
+                        <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                            <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">
-                                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Meeting URL</Label>
-                                    <Input placeholder="https://..." className="rounded-xl h-11" value={formData.meeting_url} onChange={(e) => setFormData({ ...formData, meeting_url: e.target.value })} />
-                                </div>
+                                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Meeting Type</Label>
+                                    <Select
+                                        value={formData.type || "one-to-one"}
+                                        onValueChange={(v: any) => {
+                                            const newFormData = { ...formData, type: v, team_id: undefined, project_id: undefined, participant_ids: [] };
 
-                                <div className="grid gap-2">
-                                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Agenda</Label>
-                                    <Textarea placeholder="Agenda..." className="rounded-xl" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
-                                </div>
+                                            if (v === 'company') {
+                                                newFormData.participant_ids = employees.map(emp => Number(emp.user_id || emp.id)).filter(id => !isNaN(id));
+                                            } else if (v === 'team' && isTeamLead && user?.department) {
+                                                // Handle multi-department strings (e.g., "Engineering, HR")
+                                                const userDepts = user.department.split(',').map(d => d.trim().toLowerCase());
+                                                const myDept = departments.find(d => {
+                                                    const deptName = (d.name || "").toLowerCase().trim();
+                                                    return userDepts.includes(deptName) ||
+                                                        ((user as any).department_id && d.id === Number((user as any).department_id));
+                                                });
 
-                                <div className="space-y-4">
-                                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest flex items-center justify-between">
-                                        Participants
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-blue-600 font-black">{formData.participant_ids.length} selected</span>
-                                            {formData.type !== 'one-to-one' && (
-                                                <div className="flex gap-2">
-                                                    <button type="button" onClick={selectAllParticipants} className="text-[9px] uppercase font-black text-blue-600">Select All</button>
-                                                    <button type="button" onClick={deselectAll} className="text-[9px] uppercase font-black text-rose-600">Clear</button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </Label>
-                                    <div className="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto custom-scrollbar">
-                                        {employees.filter(emp => {
-                                            if (formData.type === 'team' && formData.team_id) {
-                                                const dept = departments.find((d: any) => d.id === formData.team_id);
-                                                const targetDeptName = (dept?.name || "").toLowerCase().trim();
-
-                                                const empDeptId = Number(emp.department_id || emp.departmentId);
-                                                if (empDeptId === formData.team_id) return true;
-
-                                                const empDeptStr = (emp.department || emp.department_name || emp.branch || "").toLowerCase();
-                                                // Support comma-separated departments (e.g., "Engineering, HR")
-                                                const empDepts = empDeptStr.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
-
-                                                return targetDeptName && empDepts.includes(targetDeptName);
+                                                if (myDept) {
+                                                    newFormData.team_id = myDept.id;
+                                                }
                                             }
-                                            // Show all employees for other meeting types (Project, 1:1, etc.)
-                                            // But exclude the current user as they are the meeting creator.
-                                            return Number(emp.user_id || emp.id) !== Number(user?.id);
-                                        }).map((emp: any) => {
+                                            setFormData(newFormData);
+                                        }}
 
-
-                                            const empId = Number(emp.user_id || emp.id);
-                                            const isSelected = formData.participant_ids.includes(empId);
-                                            return (
-                                                <div key={empId} onClick={() => toggleParticipant(empId)} className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer border ${isSelected ? 'bg-blue-50 border-blue-200' : 'hover:bg-slate-50 border-slate-100'}`}>
-                                                    <Checkbox checked={isSelected} className="pointer-events-none" />
-                                                    <div className="flex flex-col truncate">
-                                                        <span className="text-[10px] font-bold truncate">{emp.name}</span>
-                                                        {emp.role && <span className="text-[8px] text-slate-400 uppercase font-medium">{emp.role.replace(/_/g, ' ')}</span>}
-                                                    </div>
-                                                </div>
-
-                                            );
-                                        })}
-                                    </div>
+                                    >
+                                        <SelectTrigger className="rounded-xl h-11 border-slate-200">
+                                            <SelectValue placeholder="Select type" />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            {canCreateCompany && <SelectItem value="company">Townhall meeting</SelectItem>}
+                                            {canCreateTeam && <SelectItem value="team">Team meeting</SelectItem>}
+                                            {canCreateProject && <SelectItem value="project">Project meeting</SelectItem>}
+                                            {canCreateOneToOne && <SelectItem value="one-to-one">1:1 meeting</SelectItem>}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Meeting Title</Label>
+                                    <Input placeholder="Meeting title" className="rounded-xl h-11" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} />
                                 </div>
                             </div>
 
-                            <DialogFooter className="p-5 bg-slate-50 flex justify-center gap-3 border-t">
-                                <Button variant="ghost" onClick={() => setIsCreateDialogOpen(false)} className="rounded-xl h-11 px-6 font-bold text-xs">Cancel</Button>
-                                <Button disabled={isSubmitting} onClick={handleCreateMeeting} className="rounded-xl h-11 bg-blue-600 text-white font-black text-xs px-10">
-                                    {isSubmitting ? "Saving..." : selectedMeeting ? "Update Meeting" : "Schedule Meeting"}
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Start Time</Label>
+                                    <Input type="datetime-local" className="rounded-xl h-11" value={formData.start_time} onChange={(e) => setFormData({ ...formData, start_time: e.target.value })} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">End Time</Label>
+                                    <Input type="datetime-local" className="rounded-xl h-11" value={formData.end_time} onChange={(e) => setFormData({ ...formData, end_time: e.target.value })} />
+                                </div>
+                            </div>
+
+                            {formData.type === 'team' && !isTeamLead && (
+                                <div className="grid gap-2">
+                                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Select Department</Label>
+                                    <Select value={formData.team_id?.toString() || ""} onValueChange={(v) => setFormData({ ...formData, team_id: v ? parseInt(v) : undefined })}>
+                                        <SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Choose Department" /></SelectTrigger>
+                                        <SelectContent>
+                                            {departments.map((d: any) => <SelectItem key={d.id} value={d.id?.toString()}>{d.name || "Unnamed"}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
+                            {formData.type === 'project' && (
+                                <div className="grid gap-2">
+                                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Select Project</Label>
+                                    <Select
+                                        value={formData.project_id?.toString() || ""}
+                                        onValueChange={async (v) => {
+                                            const pId = v ? parseInt(v) : undefined;
+                                            const newFormData = { ...formData, project_id: pId, participant_ids: [] };
+                                            if (pId) {
+                                                try {
+                                                    const members = await apiService.getProjectMembers(pId);
+                                                    const memberList = Array.isArray(members) ? members : (members?.members || []);
+                                                    newFormData.participant_ids = memberList.map((m: any) => {
+                                                        const mId = m.user_id || m.userId || m.id || m.employee_id;
+                                                        return Number(mId);
+                                                    }).filter((id: number) => !isNaN(id));
+                                                } catch (e) { console.error('Project member fetch error:', e); }
+                                            }
+
+                                            setFormData(newFormData);
+                                        }}
+                                    >
+                                        <SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Choose Project" /></SelectTrigger>
+                                        <SelectContent>
+                                            {projects.map((p: any) => <SelectItem key={p.project_id || p.id} value={(p.project_id || p.id)?.toString()}>{p.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
+                            <div className="grid gap-2">
+                                <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Meeting URL</Label>
+                                <Input placeholder="https://..." className="rounded-xl h-11" value={formData.meeting_url} onChange={(e) => setFormData({ ...formData, meeting_url: e.target.value })} />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Agenda</Label>
+                                <Textarea placeholder="Agenda..." className="rounded-xl" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+                            </div>
+
+                            <div className="space-y-4">
+                                <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest flex items-center justify-between">
+                                    Participants
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-blue-600 font-black">{formData.participant_ids.length} selected</span>
+                                        {formData.type !== 'one-to-one' && (
+                                            <div className="flex gap-2">
+                                                <button type="button" onClick={selectAllParticipants} className="text-[9px] uppercase font-black text-blue-600">Select All</button>
+                                                <button type="button" onClick={deselectAll} className="text-[9px] uppercase font-black text-rose-600">Clear</button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </Label>
+                                <div className="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto custom-scrollbar">
+                                    {employees.filter(emp => {
+                                        if (formData.type === 'team' && formData.team_id) {
+                                            const dept = departments.find((d: any) => d.id === formData.team_id);
+                                            const targetDeptName = (dept?.name || "").toLowerCase().trim();
+
+                                            const empDeptId = Number(emp.department_id || emp.departmentId);
+                                            if (empDeptId === formData.team_id) return true;
+
+                                            const empDeptStr = (emp.department || emp.department_name || emp.branch || "").toLowerCase();
+                                            // Support comma-separated departments (e.g., "Engineering, HR")
+                                            const empDepts = empDeptStr.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+
+                                            return targetDeptName && empDepts.includes(targetDeptName);
+                                        }
+                                        // Show all employees for other meeting types (Project, 1:1, etc.)
+                                        // But exclude the current user as they are the meeting creator.
+                                        return Number(emp.user_id || emp.id) !== Number(user?.id);
+                                    }).map((emp: any) => {
+
+
+                                        const empId = Number(emp.user_id || emp.id);
+                                        const isSelected = formData.participant_ids.includes(empId);
+                                        return (
+                                            <div key={empId} onClick={() => toggleParticipant(empId)} className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer border ${isSelected ? 'bg-blue-50 border-blue-200' : 'hover:bg-slate-50 border-slate-100'}`}>
+                                                <Checkbox checked={isSelected} className="pointer-events-none" />
+                                                <div className="flex flex-col truncate">
+                                                    <span className="text-[10px] font-bold truncate">{emp.name}</span>
+                                                    {emp.role && <span className="text-[8px] text-slate-400 uppercase font-medium">{emp.role.replace(/_/g, ' ')}</span>}
+                                                </div>
+                                            </div>
+
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        <DialogFooter className="p-5 bg-slate-50 flex justify-center gap-3 border-t">
+                            <Button variant="ghost" onClick={() => setIsCreateDialogOpen(false)} className="rounded-xl h-11 px-6 font-bold text-xs">Cancel</Button>
+                            <Button disabled={isSubmitting} onClick={handleCreateMeeting} className="rounded-xl h-11 bg-blue-600 text-white font-black text-xs px-10">
+                                {isSubmitting ? "Saving..." : selectedMeeting ? "Update Meeting" : "Schedule Meeting"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
 
             <div className="flex-1 overflow-y-auto w-full custom-scrollbar">
                 <div className="max-w-7xl mx-auto px-6 py-8">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-                        {[
-                            { label: "1:1 meetings", val: meetings.filter(m => m.type === 'one-to-one').length, icon: Users, color: "text-amber-600", bg: "bg-amber-50" },
-                            { label: "Townhall meetings", val: meetings.filter(m => m.type === 'company').length, icon: Briefcase, color: "text-indigo-600", bg: "bg-indigo-50" },
-                            { label: "Project meetings", val: meetings.filter(m => m.type === 'project').length, icon: FolderKanban, color: "text-blue-600", bg: "bg-blue-50" },
-                            { label: "Team meetings", val: meetings.filter(m => m.type === 'team').length, icon: Users2, color: "text-rose-600", bg: "bg-rose-50" },
-                        ].map((stat, i) => (
-                            <Card key={i} className="border-2 border-[#858282] shadow-lg bg-white dark:bg-slate-900 rounded-[2rem]">
-                                <CardContent className="p-6 flex items-center justify-between">
-                                    <div><p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>{stat.label}</p><h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }}>{stat.val}</h3></div>
-                                    <div className={`h-12 w-12 rounded-2xl ${stat.bg} flex items-center justify-center ${stat.color}`}><stat.icon className="h-6 w-6" /></div>
-                                </CardContent>
-                            </Card>
-                        ))}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+                        <SummaryCard
+                            title="1:1 meeting"
+                            value={meetings.filter(m => m.type === 'one-to-one').length}
+                            icon={Users}
+                            iconColor="text-amber-600"
+                            iconBg="bg-amber-50"
+                            onClick={() => setTypeFilter('one-to-one')}
+                        />
+                        <SummaryCard
+                            title="Townhall meeting"
+                            value={meetings.filter(m => m.type === 'company').length}
+                            icon={Briefcase}
+                            iconColor="text-indigo-600"
+                            iconBg="bg-indigo-50"
+                            onClick={() => setTypeFilter('company')}
+                        />
+                        <SummaryCard
+                            title="Project meeting"
+                            value={meetings.filter(m => m.type === 'project').length}
+                            icon={FolderKanban}
+                            iconColor="text-blue-600"
+                            iconBg="bg-blue-50"
+                            onClick={() => setTypeFilter('project')}
+                        />
+                        <SummaryCard
+                            title="Team meeting"
+                            value={meetings.filter(m => m.type === 'team').length}
+                            icon={Users2}
+                            iconColor="text-rose-600"
+                            iconBg="bg-rose-50"
+                            onClick={() => setTypeFilter('team')}
+                        />
                     </div>
 
-                    <div className="flex items-center gap-2 mb-6">
+                    <div className="flex items-center justify-center gap-2 mb-6">
                         <button onClick={() => setMainTab("all")} className={`h-10 px-6 rounded-2xl transition-all ${mainTab === "all" ? "bg-slate-900 text-white" : "bg-white text-slate-500 shadow-sm"}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>All meetings</button>
                         <button onClick={() => setMainTab("my")} className={`h-10 px-6 rounded-2xl transition-all ${mainTab === "my" ? "bg-slate-900 text-white" : "bg-white text-slate-500 shadow-sm"}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>My meetings {myMeetings.length > 0 && <span className="ml-2 bg-blue-600 text-white px-2 rounded-full">{myMeetings.length}</span>}</button>
                     </div>
 
                     <Tabs value={typeFilter} onValueChange={setTypeFilter} className="w-full">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                            <TabsList className="h-14 p-1.5 rounded-[1.5rem] bg-white dark:bg-slate-900 shadow-sm border-2 border-[#858282]">
+                            <TabsList className="h-14 p-1.5 rounded-[1.5rem] bg-white dark:bg-slate-900 shadow-sm border-2 border-[#000000] mx-auto">
                                 <TabsTrigger value="one-to-one" className="rounded-2xl px-6 data-[state=active]:bg-amber-500 data-[state=active]:text-white" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>1:1 meeting</TabsTrigger>
                                 <TabsTrigger value="company" className="rounded-2xl px-6 data-[state=active]:bg-indigo-600 data-[state=active]:text-white" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>Townhall meeting</TabsTrigger>
                                 <TabsTrigger value="project" className="rounded-2xl px-6 data-[state=active]:bg-blue-600 data-[state=active]:text-white" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>Project meeting</TabsTrigger>
@@ -717,9 +737,9 @@ const MeetingsPage: React.FC = () => {
                             <div className="flex items-center gap-3">
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                    <Input placeholder="Search..." className="pl-9 h-11 rounded-2xl border-2 border-[#858282] shadow-sm" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                                    <Input placeholder="Search..." className="pl-9 h-11 rounded-2xl border-2 border-[#000000] shadow-sm" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                                 </div>
-                                <Input type="date" className="h-11 border-2 border-[#858282] shadow-sm rounded-2xl w-[150px]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} />
+                                <Input type="date" className="h-11 border-2 border-[#000000] shadow-sm rounded-2xl w-[150px]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} />
                             </div>
                         </div>
 
@@ -729,7 +749,7 @@ const MeetingsPage: React.FC = () => {
                                     {[1, 2, 3].map(i => <div key={i} className="h-64 rounded-[2.5rem] bg-slate-100 animate-pulse" />)}
                                 </div>
                             ) : filteredMeetings.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-900 rounded-[3rem] border-2 border-[#858282]">
+                                <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-900 rounded-[3rem] border-2 border-[#000000]">
                                     <Video className="h-10 w-10 text-slate-200 mb-6" />
                                     <h3 className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>No Meetings Found</h3>
                                 </div>
@@ -748,7 +768,7 @@ const MeetingsPage: React.FC = () => {
                                                     </div>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                                         {grouped.map((meeting) => (
-                                                            <Card key={meeting.id} className="group relative border-none shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden">
+                                                            <Card key={meeting.id} className="group relative border-2 border-[#000000] shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden">
                                                                 <div className={`absolute top-0 left-0 right-0 h-1.5 ${getBadgeColor(meeting.type).split(' ')[0]}`}></div>
                                                                 <CardHeader className="p-8 pb-4">
                                                                     <div className="flex justify-between items-start mb-6">
@@ -815,7 +835,7 @@ const MeetingsPage: React.FC = () => {
                                     ) : (
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                             {filteredMeetings.map((meeting) => (
-                                                <Card key={meeting.id} className="group relative border-none shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden">
+                                                <Card key={meeting.id} className="group relative border-2 border-[#000000] shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden">
                                                     <div className={`absolute top-0 left-0 right-0 h-1.5 ${getBadgeColor(meeting.type).split(' ')[0]}`}></div>
                                                     <CardHeader className="p-8 pb-4">
                                                         <div className="flex justify-between items-start mb-6">
@@ -859,17 +879,17 @@ const MeetingsPage: React.FC = () => {
                                                         </div>
                                                         <div className="pt-6 border-t flex items-center justify-between">
                                                             <div className="flex -space-x-3">{meeting.participants?.slice(0, 3).map((p, i) => <div key={i} className="h-10 w-10 rounded-2xl border-4 border-white bg-slate-100 flex items-center justify-center font-bold text-xs" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", backgroundColor: "#F1F5F9" }}>{((p.user_name || p.name || "?")[0] || "?").toUpperCase()}</div>)}</div>
-                                                                {meeting.end_time && new Date(meeting.end_time) < new Date() ? (
-                                                                    <Button disabled className="rounded-2xl bg-slate-200 text-slate-500 font-black text-[10px] uppercase px-6 h-11 cursor-not-allowed">
-                                                                        Expired
-                                                                    </Button>
-                                                                ) : (
-                                                                    <Button asChild className="rounded-2xl bg-slate-900 hover:bg-blue-600 text-white font-black text-[10px] uppercase px-6 h-11">
-                                                                        <a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer">
-                                                                            Join Meeting <ExternalLink className="ml-2 h-3.5 w-3.5" />
-                                                                        </a>
-                                                                    </Button>
-                                                                )}
+                                                            {meeting.end_time && new Date(meeting.end_time) < new Date() ? (
+                                                                <Button disabled className="rounded-2xl bg-slate-200 text-slate-500 font-black text-[10px] uppercase px-6 h-11 cursor-not-allowed">
+                                                                    Expired
+                                                                </Button>
+                                                            ) : (
+                                                                <Button asChild className="rounded-2xl bg-slate-900 hover:bg-blue-600 text-white font-black text-[10px] uppercase px-6 h-11">
+                                                                    <a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer">
+                                                                        Join Meeting <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                                                                    </a>
+                                                                </Button>
+                                                            )}
                                                         </div>
                                                     </CardContent>
                                                 </Card>

@@ -24,6 +24,8 @@ import { formatTimeIST, formatIST, nowIST } from '@/utils/timezone';
 import { apiService, API_BASE_URL } from '@/lib/api';
 import TruncatedText from '@/components/ui/TruncatedText';
 import { cn } from '@/lib/utils';
+import SummaryCard from '@/components/ui/SummaryCard';
+
 
 interface TeamMemberStatus {
   name: string;
@@ -257,7 +259,7 @@ const ManagerDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border border-[#858282] shadow-sm mt-1">
+      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-sm mt-1">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-teal-500/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-cyan-500/5 rounded-full blur-3xl" />
 
@@ -278,16 +280,6 @@ const ManagerDashboard: React.FC = () => {
 
         <div className="relative flex gap-3">
           <Button
-            variant="outline"
-            size="icon"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="rounded-xl h-12 w-12 bg-white dark:bg-gray-800 border shadow-sm transition-all active:scale-95"
-            title="Refresh Dashboard"
-          >
-            <RefreshCw className={`h-5 w-5 text-teal-500 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </Button>
-          <Button
             onClick={() => navigate('/manager/employees/', { state: { highlight: true } })}
             className="rounded-xl px-6 h-12 bg-[#2563EB] hover:bg-blue-700 text-white shadow-lg shadow-blue-200 border-2 border-[#2563EB] transition-all active:scale-95 gap-2"
             style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
@@ -299,96 +291,62 @@ const ManagerDashboard: React.FC = () => {
       </div>
 
       {/* Quick Stats Grid */}
-      <div className="border border-[#858282] p-4 rounded-2xl bg-white/50 mb-8 shadow-sm">
+      <div className="border-2 border-[#000000] p-4 rounded-2xl bg-white/50 mb-8 shadow-sm">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
-        {[
-          {
-            label: 'Total Members',
-            value: stats.teamMembers,
-            sub: 'Department Overview',
-            icon: Users,
-            color: 'blue',
-            bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
-            cardBg: 'bg-blue-50/40 dark:bg-blue-950/10',
-            borderColor: 'border-blue-300/80 dark:border-blue-700/50',
-            hoverBorder: 'group-hover:border-blue-500 dark:group-hover:border-blue-400',
+          {[
+            {
+              label: 'Total Members',
+              value: stats.teamMembers,
+              icon: Users,
+              iconColor: 'text-blue-600',
+              iconBg: 'bg-blue-50',
+              path: '/manager/employees',
+            },
+            {
+              label: 'Present Today',
+              value: stats.presentToday,
+              icon: Clock,
+              iconColor: 'text-emerald-600',
+              iconBg: 'bg-emerald-50',
+              path: '/manager/attendance',
+              pathState: { viewMode: 'employee' }
+            },
+            {
+              label: 'Active Tasks',
+              value: stats.activeTasks,
+              icon: ClipboardList,
+              iconColor: 'text-indigo-600',
+              iconBg: 'bg-indigo-50',
+              path: '/manager/tasks'
+            },
+            {
+              label: 'Pending Approvals',
+              value: stats.pendingApprovals,
+              icon: AlertCircle,
+              iconColor: 'text-amber-600',
+              iconBg: 'bg-amber-50',
+              path: '/manager/leaves',
+              pathState: { tab: 'approvals' }
+            }
+          ].map((item, i) => (
+            <SummaryCard
+              key={i}
+              title={item.label}
+              value={item.value}
+              icon={item.icon}
+              iconColor={item.iconColor}
+              iconBg={item.iconBg}
+              onClick={() => item.path && navigate(item.path, { state: item.pathState })}
+            />
+          ))}
 
-          },
-          {
-            label: 'Present Today',
-            value: stats.presentToday,
-            sub: 'Attendance Status',
-            icon: Clock,
-            color: 'emerald',
-            bg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
-            cardBg: 'bg-emerald-50/40 dark:bg-emerald-950/10',
-            borderColor: 'border-emerald-300/80 dark:border-emerald-700/50',
-            hoverBorder: 'group-hover:border-emerald-500 dark:group-hover:border-emerald-400',
-            path: '/manager/attendance',
-            pathState: { viewMode: 'employee' }
-          },
-          {
-            label: 'Active Tasks',
-            value: stats.activeTasks,
-            sub: `${stats.completedTasks} Done Today`,
-            icon: ClipboardList,
-            color: 'indigo',
-            bg: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
-            cardBg: 'bg-indigo-50/40 dark:bg-indigo-950/10',
-            borderColor: 'border-indigo-300/80 dark:border-indigo-700/50',
-            hoverBorder: 'group-hover:border-indigo-500 dark:group-hover:border-indigo-400',
-            path: '/manager/tasks'
-          },
-          {
-            label: 'Pending Approvals',
-            value: stats.pendingApprovals,
-            sub: 'Awaiting Decisions',
-            icon: AlertCircle,
-            color: 'amber',
-            bg: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
-            cardBg: 'bg-amber-50/40 dark:bg-amber-950/10',
-            borderColor: 'border-amber-300/80 dark:border-amber-700/50',
-            hoverBorder: 'group-hover:border-amber-500 dark:hover:border-amber-400',
-            path: '/manager/leaves',
-            pathState: { tab: 'approvals' }
-          }
-        ].map((item, i) => (
-          <Card
-            key={i}
-            className={`border-2 border-[#858282] hover:border-black shadow-lg rounded-2xl ${item.cardBg} backdrop-blur-sm hover:shadow-xl transition-all duration-300 group overflow-hidden relative ${item.path ? 'cursor-pointer' : ''}`}
-            onClick={() => item.path && navigate(item.path, { state: item.pathState })}
-          >
-            {/* Background Accent */}
-            <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-5 group-hover:opacity-10 transition-opacity ${item.bg.split(' ')[0]}`} />
-
-            <CardContent className="p-5 relative">
-              <div className="flex justify-between items-start mb-3">
-                <div className={`p-2.5 rounded-xl ${item.bg} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
-                  <item.icon className="h-5 w-5" />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <h3 className="text-[12px] font-bold uppercase tracking-widest leading-none" style={{ color: '#000000' }}>{item.label}</h3>
-                <div className="text-2xl font-bold tracking-tight" style={{ color: '#000000' }}>{item.value}</div>
-                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
-                  <div className={`h-1.5 w-1.5 rounded-full ${item.color === 'blue' ? 'bg-blue-500' :
-                    item.color === 'emerald' ? 'bg-emerald-500' :
-                      item.color === 'indigo' ? 'bg-indigo-500' :
-                        'bg-amber-500'
-                    }`} />
-                  <span className="text-[12px] font-bold uppercase" style={{ color: '#000000' }}>{item.sub}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+        </div>
       </div>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Team Activities */}
-        <Card className="lg:col-span-3 border border-[#858282] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+        <Card className="lg:col-span-3 border-2 border-[#000000] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
           <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
             <CardTitle className="flex items-center gap-2 font-bold" style={{ color: '#000000' }}>
               <Activity className="h-5 w-5" style={{ color: '#000000' }} />
@@ -436,7 +394,7 @@ const ManagerDashboard: React.FC = () => {
                           }}
                         >
                           {getCorrectAttendanceStatus(activity) === 'on-time' ? 'On Time' :
-                             getCorrectAttendanceStatus(activity).replace('-', ' ')}
+                            getCorrectAttendanceStatus(activity).replace('-', ' ')}
                         </div>
                       </div>
                     </div>
@@ -482,7 +440,7 @@ const ManagerDashboard: React.FC = () => {
         </Card>
 
         {/* Team Leads Performance */}
-        <Card className="lg:col-span-2 border border-[#858282] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+        <Card className="lg:col-span-2 border-2 border-[#000000] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
           <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
             <CardTitle className="flex items-center gap-2 font-bold" style={{ color: '#000000' }}>
               <Target className="h-5 w-5" style={{ color: '#000000' }} />
@@ -513,13 +471,13 @@ const ManagerDashboard: React.FC = () => {
       </div>
 
       {/* Team Members Current Status */}
-      <Card className="border border-[#858282] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+      <Card className="border-2 border-[#000000] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
         <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
-            <CardTitle className="flex items-center gap-2 font-bold" style={{ color: '#000000' }}>
-              <Users className="h-5 w-5" style={{ color: '#000000' }} />
-              <span className="text-[16px] font-bold">{t.navigation.teamMembers} Current Status</span>
-            </CardTitle>
-            <p className="text-[14px] font-medium" style={{ color: '#000000' }}>Current status and task progress</p>
+          <CardTitle className="flex items-center gap-2 font-bold" style={{ color: '#000000' }}>
+            <Users className="h-5 w-5" style={{ color: '#000000' }} />
+            <span className="text-[16px] font-bold">{t.navigation.teamMembers} Current Status</span>
+          </CardTitle>
+          <p className="text-[14px] font-medium" style={{ color: '#000000' }}>Current status and task progress</p>
         </CardHeader>
         <CardContent className="space-y-3">
           {isLoadingTeamMembers ? (

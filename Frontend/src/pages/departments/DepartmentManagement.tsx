@@ -23,9 +23,14 @@ import {
   CheckCircle2,
   AlertCircle,
   Filter,
+  Activity,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react';
 import { Branch, BranchData } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
+import SummaryCard from '@/components/ui/SummaryCard';
+
 import { apiService } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDateIST } from '@/utils/timezone';
@@ -535,7 +540,7 @@ export default function BranchManagement() {
   return (
     <div className="w-full space-y-6 pb-24">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg p-6 shadow-md border border-[#858282]">
+      <div className="bg-white dark:bg-slate-900 rounded-lg p-6 shadow-md border-2 border-[#000000]">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 rounded-lg bg-blue-600 dark:bg-blue-500 flex items-center justify-center">
@@ -571,7 +576,7 @@ export default function BranchManagement() {
                   New Department
                 </Button>
               </DialogTrigger>
-              <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] p-0 border-2 shadow-2xl flex flex-col">
+              <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] p-0 border-2 border-[#000000] shadow-2xl flex flex-col">
                 <div className="px-6 pt-6 pb-2">
                   <DialogHeader>
                     <DialogTitle className="text-xl font-semibold">
@@ -606,61 +611,43 @@ export default function BranchManagement() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className="border-2 border-[#858282] shadow-lg bg-white dark:bg-slate-900 rounded-[2rem]">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }} className="uppercase">
-                  Total Departments
-                </p>
-                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="mt-1">{departments.length}</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <SummaryCard
+          title="Total Departments"
+          value={departments.length}
+          icon={Building2}
+          iconColor="text-blue-600"
+          iconBg="bg-blue-100"
+        />
 
-        <Card className="border-2 border-[#858282] shadow-lg bg-white dark:bg-slate-900 rounded-[2rem]">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }} className="uppercase">
-                  Active Departments
-                </p>
-                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="mt-1">{activeBranchs}</p>
-                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="mt-1">
-                  {departments.length > 0 ? Math.round((activeBranchs / departments.length) * 100) : 0}% active
-                </p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                <ChevronRight className="h-5 w-5 text-green-600 dark:text-green-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <SummaryCard
+          title="Active Departments"
+          value={activeBranchs}
+          icon={CheckCircle2}
+          iconColor="text-emerald-600"
+          iconBg="bg-emerald-100"
+        />
 
-        <Card className="border-2 border-[#858282] shadow-lg bg-white dark:bg-slate-900 rounded-[2rem]">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }} className="uppercase">
-                  Total Employees
-                </p>
-                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="mt-1">{totalEmployees}</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
-                <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <SummaryCard
+          title="Total Employees"
+          value={departments.reduce((acc, dept) => acc + (dept.member_count || 0), 0)}
+          icon={Users}
+          iconColor="text-purple-600"
+          iconBg="bg-purple-100"
+        />
+
+        <SummaryCard
+          title="System Health"
+          value="100%"
+          icon={Activity}
+          iconColor="text-indigo-600"
+          iconBg="bg-indigo-100"
+        />
       </div>
 
+
       {/* Main Management Card */}
-      <Card className="border-2 border-[#858282] shadow-lg rounded-[2rem] overflow-hidden bg-white dark:bg-slate-900">
+      <Card className="border-2 border-[#000000] shadow-lg rounded-[2rem] overflow-hidden bg-white dark:bg-slate-900">
         <CardHeader className="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
           <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
             <div>
@@ -678,14 +665,14 @@ export default function BranchManagement() {
                     placeholder="Search departments..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
-                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="pl-10 border-slate-300 dark:border-slate-600 h-10"
+                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="pl-10 border-2 border-[#000000] dark:border-slate-600 h-10"
                   />
                 </div>
               </div>
               <div className="flex flex-col gap-2">
                 <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Status</Label>
                 <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-[140px] border-slate-300 dark:border-slate-600 h-10">
+                  <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-[140px] border-2 border-[#000000] dark:border-slate-600 h-10">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -805,12 +792,7 @@ export default function BranchManagement() {
                             </Button>
                             <Button
                               size="sm"
-                              variant={isActive ? 'outline' : 'default'}
-                              className={
-                                isActive
-                                  ? 'border-green-600 text-green-600 hover:bg-green-50 dark:text-green-400 dark:border-green-400'
-                                  : ''
-                              }
+                              variant="ghost"
                               onClick={() => {
                                 const nextStatus =
                                   department.status === 'active' ? 'inactive' : 'active';
@@ -842,8 +824,14 @@ export default function BranchManagement() {
                                     });
                                   });
                               }}
+                              className={isActive
+                                ? 'h-8 w-8 p-0 hover:bg-green-100 dark:hover:bg-green-900'
+                                : 'h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800'}
+                              title={isActive ? 'Deactivate' : 'Activate'}
                             >
-                              {isActive ? 'Deactivate' : 'Activate'}
+                              {isActive
+                                ? <ToggleRight className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                : <ToggleLeft className="h-5 w-5 text-slate-400 dark:text-slate-500" />}
                             </Button>
                             <Button
                               size="sm"
@@ -880,7 +868,7 @@ export default function BranchManagement() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] p-0 flex flex-col">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] p-0 flex flex-col border-2 border-[#000000]">
           <div className="px-6 pt-6 pb-2">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold">Edit Department</DialogTitle>
@@ -911,7 +899,7 @@ export default function BranchManagement() {
 
       {/* View Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-2xl">
+        <DialogContent className="w-[95vw] max-w-2xl border-2 border-[#000000]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-blue-600 dark:bg-blue-500 flex items-center justify-center">
@@ -1085,7 +1073,7 @@ function BranchForm({
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       {/* General Details Section */}
-      <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-5 space-y-4">
+      <div className="border-2 border-[#000000] dark:border-slate-700 rounded-lg p-5 space-y-4">
         <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-700">
           <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           <div>
@@ -1107,7 +1095,7 @@ function BranchForm({
               value={formData.name}
               onChange={onNameChange}
               placeholder="e.g., Engineering"
-              className="border-slate-300 dark:border-slate-600"
+              className="border-2 border-[#000000] dark:border-slate-600"
             />
           </div>
           <div className="space-y-2">
@@ -1120,14 +1108,14 @@ function BranchForm({
               onChange={onCodeChange}
               placeholder="ENG"
               maxLength={5}
-              className="uppercase tracking-wide border-slate-300 dark:border-slate-600"
+              className="uppercase tracking-wide border-2 border-[#000000] dark:border-slate-600"
             />
           </div>
         </div>
       </div>
 
       {/* Leadership & Status Section */}
-      <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-5 space-y-4">
+      <div className="border-2 border-[#000000] dark:border-slate-700 rounded-lg p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-3">
             <Users className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -1156,7 +1144,7 @@ function BranchForm({
               onValueChange={onManagerChange}
               disabled={isManagersLoading || managers.length === 0}
             >
-              <SelectTrigger className="border-slate-300 dark:border-slate-600">
+              <SelectTrigger className="border-2 border-[#000000] dark:border-slate-600">
                 <SelectValue
                   placeholder={
                     isManagersLoading
@@ -1209,7 +1197,7 @@ function BranchForm({
               Status
             </Label>
             <Select value={formData.status} onValueChange={onStatusChange}>
-              <SelectTrigger className="border-slate-300 dark:border-slate-600">
+              <SelectTrigger className="border-2 border-[#000000] dark:border-slate-600">
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
@@ -1222,7 +1210,7 @@ function BranchForm({
       </div>
 
       {/* Branch Size Section */}
-      <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-5 space-y-4">
+      <div className="border-2 border-[#000000] dark:border-slate-700 rounded-lg p-5 space-y-4">
         <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-700">
           <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
           <div>
@@ -1243,7 +1231,7 @@ function BranchForm({
             min="0"
             value={formData.employeeCount ?? 0}
             onChange={onEmployeeCountChange}
-            className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-600"
+            className="bg-slate-50 dark:bg-slate-800 border-2 border-[#000000] dark:border-slate-600"
             readOnly
             disabled
           />
@@ -1254,7 +1242,7 @@ function BranchForm({
       </div>
 
       {/* Location & Description Section */}
-      <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-5 space-y-4">
+      <div className="border-2 border-[#000000] dark:border-slate-700 rounded-lg p-5 space-y-4">
         <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-700">
           <Building2 className="h-5 w-5 text-amber-600 dark:text-amber-400" />
           <div>
@@ -1276,7 +1264,7 @@ function BranchForm({
               value={formData.location}
               onChange={onLocationChange}
               placeholder="Building A, Floor 3"
-              className="border-slate-300 dark:border-slate-600"
+              className="border-2 border-[#000000] dark:border-slate-600"
             />
           </div>
           <div className="space-y-2">
@@ -1289,7 +1277,7 @@ function BranchForm({
               onChange={onDescriptionChange}
               placeholder="Brief description of the department's responsibilities..."
               rows={4}
-              className="resize-none border-slate-300 dark:border-slate-600"
+              className="resize-none border-2 border-[#000000] dark:border-slate-600"
             />
           </div>
         </div>

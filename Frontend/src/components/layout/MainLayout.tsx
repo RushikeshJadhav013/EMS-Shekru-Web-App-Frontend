@@ -60,6 +60,8 @@ import { UserRole } from '@/types';
 import { Language } from '@/i18n/translations';
 import { Badge } from '@/components/ui/badge';
 import ChatNotificationBadge from '@/components/chat/ChatNotificationBadge';
+import { ScopeSelectorDialog } from '@/components/common/ScopeSelectorDialog';
+import { useEffect } from 'react';
 
 const MainLayout: React.FC = () => {
   const { user, logout, showDeadlineWarnings, setShowDeadlineWarnings } = useAuth();
@@ -70,6 +72,16 @@ const MainLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [showScopeDialog, setShowScopeDialog] = useState(false);
+
+  useEffect(() => {
+    const handleScopeConflict = () => {
+      setShowScopeDialog(true);
+    };
+
+    window.addEventListener('scope-conflict', handleScopeConflict);
+    return () => window.removeEventListener('scope-conflict', handleScopeConflict);
+  }, []);
 
   // Enable navigation guard to handle back/forward button
   useNavigationGuard();
@@ -114,17 +126,29 @@ const MainLayout: React.FC = () => {
 
     const roleSpecificItems: Record<UserRole, typeof commonItems> = {
       admin: [
-        ...commonItems,
+        { icon: Home, label: t.navigation.home, path: '/admin' },
+        { icon: Clock, label: t.navigation.attendance, path: '/admin/attendance' },
         { icon: Users, label: t.navigation.employees, path: '/admin/employees' },
-        { icon: Briefcase, label: t.navigation.departments, path: '/admin/branches' },
         { icon: UserPlus, label: t.navigation.hiring, path: '/admin/hiring' },
+        { icon: CalendarDays, label: t.navigation.leaves, path: '/admin/leaves', badgeCount: unreadLeavesCount },
+        { icon: ClipboardList, label: t.navigation.tasks, path: '/admin/tasks', badgeCount: unreadTasksCount },
+        { icon: MessageCircle, label: t.navigation.chat, path: '/admin/chat' },
+        { icon: Banknote, label: t.navigation.salary, path: '/salary' },
+        { icon: Video, label: t.navigation.meetings, path: '/meetings', badgeCount: unreadMeetingsCount },
+        { icon: Briefcase, label: t.navigation.departments, path: '/admin/branches' },
         { icon: FolderKanban, label: t.navigation.projects, path: '/admin/projects' },
         { icon: BarChart3, label: t.navigation.reports, path: '/admin/reports' },
       ],
       hr: [
-        ...commonItems,
+        { icon: Home, label: t.navigation.home, path: '/hr' },
+        { icon: Clock, label: t.navigation.attendance, path: '/hr/attendance' },
         { icon: Users, label: t.navigation.employees, path: '/hr/employees' },
         { icon: UserPlus, label: t.navigation.hiring, path: '/hr/hiring' },
+        { icon: CalendarDays, label: t.navigation.leaves, path: '/hr/leaves', badgeCount: unreadLeavesCount },
+        { icon: ClipboardList, label: t.navigation.tasks, path: '/hr/tasks', badgeCount: unreadTasksCount },
+        { icon: MessageCircle, label: t.navigation.chat, path: '/hr/chat' },
+        { icon: Banknote, label: t.navigation.salary, path: '/salary' },
+        { icon: Video, label: t.navigation.meetings, path: '/meetings', badgeCount: unreadMeetingsCount },
         { icon: FolderKanban, label: 'Projects', path: '/hr/projects' },
         { icon: BarChart3, label: t.navigation.reports, path: '/hr/reports' },
       ],
@@ -171,9 +195,9 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen flex flex-col overflow-hidden bg-white">
       {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-50 w-full border-b-2 border-[#5e5b5b] bg-white dark:bg-gray-950 shadow-xl">
+      <header className="z-50 w-full border-b-2 border-[#5e5b5b] bg-white dark:bg-gray-950 shadow-xl shrink-0">
         <div className="flex h-16 w-full items-center gap-4 px-4">
           {/* Sidebar Toggle - Mobile */}
           <Button
@@ -197,10 +221,10 @@ const MainLayout: React.FC = () => {
 
           {/* Logo */}
           <div className="flex items-center cursor-pointer group" onClick={() => navigate(`/${user.role}`)}>
-            <Logo 
-              className="flex items-center gap-2 group-hover:scale-[1.02] transition-transform duration-200" 
-              iconClassName="h-10 w-10 drop-shadow-sm" 
-              textClassName="text-2xl font-bold tracking-tight hidden sm:block" 
+            <Logo
+              className="flex items-center gap-2 group-hover:scale-[1.02] transition-transform duration-200"
+              iconClassName="h-10 w-10 drop-shadow-sm"
+              textClassName="text-2xl font-bold tracking-tight hidden sm:block"
             />
           </div>
 
@@ -224,7 +248,7 @@ const MainLayout: React.FC = () => {
               </SelectItem>
             </SelectContent>
           </Select>
-          
+
           {/* Notification Bell */}
           <div className="flex items-center">
             <NotificationBell />
@@ -284,7 +308,7 @@ const MainLayout: React.FC = () => {
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-4rem)] w-full transition-all duration-500">
+      <div className="flex flex-1 w-full overflow-hidden transition-all duration-500">
         {/* Sidebar */}
         <aside
           className={`${sidebarOpen ? 'w-80' : 'w-[72px]'
@@ -300,11 +324,10 @@ const MainLayout: React.FC = () => {
                     to={item.path}
                     end={!item.path.includes('/chat')}
                     title={!sidebarOpen ? item.label : ''}
-                    className={`group relative flex items-center rounded-xl transition-all duration-300 ${
-                      sidebarOpen ? 'gap-4 px-2 py-3.5' : 'justify-center w-[56px] h-[56px] mx-auto mb-2'
-                    } ${isActive
-                      ? 'bg-blue-600 dark:bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-blue-900/40 font-bold scale-[1.02]'
-                      : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-100 hover:translate-x-1'
+                    className={`group relative flex items-center rounded-xl transition-all duration-300 ${sidebarOpen ? 'gap-4 px-2 py-3.5' : 'justify-center w-[56px] h-[56px] mx-auto mb-2'
+                      } ${isActive
+                        ? 'bg-blue-600 dark:bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-blue-900/40 font-bold scale-[1.02]'
+                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-100 hover:translate-x-1'
                       }`}
                   >
                     {/* Active Glow */}
@@ -322,7 +345,7 @@ const MainLayout: React.FC = () => {
                         : 'text-slate-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400'
                         }`} />
                       {item.path.includes('/chat') && <ChatNotificationBadge />}
-                        
+
                       {/* Badge for Collapsed State */}
                       {!sidebarOpen && 'badgeCount' in item && item.badgeCount > 0 && (
                         <div className="absolute -top-1.5 -right-1.5 h-5 w-5 bg-red-500 rounded-full border-2 border-white dark:border-slate-950 flex items-center justify-center">
@@ -383,7 +406,7 @@ const MainLayout: React.FC = () => {
               )}
             </div>
           </div>
-          
+
         </aside>
 
         {/* Mobile Sidebar */}
@@ -462,7 +485,7 @@ const MainLayout: React.FC = () => {
                   </div>
                 </div>
               </div>
-              
+
             </aside>
           </div>
         )}
@@ -478,21 +501,21 @@ const MainLayout: React.FC = () => {
             className={
               location.pathname.includes('/chat')
                 ? 'h-full w-full flex flex-col'
-                : 'min-h-full w-full animate-fade-in px-6 py-6 flex flex-col'
+                : 'w-full animate-fade-in px-4 sm:px-6 py-6 flex flex-col items-center bg-white dark:bg-gray-950'
             }
           >
-            <div className="flex-1">
+            <div className="w-full max-w-7xl">
               <Outlet />
             </div>
 
             {!location.pathname.includes('/chat') && (
-              <footer className="mt-auto pt-6 pb-2 text-center border-t border-slate-200 dark:border-slate-800 shrink-0">
+              <footer className="mt-auto pt-6 pb-6 text-center border-t border-slate-200 dark:border-slate-800 shrink-0">
                 <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
                   © 2026{' '}
-                  <a 
-                    href="https://shekruweb.com/" 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
+                  <a
+                    href="https://shekruweb.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-blue-600 dark:text-blue-400 hover:underline font-bold transition-colors"
                   >
                     Shekru Labs India Pvt.Ltd
@@ -530,6 +553,11 @@ const MainLayout: React.FC = () => {
         isOpen={showDeadlineWarnings}
         onClose={() => setShowDeadlineWarnings(false)}
         userId={user?.id}
+      />
+
+      <ScopeSelectorDialog
+        open={showScopeDialog}
+        onOpenChange={setShowScopeDialog}
       />
     </div>
   );

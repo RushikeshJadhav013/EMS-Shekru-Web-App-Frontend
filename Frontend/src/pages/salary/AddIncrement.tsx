@@ -195,7 +195,7 @@ const AddIncrement = () => {
     };
 
     return (
-        <div className="p-6 max-w-2xl mx-auto space-y-6 animate-in fade-in duration-500">
+        <div className="w-full space-y-6 animate-in fade-in duration-500">
             <div className="flex items-center gap-4 mb-2">
                 <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
                     <ArrowLeft className="h-4 w-4 mr-2" /> Back

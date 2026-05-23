@@ -33,13 +33,14 @@ import {
   ExternalLink,
   CheckCircle2,
   XCircle,
-  Clock,
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDateIST, formatDateTimeIST } from '@/utils/timezone';
 import { apiService, API_BASE_URL } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import SummaryCard from '@/components/ui/SummaryCard';
+import { UserCheck, CalendarCheck } from 'lucide-react';
 
 interface Vacancy {
   vacancy_id: number;
@@ -441,6 +442,15 @@ export default function HiringManagement() {
       (interview.location || '').toLowerCase().includes(query)
     );
   });
+
+  const hiringStats = useMemo(() => {
+    return {
+      openVacancies: vacancies.filter(v => v.status === 'open').length,
+      totalCandidates: candidates.length,
+      scheduledInterviews: interviews.filter(i => i.status === 'scheduled').length,
+      completedInterviews: interviews.filter(i => i.status === 'completed').length,
+    };
+  }, [vacancies, candidates, interviews]);
 
   const handleCreateVacancy = async () => {
     if (!vacancyFormData.title || !vacancyFormData.department || !vacancyFormData.description) {
@@ -1409,7 +1419,7 @@ export default function HiringManagement() {
   return (
     <div className="w-full space-y-6">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-md border border-[#858282]">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-md border-2 border-[#000000]">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-4">
             <div className="h-12 w-12 rounded-2xl bg-blue-600 dark:bg-blue-500 flex items-center justify-center">
@@ -1468,6 +1478,54 @@ export default function HiringManagement() {
         </div>
       </div>
 
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <SummaryCard
+          title="Open Vacancies"
+          value={hiringStats.openVacancies}
+          icon={Briefcase}
+          iconColor="text-blue-600"
+          iconBg="bg-blue-50"
+          onClick={() => {
+            setActiveTab('vacancies');
+            setSelectedStatus('open');
+          }}
+        />
+        <SummaryCard
+          title="Total Candidates"
+          value={hiringStats.totalCandidates}
+          icon={Users}
+          iconColor="text-indigo-600"
+          iconBg="bg-indigo-50"
+          onClick={() => {
+            setActiveTab('candidates');
+            setSelectedStatus('all');
+          }}
+        />
+        <SummaryCard
+          title="Scheduled Interviews"
+          value={hiringStats.scheduledInterviews}
+          icon={Calendar}
+          iconColor="text-violet-600"
+          iconBg="bg-violet-50"
+          onClick={() => {
+            setActiveTab('interviews');
+            setSelectedStatus('scheduled');
+          }}
+        />
+        <SummaryCard
+          title="Completed Interviews"
+          value={hiringStats.completedInterviews}
+          icon={CalendarCheck}
+          iconColor="text-emerald-600"
+          iconBg="bg-emerald-50"
+          onClick={() => {
+            setActiveTab('interviews');
+            setSelectedStatus('completed');
+          }}
+        />
+      </div>
+
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full max-w-lg grid-cols-3 rounded-full bg-slate-100/80 dark:bg-slate-900/80 p-1 mx-auto">
@@ -1500,52 +1558,59 @@ export default function HiringManagement() {
         {/* Vacancies Tab */}
         <TabsContent value="vacancies" className="space-y-4">
           {/* Filters */}
-          <Card className="border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
+          <Card className="border-2 border-[#000000] shadow-sm bg-white dark:bg-slate-900">
             <CardContent className="pt-5">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
                 <div className="flex-1">
+                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">Search</label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Search vacancies..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
+                      className="pl-10 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
                     />
                   </div>
                 </div>
                 {isAdmin && (
-                  <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                    <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-slate-950" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
-                      <SelectValue placeholder="Department" />
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">Department</label>
+                    <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                      <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-slate-950 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+                        <SelectValue placeholder="Department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Departments</SelectItem>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">Status</label>
+                  <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                    <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-slate-950 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+                      <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Departments</SelectItem>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="open">Open</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
+                      <SelectItem value="on-hold">On Hold</SelectItem>
                     </SelectContent>
                   </Select>
-                )}
-                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-slate-950" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                    <SelectItem value="on-hold">On Hold</SelectItem>
-                  </SelectContent>
-                </Select>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Vacancies Table */}
-          <Card className="border-2 border-[#858282] shadow-lg rounded-[2rem] overflow-hidden bg-white dark:bg-slate-900">
+          <Card className="border-2 border-[#000000] shadow-lg rounded-[2rem] overflow-hidden bg-white dark:bg-slate-900">
             <CardHeader className="border-b bg-slate-50 dark:bg-slate-800 rounded-t-3xl">
               <div className="flex items-center justify-between gap-2">
                 <div>
@@ -1646,7 +1711,7 @@ export default function HiringManagement() {
         {/* Candidates Tab */}
         <TabsContent value="candidates" className="space-y-4">
           {/* Filters */}
-          <Card className="border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
+          <Card className="border-2 border-[#000000] shadow-sm bg-white dark:bg-slate-900">
             <CardContent className="pt-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <div className="flex-1">
@@ -1656,12 +1721,12 @@ export default function HiringManagement() {
                       placeholder="Search candidates..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
+                      className="pl-10 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
                     />
                   </div>
                 </div>
                 <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-slate-950" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+                  <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-slate-950 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1680,7 +1745,7 @@ export default function HiringManagement() {
           </Card>
 
           {/* Candidates Table */}
-          <Card className="border-2 border-[#858282] shadow-lg rounded-[2rem] overflow-hidden bg-white dark:bg-slate-900">
+          <Card className="border-2 border-[#000000] shadow-lg rounded-[2rem] overflow-hidden bg-white dark:bg-slate-900">
             <CardHeader className="border-b bg-slate-50 dark:bg-slate-800 rounded-t-3xl">
               <div className="flex items-center justify-between gap-2">
                 <div>
@@ -1737,7 +1802,7 @@ export default function HiringManagement() {
                                 handleUpdateCandidateStatus(candidate.candidate_id, value)
                               }
                             >
-                              <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-[140px]">
+                              <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-[140px] border-2 border-[#000000]">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -1842,7 +1907,7 @@ export default function HiringManagement() {
         {/* Interviews Tab */}
         <TabsContent value="interviews" className="space-y-4">
           {/* Filters */}
-          <Card className="border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
+          <Card className="border-2 border-[#000000] shadow-sm bg-white dark:bg-slate-900">
             <CardContent className="pt-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <div className="flex-1">
@@ -1852,12 +1917,12 @@ export default function HiringManagement() {
                       placeholder="Search interviews by candidate, vacancy or interviewer..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
+                      className="pl-10 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
                     />
                   </div>
                 </div>
                 <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-slate-950" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+                  <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-slate-950 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1874,7 +1939,7 @@ export default function HiringManagement() {
           </Card>
 
           {/* Interviews Table */}
-          <Card className="border-2 border-[#858282] shadow-lg rounded-[2rem] overflow-hidden bg-white dark:bg-slate-900">
+          <Card className="border-2 border-[#000000] shadow-lg rounded-[2rem] overflow-hidden bg-white dark:bg-slate-900">
             <CardHeader className="border-b bg-slate-50 dark:bg-slate-800 rounded-t-3xl">
               <div className="flex items-center justify-between gap-2">
                 <div>
@@ -1959,7 +2024,7 @@ export default function HiringManagement() {
                                 handleUpdateInterviewStatus(interview.interview_id, value)
                               }
                             >
-                              <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }} className={cn("w-[130px] h-8 capitalize",
+                              <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }} className={cn("w-[130px] h-8 capitalize border-2 border-[#000000]",
                                 interview.status === 'scheduled' && "text-blue-600 bg-blue-50 border-blue-200",
                                 interview.status === 'completed' && "text-emerald-600 bg-emerald-50 border-emerald-200",
                                 interview.status === 'cancelled' && "text-red-600 bg-red-50 border-red-200",
@@ -2010,35 +2075,35 @@ export default function HiringManagement() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                            onClick={() => {
-                              setSelectedInterview(interview);
-                              
-                              const panelMembers = interview.panel_members || [];
-                              let derivedName = interview.interviewer_name || '';
-                              
-                              if (!derivedName && panelMembers.length > 0) {
-                                  derivedName = panelMembers.map(id => {
+                                onClick={() => {
+                                  setSelectedInterview(interview);
+
+                                  const panelMembers = interview.panel_members || [];
+                                  let derivedName = interview.interviewer_name || '';
+
+                                  if (!derivedName && panelMembers.length > 0) {
+                                    derivedName = panelMembers.map(id => {
                                       const emp = allEmployees.find(e => Number(e.id || e.user_id) === Number(id));
                                       return emp ? emp.name : `ID: ${id}`;
-                                  }).join(', ');
-                              }
+                                    }).join(', ');
+                                  }
 
-                              setInterviewFormData({
-                                candidate_id: String(interview.candidate_id),
-                                vacancy_id: String(interview.vacancy_id),
-                                start_time: interview.start_time ? interview.start_time.slice(0, 16) : '',
-                                end_time: interview.end_time ? interview.end_time.slice(0, 16) : '',
-                                mode: interview.mode,
-                                location: interview.location,
-                                round_type: interview.round_type,
-                                interviewer_name: derivedName,
-                                duration_minutes: interview.duration_minutes || 60,
-                                panel_members: panelMembers,
-                                status: interview.status,
-                                notes: interview.notes || '',
-                              });
-                              setIsInterviewDialogOpen(true);
-                            }}
+                                  setInterviewFormData({
+                                    candidate_id: String(interview.candidate_id),
+                                    vacancy_id: String(interview.vacancy_id),
+                                    start_time: interview.start_time ? interview.start_time.slice(0, 16) : '',
+                                    end_time: interview.end_time ? interview.end_time.slice(0, 16) : '',
+                                    mode: interview.mode,
+                                    location: interview.location,
+                                    round_type: interview.round_type,
+                                    interviewer_name: derivedName,
+                                    duration_minutes: interview.duration_minutes || 60,
+                                    panel_members: panelMembers,
+                                    status: interview.status,
+                                    notes: interview.notes || '',
+                                  });
+                                  setIsInterviewDialogOpen(true);
+                                }}
 
                                 title="Edit Interview"
                               >
@@ -2073,7 +2138,7 @@ export default function HiringManagement() {
 
       {/* Create/Edit Vacancy Dialog */}
       <Dialog open={isVacancyDialogOpen} onOpenChange={setIsVacancyDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-2xl">
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-[#000000] bg-white dark:bg-slate-950 shadow-2xl">
           <DialogHeader className="border-b border-slate-200/60 dark:border-slate-800/60 pb-4 mb-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -2091,26 +2156,13 @@ export default function HiringManagement() {
                   </DialogDescription>
                 </div>
               </div>
-              <div className="hidden sm:flex flex-col items-end gap-1">
-                <Badge
-                  variant="outline"
-                  className="gap-1 px-2 py-0.5 text-[11px] border-indigo-500/40 text-indigo-700 dark:text-indigo-300"
-                >
-                  <Clock className="h-3 w-3" />
-                  {selectedVacancy ? 'Editing existing role' : 'New opportunity'}
-                </Badge>
-                {vacancyFormData.status && (
-                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                    Status: {vacancyFormData.status.replace('-', ' ')}
-                  </span>
-                )}
-              </div>
+
             </div>
           </DialogHeader>
 
           <div className="space-y-6">
             {/* Role Snapshot */}
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 p-4 sm:p-5 space-y-4">
+            <div className="rounded-2xl border-2 border-[#000000] bg-slate-50/70 dark:bg-slate-900/40 p-4 sm:p-5 space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -2131,7 +2183,7 @@ export default function HiringManagement() {
                       setVacancyFormData({ ...vacancyFormData, title: e.target.value })
                     }
                     placeholder="e.g., Senior Software Engineer"
-                    className="h-10"
+                    className="h-10 border-2 border-[#000000]"
                   />
                 </div>
                 <div className="space-y-2">
@@ -2143,7 +2195,7 @@ export default function HiringManagement() {
                     }
                     disabled={false}
                   >
-                    <SelectTrigger className="h-10">
+                    <SelectTrigger className="h-10 border-2 border-[#000000]">
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
@@ -2167,7 +2219,7 @@ export default function HiringManagement() {
                       setVacancyFormData({ ...vacancyFormData, location: e.target.value })
                     }
                     placeholder="e.g., Mumbai, India"
-                    className="h-10"
+                    className="h-10 border-2 border-[#000000]"
                   />
                 </div>
                 <div className="space-y-2">
@@ -2178,7 +2230,7 @@ export default function HiringManagement() {
                       setVacancyFormData({ ...vacancyFormData, employment_type: value })
                     }
                   >
-                    <SelectTrigger className="h-10">
+                    <SelectTrigger className="h-10 border-2 border-[#000000]">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -2200,7 +2252,7 @@ export default function HiringManagement() {
                         setVacancyFormData({ ...vacancyFormData, salary_range: e.target.value })
                       }
                       placeholder="e.g., ₹5L - ₹10L"
-                      className="pl-7 h-10"
+                      className="pl-7 h-10 border-2 border-[#000000]"
                     />
                   </div>
                 </div>
@@ -2215,7 +2267,7 @@ export default function HiringManagement() {
                       setVacancyFormData({ ...vacancyFormData, status: value })
                     }
                   >
-                    <SelectTrigger className="h-10">
+                    <SelectTrigger className="h-10 border-2 border-[#000000]">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -2231,7 +2283,7 @@ export default function HiringManagement() {
             </div>
 
             {/* Role Narrative */}
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/70 p-4 sm:p-5 space-y-5">
+            <div className="rounded-2xl border-2 border-[#000000] bg-white/90 dark:bg-slate-950/70 p-4 sm:p-5 space-y-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -2257,6 +2309,7 @@ export default function HiringManagement() {
                     }
                     placeholder="Describe the role, mission, and impact of this position..."
                     rows={4}
+                    className="border-2 border-[#000000]"
                   />
                   {vacancyFormData.description && (
                     <div className="mt-1">
@@ -2280,6 +2333,7 @@ export default function HiringManagement() {
                     }
                     placeholder="Outline the day-to-day responsibilities..."
                     rows={4}
+                    className="border-2 border-[#000000]"
                   />
                   {vacancyFormData.responsibilities && (
                     <div className="mt-1">
@@ -2370,7 +2424,7 @@ export default function HiringManagement() {
 
       {/* View Vacancy Dialog */}
       <Dialog open={isViewVacancyDialogOpen} onOpenChange={setIsViewVacancyDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-2 border-[#000000]">
           <DialogHeader>
             <DialogTitle>{selectedVacancy?.title}</DialogTitle>
             <DialogDescription>
@@ -2474,41 +2528,13 @@ export default function HiringManagement() {
 
       {/* View Candidate Dialog */}
       < Dialog open={isViewCandidateDialogOpen} onOpenChange={setIsViewCandidateDialogOpen} >
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border border-slate-200">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-2 border-[#000000]">
           <DialogHeader>
             <DialogTitle>Candidate Profile: {selectedCandidate?.name}</DialogTitle>
             <DialogDescription>{selectedCandidate?.email}</DialogDescription>
           </DialogHeader>
           {selectedCandidate && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-muted-foreground">Status</Label>
-                    <Select
-                      value={selectedCandidate.status}
-                      onValueChange={(value) => {
-                        handleUpdateCandidateStatus(selectedCandidate.candidate_id, value);
-                        setSelectedCandidate({ ...selectedCandidate, status: value });
-                        fetchCandidateInterviews(selectedCandidate.candidate_id);
-                      }}
-                    >
-                      <SelectTrigger className="w-[140px] h-8 text-xs">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="applied">Applied</SelectItem>
-                        <SelectItem value="screening">Screening</SelectItem>
-                        <SelectItem value="interview">Interview</SelectItem>
-                        <SelectItem value="offered">Offered</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                        <SelectItem value="hired">Hired</SelectItem>
-                        <SelectItem value="withdrawn">Withdrawn</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-3">
@@ -2615,7 +2641,7 @@ export default function HiringManagement() {
                   {selectedCandidate.resume_url && (
                     <Button
                       variant="outline"
-                      className="h-9 px-4 rounded-lg bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-800/50 text-green-700 dark:text-green-400 hover:bg-green-100"
+                      className="h-9 px-4 rounded-lg bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/50 text-blue-700 dark:text-blue-400 hover:bg-blue-100"
                       onClick={async () => {
                         try {
                           // Fetch via authenticated API endpoint so auth headers are included
@@ -2717,7 +2743,7 @@ export default function HiringManagement() {
           resetCandidateForm();
         }
       }} >
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-2 border-[#000000]">
           <DialogHeader>
             <DialogTitle>{selectedCandidate ? 'Edit Candidate' : 'Add New Candidate'}</DialogTitle>
             <DialogDescription>
@@ -2733,6 +2759,7 @@ export default function HiringManagement() {
                   value={candidateFormData.first_name}
                   onChange={(e) => setCandidateFormData({ ...candidateFormData, first_name: e.target.value })}
                   placeholder="John"
+                  className="border-2 border-[#000000]"
                 />
               </div>
               <div className="space-y-2">
@@ -2742,6 +2769,7 @@ export default function HiringManagement() {
                   value={candidateFormData.last_name}
                   onChange={(e) => setCandidateFormData({ ...candidateFormData, last_name: e.target.value })}
                   placeholder="Doe"
+                  className="border-2 border-[#000000]"
                 />
               </div>
             </div>
@@ -2754,6 +2782,7 @@ export default function HiringManagement() {
                   value={candidateFormData.email}
                   onChange={(e) => setCandidateFormData({ ...candidateFormData, email: e.target.value })}
                   placeholder="example@gmail.com"
+                  className="border-2 border-[#000000]"
                 />
                 <p className="text-[10px] text-muted-foreground italic">Must be a @gmail.com address</p>
               </div>
@@ -2768,6 +2797,7 @@ export default function HiringManagement() {
                   }}
                   placeholder="10-digit number (starts with 6, 7, 8, or 9)"
                   maxLength={10}
+                  className="border-2 border-[#000000]"
                 />
                 <p className="text-[10px] text-muted-foreground italic">Starts with 6, 7, 8, or 9</p>
               </div>
@@ -2778,7 +2808,7 @@ export default function HiringManagement() {
                 value={candidateFormData.vacancy_id}
                 onValueChange={(value) => setCandidateFormData({ ...candidateFormData, vacancy_id: value })}
               >
-                <SelectTrigger>
+                <SelectTrigger className="border-2 border-[#000000]">
                   <SelectValue placeholder="Select a job opening" />
                 </SelectTrigger>
                 <SelectContent>
@@ -2801,6 +2831,7 @@ export default function HiringManagement() {
                 value={candidateFormData.address}
                 onChange={(e) => setCandidateFormData({ ...candidateFormData, address: e.target.value })}
                 placeholder="State, City, Country"
+                className="border-2 border-[#000000]"
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2811,6 +2842,7 @@ export default function HiringManagement() {
                   value={candidateFormData.linkedin_url}
                   onChange={(e) => setCandidateFormData({ ...candidateFormData, linkedin_url: e.target.value })}
                   placeholder="https://linkedin.com/in/..."
+                  className="border-2 border-[#000000]"
                 />
               </div>
               <div className="space-y-2">
@@ -2820,6 +2852,7 @@ export default function HiringManagement() {
                   value={candidateFormData.portfolio_url}
                   onChange={(e) => setCandidateFormData({ ...candidateFormData, portfolio_url: e.target.value })}
                   placeholder="https://github.com/..."
+                  className="border-2 border-[#000000]"
                 />
               </div>
             </div>
@@ -2832,6 +2865,7 @@ export default function HiringManagement() {
                   type="file"
                   accept=".pdf,.doc,.docx"
                   onChange={(e) => setCandidateResumeFile(e.target.files?.[0] || null)}
+                  className="border-2 border-[#000000]"
                 />
               </div>
               <div className="relative">
@@ -2849,6 +2883,7 @@ export default function HiringManagement() {
                   value={candidateFormData.resume_external_url}
                   onChange={(e) => setCandidateFormData({ ...candidateFormData, resume_external_url: e.target.value })}
                   placeholder="https://drive.google.com/..."
+                  className="border-2 border-[#000000]"
                 />
               </div>
             </div>
@@ -2865,7 +2900,7 @@ export default function HiringManagement() {
 
       {/* Shortlist Dialog - Center with Scroll and Slider */}
       <Dialog open={isShortlistDialogOpen} onOpenChange={setIsShortlistDialogOpen}>
-        <DialogContent className="max-w-md p-0 overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl">
+        <DialogContent className="max-w-md p-0 overflow-hidden rounded-2xl sm:rounded-3xl border-2 border-[#000000] shadow-2xl">
           <DialogHeader className="p-6 border-b bg-slate-50 dark:bg-slate-900/50">
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
               <Calendar className="h-5 w-5 text-blue-600" />
@@ -2880,7 +2915,7 @@ export default function HiringManagement() {
                 <Input
                   id="int_date"
                   type="date"
-                  className="rounded-xl border-slate-200"
+                  className="rounded-xl border-2 border-[#000000]"
                   value={shortlistFormData.interview_date}
                   onChange={(e) => setShortlistFormData({ ...shortlistFormData, interview_date: e.target.value })}
                 />
@@ -2890,7 +2925,7 @@ export default function HiringManagement() {
                 <Input
                   id="int_time"
                   type="time"
-                  className="rounded-xl border-slate-200"
+                  className="rounded-xl border-2 border-[#000000]"
                   value={shortlistFormData.interview_time}
                   onChange={(e) => setShortlistFormData({ ...shortlistFormData, interview_time: e.target.value })}
                 />
@@ -2902,7 +2937,7 @@ export default function HiringManagement() {
                     value={shortlistFormData.interview_mode}
                     onValueChange={(value) => setShortlistFormData({ ...shortlistFormData, interview_mode: value })}
                   >
-                    <SelectTrigger className="rounded-xl border-slate-200">
+                    <SelectTrigger className="rounded-xl border-2 border-[#000000]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -2919,7 +2954,7 @@ export default function HiringManagement() {
                     value={shortlistFormData.round_type}
                     onChange={(e) => setShortlistFormData({ ...shortlistFormData, round_type: e.target.value })}
                     placeholder="e.g. Technical, HR"
-                    className="rounded-xl border-slate-200"
+                    className="rounded-xl border-2 border-[#000000]"
                   />
                 </div>
               </div>
@@ -2930,7 +2965,7 @@ export default function HiringManagement() {
                   value={shortlistFormData.location_or_link}
                   onChange={(e) => setShortlistFormData({ ...shortlistFormData, location_or_link: e.target.value })}
                   placeholder="Zoom link or Office Address"
-                  className="rounded-xl border-slate-200"
+                  className="rounded-xl border-2 border-[#000000]"
                 />
               </div>
               <div className="space-y-4 pt-2">
@@ -3002,6 +3037,7 @@ export default function HiringManagement() {
                 type="file"
                 accept=".pdf,.doc,.docx"
                 onChange={(e) => setNewResumeFile(e.target.files?.[0] || null)}
+                className="border-2 border-[#000000]"
               />
             </div>
             <div className="relative my-2">
@@ -3019,6 +3055,7 @@ export default function HiringManagement() {
                 value={resumeUpdateData.resume_external_url}
                 onChange={(e) => setResumeUpdateData({ ...resumeUpdateData, resume_external_url: e.target.value })}
                 placeholder="https://drive.google.com/..."
+                className="border-2 border-[#000000]"
               />
             </div>
           </div>
@@ -3033,7 +3070,7 @@ export default function HiringManagement() {
       </Dialog >
       {/* Schedule/Edit Interview Dialog - Center with Scroll and Slider */}
       <Dialog open={isInterviewDialogOpen} onOpenChange={setIsInterviewDialogOpen}>
-        <DialogContent className="max-w-md p-0 overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl">
+        <DialogContent className="max-w-md p-0 overflow-hidden rounded-2xl sm:rounded-3xl border-2 border-[#000000] shadow-2xl">
           <DialogHeader className="p-6 border-b bg-slate-50 dark:bg-slate-900/50">
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
               <Calendar className="h-5 w-5 text-violet-600" />
@@ -3059,7 +3096,7 @@ export default function HiringManagement() {
                   }}
                   disabled={!!selectedInterview}
                 >
-                  <SelectTrigger className="rounded-xl border-slate-200">
+                  <SelectTrigger className="rounded-xl border-2 border-[#000000]">
                     <SelectValue placeholder="Select candidate" />
                   </SelectTrigger>
                   <SelectContent>
@@ -3081,7 +3118,7 @@ export default function HiringManagement() {
                   <Input
                     id="i_start_time"
                     type="datetime-local"
-                    className="rounded-xl border-slate-200"
+                    className="rounded-xl border-2 border-[#000000]"
                     value={interviewFormData.start_time}
                     onChange={(e) => setInterviewFormData({ ...interviewFormData, start_time: e.target.value })}
                   />
@@ -3091,7 +3128,7 @@ export default function HiringManagement() {
                   <Input
                     id="i_end_time"
                     type="datetime-local"
-                    className="rounded-xl border-slate-200"
+                    className="rounded-xl border-2 border-[#000000]"
                     value={interviewFormData.end_time}
                     onChange={(e) => setInterviewFormData({ ...interviewFormData, end_time: e.target.value })}
                   />
@@ -3104,7 +3141,7 @@ export default function HiringManagement() {
                     value={interviewFormData.mode}
                     onValueChange={(value: any) => setInterviewFormData({ ...interviewFormData, mode: value })}
                   >
-                    <SelectTrigger className="rounded-xl border-slate-200">
+                    <SelectTrigger className="rounded-xl border-2 border-[#000000]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -3121,7 +3158,7 @@ export default function HiringManagement() {
                     onValueChange={(value: any) => setInterviewFormData({ ...interviewFormData, status: value })}
                   >
                     <SelectTrigger className={cn(
-                      "capitalize font-medium rounded-xl",
+                      "capitalize font-medium rounded-xl border-2 border-[#000000]",
                       interviewFormData.status === 'scheduled' && "text-blue-600 bg-blue-50 border-blue-200",
                       interviewFormData.status === 'completed' && "text-emerald-600 bg-emerald-50 border-emerald-200",
                       interviewFormData.status === 'cancelled' && "text-red-600 bg-red-50 border-red-200",
@@ -3149,7 +3186,7 @@ export default function HiringManagement() {
                   value={interviewFormData.location}
                   onChange={(e) => setInterviewFormData({ ...interviewFormData, location: e.target.value })}
                   placeholder="Zoom link or Office Address"
-                  className="rounded-xl border-slate-200"
+                  className="rounded-xl border-2 border-[#000000]"
                 />
               </div>
               <div className="space-y-2">
@@ -3159,7 +3196,7 @@ export default function HiringManagement() {
                   value={interviewFormData.round_type}
                   onChange={(e) => setInterviewFormData({ ...interviewFormData, round_type: e.target.value })}
                   placeholder="e.g. Technical, HR"
-                  className="rounded-xl border-slate-200"
+                  className="rounded-xl border-2 border-[#000000]"
                 />
               </div>
               <div className="space-y-4 pt-2">
@@ -3244,7 +3281,7 @@ export default function HiringManagement() {
                   onChange={(e) => setInterviewFormData({ ...interviewFormData, notes: e.target.value })}
                   placeholder="Any special instructions..."
                   rows={3}
-                  className="rounded-xl border-slate-200 min-h-[100px]"
+                  className="rounded-xl border-2 border-[#000000] min-h-[100px]"
                 />
               </div>
             </div>
@@ -3261,7 +3298,7 @@ export default function HiringManagement() {
 
       {/* View Interview & Feedback Dialog */}
       < Dialog open={isViewInterviewDialogOpen} onOpenChange={setIsViewInterviewDialogOpen} >
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-2 border-[#000000]">
           <DialogHeader>
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0 pr-4">
@@ -3287,7 +3324,7 @@ export default function HiringManagement() {
 
           {selectedInterview && (
             <div className="space-y-6 py-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border-2 border-[#000000]">
                 <div className="col-span-2">
                   <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Schedule</span>
                   <p className="text-sm font-medium">
@@ -3333,7 +3370,7 @@ export default function HiringManagement() {
               {selectedInterview.notes && (
                 <div className="space-y-2">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notes</Label>
-                  <p className="text-sm bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800 whitespace-pre-wrap italic">
+                  <p className="text-sm bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border-2 border-[#000000] whitespace-pre-wrap italic">
                     {selectedInterview.notes}
                   </p>
                 </div>
@@ -3346,7 +3383,7 @@ export default function HiringManagement() {
                     Interview Feedback
                   </h3>
                   <Button
-                    
+
                     className="gap-2"
                     onClick={() => {
                       resetFeedbackForm();
@@ -3370,8 +3407,8 @@ export default function HiringManagement() {
                 ) : (
                   <div className="space-y-4">
                     {feedback.map((f) => (
-                      <Card key={f.feedback_id} className="overflow-hidden border-slate-200 dark:border-slate-800">
-                        <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+                      <Card key={f.feedback_id} className="overflow-hidden border-2 border-[#000000]">
+                        <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2 flex items-center justify-between border-b-2 border-[#000000]">
                           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                             By {f.interviewer_name || 'Interviewer'}
                           </span>
@@ -3414,7 +3451,7 @@ export default function HiringManagement() {
                         <CardContent className="pt-4 space-y-4">
                           <div className="space-y-3">
                             {f.feedback_summary && (
-                              <div className="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-100 dark:border-blue-800/50">
+                              <div className="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-lg border-2 border-[#000000]">
                                 <span className="text-[10px] uppercase font-bold text-blue-700 dark:text-blue-400 block mb-1">Feedback Summary</span>
                                 <p className="text-sm font-medium">{f.feedback_summary}</p>
                               </div>
@@ -3490,7 +3527,7 @@ export default function HiringManagement() {
 
       {/* Submit/Edit Feedback Dialog */}
       < Dialog open={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen} >
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl border-2 border-[#000000]">
           <DialogHeader>
             <DialogTitle>{selectedFeedback ? 'Edit Feedback' : 'Submit Interview Feedback'}</DialogTitle>
             <DialogDescription>
@@ -3530,6 +3567,7 @@ export default function HiringManagement() {
                       rating: (tech + comm) / 2
                     });
                   }}
+                  className="border-2 border-[#000000]"
                 />
               </div>
               <div className="space-y-2">
@@ -3551,6 +3589,7 @@ export default function HiringManagement() {
                       rating: (tech + comm) / 2
                     });
                   }}
+                  className="border-2 border-[#000000]"
                 />
               </div>
             </div>
@@ -3562,6 +3601,7 @@ export default function HiringManagement() {
                 value={feedbackFormData.feedback_summary}
                 onChange={(e) => setFeedbackFormData({ ...feedbackFormData, feedback_summary: e.target.value })}
                 placeholder="e.g. Cleared HR phone round"
+                className="border-2 border-[#000000]"
               />
             </div>
 
@@ -3571,7 +3611,7 @@ export default function HiringManagement() {
                 value={feedbackFormData.recommendation}
                 onValueChange={(value: any) => setFeedbackFormData({ ...feedbackFormData, recommendation: value })}
               >
-                <SelectTrigger>
+                <SelectTrigger className="border-2 border-[#000000]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -3591,6 +3631,7 @@ export default function HiringManagement() {
                   onChange={(e) => setFeedbackFormData({ ...feedbackFormData, strengths: e.target.value })}
                   placeholder="What did the candidate do well?"
                   rows={4}
+                  className="border-2 border-[#000000]"
                 />
               </div>
               <div className="space-y-2">
@@ -3601,6 +3642,7 @@ export default function HiringManagement() {
                   onChange={(e) => setFeedbackFormData({ ...feedbackFormData, weaknesses: e.target.value })}
                   placeholder="Where did the candidate fall short?"
                   rows={4}
+                  className="border-2 border-[#000000]"
                 />
               </div>
             </div>
@@ -3613,6 +3655,7 @@ export default function HiringManagement() {
                 onChange={(e) => setFeedbackFormData({ ...feedbackFormData, comments: e.target.value })}
                 placeholder="Overall impression and any other feedback..."
                 rows={3}
+                className="border-2 border-[#000000]"
               />
             </div>
           </div>

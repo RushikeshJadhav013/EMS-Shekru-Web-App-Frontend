@@ -50,7 +50,9 @@ import {
   Clock as ClockIcon,
   AlertCircle,
   History,
+  FileCheck,
 } from "lucide-react";
+import SummaryCard from "@/components/ui/SummaryCard";
 import { toast } from "@/hooks/use-toast";
 import { apiService } from "@/lib/api";
 import { format } from "date-fns";
@@ -633,10 +635,67 @@ const WFHRequests: React.FC = () => {
     }
   };
 
+  const wfhStats = useMemo(() => {
+    return {
+      total: wfhRequests.length,
+      pending: wfhRequests.filter(r => r.status === 'pending').length,
+      approved: wfhRequests.filter(r => r.status === 'approved').length,
+      rejected: wfhRequests.filter(r => r.status === 'rejected').length,
+    };
+  }, [wfhRequests]);
+
   return (
     <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <SummaryCard
+          title="Total Requests"
+          value={wfhStats.total}
+          icon={History}
+          iconColor="text-blue-600"
+          iconBg="bg-blue-50"
+          onClick={() => {
+            setActiveTab("my-requests");
+            setStatusFilter("all");
+          }}
+        />
+        <SummaryCard
+          title="Pending"
+          value={wfhStats.pending}
+          icon={ClockIcon}
+          iconColor="text-yellow-600"
+          iconBg="bg-yellow-50"
+          onClick={() => {
+            setActiveTab("my-requests");
+            setStatusFilter("pending");
+          }}
+        />
+        <SummaryCard
+          title="Approved"
+          value={wfhStats.approved}
+          icon={CheckCircle}
+          iconColor="text-green-600"
+          iconBg="bg-green-50"
+          onClick={() => {
+            setActiveTab("my-requests");
+            setStatusFilter("approved");
+          }}
+        />
+        <SummaryCard
+          title="Rejected"
+          value={wfhStats.rejected}
+          icon={XCircle}
+          iconColor="text-red-600"
+          iconBg="bg-red-50"
+          onClick={() => {
+            setActiveTab("my-requests");
+            setStatusFilter("rejected");
+          }}
+        />
+      </div>
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-xl border border-[#858282]">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-xl border-2 border-[#000000]">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl flex items-center gap-3">
             <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">

@@ -281,8 +281,8 @@ const AddEditSalary = () => {
                 } else if (watchPfType === 'fixed') {
                     annualPfOneSide = parseNumber(watchPfValue) * 12;
                 } else if (watchCtc > 0) {
-                   // Default fallback PF if no type selected? Usually 12% of basic
-                   annualPfOneSide = Math.round(annualBasic * 0.12);
+                    // Default fallback PF if no type selected? Usually 12% of basic
+                    annualPfOneSide = Math.round(annualBasic * 0.12);
                 }
                 const annualPfTotal = annualPfOneSide * 2;
 
@@ -296,7 +296,7 @@ const AddEditSalary = () => {
                 // CTC = Basic + HRA + Medical + Conveyance + Other + Special + PF_Employer + Variable
                 // (Variable pay part of CTC is already subtracted in some contexts, but let's be safe)
                 const variablePart = (watchVarType === 'percentage' ? ctc * (parseNumber(watchVarValue) / 100) : parseNumber(watchVarValue));
-                
+
                 const annualSpecial = Math.max(0, ctc - annualBasic - annualHra - annualMedical - annualConveyance - annualOtherAllowance);
 
                 // Always populate manual fields regardless of active tab
@@ -512,7 +512,7 @@ const AddEditSalary = () => {
                         // Default PF: 12% of monthly Basic
                         monthlyPfOneSide = Math.round(monthlyBasic * 0.12);
                     }
-                    
+
                     // Actually, guided mode has its own pfType watch
                     const currentPfType = form.getValues('pfType');
                     const currentPfValue = parseNumber(form.getValues('pfValue'));
@@ -809,9 +809,9 @@ const AddEditSalary = () => {
     }
 
     return (
-        <div className="p-6 max-w-6xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
             {/* Simple Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-6 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-100/50 dark:border-blue-900/30">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-6 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border-2 border-[#000000]">
                 <div className="flex items-center gap-4">
                     <Button
                         variant="outline"
@@ -823,7 +823,7 @@ const AddEditSalary = () => {
                                 navigate(-1);
                             }
                         }}
-                        className="hover:scale-105 active:scale-95 transition-all border-none shadow-lg shadow-orange-500/20" style={{ backgroundColor: "#F97316", fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", color: "#FFFFFF" }}
+                        className="hover:scale-105 active:scale-95 transition-all border-2 border-[#000000] shadow-lg shadow-orange-500/20" style={{ backgroundColor: "#F97316", fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", color: "#FFFFFF" }}
                     >
                         <ArrowLeft className="h-4 w-4 mr-2" /> Back
                     </Button>
@@ -846,7 +846,7 @@ const AddEditSalary = () => {
             {/* Step 1: Employee Selection */}
             {
                 !watchUserId && (
-                    <Card className="max-w-2xl mx-auto mt-10 border border-[#858282] shadow-lg bg-slate-50/50 dark:bg-slate-900/50">
+                    <Card className="max-w-2xl mx-auto mt-10 border-2 border-[#000000] shadow-lg bg-slate-50/50 dark:bg-slate-900/50">
                         <CardHeader className="bg-white/50 dark:bg-slate-800/50">
                             <CardTitle>Select Employee</CardTitle>
                             <CardDescription>Choose an employee to configure their salary structure.</CardDescription>
@@ -863,7 +863,7 @@ const AddEditSalary = () => {
                                             value={field.value}
                                             disabled={!!userIdParam}
                                         >
-                                            <SelectTrigger className="w-full h-10 bg-white dark:bg-slate-800">
+                                            <SelectTrigger className="w-full h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]">
                                                 <SelectValue placeholder="Select an employee..." />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -891,7 +891,7 @@ const AddEditSalary = () => {
             {
                 watchUserId && (
                     <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="animate-in slide-in-from-bottom-4 duration-500">
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                             {/* Left Column: Input Fields */}
                             <div className="lg:col-span-8 space-y-8">
 
@@ -1001,7 +1001,7 @@ const AddEditSalary = () => {
 
                                     <TabsContent value="auto">
                                         {/* Section 1: Core Compensation - AUTO */}
-                                        <Card className="border border-[#858282] shadow-lg bg-blue-50/30 dark:bg-blue-950/10">
+                                        <Card className="border-2 border-[#000000] shadow-lg bg-blue-50/30 dark:bg-blue-950/10">
                                             <CardHeader className="bg-white/60 dark:bg-slate-800/60">
                                                 <CardTitle className="flex items-center gap-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
                                                     <Calculator className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -1019,7 +1019,7 @@ const AddEditSalary = () => {
                                                             <span className="absolute left-3 top-2.5 text-muted-foreground font-medium">₹</span>
                                                             <Input
                                                                 type="text"
-                                                                className="pl-8 h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}
+                                                                className="pl-8 h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}
                                                                 placeholder="e.g. 12 00 000"
                                                                 disabled={false}
                                                                 {...form.register("annualCtc")}
@@ -1032,7 +1032,7 @@ const AddEditSalary = () => {
                                                         <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Working Days (Month)</Label>
                                                         <Input
                                                             type="text"
-                                                            className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}
+                                                            className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}
                                                             placeholder="e.g. 22"
                                                             disabled={false}
                                                             {...form.register("workingDays")}
@@ -1050,7 +1050,7 @@ const AddEditSalary = () => {
                                                             control={form.control}
                                                             render={({ field }) => (
                                                                 <Select onValueChange={field.onChange} value={field.value}>
-                                                                    <SelectTrigger className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
+                                                                    <SelectTrigger className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                                                                         <SelectValue placeholder="Select PF Type" />
                                                                     </SelectTrigger>
                                                                     <SelectContent>
@@ -1072,7 +1072,7 @@ const AddEditSalary = () => {
                                                             )}
                                                             <Input
                                                                 type="text"
-                                                                className={`h-10 bg-white dark:bg-slate-800 ${watchPfType === 'fixed' ? 'pl-8' : ''}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}
+                                                                className={`h-10 bg-white dark:bg-slate-800 border-2 border-[#000000] ${watchPfType === 'fixed' ? 'pl-8' : ''}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}
                                                                 placeholder={watchPfType === 'percentage' ? 'e.g. 12' : watchPfType === 'fixed' ? 'e.g. 1800' : '0'}
                                                                 disabled={watchPfType === 'none'}
                                                                 {...form.register("pfValue")}
@@ -1093,7 +1093,7 @@ const AddEditSalary = () => {
                                                     </div>
                                                 </div>
 
-                                                <div className="p-5 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg space-y-5 border border-amber-100/50 dark:border-amber-900/30">
+                                                <div className="p-5 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg space-y-5 border-2 border-[#000000]">
                                                     <div className="flex items-center gap-2 uppercase tracking-wider" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                                                         <TrendingUp className="h-3 w-3" />
                                                         Variable Pay Setup
@@ -1106,7 +1106,7 @@ const AddEditSalary = () => {
                                                                 control={form.control}
                                                                 render={({ field }) => (
                                                                     <Select onValueChange={field.onChange} value={field.value} disabled={false}>
-                                                                        <SelectTrigger className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
+                                                                        <SelectTrigger className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                                                                             <SelectValue placeholder="Select Type" />
                                                                         </SelectTrigger>
                                                                         <SelectContent>
@@ -1128,7 +1128,7 @@ const AddEditSalary = () => {
                                                                 )}
                                                                 <Input
                                                                     type="text"
-                                                                    className={`h-10 bg-white dark:bg-slate-800 ${watchVarType === 'fixed' ? 'pl-8' : ''}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}
+                                                                    className={`h-10 bg-white dark:bg-slate-800 border-2 border-[#000000] ${watchVarType === 'fixed' ? 'pl-8' : ''}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}
                                                                     placeholder={watchVarType === 'percentage' ? "e.g. 10" : "e.g. 50 000"}
                                                                     disabled={watchVarType === 'none'}
                                                                     {...form.register("variablePayValue")}
@@ -1159,7 +1159,7 @@ const AddEditSalary = () => {
 
                                         {/* HR Configuration Guide */}
                                         {userRole === 'hr' && (
-                                            <div className="mt-8 p-6 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-2xl border border-blue-100/50 dark:border-blue-800/50 shadow-sm relative overflow-hidden group">
+                                            <div className="mt-8 p-6 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-2xl border-2 border-[#000000] shadow-sm relative overflow-hidden group">
                                                 <div className="absolute top-0 right-0 -mr-4 -mt-4 h-24 w-24 bg-blue-500/5 rounded-full blur-2xl transition-all duration-700 group-hover:bg-blue-500/15" />
                                                 <div className="relative space-y-4">
                                                     <div className="flex items-center gap-3">
@@ -1193,7 +1193,7 @@ const AddEditSalary = () => {
 
                                     <TabsContent value="manual">
                                         {/* Section 1: Core Compensation - MANUAL */}
-                                        <Card className="border border-[#858282] shadow-lg bg-orange-50/30 dark:bg-orange-950/10">
+                                        <Card className="border-2 border-[#000000] shadow-lg bg-orange-50/30 dark:bg-orange-950/10">
                                             <CardHeader className="bg-white/60 dark:bg-slate-800/60">
                                                 <CardTitle className="flex items-center gap-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
                                                     <FileText className="h-5 w-5 text-orange-600 dark:text-orange-400" />
@@ -1203,7 +1203,7 @@ const AddEditSalary = () => {
                                                 <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Provide exact annual values for each salary component.</CardDescription>
                                             </CardHeader>
                                             <CardContent className="space-y-6">
-                                                <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border border-amber-100/50 dark:border-amber-900/30">
+                                                <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border-2 border-[#000000]">
                                                     <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                                                         <strong style={{ color: "#1E40AF" }}>Note:</strong> Enter exact annual values for each salary component. The system will automatically calculate total CTC and monthly breakdowns.
                                                     </p>
@@ -1214,44 +1214,44 @@ const AddEditSalary = () => {
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Basic Annual (₹)</Label>
                                                         <Input
                                                             type="text"
-                                                            className="h-10" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("basicAnnual")}
+                                                            className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("basicAnnual")}
                                                             onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
                                                         />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>HRA Annual (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("hraAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("hraAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Special Allowance (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("specialAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("specialAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Conveyance (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("conveyanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("conveyanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Medical (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("medicalAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("medicalAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Other Allowance (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("otherAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("otherAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Professional Tax (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("professionalTaxAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("professionalTaxAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Working Days</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("workingDays")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("workingDays")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Other Taxes (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("otherDeductionAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("otherDeductionAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
                                                     </div>
 
-                                                    <div className="space-y-2 lg:col-span-2 p-4 bg-green-50/50 dark:bg-green-950/20 rounded-lg border border-green-100/50 dark:border-green-900/30">
+                                                    <div className="space-y-2 lg:col-span-2 p-4 bg-green-50/50 dark:bg-green-950/20 rounded-lg border-2 border-[#000000]">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Provident Fund (PF)</Label>
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div className="space-y-2">
@@ -1302,7 +1302,7 @@ const AddEditSalary = () => {
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div className="space-y-2 lg:col-span-2 p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-100/50 dark:border-blue-900/30">
+                                                    <div className="space-y-2 lg:col-span-2 p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border-2 border-[#000000]">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Variable Pay / Performance Bonus</Label>
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div className="space-y-2">
@@ -1316,7 +1316,7 @@ const AddEditSalary = () => {
                                                                             value={field.value}
                                                                             disabled={false}
                                                                         >
-                                                                            <SelectTrigger className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
+                                                                            <SelectTrigger className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                                                                                 <SelectValue placeholder="Select type" />
                                                                             </SelectTrigger>
                                                                             <SelectContent>
@@ -1371,7 +1371,7 @@ const AddEditSalary = () => {
                                 </Tabs>
 
                                 {/* Bank & Statutory Details Card (Shared) */}
-                                <Card className="border border-[#858282] shadow-lg bg-slate-50/30 dark:bg-slate-900/10 mb-6">
+                                <Card className="border-2 border-[#000000] shadow-lg bg-slate-50/30 dark:bg-slate-900/10 mb-6">
                                     <CardHeader className="bg-white/60 dark:bg-slate-800/60">
                                         <CardTitle className="flex items-center gap-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
                                             <DollarSign className="h-5 w-5 text-slate-600 dark:text-slate-400" />
@@ -1383,23 +1383,23 @@ const AddEditSalary = () => {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                             <div className="space-y-2">
                                                 <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>UAN Number</Label>
-                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. 975610472162" {...form.register("uanNumber")} />
+                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. 975610472162" {...form.register("uanNumber")} />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PF Number</Label>
-                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. MH/PUN/9673924/168/1039756" {...form.register("pfNo")} />
+                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. MH/PUN/9673924/168/1039756" {...form.register("pfNo")} />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Bank Name</Label>
-                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. SBI" {...form.register("bankName")} />
+                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. SBI" {...form.register("bankName")} />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Bank Account Number</Label>
-                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. 910383452746" {...form.register("bankAccount")} />
+                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. 910383452746" {...form.register("bankAccount")} />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>IFSC Code</Label>
-                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. SBIN0002638" {...form.register("ifscCode")} />
+                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. SBIN0002638" {...form.register("ifscCode")} />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Payment Mode</Label>
@@ -1408,7 +1408,7 @@ const AddEditSalary = () => {
                                                     control={form.control}
                                                     render={({ field }) => (
                                                         <Select onValueChange={field.onChange} value={field.value}>
-                                                            <SelectTrigger className="h-10 bg-white dark:bg-slate-800" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
+                                                            <SelectTrigger className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                                                                 <SelectValue placeholder="Select payment mode" />
                                                             </SelectTrigger>
                                                             <SelectContent>
@@ -1426,7 +1426,7 @@ const AddEditSalary = () => {
 
 
                                 {/* Section 3: Live Calculation Breakdown */}
-                                <Card className="border border-[#858282] shadow-lg bg-green-50/30 dark:bg-green-950/10">
+                                <Card className="border-2 border-[#000000] shadow-lg bg-green-50/30 dark:bg-green-950/10">
                                     <CardHeader className="bg-white/60 dark:bg-slate-800/60">
                                         <CardTitle className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
@@ -1446,7 +1446,7 @@ const AddEditSalary = () => {
                                         ) : (
                                             <div className="space-y-6">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                                    <div className="space-y-4 p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-100/50 dark:border-blue-900/30">
+                                                    <div className="space-y-4 p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border-2 border-[#000000]">
                                                         <h4 className="uppercase tracking-wider" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>MONTHLY EARNING</h4>
                                                         <div className="space-y-3">
                                                             <div className="flex justify-between items-center py-2 border-b border-blue-100/50 dark:border-blue-900/30">
@@ -1486,7 +1486,7 @@ const AddEditSalary = () => {
                                                         </div>
                                                     </div>
 
-                                                    <div className="space-y-4 p-4 bg-rose-50/50 dark:bg-rose-950/20 rounded-lg border border-rose-100/50 dark:border-rose-900/30">
+                                                    <div className="space-y-4 p-4 bg-rose-50/50 dark:bg-rose-950/20 rounded-lg border-2 border-[#000000]">
                                                         <h4 className="uppercase tracking-wider" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>STATUTARY DEDUCTION</h4>
                                                         <div className="space-y-3">
                                                             <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
@@ -1514,7 +1514,7 @@ const AddEditSalary = () => {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border border-amber-100/50 dark:border-amber-900/30 flex items-start gap-3">
+                                                <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border-2 border-[#000000] flex items-start gap-3">
                                                     <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                                                     <p className="leading-relaxed" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#A16207", fontSize: "14px" }}>
                                                         <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000" }}>Values are estimates based on standard Indian payroll regulations.</span> Employer Provident Fund (EPF) of {formatCurrency(previewData.pfEmployer)} is included in the Annual CTC but deducted before calculating Monthly Gross.
@@ -1527,8 +1527,8 @@ const AddEditSalary = () => {
                             </div>
 
                             {/* Right Column: Sticky Summary & Sidebar */}
-                            <div className="lg:col-span-4 lg:sticky lg:top-8 space-y-6">
-                                <Card className="border border-[#858282] shadow-lg bg-indigo-50/30 dark:bg-indigo-950/10">
+                            <div className="lg:col-span-4 lg:sticky lg:top-0 space-y-6">
+                                <Card className="border-2 border-[#000000] shadow-lg bg-indigo-50/30 dark:bg-indigo-950/10">
                                     <CardHeader className="bg-white/60 dark:bg-slate-800/60">
                                         <div className="flex items-center justify-between mb-4">
                                             <Badge variant="outline" className="rounded-full" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#2563EB", fontSize: "12px", border: "1px solid #BFDBFE", backgroundColor: "#EFF6FF" }}>Live Preview</Badge>
@@ -1549,7 +1549,7 @@ const AddEditSalary = () => {
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
-                                            <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg border border-indigo-100/50 dark:border-indigo-900/30">
+                                            <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg border-2 border-[#000000]">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <TrendingUp className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                                                     <p className="uppercase tracking-wider" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Annual CTC</p>
@@ -1558,7 +1558,7 @@ const AddEditSalary = () => {
                                                     {previewData ? formatCurrency(previewData.annualCtc) : formatCurrency(parseNumber(watchCtc))}
                                                 </p>
                                             </div>
-                                            <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg border border-indigo-100/50 dark:border-indigo-900/30">
+                                            <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg border-2 border-[#000000]">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <Calculator className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                                                     <p className="uppercase tracking-wider" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Monthly Gross</p>
@@ -1573,7 +1573,7 @@ const AddEditSalary = () => {
                                     <CardContent className="space-y-6">
                                         {/* Validation Status */}
                                         <div className="space-y-4">
-                                            <div className="flex items-center gap-4 p-4 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-lg border border-emerald-100/50 dark:border-emerald-900/30">
+                                            <div className="flex items-center gap-4 p-4 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-lg border-2 border-[#000000]">
                                                 <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                                                 <div>
                                                     <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Structure Validation Passed</p>
@@ -1581,7 +1581,7 @@ const AddEditSalary = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center gap-4 p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-100/50 dark:border-blue-900/30">
+                                            <div className="flex items-center gap-4 p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border-2 border-[#000000]">
                                                 <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                                 <div>
                                                     <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Effective Date</p>

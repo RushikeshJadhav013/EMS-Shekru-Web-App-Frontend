@@ -62,6 +62,8 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { apiService } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import SummaryCard from "@/components/ui/SummaryCard";
+
 import {
   CalendarDays,
   Clock,
@@ -250,6 +252,7 @@ export default function LeaveManagement() {
   const [leaveDepartment, setLeaveDepartment] = useState("all");
   const [leaveFormat, setLeaveFormat] = useState<"pdf" | "csv">("pdf");
   const [isExportLoading, setIsExportLoading] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
   // Holiday dialog state
   const [selectedHoliday, setSelectedHoliday] = useState<
@@ -1979,7 +1982,6 @@ export default function LeaveManagement() {
     let count = 1; // Start with 'Leave Calendar' which is always visible
     if (canApply) count++;
     if (canApproveLeaves || canViewTeamLeaves) count++;
-    if (canExport) count++;
 
     switch (count) {
       case 1:
@@ -1988,17 +1990,15 @@ export default function LeaveManagement() {
         return "grid-cols-2";
       case 3:
         return "grid-cols-3";
-      case 4:
-        return "grid-cols-4";
       default:
-        return "grid-cols-4";
+        return "grid-cols-3";
     }
-  }, [canApply, canApproveLeaves, canViewTeamLeaves, canExport]);
+  }, [canApply, canApproveLeaves, canViewTeamLeaves]);
 
   return (
     <div className="w-full space-y-6">
       {/* Modern Header */}
-      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border border-[#858282] shadow-xl mt-1">
+      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-xl mt-1">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-purple-500/5 rounded-full blur-3xl" />
 
@@ -2007,26 +2007,36 @@ export default function LeaveManagement() {
             <CalendarDays className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h1 className="text-[30px] font-black tracking-tight text-black dark:text-white" style={{  }}>
+            <h1 className="text-[30px] font-black tracking-tight text-black dark:text-white" style={{}}>
               Leave Management
             </h1>
-            <p className="text-[14px] text-black dark:text-white font-bold flex items-center gap-2 mt-1" style={{  }}>
+            <p className="text-[14px] text-black dark:text-white font-bold flex items-center gap-2 mt-1" style={{}}>
               <Clock className="h-4 w-4 text-indigo-500" />
               Manage leave requests and view calendar
             </p>
           </div>
         </div>
+
+        {canExport && (
+          <Button
+            onClick={() => setIsExportDialogOpen(true)}
+            className="relative overflow-hidden group px-6 py-6 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-black rounded-2xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all duration-300 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none uppercase tracking-wider flex items-center gap-3"
+          >
+            <Download className="h-5 w-5 animate-bounce group-hover:animate-none" />
+            <span>Export Report</span>
+          </Button>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList
-          className={`grid w-full ${colsClass} h-14 bg-white dark:bg-gray-900 border-2 border-[#858282] rounded-2xl p-1 gap-1 shadow-lg`}
+          className={`grid w-full ${colsClass} h-14 bg-white dark:bg-gray-900 border-2 border-[#000000] rounded-2xl p-1 gap-1 shadow-lg`}
         >
           {canApply && (
             <TabsTrigger
               value="request"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold text-black dark:text-white data-[state=inactive]:font-bold text-[14px] transition-all duration-300 rounded-md"
-              style={{  }}
+              style={{}}
             >
               Apply Leave
             </TabsTrigger>
@@ -2035,7 +2045,7 @@ export default function LeaveManagement() {
             <TabsTrigger
               value="approvals"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-600 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold text-black dark:text-white data-[state=inactive]:font-bold text-[14px] transition-all duration-300 rounded-md"
-              style={{  }}
+              style={{}}
             >
               {canApproveLeaves ? "Approvals" : "Team Leaves"}
             </TabsTrigger>
@@ -2043,19 +2053,10 @@ export default function LeaveManagement() {
           <TabsTrigger
             value="calendar"
             className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold text-black dark:text-white data-[state=inactive]:font-bold text-[14px] transition-all duration-300 rounded-md"
-            style={{  }}
+            style={{}}
           >
             Leave Calendar
           </TabsTrigger>
-          {canExport && (
-            <TabsTrigger
-              value="export"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-amber-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold text-black dark:text-white data-[state=inactive]:font-bold text-[14px] transition-all duration-300 rounded-md"
-              style={{  }}
-            >
-              Export
-            </TabsTrigger>
-          )}
         </TabsList>
 
         {canApply && (
@@ -2066,118 +2067,63 @@ export default function LeaveManagement() {
                 {
                   label: "Total Leaves",
                   value: `${totalRemaining}/${totalAllocated}`,
-                  sub: `${totalUsed} used`,
                   icon: CalendarDays,
-                  color: "blue",
-                  bg: "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400",
-                  cardBg: "bg-blue-50/40 dark:bg-blue-950/10",
-                  borderColor: "border-blue-300/80 dark:border-blue-700/50",
-                  hoverBorder:
-                    "group-hover:border-blue-500 dark:group-hover:border-blue-400",
+                  iconColor: "text-blue-600",
+                  iconBg: "bg-blue-50",
                 },
                 {
                   label: "Sick Leave",
                   value: `${leaveBalance.sick.remaining}/${leaveBalance.sick.allocated}`,
-                  sub: `${leaveBalance.sick.used} used`,
                   icon: AlertCircle,
-                  color: "rose",
-                  bg: "bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400",
-                  cardBg: "bg-rose-50/40 dark:bg-rose-950/10",
-                  borderColor: "border-rose-300/80 dark:border-rose-700/50",
-                  hoverBorder:
-                    "group-hover:border-rose-500 dark:group-hover:border-rose-400",
+                  iconColor: "text-rose-600",
+                  iconBg: "bg-rose-50",
                 },
                 {
                   label: "Casual Leave",
                   value: `${leaveBalance.casual.remaining}/${leaveBalance.casual.allocated}`,
-                  sub: `${leaveBalance.casual.used} used`,
                   icon: Clock,
-                  color: "emerald",
-                  bg: "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400",
-                  cardBg: "bg-emerald-50/40 dark:bg-emerald-950/10",
-                  borderColor:
-                    "border-emerald-300/80 dark:border-emerald-700/50",
-                  hoverBorder:
-                    "group-hover:border-emerald-500 dark:group-hover:border-emerald-400",
+                  iconColor: "text-emerald-600",
+                  iconBg: "bg-emerald-50",
                 },
                 {
                   label: "Unpaid Leave",
                   value: leaveBalance.unpaid.used,
-                  sub: "days taken",
                   icon: FileText,
-                  color: "slate",
-                  bg: "bg-slate-100 text-slate-600 dark:bg-slate-900/40 dark:text-slate-400",
-                  cardBg: "bg-slate-50/40 dark:bg-slate-950/10",
-                  borderColor: "border-slate-300/80 dark:border-slate-700/50",
-                  hoverBorder:
-                    "group-hover:border-slate-500 dark:group-hover:border-slate-400",
+                  iconColor: "text-slate-600",
+                  iconBg: "bg-slate-100",
                 },
               ].map((item, i) => (
-                <Card
+                <SummaryCard
                   key={i}
-                  className={`border-2 border-[#858282] hover:border-black shadow-lg rounded-2xl ${item.cardBg} backdrop-blur-sm hover:shadow-xl transition-all duration-300 group overflow-hidden relative cursor-pointer`}
-                >
-                  {/* Background Accent */}
-                  <div
-                    className={`absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-5 group-hover:opacity-10 transition-opacity ${item.bg.split(" ")[0]}`}
-                  />
-
-                  <CardContent className="p-4 relative">
-                    <div className="flex justify-between items-start mb-2">
-                      <div
-                        className={`p-2.5 rounded-xl ${item.bg} shadow-sm group-hover:scale-110 transition-transform duration-300`}
-                      >
-                        <item.icon className="h-5 w-5" />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="text-[12px] font-bold text-black dark:text-white uppercase tracking-widest leading-none" style={{  }}>
-                        {item.label}
-                      </h3>
-                      <div className="text-[24px] font-black text-black dark:text-white tracking-tight" style={{  }}>
-                        {item.value}
-                      </div>
-                      <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
-                        <div
-                          className={`h-1.5 w-1.5 rounded-full ${item.color === "blue"
-                              ? "bg-blue-500"
-                              : item.color === "rose"
-                                ? "bg-rose-500"
-                                : item.color === "emerald"
-                                  ? "bg-emerald-500"
-                                  : "bg-slate-500"
-                            }`}
-                        />
-                        <span className="text-[12px] font-bold text-black dark:text-white uppercase" style={{  }}>
-                          {item.sub}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                  title={item.label}
+                  value={item.value}
+                  icon={item.icon}
+                  iconColor={item.iconColor}
+                  iconBg={item.iconBg}
+                />
               ))}
             </div>
 
             {/* Leave Request Form */}
-            <Card className="border border-[#858282] shadow-xl rounded-2xl overflow-hidden">
+            <Card className="border-2 border-[#000000] shadow-xl rounded-2xl overflow-hidden">
               <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-                <CardTitle className="text-[16px] font-bold text-black dark:text-white" style={{  }}>
+                <CardTitle className="text-[16px] font-bold text-black dark:text-white" style={{}}>
                   Request Leave
                 </CardTitle>
                 <div className="mt-2 space-y-3">
                   <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-                    <p className="text-[14px] text-black dark:text-white" style={{  }}>
+                    <p className="text-[14px] text-black dark:text-white" style={{}}>
                       <strong style={{ color: '#1E40AF' }}>Note:</strong> Sick and Casual leave requests will
                       deduct from your Annual Leave balance. Only Unpaid Leave
                       does not affect your Annual Leave balance.
                     </p>
                   </div>
                   <div className="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
-                    <p className="text-[14px] text-black dark:text-white flex items-center gap-2 mb-2" style={{  }}>
+                    <p className="text-[14px] text-black dark:text-white flex items-center gap-2 mb-2" style={{}}>
                       <AlertCircle className="h-4 w-4" />
                       <strong style={{ color: '#92400E' }}>Leave Restrictions:</strong>
                     </p>
-                    <div className="text-[14px] text-black dark:text-white space-y-2 pl-1 font-medium" style={{  }}>
+                    <div className="text-[14px] text-black dark:text-white space-y-2 pl-1 font-medium" style={{}}>
                       {/* Sick Leave Warning Removed */}
                       <div className="flex items-start gap-2">
                         <div className="h-1 w-1 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
@@ -2193,14 +2139,14 @@ export default function LeaveManagement() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Leave Type</Label>
+                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{}}>Leave Type</Label>
                     <Select
                       value={formData.type}
                       onValueChange={(value) =>
                         setFormData({ ...formData, type: value })
                       }
                     >
-                      <SelectTrigger className="text-[14px] text-black dark:text-white font-medium" style={{  }}>
+                      <SelectTrigger className="text-[14px] text-black dark:text-white font-medium border-2 border-[#000000]" style={{}}>
                         <SelectValue placeholder="Select Leave Type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -2233,8 +2179,8 @@ export default function LeaveManagement() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Duration</Label>
-                    <div className="flex gap-2 text-[14px] text-black dark:text-white font-medium" style={{  }}>
+                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{}}>Duration</Label>
+                    <div className="flex gap-2 text-[14px] text-black dark:text-white font-medium" style={{}}>
                       <div className="flex-1">
                         <DatePicker
                           date={formData.startDate}
@@ -2324,9 +2270,9 @@ export default function LeaveManagement() {
                       {validationMessages.map((msg, index) => (
                         <div
                           key={index}
-                          className={`p-3 rounded-lg border text-sm flex items-center gap-2 ${msg.type === "error"
-                              ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200"
-                              : "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200"
+                          className={`p-3 rounded-lg border-2 border-[#000000] text-sm flex items-center gap-2 ${msg.type === "error"
+                            ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200"
+                            : "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200"
                             }`}
                         >
                           {msg.type === "error" ? (
@@ -2342,7 +2288,7 @@ export default function LeaveManagement() {
                 })()}
 
                 <div className="space-y-2">
-                  <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Reason *</Label>
+                  <Label className="text-[14px] font-bold text-black dark:text-white" style={{}}>Reason *</Label>
                   <Textarea
                     maxLength={200}
                     value={formData.reason}
@@ -2358,18 +2304,18 @@ export default function LeaveManagement() {
                     placeholder="Please provide a reason for your leave request (minimum 10 characters)."
                     rows={3}
                     className={cn(
-                      "text-[14px] text-black dark:text-white font-medium",
+                      "text-[14px] text-black dark:text-white font-medium border-2 border-[#000000]",
                       formData.reason.trim().length > 0 &&
                         formData.reason.trim().length < 10
                         ? "border-red-500"
                         : ""
                     )}
-                    style={{  }}
+                    style={{}}
                   />
                   <div className="flex justify-between text-sm">
                     <span
                       className={`text-[12px] font-bold ${formData.reason.trim().length < 10 ? "text-[#EF4444]" : "text-[#16A34A]"}`}
-                      style={{  }}
+                      style={{}}
                     >
                       {formData.reason.trim().length < 10
                         ? `${formData.reason.trim().length}/10 characters (minimum required)`
@@ -2387,7 +2333,7 @@ export default function LeaveManagement() {
                   onClick={handleSubmitRequest}
                   disabled={isSubmitting || formData.reason.trim().length < 10}
                   className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md disabled:opacity-50 text-[14px]"
-                  style={{  }}
+                  style={{}}
                 >
                   <CalendarIcon className="h-4 w-4" />
                   {isSubmitting ? "Submitting..." : "Submit Request"}
@@ -2396,7 +2342,7 @@ export default function LeaveManagement() {
             </Card>
 
             {/* My Leave History - Premium UI */}
-            <Card className="border border-[#858282] shadow-xl rounded-2xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 overflow-hidden">
+            <Card className="border-2 border-[#000000] shadow-xl rounded-2xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 overflow-hidden">
               <CardHeader className="border-b bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950 dark:via-purple-950 dark:to-pink-950">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -2404,95 +2350,79 @@ export default function LeaveManagement() {
                       <CalendarDays className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-[16px] font-black text-black dark:text-white" style={{  }}>
+                      <CardTitle className="text-[16px] font-black text-black dark:text-white" style={{}}>
                         My Leave History
                       </CardTitle>
-                      <p className="text-[14px] text-black dark:text-white font-bold mt-1" style={{  }}>
+                      <p className="text-[14px] text-black dark:text-white font-bold mt-1" style={{}}>
                         Track all your leave requests and their status
                       </p>
                     </div>
                   </div>
-                  <Select
-                    value={leaveHistoryPeriod}
-                    onValueChange={(value) => setLeaveHistoryPeriod(value)}
-                  >
-                    <SelectTrigger className="w-[220px] bg-white dark:bg-slate-800 border-2 shadow-md hover:shadow-lg transition-all text-[14px] text-black dark:text-white font-bold" style={{  }}>
-                      <SelectValue placeholder="Select period" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All History</SelectItem>
-                      <SelectItem value="current_month">
-                        Current Month
-                      </SelectItem>
-                      <SelectItem value="last_3_months">
-                        Last 3 Months
-                      </SelectItem>
-                      <SelectItem value="last_6_months">
-                        Last 6 Months
-                      </SelectItem>
-                      <SelectItem value="last_1_year">Last 1 Year</SelectItem>
-                      <SelectItem value="custom">Custom Range</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardHeader>
-              {leaveHistoryPeriod === "custom" && (
-                <div className="border-b bg-slate-50 dark:bg-slate-900 p-4">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex-1 min-w-[150px]">
-                      <Label className="text-[14px] font-bold text-black dark:text-white mb-1 block" style={{  }}>From Date</Label>
-                      <Input
-                        type="date"
-                        value={
-                          leaveHistoryCustomStartDate
-                            ? format(leaveHistoryCustomStartDate, "yyyy-MM-dd")
-                            : ""
-                        }
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            const [y, m, d] = e.target.value
-                              .split("-")
-                              .map(Number);
-                            setLeaveHistoryCustomStartDate(
-                              new Date(y, m - 1, d),
-                            );
-                          } else {
-                            setLeaveHistoryCustomStartDate(undefined);
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Select
+                      value={leaveHistoryPeriod}
+                      onValueChange={(value) => setLeaveHistoryPeriod(value)}
+                    >
+                      <SelectTrigger className="w-[180px] bg-white dark:bg-slate-800 border-2 border-[#000000] shadow-md hover:shadow-lg transition-all text-[14px] text-black dark:text-white font-bold" style={{}}>
+                        <SelectValue placeholder="Select period" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All History</SelectItem>
+                        <SelectItem value="current_month">Current Month</SelectItem>
+                        <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                        <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                        <SelectItem value="last_1_year">Last 1 Year</SelectItem>
+                        <SelectItem value="custom">Custom Range</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {leaveHistoryPeriod === "custom" && (
+                      <>
+                        <Input
+                          type="date"
+                          placeholder="From date"
+                          value={
+                            leaveHistoryCustomStartDate
+                              ? format(leaveHistoryCustomStartDate, "yyyy-MM-dd")
+                              : ""
                           }
-                        }}
-                        className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all w-full"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-[150px]">
-                      <Label className="text-[14px] font-bold text-black dark:text-white mb-1 block" style={{  }}>To Date</Label>
-                      <Input
-                        type="date"
-                        value={
-                          leaveHistoryCustomEndDate
-                            ? format(leaveHistoryCustomEndDate, "yyyy-MM-dd")
-                            : ""
-                        }
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            const [y, m, d] = e.target.value
-                              .split("-")
-                              .map(Number);
-                            setLeaveHistoryCustomEndDate(new Date(y, m - 1, d));
-                          } else {
-                            setLeaveHistoryCustomEndDate(undefined);
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              const [y, m, d] = e.target.value.split("-").map(Number);
+                              setLeaveHistoryCustomStartDate(new Date(y, m - 1, d));
+                            } else {
+                              setLeaveHistoryCustomStartDate(undefined);
+                            }
+                          }}
+                          className="h-10 w-[160px] border-2 border-[#000000] focus:ring-2 focus:ring-violet-500 transition-all text-[13px] font-bold text-black dark:text-white"
+                        />
+                        <Input
+                          type="date"
+                          placeholder="To date"
+                          value={
+                            leaveHistoryCustomEndDate
+                              ? format(leaveHistoryCustomEndDate, "yyyy-MM-dd")
+                              : ""
                           }
-                        }}
-                        min={
-                          leaveHistoryCustomStartDate
-                            ? format(leaveHistoryCustomStartDate, "yyyy-MM-dd")
-                            : undefined
-                        }
-                        className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all w-full"
-                      />
-                    </div>
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              const [y, m, d] = e.target.value.split("-").map(Number);
+                              setLeaveHistoryCustomEndDate(new Date(y, m - 1, d));
+                            } else {
+                              setLeaveHistoryCustomEndDate(undefined);
+                            }
+                          }}
+                          min={
+                            leaveHistoryCustomStartDate
+                              ? format(leaveHistoryCustomStartDate, "yyyy-MM-dd")
+                              : undefined
+                          }
+                          className="h-10 w-[160px] border-2 border-[#000000] focus:ring-2 focus:ring-violet-500 transition-all text-[13px] font-bold text-black dark:text-white"
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
-              )}
+              </CardHeader>
               <CardContent className="p-6">
                 {getFilteredLeaveRequests.length === 0 ? (
                   <div className="text-center py-16">
@@ -2548,7 +2478,7 @@ export default function LeaveManagement() {
                         return (
                           <div
                             key={request.id}
-                            className={`flex items-start justify-between gap-4 rounded-xl border ${config.border} bg-white dark:bg-slate-900 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors`}
+                            className={`flex items-start justify-between gap-4 rounded-xl border-2 border-[#000000] bg-white dark:bg-slate-900 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors`}
                           >
                             <div className="flex items-start gap-3 flex-1 min-w-0">
                               <div
@@ -2580,7 +2510,7 @@ export default function LeaveManagement() {
                                     {daysCount === 1 ? "day" : "days"}
                                   </span>
                                 </div>
-                                <p className="text-[12px] font-bold text-black dark:text-white flex items-start gap-2" style={{  }}>
+                                <p className="text-[12px] font-bold text-black dark:text-white flex items-start gap-2" style={{}}>
                                   <FileText className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
                                   <span className="line-clamp-2 break-words overflow-wrap-anywhere whitespace-pre-wrap">
                                     {request.reason}
@@ -2588,21 +2518,9 @@ export default function LeaveManagement() {
                                 </p>
                               </div>
                             </div>
-                            <div className="flex flex-col items-end gap-1">
-                              <Badge
-                                className={`px-3 py-1 text-[12px] font-bold capitalize ${getStatusBadgeStyle(request.status)}`}
-                                style={{  }}
-                              >
-                                {request.status}
-                              </Badge>
-                              {request.approvedBy && (
-                                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                  <User className="h-3 w-3" />
-                                  <span>by {request.approvedBy}</span>
-                                </span>
-                              )}
+                            <div className="flex flex-row items-center gap-1.5 flex-shrink-0">
                               {request.status === "pending" && (
-                                <div className="mt-1 flex items-center gap-1.5">
+                                <>
                                   <Button
                                     size="xs"
                                     variant="ghost"
@@ -2626,8 +2544,22 @@ export default function LeaveManagement() {
                                   >
                                     <Trash2 className="h-4 w-4 text-red-600" />
                                   </Button>
-                                </div>
+                                </>
                               )}
+                              <div className="flex flex-col items-end gap-0.5">
+                                <Badge
+                                  className={`min-w-[82px] justify-center px-3 py-1 text-[12px] font-bold capitalize ${getStatusBadgeStyle(request.status)}`}
+                                  style={{}}
+                                >
+                                  {request.status}
+                                </Badge>
+                                {request.approvedBy && (
+                                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                    <User className="h-3 w-3" />
+                                    <span>by {request.approvedBy}</span>
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
@@ -2657,9 +2589,9 @@ export default function LeaveManagement() {
         )}
 
         <TabsContent value="calendar">
-          <Card className="border border-[#858282] shadow-lg">
+          <Card className="border-2 border-[#000000] shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-              <CardTitle className="text-[16px] font-black text-black dark:text-white" style={{  }}>
+              <CardTitle className="text-[16px] font-black text-black dark:text-white" style={{}}>
                 Leave Calendar
               </CardTitle>
             </CardHeader>
@@ -2668,14 +2600,14 @@ export default function LeaveManagement() {
               {user?.role === "admin" && (
                 <div className="mb-6 space-y-6 mt-4">
                   {/* Leave Allocation Configuration Panel */}
-                  <div className="p-6 border-2 rounded-xl bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-950 dark:via-indigo-950 dark:to-blue-950 shadow-lg">
+                  <div className="p-6 border-2 border-[#000000] rounded-xl bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-950 dark:via-indigo-950 dark:to-blue-950 shadow-lg">
                     <div className="flex items-start justify-between gap-3 mb-4">
                       <div>
-                        <h3 className="text-[16px] font-black text-black dark:text-white mb-1 flex items-center gap-2" style={{  }}>
+                        <h3 className="text-[16px] font-black text-black dark:text-white mb-1 flex items-center gap-2" style={{}}>
                           <FileText className="h-6 w-6 text-purple-600" />
                           Leave Allocation Configuration
                         </h3>
-                        <p className="text-[14px] text-black dark:text-white font-medium" style={{  }}>
+                        <p className="text-[14px] text-black dark:text-white font-medium" style={{}}>
                           Set the total annual leave and distribute it across
                           different leave types. Changes apply to all users
                           immediately.
@@ -2685,7 +2617,7 @@ export default function LeaveManagement() {
 
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-6">
                       <div className="space-y-2">
-                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>
+                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{}}>
                           Total Annual Leave
                         </Label>
                         <Input
@@ -2700,7 +2632,7 @@ export default function LeaveManagement() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>
+                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{}}>
                           Sick Leave
                         </Label>
                         <Input
@@ -2717,7 +2649,7 @@ export default function LeaveManagement() {
                                 val + prev.casual_leave_allocation,
                             }));
                           }}
-                          className="border-2 border-red-200 dark:border-red-800 focus:border-red-500"
+                          className="border-2 border-[#000000] focus:border-red-500"
                           placeholder="e.g., 10"
                         />
                         <p className="text-xs text-muted-foreground">
@@ -2726,7 +2658,7 @@ export default function LeaveManagement() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>
+                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{}}>
                           Casual Leave
                         </Label>
                         <Input
@@ -2743,7 +2675,7 @@ export default function LeaveManagement() {
                                 prev.sick_leave_allocation + val,
                             }));
                           }}
-                          className="border-2 border-green-200 dark:border-green-800 focus:border-green-500"
+                          className="border-2 border-[#000000] focus:border-green-500"
                           placeholder="e.g., 5"
                         />
                         <p className="text-xs text-muted-foreground">
@@ -2752,7 +2684,7 @@ export default function LeaveManagement() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>
+                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{}}>
                           Other Leave
                         </Label>
                         <Input
@@ -2770,7 +2702,7 @@ export default function LeaveManagement() {
                                 prev.casual_leave_allocation,
                             }));
                           }}
-                          className="border-2 border-gray-200 dark:border-gray-800 focus:border-gray-500"
+                          className="border-2 border-[#000000] focus:border-gray-500"
                           placeholder="e.g., 0"
                         />
                         <p className="text-xs text-muted-foreground">
@@ -2780,7 +2712,7 @@ export default function LeaveManagement() {
                     </div>
 
                     <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-                      <p className="text-[14px] text-black dark:text-white font-medium" style={{  }}>
+                      <p className="text-[14px] text-black dark:text-white font-medium" style={{}}>
                         <span className="text-[#1E40AF] font-black">Note:</span> Sick and Casual leave requests will deduct from
                         the Total Annual Leave balance. The individual
                         allocations (Sick and Casual) are for reference and
@@ -2799,15 +2731,15 @@ export default function LeaveManagement() {
                           ? "Saving..."
                           : "Save Configuration"}
                       </Button>
-                      <p className="text-[14px] text-black dark:text-white font-bold" style={{  }}>
+                      <p className="text-[14px] text-black dark:text-white font-bold" style={{}}>
                         Changes will apply to all users immediately
                       </p>
                     </div>
                   </div>
 
                   {user?.role === "admin" && (
-                    <div className="p-6 border-2 border-[#858282] rounded-2xl bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950 shadow-md">
-                      <h3 className="text-[16px] font-black text-black dark:text-white mb-3 flex items-center gap-2" style={{  }}>
+                    <div className="p-6 border-2 border-[#000000] rounded-2xl bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950 shadow-md">
+                      <h3 className="text-[16px] font-black text-black dark:text-white mb-3 flex items-center gap-2" style={{}}>
                         Set Company Holidays
                       </h3>
                       <div className="space-y-3">
@@ -2827,7 +2759,7 @@ export default function LeaveManagement() {
                           </div>
                           <div className="flex-1 space-y-4 w-full">
                             <div className="space-y-2">
-                              <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Holiday Name</Label>
+                              <Label className="text-[14px] font-bold text-black dark:text-white" style={{}}>Holiday Name</Label>
                               <Input
                                 type="text"
                                 placeholder="e.g., Diwali, New Year"
@@ -2841,11 +2773,11 @@ export default function LeaveManagement() {
                                     ),
                                   })
                                 }
-                                className="bg-white dark:bg-slate-900"
+                                className="bg-white dark:bg-slate-900 border-2 border-[#000000]"
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Description</Label>
+                              <Label className="text-[14px] font-bold text-black dark:text-white" style={{}}>Description</Label>
                               <Textarea
                                 placeholder="Description (optional) - e.g., Festival of Lights celebration"
                                 value={holidayForm.description || ""}
@@ -2859,11 +2791,11 @@ export default function LeaveManagement() {
                                   })
                                 }
                                 rows={3}
-                                className="resize-none bg-white dark:bg-slate-900"
+                                className="resize-none bg-white dark:bg-slate-900 border-2 border-[#000000]"
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Recurring</Label>
+                              <Label className="text-[14px] font-bold text-black dark:text-white" style={{}}>Recurring</Label>
                               <Select
                                 value={holidayForm.is_recurring ? "yes" : "no"}
                                 onValueChange={(value) =>
@@ -2873,7 +2805,7 @@ export default function LeaveManagement() {
                                   })
                                 }
                               >
-                                <SelectTrigger className="bg-white dark:bg-slate-900">
+                                <SelectTrigger className="bg-white dark:bg-slate-900 border-2 border-[#000000]">
                                   <SelectValue placeholder="Is Recurring?" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -2892,7 +2824,7 @@ export default function LeaveManagement() {
                         </div>
                       </div>
                       <div className="mt-4">
-                        <h4 className="text-[16px] font-black text-black dark:text-white mb-2" style={{  }}>Current Holidays:</h4>
+                        <h4 className="text-[16px] font-black text-black dark:text-white mb-2" style={{}}>Current Holidays:</h4>
                         {holidays.length === 0 ? (
                           <p className="text-sm text-muted-foreground">
                             No holidays configured yet.
@@ -2902,9 +2834,9 @@ export default function LeaveManagement() {
                             {holidays.map((h) => (
                               <li
                                 key={h.id || h.date.toISOString()}
-                                className="flex items-center justify-between gap-2 p-2 bg-white dark:bg-slate-800 rounded border"
+                                className="flex items-center justify-between gap-2 p-2 bg-white dark:bg-slate-800 rounded border-2 border-[#000000]"
                               >
-                                <span className="flex-1 text-[14px] text-black dark:text-white font-bold" style={{  }}>
+                                <span className="flex-1 text-[14px] text-black dark:text-white font-bold" style={{}}>
                                   {h.name} -{" "}
                                   <span className="font-medium">{format(h.date, "MMMM dd, yyyy")}</span>
                                   {h.description && (
@@ -2916,7 +2848,7 @@ export default function LeaveManagement() {
                                     <Badge
                                       variant="secondary"
                                       className="ml-2 text-[12px] text-black dark:text-white font-medium bg-slate-100 dark:bg-slate-700"
-                                      style={{  }}
+                                      style={{}}
                                     >
                                       Recurring
                                     </Badge>
@@ -2940,13 +2872,13 @@ export default function LeaveManagement() {
                     </div>
                   )}
 
-                  <div className="p-6 border-2 border-[#858282] rounded-2xl bg-gradient-to-r from-sky-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950 shadow-md">
+                  <div className="p-6 border-2 border-[#000000] rounded-2xl bg-gradient-to-r from-sky-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950 shadow-md">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <h3 className="text-[16px] font-black text-black dark:text-white mb-1 flex items-center gap-2" style={{  }}>
+                        <h3 className="text-[16px] font-black text-black dark:text-white mb-1 flex items-center gap-2" style={{}}>
                           Department Week-off Planner
                         </h3>
-                        <p className="text-[14px] text-black dark:text-white font-medium" style={{  }}>
+                        <p className="text-[14px] text-black dark:text-white font-medium" style={{}}>
                           Define weekly off days for each department to keep
                           schedules aligned.
                         </p>
@@ -2954,7 +2886,7 @@ export default function LeaveManagement() {
                     </div>
                     <div className="mt-4 grid gap-4 md:grid-cols-3">
                       <div className="space-y-2">
-                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Department</Label>
+                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{}}>Department</Label>
                         {departmentOptions.length > 0 ? (
                           <Select
                             value={weekOffForm.department}
@@ -2965,7 +2897,7 @@ export default function LeaveManagement() {
                               }))
                             }
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className="border-2 border-[#000000]">
                               <SelectValue placeholder="Select department" />
                             </SelectTrigger>
                             <SelectContent>
@@ -2993,7 +2925,7 @@ export default function LeaveManagement() {
                         )}
                       </div>
                       <div className="space-y-2 md:col-span-2">
-                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Weekly Off Days</Label>
+                        <Label className="text-[14px] font-bold text-black dark:text-white" style={{}}>Weekly Off Days</Label>
                         <div className="flex flex-wrap gap-2">
                           {weekDayOptions.map((day) => {
                             const isSelected = weekOffForm.days.includes(
@@ -3032,17 +2964,17 @@ export default function LeaveManagement() {
                                   })
                                 }
                                 className={`rounded-full px-3 py-1 text-[14px] font-bold border transition ${isSelected
-                                    ? "border-[#0284C7] bg-white text-[#0284C7] shadow-sm"
-                                    : "border-slate-300 text-black dark:text-white hover:bg-white"
+                                  ? "border-[#0284C7] bg-white text-[#0284C7] shadow-sm"
+                                  : "border-slate-300 text-black dark:text-white hover:bg-white"
                                   }`}
-                                  style={{  }}
+                                style={{}}
                               >
                                 {day.label}
                               </button>
                             );
                           })}
                         </div>
-                        <p className="text-[12px] text-black dark:text-white font-medium" style={{  }}>
+                        <p className="text-[12px] text-black dark:text-white font-medium" style={{}}>
                           Tip: Select up to two days if the department enjoys a
                           long weekend.
                         </p>
@@ -3057,7 +2989,7 @@ export default function LeaveManagement() {
                       </div>
                     </div>
                     <div className="mt-4">
-                      <h4 className="text-[16px] font-black text-black dark:text-white mb-2" style={{  }}>
+                      <h4 className="text-[16px] font-black text-black dark:text-white mb-2" style={{}}>
                         Active Week-off Rules
                       </h4>
                       {Object.keys(weekOffConfig).length === 0 ? (
@@ -3070,13 +3002,13 @@ export default function LeaveManagement() {
                             ([dept, config]) => (
                               <div
                                 key={dept}
-                                className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/60 px-3 py-2 text-sm"
+                                className="flex items-center justify-between rounded-lg border-2 border-[#000000] bg-white/70 dark:bg-slate-950/60 px-3 py-2 text-sm"
                               >
                                 <div>
-                                  <p className="text-[14px] font-black text-black dark:text-white" style={{  }}>
+                                  <p className="text-[14px] font-black text-black dark:text-white" style={{}}>
                                     {dept}
                                   </p>
-                                  <p className="text-[12px] text-black dark:text-white font-medium" style={{  }}>
+                                  <p className="text-[12px] text-black dark:text-white font-medium" style={{}}>
                                     Weekly off:{" "}
                                     {config.days
                                       .map((day) => {
@@ -3109,265 +3041,152 @@ export default function LeaveManagement() {
                 </div>
               )}
               {/* Calendar with holidays highlighted */}
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-                {/* Left Column: Calendar */}
-                <div className="xl:col-span-5 space-y-6">
-                  <div className="relative group p-6 rounded-3xl bg-white dark:bg-slate-900 border-2 border-[#858282] shadow-2xl shadow-indigo-100 dark:shadow-none transition-all duration-300">
-                    {/* Decorative Background Blobs */}
-                    <div className="absolute top-0 left-0 -mt-4 -ml-4 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors" />
-                    <div className="absolute bottom-0 right-0 -mb-4 -mr-4 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-colors" />
-
-                    <div className="relative">
-                      <CalendarWithSelect
-                        key={`calendar-${holidays.length}-${Object.keys(weekOffConfig).length}`}
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={handleDayClick}
-                        currentMonth={displayedMonth}
-                        onMonthChange={setDisplayedMonth}
-                        className="rounded-2xl bg-transparent"
-                        modifiers={{
-                          holiday: holidays.map((h) => h.date),
-                          weekOff: (date) =>
-                            userWeekOffDays.some(
-                              (day) =>
-                                weekDayIndexMap[day.toLowerCase()] ===
-                                date.getDay(),
-                            ),
-                          leave: leaveRequests
-                            .filter((r) => r.status === "approved")
-                            .reduce((acc: Date[], r) => {
-                              const start = new Date(r.startDate);
-                              const end = new Date(r.endDate);
-                              const curr = new Date(start);
-                              while (curr <= end) {
-                                acc.push(new Date(curr));
-                                curr.setDate(curr.getDate() + 1);
-                              }
-                              return acc;
-                            }, []),
-                        }}
-                        modifiersClassNames={{
-                          holiday:
-                            "bg-gradient-to-br from-rose-500 to-red-600 text-white font-bold hover:scale-110 hover:rotate-3 transition-all duration-300 shadow-md cursor-pointer ring-2 ring-red-200 dark:ring-red-900",
-                          weekOff:
-                            "week-off-day border-2 border-dashed border-sky-400 text-sky-600 font-bold bg-sky-50/50 hover:bg-sky-100 dark:bg-sky-900/10 dark:text-sky-400 transition-colors",
-                          leave:
-                            "bg-indigo-100 text-indigo-700 font-semibold border-2 border-indigo-200 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800",
-                        }}
-                      />
-                    </div>
+              <div className="xl:col-span-12 space-y-6">
+                <div className="relative group p-0 rounded-3xl bg-white dark:bg-slate-900 border-2 border-[#000000] shadow-2xl shadow-indigo-100 dark:shadow-none transition-all duration-300">
+                  <div className="relative">
+                    <CalendarWithSelect
+                      key={`calendar-${holidays.length}-${Object.keys(weekOffConfig).length}`}
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={handleDayClick}
+                      currentMonth={displayedMonth}
+                      onMonthChange={setDisplayedMonth}
+                      className="rounded-2xl bg-transparent w-full"
+                      classNames={{
+                        months: "w-full",
+                        month: "w-full space-y-4",
+                        table: "w-full",
+                        head_row: "flex w-full",
+                        head_cell: "flex-1 h-12 text-base font-black border-b-2 border-black/5",
+                        row: "flex w-full",
+                        cell: "flex-1 h-24 md:h-32 border-b border-r border-black/5 relative p-0",
+                        day: "h-full w-full rounded-none flex flex-col items-end p-2 text-lg font-black hover:bg-slate-50 transition-all",
+                      }}
+                      modifiers={{
+                        holiday: holidays.map((h) => h.date),
+                        weekOff: (date) =>
+                          userWeekOffDays.some(
+                            (day) =>
+                              weekDayIndexMap[day.toLowerCase()] ===
+                              date.getDay(),
+                          ),
+                        leave: leaveRequests
+                          .filter((r) => r.status === "approved")
+                          .reduce((acc: Date[], r) => {
+                            const start = new Date(r.startDate);
+                            const end = new Date(r.endDate);
+                            const curr = new Date(start);
+                            while (curr <= end) {
+                              acc.push(new Date(curr));
+                              curr.setDate(curr.getDate() + 1);
+                            }
+                            return acc;
+                          }, []),
+                      }}
+                      modifiersClassNames={{
+                        holiday:
+                          "bg-gradient-to-br from-rose-50 to-red-50 text-rose-600 border-l-4 border-l-rose-500",
+                        weekOff:
+                          "bg-slate-50/50 text-slate-400 border-l-4 border-l-slate-300",
+                        leave:
+                          "bg-indigo-50 text-indigo-600 border-l-4 border-l-indigo-500",
+                      }}
+                    />
                   </div>
-
-                  {/* Enhanced Legend Card */}
-                  <Card className="rounded-2xl border-2 border-[#858282] shadow-xl bg-white dark:bg-slate-900 overflow-hidden">
-                    <CardHeader className="pb-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/30">
-                      <CardTitle className="text-[16px] font-black text-black dark:text-white flex items-center gap-2 uppercase tracking-widest" style={{  }}>
-                        <AlertCircle className="h-4 w-4 text-black dark:text-white" />
-                        Color Guide
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-4 space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-4 w-4 rounded bg-gradient-to-br from-rose-500 to-red-600 shadow-sm" />
-                        <span className="text-[14px] text-black dark:text-white font-medium" style={{  }}>
-                          Company Holidays
-                        </span>
-                        <div className="flex-1 border-t border-dashed border-slate-200 dark:border-slate-800 mx-2" />
-                        <span className="text-[12px] text-black dark:text-white font-medium" style={{  }}>
-                          Off Work
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="h-4 w-4 rounded border-2 border-dashed border-black dark:border-white bg-slate-50 dark:bg-slate-900/10" />
-                        <span className="text-[14px] text-black dark:text-white font-black uppercase tracking-wider" style={{  }}>
-                          Weekly-Off Days
-                        </span>
-                        <div className="flex-1 border-t border-dashed border-black/10 dark:border-white/10 mx-2" />
-                        <span className="text-[12px] text-black dark:text-white font-black uppercase" style={{  }}>
-                          Department
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="h-4 w-4 rounded bg-slate-100 border border-black/10 dark:bg-slate-800" />
-                        <span className="text-[14px] text-black dark:text-white font-black uppercase tracking-wider" style={{  }}>
-                          Your Approved Leaves
-                        </span>
-                        <div className="flex-1 border-t border-dashed border-black/10 dark:border-white/10 mx-2" />
-                        <span className="text-[12px] text-black dark:text-white font-black uppercase" style={{  }}>
-                          Private
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
 
-                {/* Right Column: Month Details & Statistics */}
-                <div className="xl:col-span-7 space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Month Statistics Header */}
-                    <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-xl shadow-indigo-100 dark:shadow-none flex flex-col justify-between h-full">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
-                          <CalendarIcon className="h-6 w-6 text-white" />
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+                  {/* Legend */}
+                  <div className="md:col-span-4">
+                    <Card className="rounded-2xl border-2 border-[#000000] shadow-xl bg-white dark:bg-slate-900 overflow-hidden h-full">
+                      <CardHeader className="pb-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/30">
+                        <CardTitle className="text-[16px] font-black text-black dark:text-white flex items-center gap-2 uppercase tracking-widest" style={{}}>
+                          <AlertCircle className="h-4 w-4 text-black dark:text-white" />
+                          Color Guide
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-4 space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-4 w-4 rounded bg-rose-500 shadow-sm" />
+                          <span className="text-[14px] text-black dark:text-white font-black uppercase tracking-wider" style={{}}>
+                            Company Holidays
+                          </span>
                         </div>
-                        <Badge className="bg-white/20 hover:bg-white/30 border-0 text-white text-[12px] font-bold backdrop-blur-md" style={{  }}>
-                          {format(displayedMonth, "yyyy")}
-                        </Badge>
-                      </div>
-                      <div>
-                        <h3 className="text-[24px] font-black text-black dark:text-white tracking-tight uppercase" style={{  }}>
-                          {format(displayedMonth, "MMMM")}
-                        </h3>
-                        <p className="text-black dark:text-white text-[12px] font-black uppercase tracking-widest mt-1" style={{  }}>
-                          Month overview and holidays
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Quick Stats Grid */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 rounded-3xl bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-800/50 flex flex-col justify-center items-center text-center group hover:scale-[1.05] transition-transform">
-                        <div className="text-[24px] font-black text-rose-600 dark:text-rose-400 mb-1" style={{  }}>
-                          {
-                            holidays.filter(
-                              (h) =>
-                                h.date.getMonth() === displayedMonth.getMonth(),
-                            ).length
-                          }
+                        <div className="flex items-center gap-3">
+                          <div className="h-4 w-4 rounded border-2 border-dashed border-black dark:border-white bg-slate-100" />
+                          <span className="text-[14px] text-black dark:text-white font-black uppercase tracking-wider" style={{}}>
+                            Weekly-Off Days
+                          </span>
                         </div>
-                        <div className="text-[12px] font-bold text-rose-500 uppercase tracking-widest" style={{  }}>
-                          Holidays
+                        <div className="flex items-center gap-3">
+                          <div className="h-4 w-4 rounded bg-indigo-500" />
+                          <span className="text-[14px] text-black dark:text-white font-black uppercase tracking-wider" style={{}}>
+                            Your Approved Leaves
+                          </span>
                         </div>
-                      </div>
-                      <div className="p-4 rounded-3xl bg-sky-50 dark:bg-sky-900/10 border border-sky-100 dark:border-sky-800/50 flex flex-col justify-center items-center text-center group hover:scale-[1.05] transition-transform">
-                        <div className="text-[24px] font-black text-sky-600 dark:text-sky-400 mb-1" style={{  }}>
-                          {userWeekOffDays.length}
-                        </div>
-                        <div className="text-[12px] font-bold text-sky-500 uppercase tracking-widest" style={{  }}>
-                          Off Days
-                        </div>
-                      </div>
-                    </div>
+                      </CardContent>
+                    </Card>
                   </div>
 
-                  {/* Detailed Holiday List */}
-                  <Card className="rounded-3xl border-2 border-[#858282] shadow-xl bg-white dark:bg-slate-900 overflow-hidden">
-                    <CardHeader className="pb-4 border-b border-slate-50 dark:border-slate-800">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-[16px] font-black text-black dark:text-white flex items-center gap-2" style={{  }}>
-                          <CalendarIcon className="h-5 w-5 text-red-500" />
-                          Upcoming Festivals & Holidays
-                        </CardTitle>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                      {(() => {
-                        const monthHolidays = holidays
-                          .filter(
-                            (h) =>
-                              h.date.getFullYear() ===
-                              displayedMonth.getFullYear() &&
-                              h.date.getMonth() === displayedMonth.getMonth(),
-                          )
-                          .sort((a, b) => a.date.getTime() - b.date.getTime());
+                  {/* Holiday List */}
+                  <div className="md:col-span-8">
+                    <Card className="rounded-2xl border-2 border-[#000000] shadow-xl bg-white dark:bg-slate-900 overflow-hidden">
+                      <CardHeader className="pb-4 border-b border-slate-50 dark:border-slate-800">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-[16px] font-black text-black dark:text-white flex items-center gap-2" style={{}}>
+                            <CalendarIcon className="h-5 w-5 text-red-500" />
+                            Upcoming Festivals & Holidays
+                          </CardTitle>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-6">
+                        {(() => {
+                          const monthHolidays = holidays
+                            .filter(
+                              (h) =>
+                                h.date.getFullYear() ===
+                                displayedMonth.getFullYear() &&
+                                h.date.getMonth() === displayedMonth.getMonth(),
+                            )
+                            .sort((a, b) => a.date.getTime() - b.date.getTime());
 
-                        if (monthHolidays.length === 0) {
-                          return (
-                            <div className="flex flex-col items-center justify-center py-12 text-center">
-                              <div className="h-20 w-20 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center mb-4">
-                                <CalendarIcon className="h-10 w-10 text-slate-300 dark:text-slate-600" />
+                          if (monthHolidays.length === 0) {
+                            return (
+                              <div className="flex flex-col items-center justify-center py-6 text-center">
+                                <p className="text-[14px] text-black dark:text-white font-medium" style={{}}>
+                                  No company holidays scheduled for this month
+                                </p>
                               </div>
-                              <p className="text-[14px] text-black dark:text-white font-medium" style={{  }}>
-                                No company holidays scheduled for this month
-                              </p>
-                              <p className="text-[12px] text-black dark:text-white font-medium mt-1" style={{  }}>
-                                Check back later for updates
-                              </p>
+                            );
+                          }
+
+                          return (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              {monthHolidays.map((h) => (
+                                <div
+                                  key={h.date.toISOString()}
+                                  className="group flex items-center gap-4 p-3 rounded-xl border-2 border-[#000000] bg-white dark:bg-slate-900 hover:bg-slate-50 transition-all cursor-pointer"
+                                  onClick={() => {
+                                    setSelectedHoliday(h);
+                                    setIsHolidayDialogOpen(true);
+                                  }}
+                                >
+                                  <div className="flex flex-col items-center justify-center h-12 w-12 rounded-lg bg-slate-50 border-2 border-[#000000]">
+                                    <span className="text-[10px] font-bold uppercase">{format(h.date, "MMM")}</span>
+                                    <span className="text-[18px] font-black leading-none">{format(h.date, "dd")}</span>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="text-[14px] font-black truncate">{h.name}</h4>
+                                    <p className="text-[12px] opacity-70">{format(h.date, "EEEE")}</p>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           );
-                        }
-
-                        return (
-                          <div className="grid gap-4">
-                            {monthHolidays.map((h) => (
-                              <div
-                                key={h.date.toISOString()}
-                                className="group relative flex items-center gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-red-200 dark:hover:border-red-900 hover:bg-red-50/50 dark:hover:bg-red-900/10 transition-all duration-300 cursor-pointer"
-                                onClick={() => {
-                                  setSelectedHoliday(h);
-                                  setIsHolidayDialogOpen(true);
-                                }}
-                              >
-                                <div className="flex flex-col items-center justify-center h-16 w-16 rounded-xl bg-white dark:bg-slate-800 border-2 border-red-100 dark:border-red-900 shadow-sm group-hover:scale-110 transition-transform">
-                                  <span className="text-[12px] font-bold text-black dark:text-white uppercase" style={{  }}>
-                                    {format(h.date, "MMM")}
-                                  </span>
-                                  <span className="text-[24px] font-black text-black dark:text-white leading-none" style={{  }}>
-                                    {format(h.date, "dd")}
-                                  </span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="text-[14px] font-black text-black dark:text-white group-hover:text-red-600 transition-colors truncate" style={{  }}>
-                                    {h.name}
-                                  </h4>
-                                  <p className="text-[12px] text-black dark:text-white mt-0.5 font-medium flex items-center gap-1" style={{  }}>
-                                    <Clock className="h-3 w-3" />
-                                    {format(h.date, "EEEE")}
-                                  </p>
-                                  {h.description && (
-                                    <p className="text-[12px] text-black dark:text-white mt-1 line-clamp-1" style={{  }}>
-                                      {h.description}
-                                    </p>
-                                  )}
-                                </div>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="rounded-full h-8 w-8 hover:bg-white dark:hover:bg-slate-800"
-                                >
-                                  <ChevronRight className="h-4 w-4 text-slate-400" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      })()}
-                    </CardContent>
-                  </Card>
-
-                  {/* Week-off Visibility for Management */}
-                  {userWeekOffDays.length > 0 && (
-                    <div className="p-5 rounded-3xl bg-gradient-to-r from-slate-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950 border border-indigo-100 dark:border-indigo-900 flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-2xl bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm">
-                        <Clock className="h-6 w-6 text-sky-600" />
-                      </div>
-                      <div>
-                        <p className="text-[14px] font-black text-[#4F46E5] dark:text-[#4F46E5] uppercase tracking-wider" style={{  }}>
-                          Weekly-Off Reminder
-                        </p>
-                        <p className="text-[14px] font-medium text-black dark:text-white" style={{  }}>
-                          {user?.role === "employee" ? (
-                            <>
-                              Your department ({user?.department}) enjoys off on{" "}
-                              <span className="font-bold text-sky-600">
-                                {userWeekOffDays
-                                  .map(
-                                    (d) => weekDayLabels[d.toLowerCase()] || d,
-                                  )
-                                  .join(", ")}
-                              </span>
-                            </>
-                          ) : (
-                            <span className="font-black">
-                              Management View: Showing all active department
-                              week-offs across the center
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                        })()}
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -3376,9 +3195,9 @@ export default function LeaveManagement() {
 
         {(canApproveLeaves || canViewTeamLeaves) && (
           <TabsContent value="approvals">
-            <Card className="border border-[#858282] shadow-xl rounded-2xl overflow-hidden">
+            <Card className="border-2 border-[#000000] shadow-xl rounded-2xl overflow-hidden">
               <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-                <CardTitle className="text-[16px] font-bold text-black dark:text-white" style={{  }}>
+                <CardTitle className="text-[16px] font-bold text-black dark:text-white" style={{}}>
                   {canApproveLeaves
                     ? "Leave Approval Requests"
                     : "Team Leave Requests"}
@@ -3397,35 +3216,35 @@ export default function LeaveManagement() {
                         <div
                           key={request.id}
                           id={`leave-request-${request.id}`}
-                          className="border rounded-lg p-4 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-md"
+                          className="border-2 border-[#000000] rounded-lg p-4 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-md"
                         >
                           <div className="flex flex-col lg:flex-row lg:items-start gap-4">
                             <div className="space-y-3 flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <User className="h-4 w-4 flex-shrink-0" />
-                                <span className="text-[14px] font-black text-black dark:text-white" style={{  }}>
+                                <span className="text-[14px] font-black text-black dark:text-white" style={{}}>
                                   {request.employeeName}
                                 </span>
                                 {request.role && (
                                   <Badge
                                     variant="outline"
                                     className="text-[12px] uppercase font-bold text-black dark:text-white border-black/10"
-                                    style={{  }}
+                                    style={{}}
                                   >
                                     {request.role}
                                   </Badge>
                                 )}
                                 <Badge
                                   className={cn(getLeaveTypeColor(request.type), "text-[12px] font-bold bg-transparent border-0 p-0 text-black dark:text-white shadow-none")}
-                                  style={{  }}
+                                  style={{}}
                                 >
                                   {request.type}
                                 </Badge>
-                                <span className="text-[12px] text-black dark:text-white font-bold" style={{  }}>
+                                <span className="text-[12px] text-black dark:text-white font-bold" style={{}}>
                                   ID: {request.employeeId}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-4 text-[12px] text-black dark:text-white font-bold flex-wrap" style={{  }}>
+                              <div className="flex items-center gap-4 text-[12px] text-black dark:text-white font-bold flex-wrap" style={{}}>
                                 <div className="flex items-center gap-1">
                                   <FileText className="h-3 w-3" />
                                   <span>{request.department}</span>
@@ -3449,10 +3268,10 @@ export default function LeaveManagement() {
                                   </span>
                                 </div>
                               </div>
-                              <div className="text-sm space-y-1">
-                                <span className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Reason:</span>
-                                <div className="mt-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 max-h-48 overflow-y-auto">
-                                  <div className="text-black dark:text-white text-[12px] font-bold" style={{  }}>
+                              <div className="text-sm">
+                                <div className="flex items-start gap-2">
+                                  <span className="text-[14px] font-bold text-black dark:text-white whitespace-nowrap" style={{}}>Reason:</span>
+                                  <div className="text-black dark:text-white text-[12px] font-bold line-clamp-2" style={{}}>
                                     <TruncatedText
                                       text={request.reason}
                                       maxLength={200}
@@ -3468,8 +3287,8 @@ export default function LeaveManagement() {
                                 <>
                                   <Button
                                     size="sm"
-                                    className="px-4 h-9 gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-[12px]"
-                                    style={{  }}
+                                    className="w-28 px-4 h-9 gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-[12px]"
+                                    style={{}}
                                     onClick={() =>
                                       handleApproveReject(
                                         request.id,
@@ -3487,8 +3306,8 @@ export default function LeaveManagement() {
                                   </Button>
                                   <Button
                                     size="sm"
-                                    className="px-4 h-9 gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-[12px]"
-                                    style={{  }}
+                                    className="w-28 px-4 h-9 gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-[12px]"
+                                    style={{}}
                                     onClick={() =>
                                       handleApproveReject(
                                         request.id,
@@ -3509,14 +3328,14 @@ export default function LeaveManagement() {
                                 <div className="flex flex-col gap-2 w-full">
                                   <Badge
                                     className={`w-full px-4 py-1.5 text-[12px] font-bold capitalize transition-all duration-300 text-center ${getStatusBadgeStyle(request.status)}`}
-                                    style={{  }}
+                                    style={{}}
                                   >
                                     {request.status.charAt(0).toUpperCase() +
                                       request.status.slice(1)}
                                   </Badge>
                                   {request.status !== "pending" &&
                                     request.approvedBy && (
-                                      <span className="text-[12px] text-black dark:text-white font-bold text-center" style={{  }}>
+                                      <span className="text-[12px] text-black dark:text-white font-bold text-center" style={{}}>
                                         by {request.approvedBy}
                                       </span>
                                     )}
@@ -3546,40 +3365,70 @@ export default function LeaveManagement() {
                   )}
 
                   <div className="pt-6 border-t mt-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-[16px] font-black text-black dark:text-white" style={{  }}>Recent Decisions</h3>
-                      <div className="flex items-center gap-2">
-                        <Select
-                          value={historyFilter}
-                          onValueChange={setHistoryFilter}
-                        >
-                          <SelectTrigger className="w-[180px] h-9 bg-white dark:bg-gray-950 text-[14px] text-black dark:text-white font-bold" style={{  }}>
-                            <SelectValue placeholder="Select period" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All History</SelectItem>
-                            <SelectItem value="current_month">
-                              Current Month
-                            </SelectItem>
-                            <SelectItem value="last_3_months">
-                              Last 3 Months
-                            </SelectItem>
-                            <SelectItem value="last_6_months">
-                              Last 6 Months
-                            </SelectItem>
-                            <SelectItem value="last_1_year">
-                              Last 1 Year
-                            </SelectItem>
-                            <SelectItem value="custom">Custom Range</SelectItem>
-                          </SelectContent>
-                        </Select>
+                    <h3 className="text-[16px] font-black text-black dark:text-white mb-3" style={{}}>Recent Decisions</h3>
+                    {/* Filters row with labels below heading */}
+                    <div className="flex flex-wrap items-end gap-3 mb-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Duration</span>
+                        <div className="flex items-center gap-2">
+                          <Select
+                            value={historyFilter}
+                            onValueChange={setHistoryFilter}
+                          >
+                            <SelectTrigger className="w-[160px] h-9 bg-white dark:bg-gray-950 text-[14px] text-black dark:text-white font-bold border-2 border-[#000000]" style={{}}>
+                              <SelectValue placeholder="Select period" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All History</SelectItem>
+                              <SelectItem value="current_month">Current Month</SelectItem>
+                              <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                              <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                              <SelectItem value="last_1_year">Last 1 Year</SelectItem>
+                              <SelectItem value="custom">Custom Range</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {historyFilter === "custom" && (
+                            <>
+                              <Input
+                                type="date"
+                                placeholder="Start date"
+                                value={customHistoryStartDate ? format(customHistoryStartDate, "yyyy-MM-dd") : ""}
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    const [y, m, d] = e.target.value.split("-").map(Number);
+                                    setCustomHistoryStartDate(new Date(y, m - 1, d));
+                                  } else {
+                                    setCustomHistoryStartDate(undefined);
+                                  }
+                                }}
+                                className="h-9 w-[150px] border-2 border-[#000000] text-[13px] font-bold text-black dark:text-white"
+                              />
+                              <Input
+                                type="date"
+                                placeholder="End date"
+                                value={customHistoryEndDate ? format(customHistoryEndDate, "yyyy-MM-dd") : ""}
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    const [y, m, d] = e.target.value.split("-").map(Number);
+                                    setCustomHistoryEndDate(new Date(y, m - 1, d));
+                                  } else {
+                                    setCustomHistoryEndDate(undefined);
+                                  }
+                                }}
+                                min={customHistoryStartDate ? format(customHistoryStartDate, "yyyy-MM-dd") : undefined}
+                                className="h-9 w-[150px] border-2 border-[#000000] text-[13px] font-bold text-black dark:text-white"
+                              />
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</span>
                         <Select
                           value={historyStatusFilter}
-                          onValueChange={(val: any) =>
-                            setHistoryStatusFilter(val)
-                          }
+                          onValueChange={(val: any) => setHistoryStatusFilter(val)}
                         >
-                          <SelectTrigger className="w-[140px] h-9 bg-white dark:bg-gray-950 text-[14px] text-black dark:text-white font-bold" style={{  }}>
+                          <SelectTrigger className="w-[130px] h-9 bg-white dark:bg-gray-950 text-[14px] text-black dark:text-white font-bold border-2 border-[#000000]" style={{}}>
                             <SelectValue placeholder="Status" />
                           </SelectTrigger>
                           <SelectContent>
@@ -3588,13 +3437,14 @@ export default function LeaveManagement() {
                             <SelectItem value="rejected">Rejected</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Role</span>
                         <Select
                           value={historyRoleFilter}
-                          onValueChange={(val: any) =>
-                            setHistoryRoleFilter(val)
-                          }
+                          onValueChange={(val: any) => setHistoryRoleFilter(val)}
                         >
-                          <SelectTrigger className="w-[140px] h-9 bg-white dark:bg-gray-950 text-[14px] text-black dark:text-white font-bold" style={{  }}>
+                          <SelectTrigger className="w-[130px] h-9 bg-white dark:bg-gray-950 text-[14px] text-black dark:text-white font-bold border-2 border-[#000000]" style={{}}>
                             <SelectValue placeholder="Role" />
                           </SelectTrigger>
                           <SelectContent>
@@ -3602,47 +3452,19 @@ export default function LeaveManagement() {
                             {user?.role === "admin" && (
                               <SelectItem value="hr">HR</SelectItem>
                             )}
-                            {(user?.role === "admin" ||
-                              user?.role === "hr") && (
-                                <SelectItem value="manager">Manager</SelectItem>
-                              )}
-                            {(user?.role === "admin" ||
-                              user?.role === "hr" ||
-                              user?.role === "manager") && (
-                                <SelectItem value="team_lead">
-                                  Team Lead
-                                </SelectItem>
-                              )}
-                            {(user?.role === "admin" ||
-                              user?.role === "hr" ||
-                              user?.role === "manager") && (
-                                <SelectItem value="employee">Employee</SelectItem>
-                              )}
+                            {(user?.role === "admin" || user?.role === "hr") && (
+                              <SelectItem value="manager">Manager</SelectItem>
+                            )}
+                            {(user?.role === "admin" || user?.role === "hr" || user?.role === "manager") && (
+                              <SelectItem value="team_lead">Team Lead</SelectItem>
+                            )}
+                            {(user?.role === "admin" || user?.role === "hr" || user?.role === "manager") && (
+                              <SelectItem value="employee">Employee</SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
-
-                    {historyFilter === "custom" && (
-                      <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <div className="flex-1 min-w-[150px]">
-                            <Label className="text-xs mb-1">Start Date</Label>
-                            <DatePicker
-                              date={customHistoryStartDate}
-                              onDateChange={setCustomHistoryStartDate}
-                            />
-                          </div>
-                          <div className="flex-1 min-w-[150px]">
-                            <Label className="text-xs mb-1">End Date</Label>
-                            <DatePicker
-                              date={customHistoryEndDate}
-                              onDateChange={setCustomHistoryEndDate}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
 
                     {getFilteredApprovalHistory.length === 0 ? (
                       <div className="text-center py-6 text-muted-foreground bg-slate-50 dark:bg-slate-900 rounded-lg">
@@ -3657,26 +3479,26 @@ export default function LeaveManagement() {
                           {paginatedApprovalHistory.map((request, idx) => (
                             <div
                               key={`hist-${request.isWFH ? "wfh" : "leave"}-${request.id}-${idx}`}
-                              className="border rounded-lg p-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+                              className="border-2 border-[#000000] rounded-lg p-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
                             >
                               <div className="text-sm flex-1">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-[14px] font-black text-black dark:text-white" style={{  }}>
+                                  <span className="text-[14px] font-black text-black dark:text-white" style={{}}>
                                     {request.employeeName}
                                   </span>
                                   {request.role && (
-                                    <span className="text-[12px] uppercase font-bold text-black dark:text-white bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded" style={{  }}>
+                                    <span className="text-[12px] uppercase font-bold text-black dark:text-white bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded" style={{}}>
                                       {request.role}
                                     </span>
                                   )}
                                   <Badge
                                     className={cn(getLeaveTypeColor(request.type), "text-[12px] font-bold bg-transparent border-0 p-0 text-black dark:text-white shadow-none")}
-                                    style={{  }}
+                                    style={{}}
                                   >
                                     {request.type}
                                   </Badge>
                                 </div>
-                                <div className="text-black dark:text-white text-[12px] font-bold" style={{  }}>
+                                <div className="text-black dark:text-white text-[12px] font-bold" style={{}}>
                                   {format(request.startDate, "MMM dd")} -{" "}
                                   {format(request.endDate, "MMM dd, yyyy")} •{" "}
                                   {request.department}
@@ -3685,7 +3507,7 @@ export default function LeaveManagement() {
                               <div className="flex items-center gap-2">
                                 <Badge
                                   className={`px-4 py-1.5 text-[12px] font-bold capitalize transition-all duration-300 flex items-center gap-2 ${getStatusBadgeStyle(request.status)}`}
-                                  style={{  }}
+                                  style={{}}
                                 >
                                   {request.status === "approved" ? (
                                     <CheckCircle className="h-4 w-4" />
@@ -3722,148 +3544,137 @@ export default function LeaveManagement() {
             </Card>
           </TabsContent>
         )}
-        {["admin", "hr"].includes(user?.role || "") && (
-          <TabsContent value="export" className="space-y-4">
-            <Card className="border border-[#858282] shadow-xl rounded-2xl overflow-hidden">
-              <CardHeader className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
-                    <CalendarIcon className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                  </div>
-                  <CardTitle className="text-[16px] font-black text-black dark:text-white" style={{  }}>
-                    Export Leave Report
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div className="space-y-2">
-                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Start Date</Label>
-                    <Input
-                      type="date"
-                      value={leaveStartDate}
-                      onChange={(e) => setLeaveStartDate(e.target.value)}
-                      className="bg-white dark:bg-slate-950 text-[14px] text-black dark:text-white font-medium"
-                      style={{  }}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>End Date</Label>
-                    <Input
-                      type="date"
-                      value={leaveEndDate}
-                      onChange={(e) => setLeaveEndDate(e.target.value)}
-                      className="bg-white dark:bg-slate-950 text-[14px] text-black dark:text-white font-medium"
-                      style={{  }}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Department</Label>
-                    <Select
-                      value={leaveDepartment}
-                      onValueChange={setLeaveDepartment}
-                    >
-                      <SelectTrigger className="bg-white dark:bg-slate-950 text-[14px] text-black dark:text-white font-bold" style={{  }}>
-                        <SelectValue placeholder="All Departments" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Departments</SelectItem>
-                        {companyDepartments.map((dept) => (
-                          <SelectItem key={dept} value={dept}>
-                            {dept}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[14px] font-bold text-black dark:text-white" style={{  }}>Format</Label>
-                    <Select
-                      value={leaveFormat}
-                      onValueChange={(val: "pdf" | "csv") =>
-                        setLeaveFormat(val)
-                      }
-                    >
-                      <SelectTrigger className="bg-white dark:bg-slate-950 text-[14px] text-black dark:text-white font-bold" style={{  }}>
-                        <SelectValue placeholder="PDF" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pdf">PDF Document</SelectItem>
-                        <SelectItem value="csv">CSV Spreadsheet</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="mt-8 flex flex-wrap gap-4">
-                  <Button
-                    onClick={async () => {
-                      try {
-                        setIsExportLoading(true);
-                        const blob = await apiService.exportLeaveReport({
-                          format: leaveFormat,
-                          start_date: leaveStartDate,
-                          end_date: leaveEndDate,
-                          department:
-                            leaveDepartment === "all"
-                              ? undefined
-                              : leaveDepartment,
-                        });
-
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = `leave_report_${leaveStartDate}_to_${leaveEndDate}.${leaveFormat}`;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        window.URL.revokeObjectURL(url);
-
-                        toast({
-                          title: "Success",
-                          description: "Leave report generated successfully.",
-                        });
-                      } catch (error: any) {
-                        console.error("Leave report error:", error);
-                        toast({
-                          title: "Error",
-                          description:
-                            error.message || "Failed to generate leave report.",
-                          variant: "destructive",
-                        });
-                      } finally {
-                        setIsExportLoading(false);
-                      }
-                    }}
-                    className="bg-orange-600 hover:bg-orange-700 text-white font-bold h-11 px-8 rounded-xl shadow-lg shadow-orange-200 dark:shadow-none transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    disabled={isExportLoading}
-                  >
-                    {isExportLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="h-4 w-4 mr-2" />
-                        Download Leave Report
-                      </>
-                    )}
-                  </Button>
-
-                  <div className="flex-1 flex items-center gap-3 p-4 bg-orange-50/50 dark:bg-orange-950/20 rounded-xl border border-orange-100 dark:border-orange-900/30">
-                    <AlertCircle className="h-5 w-5 text-orange-500 shrink-0" />
-                    <p className="text-[14px] text-[#1E40AF] dark:text-blue-300 font-bold" style={{  }}>
-                      Report includes leave counts, types, and approval status
-                      across the selected period and departments.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
       </Tabs>
+
+      {/* Export Dialog */}
+      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+        <DialogContent className="max-w-2xl border-2 border-black rounded-3xl p-0 overflow-hidden bg-white dark:bg-gray-900 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+          <DialogHeader className="p-6 bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-b-2 border-black">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                <Download className="h-7 w-7 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-2xl font-black text-black dark:text-white uppercase tracking-tight">Export Leave Report</DialogTitle>
+                <DialogDescription className="text-sm font-bold text-slate-600 dark:text-slate-400 mt-1 uppercase tracking-wider">Configure and Generate Leave Data Report</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="p-8 space-y-6">
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-sm font-black text-black dark:text-white uppercase tracking-wider">Start Date</Label>
+                <Input
+                  type="date"
+                  value={leaveStartDate}
+                  onChange={(e) => setLeaveStartDate(e.target.value)}
+                  className="h-12 bg-white dark:bg-slate-950 text-sm text-black dark:text-white font-bold border-2 border-black focus:ring-0 focus:border-orange-500 rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-black text-black dark:text-white uppercase tracking-wider">End Date</Label>
+                <Input
+                  type="date"
+                  value={leaveEndDate}
+                  onChange={(e) => setLeaveEndDate(e.target.value)}
+                  className="h-12 bg-white dark:bg-slate-950 text-sm text-black dark:text-white font-bold border-2 border-black focus:ring-0 focus:border-orange-500 rounded-xl"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-sm font-black text-black dark:text-white uppercase tracking-wider">Department</Label>
+                <Select
+                  value={leaveDepartment}
+                  onValueChange={setLeaveDepartment}
+                >
+                  <SelectTrigger className="h-12 bg-white dark:bg-slate-950 text-sm text-black dark:text-white font-bold border-2 border-black focus:ring-0 focus:border-orange-500 rounded-xl">
+                    <SelectValue placeholder="All Departments" />
+                  </SelectTrigger>
+                  <SelectContent className="border-2 border-black">
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {companyDepartments.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-black text-black dark:text-white uppercase tracking-wider">Format</Label>
+                <Select
+                  value={leaveFormat}
+                  onValueChange={(val: "pdf" | "csv") => setLeaveFormat(val)}
+                >
+                  <SelectTrigger className="h-12 bg-white dark:bg-slate-950 text-sm text-black dark:text-white font-bold border-2 border-black focus:ring-0 focus:border-orange-500 rounded-xl">
+                    <SelectValue placeholder="PDF" />
+                  </SelectTrigger>
+                  <SelectContent className="border-2 border-black">
+                    <SelectItem value="pdf">PDF Document</SelectItem>
+                    <SelectItem value="csv">CSV Spreadsheet</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t-2 border-black flex sm:justify-between items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsExportDialogOpen(false)}
+              className="flex-1 h-12 border-2 border-black font-black uppercase tracking-wider rounded-xl hover:bg-slate-100 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={isExportLoading}
+              onClick={async () => {
+                try {
+                  setIsExportLoading(true);
+                  const blob = await apiService.exportLeaveReport({
+                    format: leaveFormat,
+                    start_date: leaveStartDate,
+                    end_date: leaveEndDate,
+                    department: leaveDepartment === "all" ? undefined : leaveDepartment,
+                  });
+
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `leave_report_${leaveStartDate}_to_${leaveEndDate}.${leaveFormat}`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  window.URL.revokeObjectURL(url);
+
+                  toast({
+                    title: "Report Generated",
+                    description: "The leave report has been downloaded successfully.",
+                  });
+                  setIsExportDialogOpen(false);
+                } catch (error) {
+                  console.error("Export Error:", error);
+                  toast({
+                    title: "Export Failed",
+                    description: "Something went wrong while generating the report.",
+                    variant: "destructive",
+                  });
+                } finally {
+                  setIsExportLoading(false);
+                }
+              }}
+              className="flex-[2] h-12 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-black uppercase tracking-wider rounded-xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none flex items-center justify-center gap-2"
+            >
+              {isExportLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
+              <span>{isExportLoading ? "Generating..." : "Generate & Download"}</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Edit Leave Dialog */}
       <Dialog
@@ -3875,7 +3686,7 @@ export default function LeaveManagement() {
           }
         }}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg border-2 border-[#000000]">
           <DialogHeader>
             <DialogTitle>Edit Leave Request</DialogTitle>
             <DialogDescription>
@@ -3980,7 +3791,7 @@ export default function LeaveManagement() {
           }
         }}
       >
-        <AlertDialogContent className="sm:max-w-md">
+        <AlertDialogContent className="sm:max-w-md border-2 border-[#000000]">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-xl">
               <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg">
@@ -3992,7 +3803,7 @@ export default function LeaveManagement() {
               Are you sure you want to delete this leave request? This action
               cannot be undone.
               {leaveToDelete && (
-                <div className="mt-4 p-4 bg-red-50 dark:bg-red-950 rounded-lg border-2 border-red-200 dark:border-red-800 space-y-2">
+                <div className="mt-4 p-4 bg-red-50 dark:bg-red-950 rounded-lg border-2 border-[#000000] space-y-2">
                   <div>
                     <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide">
                       Leave Details
@@ -4053,7 +3864,7 @@ export default function LeaveManagement() {
 
       {/* Holiday Details Dialog */}
       <Dialog open={isHolidayDialogOpen} onOpenChange={setIsHolidayDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md border-2 border-[#000000]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
               <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg">
@@ -4064,7 +3875,7 @@ export default function LeaveManagement() {
           </DialogHeader>
           {selectedHoliday && (
             <div className="space-y-4 py-4">
-              <div className="bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-950 dark:to-rose-950 rounded-lg p-4 border-2 border-red-200 dark:border-red-800">
+              <div className="bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-950 dark:to-rose-950 rounded-lg p-4 border-2 border-[#000000]">
                 <h3 className="text-2xl font-bold text-red-700 dark:text-red-300 mb-2">
                   {selectedHoliday.name}
                 </h3>
@@ -4100,7 +3911,7 @@ export default function LeaveManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }
 

@@ -304,6 +304,12 @@ class ApiService {
 
         const error = new Error(errorMessage || `HTTP error! status: ${response.status}`);
         (error as any).status = response.status;
+
+        // Handle common scope conflict error
+        if (response.status === 409 || errorMessage.includes("Scope conflict") || errorMessage.includes("Multiple company")) {
+          window.dispatchEvent(new CustomEvent('scope-conflict'));
+        }
+
         throw error;
       }
 
@@ -452,22 +458,31 @@ class ApiService {
       });
       return Array.isArray(data) ? data : data?.employees || [];
     } catch (error: any) {
-      // If we hit a conflict (409) or forbidden (403) and we don't have a branchId in localStorage,
-      // it means we are an admin/HR with multiple scopes but none selected.
-      if (error.message?.includes("409") || error.message?.includes("403")) {
+      const isScopeConflict =
+        error.status === 409 ||
+        error.status === 403 ||
+        error.message?.includes("409") ||
+        error.message?.includes("403") ||
+        error.message?.includes("Scope conflict") ||
+        error.message?.includes("Multiple company");
+
+      if (isScopeConflict) {
         console.warn("Scope conflict/forbidden detected. Attempting to sync branch/company assignment from user profile...");
         try {
           const storedUser = localStorage.getItem("user");
           if (storedUser) {
             const user = JSON.parse(storedUser);
+            // If the user already has a branch_id in their profile, use it as fallback
             const fallbackBranchId = user.branch_id || user.branchId;
             const fallbackCompanyId = user.company_id || user.companyId;
+
             if (fallbackBranchId) {
               console.log(`Setting automatic scope fallback -> Branch: ${fallbackBranchId}, Company: ${fallbackCompanyId}`);
               localStorage.setItem("branchId", String(fallbackBranchId));
-              if (user.company_id || user.companyId) {
-                localStorage.setItem("companyId", String(user.company_id || user.companyId));
+              if (fallbackCompanyId) {
+                localStorage.setItem("companyId", String(fallbackCompanyId));
               }
+
               // Retry the request ONCE with the new stored IDs
               const retryData = await this.request(queryString ? `/employees/${queryString}` : `/employees/`, {
                 headers: {
@@ -481,12 +496,19 @@ class ApiService {
         } catch (retryError) {
           console.error("Automatic scope resolution failed:", retryError);
         }
+
+        console.error("Employee Fetch Error: Scope/Branch Conflict detected. Status:", error.status);
+        // Important: throw an error that explicitly mentions the need for a scope selector
+        const conflictError = new Error("Scope conflict: Multiple company/branch assignments found. Please select a branch.");
+        (conflictError as any).status = 409;
+        (conflictError as any).type = 'SCOPE_CONFLICT';
+
+        // Dispatch global event for the UI to show the scope selector
+        window.dispatchEvent(new CustomEvent('scope-conflict'));
+
+        throw conflictError;
       }
 
-      if (error.message?.includes("Scope conflict") || error.message?.includes("Multiple company")) {
-        console.error("Employee Fetch Error: Scope/Branch Conflict detected.");
-        throw error; // Rethrow so UI can show the scope selector
-      }
       throw error;
     }
   }

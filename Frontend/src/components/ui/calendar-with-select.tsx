@@ -128,7 +128,7 @@ export function CalendarWithSelect({
     : month;
 
   return (
-    <div className="w-full max-w-xs mx-auto">
+    <div className="w-full">
       {/* Minimal Header like the provided design */}
       <div className="flex items-center justify-between mb-4 px-2">
         <Button

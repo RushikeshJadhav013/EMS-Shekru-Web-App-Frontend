@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import SummaryCard from '@/components/ui/SummaryCard';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -326,7 +327,7 @@ const getStatusBadge = (status: BaseTask["status"] | string) => {
         "gap-2 border-0 bg-transparent px-0 py-1 flex items-center w-fit shadow-none transition-all duration-200",
         info.text
       )}
-      style={{  }}
+      style={{}}
     >
       <div className={cn("h-2.5 w-2.5 rounded-full shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.1)]", info.color)} />
       <span className="text-[14px] font-bold capitalize whitespace-nowrap">{info.label}</span>
@@ -575,6 +576,8 @@ const TaskManagement: React.FC = () => {
   // Pagination states
   const [taskCurrentPage, setTaskCurrentPage] = useState(1);
   const [taskItemsPerPage, setTaskItemsPerPage] = useState(10);
+  const [projectCurrentPage, setProjectCurrentPage] = useState(1);
+  const [projectItemsPerPage, setProjectItemsPerPage] = useState(10);
   const [activeScopeError, setActiveScopeError] = useState(false);
   const [debugBranchId, setDebugBranchId] = useState(localStorage.getItem('branchId') || '');
   const [debugCompanyId, setDebugCompanyId] = useState(localStorage.getItem('companyId') || '');
@@ -729,7 +732,7 @@ const TaskManagement: React.FC = () => {
       setDepartments(Array.from(uniqueDepartments));
     } catch (error: any) {
       console.error("Failed to fetch employees", error);
-      
+
       const errorMessage = error.message || "";
       if (error.status === 409 || errorMessage.includes("409") || errorMessage.includes("Scope conflict") || errorMessage.includes("Multiple company")) {
         setActiveScopeError(true);
@@ -1539,7 +1542,7 @@ const TaskManagement: React.FC = () => {
     if (filterStatus !== "all") {
       base = base.filter((t) => t.status === filterStatus);
     }
-    
+
     // Explicit Overdue filter
     if (isOverdueFilterActive) {
       base = base.filter((t) => t.status === "overdue");
@@ -1647,6 +1650,20 @@ const TaskManagement: React.FC = () => {
       })
       .filter((p) => p.projectMatchesSearch || p.filteredTasks.length > 0);
   }, [projects, searchQuery, filterStatus, isOverdueFilterActive, isTaskVisible, taskOwnershipFilter, userId]);
+
+  // Paginated projects
+  const paginatedProjects = useMemo(() => {
+    const startIndex = (projectCurrentPage - 1) * projectItemsPerPage;
+    const endIndex = startIndex + projectItemsPerPage;
+    return filteredProjects.slice(startIndex, endIndex);
+  }, [filteredProjects, projectCurrentPage, projectItemsPerPage]);
+
+  const projectTotalPages = Math.ceil(filteredProjects.length / projectItemsPerPage);
+
+  // Reset project pagination when filters change
+  useEffect(() => {
+    setProjectCurrentPage(1);
+  }, [searchQuery, filterStatus, taskOwnershipFilter]);
 
   // Counts for the Project View stat cards
   const projectCounts = useMemo(() => {
@@ -2955,17 +2972,17 @@ const TaskManagement: React.FC = () => {
   return (
     <div className="w-full space-y-6">
       {/* Modern Header */}
-      <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800 rounded-2xl p-6 shadow-sm border border-[#858282]">
+      <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800 rounded-2xl p-6 shadow-sm border-2 border-[#000000]">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-[30px] font-black text-black dark:text-white tracking-tight">
-            Task Management
-          </h1>
-          <p className="text-[14px] text-black dark:text-white font-medium mt-1">
-            Efficiently organize, track, and manage all your tasks in one place
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-[30px] font-black text-black dark:text-white tracking-tight">
+              Task Management
+            </h1>
+            <p className="text-[14px] text-black dark:text-white font-medium mt-1">
+              Efficiently organize, track, and manage all your tasks in one place
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
 
 
             {canAssignTasks() && (
@@ -2980,616 +2997,616 @@ const TaskManagement: React.FC = () => {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-2 shadow-2xl p-0">
-                <DialogHeader className="pb-4 border-b bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 -m-6 mb-0 p-6 rounded-t-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
-                      <Plus className="h-6 w-6 text-white" />
+                  <DialogHeader className="pb-4 border-b bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 -m-6 mb-0 p-6 rounded-t-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
+                        <Plus className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <DialogTitle className="text-2xl font-bold">
+                          Create New Task
+                        </DialogTitle>
+                        <DialogDescription className="mt-1">
+                          Assign a new task to team members
+                        </DialogDescription>
+                      </div>
                     </div>
-                    <div>
-                      <DialogTitle className="text-2xl font-bold">
-                        Create New Task
-                      </DialogTitle>
-                      <DialogDescription className="mt-1">
-                        Assign a new task to team members
-                      </DialogDescription>
-                    </div>
-                  </div>
-                </DialogHeader>
+                  </DialogHeader>
 
-                <div className="space-y-5 mt-6">
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="title"
-                      className="text-sm font-semibold flex items-center gap-2"
-                    >
-                      <div className="h-2 w-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-600"></div>
-                      Task Title <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="title"
-                      value={newTask.title}
-                      onChange={(e) =>
-                        setNewTask({
-                          ...newTask,
-                          title: e.target.value.replace(
-                            /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
-                            "",
-                          ),
-                        })
-                      }
-                      placeholder="Enter task title"
-                      className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="description"
-                      className="text-sm font-semibold flex items-center gap-2"
-                    >
-                      <div className="h-2 w-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-600"></div>
-                      Description <span className="text-red-500">*</span>
-                    </Label>
-                    <Textarea
-                      id="description"
-                      value={newTask.description}
-                      onChange={(e) =>
-                        setNewTask({
-                          ...newTask,
-                          description: e.target.value.replace(
-                            /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
-                            "",
-                          ),
-                        })
-                      }
-                      placeholder="Enter task description"
-                      rows={4}
-                      className="resize-none border-2 focus:ring-2 focus:ring-violet-500 transition-all"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-5 mt-6">
                     <div className="space-y-2">
                       <Label
-                        htmlFor="priority"
+                        htmlFor="title"
                         className="text-sm font-semibold flex items-center gap-2"
                       >
-                        <AlertCircle className="h-4 w-4 text-violet-600" />
-                        Priority
-                      </Label>
-                      <Select
-                        value={newTask.priority}
-                        onValueChange={(value: BaseTask["priority"]) =>
-                          setNewTask({ ...newTask, priority: value })
-                        }
-                      >
-                        <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent
-                          className="border-2 shadow-xl"
-                          side="bottom"
-                        >
-                          <SelectItem value="low" className="cursor-pointer">
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                              Low
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="medium" className="cursor-pointer">
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
-                              Medium
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="high" className="cursor-pointer">
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-orange-500"></div>
-                              High
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="urgent" className="cursor-pointer">
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-red-500"></div>
-                              Urgent
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="startDate"
-                        className="text-sm font-semibold flex items-center gap-2"
-                      >
-                        <Calendar className="h-4 w-4 text-violet-600" />
-                        Start Date
+                        <div className="h-2 w-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-600"></div>
+                        Task Title <span className="text-red-500">*</span>
                       </Label>
                       <Input
-                        id="startDate"
-                        type="date"
-                        value={newTask.startDate}
+                        id="title"
+                        value={newTask.title}
                         onChange={(e) =>
-                          setNewTask({ ...newTask, startDate: e.target.value })
+                          setNewTask({
+                            ...newTask,
+                            title: e.target.value.replace(
+                              /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
+                              "",
+                            ),
+                          })
                         }
+                        placeholder="Enter task title"
                         className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all"
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label
-                        htmlFor="deadline"
+                        htmlFor="description"
                         className="text-sm font-semibold flex items-center gap-2"
                       >
-                        <Calendar className="h-4 w-4 text-violet-600" />
-                        Deadline <span className="text-red-500">*</span>
+                        <div className="h-2 w-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-600"></div>
+                        Description <span className="text-red-500">*</span>
                       </Label>
-                      <Input
-                        id="deadline"
-                        type="date"
-                        value={newTask.deadline}
+                      <Textarea
+                        id="description"
+                        value={newTask.description}
                         onChange={(e) =>
-                          setNewTask({ ...newTask, deadline: e.target.value })
+                          setNewTask({
+                            ...newTask,
+                            description: e.target.value.replace(
+                              /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
+                              "",
+                            ),
+                          })
                         }
-                        className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all"
+                        placeholder="Enter task description"
+                        rows={4}
+                        className="resize-none border-2 focus:ring-2 focus:ring-violet-500 transition-all"
                       />
                     </div>
-                  </div>
 
-                  {canSeeAdminFilters && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label
-                          htmlFor="projectId"
+                          htmlFor="priority"
                           className="text-sm font-semibold flex items-center gap-2"
                         >
-                          <FileText className="h-4 w-4 text-violet-600" />
-                          Project (Optional)
+                          <AlertCircle className="h-4 w-4 text-violet-600" />
+                          Priority
                         </Label>
                         <Select
-                          value={newTask.projectId || "none"}
-                          onValueChange={(value) =>
-                            setNewTask({
-                              ...newTask,
-                              projectId: value === "none" ? "" : value,
-                            })
+                          value={newTask.priority}
+                          onValueChange={(value: BaseTask["priority"]) =>
+                            setNewTask({ ...newTask, priority: value })
                           }
                         >
                           <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                            <SelectValue placeholder="Select Project" />
+                            <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="border-2 shadow-xl" side="bottom">
-                            <SelectItem value="none">None</SelectItem>
-                            {projects.map((p: any) => (
-                              <SelectItem key={p.project_id || p.id} value={(p.project_id || p.id)?.toString()}>
-                                {p.name}
-                              </SelectItem>
-                            ))}
+                          <SelectContent
+                            className="border-2 shadow-xl"
+                            side="bottom"
+                          >
+                            <SelectItem value="low" className="cursor-pointer">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                                Low
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="medium" className="cursor-pointer">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
+                                Medium
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="high" className="cursor-pointer">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 w-2 rounded-full bg-orange-500"></div>
+                                High
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="urgent" className="cursor-pointer">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                                Urgent
+                              </div>
+                            </SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="startDate"
+                          className="text-sm font-semibold flex items-center gap-2"
+                        >
+                          <Calendar className="h-4 w-4 text-violet-600" />
+                          Start Date
+                        </Label>
+                        <Input
+                          id="startDate"
+                          type="date"
+                          value={newTask.startDate}
+                          onChange={(e) =>
+                            setNewTask({ ...newTask, startDate: e.target.value })
+                          }
+                          className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="deadline"
+                          className="text-sm font-semibold flex items-center gap-2"
+                        >
+                          <Calendar className="h-4 w-4 text-violet-600" />
+                          Deadline <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="deadline"
+                          type="date"
+                          value={newTask.deadline}
+                          onChange={(e) =>
+                            setNewTask({ ...newTask, deadline: e.target.value })
+                          }
+                          className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all"
+                        />
                       </div>
                     </div>
-                  )}
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {canSeeAdminFilters && (
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="assignRoleFilter"
-                          className="text-sm font-semibold flex items-center gap-2"
-                        >
-                          <Filter className="h-4 w-4 text-violet-600" />
-                          Filter Role
-                        </Label>
-                        <Select
-                          value={assignRoleFilter}
-                          onValueChange={(value: "all" | UserRole) =>
-                            setAssignRoleFilter(value)
-                          }
-                        >
-                          <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                            <SelectValue placeholder="All Roles" />
-                          </SelectTrigger>
-                          <SelectContent
-                            className="border-2 shadow-xl"
-                            side="bottom"
-                          >
-                            <SelectItem value="all">All Roles</SelectItem>
-                            {normalizedUserRole === "admin" && (
-                              <SelectItem value="hr">HR</SelectItem>
-                            )}
-                            {(normalizedUserRole === "admin" ||
-                              normalizedUserRole === "hr") && (
-                                <SelectItem value="manager">Manager</SelectItem>
-                              )}
-                            <SelectItem value="team_lead">Team Lead</SelectItem>
-                            <SelectItem value="employee">Employee</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
 
                     {canSeeAdminFilters && (
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="assignDeptFilter"
-                          className="text-sm font-semibold flex items-center gap-2"
-                        >
-                          <Building2 className="h-4 w-4 text-violet-600" />
-                          Filter Department
-                        </Label>
-                        <Select
-                          value={newTask.department || "all"}
-                          onValueChange={(value) =>
-                            setNewTask({
-                              ...newTask,
-                              department: value === "all" ? "" : value,
-                            })
-                          }
-                        >
-                          <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                            <SelectValue placeholder="All Departments" />
-                          </SelectTrigger>
-                          <SelectContent
-                            className="border-2 shadow-xl"
-                            side="bottom"
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="projectId"
+                            className="text-sm font-semibold flex items-center gap-2"
                           >
-                            <SelectItem value="all">All Departments</SelectItem>
-                            {departments
-                              .slice()
-                              .filter((dept) => dept && dept.trim() !== "")
-                              .sort((a, b) => a.localeCompare(b))
-                              .map((dept) => (
-                                <SelectItem key={dept} value={dept}>
-                                  {dept}
+                            <FileText className="h-4 w-4 text-violet-600" />
+                            Project (Optional)
+                          </Label>
+                          <Select
+                            value={newTask.projectId || "none"}
+                            onValueChange={(value) =>
+                              setNewTask({
+                                ...newTask,
+                                projectId: value === "none" ? "" : value,
+                              })
+                            }
+                          >
+                            <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                              <SelectValue placeholder="Select Project" />
+                            </SelectTrigger>
+                            <SelectContent className="border-2 shadow-xl" side="bottom">
+                              <SelectItem value="none">None</SelectItem>
+                              {projects.map((p: any) => (
+                                <SelectItem key={p.project_id || p.id} value={(p.project_id || p.id)?.toString()}>
+                                  {p.name}
                                 </SelectItem>
                               ))}
-                          </SelectContent>
-                        </Select>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     )}
-                  </div>
 
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <Label
-                        htmlFor="assignTo"
-                        className="text-sm font-semibold flex items-center gap-2"
-                      >
-                        <User className="h-4 w-4 text-violet-600" />
-                        Assign To <span className="text-red-500">*</span>
-                      </Label>
-                      {/* Show All Departments toggle - Only for Admin, HR, Manager */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {canSeeAdminFilters && (
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            id="show-all-depts"
-                            checked={showAllDepartments}
-                            onCheckedChange={(checked) =>
-                              setShowAllDepartments(!!checked)
-                            }
-                            className="data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
-                          />
+                        <div className="space-y-2">
                           <Label
-                            htmlFor="show-all-depts"
-                            className="text-[10px] font-medium text-slate-500 cursor-pointer"
+                            htmlFor="assignRoleFilter"
+                            className="text-sm font-semibold flex items-center gap-2"
                           >
-                            Show All Departments
+                            <Filter className="h-4 w-4 text-violet-600" />
+                            Filter Role
                           </Label>
+                          <Select
+                            value={assignRoleFilter}
+                            onValueChange={(value: "all" | UserRole) =>
+                              setAssignRoleFilter(value)
+                            }
+                          >
+                            <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                              <SelectValue placeholder="All Roles" />
+                            </SelectTrigger>
+                            <SelectContent
+                              className="border-2 shadow-xl"
+                              side="bottom"
+                            >
+                              <SelectItem value="all">All Roles</SelectItem>
+                              {normalizedUserRole === "admin" && (
+                                <SelectItem value="hr">HR</SelectItem>
+                              )}
+                              {(normalizedUserRole === "admin" ||
+                                normalizedUserRole === "hr") && (
+                                  <SelectItem value="manager">Manager</SelectItem>
+                                )}
+                              <SelectItem value="team_lead">Team Lead</SelectItem>
+                              <SelectItem value="employee">Employee</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {canSeeAdminFilters && (
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="assignDeptFilter"
+                            className="text-sm font-semibold flex items-center gap-2"
+                          >
+                            <Building2 className="h-4 w-4 text-violet-600" />
+                            Filter Department
+                          </Label>
+                          <Select
+                            value={newTask.department || "all"}
+                            onValueChange={(value) =>
+                              setNewTask({
+                                ...newTask,
+                                department: value === "all" ? "" : value,
+                              })
+                            }
+                          >
+                            <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                              <SelectValue placeholder="All Departments" />
+                            </SelectTrigger>
+                            <SelectContent
+                              className="border-2 shadow-xl"
+                              side="bottom"
+                            >
+                              <SelectItem value="all">All Departments</SelectItem>
+                              {departments
+                                .slice()
+                                .filter((dept) => dept && dept.trim() !== "")
+                                .sort((a, b) => a.localeCompare(b))
+                                .map((dept) => (
+                                  <SelectItem key={dept} value={dept}>
+                                    {dept}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       )}
                     </div>
 
-                    {/* Assign To Filter / Search */}
-                    <div className="relative mb-2">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search employees by name, ID or email..."
-                        className="pl-9 h-10 border-2 border-violet-100 focus:border-violet-500 transition-all text-sm rounded-xl"
-                        value={assigneeSearchQuery}
-                        onChange={(e) => setAssigneeSearchQuery(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="border-2 rounded-xl max-h-[280px] overflow-y-auto bg-white dark:bg-gray-950 shadow-inner custom-scrollbar border-violet-50 relative">
-                      {/* Select All Option */}
-                      <div className="flex items-center space-x-3 pb-3 mb-2 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-gray-950 z-20 px-4 pt-3 shadow-sm">
-                        <div className="flex items-center space-x-3 flex-1">
-                          <Checkbox
-                            id="select-all-employees"
-                            checked={
-                              canAssignToSelection
-                                .filter((emp) => emp.userId !== userId)
-                                .filter(
-                                  (emp) =>
-                                    assignRoleFilter === "all" ||
-                                    emp.role === assignRoleFilter,
-                                )
-                                .filter(
-                                  (emp) =>
-                                    !newTask.department ||
-                                    (emp.department &&
-                                      emp.department
-                                        .split(",")
-                                        .map((d) => d.trim().toLowerCase())
-                                        .includes(
-                                          newTask.department
-                                            .trim()
-                                            .toLowerCase(),
-                                        )),
-                                )
-                                .filter((emp) => {
-                                  const search =
-                                    assigneeSearchQuery.toLowerCase();
-                                  return (
-                                    emp.name.toLowerCase().includes(search) ||
-                                    emp.email.toLowerCase().includes(search) ||
-                                    emp.employeeId
-                                      .toLowerCase()
-                                      .includes(search)
-                                  );
-                                })
-                                .every((emp) =>
-                                  newTask.assignedTo.includes(emp.userId),
-                                ) &&
-                              canAssignToSelection
-                                .filter((emp) => emp.userId !== userId)
-                                .filter(
-                                  (emp) =>
-                                    assignRoleFilter === "all" ||
-                                    emp.role === assignRoleFilter,
-                                )
-                                .filter(
-                                  (emp) =>
-                                    !newTask.department ||
-                                    (emp.department &&
-                                      emp.department
-                                        .split(",")
-                                        .map((d) => d.trim().toLowerCase())
-                                        .includes(
-                                          newTask.department
-                                            .trim()
-                                            .toLowerCase(),
-                                        )),
-                                )
-                                .filter((emp) => {
-                                  const search =
-                                    assigneeSearchQuery.toLowerCase();
-                                  return (
-                                    emp.name.toLowerCase().includes(search) ||
-                                    emp.email.toLowerCase().includes(search) ||
-                                    emp.employeeId
-                                      .toLowerCase()
-                                      .includes(search)
-                                  );
-                                }).length > 0
-                            }
-                            onCheckedChange={(checked) => {
-                              const filteredEmps = canAssignToSelection
-                                .filter((emp) => emp.userId !== userId)
-                                .filter(
-                                  (emp) =>
-                                    assignRoleFilter === "all" ||
-                                    emp.role === assignRoleFilter,
-                                )
-                                .filter(
-                                  (emp) =>
-                                    !newTask.department ||
-                                    (emp.department &&
-                                      emp.department
-                                        .split(",")
-                                        .map((d) => d.trim().toLowerCase())
-                                        .includes(
-                                          newTask.department
-                                            .trim()
-                                            .toLowerCase(),
-                                        )),
-                                )
-                                .filter((emp) => {
-                                  const search =
-                                    assigneeSearchQuery.toLowerCase();
-                                  return (
-                                    emp.name.toLowerCase().includes(search) ||
-                                    emp.email.toLowerCase().includes(search) ||
-                                    emp.employeeId
-                                      .toLowerCase()
-                                      .includes(search)
-                                  );
-                                });
-
-                              if (checked) {
-                                const newIds = Array.from(
-                                  new Set([
-                                    ...newTask.assignedTo,
-                                    ...filteredEmps.map((e) => e.userId),
-                                  ]),
-                                );
-                                setNewTask((prev) => ({
-                                  ...prev,
-                                  assignedTo: newIds,
-                                }));
-                              } else {
-                                const idsToRemove = filteredEmps.map(
-                                  (e) => e.userId,
-                                );
-                                setNewTask((prev) => ({
-                                  ...prev,
-                                  assignedTo: prev.assignedTo.filter(
-                                    (id) => !idsToRemove.includes(id),
-                                  ),
-                                }));
-                              }
-                            }}
-                          />
-                          <Label
-                            htmlFor="select-all-employees"
-                            className="text-sm cursor-pointer font-bold text-violet-600 dark:text-violet-400"
-                          >
-                            Select All Visible
-                          </Label>
-                        </div>
-                        <span className="text-[10px] bg-violet-100 dark:bg-violet-900 text-violet-600 dark:text-violet-300 px-2 py-0.5 rounded-full font-bold">
-                          {newTask.assignedTo.length} Selected
-                        </span>
-                      </div>
-
-                      {/* Current User (Self) */}
-                      {userId &&
-                        user &&
-                        (!assigneeSearchQuery ||
-                          user.name
-                            .toLowerCase()
-                            .includes(assigneeSearchQuery.toLowerCase()) ||
-                          user.email
-                            .toLowerCase()
-                            .includes(assigneeSearchQuery.toLowerCase())) && (
-                          <div className="flex items-center space-x-3 py-2 px-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 rounded-lg transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <Label
+                          htmlFor="assignTo"
+                          className="text-sm font-semibold flex items-center gap-2"
+                        >
+                          <User className="h-4 w-4 text-violet-600" />
+                          Assign To <span className="text-red-500">*</span>
+                        </Label>
+                        {/* Show All Departments toggle - Only for Admin, HR, Manager */}
+                        {canSeeAdminFilters && (
+                          <div className="flex items-center gap-2">
                             <Checkbox
-                              id={`emp-${userId}`}
-                              checked={newTask.assignedTo.includes(userId)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setNewTask((prev) => ({
-                                    ...prev,
-                                    assignedTo: [...prev.assignedTo, userId],
-                                  }));
-                                } else {
-                                  setNewTask((prev) => ({
-                                    ...prev,
-                                    assignedTo: prev.assignedTo.filter(
-                                      (id) => id !== userId,
-                                    ),
-                                  }));
-                                }
-                              }}
+                              id="show-all-depts"
+                              checked={showAllDepartments}
+                              onCheckedChange={(checked) =>
+                                setShowAllDepartments(!!checked)
+                              }
+                              className="data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
                             />
                             <Label
-                              htmlFor={`emp-${userId}`}
-                              className="text-sm cursor-pointer font-semibold flex-1 flex items-center justify-between"
+                              htmlFor="show-all-depts"
+                              className="text-[10px] font-medium text-slate-500 cursor-pointer"
                             >
-                              <span>
-                                {user.name}{" "}
-                                <span className="text-violet-500 font-bold ml-1">
-                                  (Self)
-                                </span>
-                              </span>
-                              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
-                                {formatRoleLabel(normalizedUserRole)}
-                              </span>
+                              Show All Departments
                             </Label>
                           </div>
                         )}
+                      </div>
 
-                      {/* Filtered Employees List */}
-                      {canAssignToSelection
-                        .filter((emp) => emp.userId !== userId)
-                        .filter(
-                          (emp) =>
-                            assignRoleFilter === "all" ||
-                            emp.role === assignRoleFilter,
-                        )
-                        .filter(
-                          (emp) =>
-                            !newTask.department ||
-                            (emp.department &&
-                              emp.department
-                                .split(",")
-                                .map((d) => d.trim().toLowerCase())
-                                .includes(
-                                  newTask.department.trim().toLowerCase(),
-                                )),
-                        )
-                        .filter((emp) => {
-                          const search = assigneeSearchQuery.toLowerCase();
-                          return (
-                            emp.name.toLowerCase().includes(search) ||
-                            emp.email.toLowerCase().includes(search) ||
-                            emp.employeeId.toLowerCase().includes(search)
-                          );
-                        })
-                        .map((emp) => (
-                          <div
-                            key={emp.userId}
-                            className="flex items-center space-x-3 py-2 px-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 rounded-lg transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800"
-                          >
+                      {/* Assign To Filter / Search */}
+                      <div className="relative mb-2">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search employees by name, ID or email..."
+                          className="pl-9 h-10 border-2 border-violet-100 focus:border-violet-500 transition-all text-sm rounded-xl"
+                          value={assigneeSearchQuery}
+                          onChange={(e) => setAssigneeSearchQuery(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="border-2 rounded-xl max-h-[280px] overflow-y-auto bg-white dark:bg-gray-950 shadow-inner custom-scrollbar border-violet-50 relative">
+                        {/* Select All Option */}
+                        <div className="flex items-center space-x-3 pb-3 mb-2 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-gray-950 z-20 px-4 pt-3 shadow-sm">
+                          <div className="flex items-center space-x-3 flex-1">
                             <Checkbox
-                              id={`emp-${emp.userId}`}
-                              checked={newTask.assignedTo.includes(emp.userId)}
+                              id="select-all-employees"
+                              checked={
+                                canAssignToSelection
+                                  .filter((emp) => emp.userId !== userId)
+                                  .filter(
+                                    (emp) =>
+                                      assignRoleFilter === "all" ||
+                                      emp.role === assignRoleFilter,
+                                  )
+                                  .filter(
+                                    (emp) =>
+                                      !newTask.department ||
+                                      (emp.department &&
+                                        emp.department
+                                          .split(",")
+                                          .map((d) => d.trim().toLowerCase())
+                                          .includes(
+                                            newTask.department
+                                              .trim()
+                                              .toLowerCase(),
+                                          )),
+                                  )
+                                  .filter((emp) => {
+                                    const search =
+                                      assigneeSearchQuery.toLowerCase();
+                                    return (
+                                      emp.name.toLowerCase().includes(search) ||
+                                      emp.email.toLowerCase().includes(search) ||
+                                      emp.employeeId
+                                        .toLowerCase()
+                                        .includes(search)
+                                    );
+                                  })
+                                  .every((emp) =>
+                                    newTask.assignedTo.includes(emp.userId),
+                                  ) &&
+                                canAssignToSelection
+                                  .filter((emp) => emp.userId !== userId)
+                                  .filter(
+                                    (emp) =>
+                                      assignRoleFilter === "all" ||
+                                      emp.role === assignRoleFilter,
+                                  )
+                                  .filter(
+                                    (emp) =>
+                                      !newTask.department ||
+                                      (emp.department &&
+                                        emp.department
+                                          .split(",")
+                                          .map((d) => d.trim().toLowerCase())
+                                          .includes(
+                                            newTask.department
+                                              .trim()
+                                              .toLowerCase(),
+                                          )),
+                                  )
+                                  .filter((emp) => {
+                                    const search =
+                                      assigneeSearchQuery.toLowerCase();
+                                    return (
+                                      emp.name.toLowerCase().includes(search) ||
+                                      emp.email.toLowerCase().includes(search) ||
+                                      emp.employeeId
+                                        .toLowerCase()
+                                        .includes(search)
+                                    );
+                                  }).length > 0
+                              }
                               onCheckedChange={(checked) => {
+                                const filteredEmps = canAssignToSelection
+                                  .filter((emp) => emp.userId !== userId)
+                                  .filter(
+                                    (emp) =>
+                                      assignRoleFilter === "all" ||
+                                      emp.role === assignRoleFilter,
+                                  )
+                                  .filter(
+                                    (emp) =>
+                                      !newTask.department ||
+                                      (emp.department &&
+                                        emp.department
+                                          .split(",")
+                                          .map((d) => d.trim().toLowerCase())
+                                          .includes(
+                                            newTask.department
+                                              .trim()
+                                              .toLowerCase(),
+                                          )),
+                                  )
+                                  .filter((emp) => {
+                                    const search =
+                                      assigneeSearchQuery.toLowerCase();
+                                    return (
+                                      emp.name.toLowerCase().includes(search) ||
+                                      emp.email.toLowerCase().includes(search) ||
+                                      emp.employeeId
+                                        .toLowerCase()
+                                        .includes(search)
+                                    );
+                                  });
+
                                 if (checked) {
+                                  const newIds = Array.from(
+                                    new Set([
+                                      ...newTask.assignedTo,
+                                      ...filteredEmps.map((e) => e.userId),
+                                    ]),
+                                  );
                                   setNewTask((prev) => ({
                                     ...prev,
-                                    assignedTo: [
-                                      ...prev.assignedTo,
-                                      emp.userId,
-                                    ],
+                                    assignedTo: newIds,
                                   }));
                                 } else {
+                                  const idsToRemove = filteredEmps.map(
+                                    (e) => e.userId,
+                                  );
                                   setNewTask((prev) => ({
                                     ...prev,
                                     assignedTo: prev.assignedTo.filter(
-                                      (id) => id !== emp.userId,
+                                      (id) => !idsToRemove.includes(id),
                                     ),
                                   }));
                                 }
                               }}
                             />
                             <Label
-                              htmlFor={`emp-${emp.userId}`}
-                              className="text-sm cursor-pointer flex-1"
+                              htmlFor="select-all-employees"
+                              className="text-sm cursor-pointer font-bold text-violet-600 dark:text-violet-400"
                             >
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium text-slate-800 dark:text-slate-200">
-                                  {emp.name}
-                                </span>
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-muted-foreground uppercase tracking-widest font-semibold">
-                                  {formatRoleLabel(emp.role)}
-                                </span>
-                              </div>
-                              <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-0.5">
-                                {emp.department && (
-                                  <span className="flex items-center gap-1">
-                                    <Building2 className="h-2.5 w-2.5 text-violet-400" />
-                                    {emp.department}
-                                  </span>
-                                )}
-                                {emp.employeeId && (
-                                  <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded italic border border-slate-200 dark:border-slate-700">
-                                    ID: {emp.employeeId}
-                                  </span>
-                                )}
-                              </div>
+                              Select All Visible
                             </Label>
                           </div>
-                        ))}
+                          <span className="text-[10px] bg-violet-100 dark:bg-violet-900 text-violet-600 dark:text-violet-300 px-2 py-0.5 rounded-full font-bold">
+                            {newTask.assignedTo.length} Selected
+                          </span>
+                        </div>
+
+                        {/* Current User (Self) */}
+                        {userId &&
+                          user &&
+                          (!assigneeSearchQuery ||
+                            user.name
+                              .toLowerCase()
+                              .includes(assigneeSearchQuery.toLowerCase()) ||
+                            user.email
+                              .toLowerCase()
+                              .includes(assigneeSearchQuery.toLowerCase())) && (
+                            <div className="flex items-center space-x-3 py-2 px-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 rounded-lg transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
+                              <Checkbox
+                                id={`emp-${userId}`}
+                                checked={newTask.assignedTo.includes(userId)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setNewTask((prev) => ({
+                                      ...prev,
+                                      assignedTo: [...prev.assignedTo, userId],
+                                    }));
+                                  } else {
+                                    setNewTask((prev) => ({
+                                      ...prev,
+                                      assignedTo: prev.assignedTo.filter(
+                                        (id) => id !== userId,
+                                      ),
+                                    }));
+                                  }
+                                }}
+                              />
+                              <Label
+                                htmlFor={`emp-${userId}`}
+                                className="text-sm cursor-pointer font-semibold flex-1 flex items-center justify-between"
+                              >
+                                <span>
+                                  {user.name}{" "}
+                                  <span className="text-violet-500 font-bold ml-1">
+                                    (Self)
+                                  </span>
+                                </span>
+                                <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                                  {formatRoleLabel(normalizedUserRole)}
+                                </span>
+                              </Label>
+                            </div>
+                          )}
+
+                        {/* Filtered Employees List */}
+                        {canAssignToSelection
+                          .filter((emp) => emp.userId !== userId)
+                          .filter(
+                            (emp) =>
+                              assignRoleFilter === "all" ||
+                              emp.role === assignRoleFilter,
+                          )
+                          .filter(
+                            (emp) =>
+                              !newTask.department ||
+                              (emp.department &&
+                                emp.department
+                                  .split(",")
+                                  .map((d) => d.trim().toLowerCase())
+                                  .includes(
+                                    newTask.department.trim().toLowerCase(),
+                                  )),
+                          )
+                          .filter((emp) => {
+                            const search = assigneeSearchQuery.toLowerCase();
+                            return (
+                              emp.name.toLowerCase().includes(search) ||
+                              emp.email.toLowerCase().includes(search) ||
+                              emp.employeeId.toLowerCase().includes(search)
+                            );
+                          })
+                          .map((emp) => (
+                            <div
+                              key={emp.userId}
+                              className="flex items-center space-x-3 py-2 px-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 rounded-lg transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800"
+                            >
+                              <Checkbox
+                                id={`emp-${emp.userId}`}
+                                checked={newTask.assignedTo.includes(emp.userId)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setNewTask((prev) => ({
+                                      ...prev,
+                                      assignedTo: [
+                                        ...prev.assignedTo,
+                                        emp.userId,
+                                      ],
+                                    }));
+                                  } else {
+                                    setNewTask((prev) => ({
+                                      ...prev,
+                                      assignedTo: prev.assignedTo.filter(
+                                        (id) => id !== emp.userId,
+                                      ),
+                                    }));
+                                  }
+                                }}
+                              />
+                              <Label
+                                htmlFor={`emp-${emp.userId}`}
+                                className="text-sm cursor-pointer flex-1"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium text-slate-800 dark:text-slate-200">
+                                    {emp.name}
+                                  </span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-muted-foreground uppercase tracking-widest font-semibold">
+                                    {formatRoleLabel(emp.role)}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-0.5">
+                                  {emp.department && (
+                                    <span className="flex items-center gap-1">
+                                      <Building2 className="h-2.5 w-2.5 text-violet-400" />
+                                      {emp.department}
+                                    </span>
+                                  )}
+                                  {emp.employeeId && (
+                                    <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded italic border border-slate-200 dark:border-slate-700">
+                                      ID: {emp.employeeId}
+                                    </span>
+                                  )}
+                                </div>
+                              </Label>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-6 border-t mt-6">
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsCreateDialogOpen(false)}
+                        className="h-11 px-6 border-2 hover:shadow-lg hover:border-slate-400 dark:hover:border-slate-600 transition-all"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleCreateTask}
+                        disabled={isCreateDisabled}
+                        className="h-11 px-6 gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Plus className="h-5 w-5" />
+                        {isSubmitting ? "Creating..." : "Create Task"}
+                      </Button>
                     </div>
                   </div>
-
-                  <div className="flex justify-end gap-3 pt-6 border-t mt-6">
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsCreateDialogOpen(false)}
-                      className="h-11 px-6 border-2 hover:shadow-lg hover:border-slate-400 dark:hover:border-slate-600 transition-all"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleCreateTask}
-                      disabled={isCreateDisabled}
-                      className="h-11 px-6 gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Plus className="h-5 w-5" />
-                      {isSubmitting ? "Creating..." : "Create Task"}
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          )}
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
         </div>
       </div>
-    </div>
 
       <Tabs value={activeViewTab} onValueChange={setActiveViewTab} className="w-full">
         <TabsList
@@ -3598,14 +3615,14 @@ const TaskManagement: React.FC = () => {
           <TabsTrigger
             value="all"
             className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold text-black dark:text-white data-[state=inactive]:font-bold text-[14px] transition-all duration-300 rounded-md"
-            style={{  }}
+            style={{}}
           >
             All Tasks
           </TabsTrigger>
           <TabsTrigger
             value="project"
             className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold text-black dark:text-white data-[state=inactive]:font-bold text-[14px] transition-all duration-300 rounded-md"
-            style={{  }}
+            style={{}}
           >
             Project Tasks
           </TabsTrigger>
@@ -3614,1119 +3631,410 @@ const TaskManagement: React.FC = () => {
         <TabsContent value="all" className="space-y-6 mt-6">
           {/* Stats Cards - Clickable Filters */}
           <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
-        <Card
-          onClick={() => {
-            setFilterStatus("all");
-          }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "all"
-              ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800"
-              : "border-[#858282] bg-white dark:bg-gray-950 hover:border-slate-400"
-            }`}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>
-              Total Tasks
-            </CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-              <ListTodo className="h-4 w-4 text-black dark:text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
-              {taskCountsByStatus.total}
-            </div>
-          </CardContent>
-        </Card>
+            {[
+              {
+                title: "Total Tasks",
+                value: taskCountsByStatus.total,
+                icon: ListTodo,
+                iconColor: "text-slate-600",
+                iconBg: "bg-slate-100",
+                statusKey: "all",
+              },
+              {
+                title: "In Progress",
+                value: taskCountsByStatus.inProgress,
+                icon: Clock,
+                iconColor: "text-blue-600",
+                iconBg: "bg-blue-100",
+                statusKey: "in-progress",
+              },
+              {
+                title: "Completed",
+                value: taskCountsByStatus.completed,
+                icon: CheckCircle2,
+                iconColor: "text-green-600",
+                iconBg: "bg-green-100",
+                statusKey: "completed",
+              },
+              {
+                title: "Overdue",
+                value: taskCountsByStatus.overdue,
+                icon: AlertCircle,
+                iconColor: "text-rose-600",
+                iconBg: "bg-rose-100",
+                statusKey: "overdue",
+              },
+              {
+                title: "Cancelled",
+                value: taskCountsByStatus.cancelled,
+                icon: XCircle,
+                iconColor: "text-slate-600",
+                iconBg: "bg-slate-100",
+                statusKey: "cancelled",
+              },
+            ].map((stat, i) => (
+              <SummaryCard
+                key={i}
+                title={stat.title}
+                value={stat.value}
+                icon={stat.icon}
+                iconColor={stat.iconColor}
+                iconBg={stat.iconBg}
+                onClick={() => {
+                  setFilterStatus(stat.statusKey as any);
+                  if (stat.statusKey === "overdue") setIsOverdueFilterActive(true);
+                  else setIsOverdueFilterActive(false);
+                }}
+              />
+            ))}
+          </div>
 
-        <Card
-          onClick={() => {
-            setFilterStatus("in-progress");
-          }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "in-progress"
-              ? "border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/40"
-              : "border-[#858282] bg-white dark:bg-gray-950 hover:border-blue-400"
-            }`}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>
-              In Progress
-            </CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
-              <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
-              {taskCountsByStatus.inProgress}
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card
-          onClick={() => {
-            setFilterStatus("completed");
-          }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "completed"
-              ? "border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-900/40"
-              : "border-[#858282] bg-white dark:bg-gray-950 hover:border-green-400"
-            }`}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>
-              Completed
-            </CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
-              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
-              {taskCountsByStatus.completed}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card
-          onClick={() => {
-            setFilterStatus("overdue");
-          }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "overdue"
-              ? "border-rose-600 dark:border-rose-400 bg-rose-50 dark:bg-rose-900/40"
-              : "border-[#858282] bg-white dark:bg-gray-950 hover:border-rose-400"
-            }`}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>
-              Overdue
-            </CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center">
-              <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
-              {taskCountsByStatus.overdue}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card
-          onClick={() => {
-            setFilterStatus("cancelled");
-          }}
-          className={`border-2 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${filterStatus === "cancelled"
-              ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800"
-              : "border-[#858282] bg-white dark:bg-gray-950 hover:border-slate-400"
-            }`}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>
-              Cancelled
-            </CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-              <XCircle className="h-4 w-4 text-black dark:text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
-              {taskCountsByStatus.cancelled}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters and Search */}
-      <Card className="border-2 border-[#858282] shadow-lg rounded-xl overflow-hidden">
-        <CardHeader className="border-b-2 border-[#858282] bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="h-10 w-10 rounded-lg bg-slate-950 dark:bg-slate-50 flex items-center justify-center">
-                <Filter className="h-5 w-5 text-white dark:text-black" />
-              </div>
-              <CardTitle className="text-[16px] font-black text-black dark:text-white" style={{  }}>
-                All Tasks Filters
-              </CardTitle>
-            </div>
-
-            <div className="flex flex-wrap items-end gap-4">
-              <div className="flex flex-col gap-2">
-                <Label className="text-[14px] font-black text-black dark:text-white" style={{  }}>
-                  Search
-                </Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black dark:text-white" />
-                  <Input
-                    className="pl-9 w-full sm:w-[200px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 text-[14px] text-black dark:text-white font-medium focus:ring-1 focus:ring-black"
-                    placeholder="Search tasks..."
-                    style={{  }}
-                    value={searchQuery}
-                    onChange={(e) =>
-                      setSearchQuery(
-                        e.target.value.replace(
-                          /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
-                          "",
-                        ),
-                      )
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label className="text-[14px] font-black text-black dark:text-white" style={{  }}>
-                  Status
-                </Label>
-                <Select value={filterStatus} onValueChange={(val) => {
-                  setFilterStatus(val);
-                  setIsOverdueFilterActive(val === "overdue");
-                }}>
-                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10" style={{ color: '#000000', fontSize: '14px' }}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="todo">To Do</SelectItem>
-                    <SelectItem value="in-progress">In Progress</SelectItem>
-                    <SelectItem value="overdue">Overdue</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label className="text-[14px] font-black text-black dark:text-white" style={{  }}>
-                  Filter
-                </Label>
-                <Select
-                  value={taskOwnershipFilter}
-                  onValueChange={(val: any) => {
-                    setTaskOwnershipFilter(val);
-                    if (val === "all") setSelectedDepartmentFilter("all");
-                    setIsOverdueFilterActive(false);
-                  }}
-                >
-                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10" style={{ color: '#000000', fontSize: '14px' }}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(normalizedUserRole === "admin" ||
-                      normalizedUserRole === "hr" ||
-                      normalizedUserRole === "manager" ||
-                      normalizedUserRole === "team_lead") && (
-                        <SelectItem value="all">All Tasks</SelectItem>
-                      )}
-                    {(normalizedUserRole === "admin" ||
-                      normalizedUserRole === "hr" ||
-                      normalizedUserRole === "manager" ||
-                      normalizedUserRole === "team_lead" ||
-                      normalizedUserRole === "employee") && (
-                        <SelectItem value="created">Created Tasks</SelectItem>
-                      )}
-                    {(normalizedUserRole === "hr" ||
-                      normalizedUserRole === "manager" ||
-                      normalizedUserRole === "team_lead" ||
-                      normalizedUserRole === "employee") && (
-                        <SelectItem value="received">Received Tasks</SelectItem>
-                      )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Department Filter - Show when viewing All Tasks for Admin and Manager */}
-              {taskOwnershipFilter === "all" &&
-                (normalizedUserRole === "admin" ||
-                  normalizedUserRole === "hr" ||
-                  normalizedUserRole === "manager" ||
-                  normalizedUserRole === "team_lead") && (
-                  <div className="flex flex-col gap-2">
-                    <Label className="text-[14px] font-black text-black dark:text-white" style={{  }}>
-                      Department
-                    </Label>
-                    <Select
-                      value={selectedDepartmentFilter}
-                      onValueChange={setSelectedDepartmentFilter}
-                    >
-                      <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 text-[14px] text-black dark:text-white font-medium" style={{  }}>
-                        <SelectValue placeholder="Select Department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(normalizedUserRole === "admin" ||
-                          normalizedUserRole === "hr" ||
-                          normalizedUserRole === "manager" ||
-                          normalizedUserRole === "team_lead") && (
-                            <SelectItem value="all">All Departments</SelectItem>
-                          )}
-                        {departments
-                          .filter((dept) => dept && dept.trim() !== "")
-                          .sort((a, b) => a.localeCompare(b))
-                          .map((dept) => (
-                            <SelectItem key={dept} value={dept}>
-                              {dept}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+          {/* Filters and Search */}
+          <Card className="border-2 border-[#000000] shadow-lg rounded-xl overflow-hidden">
+            <CardHeader className="border-b-2 border-[#000000] bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 pb-6">
+              <div className="flex flex-col gap-6">
+                <div className="flex items-center gap-2 border-b border-black/5 dark:border-white/5 pb-4">
+                  <div className="h-10 w-10 rounded-lg bg-slate-950 dark:bg-slate-50 flex items-center justify-center">
+                    <Filter className="h-5 w-5 text-white dark:text-black" />
                   </div>
-                )}
-
-              <div className="flex gap-1">
-                <Button
-                  variant={viewMode === "list" ? "default" : "outline"}
-                  size="icon"
-                  onClick={() => setViewMode("list")}
-                  className={
-                    viewMode === "list"
-                      ? "bg-gradient-to-r from-violet-600 to-purple-600"
-                      : ""
-                  }
-                >
-                  <ListTodo className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "grid" ? "default" : "outline"}
-                  size="icon"
-                  onClick={() => setViewMode("grid")}
-                  className={
-                    viewMode === "grid"
-                      ? "bg-gradient-to-r from-violet-600 to-purple-600"
-                      : ""
-                  }
-                >
-                  <Grid3x3 className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {/* Export Buttons */}
-              {user && (
-                <div className="flex items-center gap-2 border-l border-gray-200 dark:border-gray-800 pl-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsExportDialogOpen(true)}
-                    className="gap-2 h-10 bg-white dark:bg-gray-950 border-black/20 dark:border-white/20 text-black dark:text-white text-[14px] font-black hover:bg-slate-50 dark:hover:bg-slate-900 transition-all duration-200"
-                    style={{  }}
-                  >
-                    <Download className="h-4 w-4" />
-                    Export
-                  </Button>
+                  <CardTitle className="text-[20px] font-black text-black dark:text-white uppercase tracking-wider" style={{}}>
+                    All Tasks Filters
+                  </CardTitle>
                 </div>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6">
-          {viewMode === "list" ? (
-            <div className="space-y-6">
-              <div className="rounded-xl border-2 border-[#858282] shadow-lg overflow-hidden bg-white dark:bg-gray-950">
-                <div className="w-full overflow-x-auto pb-4 [&>div]:border-0 [&>div]:shadow-none [&>div]:rounded-none">
-                  <Table>
-                  <TableHeader className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 border-b-2 border-black/10">
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{  }}>TASK</TableHead>
-                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{  }}>ASSIGNED BY</TableHead>
-                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{  }}>ASSIGNED TO</TableHead>
-                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{  }}>PRIORITY</TableHead>
-                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{  }}>DEADLINE</TableHead>
-                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{  }}>STATUS</TableHead>
-                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{  }}>PASS</TableHead>
-                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{  }}>ACTIONS</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoadingTasks ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={9}
-                          className="text-center py-8 text-muted-foreground"
-                        >
-                          Loading tasks...
-                        </TableCell>
-                      </TableRow>
-                    ) : visibleTasks.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={9}
-                          className="text-center py-8 text-muted-foreground"
-                        >
-                          {taskOwnershipFilter === "all"
-                            ? "No tasks found in the system"
-                            : taskOwnershipFilter === "created"
-                              ? normalizedUserRole === "admin"
-                                ? "No tasks created yet. Create your first task to get started."
-                                : "No tasks created by you yet"
-                              : "No tasks assigned to you yet"}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      visibleTasks.map((task) => {
-                        const assignedByInfo = getAssignedByInfo(
-                          task.assignedBy,
-                          task.assignedByRole,
-                        );
-                        const assignedToInfo = getAssignedToInfo(
-                          task.assignedTo[0] || "",
-                          task.assignedToRole,
-                        );
-                        // In "All Tasks" view, admin can only manage tasks they created
-                        const canManageTask = Boolean(
-                          userId && task.assignedBy === userId,
-                        );
-                        const isReceivedTask = Boolean(
-                          userId && task.assignedTo.includes(userId),
-                        );
-                        // Don't allow passing completed, cancelled, or overdue tasks
-                        const canPassTask =
-                          isReceivedTask &&
-                          task.assignedTo[0] === userId &&
-                          passEligibleEmployees.length > 0 &&
-                          task.status !== "completed" &&
-                          task.status !== "cancelled" &&
-                          task.status !== "overdue";
-                        const lastPassByLabel = task.lastPassedBy
-                          ? getAssigneeLabel(task.lastPassedBy)
-                          : null;
-                        const lastPassToLabel = task.lastPassedTo
-                          ? getAssigneeLabel(task.lastPassedTo)
-                          : null;
-                        const lastPassTimestamp = task.lastPassedAt
-                          ? formatDateTimeIST(
-                            task.lastPassedAt,
-                            "MMM dd, yyyy HH:mm",
-                          )
-                          : null;
-                        return (
-                          <TableRow
-                            key={task.id}
-                            className="hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
-                          >
-                            <TableCell
-                              className="cursor-pointer group hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
-                              onClick={() => setSelectedTask(task)}
-                            >
-                              <div className="max-w-[300px] py-1">
-                                <div className="mb-1">
-                                  <TruncatedText
-                                    text={task.title}
-                                    maxLength={40}
-                                    showToggle={false}
-                                    textClassName="text-[14px] font-bold text-black dark:text-white group-hover:underline transition-colors"
-                                  />
-                                </div>
-                                <TruncatedText
-                                  text={task.description}
-                                  maxLength={80}
-                                  showToggle={false}
-                                  textClassName="text-[12px] text-black dark:text-slate-400 font-medium leading-relaxed"
-                                />
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <UserCheck className="h-4 w-4 text-black dark:text-white" />
-                                <div className="flex flex-col">
-                                  <span className="text-[14px] font-bold text-black dark:text-white" style={{  }}>
-                                    {assignedByInfo.name}
-                                  </span>
-                                  {assignedByInfo.roleLabel ? (
-                                    <span className="text-[12px] text-black dark:text-slate-400 font-medium mt-0.5" style={{  }}>
-                                      {assignedByInfo.roleLabel}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-black dark:text-white" />
-                                <div className="flex flex-col">
-                                  <span className="text-[14px] font-bold text-black dark:text-white" style={{  }}>
-                                    {assignedToInfo.name}
-                                  </span>
-                                  {assignedToInfo.roleLabel ? (
-                                    <span className="text-[12px] text-black dark:text-slate-400 font-medium mt-0.5" style={{  }}>
-                                      {assignedToInfo.roleLabel}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                className={cn(getPriorityColor(task.priority), "text-[12px] font-bold uppercase tracking-wider border-0 shadow-sm")}
-                                style={{  }}
-                              >
-                                {capitalizePriority(task.priority)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2 text-black dark:text-white">
-                                <Calendar className="h-4 w-4" />
-                                <span className="text-[14px] font-bold" style={{  }}>
-                                  {formatDisplayDate(task.deadline)}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {["completed", "cancelled", "overdue"].includes(task.status) ? (
-                                <div className="flex items-center gap-2">
-                                  {getStatusBadge(task.status)}
-                                </div>
-                              ) : (
-                                <Select
-                                  value={task.status}
-                                  onValueChange={(value: BaseTask["status"]) =>
-                                    updateTaskStatus(task.id, value)
-                                  }
-                                  disabled={updatingTaskId === task.id}
-                                >
-                                  <SelectTrigger
-                                    className={`w-[170px] h-10 border-2 bg-white dark:bg-gray-950 px-3 transition-all text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm`}
-                                    style={{  }}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <div className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
-                                      <SelectValue />
-                                    </div>
-                                  </SelectTrigger>
-                                  <SelectContent className="border-2 shadow-xl">
-                                    <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
-                                    <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
-                                    <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
-                                    {canManageTask && <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>}
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {task.lastPassedBy && task.lastPassedTo ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openPassHistoryDialog(task);
-                                  }}
-                                  className="h-8 px-3 gap-2 text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all"
-                                  style={{  }}
-                                >
-                                  <Share2 className="h-3.5 w-3.5" />
-                                  View History
-                                </Button>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">
-                                  —
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <div
-                                className={`flex flex-wrap items-center gap-2 ${task.status === "completed" ? "justify-center" : ""}`}
-                              >
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setSelectedTask(task)}
-                                  className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-                                  title="View task details"
-                                >
-                                  👁
-                                </Button>
-                                {task.status !== "completed" && canPassTask && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => openPassDialog(task)}
-                                    className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-                                    title="Pass task"
-                                  >
-                                    <Share2 className="h-4 w-4" />
-                                  </Button>
-                                )}
-                                {task.status !== "completed" &&
-                                  (task.status as string) !== "cancelled" &&
-                                  canManageTask && (
-                                    <>
-                                      {(task.status as string) !==
-                                        "overdue" && (
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleEditClick(task)}
-                                            className="h-8 w-8 text-blue-600 hover:bg-blue-50"
-                                            title="Edit task"
-                                          >
-                                            <Pencil className="h-4 w-4" />
-                                          </Button>
-                                        )}
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() =>
-                                          handleDeleteTask(task.id)
-                                        }
-                                        disabled={
-                                          deletingTaskId === task.id ||
-                                          !canDeleteTask(task)
-                                        }
-                                        className="h-8 w-8 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
-                                        title={
-                                          !canDeleteTask(task)
-                                            ? "Cannot delete task once work has started"
-                                            : "Delete task"
-                                        }
-                                      >
-                                        {deletingTaskId === task.id ? (
-                                          <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : (
-                                          <Trash2 className="h-4 w-4" />
-                                        )}
-                                      </Button>
-                                    </>
-                                  )}
-                                {canReassignTask(task) && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleReassignClick(task)}
-                                    className="h-8 w-8 text-emerald-600 hover:bg-emerald-50"
-                                    title="Reassign task"
-                                  >
-                                    <RefreshCcw className="h-4 w-4" />
-                                  </Button>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-              {visibleTasks.length > 0 && (
-                <div className="border-t-2 border-[#858282] px-6 py-4 w-full overflow-x-auto bg-slate-50 dark:bg-slate-900">
-                  <Pagination
-                    currentPage={taskCurrentPage}
-                    totalPages={taskTotalPages}
-                    totalItems={visibleTasks.length}
-                    itemsPerPage={taskItemsPerPage}
-                    onPageChange={setTaskCurrentPage}
-                    onItemsPerPageChange={setTaskItemsPerPage}
-                    showItemsPerPage={true}
-                    showEntriesInfo={true}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-          ) : (
-            <div className="space-y-6">
-              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                {paginatedTasks.map((task) => {
-                  const assignedByInfo = getAssignedByInfo(
-                    task.assignedBy,
-                    task.assignedByRole,
-                  );
-                  const assignedToInfo = getAssignedToInfo(
-                    task.assignedTo[0] || "",
-                    task.assignedToRole,
-                  );
-                  // In "All Tasks" view, admin can only manage tasks they created
-                  const canManageTask = Boolean(
-                    userId && task.assignedBy === userId,
-                  );
-                  const isReceivedTask = Boolean(
-                    userId && task.assignedTo.includes(userId),
-                  );
-                  // Don't allow passing completed, cancelled, or overdue tasks
-                  const canPassTask =
-                    isReceivedTask &&
-                    task.assignedTo[0] === userId &&
-                    passEligibleEmployees.length > 0 &&
-                    task.status !== "completed" &&
-                    task.status !== "cancelled" &&
-                    task.status !== "overdue";
-                  const lastPassByLabel = task.lastPassedBy
-                    ? getAssigneeLabel(task.lastPassedBy)
-                    : null;
-                  const lastPassToLabel = task.lastPassedTo
-                    ? getAssigneeLabel(task.lastPassedTo)
-                    : null;
-                  return (
-                    <Card
-                      key={task.id}
-                      className={`border-2 transition-all duration-300 cursor-pointer transform hover:scale-[1.02] shadow-sm hover:shadow-xl group relative overflow-hidden ${isTaskOverdue(task)
-                        ? "border-rose-200 bg-rose-50/10 dark:border-rose-900/50"
-                        : "border-[#858282] bg-white dark:border-gray-800 dark:bg-gray-950/50"
-                        }`}
-                      onClick={() => setSelectedTask(task)}
-                    >
-                      {/* Status Indicator Strip */}
-                      <div
-                        className={`absolute top-0 left-0 w-1 h-full ${task.status === "completed"
-                          ? "bg-green-500"
-                          : task.status === "cancelled"
-                            ? "bg-red-500"
-                            : task.status === "overdue"
-                              ? "bg-orange-500"
-                              : task.status === "in-progress"
-                                ? "bg-blue-500"
-                                : "bg-slate-400"
-                          }`}
-                      />
 
-                      <CardHeader className="p-4 pb-0">
-                        <div className="flex justify-between items-start gap-3">
-                          <div className="space-y-1.5 flex-1 min-w-0">
-                             <div className="flex items-center gap-2">
-                              <Badge
-                                variant="outline"
-                                className={cn(getPriorityColor(task.priority), "text-[12px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider")}
-                              >
-                                {task.priority}
-                              </Badge>
-                              {isTaskOverdue(task) && (
-                                <Badge className="bg-rose-500 text-white text-[12px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider">
-                                  Overdue
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="text-[14px] font-black leading-tight pr-1 text-black dark:text-white" style={{  }}>
-                              <TruncatedText
-                                text={task.title}
-                                maxLength={30}
-                                showToggle={false}
-                                textClassName="text-black dark:text-white"
-                              />
-                            </div>
-                          </div>
-                          {/* Progress Ring or Simple Status Icon */}
-                          <div
-                            className={`h-8 w-8 rounded-full flex items-center justify-center border-2 ${task.status === "completed"
-                              ? "border-green-100 bg-green-50 text-green-600 dark:border-green-900/30 dark:bg-green-900/20"
-                              : task.status === "in-progress"
-                                ? "border-blue-100 bg-blue-50 text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20"
-                                : "border-slate-100 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900"
-                              }`}
-                          >
-                            {typeof task.progress === "number" &&
-                              task.progress > 0 ? (
-                              <span className="text-[10px] font-bold">
-                                {task.progress}%
-                              </span>
-                            ) : (
-                              <div
-                                className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)}`}
-                              />
-                            )}
-                          </div>
-                        </div>
-                      </CardHeader>
-
-                      <CardContent className="p-4 pt-3 space-y-4">
-                        <div className="text-[12px] text-black dark:text-slate-400 font-medium leading-relaxed" style={{  }}>
-                          <TruncatedText
-                            text={
-                              task.description || "No description provided."
-                            }
-                            maxLength={70}
-                            showToggle={false}
-                          />
-                        </div>
-
-                        {/* Compact Metadata Grid */}
-                        <div className="grid grid-cols-1 gap-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-800/50">
-                          {/* Assignee Row */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5 text-black dark:text-white font-medium text-[14px]" style={{  }}>
-                              <User className="h-3.5 w-3.5" />
-                              <span>To:</span>
-                            </div>
-                            <div className="flex flex-col items-end">
-                              <span
-                                className="text-[14px] font-black text-black dark:text-white truncate max-w-[120px]"
-                                style={{  }}
-                                title={assignedToInfo.name}
-                              >
-                                {assignedToInfo.name}
-                              </span>
-                              {assignedToInfo.roleLabel && (
-                                <span className="text-[12px] text-black dark:text-slate-400 font-medium" style={{  }}>
-                                  {assignedToInfo.roleLabel}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Assigner Row */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5 text-black dark:text-white font-medium text-[14px]" style={{  }}>
-                              <UserCheck className="h-3.5 w-3.5" />
-                              <span>By:</span>
-                            </div>
-                            <div className="flex flex-col items-end">
-                              <span className="text-[14px] font-black text-black dark:text-white truncate max-w-[120px]" style={{  }}>
-                                {assignedByInfo.name}
-                              </span>
-                              {assignedByInfo.roleLabel && (
-                                <span className="text-[12px] text-black dark:text-slate-400 font-medium" style={{  }}>
-                                  {assignedByInfo.roleLabel}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Deadline Row */}
-                          <div className="flex items-center justify-between border-t border-black/10 dark:border-white/10 pt-2 mt-0.5">
-                            <div className="flex items-center gap-1.5 text-black dark:text-white font-medium text-[14px]" style={{  }}>
-                              <Calendar className="h-3.5 w-3.5" />
-                              <span>Due:</span>
-                            </div>
-                            <span
-                              className={`text-[14px] font-black ${isTaskOverdue(task) ? "text-rose-600" : "text-black dark:text-white"}`}
-                              style={{  }}
-                            >
-                              {formatDisplayDate(task.deadline)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Footer Actions */}
-                        <div className="flex items-center justify-between pt-1">
-                          {/* Left Side: Pass History Info */}
-                          <div className="flex items-center">
-                            {task.lastPassedBy ? (
-                              <div
-                                className="flex items-center gap-1.5 px-2 py-1 rounded-md text-blue-600 text-[12px] font-black cursor-pointer hover:underline transition-all"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openPassHistoryDialog(task);
-                                }}
-                                style={{  }}
-                              >
-                                <Share2 className="h-3.5 w-3.5" />
-                                View History
-                              </div>
-                            ) : (
-                              <span className="text-[12px] text-black/40 font-medium">—</span>
-                            )}
-                          </div>
-
-                          {/* Right Side: Action Buttons */}
-                          <div className="flex items-center gap-1">
-                            {/* View Details Button */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedTask(task);
-                              }}
-                              className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-                              title="View task details"
-                            >
-                              👁
-                            </Button>
-
-                            {/* Pass Button */}
-                            {task.status !== "completed" && canPassTask && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openPassDialog(task);
-                                }}
-                                className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-                                title="Pass task"
-                              >
-                                ↪️
-                              </Button>
-                            )}
-
-                            {/* Edit Button */}
-                            {task.status !== "completed" &&
-                              (task.status as string) !== "cancelled" &&
-                              canManageTask &&
-                              (task.status as string) !== "overdue" && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditClick(task);
-                                  }}
-                                  className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-                                  title="Edit Task"
-                                >
-                                  ✏️
-                                </Button>
-                              )}
-
-                            {/* Reassign Button */}
-                            {canReassignTask(task) && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleReassignClick(task);
-                                }}
-                                className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-                                title="Reassign Task"
-                              >
-                                🔄
-                              </Button>
-                            )}
-
-                            {/* Delete Button */}
-                            {task.status !== "completed" &&
-                              (task.status as string) !== "cancelled" &&
-                              canManageTask && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteTask(task.id);
-                                  }}
-                                  disabled={
-                                    deletingTaskId === task.id ||
-                                    !canDeleteTask(task)
-                                  }
-                                  className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
-                                  title={
-                                    !canDeleteTask(task)
-                                      ? "Cannot delete started task"
-                                      : "Delete Task"
-                                  }
-                                >
-                                  {deletingTaskId === task.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    "🗑"
-                                  )}
-                                </Button>
-                              )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-              {visibleTasks.length > 0 && (
-                <div className="mt-6 px-2 w-full overflow-x-auto pb-2">
-                  <Pagination
-                    currentPage={taskCurrentPage}
-                    totalPages={taskTotalPages}
-                    totalItems={visibleTasks.length}
-                    itemsPerPage={taskItemsPerPage}
-                    onPageChange={setTaskCurrentPage}
-                    onItemsPerPageChange={setTaskItemsPerPage}
-                    showItemsPerPage={true}
-                    showEntriesInfo={true}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-        </TabsContent>
-        <TabsContent value="project" className="space-y-6 mt-6">
-        <div className="space-y-6">
-          {/* Project View Stats */}
-          <div className="grid gap-3 grid-cols-2 lg:grid-cols-6">
-        <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "all" && !isOverdueFilterActive ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800" : "border-[#858282] bg-white dark:bg-gray-950 hover:border-slate-400"}`}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Total Tasks</CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-              <ListTodo className="h-4 w-4 text-black dark:text-white" />
-            </div>
-          </CardHeader>
-          <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.total}</div></CardContent>
-        </Card>
-        <Card onClick={() => { setFilterStatus("todo"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "todo" ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800" : "border-[#858282] bg-white dark:bg-gray-950 hover:border-slate-400"}`}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>To Do</CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-              <ClipboardList className="h-4 w-4 text-black dark:text-white" />
-            </div>
-          </CardHeader>
-          <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.todo}</div></CardContent>
-        </Card>
-        <Card onClick={() => { setFilterStatus("in-progress"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "in-progress" ? "border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/40" : "border-[#858282] bg-white dark:bg-gray-950 hover:border-blue-400"}`}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>In Progress</CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
-              <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-          </CardHeader>
-          <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.inProgress}</div></CardContent>
-        </Card>
-        <Card onClick={() => { setFilterStatus("completed"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "completed" ? "border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-900/40" : "border-[#858282] bg-white dark:bg-gray-950 hover:border-green-400"}`}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Completed</CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
-              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-            </div>
-          </CardHeader>
-          <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.completed}</div></CardContent>
-        </Card>
-        <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(true); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${isOverdueFilterActive ? "border-rose-600 dark:border-rose-400 bg-rose-50 dark:bg-rose-900/40" : "border-[#858282] bg-white dark:bg-gray-950 hover:border-rose-400"}`}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Overdue</CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center">
-              <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
-            </div>
-          </CardHeader>
-          <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.overdue}</div></CardContent>
-        </Card>
-        <Card onClick={() => { setFilterStatus("cancelled"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "cancelled" ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800" : "border-[#858282] bg-white dark:bg-gray-950 hover:border-slate-400"}`}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Cancelled</CardTitle>
-            <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-              <XCircle className="h-4 w-4 text-black dark:text-white" />
-            </div>
-          </CardHeader>
-          <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.cancelled}</div></CardContent>
-        </Card>
-      </div>
-
-      <Card className="border-2 border-[#858282] shadow-lg rounded-xl overflow-hidden">
-        <CardHeader className="border-b-2 border-[#858282] bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="h-10 w-10 rounded-lg bg-slate-950 dark:bg-slate-50 flex items-center justify-center">
-                <Filter className="h-5 w-5 text-white dark:text-black" />
-              </div>
-              <CardTitle className="font-bold" style={{ color: '#000000', fontSize: '16px', fontWeight: 'bold' }}>Filter Projects</CardTitle>
-            </div>
-            <div className="flex flex-wrap items-end gap-4">
-              <div className="flex flex-col gap-2">
-                <Label className="font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Search</Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black dark:text-white" />
-                  <Input
-                    className="pl-9 w-full sm:w-[200px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 focus:ring-1 focus:ring-black"
-                    placeholder="Search projects or tasks..."
-                    style={{ color: '#000000', fontSize: '14px' }}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label className="font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Status</Label>
-                <Select value={filterStatus} onValueChange={(val) => { setFilterStatus(val); setIsOverdueFilterActive(val === "overdue"); }}>
-                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 text-[14px] text-black dark:text-white font-medium" style={{  }}><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="todo">To Do</SelectItem>
-                    <SelectItem value="in-progress">In Progress</SelectItem>
-                    <SelectItem value="overdue">Overdue</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label className="font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Ownership</Label>
-                <Select
-                  value={taskOwnershipFilter}
-                  onValueChange={(value: "all" | "received" | "created") =>
-                    setTaskOwnershipFilter(value)
-                  }
-                >
-                  <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-gray-950 border-black/10 dark:border-white/10 text-[14px] text-black dark:text-white font-medium" style={{  }}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="received">Assigned to Me</SelectItem>
-                    <SelectItem value="created">Created by Me</SelectItem>
-                    <SelectItem value="all">Entire View</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6">
-          {isProjectsLoading ? (
-            <div className="p-8 space-y-4">
-              {[1, 2, 3].map((i) => (<div key={i} className="h-24 w-full rounded-2xl bg-slate-50 dark:bg-slate-900 animate-pulse" />))}
-            </div>
-          ) : filteredProjects.length === 0 ? (
-            <div className="p-20 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed">
-              <FolderKanban className="h-10 w-10 text-slate-300 mx-auto mb-4" />
-              <h3 className="text-2xl font-bold">No projects found</h3>
-              <p className="text-slate-500 mt-2">Adjust your filters or search query.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredProjects.map((project) => (
-                <div key={project.project_id} className="group transition-all">
-                  <div className={`p-5 cursor-pointer rounded-2xl transition-all border-2 ${project.isExpanded ? "bg-violet-50/50 border-violet-200" : "bg-white border-slate-100 hover:border-violet-200"}`} onClick={() => toggleProject(project.project_id)}>
-                    <div className="flex items-center justify-between gap-6">
-                      <div className="flex items-center gap-5 flex-1 min-w-0">
-                        <div className={`h-14 w-14 rounded-xl flex items-center justify-center transition-all shadow-md ${project.isExpanded ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white" : "bg-slate-100 text-slate-400 group-hover:text-violet-500"}`}>
-                          <FolderKanban className="h-7 w-7" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>{project.name}</h4>
-                          <div className="flex flex-wrap items-center gap-4 mt-2">
-                            <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-3 py-1 rounded-full border-2 border-black/5" style={{ color: '#000000', fontSize: '12px' }}>
-                              <ClipboardList className="h-3.5 w-3.5" />
-                              {project.task_count} Tasks
-                            </div>
-                            <div className={`flex items-center gap-1.5 uppercase tracking-widest px-3 py-1 rounded-full border-2 ${(project.status || '').toLowerCase().includes('progress') ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-black/5'}`} style={{ fontSize: '12px', color: (project.status || '').toLowerCase().includes('progress') ? '#2563EB' : (project.status || '').toLowerCase().includes('completed') ? '#16A34A' : (project.status || '').toLowerCase().includes('cancelled') ? '#DC2626' : (project.status || '').toLowerCase().includes('archived') ? '#EAB308' : '#000000' }}>
-                              {project.status || 'Active'}
-                            </div>
-                          </div>
-                        </div>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex flex-col gap-2">
+                      <Label className="text-[14px] font-black text-black dark:text-white" style={{}}>
+                        Search
+                      </Label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black dark:text-white" />
+                        <Input
+                          className="pl-9 w-full sm:w-[200px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 text-[14px] text-black dark:text-white font-medium focus:ring-1 focus:ring-black rounded-lg shadow-sm"
+                          placeholder="Search tasks..."
+                          style={{}}
+                          value={searchQuery}
+                          onChange={(e) =>
+                            setSearchQuery(
+                              e.target.value.replace(
+                                /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
+                                "",
+                              ),
+                            )
+                          }
+                        />
                       </div>
-                      {project.isExpanded ? <ChevronUp className="h-6 w-6 text-violet-600" /> : <ChevronDown className="h-6 w-6 text-slate-400" />}
                     </div>
+
+                    <div className="flex flex-col gap-2">
+                      <Label className="text-[14px] font-black text-black dark:text-white" style={{}}>
+                        Status
+                      </Label>
+                      <Select value={filterStatus} onValueChange={(val) => {
+                        setFilterStatus(val);
+                        setIsOverdueFilterActive(val === "overdue");
+                      }}>
+                        <SelectTrigger className="w-full sm:w-[150px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 rounded-lg shadow-sm" style={{ color: '#000000', fontSize: '14px' }}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Status</SelectItem>
+                          <SelectItem value="todo">To Do</SelectItem>
+                          <SelectItem value="in-progress">In Progress</SelectItem>
+                          <SelectItem value="overdue">Overdue</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <Label className="text-[14px] font-black text-black dark:text-white" style={{}}>
+                        Task Filter
+                      </Label>
+                      <Select
+                        value={taskOwnershipFilter}
+                        onValueChange={(val: any) => {
+                          setTaskOwnershipFilter(val);
+                          if (val === "all") setSelectedDepartmentFilter("all");
+                          setIsOverdueFilterActive(false);
+                        }}
+                      >
+                        <SelectTrigger className="w-full sm:w-[150px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 rounded-lg shadow-sm" style={{ color: '#000000', fontSize: '14px' }}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(normalizedUserRole === "admin" ||
+                            normalizedUserRole === "hr" ||
+                            normalizedUserRole === "manager" ||
+                            normalizedUserRole === "team_lead") && (
+                              <SelectItem value="all">All Tasks</SelectItem>
+                            )}
+                          {(normalizedUserRole === "admin" ||
+                            normalizedUserRole === "hr" ||
+                            normalizedUserRole === "manager" ||
+                            normalizedUserRole === "team_lead" ||
+                            normalizedUserRole === "employee") && (
+                              <SelectItem value="created">Created Tasks</SelectItem>
+                            )}
+                          {(normalizedUserRole === "hr" ||
+                            normalizedUserRole === "manager" ||
+                            normalizedUserRole === "team_lead" ||
+                            normalizedUserRole === "employee") && (
+                              <SelectItem value="received">Received Tasks</SelectItem>
+                            )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Department Filter - Show when viewing All Tasks for Admin and Manager */}
+                    {taskOwnershipFilter === "all" &&
+                      (normalizedUserRole === "admin" ||
+                        normalizedUserRole === "hr" ||
+                        normalizedUserRole === "manager" ||
+                        normalizedUserRole === "team_lead") && (
+                        <div className="flex flex-col gap-2">
+                          <Label className="text-[14px] font-black text-black dark:text-white" style={{}}>
+                            Department
+                          </Label>
+                          <Select
+                            value={selectedDepartmentFilter}
+                            onValueChange={setSelectedDepartmentFilter}
+                          >
+                            <SelectTrigger className="w-full sm:w-[180px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 text-[14px] text-black dark:text-white font-medium rounded-lg shadow-sm" style={{}}>
+                              <SelectValue placeholder="Select Department" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(normalizedUserRole === "admin" ||
+                                normalizedUserRole === "hr" ||
+                                normalizedUserRole === "manager" ||
+                                normalizedUserRole === "team_lead") && (
+                                  <SelectItem value="all">All Departments</SelectItem>
+                                )}
+                              {departments
+                                .filter((dept) => dept && dept.trim() !== "")
+                                .sort((a, b) => a.localeCompare(b))
+                                .map((dept) => (
+                                  <SelectItem key={dept} value={dept}>
+                                    {dept}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                   </div>
-                  {project.isExpanded && (
-                    <div className="px-3 pb-8 pt-2 animate-in slide-in-from-top-4 duration-500">
-                      <div className="bg-white dark:bg-gray-950 rounded-2xl border-2 border-violet-100 overflow-hidden shadow-xl">
-                        <Table>
-                          <TableHeader className="bg-slate-50 dark:bg-slate-900 border-b-2 border-black/10">
+
+                  <div className="flex items-end gap-3">
+                    <div className="flex flex-col gap-2">
+                      <Label className="text-[14px] font-black text-black dark:text-white" style={{}}>View Mode</Label>
+                      <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border-2 border-black/10 dark:border-white/10 shadow-inner h-11">
+                        <Button
+                          variant={viewMode === "list" ? "default" : "ghost"}
+                          size="sm"
+                          onClick={() => setViewMode("list")}
+                          className={cn(
+                            "rounded-lg h-full px-4 transition-all duration-200",
+                            viewMode === "list"
+                              ? "bg-gradient-to-r from-slate-900 to-black text-white shadow-md font-black"
+                              : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+                          )}
+                        >
+                          <ListTodo className="h-4 w-4 mr-2" />
+                          List
+                        </Button>
+                        <Button
+                          variant={viewMode === "grid" ? "default" : "ghost"}
+                          size="sm"
+                          onClick={() => setViewMode("grid")}
+                          className={cn(
+                            "rounded-lg h-full px-4 transition-all duration-200",
+                            viewMode === "grid"
+                              ? "bg-gradient-to-r from-slate-900 to-black text-white shadow-md font-black"
+                              : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+                          )}
+                        >
+                          <Grid3x3 className="h-4 w-4 mr-2" />
+                          Grid
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Export Buttons */}
+                    {user && (
+                      <div className="flex flex-col gap-2">
+                        <Label className="text-[14px] font-black text-black dark:text-white" style={{}}>Actions</Label>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsExportDialogOpen(true)}
+                          className="gap-2 h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 text-black dark:text-white text-[14px] font-black hover:bg-slate-50 dark:hover:bg-slate-900 transition-all duration-200 rounded-lg shadow-sm px-6"
+                          style={{}}
+                        >
+                          <Download className="h-4 w-4" />
+                          Export
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {viewMode === "list" ? (
+                <div className="space-y-6">
+                  <div className="rounded-xl border-2 border-[#000000] shadow-lg overflow-hidden bg-white dark:bg-gray-950">
+                    <div className="w-full overflow-x-auto pb-4 [&>div]:border-0 [&>div]:shadow-none [&>div]:rounded-none">
+                      <Table>
+                        <TableHeader className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 border-b-2 border-black/10">
+                          <TableRow className="hover:bg-transparent">
+                            <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{}}>TASK</TableHead>
+                            <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{}}>ASSIGNED BY</TableHead>
+                            <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{}}>ASSIGNED TO</TableHead>
+                            <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{}}>PRIORITY</TableHead>
+                            <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{}}>DEADLINE</TableHead>
+                            <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{}}>STATUS</TableHead>
+                            <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{}}>PASS</TableHead>
+                            <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider" style={{}}>ACTIONS</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {isLoadingTasks ? (
                             <TableRow>
-                              <TableHead className="w-[280px] uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Task Intelligence</TableHead>
-                              <TableHead className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Assigned To</TableHead>
-                              <TableHead className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Deadline</TableHead>
-                              <TableHead className="w-[180px] uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Status</TableHead>
-                              <TableHead className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Priority</TableHead>
-                              <TableHead className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Actions</TableHead>
+                              <TableCell
+                                colSpan={9}
+                                className="text-center py-8 text-muted-foreground"
+                              >
+                                Loading tasks...
+                              </TableCell>
                             </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {project.filteredTasks && project.filteredTasks.length > 0 ? (
-                              project.filteredTasks.map((task: any) => (
-                                <TableRow key={task.id} className="hover:bg-violet-50/30 cursor-pointer" onClick={() => setSelectedTask(task)}>
-                                  <TableCell className="py-4">
-                                    <div className="flex flex-col">
-                                      <span className="text-[14px] font-bold text-black dark:text-white" style={{  }}>{task.title}</span>
-                                      {task.description && <span className="text-[12px] text-black dark:text-slate-400 font-medium line-clamp-2 mt-1" style={{  }}>{task.description}</span>}
+                          ) : visibleTasks.length === 0 ? (
+                            <TableRow>
+                              <TableCell
+                                colSpan={9}
+                                className="text-center py-8 text-muted-foreground"
+                              >
+                                {taskOwnershipFilter === "all"
+                                  ? "No tasks found in the system"
+                                  : taskOwnershipFilter === "created"
+                                    ? normalizedUserRole === "admin"
+                                      ? "No tasks created yet. Create your first task to get started."
+                                      : "No tasks created by you yet"
+                                    : "No tasks assigned to you yet"}
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            visibleTasks.map((task) => {
+                              const assignedByInfo = getAssignedByInfo(
+                                task.assignedBy,
+                                task.assignedByRole,
+                              );
+                              const assignedToInfo = getAssignedToInfo(
+                                task.assignedTo[0] || "",
+                                task.assignedToRole,
+                              );
+                              // In "All Tasks" view, admin can only manage tasks they created
+                              const canManageTask = Boolean(
+                                userId && task.assignedBy === userId,
+                              );
+                              const isReceivedTask = Boolean(
+                                userId && task.assignedTo.includes(userId),
+                              );
+                              // Don't allow passing completed, cancelled, or overdue tasks
+                              const canPassTask =
+                                isReceivedTask &&
+                                task.assignedTo[0] === userId &&
+                                passEligibleEmployees.length > 0 &&
+                                task.status !== "completed" &&
+                                task.status !== "cancelled" &&
+                                task.status !== "overdue";
+                              const lastPassByLabel = task.lastPassedBy
+                                ? getAssigneeLabel(task.lastPassedBy)
+                                : null;
+                              const lastPassToLabel = task.lastPassedTo
+                                ? getAssigneeLabel(task.lastPassedTo)
+                                : null;
+                              const lastPassTimestamp = task.lastPassedAt
+                                ? formatDateTimeIST(
+                                  task.lastPassedAt,
+                                  "MMM dd, yyyy HH:mm",
+                                )
+                                : null;
+                              return (
+                                <TableRow
+                                  key={task.id}
+                                  className="hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+                                >
+                                  <TableCell
+                                    className="cursor-pointer group hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+                                    onClick={() => setSelectedTask(task)}
+                                  >
+                                    <div className="max-w-[300px] py-1">
+                                      <div className="mb-1">
+                                        <TruncatedText
+                                          text={task.title}
+                                          maxLength={40}
+                                          showToggle={false}
+                                          textClassName="text-[14px] font-bold text-black dark:text-white group-hover:underline transition-colors"
+                                        />
+                                      </div>
+                                      <TruncatedText
+                                        text={task.description}
+                                        maxLength={80}
+                                        showToggle={false}
+                                        textClassName="text-[12px] text-black dark:text-slate-400 font-medium leading-relaxed"
+                                      />
                                     </div>
                                   </TableCell>
                                   <TableCell>
-                                    <div className="flex items-center gap-3">
-                                      <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[12px] font-black text-black dark:text-white">{(task.assignedToName || 'U')[0].toUpperCase()}</div>
-                                      <span className="text-[14px] font-bold text-black dark:text-white" style={{  }}>{task.assignedToName || 'Unassigned'}</span>
+                                    <div className="flex items-center gap-2">
+                                      <UserCheck className="h-4 w-4 text-black dark:text-white" />
+                                      <div className="flex flex-col">
+                                        <span className="text-[14px] font-bold text-black dark:text-white" style={{}}>
+                                          {assignedByInfo.name}
+                                        </span>
+                                        {assignedByInfo.roleLabel ? (
+                                          <span className="text-[12px] text-black dark:text-slate-400 font-medium mt-0.5" style={{}}>
+                                            {assignedByInfo.roleLabel}
+                                          </span>
+                                        ) : null}
+                                      </div>
                                     </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-2">
+                                      <User className="h-4 w-4 text-black dark:text-white" />
+                                      <div className="flex flex-col">
+                                        <span className="text-[14px] font-bold text-black dark:text-white" style={{}}>
+                                          {assignedToInfo.name}
+                                        </span>
+                                        {assignedToInfo.roleLabel ? (
+                                          <span className="text-[12px] text-black dark:text-slate-400 font-medium mt-0.5" style={{}}>
+                                            {assignedToInfo.roleLabel}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge
+                                      className={cn(getPriorityColor(task.priority), "text-[12px] font-bold uppercase tracking-wider border-0 shadow-sm")}
+                                      style={{}}
+                                    >
+                                      {capitalizePriority(task.priority)}
+                                    </Badge>
                                   </TableCell>
                                   <TableCell>
                                     <div className="flex items-center gap-2 text-black dark:text-white">
-                                      <Calendar className="h-3.5 w-3.5" />
-                                      <span className="text-[14px] font-bold" style={{  }}>{task.deadline ? formatDateIST(task.deadline, "MMM dd, yyyy") : "No deadline"}</span>
+                                      <Calendar className="h-4 w-4" />
+                                      <span className="text-[14px] font-bold" style={{}}>
+                                        {formatDisplayDate(task.deadline)}
+                                      </span>
                                     </div>
                                   </TableCell>
-                                  <TableCell onClick={(e) => e.stopPropagation()}>
+                                  <TableCell>
                                     {["completed", "cancelled", "overdue"].includes(task.status) ? (
                                       <div className="flex items-center gap-2">
                                         {getStatusBadge(task.status)}
@@ -4740,11 +4048,11 @@ const TaskManagement: React.FC = () => {
                                         disabled={updatingTaskId === task.id}
                                       >
                                         <SelectTrigger
-                                          className={`w-[160px] h-9 border-2 bg-white dark:bg-gray-950 px-3 transition-all text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm`}
-                                          style={{  }}
+                                          className={`w-[170px] h-10 border-2 bg-white dark:bg-gray-950 px-3 transition-all text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm`}
+                                          style={{}}
                                         >
                                           <div className="flex items-center gap-2">
-                                            <div className={`h-2 w-2 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
+                                            <div className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
                                             <SelectValue />
                                           </div>
                                         </SelectTrigger>
@@ -4752,63 +4060,764 @@ const TaskManagement: React.FC = () => {
                                           <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
                                           <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
                                           <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
-                                          {userId === task.assignedBy && <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>}
+                                          {canManageTask && <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>}
                                         </SelectContent>
                                       </Select>
                                     )}
                                   </TableCell>
                                   <TableCell>
-                                    <Badge variant="outline" className={cn(getPriorityColor(task.priority), "text-[12px] font-bold uppercase tracking-wider border-0 shadow-sm")} style={{  }}>
-                                      {task.priority || 'Medium'}
-                                    </Badge>
+                                    {task.lastPassedBy && task.lastPassedTo ? (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openPassHistoryDialog(task);
+                                        }}
+                                        className="h-8 px-3 gap-2 text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all"
+                                        style={{}}
+                                      >
+                                        <Share2 className="h-3.5 w-3.5" />
+                                        View History
+                                      </Button>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">
+                                        —
+                                      </span>
+                                    )}
                                   </TableCell>
-                                  <TableCell onClick={(e) => e.stopPropagation()}>
-                                    <div className="flex items-center gap-2">
-                                      {task.status !== "completed" && task.status !== "cancelled" && task.status !== "overdue" && task.assignedTo.includes(userId || "") && (
-                                        <Button variant="ghost" size="icon" onClick={() => openPassDialog(task)} className="h-8 w-8 text-black dark:text-white hover:bg-slate-100" title="Pass task">
+                                  <TableCell>
+                                    <div
+                                      className={`flex flex-wrap items-center gap-2 ${task.status === "completed" ? "justify-center" : ""}`}
+                                    >
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setSelectedTask(task)}
+                                        className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                                        title="View task details"
+                                      >
+                                        👁
+                                      </Button>
+                                      {task.status !== "completed" && canPassTask && (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => openPassDialog(task)}
+                                          className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                                          title="Pass task"
+                                        >
                                           <Share2 className="h-4 w-4" />
                                         </Button>
                                       )}
-                                      {userId === task.assignedBy && task.status !== "completed" && task.status !== "cancelled" && (
-                                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(task)} className="h-8 w-8 text-blue-600 hover:bg-blue-50" title="Edit task">
-                                          <Pencil className="h-4 w-4" />
-                                        </Button>
-                                      )}
+                                      {task.status !== "completed" &&
+                                        (task.status as string) !== "cancelled" &&
+                                        canManageTask && (
+                                          <>
+                                            {(task.status as string) !==
+                                              "overdue" && (
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  onClick={() => handleEditClick(task)}
+                                                  className="h-8 w-8 text-blue-600 hover:bg-blue-50"
+                                                  title="Edit task"
+                                                >
+                                                  <Pencil className="h-4 w-4" />
+                                                </Button>
+                                              )}
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              onClick={() =>
+                                                handleDeleteTask(task.id)
+                                              }
+                                              disabled={
+                                                deletingTaskId === task.id ||
+                                                !canDeleteTask(task)
+                                              }
+                                              className="h-8 w-8 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                                              title={
+                                                !canDeleteTask(task)
+                                                  ? "Cannot delete task once work has started"
+                                                  : "Delete task"
+                                              }
+                                            >
+                                              {deletingTaskId === task.id ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                              ) : (
+                                                <Trash2 className="h-4 w-4" />
+                                              )}
+                                            </Button>
+                                          </>
+                                        )}
                                       {canReassignTask(task) && (
-                                        <Button variant="ghost" size="icon" onClick={() => handleReassignClick(task)} className="h-8 w-8 text-emerald-600 hover:bg-emerald-50" title="Reassign task">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => handleReassignClick(task)}
+                                          className="h-8 w-8 text-emerald-600 hover:bg-emerald-50"
+                                          title="Reassign task"
+                                        >
                                           <RefreshCcw className="h-4 w-4" />
-                                        </Button>
-                                      )}
-                                      {userId === task.assignedBy && canDeleteTask(task) && (
-                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(task.id)} disabled={deletingTaskId === task.id} className="h-8 w-8 text-rose-600 hover:bg-rose-50" title="Delete task">
-                                          {deletingTaskId === task.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                         </Button>
                                       )}
                                     </div>
                                   </TableCell>
                                 </TableRow>
-                              ))
-                            ) : (
-                              <TableRow>
-                                <TableCell colSpan={6} className="h-40 text-center font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>No matching tasks found in this project.</TableCell>
-                              </TableRow>
-                            )}
-                          </TableBody>
-                        </Table>
+                              );
+                            })
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {visibleTasks.length > 0 && (
+                      <div className="border-t-2 border-[#000000] px-6 py-4 w-full overflow-x-auto bg-slate-50 dark:bg-slate-900">
+                        <Pagination
+                          currentPage={taskCurrentPage}
+                          totalPages={taskTotalPages}
+                          totalItems={visibleTasks.length}
+                          itemsPerPage={taskItemsPerPage}
+                          onPageChange={setTaskCurrentPage}
+                          onItemsPerPageChange={setTaskItemsPerPage}
+                          showItemsPerPage={true}
+                          showEntriesInfo={true}
+                        />
                       </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                    {paginatedTasks.map((task) => {
+                      const assignedByInfo = getAssignedByInfo(
+                        task.assignedBy,
+                        task.assignedByRole,
+                      );
+                      const assignedToInfo = getAssignedToInfo(
+                        task.assignedTo[0] || "",
+                        task.assignedToRole,
+                      );
+                      // In "All Tasks" view, admin can only manage tasks they created
+                      const canManageTask = Boolean(
+                        userId && task.assignedBy === userId,
+                      );
+                      const isReceivedTask = Boolean(
+                        userId && task.assignedTo.includes(userId),
+                      );
+                      // Don't allow passing completed, cancelled, or overdue tasks
+                      const canPassTask =
+                        isReceivedTask &&
+                        task.assignedTo[0] === userId &&
+                        passEligibleEmployees.length > 0 &&
+                        task.status !== "completed" &&
+                        task.status !== "cancelled" &&
+                        task.status !== "overdue";
+                      const lastPassByLabel = task.lastPassedBy
+                        ? getAssigneeLabel(task.lastPassedBy)
+                        : null;
+                      const lastPassToLabel = task.lastPassedTo
+                        ? getAssigneeLabel(task.lastPassedTo)
+                        : null;
+                      return (
+                        <Card
+                          key={task.id}
+                          className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer transform hover:scale-[1.01] shadow-sm hover:shadow-xl group relative overflow-hidden ${isTaskOverdue(task)
+                            ? "bg-rose-50/10 dark:bg-rose-900/10"
+                            : "bg-white dark:bg-gray-950/50"
+                            }`}
+                          onClick={() => setSelectedTask(task)}
+                        >
+                          {/* Status Indicator Strip */}
+                          <div
+                            className={`absolute top-0 left-0 w-1 h-full ${task.status === "completed"
+                              ? "bg-green-500"
+                              : task.status === "cancelled"
+                                ? "bg-red-500"
+                                : task.status === "overdue"
+                                  ? "bg-orange-500"
+                                  : task.status === "in-progress"
+                                    ? "bg-blue-500"
+                                    : "bg-slate-400"
+                              }`}
+                          />
+
+                          <CardHeader className="p-4 pb-0">
+                            <div className="flex justify-between items-start gap-3">
+                              <div className="space-y-1.5 flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(getPriorityColor(task.priority), "text-[12px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider")}
+                                  >
+                                    {task.priority}
+                                  </Badge>
+                                  {isTaskOverdue(task) && (
+                                    <Badge className="bg-rose-500 text-white text-[12px] px-1.5 h-5 border-0 font-bold uppercase tracking-wider">
+                                      Overdue
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-[14px] font-black leading-tight pr-1 text-black dark:text-white" style={{}}>
+                                  <TruncatedText
+                                    text={task.title}
+                                    maxLength={30}
+                                    showToggle={false}
+                                    textClassName="text-black dark:text-white"
+                                  />
+                                </div>
+                              </div>
+                              {/* Progress Ring or Simple Status Icon */}
+                              <div
+                                className={`h-8 w-8 rounded-full flex items-center justify-center border-2 ${task.status === "completed"
+                                  ? "border-green-100 bg-green-50 text-green-600 dark:border-green-900/30 dark:bg-green-900/20"
+                                  : task.status === "in-progress"
+                                    ? "border-blue-100 bg-blue-50 text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20"
+                                    : "border-slate-100 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900"
+                                  }`}
+                              >
+                                {typeof task.progress === "number" &&
+                                  task.progress > 0 ? (
+                                  <span className="text-[10px] font-bold">
+                                    {task.progress}%
+                                  </span>
+                                ) : (
+                                  <div
+                                    className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)}`}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          </CardHeader>
+
+                          <CardContent className="p-4 pt-3 space-y-4">
+                            <div className="text-[12px] text-black dark:text-slate-400 font-medium leading-relaxed" style={{}}>
+                              <TruncatedText
+                                text={
+                                  task.description || "No description provided."
+                                }
+                                maxLength={70}
+                                showToggle={false}
+                              />
+                            </div>
+
+                            {/* Compact Metadata Grid */}
+                            <div className="grid grid-cols-1 gap-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-800/50">
+                              {/* Assignee Row */}
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 text-black dark:text-white font-medium text-[14px]" style={{}}>
+                                  <User className="h-3.5 w-3.5" />
+                                  <span>To:</span>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                  <span
+                                    className="text-[14px] font-black text-black dark:text-white truncate max-w-[120px]"
+                                    style={{}}
+                                    title={assignedToInfo.name}
+                                  >
+                                    {assignedToInfo.name}
+                                  </span>
+                                  {assignedToInfo.roleLabel && (
+                                    <span className="text-[12px] text-black dark:text-slate-400 font-medium" style={{}}>
+                                      {assignedToInfo.roleLabel}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Assigner Row */}
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 text-black dark:text-white font-medium text-[14px]" style={{}}>
+                                  <UserCheck className="h-3.5 w-3.5" />
+                                  <span>By:</span>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                  <span className="text-[14px] font-black text-black dark:text-white truncate max-w-[120px]" style={{}}>
+                                    {assignedByInfo.name}
+                                  </span>
+                                  {assignedByInfo.roleLabel && (
+                                    <span className="text-[12px] text-black dark:text-slate-400 font-medium" style={{}}>
+                                      {assignedByInfo.roleLabel}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Deadline Row */}
+                              <div className="flex items-center justify-between border-t border-black/10 dark:border-white/10 pt-2 mt-0.5">
+                                <div className="flex items-center gap-1.5 text-black dark:text-white font-medium text-[14px]" style={{}}>
+                                  <Calendar className="h-3.5 w-3.5" />
+                                  <span>Due:</span>
+                                </div>
+                                <span
+                                  className={`text-[14px] font-black ${isTaskOverdue(task) ? "text-rose-600" : "text-black dark:text-white"}`}
+                                  style={{}}
+                                >
+                                  {formatDisplayDate(task.deadline)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Footer Actions */}
+                            <div className="flex items-center justify-between pt-1">
+                              {/* Left Side: Pass History Info */}
+                              <div className="flex items-center">
+                                {task.lastPassedBy ? (
+                                  <div
+                                    className="flex items-center gap-1.5 px-2 py-1 rounded-md text-blue-600 text-[12px] font-black cursor-pointer hover:underline transition-all"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openPassHistoryDialog(task);
+                                    }}
+                                    style={{}}
+                                  >
+                                    <Share2 className="h-3.5 w-3.5" />
+                                    View History
+                                  </div>
+                                ) : (
+                                  <span className="text-[12px] text-black/40 font-medium">—</span>
+                                )}
+                              </div>
+
+                              {/* Right Side: Action Buttons */}
+                              <div className="flex items-center gap-1">
+                                {/* View Details Button */}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTask(task);
+                                  }}
+                                  className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                                  title="View task details"
+                                >
+                                  👁
+                                </Button>
+
+                                {/* Pass Button */}
+                                {task.status !== "completed" && canPassTask && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openPassDialog(task);
+                                    }}
+                                    className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                                    title="Pass task"
+                                  >
+                                    ↪️
+                                  </Button>
+                                )}
+
+                                {/* Edit Button */}
+                                {task.status !== "completed" &&
+                                  (task.status as string) !== "cancelled" &&
+                                  canManageTask &&
+                                  (task.status as string) !== "overdue" && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditClick(task);
+                                      }}
+                                      className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                                      title="Edit Task"
+                                    >
+                                      ✏️
+                                    </Button>
+                                  )}
+
+                                {/* Reassign Button */}
+                                {canReassignTask(task) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleReassignClick(task);
+                                    }}
+                                    className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                                    title="Reassign Task"
+                                  >
+                                    🔄
+                                  </Button>
+                                )}
+
+                                {/* Delete Button */}
+                                {task.status !== "completed" &&
+                                  (task.status as string) !== "cancelled" &&
+                                  canManageTask && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteTask(task.id);
+                                      }}
+                                      disabled={
+                                        deletingTaskId === task.id ||
+                                        !canDeleteTask(task)
+                                      }
+                                      className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
+                                      title={
+                                        !canDeleteTask(task)
+                                          ? "Cannot delete started task"
+                                          : "Delete Task"
+                                      }
+                                    >
+                                      {deletingTaskId === task.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        "🗑"
+                                      )}
+                                    </Button>
+                                  )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                  {visibleTasks.length > 0 && (
+                    <div className="mt-6 px-2 w-full overflow-x-auto pb-2">
+                      <Pagination
+                        currentPage={taskCurrentPage}
+                        totalPages={taskTotalPages}
+                        totalItems={visibleTasks.length}
+                        itemsPerPage={taskItemsPerPage}
+                        onPageChange={setTaskCurrentPage}
+                        onItemsPerPageChange={setTaskItemsPerPage}
+                        showItemsPerPage={true}
+                        showEntriesInfo={true}
+                      />
                     </div>
                   )}
                 </div>
-              ))}
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="project" className="space-y-6 mt-6">
+          <div className="space-y-6">
+            {/* Project View Stats */}
+            <div className="grid gap-3 grid-cols-2 lg:grid-cols-6">
+              <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "all" && !isOverdueFilterActive ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800" : "border-2 border-[#000000] bg-white dark:bg-gray-950 hover:border-slate-400"}`}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Total Tasks</CardTitle>
+                  <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <ListTodo className="h-4 w-4 text-black dark:text-white" />
+                  </div>
+                </CardHeader>
+                <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.total}</div></CardContent>
+              </Card>
+              <Card onClick={() => { setFilterStatus("todo"); setIsOverdueFilterActive(false); }} className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "todo" ? "bg-slate-100 dark:bg-slate-800" : "bg-white dark:bg-gray-950 hover:bg-slate-50"}`}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>To Do</CardTitle>
+                  <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <ClipboardList className="h-4 w-4 text-black dark:text-white" />
+                  </div>
+                </CardHeader>
+                <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.todo}</div></CardContent>
+              </Card>
+              <Card onClick={() => { setFilterStatus("in-progress"); setIsOverdueFilterActive(false); }} className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "in-progress" ? "bg-blue-50 dark:bg-blue-900/40" : "bg-white dark:bg-gray-950 hover:bg-slate-50"}`}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>In Progress</CardTitle>
+                  <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                    <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                </CardHeader>
+                <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.inProgress}</div></CardContent>
+              </Card>
+              <Card onClick={() => { setFilterStatus("completed"); setIsOverdueFilterActive(false); }} className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "completed" ? "bg-green-50 dark:bg-green-900/40" : "bg-white dark:bg-gray-950 hover:bg-slate-50"}`}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Completed</CardTitle>
+                  <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  </div>
+                </CardHeader>
+                <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.completed}</div></CardContent>
+              </Card>
+              <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(true); }} className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${isOverdueFilterActive ? "bg-rose-50 dark:bg-rose-900/40" : "bg-white dark:bg-gray-950 hover:bg-slate-50"}`}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Overdue</CardTitle>
+                  <div className="h-8 w-8 rounded-lg bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center">
+                    <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                  </div>
+                </CardHeader>
+                <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.overdue}</div></CardContent>
+              </Card>
+              <Card onClick={() => { setFilterStatus("cancelled"); setIsOverdueFilterActive(false); }} className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "cancelled" ? "bg-slate-100 dark:bg-slate-800" : "bg-white dark:bg-gray-950 hover:bg-slate-50"}`}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Cancelled</CardTitle>
+                  <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <XCircle className="h-4 w-4 text-black dark:text-white" />
+                  </div>
+                </CardHeader>
+                <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.cancelled}</div></CardContent>
+              </Card>
             </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  </TabsContent>
-</Tabs>
 
-{/* Pass Task Dialog */ }
+            <Card className="border-2 border-[#000000] shadow-lg rounded-xl overflow-hidden">
+              <CardHeader className="border-b-2 border-[#000000] bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 pb-6">
+                <div className="flex flex-col gap-6">
+                  <div className="flex items-center gap-2 border-b border-black/5 dark:border-white/5 pb-4">
+                    <div className="h-10 w-10 rounded-lg bg-slate-950 dark:bg-slate-50 flex items-center justify-center">
+                      <Filter className="h-5 w-5 text-white dark:text-black" />
+                    </div>
+                    <CardTitle className="text-[20px] font-black text-black dark:text-white uppercase tracking-wider" style={{}}>Filter Projects</CardTitle>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex flex-col gap-2">
+                      <Label className="text-[14px] font-black text-black dark:text-white" style={{}}>Search</Label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black dark:text-white" />
+                        <Input
+                          className="pl-9 w-full sm:w-[200px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 focus:ring-1 focus:ring-black rounded-lg shadow-sm"
+                          placeholder="Search projects or tasks..."
+                          style={{ color: '#000000', fontSize: '14px' }}
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <Label className="text-[14px] font-black text-black dark:text-white" style={{}}>Status</Label>
+                      <Select value={filterStatus} onValueChange={(val) => { setFilterStatus(val); setIsOverdueFilterActive(val === "overdue"); }}>
+                        <SelectTrigger className="w-full sm:w-[150px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 text-[14px] text-black dark:text-white font-medium rounded-lg shadow-sm" style={{}}><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Status</SelectItem>
+                          <SelectItem value="todo">To Do</SelectItem>
+                          <SelectItem value="in-progress">In Progress</SelectItem>
+                          <SelectItem value="overdue">Overdue</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <Label className="text-[14px] font-black text-black dark:text-white" style={{}}>Ownership</Label>
+                      <Select
+                        value={taskOwnershipFilter}
+                        onValueChange={(value: "all" | "received" | "created") =>
+                          setTaskOwnershipFilter(value)
+                        }
+                      >
+                        <SelectTrigger className="w-full sm:w-[150px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 text-[14px] text-black dark:text-white font-medium rounded-lg shadow-sm" style={{}}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="received">Assigned to Me</SelectItem>
+                          <SelectItem value="created">Created by Me</SelectItem>
+                          <SelectItem value="all">Entire View</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {isProjectsLoading ? (
+                  <div className="p-8 space-y-4">
+                    {[1, 2, 3].map((i) => (<div key={i} className="h-24 w-full rounded-2xl bg-slate-50 dark:bg-slate-900 animate-pulse" />))}
+                  </div>
+                ) : filteredProjects.length === 0 ? (
+                  <div className="p-20 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed">
+                    <FolderKanban className="h-10 w-10 text-slate-300 mx-auto mb-4" />
+                    <h3 className="text-2xl font-bold">No projects found</h3>
+                    <p className="text-slate-500 mt-2">Adjust your filters or search query.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-4">
+                      {paginatedProjects.map((project) => (
+                        <div key={project.project_id} className="group transition-all">
+                          <div className={`p-5 cursor-pointer rounded-2xl transition-all border-2 border-[#000000] ${project.isExpanded ? "bg-violet-50/50" : "bg-white hover:bg-slate-50"}`} onClick={() => toggleProject(project.project_id)}>
+                            <div className="flex items-center justify-between gap-6">
+                              <div className="flex items-center gap-5 flex-1 min-w-0">
+                                <div className={`h-14 w-14 rounded-xl flex items-center justify-center transition-all shadow-md ${project.isExpanded ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white" : "bg-slate-100 text-slate-400 group-hover:text-violet-500"}`}>
+                                  <FolderKanban className="h-7 w-7" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <h4 className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider">{project.name}</h4>
+                                  <div className="flex flex-wrap items-center gap-4 mt-2">
+                                    <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-3 py-1 rounded-full border-2 border-black/5" style={{ color: '#000000', fontSize: '12px' }}>
+                                      <ClipboardList className="h-3.5 w-3.5" />
+                                      {project.task_count} Tasks
+                                    </div>
+                                    <div className={`flex items-center gap-1.5 uppercase tracking-widest px-3 py-1 rounded-full border-2 ${(project.status || '').toLowerCase().includes('progress') ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-black/5'}`} style={{ fontSize: '12px', color: (project.status || '').toLowerCase().includes('progress') ? '#2563EB' : (project.status || '').toLowerCase().includes('completed') ? '#16A34A' : (project.status || '').toLowerCase().includes('cancelled') ? '#DC2626' : (project.status || '').toLowerCase().includes('archived') ? '#EAB308' : '#000000' }}>
+                                      {project.status || 'Active'}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              {project.isExpanded ? <ChevronUp className="h-6 w-6 text-violet-600" /> : <ChevronDown className="h-6 w-6 text-slate-400" />}
+                            </div>
+                          </div>
+                          {project.isExpanded && (
+                            <div className="px-3 pb-8 pt-2 animate-in slide-in-from-top-4 duration-500">
+                              <div className="bg-white dark:bg-gray-950 rounded-2xl border-2 border-[#000000] overflow-hidden shadow-xl">
+                                <Table>
+                                  <TableHeader className="bg-slate-50 dark:bg-slate-900 border-b-2 border-black/10">
+                                    <TableRow>
+                                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider">TASK</TableHead>
+                                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider">ASSIGNED BY</TableHead>
+                                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider">ASSIGNED TO</TableHead>
+                                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider">PRIORITY</TableHead>
+                                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider">DEADLINE</TableHead>
+                                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider">STATUS</TableHead>
+                                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider">PASS</TableHead>
+                                      <TableHead className="text-[14px] font-black text-black dark:text-white uppercase tracking-wider">ACTIONS</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {project.filteredTasks && project.filteredTasks.length > 0 ? (
+                                      project.filteredTasks.map((task: any) => {
+                                        const assignedByInfo = getAssignedByInfo(task.assignedBy, task.assignedByRole);
+                                        const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || "", task.assignedToRole);
+                                        const canManageTask = Boolean(userId && task.assignedBy === userId);
+                                        const isReceivedTask = Boolean(userId && task.assignedTo.includes(userId));
+                                        const canPassTask = isReceivedTask && task.assignedTo[0] === userId && passEligibleEmployees.length > 0 &&
+                                          task.status !== "completed" && task.status !== "cancelled" && task.status !== "overdue";
+
+                                        return (
+                                          <TableRow key={task.id} className="hover:bg-violet-50/30 cursor-pointer" onClick={() => setSelectedTask(task)}>
+                                            <TableCell className="py-4">
+                                              <div className="flex flex-col">
+                                                <span className="text-[14px] font-bold text-black dark:text-white">{task.title}</span>
+                                                {task.description && <span className="text-[12px] text-black dark:text-slate-400 font-medium line-clamp-2 mt-1">{task.description}</span>}
+                                              </div>
+                                            </TableCell>
+                                            <TableCell>
+                                              <div className="flex items-center gap-2">
+                                                <UserCheck className="h-4 w-4 text-black/40" />
+                                                <div className="flex flex-col">
+                                                  <span className="text-[14px] font-bold text-black dark:text-white">{assignedByInfo.name}</span>
+                                                  <span className="text-[10px] uppercase font-black text-black/40 tracking-widest">{assignedByInfo.roleLabel}</span>
+                                                </div>
+                                              </div>
+                                            </TableCell>
+                                            <TableCell>
+                                              <div className="flex items-center gap-2">
+                                                <User className="h-4 w-4 text-black/40" />
+                                                <div className="flex flex-col">
+                                                  <span className="text-[14px] font-bold text-black dark:text-white">{assignedToInfo.name}</span>
+                                                  <span className="text-[10px] uppercase font-black text-black/40 tracking-widest">{assignedToInfo.roleLabel}</span>
+                                                </div>
+                                              </div>
+                                            </TableCell>
+                                            <TableCell>
+                                              <Badge variant="outline" className={cn(getPriorityColor(task.priority), "text-[12px] font-black uppercase tracking-widest border-0 shadow-sm")}>
+                                                {task.priority || 'Medium'}
+                                              </Badge>
+                                            </TableCell>
+                                            <TableCell>
+                                              <div className="flex items-center gap-2 text-black dark:text-white">
+                                                <Calendar className="h-3.5 w-3.5 text-black/40" />
+                                                <span className="text-[14px] font-bold">{task.deadline ? formatDateIST(task.deadline, "MMM dd, yyyy") : "No deadline"}</span>
+                                              </div>
+                                            </TableCell>
+                                            <TableCell onClick={(e) => e.stopPropagation()}>
+                                              {["completed", "cancelled", "overdue"].includes(task.status) ? (
+                                                <div className="flex items-center gap-2">
+                                                  {getStatusBadge(task.status)}
+                                                </div>
+                                              ) : (
+                                                <Select
+                                                  value={task.status}
+                                                  onValueChange={(value: BaseTask["status"]) =>
+                                                    updateTaskStatus(task.id, value)
+                                                  }
+                                                  disabled={updatingTaskId === task.id}
+                                                >
+                                                  <SelectTrigger
+                                                    className={`w-[160px] h-9 border-2 bg-white dark:bg-gray-950 px-3 transition-all text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm`}
+                                                  >
+                                                    <div className="flex items-center gap-2">
+                                                      <div className={`h-2 w-2 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
+                                                      <SelectValue />
+                                                    </div>
+                                                  </SelectTrigger>
+                                                  <SelectContent className="border-2 shadow-xl">
+                                                    <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
+                                                    <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+                                                    <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
+                                                    {canManageTask && <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>}
+                                                  </SelectContent>
+                                                </Select>
+                                              )}
+                                            </TableCell>
+                                            <TableCell>
+                                              {task.lastPassedBy ? (
+                                                <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); openPassHistoryDialog(task); }} className="h-8 px-3 gap-2 text-[12px] font-black text-blue-600 border-blue-100 hover:bg-blue-50 transition-all uppercase tracking-widest shadow-sm">
+                                                  <Share2 className="h-3 w-3" />
+                                                  History
+                                                </Button>
+                                              ) : <span className="text-[12px] text-black/20">—</span>}
+                                            </TableCell>
+                                            <TableCell onClick={(e) => e.stopPropagation()}>
+                                              <div className="flex items-center gap-1">
+                                                <Button variant="ghost" size="icon" onClick={() => setSelectedTask(task)} className="h-8 w-8 text-black dark:text-white hover:bg-slate-100" title="View details">👁</Button>
+                                                {canPassTask && <Button variant="ghost" size="icon" onClick={() => openPassDialog(task)} className="h-8 w-8 text-black hover:bg-slate-100" title="Pass task"><Share2 className="h-4 w-4" /></Button>}
+                                                {canManageTask && task.status !== "completed" && task.status !== "cancelled" && (
+                                                  <Button variant="ghost" size="icon" onClick={() => handleEditClick(task)} className="h-8 w-8 text-blue-600 hover:bg-blue-50" title="Edit task"><Pencil className="h-4 w-4" /></Button>
+                                                )}
+                                                {canReassignTask(task) && (
+                                                  <Button variant="ghost" size="icon" onClick={() => handleReassignClick(task)} className="h-8 w-8 text-emerald-600 hover:bg-emerald-50" title="Reassign task"><RefreshCcw className="h-4 w-4" /></Button>
+                                                )}
+                                                {canManageTask && canDeleteTask(task) && (
+                                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(task.id)} disabled={deletingTaskId === task.id} className="h-8 w-8 text-rose-600 hover:bg-rose-50" title="Delete task">
+                                                    {deletingTaskId === task.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                                  </Button>
+                                                )}
+                                              </div>
+                                            </TableCell>
+                                          </TableRow>
+                                        );
+                                      })
+                                    ) : (
+                                      <TableRow>
+                                        <TableCell colSpan={8} className="h-40 text-center text-[14px] font-black text-black/40 uppercase tracking-widest">No matching tasks found in this project.</TableCell>
+                                      </TableRow>
+                                    )}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {filteredProjects.length > 0 && (
+                      <div className="mt-8 border-t-2 border-black/5 pt-6 font-bold">
+                        <Pagination
+                          currentPage={projectCurrentPage}
+                          totalPages={projectTotalPages}
+                          totalItems={filteredProjects.length}
+                          itemsPerPage={projectItemsPerPage}
+                          onPageChange={setProjectCurrentPage}
+                          onItemsPerPageChange={setProjectItemsPerPage}
+                          showItemsPerPage={true}
+                          showEntriesInfo={true}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Pass Task Dialog */}
       <Dialog
         open={isPassDialogOpen}
         onOpenChange={(open) => {
@@ -5153,438 +5162,1352 @@ const TaskManagement: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-{/* Reassign Task Dialog */ }
-<Dialog
-  open={isReassignDialogOpen}
-  onOpenChange={(open) => {
-    if (!open) {
-      resetReassignState();
-    } else {
-      setIsReassignDialogOpen(true);
-    }
-  }}
->
-  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-2 shadow-2xl">
-    <DialogHeader className="pb-4 border-b bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 -m-6 mb-0 p-6 rounded-t-lg">
-      <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
-          <RefreshCcw className="h-6 w-6 text-white" />
-        </div>
-        <div>
-          <DialogTitle className="text-2xl font-bold">
-            Reassign Task
-          </DialogTitle>
-          <DialogDescription className="mt-1">
-            Reassign this completed/cancelled task to someone else
-          </DialogDescription>
-        </div>
-      </div>
-    </DialogHeader>
+      {/* Reassign Task Dialog */}
+      <Dialog
+        open={isReassignDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            resetReassignState();
+          } else {
+            setIsReassignDialogOpen(true);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-2 shadow-2xl">
+          <DialogHeader className="pb-4 border-b bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 -m-6 mb-0 p-6 rounded-t-lg">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+                <RefreshCcw className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-2xl font-bold">
+                  Reassign Task
+                </DialogTitle>
+                <DialogDescription className="mt-1">
+                  Reassign this completed/cancelled task to someone else
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
 
-    <div className="space-y-6 p-6 -m-6 mt-0">
-      <div className="space-y-4">
-        <div>
-          <Label htmlFor="reassign-title" className="text-sm font-medium">
-            Task Title
-          </Label>
-          <Input
-            id="reassign-title"
-            value={reassignForm.title}
-            onChange={(e) =>
-              setReassignForm((prev) => ({
-                ...prev,
-                title: e.target.value.replace(
-                  /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
-                  "",
-                ),
-              }))
-            }
-            placeholder="Enter task title"
-            className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400"
-          />
-        </div>
-
-        <div>
-          <Label
-            htmlFor="reassign-description"
-            className="text-sm font-medium"
-          >
-            Description
-          </Label>
-          <Textarea
-            id="reassign-description"
-            value={reassignForm.description}
-            onChange={(e) =>
-              setReassignForm((prev) => ({
-                ...prev,
-                description: e.target.value.replace(
-                  /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
-                  "",
-                ),
-              }))
-            }
-            placeholder="Describe the task requirements"
-            className="mt-1.5 min-h-[100px] bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400 resize-none"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label
-              htmlFor="reassign-assignee"
-              className="text-sm font-medium"
-            >
-              Assign To
-            </Label>
-            <Select
-              value={reassignForm.assignedTo}
-              onValueChange={(value) =>
-                setReassignForm((prev) => ({
-                  ...prev,
-                  assignedTo: value,
-                }))
-              }
-            >
-              <SelectTrigger className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400">
-                <SelectValue placeholder="Select assignee" />
-              </SelectTrigger>
-              <SelectContent>
-                {assignableEmployees.map((employee) => (
-                  <SelectItem
-                    key={employee.userId}
-                    value={employee.userId}
-                  >
-                    {employee.name} ({employee.role})
-                    {employee.department && ` - ${employee.department}`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label
-              htmlFor="reassign-priority"
-              className="text-sm font-medium"
-            >
-              Priority
-            </Label>
-            <Select
-              value={reassignForm.priority}
-              onValueChange={(value: BaseTask["priority"]) =>
-                setReassignForm((prev) => ({ ...prev, priority: value }))
-              }
-            >
-              <SelectTrigger className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="urgent">Urgent</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div>
-          <Label
-            htmlFor="reassign-deadline"
-            className="text-sm font-medium"
-          >
-            Deadline (Optional)
-          </Label>
-          <Input
-            id="reassign-deadline"
-            type="date"
-            value={reassignForm.deadline}
-            min={new Date().toISOString().split("T")[0]}
-            onChange={(e) =>
-              setReassignForm((prev) => ({
-                ...prev,
-                deadline: e.target.value,
-              }))
-            }
-            className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400"
-          />
-        </div>
-
-        {canSeeAdminFilters && (
-          <div>
-            <Label
-              htmlFor="reassign-projectId"
-              className="text-sm font-medium flex items-center gap-2"
-            >
-              <FileText className="h-4 w-4 text-green-600" />
-              Project (Optional)
-            </Label>
-            <Select
-              value={reassignForm.projectId || "none"}
-              onValueChange={(value) =>
-                setReassignForm((prev) => ({
-                  ...prev,
-                  projectId: value === "none" ? "" : value,
-                }))
-              }
-            >
-              <SelectTrigger className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400">
-                <SelectValue placeholder="Select Project" />
-              </SelectTrigger>
-              <SelectContent className="border-2 shadow-xl" side="bottom">
-                <SelectItem value="none">None</SelectItem>
-                {projects.map((p: any) => (
-                  <SelectItem key={p.project_id || p.id} value={(p.project_id || p.id)?.toString()}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex justify-end gap-3 pt-6 border-t">
-        <Button
-          variant="outline"
-          onClick={resetReassignState}
-          className="h-11 px-6 border-2 hover:shadow-lg hover:border-slate-400 dark:hover:border-slate-600 transition-all"
-        >
-          Cancel
-        </Button>
-        <Button
-          onClick={handleReassignTask}
-          disabled={isReassigning}
-          className="h-11 px-6 gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isReassigning ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Reassigning...
-            </>
-          ) : (
-            <>
-              <RefreshCcw className="h-4 w-4" />
-              Reassign Task
-            </>
-          )}
-        </Button>
-      </div>
-    </div>
-  </DialogContent>
-</Dialog>
-
-{/* Task Detail Dialog */ }
-{
-  selectedTask && (
-    <Dialog
-      open={Boolean(selectedTask)}
-      onOpenChange={() => setSelectedTask(null)}
-    >
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="text-2xl font-bold whitespace-pre-wrap break-words">
-            {selectedTask.title}
-          </DialogTitle>
-          <DialogDescription>
-            Detailed view of task assignments and progress
-          </DialogDescription>
-        </DialogHeader>
-
-        <Tabs
-          defaultValue="details"
-          className="mt-4 flex-1 flex flex-col overflow-hidden"
-        >
-          <TabsList className="grid grid-cols-3 gap-2 bg-muted/50 flex-shrink-0">
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
-            <TabsTrigger value="comments">Comments</TabsTrigger>
-          </TabsList>
-
-          <TabsContent
-            value="details"
-            className="mt-4 overflow-y-auto flex-1"
-          >
+          <div className="space-y-6 p-6 -m-6 mt-0">
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 rounded-lg bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 border">
-                  <h4 className="font-semibold mb-3 flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                      <FileText className="h-4 w-4 text-white" />
-                    </div>
-                    Description
-                  </h4>
-                  <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">
-                    {selectedTask.description}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
-                  <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                    <UserCheck className="h-4 w-4 text-violet-600" />
-                    Assigned By
-                  </h4>
-                  <p className="text-muted-foreground font-medium">
-                    {selectedTaskAssignerInfo?.name || "Unknown"}
-                    {selectedTaskAssignerInfo?.roleLabel && (
-                      <span className="block text-xs text-muted-foreground">
-                        {selectedTaskAssignerInfo.roleLabel}
-                      </span>
-                    )}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
-                  <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                    <User className="h-4 w-4 text-violet-600" />
-                    Assigned To
-                  </h4>
-                  <p className="text-muted-foreground font-medium">
-                    {selectedTaskAssigneeInfo?.name || "Unassigned"}
-                    {selectedTaskAssigneeInfo?.roleLabel && (
-                      <span className="block text-xs text-muted-foreground">
-                        {selectedTaskAssigneeInfo.roleLabel}
-                      </span>
-                    )}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
-                  <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                    <AlertCircle className="h-4 w-4 text-violet-600" />
-                    Priority
-                  </h4>
-                  <Badge
-                    className={getPriorityColor(selectedTask.priority)}
-                  >
-                    {capitalizePriority(selectedTask.priority)}
-                  </Badge>
-                </div>
-
-                <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
-                  <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                    <Calendar className="h-4 w-4 text-violet-600" />
-                    Deadline
-                  </h4>
-                  <p className="text-muted-foreground font-medium">
-                    {formatDisplayDate(selectedTask.deadline)}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
-                  <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-violet-600" />
-                    Assigned Date
-                  </h4>
-                  <p className="text-muted-foreground font-medium">
-                    {selectedTask.createdAt
-                      ? formatDateIST(
-                        parseToIST(selectedTask.createdAt) || new Date(),
-                        "MMM dd, yyyy",
-                      )
-                      : "N/A"}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
-                  <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-violet-600" />
-                    Status
-                  </h4>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`h-3 w-3 rounded-full ${getStatusColor(selectedTask.status)} shadow-md`}
-                    />
-                    <span className="capitalize font-medium">
-                      {selectedTask.status.replace("-", " ")}
-                    </span>
-                  </div>
-                </div>
-
-                {selectedTask.projectId && (
-                  <div className="p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
-                    <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                      <FolderKanban className="h-4 w-4 text-violet-600" />
-                      Project
-                    </h4>
-                    <Badge
-                      variant="secondary"
-                      className="font-medium bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border-violet-100"
-                    >
-                      {projects.find(p => (p.project_id || p.id) === selectedTask.projectId)?.name || "Project Task"}
-                    </Badge>
-                  </div>
-                )}
+              <div>
+                <Label htmlFor="reassign-title" className="text-sm font-medium">
+                  Task Title
+                </Label>
+                <Input
+                  id="reassign-title"
+                  value={reassignForm.title}
+                  onChange={(e) =>
+                    setReassignForm((prev) => ({
+                      ...prev,
+                      title: e.target.value.replace(
+                        /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
+                        "",
+                      ),
+                    }))
+                  }
+                  placeholder="Enter task title"
+                  className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400"
+                />
               </div>
 
-              {selectedTask.tags && selectedTask.tags.length > 0 && (
-                <div className="p-4 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 border">
-                  <h4 className="font-semibold mb-3 flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                      <Paperclip className="h-4 w-4 text-white" />
+              <div>
+                <Label
+                  htmlFor="reassign-description"
+                  className="text-sm font-medium"
+                >
+                  Description
+                </Label>
+                <Textarea
+                  id="reassign-description"
+                  value={reassignForm.description}
+                  onChange={(e) =>
+                    setReassignForm((prev) => ({
+                      ...prev,
+                      description: e.target.value.replace(
+                        /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
+                        "",
+                      ),
+                    }))
+                  }
+                  placeholder="Describe the task requirements"
+                  className="mt-1.5 min-h-[100px] bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400 resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label
+                    htmlFor="reassign-assignee"
+                    className="text-sm font-medium"
+                  >
+                    Assign To
+                  </Label>
+                  <Select
+                    value={reassignForm.assignedTo}
+                    onValueChange={(value) =>
+                      setReassignForm((prev) => ({
+                        ...prev,
+                        assignedTo: value,
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400">
+                      <SelectValue placeholder="Select assignee" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assignableEmployees.map((employee) => (
+                        <SelectItem
+                          key={employee.userId}
+                          value={employee.userId}
+                        >
+                          {employee.name} ({employee.role})
+                          {employee.department && ` - ${employee.department}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label
+                    htmlFor="reassign-priority"
+                    className="text-sm font-medium"
+                  >
+                    Priority
+                  </Label>
+                  <Select
+                    value={reassignForm.priority}
+                    onValueChange={(value: BaseTask["priority"]) =>
+                      setReassignForm((prev) => ({ ...prev, priority: value }))
+                    }
+                  >
+                    <SelectTrigger className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="urgent">Urgent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label
+                  htmlFor="reassign-deadline"
+                  className="text-sm font-medium"
+                >
+                  Deadline (Optional)
+                </Label>
+                <Input
+                  id="reassign-deadline"
+                  type="date"
+                  value={reassignForm.deadline}
+                  min={new Date().toISOString().split("T")[0]}
+                  onChange={(e) =>
+                    setReassignForm((prev) => ({
+                      ...prev,
+                      deadline: e.target.value,
+                    }))
+                  }
+                  className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400"
+                />
+              </div>
+
+              {canSeeAdminFilters && (
+                <div>
+                  <Label
+                    htmlFor="reassign-projectId"
+                    className="text-sm font-medium flex items-center gap-2"
+                  >
+                    <FileText className="h-4 w-4 text-green-600" />
+                    Project (Optional)
+                  </Label>
+                  <Select
+                    value={reassignForm.projectId || "none"}
+                    onValueChange={(value) =>
+                      setReassignForm((prev) => ({
+                        ...prev,
+                        projectId: value === "none" ? "" : value,
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400">
+                      <SelectValue placeholder="Select Project" />
+                    </SelectTrigger>
+                    <SelectContent className="border-2 shadow-xl" side="bottom">
+                      <SelectItem value="none">None</SelectItem>
+                      {projects.map((p: any) => (
+                        <SelectItem key={p.project_id || p.id} value={(p.project_id || p.id)?.toString()}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-6 border-t">
+              <Button
+                variant="outline"
+                onClick={resetReassignState}
+                className="h-11 px-6 border-2 hover:shadow-lg hover:border-slate-400 dark:hover:border-slate-600 transition-all"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleReassignTask}
+                disabled={isReassigning}
+                className="h-11 px-6 gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isReassigning ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Reassigning...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCcw className="h-4 w-4" />
+                    Reassign Task
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Task Detail Dialog */}
+      {
+        selectedTask && (
+          <Dialog
+            open={Boolean(selectedTask)}
+            onOpenChange={() => setSelectedTask(null)}
+          >
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader className="flex-shrink-0">
+                <DialogTitle className="text-2xl font-bold whitespace-pre-wrap break-words">
+                  {selectedTask.title}
+                </DialogTitle>
+                <DialogDescription>
+                  Detailed view of task assignments and progress
+                </DialogDescription>
+              </DialogHeader>
+
+              <Tabs
+                defaultValue="details"
+                className="mt-4 flex-1 flex flex-col overflow-hidden"
+              >
+                <TabsList className="grid grid-cols-3 gap-2 bg-muted/50 flex-shrink-0">
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="activity">Activity</TabsTrigger>
+                  <TabsTrigger value="comments">Comments</TabsTrigger>
+                </TabsList>
+
+                <TabsContent
+                  value="details"
+                  className="mt-4 overflow-y-auto flex-1"
+                >
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 rounded-lg bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 border-2 border-[#000000]">
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                            <FileText className="h-4 w-4 text-white" />
+                          </div>
+                          Description
+                        </h4>
+                        <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">
+                          {selectedTask.description}
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                        <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                          <UserCheck className="h-4 w-4 text-violet-600" />
+                          Assigned By
+                        </h4>
+                        <p className="text-muted-foreground font-medium">
+                          {selectedTaskAssignerInfo?.name || "Unknown"}
+                          {selectedTaskAssignerInfo?.roleLabel && (
+                            <span className="block text-xs text-muted-foreground">
+                              {selectedTaskAssignerInfo.roleLabel}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                        <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                          <User className="h-4 w-4 text-violet-600" />
+                          Assigned To
+                        </h4>
+                        <p className="text-muted-foreground font-medium">
+                          {selectedTaskAssigneeInfo?.name || "Unassigned"}
+                          {selectedTaskAssigneeInfo?.roleLabel && (
+                            <span className="block text-xs text-muted-foreground">
+                              {selectedTaskAssigneeInfo.roleLabel}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                        <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                          <AlertCircle className="h-4 w-4 text-violet-600" />
+                          Priority
+                        </h4>
+                        <Badge
+                          className={getPriorityColor(selectedTask.priority)}
+                        >
+                          {capitalizePriority(selectedTask.priority)}
+                        </Badge>
+                      </div>
+
+                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                        <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                          <Calendar className="h-4 w-4 text-violet-600" />
+                          Deadline
+                        </h4>
+                        <p className="text-muted-foreground font-medium">
+                          {formatDisplayDate(selectedTask.deadline)}
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                        <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                          <Clock className="h-4 w-4 text-violet-600" />
+                          Assigned Date
+                        </h4>
+                        <p className="text-muted-foreground font-medium">
+                          {selectedTask.createdAt
+                            ? formatDateIST(
+                              parseToIST(selectedTask.createdAt) || new Date(),
+                              "MMM dd, yyyy",
+                            )
+                            : "N/A"}
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                        <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                          <Clock className="h-4 w-4 text-violet-600" />
+                          Status
+                        </h4>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`h-3 w-3 rounded-full ${getStatusColor(selectedTask.status)} shadow-md`}
+                          />
+                          <span className="capitalize font-medium">
+                            {selectedTask.status.replace("-", " ")}
+                          </span>
+                        </div>
+                      </div>
+
+                      {selectedTask.projectId && (
+                        <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                          <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                            <FolderKanban className="h-4 w-4 text-violet-600" />
+                            Project
+                          </h4>
+                          <Badge
+                            variant="secondary"
+                            className="font-medium bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border-violet-100"
+                          >
+                            {projects.find(p => (p.project_id || p.id) === selectedTask.projectId)?.name || "Project Task"}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
-                    Tags
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedTask.tags.map((tag) => (
-                      <Badge
-                        key={tag}
-                        className="bg-white dark:bg-gray-900 border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-950 transition-colors"
+
+                    {selectedTask.tags && selectedTask.tags.length > 0 && (
+                      <div className="p-4 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 border-2 border-[#000000]">
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                            <Paperclip className="h-4 w-4 text-white" />
+                          </div>
+                          Tags
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedTask.tags.map((tag) => (
+                            <Badge
+                              key={tag}
+                              className="bg-white dark:bg-gray-900 border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-950 transition-colors"
+                            >
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent
+                  value="activity"
+                  className="mt-6 overflow-y-auto flex-1"
+                >
+                  <div className="space-y-4">
+                    {isFetchingHistory &&
+                      selectedTask &&
+                      isFetchingHistory === selectedTask.id ? (
+                      <div className="flex justify-center py-8 text-muted-foreground">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      </div>
+                    ) : selectedTaskHistory.length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className="h-16 w-16 rounded-full bg-gradient-to-br from-slate-100 to-gray-200 dark:from-slate-800 dark:to-gray-900 flex items-center justify-center mx-auto mb-3">
+                          <Clock className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          No history entries yet
+                        </p>
+                      </div>
+                    ) : (
+                      selectedTaskHistory.map((entry) => {
+                        const actor = employeesById.get(String(entry.user_id));
+                        const actorName =
+                          actor?.name ??
+                          (entry.user_id ? `User #${entry.user_id}` : "Unknown");
+                        const actorRole = actor?.role;
+                        const actorInfo = getAssignedByInfo(
+                          String(entry.user_id),
+                          actorRole,
+                        );
+                        const entryTime = formatDateTimeIST(
+                          entry.created_at,
+                          "MMM dd, yyyy HH:mm",
+                        );
+                        const details = entry.details || {};
+
+                        const renderDetails = () => {
+                          if (!details) return null;
+                          if (entry.action === "passed") {
+                            const fromId = details.from
+                              ? String(details.from)
+                              : "";
+                            const toId = details.to ? String(details.to) : "";
+                            const fromInfo = fromId
+                              ? getAssignedToInfo(fromId)
+                              : { name: "Unknown", roleLabel: undefined };
+                            const toInfo = toId
+                              ? getAssignedToInfo(toId)
+                              : { name: "Unknown", roleLabel: undefined };
+                            const toName =
+                              typeof details.to_name === "string"
+                                ? details.to_name
+                                : null;
+                            const note =
+                              typeof details.note === "string" &&
+                                details.note.trim().length > 0
+                                ? details.note
+                                : null;
+                            return (
+                              <div className="text-sm text-muted-foreground space-y-1">
+                                <div>
+                                  From:{" "}
+                                  <span className="font-medium text-foreground">
+                                    {fromInfo.name}
+                                  </span>
+                                  {fromInfo.roleLabel && (
+                                    <span className="text-xs ml-1">
+                                      ({fromInfo.roleLabel})
+                                    </span>
+                                  )}
+                                </div>
+                                <div>
+                                  To:{" "}
+                                  <span className="font-medium text-foreground">
+                                    {toName || toInfo.name}
+                                  </span>
+                                  {toInfo.roleLabel && (
+                                    <span className="text-xs ml-1">
+                                      ({toInfo.roleLabel})
+                                    </span>
+                                  )}
+                                </div>
+                                {note && (
+                                  <div className="whitespace-pre-wrap break-words">
+                                    "{note}"
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          if (entry.action === "status_changed") {
+                            const from =
+                              typeof details.from === "string"
+                                ? details.from
+                                : "Unknown";
+                            const to =
+                              typeof details.to === "string"
+                                ? details.to
+                                : "Unknown";
+                            return (
+                              <div className="text-sm text-muted-foreground space-y-1">
+                                <div>
+                                  Status changed from{" "}
+                                  <span className="font-medium text-foreground">
+                                    {from}
+                                  </span>{" "}
+                                  to{" "}
+                                  <span className="font-medium text-foreground">
+                                    {to}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          if (entry.action === "updated") {
+                            const changes = details.changes as
+                              | Record<string, { from: unknown; to: unknown }>
+                              | undefined;
+                            if (!changes) return null;
+                            return (
+                              <div className="text-sm text-muted-foreground space-y-1">
+                                {Object.entries(changes).map(
+                                  ([field, change]) => (
+                                    <div key={field}>
+                                      <span className="font-medium text-foreground capitalize">
+                                        {field.replace("_", " ")}:
+                                      </span>{" "}
+                                      {String(change.from)} → {String(change.to)}
+                                    </div>
+                                  ),
+                                )}
+                              </div>
+                            );
+                          }
+
+                          if (entry.action === "created") {
+                            const assignedToId = String(
+                              details.assigned_to ?? "",
+                            );
+                            const assignedToInfo = assignedToId
+                              ? getAssignedToInfo(assignedToId)
+                              : { name: "Unassigned", roleLabel: undefined };
+                            return (
+                              <div className="text-sm text-muted-foreground">
+                                Task assigned to{" "}
+                                <span className="font-medium text-foreground">
+                                  {assignedToInfo.name}
+                                </span>
+                                {assignedToInfo.roleLabel && (
+                                  <span className="text-xs ml-1">
+                                    ({assignedToInfo.roleLabel})
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          return null;
+                        };
+
+                        const actionLabelMap: Record<string, string> = {
+                          created: "Task Created",
+                          passed: "Task Passed",
+                          status_changed: "Status Changed",
+                          updated: "Task Updated",
+                        };
+
+                        const actionLabel =
+                          actionLabelMap[entry.action] ?? entry.action;
+                        const actionIcon = (() => {
+                          switch (entry.action) {
+                            case "created":
+                              return (
+                                <PlayCircle className="h-6 w-6 text-white" />
+                              );
+                            case "passed":
+                              return <Share2 className="h-6 w-6 text-white" />;
+                            case "status_changed":
+                              return (
+                                <RefreshCcw className="h-6 w-6 text-white" />
+                              );
+                            case "updated":
+                              return <Pencil className="h-6 w-6 text-white" />;
+                            default:
+                              return <Clock className="h-6 w-6 text-white" />;
+                          }
+                        })();
+
+                        const gradientClass = (() => {
+                          switch (entry.action) {
+                            case "created":
+                              return "from-blue-500 to-indigo-600";
+                            case "passed":
+                              return "from-violet-500 to-purple-600";
+                            case "status_changed":
+                              return "from-amber-500 to-orange-600";
+                            case "updated":
+                              return "from-emerald-500 to-teal-600";
+                            default:
+                              return "from-slate-500 to-gray-600";
+                          }
+                        })();
+
+                        return (
+                          <div
+                            key={entry.id}
+                            className="flex items-start gap-4 p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-all"
+                          >
+                            <div
+                              className={`h-12 w-12 rounded-xl bg-gradient-to-br ${gradientClass} flex items-center justify-center shadow-lg flex-shrink-0`}
+                            >
+                              {actionIcon}
+                            </div>
+                            <div className="flex-1 space-y-2">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                <p className="font-semibold text-lg">
+                                  {actionLabel}
+                                </p>
+                                <div className="flex flex-col items-end">
+                                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                    <User className="h-3.5 w-3.5" />
+                                    {actorInfo.name}
+                                  </p>
+                                  {actorInfo.roleLabel && (
+                                    <p className="text-xs text-muted-foreground">
+                                      {actorInfo.roleLabel}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                <Clock className="h-3 w-3" />
+                                {entryTime}
+                              </p>
+                              {renderDetails()}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent
+                  value="comments"
+                  className="mt-4 flex flex-col h-[calc(100vh-280px)] min-h-[500px]"
+                >
+                  {/* Comments Header */}
+                  <div className="p-3 rounded-lg border-2 border-[#000000] bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 flex-shrink-0">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-violet-600" />
+                      Task Discussion
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Chat with team members about this task
+                    </p>
+                  </div>
+
+                  {/* Comments List with Scrolling - WhatsApp Style */}
+                  <div
+                    className="flex-1 overflow-y-auto space-y-3 p-4 bg-[#efeae2] dark:bg-slate-900 rounded-lg my-3"
+                    style={{
+                      scrollbarWidth: "thin",
+                      scrollbarColor: "#a78bfa #e2e8f0",
+                      backgroundImage:
+                        "url(\"data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h100v100H0z' fill='%23efeae2' fill-opacity='0.4'/%3E%3Cpath d='M50 0L0 50M100 0L50 50M100 50L50 100M50 50L0 100' stroke='%23d1ccc0' stroke-width='0.5' opacity='0.3'/%3E%3C/svg%3E\")",
+                    }}
+                  >
+                    {isLoadingComments ? (
+                      <div className="text-center py-12">
+                        <Loader2 className="h-10 w-10 animate-spin mx-auto text-violet-600" />
+                        <p className="text-base text-muted-foreground mt-3">
+                          Loading comments...
+                        </p>
+                      </div>
+                    ) : taskComments.length === 0 ? (
+                      <div className="text-center py-16">
+                        <div className="h-20 w-20 rounded-full bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900 dark:to-purple-900 flex items-center justify-center mx-auto mb-4">
+                          <MessageSquare className="h-10 w-10 text-violet-600 dark:text-violet-400" />
+                        </div>
+                        <p className="text-base text-muted-foreground font-medium">
+                          No comments yet
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Start the conversation!
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        {taskComments.map((comment, index) => {
+                          const isOwnComment = comment.user_id === user?.id;
+                          const commentUser = employeesById.get(
+                            String(comment.user_id),
+                          );
+                          const userPhotoUrl = commentUser?.photo_url;
+                          const userInitials =
+                            comment.user_name
+                              ?.split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .toUpperCase()
+                              .slice(0, 2) || "?";
+
+                          // Use WhatsApp-style time formatting
+                          const formattedTime = getCommentTimeDisplay(
+                            comment.created_at,
+                          );
+                          const dateSeparator = getDateSeparator(
+                            comment.created_at,
+                          );
+
+                          // Check if we need to show date separator (different from previous comment's date)
+                          const previousComment =
+                            index > 0 ? taskComments[index - 1] : null;
+                          const previousDateSeparator = previousComment
+                            ? getDateSeparator(previousComment.created_at)
+                            : null;
+                          const showDateSeparator =
+                            dateSeparator &&
+                            dateSeparator !== previousDateSeparator;
+
+                          return (
+                            <div key={comment.id}>
+                              {/* Date Separator */}
+                              {showDateSeparator && (
+                                <div className="flex items-center gap-3 my-4">
+                                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
+                                    {dateSeparator}
+                                  </span>
+                                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                                </div>
+                              )}
+
+                              {/* Comment */}
+                              <div
+                                className={`flex gap-2 ${isOwnComment ? "flex-row-reverse" : "flex-row"} animate-in slide-in-from-bottom-2`}
+                              >
+                                {/* Profile Photo */}
+                                <div className="flex-shrink-0">
+                                  {userPhotoUrl ? (
+                                    <img
+                                      src={userPhotoUrl}
+                                      alt={comment.user_name}
+                                      className="w-8 h-8 rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-sm"
+                                    />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white dark:border-slate-700">
+                                      {userInitials}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Message Bubble */}
+                                <div
+                                  className={`max-w-[70%] ${isOwnComment ? "items-end" : "items-start"} flex flex-col`}
+                                >
+                                  {/* Name & Role (only for others' messages) */}
+                                  {!isOwnComment && (
+                                    <div className="flex items-center gap-2 mb-1 px-2">
+                                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                        {comment.user_name}
+                                      </span>
+                                      <span className="text-xs px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 font-medium">
+                                        {comment.user_role}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {/* Message Content */}
+                                  <div
+                                    className={`rounded-lg px-3 py-2 shadow-sm ${isOwnComment
+                                      ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-tr-none"
+                                      : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-tl-none"
+                                      }`}
+                                  >
+                                    {/* Role badge for own messages (inside bubble) */}
+                                    {isOwnComment && (
+                                      <div className="flex items-center gap-1.5 mb-1">
+                                        <span className="text-xs font-semibold text-white/90">
+                                          You
+                                        </span>
+                                        <span className="text-xs px-1.5 py-0.5 rounded bg-white/20 text-white font-medium">
+                                          {comment.user_role}
+                                        </span>
+                                      </div>
+                                    )}
+
+                                    {/* File Attachment */}
+                                    {comment.file_url && (
+                                      <a
+                                        href={`${API_BASE_URL}${comment.file_url}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        download={comment.file_name}
+                                        className={`flex items-center gap-2 p-2 rounded-lg mb-2 transition-colors ${isOwnComment
+                                          ? "bg-white/10 hover:bg-white/20"
+                                          : "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600"
+                                          }`}
+                                      >
+                                        {comment.file_type?.startsWith(
+                                          "image/",
+                                        ) ? (
+                                          <div className="flex flex-col gap-1">
+                                            <img
+                                              src={`${API_BASE_URL}${comment.file_url}`}
+                                              alt={
+                                                comment.file_name || "Attachment"
+                                              }
+                                              className="max-w-[200px] max-h-[200px] rounded-lg object-cover"
+                                            />
+                                            <span
+                                              className={`text-xs ${isOwnComment ? "text-white/80" : "text-slate-600 dark:text-slate-400"}`}
+                                            >
+                                              {comment.file_name}
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          <>
+                                            {comment.file_type?.includes(
+                                              "pdf",
+                                            ) ? (
+                                              <FileText
+                                                className={`h-5 w-5 ${isOwnComment ? "text-white" : "text-red-500"}`}
+                                              />
+                                            ) : comment.file_type?.includes(
+                                              "spreadsheet",
+                                            ) ||
+                                              comment.file_type?.includes(
+                                                "excel",
+                                              ) ||
+                                              comment.file_name?.endsWith(
+                                                ".csv",
+                                              ) ? (
+                                              <FileSpreadsheet
+                                                className={`h-5 w-5 ${isOwnComment ? "text-white" : "text-green-500"}`}
+                                              />
+                                            ) : comment.file_type?.includes(
+                                              "word",
+                                            ) ||
+                                              comment.file_name?.endsWith(
+                                                ".doc",
+                                              ) ||
+                                              comment.file_name?.endsWith(
+                                                ".docx",
+                                              ) ? (
+                                              <FileText
+                                                className={`h-5 w-5 ${isOwnComment ? "text-white" : "text-blue-500"}`}
+                                              />
+                                            ) : (
+                                              <FileIcon
+                                                className={`h-5 w-5 ${isOwnComment ? "text-white" : "text-slate-500"}`}
+                                              />
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                              <p
+                                                className={`text-sm font-medium truncate ${isOwnComment ? "text-white" : "text-slate-800 dark:text-slate-200"}`}
+                                              >
+                                                {comment.file_name}
+                                              </p>
+                                              {comment.file_size && (
+                                                <p
+                                                  className={`text-xs ${isOwnComment ? "text-white/70" : "text-slate-500 dark:text-slate-400"}`}
+                                                >
+                                                  {(
+                                                    comment.file_size / 1024
+                                                  ).toFixed(1)}{" "}
+                                                  KB
+                                                </p>
+                                              )}
+                                            </div>
+                                            <Download
+                                              className={`h-4 w-4 ${isOwnComment ? "text-white/70" : "text-slate-400"}`}
+                                            />
+                                          </>
+                                        )}
+                                      </a>
+                                    )}
+
+                                    {/* Text Comment */}
+                                    {comment.comment && (
+                                      <p
+                                        className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${isOwnComment ? "text-white" : "text-slate-800 dark:text-slate-200"}`}
+                                      >
+                                        {comment.comment}
+                                      </p>
+                                    )}
+                                    <div className="flex items-center justify-end gap-2 mt-1">
+                                      <span
+                                        className={`text-xs ${isOwnComment ? "text-white/80" : "text-slate-500 dark:text-slate-400"}`}
+                                      >
+                                        {formattedTime}
+                                      </span>
+                                      {isOwnComment && (
+                                        <button
+                                          onClick={() =>
+                                            handleDeleteComment(comment.id)
+                                          }
+                                          className="opacity-0 group-hover:opacity-100 hover:bg-white/20 rounded p-0.5 transition-all"
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <div ref={commentsEndRef} />
+                      </>
+                    )}
+                  </div>
+
+                  {/* WhatsApp-style Comment Input */}
+                  <div className="p-2 bg-slate-50 dark:bg-slate-900 flex-shrink-0">
+                    {/* Attached Files Preview */}
+                    {attachedFiles.length > 0 && (
+                      <div className="mb-2 flex flex-wrap gap-2 px-2">
+                        {attachedFiles.map((file, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-2 py-1 rounded-lg border text-xs shadow-sm"
+                          >
+                            <Paperclip className="h-3 w-3 text-violet-600" />
+                            <span className="font-medium truncate max-w-[100px]">
+                              {file.name}
+                            </span>
+                            <button
+                              onClick={() => removeAttachedFile(index)}
+                              className="hover:bg-red-100 dark:hover:bg-red-900 rounded-full p-0.5"
+                            >
+                              <XCircle className="h-3 w-3 text-red-500" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* WhatsApp-style Input Row */}
+                    <div className="flex items-center gap-2">
+                      {/* File Upload Button */}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors"
+                        title="Attach file"
                       >
-                        {tag}
-                      </Badge>
-                    ))}
+                        <Paperclip className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx,.xls,.ppt,.pptx,.zip,.rar"
+                      />
+
+                      {/* Input Field */}
+                      <div className="flex-1 bg-white dark:bg-slate-800 rounded-full px-4 py-2 border border-slate-300 dark:border-slate-700 focus-within:border-violet-500 transition-colors">
+                        <input
+                          type="text"
+                          placeholder="Type a message"
+                          value={newComment}
+                          onChange={(e) =>
+                            setNewComment(
+                              e.target.value.replace(
+                                /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
+                                "",
+                              ),
+                            )
+                          }
+                          onKeyPress={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              handlePostComment();
+                            }
+                          }}
+                          className="w-full bg-transparent outline-none text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                        />
+                      </div>
+
+                      {/* Send Button */}
+                      <button
+                        onClick={handlePostComment}
+                        disabled={
+                          (!newComment.trim() && attachedFiles.length === 0) ||
+                          isPostingComment
+                        }
+                        className="p-2.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                        title="Send message"
+                      >
+                        {isPostingComment ? (
+                          <Loader2 className="h-5 w-5 text-white animate-spin" />
+                        ) : (
+                          <Send className="h-5 w-5 text-white" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </DialogContent>
+          </Dialog>
+        )
+      }
+
+      {/* Export Dialog */}
+      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto border-2 shadow-2xl p-0">
+          <DialogHeader className="pb-3 border-b bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950 dark:to-teal-950 p-4 rounded-t-lg">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+                <Download className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-bold">
+                  Export Task Report
+                </DialogTitle>
+                <DialogDescription className="mt-0.5 text-xs">
+                  Generate and download task reports
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-3 p-4">
+            {/* Period Type */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold flex items-center gap-2">
+                <Calendar className="h-3.5 w-3.5 text-emerald-600" />
+                Period Type
+              </Label>
+              <Select
+                value={exportPeriodType}
+                onValueChange={(value: any) => setExportPeriodType(value)}
+              >
+                <SelectTrigger className="h-8 border-2 bg-white dark:bg-gray-950 text-[11px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-2 shadow-xl">
+                  <SelectItem value="all">All Time</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                  <SelectItem value="custom">Custom Range</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Monthly sub-options */}
+              {exportPeriodType === "monthly" && (
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div>
+                    <Label className="text-[10px] font-medium">Month</Label>
+                    <Select value={exportMonth} onValueChange={setExportMonth}>
+                      <SelectTrigger className="h-8 border-2 mt-1 text-[11px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[
+                          "January",
+                          "February",
+                          "March",
+                          "April",
+                          "May",
+                          "June",
+                          "July",
+                          "August",
+                          "September",
+                          "October",
+                          "November",
+                          "December",
+                        ].map((m, i) => (
+                          <SelectItem key={i + 1} value={String(i + 1)}>
+                            {m}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-[10px] font-medium">Year</Label>
+                    <Select value={exportYear} onValueChange={setExportYear}>
+                      <SelectTrigger className="h-8 border-2 mt-1 text-[11px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[2023, 2024, 2025, 2026].map((y) => (
+                          <SelectItem key={y} value={String(y)}>
+                            {y}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+
+              {/* Quarterly sub-options */}
+              {exportPeriodType === "quarterly" && (
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div>
+                    <Label className="text-[10px] font-medium">Quarter</Label>
+                    <Select
+                      value={exportQuarter}
+                      onValueChange={setExportQuarter}
+                    >
+                      <SelectTrigger className="h-9 border-2 mt-1 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Q1 (Jan–Mar)</SelectItem>
+                        <SelectItem value="2">Q2 (Apr–Jun)</SelectItem>
+                        <SelectItem value="3">Q3 (Jul–Sep)</SelectItem>
+                        <SelectItem value="4">Q4 (Oct–Dec)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-[10px] font-medium">Year</Label>
+                    <Select value={exportYear} onValueChange={setExportYear}>
+                      <SelectTrigger className="h-9 border-2 mt-1 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[2023, 2024, 2025, 2026].map((y) => (
+                          <SelectItem key={y} value={String(y)}>
+                            {y}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+
+              {/* Custom date range */}
+              {exportPeriodType === "custom" && (
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div>
+                    <Label
+                      htmlFor="export-start-date"
+                      className="text-[10px] font-medium"
+                    >
+                      Start Date
+                    </Label>
+                    <Input
+                      id="export-start-date"
+                      type="date"
+                      value={exportStartDate}
+                      onChange={(e) => setExportStartDate(e.target.value)}
+                      className="h-9 border-2 mt-1 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <Label
+                      htmlFor="export-end-date"
+                      className="text-[10px] font-medium"
+                    >
+                      End Date
+                    </Label>
+                    <Input
+                      id="export-end-date"
+                      type="date"
+                      value={exportEndDate}
+                      onChange={(e) => setExportEndDate(e.target.value)}
+                      className="h-9 border-2 mt-1 text-xs"
+                    />
                   </div>
                 </div>
               )}
             </div>
-          </TabsContent>
 
-          <TabsContent
-            value="activity"
-            className="mt-6 overflow-y-auto flex-1"
-          >
-            <div className="space-y-4">
-              {isFetchingHistory &&
-                selectedTask &&
-                isFetchingHistory === selectedTask.id ? (
-                <div className="flex justify-center py-8 text-muted-foreground">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                </div>
-              ) : selectedTaskHistory.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="h-16 w-16 rounded-full bg-gradient-to-br from-slate-100 to-gray-200 dark:from-slate-800 dark:to-gray-900 flex items-center justify-center mx-auto mb-3">
-                    <Clock className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    No history entries yet
-                  </p>
-                </div>
-              ) : (
-                selectedTaskHistory.map((entry) => {
-                  const actor = employeesById.get(String(entry.user_id));
-                  const actorName =
-                    actor?.name ??
-                    (entry.user_id ? `User #${entry.user_id}` : "Unknown");
-                  const actorRole = actor?.role;
-                  const actorInfo = getAssignedByInfo(
-                    String(entry.user_id),
-                    actorRole,
-                  );
-                  const entryTime = formatDateTimeIST(
-                    entry.created_at,
-                    "MMM dd, yyyy HH:mm",
-                  );
-                  const details = entry.details || {};
+            {/* Status Filter */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold flex items-center gap-2">
+                <Filter className="h-3.5 w-3.5 text-emerald-600" />
+                Status Filter
+              </Label>
+              <Select
+                value={exportStatusFilter}
+                onValueChange={setExportStatusFilter}
+              >
+                <SelectTrigger className="h-9 border-2 bg-white dark:bg-gray-950 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-2 shadow-xl">
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="In Progress">In Progress</SelectItem>
+                  <SelectItem value="Overdue">Overdue</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="Cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-                  const renderDetails = () => {
-                    if (!details) return null;
-                    if (entry.action === "passed") {
-                      const fromId = details.from
-                        ? String(details.from)
-                        : "";
-                      const toId = details.to ? String(details.to) : "";
+            {/* Department Filter - Only for Admin, HR, Manager */}
+            {(normalizedUserRole === "admin" ||
+              normalizedUserRole === "hr" ||
+              normalizedUserRole === "manager") && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold flex items-center gap-2">
+                    <Building2 className="h-3.5 w-3.5 text-emerald-600" />
+                    Department Filter
+                  </Label>
+                  <Select
+                    value={exportDepartmentFilter}
+                    onValueChange={setExportDepartmentFilter}
+                  >
+                    <SelectTrigger className="h-9 border-2 bg-white dark:bg-gray-950 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="border-2 shadow-xl">
+                      <SelectItem value="all">All Departments</SelectItem>
+                      {departments
+                        .slice()
+                        .filter((dept) => dept && dept.trim() !== "")
+                        .sort((a, b) => a.localeCompare(b))
+                        .map((dept) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+            {/* Export Summary */}
+            <div className="p-3 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950 dark:to-teal-950 border-2 border-[#000000]">
+              <h4 className="text-xs font-bold mb-2">Summary</h4>
+              <div className="text-[10px] text-muted-foreground space-y-1">
+                <p>
+                  • Format: <span className="font-bold text-foreground">PDF</span>
+                </p>
+                <p>
+                  • Period:{" "}
+                  <span className="font-bold text-foreground">
+                    {exportPeriodType === "all"
+                      ? "All Time"
+                      : exportPeriodType === "monthly"
+                        ? `Month ${exportMonth}, ${exportYear}`
+                        : exportPeriodType === "quarterly"
+                          ? `Q${exportQuarter} ${exportYear}`
+                          : `${exportStartDate || "—"} → ${exportEndDate || "—"}`}
+                  </span>
+                </p>
+                <p>
+                  • Status:{" "}
+                  <span className="font-bold text-foreground">
+                    {exportStatusFilter === "all"
+                      ? "All Statuses"
+                      : exportStatusFilter}
+                  </span>
+                </p>
+                <p>
+                  • Department:{" "}
+                  <span className="font-bold text-foreground">
+                    {exportDepartmentFilter === "all"
+                      ? "All Departments"
+                      : exportDepartmentFilter}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-3 border-t">
+              <Button
+                variant="outline"
+                onClick={() => setIsExportDialogOpen(false)}
+                className="h-9 px-4 border-2 text-[11px] font-bold hover:shadow-lg transition-all"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleExport}
+                disabled={isExporting}
+                className="h-9 px-4 gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg text-[11px] font-bold transition-all disabled:opacity-50"
+              >
+                {isExporting ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Exporting
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-3 w-3" />
+                    Export PDF
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pass History Dialog */}
+      <Dialog
+        open={isPassHistoryDialogOpen}
+        onOpenChange={(open) => {
+          // Only allow closing via the Close button, not the X button
+          if (!open) {
+            setIsPassHistoryDialogOpen(false);
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl h-[85vh] flex flex-col border-2 shadow-2xl [&>button]:hidden p-0 overflow-hidden">
+          <DialogHeader className="pb-4 border-b bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 p-6 rounded-t-lg">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
+                <Share2 className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-2xl font-bold">
+                  Pass History
+                </DialogTitle>
+                <DialogDescription className="mt-1">
+                  Complete history of task reassignments
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
+            {passHistoryTask &&
+              (() => {
+                const passEntries = getPassHistoryEntries(passHistoryTask.id);
+
+                if (passEntries.length === 0) {
+                  return (
+                    <div className="text-center py-12">
+                      <div className="h-20 w-20 rounded-full bg-gradient-to-br from-slate-100 to-gray-200 dark:from-slate-800 dark:to-gray-900 flex items-center justify-center mx-auto mb-4">
+                        <Share2 className="h-10 w-10 text-muted-foreground" />
+                      </div>
+                      <p className="text-muted-foreground text-lg">
+                        No pass history available
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        This task has not been passed yet
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-4">
+                    {passEntries.map((entry, index) => {
+                      const details = entry.details as
+                        | Record<string, unknown>
+                        | undefined;
+                      const fromId = details?.from ? String(details.from) : "";
+                      const toId = details?.to ? String(details.to) : "";
                       const fromInfo = fromId
                         ? getAssignedToInfo(fromId)
                         : { name: "Unknown", roleLabel: undefined };
@@ -5592,1034 +6515,119 @@ const TaskManagement: React.FC = () => {
                         ? getAssignedToInfo(toId)
                         : { name: "Unknown", roleLabel: undefined };
                       const toName =
-                        typeof details.to_name === "string"
+                        typeof details?.to_name === "string"
                           ? details.to_name
-                          : null;
+                          : toInfo.name;
                       const note =
-                        typeof details.note === "string" &&
+                        typeof details?.note === "string" &&
                           details.note.trim().length > 0
                           ? details.note
                           : null;
+                      const actor = employeesById.get(String(entry.user_id));
+                      const actorRole = actor?.role;
+                      const actorInfo = getAssignedByInfo(
+                        String(entry.user_id),
+                        actorRole,
+                      );
+                      const timestamp = formatDateTimeIST(
+                        entry.created_at,
+                        "MMM dd, yyyy HH:mm",
+                      );
+
                       return (
-                        <div className="text-sm text-muted-foreground space-y-1">
-                          <div>
-                            From:{" "}
-                            <span className="font-medium text-foreground">
-                              {fromInfo.name}
-                            </span>
-                            {fromInfo.roleLabel && (
-                              <span className="text-xs ml-1">
-                                ({fromInfo.roleLabel})
-                              </span>
-                            )}
-                          </div>
-                          <div>
-                            To:{" "}
-                            <span className="font-medium text-foreground">
-                              {toName || toInfo.name}
-                            </span>
-                            {toInfo.roleLabel && (
-                              <span className="text-xs ml-1">
-                                ({toInfo.roleLabel})
-                              </span>
-                            )}
-                          </div>
-                          {note && (
-                            <div className="whitespace-pre-wrap break-words">
-                              "{note}"
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-
-                    if (entry.action === "status_changed") {
-                      const from =
-                        typeof details.from === "string"
-                          ? details.from
-                          : "Unknown";
-                      const to =
-                        typeof details.to === "string"
-                          ? details.to
-                          : "Unknown";
-                      return (
-                        <div className="text-sm text-muted-foreground space-y-1">
-                          <div>
-                            Status changed from{" "}
-                            <span className="font-medium text-foreground">
-                              {from}
-                            </span>{" "}
-                            to{" "}
-                            <span className="font-medium text-foreground">
-                              {to}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    if (entry.action === "updated") {
-                      const changes = details.changes as
-                        | Record<string, { from: unknown; to: unknown }>
-                        | undefined;
-                      if (!changes) return null;
-                      return (
-                        <div className="text-sm text-muted-foreground space-y-1">
-                          {Object.entries(changes).map(
-                            ([field, change]) => (
-                              <div key={field}>
-                                <span className="font-medium text-foreground capitalize">
-                                  {field.replace("_", " ")}:
-                                </span>{" "}
-                                {String(change.from)} → {String(change.to)}
-                              </div>
-                            ),
-                          )}
-                        </div>
-                      );
-                    }
-
-                    if (entry.action === "created") {
-                      const assignedToId = String(
-                        details.assigned_to ?? "",
-                      );
-                      const assignedToInfo = assignedToId
-                        ? getAssignedToInfo(assignedToId)
-                        : { name: "Unassigned", roleLabel: undefined };
-                      return (
-                        <div className="text-sm text-muted-foreground">
-                          Task assigned to{" "}
-                          <span className="font-medium text-foreground">
-                            {assignedToInfo.name}
-                          </span>
-                          {assignedToInfo.roleLabel && (
-                            <span className="text-xs ml-1">
-                              ({assignedToInfo.roleLabel})
-                            </span>
-                          )}
-                        </div>
-                      );
-                    }
-
-                    return null;
-                  };
-
-                  const actionLabelMap: Record<string, string> = {
-                    created: "Task Created",
-                    passed: "Task Passed",
-                    status_changed: "Status Changed",
-                    updated: "Task Updated",
-                  };
-
-                  const actionLabel =
-                    actionLabelMap[entry.action] ?? entry.action;
-                  const actionIcon = (() => {
-                    switch (entry.action) {
-                      case "created":
-                        return (
-                          <PlayCircle className="h-6 w-6 text-white" />
-                        );
-                      case "passed":
-                        return <Share2 className="h-6 w-6 text-white" />;
-                      case "status_changed":
-                        return (
-                          <RefreshCcw className="h-6 w-6 text-white" />
-                        );
-                      case "updated":
-                        return <Pencil className="h-6 w-6 text-white" />;
-                      default:
-                        return <Clock className="h-6 w-6 text-white" />;
-                    }
-                  })();
-
-                  const gradientClass = (() => {
-                    switch (entry.action) {
-                      case "created":
-                        return "from-blue-500 to-indigo-600";
-                      case "passed":
-                        return "from-violet-500 to-purple-600";
-                      case "status_changed":
-                        return "from-amber-500 to-orange-600";
-                      case "updated":
-                        return "from-emerald-500 to-teal-600";
-                      default:
-                        return "from-slate-500 to-gray-600";
-                    }
-                  })();
-
-                  return (
-                    <div
-                      key={entry.id}
-                      className="flex items-start gap-4 p-4 rounded-lg border bg-white dark:bg-gray-950 hover:shadow-md transition-all"
-                    >
-                      <div
-                        className={`h-12 w-12 rounded-xl bg-gradient-to-br ${gradientClass} flex items-center justify-center shadow-lg flex-shrink-0`}
-                      >
-                        {actionIcon}
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                          <p className="font-semibold text-lg">
-                            {actionLabel}
-                          </p>
-                          <div className="flex flex-col items-end">
-                            <p className="text-sm text-muted-foreground flex items-center gap-2">
-                              <User className="h-3.5 w-3.5" />
-                              {actorInfo.name}
-                            </p>
-                            {actorInfo.roleLabel && (
-                              <p className="text-xs text-muted-foreground">
-                                {actorInfo.roleLabel}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <p className="text-sm text-muted-foreground flex items-center gap-2">
-                          <Clock className="h-3 w-3" />
-                          {entryTime}
-                        </p>
-                        {renderDetails()}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent
-            value="comments"
-            className="mt-4 flex flex-col h-[calc(100vh-280px)] min-h-[500px]"
-          >
-            {/* Comments Header */}
-            <div className="p-3 rounded-lg border bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 flex-shrink-0">
-              <h3 className="font-semibold text-base flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-violet-600" />
-                Task Discussion
-              </h3>
-              <p className="text-xs text-muted-foreground mt-1">
-                Chat with team members about this task
-              </p>
-            </div>
-
-            {/* Comments List with Scrolling - WhatsApp Style */}
-            <div
-              className="flex-1 overflow-y-auto space-y-3 p-4 bg-[#efeae2] dark:bg-slate-900 rounded-lg my-3"
-              style={{
-                scrollbarWidth: "thin",
-                scrollbarColor: "#a78bfa #e2e8f0",
-                backgroundImage:
-                  "url(\"data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h100v100H0z' fill='%23efeae2' fill-opacity='0.4'/%3E%3Cpath d='M50 0L0 50M100 0L50 50M100 50L50 100M50 50L0 100' stroke='%23d1ccc0' stroke-width='0.5' opacity='0.3'/%3E%3C/svg%3E\")",
-              }}
-            >
-              {isLoadingComments ? (
-                <div className="text-center py-12">
-                  <Loader2 className="h-10 w-10 animate-spin mx-auto text-violet-600" />
-                  <p className="text-base text-muted-foreground mt-3">
-                    Loading comments...
-                  </p>
-                </div>
-              ) : taskComments.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900 dark:to-purple-900 flex items-center justify-center mx-auto mb-4">
-                    <MessageSquare className="h-10 w-10 text-violet-600 dark:text-violet-400" />
-                  </div>
-                  <p className="text-base text-muted-foreground font-medium">
-                    No comments yet
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Start the conversation!
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {taskComments.map((comment, index) => {
-                    const isOwnComment = comment.user_id === user?.id;
-                    const commentUser = employeesById.get(
-                      String(comment.user_id),
-                    );
-                    const userPhotoUrl = commentUser?.photo_url;
-                    const userInitials =
-                      comment.user_name
-                        ?.split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .toUpperCase()
-                        .slice(0, 2) || "?";
-
-                    // Use WhatsApp-style time formatting
-                    const formattedTime = getCommentTimeDisplay(
-                      comment.created_at,
-                    );
-                    const dateSeparator = getDateSeparator(
-                      comment.created_at,
-                    );
-
-                    // Check if we need to show date separator (different from previous comment's date)
-                    const previousComment =
-                      index > 0 ? taskComments[index - 1] : null;
-                    const previousDateSeparator = previousComment
-                      ? getDateSeparator(previousComment.created_at)
-                      : null;
-                    const showDateSeparator =
-                      dateSeparator &&
-                      dateSeparator !== previousDateSeparator;
-
-                    return (
-                      <div key={comment.id}>
-                        {/* Date Separator */}
-                        {showDateSeparator && (
-                          <div className="flex items-center gap-3 my-4">
-                            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
-                            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
-                              {dateSeparator}
-                            </span>
-                            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
-                          </div>
-                        )}
-
-                        {/* Comment */}
                         <div
-                          className={`flex gap-2 ${isOwnComment ? "flex-row-reverse" : "flex-row"} animate-in slide-in-from-bottom-2`}
+                          key={entry.id}
+                          className="p-4 rounded-lg border-2 border-[#000000] bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/40 dark:to-purple-950/40 hover:shadow-md transition-shadow"
                         >
-                          {/* Profile Photo */}
-                          <div className="flex-shrink-0">
-                            {userPhotoUrl ? (
-                              <img
-                                src={userPhotoUrl}
-                                alt={comment.user_name}
-                                className="w-8 h-8 rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-sm"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-sm border-2 border-white dark:border-slate-700">
-                                {userInitials}
+                          <div className="flex items-start justify-between gap-4 mb-3">
+                            <div className="flex items-center gap-2">
+                              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                                {index + 1}
                               </div>
-                            )}
+                              <div>
+                                <div className="font-semibold text-foreground">
+                                  Pass #{index + 1}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  by {actorInfo.name}
+                                  {actorInfo.roleLabel && (
+                                    <span className="ml-1">
+                                      ({actorInfo.roleLabel})
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {timestamp}
+                            </div>
                           </div>
 
-                          {/* Message Bubble */}
-                          <div
-                            className={`max-w-[70%] ${isOwnComment ? "items-end" : "items-start"} flex flex-col`}
-                          >
-                            {/* Name & Role (only for others' messages) */}
-                            {!isOwnComment && (
-                              <div className="flex items-center gap-2 mb-1 px-2">
-                                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                  {comment.user_name}
-                                </span>
-                                <span className="text-xs px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 font-medium">
-                                  {comment.user_role}
-                                </span>
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="flex-1 p-3 rounded-md bg-white dark:bg-gray-900 border-2 border-[#000000]">
+                              <div className="text-xs text-muted-foreground mb-1">
+                                From
                               </div>
-                            )}
-
-                            {/* Message Content */}
-                            <div
-                              className={`rounded-lg px-3 py-2 shadow-sm ${isOwnComment
-                                ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-tr-none"
-                                : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-tl-none"
-                                }`}
-                            >
-                              {/* Role badge for own messages (inside bubble) */}
-                              {isOwnComment && (
-                                <div className="flex items-center gap-1.5 mb-1">
-                                  <span className="text-xs font-semibold text-white/90">
-                                    You
-                                  </span>
-                                  <span className="text-xs px-1.5 py-0.5 rounded bg-white/20 text-white font-medium">
-                                    {comment.user_role}
-                                  </span>
+                              <div className="font-medium text-sm">
+                                {fromInfo.name}
+                              </div>
+                              {fromInfo.roleLabel && (
+                                <div className="text-xs text-muted-foreground mt-0.5">
+                                  {fromInfo.roleLabel}
                                 </div>
                               )}
-
-                              {/* File Attachment */}
-                              {comment.file_url && (
-                                <a
-                                  href={`${API_BASE_URL}${comment.file_url}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  download={comment.file_name}
-                                  className={`flex items-center gap-2 p-2 rounded-lg mb-2 transition-colors ${isOwnComment
-                                    ? "bg-white/10 hover:bg-white/20"
-                                    : "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600"
-                                    }`}
-                                >
-                                  {comment.file_type?.startsWith(
-                                    "image/",
-                                  ) ? (
-                                    <div className="flex flex-col gap-1">
-                                      <img
-                                        src={`${API_BASE_URL}${comment.file_url}`}
-                                        alt={
-                                          comment.file_name || "Attachment"
-                                        }
-                                        className="max-w-[200px] max-h-[200px] rounded-lg object-cover"
-                                      />
-                                      <span
-                                        className={`text-xs ${isOwnComment ? "text-white/80" : "text-slate-600 dark:text-slate-400"}`}
-                                      >
-                                        {comment.file_name}
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    <>
-                                      {comment.file_type?.includes(
-                                        "pdf",
-                                      ) ? (
-                                        <FileText
-                                          className={`h-5 w-5 ${isOwnComment ? "text-white" : "text-red-500"}`}
-                                        />
-                                      ) : comment.file_type?.includes(
-                                        "spreadsheet",
-                                      ) ||
-                                        comment.file_type?.includes(
-                                          "excel",
-                                        ) ||
-                                        comment.file_name?.endsWith(
-                                          ".csv",
-                                        ) ? (
-                                        <FileSpreadsheet
-                                          className={`h-5 w-5 ${isOwnComment ? "text-white" : "text-green-500"}`}
-                                        />
-                                      ) : comment.file_type?.includes(
-                                        "word",
-                                      ) ||
-                                        comment.file_name?.endsWith(
-                                          ".doc",
-                                        ) ||
-                                        comment.file_name?.endsWith(
-                                          ".docx",
-                                        ) ? (
-                                        <FileText
-                                          className={`h-5 w-5 ${isOwnComment ? "text-white" : "text-blue-500"}`}
-                                        />
-                                      ) : (
-                                        <FileIcon
-                                          className={`h-5 w-5 ${isOwnComment ? "text-white" : "text-slate-500"}`}
-                                        />
-                                      )}
-                                      <div className="flex-1 min-w-0">
-                                        <p
-                                          className={`text-sm font-medium truncate ${isOwnComment ? "text-white" : "text-slate-800 dark:text-slate-200"}`}
-                                        >
-                                          {comment.file_name}
-                                        </p>
-                                        {comment.file_size && (
-                                          <p
-                                            className={`text-xs ${isOwnComment ? "text-white/70" : "text-slate-500 dark:text-slate-400"}`}
-                                          >
-                                            {(
-                                              comment.file_size / 1024
-                                            ).toFixed(1)}{" "}
-                                            KB
-                                          </p>
-                                        )}
-                                      </div>
-                                      <Download
-                                        className={`h-4 w-4 ${isOwnComment ? "text-white/70" : "text-slate-400"}`}
-                                      />
-                                    </>
-                                  )}
-                                </a>
-                              )}
-
-                              {/* Text Comment */}
-                              {comment.comment && (
-                                <p
-                                  className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${isOwnComment ? "text-white" : "text-slate-800 dark:text-slate-200"}`}
-                                >
-                                  {comment.comment}
-                                </p>
-                              )}
-                              <div className="flex items-center justify-end gap-2 mt-1">
-                                <span
-                                  className={`text-xs ${isOwnComment ? "text-white/80" : "text-slate-500 dark:text-slate-400"}`}
-                                >
-                                  {formattedTime}
-                                </span>
-                                {isOwnComment && (
-                                  <button
-                                    onClick={() =>
-                                      handleDeleteComment(comment.id)
-                                    }
-                                    className="opacity-0 group-hover:opacity-100 hover:bg-white/20 rounded p-0.5 transition-all"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
-                                )}
+                            </div>
+                            <div className="flex-shrink-0">
+                              <ChevronRight className="h-5 w-5 text-violet-600" />
+                            </div>
+                            <div className="flex-1 p-3 rounded-md bg-white dark:bg-gray-900 border-2 border-[#000000]">
+                              <div className="text-xs text-muted-foreground mb-1">
+                                To
                               </div>
+                              <div className="font-medium text-sm">
+                                {toName}
+                              </div>
+                              {toInfo.roleLabel && (
+                                <div className="text-xs text-muted-foreground mt-0.5">
+                                  {toInfo.roleLabel}
+                                </div>
+                              )}
                             </div>
                           </div>
+
+                          {note && (
+                            <div className="mt-3 p-3 rounded-md bg-white dark:bg-gray-900 border-2 border-[#000000]">
+                              <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                <MessageSquare className="h-3 w-3" />
+                                Note
+                              </div>
+                              <div className="text-sm text-foreground whitespace-pre-wrap break-words">
+                                "{note}"
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    );
-                  })}
-                  <div ref={commentsEndRef} />
-                </>
-              )}
-            </div>
-
-            {/* WhatsApp-style Comment Input */}
-            <div className="p-2 bg-slate-50 dark:bg-slate-900 flex-shrink-0">
-              {/* Attached Files Preview */}
-              {attachedFiles.length > 0 && (
-                <div className="mb-2 flex flex-wrap gap-2 px-2">
-                  {attachedFiles.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-2 py-1 rounded-lg border text-xs shadow-sm"
-                    >
-                      <Paperclip className="h-3 w-3 text-violet-600" />
-                      <span className="font-medium truncate max-w-[100px]">
-                        {file.name}
-                      </span>
-                      <button
-                        onClick={() => removeAttachedFile(index)}
-                        className="hover:bg-red-100 dark:hover:bg-red-900 rounded-full p-0.5"
-                      >
-                        <XCircle className="h-3 w-3 text-red-500" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* WhatsApp-style Input Row */}
-              <div className="flex items-center gap-2">
-                {/* File Upload Button */}
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors"
-                  title="Attach file"
-                >
-                  <Paperclip className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx,.xls,.ppt,.pptx,.zip,.rar"
-                />
-
-                {/* Input Field */}
-                <div className="flex-1 bg-white dark:bg-slate-800 rounded-full px-4 py-2 border border-slate-300 dark:border-slate-700 focus-within:border-violet-500 transition-colors">
-                  <input
-                    type="text"
-                    placeholder="Type a message"
-                    value={newComment}
-                    onChange={(e) =>
-                      setNewComment(
-                        e.target.value.replace(
-                          /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
-                          "",
-                        ),
-                      )
-                    }
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        handlePostComment();
-                      }
-                    }}
-                    className="w-full bg-transparent outline-none text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                  />
-                </div>
-
-                {/* Send Button */}
-                <button
-                  onClick={handlePostComment}
-                  disabled={
-                    (!newComment.trim() && attachedFiles.length === 0) ||
-                    isPostingComment
-                  }
-                  className="p-2.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                  title="Send message"
-                >
-                  {isPostingComment ? (
-                    <Loader2 className="h-5 w-5 text-white animate-spin" />
-                  ) : (
-                    <Send className="h-5 w-5 text-white" />
-                  )}
-                </button>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-{/* Export Dialog */ }
-<Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
-  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-2 shadow-2xl">
-    <DialogHeader className="pb-4 border-b bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950 dark:to-teal-950 -m-6 mb-0 p-6 rounded-t-lg">
-      <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
-          <Download className="h-6 w-6 text-white" />
-        </div>
-        <div>
-          <DialogTitle className="text-2xl font-bold">
-            Export Task Report
-          </DialogTitle>
-          <DialogDescription className="mt-1">
-            Generate and download task reports in various formats
-          </DialogDescription>
-        </div>
-      </div>
-    </DialogHeader>
-
-    <div className="space-y-6 mt-6">
-      {/* Period Type */}
-      <div className="space-y-3">
-        <Label className="text-sm font-semibold flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-emerald-600" />
-          Period Type
-        </Label>
-        <Select
-          value={exportPeriodType}
-          onValueChange={(value: any) => setExportPeriodType(value)}
-        >
-          <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="border-2 shadow-xl">
-            <SelectItem value="all">All Time</SelectItem>
-            <SelectItem value="monthly">Monthly</SelectItem>
-            <SelectItem value="quarterly">Quarterly</SelectItem>
-            <SelectItem value="custom">Custom Range</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* Monthly sub-options */}
-        {exportPeriodType === "monthly" && (
-          <div className="grid grid-cols-2 gap-3 mt-3">
-            <div>
-              <Label className="text-xs font-medium">Month</Label>
-              <Select value={exportMonth} onValueChange={setExportMonth}>
-                <SelectTrigger className="h-10 border-2 mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[
-                    "January",
-                    "February",
-                    "March",
-                    "April",
-                    "May",
-                    "June",
-                    "July",
-                    "August",
-                    "September",
-                    "October",
-                    "November",
-                    "December",
-                  ].map((m, i) => (
-                    <SelectItem key={i + 1} value={String(i + 1)}>
-                      {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs font-medium">Year</Label>
-              <Select value={exportYear} onValueChange={setExportYear}>
-                <SelectTrigger className="h-10 border-2 mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[2023, 2024, 2025, 2026].map((y) => (
-                    <SelectItem key={y} value={String(y)}>
-                      {y}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
-
-        {/* Quarterly sub-options */}
-        {exportPeriodType === "quarterly" && (
-          <div className="grid grid-cols-2 gap-3 mt-3">
-            <div>
-              <Label className="text-xs font-medium">Quarter</Label>
-              <Select
-                value={exportQuarter}
-                onValueChange={setExportQuarter}
-              >
-                <SelectTrigger className="h-10 border-2 mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Q1 (Jan–Mar)</SelectItem>
-                  <SelectItem value="2">Q2 (Apr–Jun)</SelectItem>
-                  <SelectItem value="3">Q3 (Jul–Sep)</SelectItem>
-                  <SelectItem value="4">Q4 (Oct–Dec)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs font-medium">Year</Label>
-              <Select value={exportYear} onValueChange={setExportYear}>
-                <SelectTrigger className="h-10 border-2 mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[2023, 2024, 2025, 2026].map((y) => (
-                    <SelectItem key={y} value={String(y)}>
-                      {y}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
-
-        {/* Custom date range */}
-        {exportPeriodType === "custom" && (
-          <div className="grid grid-cols-2 gap-3 mt-3">
-            <div>
-              <Label
-                htmlFor="export-start-date"
-                className="text-xs font-medium"
-              >
-                Start Date
-              </Label>
-              <Input
-                id="export-start-date"
-                type="date"
-                value={exportStartDate}
-                onChange={(e) => setExportStartDate(e.target.value)}
-                className="h-10 border-2 mt-1"
-              />
-            </div>
-            <div>
-              <Label
-                htmlFor="export-end-date"
-                className="text-xs font-medium"
-              >
-                End Date
-              </Label>
-              <Input
-                id="export-end-date"
-                type="date"
-                value={exportEndDate}
-                onChange={(e) => setExportEndDate(e.target.value)}
-                className="h-10 border-2 mt-1"
-              />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Status Filter */}
-      <div className="space-y-3">
-        <Label className="text-sm font-semibold flex items-center gap-2">
-          <Filter className="h-4 w-4 text-emerald-600" />
-          Status Filter
-        </Label>
-        <Select
-          value={exportStatusFilter}
-          onValueChange={setExportStatusFilter}
-        >
-          <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="border-2 shadow-xl">
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="Pending">Pending</SelectItem>
-            <SelectItem value="In Progress">In Progress</SelectItem>
-            <SelectItem value="Overdue">Overdue</SelectItem>
-            <SelectItem value="Completed">Completed</SelectItem>
-            <SelectItem value="Cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Department Filter - Only for Admin, HR, Manager */}
-      {(normalizedUserRole === "admin" ||
-        normalizedUserRole === "hr" ||
-        normalizedUserRole === "manager") && (
-          <div className="space-y-3">
-            <Label className="text-sm font-semibold flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-emerald-600" />
-              Department Filter
-            </Label>
-            <Select
-              value={exportDepartmentFilter}
-              onValueChange={setExportDepartmentFilter}
-            >
-              <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="border-2 shadow-xl">
-                <SelectItem value="all">All Departments</SelectItem>
-                {departments
-                  .slice()
-                  .filter((dept) => dept && dept.trim() !== "")
-                  .sort((a, b) => a.localeCompare(b))
-                  .map((dept) => (
-                    <SelectItem key={dept} value={dept}>
-                      {dept}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
-      {/* Export Summary */}
-      <div className="p-4 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950 dark:to-teal-950 border">
-        <h4 className="font-semibold mb-2">Export Summary</h4>
-        <div className="text-sm text-muted-foreground space-y-1">
-          <p>
-            • Format:{" "}
-            <span className="font-medium text-foreground">PDF</span>
-          </p>
-          <p>
-            • Period:{" "}
-            <span className="font-medium text-foreground">
-              {exportPeriodType === "all"
-                ? "All Time"
-                : exportPeriodType === "monthly"
-                  ? `Month ${exportMonth}, ${exportYear}`
-                  : exportPeriodType === "quarterly"
-                    ? `Q${exportQuarter} ${exportYear}`
-                    : `${exportStartDate || "Not set"} → ${exportEndDate || "Not set"}`}
-            </span>
-          </p>
-          <p>
-            • Status:{" "}
-            <span className="font-medium text-foreground">
-              {exportStatusFilter === "all"
-                ? "All Statuses"
-                : exportStatusFilter}
-            </span>
-          </p>
-          <p>
-            • Department:{" "}
-            <span className="font-medium text-foreground">
-              {exportDepartmentFilter === "all"
-                ? "All Departments"
-                : exportDepartmentFilter}
-            </span>
-          </p>
-        </div>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex justify-end gap-3 pt-6 border-t">
-        <Button
-          variant="outline"
-          onClick={() => setIsExportDialogOpen(false)}
-          className="h-11 px-6 border-2 hover:shadow-lg hover:border-slate-400 dark:hover:border-slate-600 transition-all"
-        >
-          Cancel
-        </Button>
-        <Button
-          onClick={handleExport}
-          disabled={isExporting}
-          className="h-11 px-6 gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isExporting ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Exporting...
-            </>
-          ) : (
-            <>
-              <Download className="h-4 w-4" />
-              Export PDF
-            </>
-          )}
-        </Button>
-      </div>
-    </div>
-  </DialogContent>
-</Dialog>
-
-{/* Pass History Dialog */ }
-<Dialog
-  open={isPassHistoryDialogOpen}
-  onOpenChange={(open) => {
-    // Only allow closing via the Close button, not the X button
-    if (!open) {
-      setIsPassHistoryDialogOpen(false);
-    }
-  }}
->
-  <DialogContent className="max-w-3xl h-[85vh] flex flex-col border-2 shadow-2xl [&>button]:hidden p-0 overflow-hidden">
-    <DialogHeader className="pb-4 border-b bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 p-6 rounded-t-lg">
-      <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
-          <Share2 className="h-6 w-6 text-white" />
-        </div>
-        <div>
-          <DialogTitle className="text-2xl font-bold">
-            Pass History
-          </DialogTitle>
-          <DialogDescription className="mt-1">
-            Complete history of task reassignments
-          </DialogDescription>
-        </div>
-      </div>
-    </DialogHeader>
-
-    <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
-      {passHistoryTask &&
-        (() => {
-          const passEntries = getPassHistoryEntries(passHistoryTask.id);
-
-          if (passEntries.length === 0) {
-            return (
-              <div className="text-center py-12">
-                <div className="h-20 w-20 rounded-full bg-gradient-to-br from-slate-100 to-gray-200 dark:from-slate-800 dark:to-gray-900 flex items-center justify-center mx-auto mb-4">
-                  <Share2 className="h-10 w-10 text-muted-foreground" />
-                </div>
-                <p className="text-muted-foreground text-lg">
-                  No pass history available
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  This task has not been passed yet
-                </p>
-              </div>
-            );
-          }
-
-          return (
-            <div className="space-y-4">
-              {passEntries.map((entry, index) => {
-                const details = entry.details as
-                  | Record<string, unknown>
-                  | undefined;
-                const fromId = details?.from ? String(details.from) : "";
-                const toId = details?.to ? String(details.to) : "";
-                const fromInfo = fromId
-                  ? getAssignedToInfo(fromId)
-                  : { name: "Unknown", roleLabel: undefined };
-                const toInfo = toId
-                  ? getAssignedToInfo(toId)
-                  : { name: "Unknown", roleLabel: undefined };
-                const toName =
-                  typeof details?.to_name === "string"
-                    ? details.to_name
-                    : toInfo.name;
-                const note =
-                  typeof details?.note === "string" &&
-                    details.note.trim().length > 0
-                    ? details.note
-                    : null;
-                const actor = employeesById.get(String(entry.user_id));
-                const actorRole = actor?.role;
-                const actorInfo = getAssignedByInfo(
-                  String(entry.user_id),
-                  actorRole,
-                );
-                const timestamp = formatDateTimeIST(
-                  entry.created_at,
-                  "MMM dd, yyyy HH:mm",
-                );
-
-                return (
-                  <div
-                    key={entry.id}
-                    className="p-4 rounded-lg border-2 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/40 dark:to-purple-950/40 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-start justify-between gap-4 mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-foreground">
-                            Pass #{index + 1}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            by {actorInfo.name}
-                            {actorInfo.roleLabel && (
-                              <span className="ml-1">
-                                ({actorInfo.roleLabel})
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {timestamp}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="flex-1 p-3 rounded-md bg-white dark:bg-gray-900 border">
-                        <div className="text-xs text-muted-foreground mb-1">
-                          From
-                        </div>
-                        <div className="font-medium text-sm">
-                          {fromInfo.name}
-                        </div>
-                        {fromInfo.roleLabel && (
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {fromInfo.roleLabel}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-shrink-0">
-                        <ChevronRight className="h-5 w-5 text-violet-600" />
-                      </div>
-                      <div className="flex-1 p-3 rounded-md bg-white dark:bg-gray-900 border">
-                        <div className="text-xs text-muted-foreground mb-1">
-                          To
-                        </div>
-                        <div className="font-medium text-sm">
-                          {toName}
-                        </div>
-                        {toInfo.roleLabel && (
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {toInfo.roleLabel}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {note && (
-                      <div className="mt-3 p-3 rounded-md bg-white dark:bg-gray-900 border">
-                        <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                          <MessageSquare className="h-3 w-3" />
-                          Note
-                        </div>
-                        <div className="text-sm text-foreground whitespace-pre-wrap break-words">
-                          "{note}"
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })}
                   </div>
                 );
-              })}
-            </div>
-          );
-        })()}
-    </div>
+              })()}
+          </div>
 
-    <div className="flex-shrink-0 flex justify-end gap-3 p-6 border-t bg-slate-50 dark:bg-slate-950/50">
-      <Button
-        variant="outline"
-        onClick={() => setIsPassHistoryDialogOpen(false)}
-        className="h-11 px-6 border-2 hover:shadow-lg hover:border-slate-400 dark:hover:border-slate-600 transition-all bg-white dark:bg-slate-900"
-      >
-        Close
-      </Button>
-    </div>
-  </DialogContent>
-</Dialog>
+          <div className="flex-shrink-0 flex justify-end gap-3 p-6 border-t bg-slate-50 dark:bg-slate-950/50">
+            <Button
+              variant="outline"
+              onClick={() => setIsPassHistoryDialogOpen(false)}
+              className="h-11 px-6 border-2 hover:shadow-lg hover:border-slate-400 dark:hover:border-slate-600 transition-all bg-white dark:bg-slate-900"
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      
+
       {/* Scope Selection Dialog (for resolving 409 Conflicts) */}
       <Dialog open={activeScopeError} onOpenChange={setActiveScopeError}>
         <DialogContent className="max-w-md border-2 border-amber-200">

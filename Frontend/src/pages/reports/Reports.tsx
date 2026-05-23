@@ -37,6 +37,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { nowIST, formatIST } from '@/utils/timezone';
 import { toast } from '@/hooks/use-toast';
+import SummaryCard from '@/components/ui/SummaryCard';
 import RatingDialog, { EmployeeRating } from '@/components/rating/RatingDialog';
 import ExportDialog from '@/components/reports/ExportDialog';
 import V2Overlay from '@/components/ui/V2Overlay';
@@ -362,6 +363,8 @@ export default function Reports() {
   // Group employees by department - Filtering for Core Departments if applicable
   const employeesByDepartment = React.useMemo(() => {
     const grouped: Record<string, EmployeePerformance[]> = {};
+    const ALL_EMPLOYEES_KEY = 'All Employees';
+    grouped[ALL_EMPLOYEES_KEY] = [];
 
     // Check if we have any active Core Departments detected
     const hasCoreDepts = departments.length > 0 && departments.every(d =>
@@ -377,10 +380,6 @@ export default function Reports() {
         if (!isCore) return;
       }
 
-      if (!grouped[dept]) {
-        grouped[dept] = [];
-      }
-
       // Merge with executive summary data to ensure we have the latest task metrics
       // This matches the logic used in topPerformers to get accurate task counts
       const summaryData = executiveSummary?.topPerformers?.find(
@@ -393,7 +392,7 @@ export default function Reports() {
         taskEfficiency: summaryData?.taskEfficiency || emp.taskEfficiency || Math.round(emp.taskCompletionRate || 0)
       };
 
-      grouped[dept].push(enrichedEmp);
+      grouped[ALL_EMPLOYEES_KEY].push(enrichedEmp);
     });
     return grouped;
   }, [filteredPerformance, departments]);
@@ -495,7 +494,7 @@ export default function Reports() {
       {!['admin', 'hr', 'manager', 'team_lead', 'employee'].includes(user?.role || '') && <V2Overlay fallbackPath="/dashboard" />}
       <div className="w-full space-y-6 pb-20">
         {/* Header Section - aligned with other modern pages */}
-        <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-[#858282] dark:border-[#858282] shadow-sm mt-1">
+        <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border-2 border-[#000000] dark:border-[#000000] shadow-sm mt-1">
           <div className="absolute top-0 right-0 -mr-16 -mt-16 h-40 w-40 bg-blue-500/5 rounded-full blur-3xl" />
           <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-40 w-40 bg-indigo-500/5 rounded-full blur-3xl" />
 
@@ -515,97 +514,102 @@ export default function Reports() {
           </div>
 
           <div className="relative flex flex-wrap items-center gap-2 sm:gap-3">
-            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-[140px] h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
-                <Calendar className="h-5 w-5 mr-1.5 text-slate-400" />
-                <SelectValue placeholder="Month" />
-              </SelectTrigger>
-              <SelectContent>
-                {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((month, i) => (
-                  <SelectItem key={i} value={i.toString()} className="text-sm">{month}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Month:</Label>
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-[140px] h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+                  <Calendar className="h-5 w-5 mr-1.5 text-slate-400" />
+                  <SelectValue placeholder="Month" />
+                </SelectTrigger>
+                <SelectContent>
+                  {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((month, i) => (
+                    <SelectItem key={i} value={i.toString()} className="text-sm">{month}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Popover open={yearOpen} onOpenChange={setYearOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={yearOpen}
-                  className="w-[120px] justify-between h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
-                >
-                  {selectedYear}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[120px] p-0">
-                <Command>
-                  <CommandInput placeholder="Search..." className="h-9" />
-                  <CommandList>
-                    <CommandEmpty>No year found.</CommandEmpty>
-                    <CommandGroup>
-                      {/* Fixed height for scrollable dropdown */}
-                      <div className="max-h-[200px] overflow-y-auto custom-scrollbar">
-                        {Array.from({ length: 2040 - 2016 + 1 }, (_, i) => (2040 - i).toString()).map((year) => (
-                          <CommandItem
-                            key={year}
-                            value={year}
-                            onSelect={(currentValue) => {
-                              setSelectedYear(currentValue);
-                              setYearOpen(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                selectedYear === year ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {year}
-                          </CommandItem>
-                        ))}
-                      </div>
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-
-
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Year:</Label>
+              <Popover open={yearOpen} onOpenChange={setYearOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={yearOpen}
+                    className="w-[120px] justify-between h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
+                  >
+                    {selectedYear}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[120px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search..." className="h-9" />
+                    <CommandList>
+                      <CommandEmpty>No year found.</CommandEmpty>
+                      <CommandGroup>
+                        {/* Fixed height for scrollable dropdown */}
+                        <div className="max-h-[200px] overflow-y-auto custom-scrollbar">
+                          {Array.from({ length: 2040 - 2016 + 1 }, (_, i) => (2040 - i).toString()).map((year) => (
+                            <CommandItem
+                              key={year}
+                              value={year}
+                              onSelect={(currentValue) => {
+                                setSelectedYear(currentValue);
+                                setYearOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedYear === year ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {year}
+                            </CommandItem>
+                          ))}
+                        </div>
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
         </div>
 
-
         {/* Tabs Navigation */}
         <Tabs value={selectedReportType} onValueChange={setSelectedReportType} className="space-y-4">
-          <TabsList className="flex items-center gap-1 bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-lg w-fit border border-slate-200/50 dark:border-slate-700/50">
-            <TabsTrigger
-              value="performance"
-              className="h-9 font-medium px-4 rounded-md data-[state=active]:bg-[#2563EB] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
-              style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
-            >
-              <Users className="h-5 w-5 mr-1.5" />
-              Employee Performance
-            </TabsTrigger>
-            <TabsTrigger
-              value="department"
-              className="h-9 text-sm font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 data-[state=active]:shadow-sm transition-all"
-            >
-              <PieChart className="h-5 w-5 mr-1.5" />
-              Department Metrics
-            </TabsTrigger>
-            <TabsTrigger
-              value="summary"
-              className="h-9 text-sm font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-sm transition-all"
-            >
-              <BarChart3 className="h-5 w-5 mr-1.5" />
-              Executive Summary
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex justify-center w-full">
+            <TabsList className="flex items-center gap-1 bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-lg w-fit border border-slate-200/50 dark:border-slate-700/50">
+              <TabsTrigger
+                value="performance"
+                className="h-9 font-medium px-4 rounded-md data-[state=active]:bg-[#2563EB] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
+                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
+              >
+                <Users className="h-5 w-5 mr-1.5" />
+                Employee Performance
+              </TabsTrigger>
+              <TabsTrigger
+                value="department"
+                className="h-9 text-sm font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 data-[state=active]:shadow-sm transition-all"
+              >
+                <PieChart className="h-5 w-5 mr-1.5" />
+                Department Metrics
+              </TabsTrigger>
+              <TabsTrigger
+                value="summary"
+                className="h-9 text-sm font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-sm transition-all"
+              >
+                <BarChart3 className="h-5 w-5 mr-1.5" />
+                Executive Summary
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="performance" className="mt-0 outline-none">
-            <div className="bg-white dark:bg-slate-900 rounded-xl border-2 border-[#858282] shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border-2 border-[#000000] shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div>
                   <h2 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="tracking-tight">Individual Performance</h2>
@@ -614,7 +618,7 @@ export default function Reports() {
                 <Button
                   onClick={() => openExportDialog()}
                   variant="outline"
-                  
+
                   className="h-8 text-xs font-medium gap-1.5"
                 >
                   <Download className="h-5 w-5" />
@@ -642,7 +646,7 @@ export default function Reports() {
                     <div className="flex justify-end gap-1.5 mb-4">
                       <Button
                         variant="ghost"
-                        
+
                         onClick={expandAllDepartments}
                         className="h-7 uppercase tracking-wider bg-[#2563EB] text-white hover:bg-blue-700"
                         style={{ fontSize: "14px" }}
@@ -651,7 +655,7 @@ export default function Reports() {
                       </Button>
                       <Button
                         variant="ghost"
-                        
+
                         onClick={collapseAllDepartments}
                         className="h-7 uppercase tracking-wider bg-[#2563EB] text-white hover:bg-blue-700"
                         style={{ fontSize: "14px" }}
@@ -734,7 +738,7 @@ export default function Reports() {
                                             {badge.text}
                                           </Badge>
                                           <Button
-                                            
+
                                             variant="ghost"
                                             onClick={() => openRatingDialog(employee)}
                                             className="h-8 px-3 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
@@ -743,7 +747,7 @@ export default function Reports() {
                                             {hasRating ? 'Update' : 'Rate'}
                                           </Button>
                                           <Button
-                                            
+
                                             variant="ghost"
                                             onClick={() => openExportDialog({ id: employee.id, name: employee.name, employee_id: employee.employeeId })}
                                             className="h-8 px-3 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -916,7 +920,7 @@ export default function Reports() {
           </TabsContent>
 
           <TabsContent value="department" className="mt-0 outline-none">
-            <div className="bg-white dark:bg-slate-900 rounded-xl border-2 border-[#858282] shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border-2 border-[#000000] shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div>
                   <h2 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="tracking-tight">Department Overview</h2>
@@ -925,7 +929,7 @@ export default function Reports() {
                 <Button
                   onClick={() => openExportDialog()}
                   variant="outline"
-                  
+
                   className="h-8 text-xs font-medium gap-1.5"
                 >
                   <Download className="h-5 w-5" />
@@ -1020,50 +1024,35 @@ export default function Reports() {
             ) : (
               <div className="space-y-8 pb-10">
                 {/* Quick Stats */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border-2 border-[#858282] shadow-sm">
-                    <div className="flex items-center gap-2.5 mb-3">
-                      <div className="p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-md">
-                        <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-wider">Avg Performance</p>
-                    </div>
-                    <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="tracking-tighter">{executiveSummary?.avgPerformance || 0}%</p>
-                    <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest mt-1">Company Average</p>
-                  </div>
-
-                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border-2 border-[#858282] shadow-sm">
-                    <div className="flex items-center gap-2.5 mb-3">
-                      <div className="p-1.5 bg-purple-50 dark:bg-purple-900/30 rounded-md">
-                        <Target className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                      </div>
-                      <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-wider">Tasks Done</p>
-                    </div>
-                    <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="tracking-tighter">{executiveSummary?.totalTasksCompleted || 0}</p>
-                    <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest mt-1">Completion Count</p>
-                  </div>
-
-                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border-2 border-[#858282] shadow-sm">
-                    <div className="flex items-center gap-2.5 mb-3">
-                      <div className="p-1.5 bg-amber-50 dark:bg-amber-900/30 rounded-md">
-                        <Award className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                      </div>
-                      <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-wider">Top Dept</p>
-                    </div>
-                    <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="tracking-tight truncate">{executiveSummary?.bestDepartment?.name || 'N/A'}</p>
-                    <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest mt-1">{executiveSummary?.bestDepartment?.score || 0}% Efficiency</p>
-                  </div>
-
-                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border-2 border-[#858282] shadow-sm">
-                    <div className="flex items-center gap-2.5 mb-3">
-                      <div className="p-1.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-md">
-                        <Users className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                      </div>
-                      <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-wider">Analyzed</p>
-                    </div>
-                    <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="tracking-tighter">{executiveSummary?.totalEmployeesAnalyzed || 0}</p>
-                    <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest mt-1">Total Verified</p>
-                  </div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <SummaryCard
+                    title="Avg Performance"
+                    value={`${executiveSummary?.avgPerformance || 0}%`}
+                    icon={Activity}
+                    iconColor="text-blue-600"
+                    iconBg="bg-blue-50"
+                  />
+                  <SummaryCard
+                    title="Tasks Done"
+                    value={executiveSummary?.totalTasksCompleted || 0}
+                    icon={Target}
+                    iconColor="text-purple-600"
+                    iconBg="bg-purple-50"
+                  />
+                  <SummaryCard
+                    title="Top Dept"
+                    value={executiveSummary?.bestDepartment?.name || 'N/A'}
+                    icon={Award}
+                    iconColor="text-amber-600"
+                    iconBg="bg-amber-50"
+                  />
+                  <SummaryCard
+                    title="Analyzed"
+                    value={executiveSummary?.totalEmployeesAnalyzed || 0}
+                    icon={Users}
+                    iconColor="text-emerald-600"
+                    iconBg="bg-emerald-50"
+                  />
                 </div>
 
                 {/* Top 5 Performers */}

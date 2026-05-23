@@ -51,10 +51,16 @@ import {
   Home,
   Send,
   History,
-  LayoutGrid,
   Edit,
   Trash2,
+  Globe,
+  XCircle,
+  Building2,
+  LogIn,
+  Check,
+  LayoutGrid,
 } from "lucide-react";
+import SummaryCard from "@/components/ui/SummaryCard";
 import { toast } from "@/hooks/use-toast";
 import { AttendanceRecord } from "@/types";
 import { format, subMonths, subDays, isAfter } from "date-fns";
@@ -149,9 +155,6 @@ const AttendanceManager: React.FC = () => {
   }>({ open: false, location: null });
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [activeScopeError, setActiveScopeError] = useState(false);
-  const [debugBranchId, setDebugBranchId] = useState(localStorage.getItem('branchId') || '');
-  const [debugCompanyId, setDebugCompanyId] = useState(localStorage.getItem('companyId') || '');
   const [filterDate, setFilterDate] = useState(todayIST());
   const [selectedDate, setSelectedDate] = useState<Date>(nowIST());
   const [timePeriodFilter, setTimePeriodFilter] = useState<
@@ -905,7 +908,7 @@ const AttendanceManager: React.FC = () => {
       console.error("loadEmployees error", err);
       const errorMessage = err.message || "";
       if (err.status === 409 || errorMessage.includes("409") || errorMessage.includes("Scope conflict") || errorMessage.includes("Multiple company")) {
-        setActiveScopeError(true);
+        // Redundant set active scope error removed in favor of global solution
       }
     }
   };
@@ -938,7 +941,7 @@ const AttendanceManager: React.FC = () => {
       console.error("loadOfficeTimings error", error);
       const errorMessage = error.message || "";
       if (error.status === 409 || errorMessage.includes("409") || errorMessage.includes("Scope conflict") || errorMessage.includes("Multiple company")) {
-        setActiveScopeError(true);
+        // Redundant set active scope error removed in favor of global solution
       }
       toast({
         title: "Office timing fetch failed",
@@ -1355,10 +1358,10 @@ const AttendanceManager: React.FC = () => {
         setAttendanceRecords(transformedData);
       } catch (error: any) {
         console.error("loadAllAttendance error", error);
-        
+
         const errorMessage = error.message || "";
         if (error.status === 409 || errorMessage.includes("409") || errorMessage.includes("Scope conflict") || errorMessage.includes("Multiple company")) {
-          setActiveScopeError(true);
+          // Scope conflict is handled globally via window event in api.ts
         }
 
         toast({
@@ -1969,7 +1972,7 @@ const AttendanceManager: React.FC = () => {
       setAllWfhRequests([]);
       const errorMessage = error.message || "";
       if (error.status === 409 || errorMessage.includes("409") || errorMessage.includes("Scope conflict") || errorMessage.includes("Multiple company")) {
-        setActiveScopeError(true);
+        // Redundant set active scope error removed in favor of global solution
       }
     } finally {
       setIsLoadingWfhRequests(false);
@@ -2060,136 +2063,129 @@ const AttendanceManager: React.FC = () => {
     }
   };
 
-  const attendanceContent = (
-    <div className="w-full space-y-6">
-      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border shadow-sm mt-1">
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-blue-500/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
+  const attendanceHeader = (
+    <div className="relative overflow-hidden flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-sm mt-1">
+      <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-blue-500/5 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
 
-        <div className="relative flex items-center gap-5">
-          <div className="h-16 w-16 rounded-2xl bg-[#000000] flex items-center justify-center shadow-lg shadow-black/10 transition-transform duration-300 hover:scale-105">
-            <Clock className="h-8 w-8 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black tracking-tight text-[#000000] sm:text-3xl uppercase font-inter">
-              {t.attendance.employeeAttendance}
-            </h1>
-            <p className="text-[#5e5b5b] font-bold flex items-center gap-2 mt-1 uppercase text-xs tracking-wider">
-              <Users className="h-4 w-4 text-[#000000]" />
-              {t.attendance.monitorTeamAttendance}
-            </p>
-          </div>
+      <div className="relative flex items-center gap-5 shrink-0">
+        <div className="h-16 w-16 rounded-2xl bg-[#000000] flex items-center justify-center shadow-lg transition-transform duration-300 hover:scale-105">
+          <Clock className="h-8 w-8 text-white" />
         </div>
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-[#000000] dark:text-white sm:text-3xl font-outfit uppercase whitespace-nowrap">
+            {t.attendance.employeeAttendance}
+          </h1>
+          <p className="text-[#5e5b5b] dark:text-slate-400 font-bold flex items-center gap-2 mt-1 text-xs tracking-wider uppercase">
+            <Users className="h-4 w-4 text-blue-600" />
+            {t.attendance.monitorTeamAttendance}
+          </p>
+        </div>
+      </div>
 
-        <div className="relative flex gap-3">
+      <div className="relative flex flex-col md:flex-row items-center gap-6 w-full xl:w-auto">
+        <TabsList className="grid grid-cols-3 h-12 w-full sm:w-[500px] bg-slate-100/50 dark:bg-slate-800/50 border-2 border-[#000000] dark:border-slate-700 rounded-2xl p-1 gap-2 shadow-sm">
+          <TabsTrigger
+            value="attendance"
+            className="rounded-xl font-black text-[9px] uppercase tracking-widest transition-all duration-300
+              data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
+              data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
+          >
+            <Users className="h-3 w-3 mr-1.5" />
+            Attendance
+          </TabsTrigger>
+          <TabsTrigger
+            value="office-hours"
+            className="rounded-xl font-black text-[9px] uppercase tracking-widest transition-all duration-300
+              data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
+              data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
+          >
+            <Settings className="h-3 w-3 mr-1.5" />
+            Office Hours
+          </TabsTrigger>
+          <TabsTrigger
+            value="wfh-requests"
+            className="rounded-xl font-black text-[9px] uppercase tracking-widest transition-all duration-300 relative
+              data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
+              data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
+          >
+            <FileText className="h-3 w-3 mr-1.5" />
+            WFH Requests
+            {getAdminPendingWfhCount() > 0 && (
+              <Badge
+                className="absolute -top-1 -right-1 h-4 min-w-4 rounded-full p-0 flex items-center justify-center text-[8px] font-black bg-rose-500 text-white border-2 border-white dark:border-gray-800"
+              >
+                {getAdminPendingWfhCount()}
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <div className="relative flex gap-3 shrink-0">
           <Button
             onClick={() => setExportModalOpen(true)}
             size="lg"
-            className="rounded-xl px-6 h-12 bg-[#000000] hover:bg-[#1a1a1a] text-white shadow-md transition-all active:scale-95 gap-2 font-black uppercase text-xs tracking-widest"
+            className="rounded-xl px-6 h-12 bg-[#000000] hover:bg-[#333333] text-white shadow-md transition-all active:scale-95 gap-2 font-black text-xs tracking-widest uppercase border-2 border-black"
             disabled={isExporting}
           >
             <Download className="h-4 w-4" />
-            {isExporting ? t.attendance.exporting : "Export Report"}
+            {isExporting ? t.attendance.exporting : "Export"}
           </Button>
         </div>
       </div>
+    </div>
+  );
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {[
-          {
-            title: t.attendance.totalEmployees,
-            value: todayStats.total,
-            sub: "Active Workforce",
-            icon: Users,
-            color: "black",
-            bg: "bg-[#000000] text-white shadow-sm",
-            cardBg: "bg-white",
-            borderColor: "border-[#000000] border-2",
-            hoverBorder: "hover:shadow-xl hover:-translate-y-1",
-          },
-          {
-            title: t.attendance.presentToday,
-            value: todayStats.present,
-            sub: "Currently Active",
-            icon: CheckCircle2,
-            color: "black",
-            bg: "bg-[#000000] text-white shadow-sm",
-            cardBg: "bg-white",
-            borderColor: "border-[#000000] border-2",
-            hoverBorder: "hover:shadow-xl hover:-translate-y-1",
-          },
-          {
-            title: t.attendance.lateArrivals,
-            value: todayStats.late,
-            sub: "After Working Hours",
-            icon: Clock,
-            color: "black",
-            bg: "bg-[#000000] text-white shadow-sm",
-            cardBg: "bg-white",
-            borderColor: "border-[#000000] border-2",
-            hoverBorder: "hover:shadow-xl hover:-translate-y-1",
-          },
-          {
-            title: t.attendance.earlyDepartures,
-            value: todayStats.early,
-            sub: "Before Working Hours",
-            icon: LogOut,
-            color: "black",
-            bg: "bg-[#000000] text-white shadow-sm",
-            cardBg: "bg-white",
-            borderColor: "border-[#000000] border-2",
-            hoverBorder: "hover:shadow-xl hover:-translate-y-1",
-          },
-        ].map((item, i) => (
-          <Card
-            key={i}
-            className={`border-2 ${item.borderColor} ${item.hoverBorder} shadow-sm ${item.cardBg} backdrop-blur-sm transition-all duration-300 group overflow-hidden relative cursor-pointer rounded-2xl`}
-          >
-            {/* Background Accent */}
-            <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-[0.03] group-hover:opacity-[0.08] transition-opacity bg-black" />
-
-            <CardContent className="p-6 relative">
-              <div className="flex justify-between items-start mb-4">
-                <div className="p-3 rounded-xl bg-[#000000] text-white shadow-md group-hover:scale-110 transition-transform duration-300">
-                  <item.icon className="h-5 w-5" />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <h3 className="text-xs font-bold text-[#000000] uppercase tracking-widest leading-none font-inter">
-                  {item.title}
-                </h3>
-                <div className="text-2xl font-black text-[#000000] tracking-tight font-inter">
-                  {item.value}
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 border border-black/5">
-                  <div className="h-1.5 w-1.5 rounded-full bg-black" />
-                  <span className="text-[10px] font-bold text-[#5e5b5b] uppercase tracking-tight">
-                    {item.sub}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+  const attendanceContent = (
+    <div className="w-full space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <SummaryCard
+          title={t.attendance.totalEmployees}
+          value={todayStats.total}
+          icon={Users}
+          iconColor="text-blue-600"
+          iconBg="bg-blue-50"
+        />
+        <SummaryCard
+          title={t.attendance.presentToday}
+          value={todayStats.present}
+          icon={CheckCircle2}
+          iconColor="text-green-600"
+          iconBg="bg-green-50"
+        />
+        <SummaryCard
+          title={t.attendance.lateArrivals}
+          value={todayStats.late}
+          icon={Clock}
+          iconColor="text-orange-600"
+          iconBg="bg-orange-50"
+        />
+        <SummaryCard
+          title={t.attendance.earlyDepartures}
+          value={todayStats.early}
+          icon={LogOut}
+          iconColor="text-red-600"
+          iconBg="bg-red-50"
+        />
       </div>
 
-      <Card className="border-2 border-[#000000] shadow-xl bg-white rounded-2xl overflow-hidden">
-        <CardHeader className="border-b border-[#000000]/10 bg-slate-50/30 px-6 py-5">
-          <CardTitle className="text-xl font-black text-[#000000] uppercase tracking-tight font-inter">
+      <Card className="border-2 border-[#000000] shadow-xl bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
+        <CardHeader className="bg-slate-50/50 dark:bg-slate-800/50 px-6 py-5 border-b-2 border-black">
+          <CardTitle className="text-xl font-black text-[#000000] dark:text-white tracking-tight font-outfit uppercase">
             {t.attendance.attendanceRecords}
           </CardTitle>
-          <CardDescription className="text-xs font-bold text-[#5e5b5b] uppercase tracking-wider mt-1">
+          <CardDescription className="text-xs font-bold text-[#5e5b5b] dark:text-slate-400 tracking-wider mt-1 uppercase">
             {t.attendance.viewAndManage}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row md:flex-wrap gap-3 mb-6">
-            <div className="w-full md:w-[260px] lg:w-[320px] flex flex-col gap-2">
-              <Label className="text-sm font-medium text-black dark:text-white ml-1">
-                Search
+          <div className="flex flex-col xl:flex-row gap-6 mb-8 items-end p-6 border-b-2 border-black bg-slate-50/30 w-full">
+            <div className="flex-1 w-full xl:w-auto flex flex-col gap-2">
+              <Label className="text-[10px] font-black text-black dark:text-white ml-1 uppercase tracking-widest">
+                Search Employee
               </Label>
               <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder={t.attendance.searchPlaceholder}
                   value={searchTerm}
@@ -2201,75 +2197,81 @@ const AttendanceManager: React.FC = () => {
                       ),
                     )
                   }
-                  className="pl-10 h-11 bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-blue-500"
+                  className="pl-10 h-11 bg-white dark:bg-gray-950 border-2 border-black rounded-xl focus:ring-2 focus:ring-blue-500 font-bold text-sm"
                 />
               </div>
             </div>
-            <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
-              <SelectTrigger className="w-[160px] h-11 bg-white dark:bg-gray-950 border-2">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="present">Present</SelectItem>
-                <SelectItem value="late">Late</SelectItem>
-                <SelectItem value="early">Early Departure</SelectItem>
-                <SelectItem value="absent">Absent</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={timePeriodFilter} onValueChange={(value: any) => setTimePeriodFilter(value)}>
-              <SelectTrigger className={`${timePeriodFilter === 'custom' ? 'md:w-[320px]' : 'md:w-[180px]'} w-full h-11 bg-white dark:bg-gray-950 border-2 text-slate-700 dark:text-slate-200 transition-all duration-300`}>
-                <Calendar className="h-4 w-4 mr-2 text-blue-500" />
-                <SelectValue>
-                  {timePeriodFilter === 'custom'
-                    ? (customStartDate && customEndDate
-                      ? `Custom: ${formatDateIST(customStartDate)} - ${formatDateIST(customEndDate)}`
-                      : 'Custom Range')
-                    : undefined}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="current_month">Current Month</SelectItem>
-                <SelectItem value="last_month">Last Month</SelectItem>
-                <SelectItem value="last_3_months">Last 3 Months</SelectItem>
-                <SelectItem value="last_6_months">Last 6 Months</SelectItem>
-                <SelectItem value="last_12_months">Last 1 Year</SelectItem>
-                <SelectItem value="custom">Custom Range</SelectItem>
-              </SelectContent>
-            </Select>
 
-            {timePeriodFilter === "custom" && (
-              <div className="w-full mt-2 p-4 border rounded-2xl bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-100 dark:border-blue-800 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
-                      <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                      From Date
-                    </Label>
-                    <DatePicker
-                      date={customStartDate}
-                      onDateChange={setCustomStartDate}
-                      placeholder="Start Date"
-                      className="w-full bg-white dark:bg-gray-950 border-blue-200 h-11"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
-                      <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                      To Date
-                    </Label>
-                    <DatePicker
-                      date={customEndDate}
-                      onDateChange={setCustomEndDate}
-                      placeholder="End Date"
-                      className="w-full bg-white dark:bg-gray-950 border-indigo-200 h-11"
-                    />
-                  </div>
-                </div>
+            <div className="flex flex-col md:flex-row items-end gap-4 w-full xl:w-auto">
+              <div className="w-full md:w-[200px] flex flex-col gap-2">
+                <Label className="text-[10px] font-black text-black dark:text-white ml-1 uppercase tracking-widest">
+                  Status Filter
+                </Label>
+                <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
+                  <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-950 border-2 border-black rounded-xl font-bold text-sm">
+                    <Filter className="h-4 w-4 mr-2 text-blue-500" />
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent className="border-2 border-black rounded-xl">
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="present">Present</SelectItem>
+                    <SelectItem value="late">Late</SelectItem>
+                    <SelectItem value="early">Early Departure</SelectItem>
+                    <SelectItem value="absent">Absent</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            )}
+
+              <div className="flex flex-col md:flex-row items-end gap-4 w-full md:w-auto">
+                <div className={`w-full ${timePeriodFilter === 'custom' ? 'md:w-[220px]' : 'md:w-[220px]'} flex flex-col gap-2 transition-all duration-300`}>
+                  <Label className="text-[10px] font-black text-black dark:text-white ml-1 uppercase tracking-widest">
+                    Duration Filter
+                  </Label>
+                  <Select value={timePeriodFilter} onValueChange={(value: any) => setTimePeriodFilter(value)}>
+                    <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-950 border-2 border-black rounded-xl text-slate-700 dark:text-slate-200 font-bold text-sm">
+                      <Calendar className="h-4 w-4 mr-2 text-blue-500" />
+                      <SelectValue>
+                        {timePeriodFilter === 'custom'
+                          ? (customStartDate && customEndDate
+                            ? `${formatDateIST(customStartDate)} - ${formatDateIST(customEndDate)}`
+                            : 'Custom Range')
+                          : undefined}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="border-2 border-black rounded-xl">
+                      <SelectItem value="today">Today</SelectItem>
+                      <SelectItem value="current_month">Current Month</SelectItem>
+                      <SelectItem value="last_month">Last Month</SelectItem>
+                      <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                      <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                      <SelectItem value="last_12_months">Last 1 Year</SelectItem>
+                      <SelectItem value="custom">Custom Range</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {timePeriodFilter === "custom" && (
+                  <div className="flex items-center gap-4 animate-in fade-in slide-in-from-left-2 duration-300 w-full md:w-auto">
+                    <div className="w-full md:w-[140px]">
+                      <DatePicker
+                        date={customStartDate}
+                        onDateChange={setCustomStartDate}
+                        placeholder="Start"
+                        className="w-full bg-white dark:bg-gray-950 border-2 border-black rounded-xl h-11 text-xs"
+                      />
+                    </div>
+                    <div className="w-full md:w-[140px]">
+                      <DatePicker
+                        date={customEndDate}
+                        onDateChange={setCustomEndDate}
+                        placeholder="End"
+                        className="w-full bg-white dark:bg-gray-950 border-2 border-black rounded-xl h-11 text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {timePeriodFilter === "custom" &&
@@ -2282,48 +2284,50 @@ const AttendanceManager: React.FC = () => {
               </p>
             )}
 
-          <div className="rounded-2xl border-2 border-[#000000] overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-[#000000]">
+          <div className="rounded-2xl border-2 border-black overflow-hidden bg-white dark:bg-slate-900 shadow-lg">
+            <div className="overflow-x-auto max-h-[calc(100vh-450px)]">
+              <table className="w-full table-auto border-collapse min-w-[1400px]">
+                <thead className="bg-slate-50 dark:bg-slate-900 border-b-2 border-black sticky top-0 z-20">
                   <tr className="hover:bg-transparent">
-                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">DATE</th>
-                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
+                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800">
+                      Date
+                    </th>
+                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
                       {t.attendance.employeeId}
                     </th>
-                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
+                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
                       {t.attendance.employee}
                     </th>
-                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
+                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
                       {t.attendance.department}
                     </th>
-                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">Location</th>
-                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">Status</th>
-                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
+                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">Work Location</th>
+                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">Online Status</th>
+                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
                       {t.attendance.checkInTime}
                     </th>
-                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
+                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
                       {t.attendance.checkOutTime}
                     </th>
-                    <th className="text-center p-4 font-black text-[14px] text-white min-w-[120px] uppercase tracking-widest font-inter">
+                    <th className="text-center p-4 font-black text-[12px] text-black dark:text-white min-w-[120px] uppercase tracking-widest font-outfit">
                       {t.attendance.hours}
                     </th>
-                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
+                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
                       {t.attendance.location}
                     </th>
-                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
+                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
                       Photo
                     </th>
-                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
+                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
                       {t.common.status}
                     </th>
-                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
-                      Summary
+                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
+                      {t.attendance.workSummary}
                     </th>
-                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">
-                      Report
+                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
+                      {t.attendance.workReport}
                     </th>
-                    <th className="text-left p-4 font-black text-[14px] text-white uppercase tracking-widest font-inter">Overdue</th>
+                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">Overdue</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2336,174 +2340,124 @@ const AttendanceManager: React.FC = () => {
                       .map((record) => (
                         <tr
                           key={record.id}
-                          className="border-t hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+                          className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors group"
                         >
-                          <td className="p-3">
-                            <span className="text-[12px] font-medium text-black dark:text-white">
+                          <td className="p-4 sticky left-0 z-10 bg-white dark:bg-slate-950 border-r border-slate-100 dark:border-slate-800 whitespace-nowrap group-hover:bg-slate-50 dark:group-hover:bg-slate-900 transition-colors">
+                            <span className="text-[12px] font-black text-black dark:text-white font-outfit uppercase tracking-tight">
                               {formatDateIST(record.date, "dd MMM yyyy")}
                             </span>
                           </td>
-                          <td className="p-3">
+                          <td className="p-4">
                             <div>
-                              <p className="font-medium text-[12px] text-black dark:text-white">
+                              <p className="font-black text-[12px] text-black dark:text-white uppercase tracking-tight">
                                 {record.employeeId || record.userId || "N/A"}
                               </p>
-                              <p className="text-[12px] text-black dark:text-white opacity-70">
-                                ID: {record.userId}
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                                UID: {record.userId}
                               </p>
                             </div>
                           </td>
-                          <td className="p-3">
-                            <div>
-                              <p className="font-medium text-[12px] text-black dark:text-white">{record.userName}</p>
-                              <p className="text-[12px] text-black dark:text-white opacity-70">
+                          <td className="p-4">
+                            <div className="flex flex-col">
+                              <p className="font-black text-[12px] text-black dark:text-white uppercase tracking-tight truncate max-w-[150px]">
+                                {record.userName}
+                              </p>
+                              <p className="text-[10px] font-bold text-slate-500 lowercase truncate max-w-[150px]">
                                 {record.userEmail}
                               </p>
                             </div>
                           </td>
-                          <td className="p-3">
-                            <Badge variant="outline" className="text-[12px] text-black dark:text-white border-slate-200">{record.department}</Badge>
+                          <td className="p-4">
+                            <Badge variant="outline" className="text-[10px] font-black border-2 border-slate-200 text-slate-600 px-2 py-0.5 uppercase tracking-tighter">
+                              {record.department}
+                            </Badge>
                           </td>
-                          <td className="p-3">
+                          <td className="p-4">
                             {record.workLocation === "work_from_home" ? (
-                              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
-                                <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse"></div>
-                                <span className="text-[12px] font-medium text-black dark:text-white">
-                                  Work from Home
+                              <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-orange-50 dark:bg-orange-950/30 border-2 border-orange-200 dark:border-orange-800">
+                                <div className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse"></div>
+                                <span className="text-[10px] font-black text-orange-700 dark:text-orange-400 uppercase tracking-tight">
+                                  WFH
                                 </span>
                               </div>
                             ) : (
-                              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                                <div className="h-2 w-2 rounded-sm bg-blue-500"></div>
-                                <span className="text-[12px] font-medium text-black dark:text-white">
-                                  Work from Office
+                              <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/30 border-2 border-blue-200 dark:border-blue-800">
+                                <div className="h-1.5 w-1.5 rounded-sm bg-blue-500"></div>
+                                <span className="text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-tight">
+                                  Office
                                 </span>
                               </div>
                             )}
                           </td>
-                          <td className="p-3">
+                          <td className="p-4">
                             <div className="flex flex-col items-center gap-1">
                               {(() => {
-                                const statusInfo =
-                                  getOnlineStatusForDisplay(record);
-                                if (statusInfo.showAbsent) {
-                                  return null;
-                                } else if (statusInfo.label === "Checked Out") {
+                                const statusInfo = getOnlineStatusForDisplay(record);
+                                if (statusInfo.showAbsent) return null;
+                                if (statusInfo.label === "Checked Out") {
                                   return (
-                                    <span className="text-[12px] font-medium text-black dark:text-white">
-                                      Checked Out
+                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                      Offline
                                     </span>
                                   );
-                                } else {
-                                  return (
-                                    <OnlineStatusIndicator
-                                      isOnline={statusInfo.isOnline}
-                                      size="md"
-                                      showLabel={true}
-                                      clickable={isAdmin}
-                                      attendanceId={parseInt(record.id)}
-                                      userId={parseInt(record.userId)}
-                                      userName={record.userName}
-                                    />
-                                  );
                                 }
+                                return (
+                                  <OnlineStatusIndicator
+                                    isOnline={statusInfo.isOnline}
+                                    size="sm"
+                                    showLabel={true}
+                                    clickable={isAdmin}
+                                    attendanceId={parseInt(record.id)}
+                                    userId={parseInt(record.userId)}
+                                    userName={record.userName}
+                                  />
+                                );
                               })()}
-                              <div className="flex flex-col items-center gap-1 border-t border-slate-100 dark:border-slate-800 pt-1 mt-1 w-full">
-                                <div className="flex items-center gap-1 text-[10px] font-medium text-black dark:text-white">
-                                  <Timer className="h-2.5 w-2.5 text-blue-400" />
-                                  <span>
-                                    {(record.scheduledStart || "10:00").replace(/^0/, '')} -{" "}
-                                    {(record.scheduledEnd || "19:00").replace(/^0/, '')}
-                                  </span>
-                                </div>
-                                <div className="flex flex-col items-center gap-1">
-                                  {record.checkInStatus && (
-                                    <Badge
-                                      variant="outline"
-                                      className={`text-[12px] px-1 py-0 uppercase font-bold border-0 ${record.checkInStatus.toLowerCase() === "late"
-                                          ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
-                                          : "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400"
-                                        }`}
-                                    >
-                                      In: {record.checkInStatus}
-                                    </Badge>
-                                  )}
-                                  {record.checkOutStatus && (
-                                    <Badge
-                                      variant="outline"
-                                      className={`text-[12px] px-1 py-0 uppercase font-bold border-0 ${record.checkOutStatus.toLowerCase() === "early"
-                                          ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
-                                          : "bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-400"
-                                        }`}
-                                    >
-                                      Out: {record.checkOutStatus}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
                             </div>
                           </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-green-500" />
-                              <span className="text-[12px] font-semibold text-black dark:text-white">
-                                {formatAttendanceTime(
-                                  record.date,
-                                  record.checkInTime,
-                                )}
+                          <td className="p-4 font-outfit">
+                            <div className="flex items-center gap-2 px-2 py-1 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-100 dark:border-emerald-900/50">
+                              <Clock className="h-3.5 w-3.5 text-emerald-600" />
+                              <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-400 uppercase">
+                                {formatAttendanceTime(record.date, record.checkInTime)}
                               </span>
                             </div>
                           </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-red-500" />
-                              <span className="text-[12px] font-semibold text-black dark:text-white">
-                                {formatAttendanceTime(
-                                  record.date,
-                                  record.checkOutTime,
-                                )}
+                          <td className="p-4 font-outfit">
+                            <div className="flex items-center gap-2 px-2 py-1 bg-rose-50 dark:bg-rose-950/30 rounded-lg border border-rose-100 dark:border-rose-900/50">
+                              <Clock className="h-3.5 w-3.5 text-rose-600" />
+                              <span className="text-[11px] font-black text-rose-700 dark:text-rose-400 uppercase">
+                                {formatAttendanceTime(record.date, record.checkOutTime)}
                               </span>
                             </div>
                           </td>
-                          <td className="p-3">
+                          <td className="p-4 font-outfit text-center">
                             {record.checkOutTime ? (
-                              <div className="flex justify-center items-center">
-                                <span className="inline-flex items-center text-[12px] font-bold text-black dark:text-white whitespace-nowrap bg-blue-50/50 dark:bg-blue-950/20 px-3 py-1.5 rounded-full border border-blue-100 dark:border-blue-900 shadow-sm tabular-nums">
-                                  {formatWorkHours(record.workHours)}
-                                </span>
-                              </div>
+                              <span className="inline-flex items-center text-[11px] font-black text-blue-700 dark:text-blue-400 whitespace-nowrap bg-blue-50 dark:bg-blue-950 px-2.5 py-1 rounded-lg border-2 border-blue-100 dark:border-blue-900 shadow-sm tabular-nums">
+                                {formatWorkHours(record.workHours)}
+                              </span>
                             ) : (
-                              <div className="text-center">
-                                <span className="text-xs text-muted-foreground">—</span>
-                              </div>
+                              <span className="text-xs text-slate-300">--:--</span>
                             )}
                           </td>
-                          <td className="p-3">
-                            {record.checkInLocation?.address &&
-                              record.checkInLocation.address !== "-" ? (
+                          <td className="p-4 font-outfit">
+                            {record.checkInLocation?.address && record.checkInLocation.address !== "-" ? (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() =>
-                                  setLocationModal({
-                                    open: true,
-                                    location: record,
-                                  })
-                                }
-                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-8 px-3"
+                                onClick={() => setLocationModal({ open: true, location: record })}
+                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-8 px-2 font-black text-[10px] uppercase tracking-widest border-2 border-transparent hover:border-blue-200 rounded-lg"
                               >
-                                <MapPin className="h-4 w-4 mr-1" />
-                                View
+                                <MapPin className="h-3.5 w-3.5 mr-1" />
+                                Map
                               </Button>
                             ) : (
-                              <span className="text-xs text-muted-foreground">
-                                -
-                              </span>
+                              <span className="text-xs text-slate-300">-</span>
                             )}
                           </td>
-                          <td className="p-3">
+                          <td className="p-4">
                             <div
-                              className="h-10 w-10 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity"
+                              className="h-9 w-9 rounded-xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 cursor-pointer hover:border-blue-500 transition-all shadow-sm"
                               onClick={() => {
                                 setSelectedRecord(record);
                                 setShowSelfieModal(true);
@@ -2515,82 +2469,80 @@ const AttendanceManager: React.FC = () => {
                                   alt={`${record.userName}'s selfie`}
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
-                                    const target =
-                                      e.currentTarget as HTMLImageElement;
+                                    const target = e.currentTarget as HTMLImageElement;
                                     target.style.display = "none";
-                                    // Create fallback div
-                                    const fallback =
-                                      document.createElement("div");
-                                    fallback.className =
-                                      "w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center";
-                                    fallback.innerHTML =
-                                      '<svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>';
+                                    const fallback = document.createElement("div");
+                                    fallback.className = "w-full h-full bg-slate-100 flex items-center justify-center";
+                                    fallback.innerHTML = '<svg class="h-4 w-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>';
                                     target.parentNode?.appendChild(fallback);
                                   }}
                                 />
-                              ) : null}
-                              {!record.checkInSelfie && (
-                                <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                                  <User className="h-5 w-5 text-gray-400" />
+                              ) : (
+                                <div className="w-full h-full bg-slate-50 flex items-center justify-center">
+                                  <User className="h-4 w-4 text-slate-300" />
                                 </div>
                               )}
                             </div>
                           </td>
-                          <td className="p-3">
-                            <div className="flex flex-col items-center gap-1">
-                              {getStatusBadge(record)}
+                          <td className="p-4">
+                            <div className="flex flex-col gap-1.5">
+                              <div className="flex justify-center">
+                                {getStatusBadge(record)}
+                              </div>
+                              <div className="flex flex-col items-center gap-1 border-t border-slate-100 dark:border-slate-800 pt-1.5 mt-0.5">
+                                {record.checkInStatus && (
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[9px] px-1.5 py-0 font-black border-0 uppercase ${record.checkInStatus.toLowerCase() === "late"
+                                      ? "bg-rose-50 text-rose-600 dark:bg-rose-950/30"
+                                      : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30"
+                                      }`}
+                                  >
+                                    IN: {record.checkInStatus}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                           </td>
-                          <td className="p-3 text-sm text-muted-foreground max-w-[200px]">
+                          <td className="p-4">
                             {record.workSummary ? (
                               <button
                                 type="button"
-                                className="text-left truncate max-w-[180px] hover:text-blue-600 text-black dark:text-white"
-                                onClick={() =>
-                                  setSummaryModal({
-                                    open: true,
-                                    summary: record.workSummary || "",
-                                  })
-                                }
+                                className="text-left text-[11px] font-bold text-slate-600 dark:text-slate-400 hover:text-blue-600 transition-colors line-clamp-2 max-w-[150px]"
+                                onClick={() => setSummaryModal({ open: true, summary: record.workSummary || "" })}
                               >
-                                {record.workSummary.length > 40
-                                  ? `${record.workSummary.slice(0, 40)}…`
-                                  : record.workSummary}
+                                {record.workSummary}
                               </button>
                             ) : (
-                              "—"
+                              <span className="text-slate-300">-</span>
                             )}
                           </td>
-                          <td className="p-3">
+                          <td className="p-4">
                             {record.workReport ? (
                               <a
                                 href={record.workReport}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-sm text-black dark:text-white hover:underline"
+                                className="text-[10px] font-black text-blue-600 dark:text-blue-400 hover:underline uppercase tracking-widest"
                               >
-                                {t.attendance.viewReport}
+                                View
                               </a>
                             ) : (
-                              <span className="text-black dark:text-white text-sm">
-                                —
-                              </span>
+                              <span className="text-slate-300">-</span>
                             )}
                           </td>
-                          <td className="p-3 text-sm text-black dark:text-white max-w-[200px]">
+                          <td className="p-4">
                             {record.taskDeadlineReason ? (
-                              <div
-                                className="text-left w-full"
-                                title={record.taskDeadlineReason}
-                              >
+                              <div className="max-w-[150px]">
                                 <TruncatedText
                                   text={record.taskDeadlineReason}
-                                  maxLength={40}
+                                  maxLength={30}
                                   showToggle={true}
+                                  className="text-[11px] font-bold text-slate-600"
                                 />
                               </div>
                             ) : (
-                              "—"
+                              <span className="text-slate-300">-</span>
                             )}
                           </td>
                         </tr>
@@ -2636,26 +2588,34 @@ const AttendanceManager: React.FC = () => {
       </Card>
 
       <Dialog open={showSelfieModal} onOpenChange={setShowSelfieModal}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              {selectedRecord?.userName}'s Attendance
-            </DialogTitle>
-            <DialogDescription>
-              View check-in and check-out selfies with location and time
-              information
-            </DialogDescription>
+        <DialogContent className="sm:max-w-3xl border-2 border-black rounded-3xl p-0 overflow-hidden shadow-2xl">
+          <DialogHeader className="p-8 border-b-2 border-black bg-slate-50/50">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-black flex items-center justify-center shadow-lg">
+                <User className="h-6 w-6 text-white" />
+              </div>
+              <div className="text-left">
+                <DialogTitle className="text-2xl font-black text-black dark:text-white uppercase tracking-tight font-outfit">
+                  {selectedRecord?.userName}'s Attendance
+                </DialogTitle>
+                <DialogDescription className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">
+                  Check-in and Check-out details for {selectedRecord?.date}
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8">
             {/* Check-in Selfie */}
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-green-500"></div>
-                <h3 className="font-medium">{t.attendance.checkInSelfie}</h3>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                  <h3 className="text-[10px] font-black text-black uppercase tracking-widest">{t.attendance.checkInSelfie}</h3>
+                </div>
+                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 font-black text-[9px] uppercase">Verified</Badge>
               </div>
-              <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+              <div className="relative aspect-[3/4] bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-hidden border-2 border-black shadow-md">
                 {selectedRecord?.checkInSelfie ? (
                   <img
                     src={selectedRecord.checkInSelfie}
@@ -2664,46 +2624,47 @@ const AttendanceManager: React.FC = () => {
                     onError={(e) => {
                       const target = e.currentTarget as HTMLImageElement;
                       target.style.display = "none";
-                      // Create fallback div
                       const fallback = document.createElement("div");
-                      fallback.className =
-                        "w-full h-full flex flex-col items-center justify-center text-gray-400";
-                      fallback.innerHTML =
-                        '<svg class="h-12 w-12 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg><p>No selfie available</p>';
+                      fallback.className = "w-full h-full flex flex-col items-center justify-center text-slate-400 p-6 text-center";
+                      fallback.innerHTML = '<svg class="h-10 w-10 mb-2 opacity-20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg><p class="text-[10px] font-black uppercase">No selfie available</p>';
                       target.parentNode?.appendChild(fallback);
                     }}
                   />
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                    <User className="h-12 w-12 mb-2" />
-                    <p>{t.attendance.noSelfieAvailable}</p>
+                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-6 text-center">
+                    <User className="h-10 w-10 mb-2 opacity-20" />
+                    <p className="text-[10px] font-black uppercase">{t.attendance.noSelfieAvailable}</p>
                   </div>
                 )}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
-                  <p className="font-medium">
-                    Check-in:{" "}
-                    {selectedRecord?.checkInTime
-                      ? formatAttendanceTime(
-                        selectedRecord.date,
-                        selectedRecord.checkInTime,
-                      )
-                      : "N/A"}
-                  </p>
-                  <p className="text-sm opacity-80">
-                    {selectedRecord?.checkInLocation?.address ||
-                      "Location not available"}
-                  </p>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-5 text-white">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="h-3.5 w-3.5 text-emerald-400" />
+                    <p className="text-xs font-black uppercase tracking-wider">
+                      {selectedRecord?.checkInTime ? formatAttendanceTime(selectedRecord.date, selectedRecord.checkInTime) : "N/A"}
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-[10px] font-bold opacity-90 leading-tight">
+                      {selectedRecord?.checkInLocation?.address || "Location not available"}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Check-out Selfie */}
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-red-500"></div>
-                <h3 className="font-medium">{t.attendance.checkOutSelfie}</h3>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-rose-500 animate-pulse"></div>
+                  <h3 className="text-[10px] font-black text-black uppercase tracking-widest">{t.attendance.checkOutSelfie}</h3>
+                </div>
+                {selectedRecord?.checkOutTime && (
+                  <Badge className="bg-rose-50 text-rose-700 border-rose-100 font-black text-[9px] uppercase">Verified</Badge>
+                )}
               </div>
-              <div className="relative aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+              <div className="relative aspect-[3/4] bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-hidden border-2 border-black shadow-md">
                 {selectedRecord?.checkOutSelfie ? (
                   <img
                     src={selectedRecord.checkOutSelfie}
@@ -2712,46 +2673,44 @@ const AttendanceManager: React.FC = () => {
                     onError={(e) => {
                       const target = e.currentTarget as HTMLImageElement;
                       target.style.display = "none";
-                      // Create fallback div
                       const fallback = document.createElement("div");
-                      fallback.className =
-                        "w-full h-full flex flex-col items-center justify-center text-gray-400";
-                      fallback.innerHTML =
-                        '<svg class="h-12 w-12 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg><p>No check-out selfie</p><p class="text-sm">Not checked out yet</p>';
+                      fallback.className = "w-full h-full flex flex-col items-center justify-center text-slate-400 p-6 text-center";
+                      fallback.innerHTML = '<svg class="h-10 w-10 mb-2 opacity-20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg><p class="text-[10px] font-black uppercase">No check-out selfie</p>';
                       target.parentNode?.appendChild(fallback);
                     }}
                   />
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                    <User className="h-12 w-12 mb-2" />
-                    <p>{t.attendance.checkOutSelfie}</p>
-                    <p className="text-sm">{t.attendance.notCheckedOut}</p>
+                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-6 text-center">
+                    <User className="h-10 w-10 mb-2 opacity-20" />
+                    <p className="text-[10px] font-black uppercase">{t.attendance.checkOutSelfie}</p>
+                    <p className="text-[9px] font-bold opacity-60 uppercase mt-1">{t.attendance.notCheckedOut}</p>
                   </div>
                 )}
                 {selectedRecord?.checkOutTime && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
-                    <p className="font-medium">
-                      Check-out:{" "}
-                      {formatAttendanceTime(
-                        selectedRecord.date,
-                        selectedRecord.checkOutTime,
-                      )}
-                    </p>
-                    <p className="text-sm opacity-80">
-                      {selectedRecord.checkOutLocation?.address ||
-                        "Location not available"}
-                    </p>
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-5 text-white">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className="h-3.5 w-3.5 text-rose-400" />
+                      <p className="text-xs font-black uppercase tracking-wider">
+                        {formatAttendanceTime(selectedRecord.date, selectedRecord.checkOutTime)}
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-3.5 w-3.5 text-rose-400 flex-shrink-0 mt-0.5" />
+                      <p className="text-[10px] font-bold opacity-90 leading-tight">
+                        {selectedRecord.checkOutLocation?.address || "Location not available"}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="p-6 border-t-2 border-black bg-slate-50/50">
             <Button
               variant="outline"
               onClick={() => setShowSelfieModal(false)}
-              className="gap-2"
+              className="h-11 px-8 rounded-xl border-2 border-black font-black text-[10px] uppercase tracking-widest transition-all hover:bg-slate-100 gap-2"
             >
               <X className="h-4 w-4" />
               {t.common.close}
@@ -2766,21 +2725,36 @@ const AttendanceManager: React.FC = () => {
           setSummaryModal({ open, summary: open ? summaryModal.summary : null })
         }
       >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t.attendance.workSummaryTitle}</DialogTitle>
-            <DialogDescription>
-              {t.attendance.workSummaryDescription}
-            </DialogDescription>
+        <DialogContent className="sm:max-w-xl border-2 border-black rounded-3xl p-0 overflow-hidden shadow-2xl">
+          <DialogHeader className="p-8 border-b-2 border-black bg-slate-50/50">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-black flex items-center justify-center shadow-lg">
+                <FileText className="h-6 w-6 text-white" />
+              </div>
+              <div className="text-left">
+                <DialogTitle className="text-2xl font-black text-black dark:text-white uppercase tracking-tight font-outfit">
+                  {t.attendance.workSummaryTitle}
+                </DialogTitle>
+                <DialogDescription className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">
+                  {t.attendance.workSummaryDescription}
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="py-4 text-sm text-muted-foreground whitespace-pre-wrap break-words max-h-96 overflow-y-auto">
-            {summaryModal.summary || t.attendance.noSummaryProvided}
+          <div className="p-8">
+            <div className="p-6 bg-slate-50 rounded-2xl border-2 border-black shadow-inner min-h-[200px] max-h-[400px] overflow-y-auto">
+              <p className="text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+                {summaryModal.summary || t.attendance.noSummaryProvided}
+              </p>
+            </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="p-6 border-t-2 border-black bg-slate-50/50">
             <Button
               variant="outline"
               onClick={() => setSummaryModal({ open: false, summary: null })}
+              className="h-11 px-8 rounded-xl border-2 border-black font-black text-[10px] uppercase tracking-widest transition-all hover:bg-slate-100 gap-2"
             >
+              <X className="h-4 w-4" />
               {t.common.close}
             </Button>
           </DialogFooter>
@@ -2796,27 +2770,33 @@ const AttendanceManager: React.FC = () => {
           })
         }
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-blue-600" />
-              {t.attendance.checkInLocation}
-            </DialogTitle>
-            <DialogDescription>
-              {t.attendance.fullLocationDetails}
-            </DialogDescription>
+        <DialogContent className="sm:max-w-xl border-2 border-black rounded-3xl p-0 overflow-hidden shadow-2xl">
+          <DialogHeader className="p-8 border-b-2 border-black bg-slate-50/50">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-black flex items-center justify-center shadow-lg">
+                <MapPin className="h-6 w-6 text-white" />
+              </div>
+              <div className="text-left">
+                <DialogTitle className="text-2xl font-black text-black dark:text-white uppercase tracking-tight font-outfit">
+                  {t.attendance.checkInLocation}
+                </DialogTitle>
+                <DialogDescription className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">
+                  {t.attendance.fullLocationDetails}
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="py-4">
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border">
-              <div className="flex items-start gap-3">
-                <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <MapPin className="h-4 w-4 text-blue-600" />
+          <div className="p-8">
+            <div className="p-6 bg-slate-50 rounded-2xl border-2 border-black shadow-inner">
+              <div className="flex items-start gap-4">
+                <div className="h-10 w-10 rounded-xl bg-black flex items-center justify-center shadow-sm flex-shrink-0">
+                  <MapPin className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
                     {t.attendance.address}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed break-words">
+                  <p className="text-sm font-bold text-black leading-relaxed break-words">
                     {locationModal.location?.checkInLocation?.address ||
                       t.attendance.locationNotAvailable}
                   </p>
@@ -2824,11 +2804,11 @@ const AttendanceManager: React.FC = () => {
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="p-6 border-t-2 border-black bg-slate-50/50">
             <Button
               variant="outline"
               onClick={() => setLocationModal({ open: false, location: null })}
-              className="gap-2"
+              className="h-11 px-8 rounded-xl border-2 border-black font-black text-[10px] uppercase tracking-widest transition-all hover:bg-slate-100 gap-2"
             >
               <X className="h-4 w-4" />
               {t.common.close}
@@ -2839,460 +2819,228 @@ const AttendanceManager: React.FC = () => {
 
       {/* Export Modal */}
       <Dialog open={exportModalOpen} onOpenChange={setExportModalOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col overflow-visible">
-          <DialogHeader>
-            <DialogTitle>{t.attendance.exportReport}</DialogTitle>
-            <DialogDescription>
-              {t.attendance.configureExport}
-            </DialogDescription>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col overflow-hidden border-2 border-black rounded-3xl p-0 gap-0 shadow-2xl">
+          <DialogHeader className="p-8 border-b-2 border-black bg-slate-50/50">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-black flex items-center justify-center shadow-lg">
+                <Download className="h-6 w-6 text-white" />
+              </div>
+              <div className="text-left">
+                <DialogTitle className="text-2xl font-black text-black dark:text-white uppercase tracking-tight font-outfit">
+                  {t.attendance.exportReport}
+                </DialogTitle>
+                <DialogDescription className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">
+                  {t.attendance.configureExport}
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
 
-          <div className="space-y-6 py-4 flex-1 overflow-y-auto overflow-x-visible pr-1">
-            {/* Report Layout Selection */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Report Layout</Label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setReportLayout("basic")}
-                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === "basic"
-                    ? "border-blue-600 bg-blue-50 dark:bg-blue-950"
-                    : "border-gray-200 hover:border-blue-300 dark:border-gray-700"
-                    }`}
-                >
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div
-                      className={`h-8 w-8 rounded-full flex items-center justify-center ${reportLayout === "basic" ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-400"}`}
-                    >
-                      <FileText className="h-4.5 w-4.5" />
-                    </div>
-                    <span
-                      className={`text-xs font-bold ${reportLayout === "basic" ? "text-blue-600" : "text-gray-600"}`}
-                    >
-                      Basic
-                    </span>
-                    <span className="text-[12px] text-muted-foreground text-center line-clamp-1">
-                      Standard list
-                    </span>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReportLayout("grid")}
-                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === "grid"
-                    ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
-                    : "border-gray-200 hover:border-indigo-300 dark:border-gray-700"
-                    }`}
-                >
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div
-                      className={`h-8 w-8 rounded-full flex items-center justify-center ${reportLayout === "grid" ? "bg-indigo-100 text-indigo-600" : "bg-gray-100 text-gray-400"}`}
-                    >
-                      <Users className="h-4.5 w-4.5" />
-                    </div>
-                    <span
-                      className={`text-xs font-bold ${reportLayout === "grid" ? "text-indigo-600" : "text-gray-600"}`}
-                    >
-                      Grid
-                    </span>
-                    <span className="text-[12px] text-muted-foreground text-center line-clamp-1">
-                      Monthly view
-                    </span>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReportLayout("detailed_grid")}
-                  className={`p-2.5 rounded-lg border transition-all ${reportLayout === "detailed_grid"
-                    ? "border-purple-600 bg-purple-50 dark:bg-purple-950"
-                    : "border-gray-200 hover:border-purple-300 dark:border-gray-700"
-                    }`}
-                >
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div
-                      className={`h-8 w-8 rounded-full flex items-center justify-center ${reportLayout === "detailed_grid" ? "bg-purple-100 text-purple-600" : "bg-gray-100 text-gray-400"}`}
-                    >
-                      <LayoutGrid className="h-4.5 w-4.5" />
-                    </div>
-                    <span
-                      className={`text-xs font-bold ${reportLayout === "detailed_grid" ? "text-purple-600" : "text-gray-600"}`}
-                    >
-                      Detailed Grid
-                    </span>
-                    <span className="text-[12px] text-muted-foreground text-center line-clamp-1">
-                      Full details
-                    </span>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Export Format Selection */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Export Format</Label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setExportType("csv")}
-                  className={`p-2.5 rounded-lg border transition-all ${exportType === "csv"
-                    ? "border-green-600 bg-green-50 dark:bg-green-950"
-                    : "border-gray-200 hover:border-green-300 dark:border-gray-700"
-                    }`}
-                >
-                  <div className="flex flex-col items-center gap-1.5">
-                    <FileSpreadsheet
-                      className={`h-6 w-6 ${exportType === "csv" ? "text-green-600" : "text-gray-400"}`}
-                    />
-                    <span
-                      className={`text-xs font-bold ${exportType === "csv" ? "text-green-600" : "text-gray-600"}`}
-                    >
-                      CSV
-                    </span>
-                    <span className="text-[12px] text-muted-foreground text-center">
-                      Excel file
-                    </span>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setExportType("pdf")}
-                  className={`p-2.5 rounded-lg border transition-all ${exportType === "pdf"
-                    ? "border-red-600 bg-red-50 dark:bg-red-950"
-                    : "border-gray-200 hover:border-red-300 dark:border-gray-700"
-                    }`}
-                >
-                  <div className="flex flex-col items-center gap-1.5">
-                    <FileText
-                      className={`h-6 w-6 ${exportType === "pdf" ? "text-red-600" : "text-gray-400"}`}
-                    />
-                    <span
-                      className={`text-xs font-bold ${exportType === "pdf" ? "text-red-600" : "text-gray-600"}`}
-                    >
-                      PDF
-                    </span>
-                    <span className="text-[12px] text-muted-foreground text-center">
-                      Print file
-                    </span>
-                  </div>
-                </button>
-              </div>
-            </div>
-            {/* Quick Filter Dropdown */}
-            <div className="space-y-2">
-              <Label htmlFor="quick-filter" className="text-sm font-medium">
-                Quick Filter
-              </Label>
-              <Select value={quickFilter} onValueChange={handleQuickFilter}>
-                <SelectTrigger
-                  id="quick-filter"
-                  className={`w-full h-11 bg-white dark:bg-gray-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl hover:border-blue-400 focus:ring-blue-500/20 transition-all duration-300 ${quickFilter === 'custom' ? 'md:min-w-[280px]' : ''}`}
-                >
-                  <Calendar className={`h-4 w-4 mr-2 ${quickFilter === 'custom' ? 'text-blue-500' : 'text-slate-400'}`} />
-                  <SelectValue placeholder="Select time period">
-                    {quickFilter === 'custom'
-                      ? (startDate && endDate
-                        ? `${formatDateIST(startDate)} - ${formatDateIST(endDate)}`
-                        : 'Custom Range')
-                      : undefined}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent
-                  position="popper"
-                  className="w-[var(--radix-select-trigger-width)] min-w-[200px] max-w-[400px] z-50"
-                  sideOffset={5}
-                  align="start"
-                >
-                  <SelectItem
-                    value="yesterday"
-                    className="cursor-pointer hover:bg-blue-50"
-                  >
-                    Yesterday
-                  </SelectItem>
-                  <SelectItem
-                    value="current_month"
-                    className="cursor-pointer hover:bg-blue-50"
-                  >
-                    Current Month
-                  </SelectItem>
-                  <SelectItem
-                    value="last_month"
-                    className="cursor-pointer hover:bg-blue-50"
-                  >
-                    Last Month
-                  </SelectItem>
-                  <SelectItem
-                    value="last_3_months"
-                    className="cursor-pointer hover:bg-blue-50"
-                  >
-                    Last 3 Months
-                  </SelectItem>
-                  <SelectItem
-                    value="last_6_months"
-                    className="cursor-pointer hover:bg-blue-50"
-                  >
-                    Last 6 Months
-                  </SelectItem>
-                  <SelectItem
-                    value="last_year"
-                    className="cursor-pointer hover:bg-blue-50"
-                  >
-                    Last 1 Year
-                  </SelectItem>
-                  <SelectItem
-                    value="custom"
-                    className="cursor-pointer hover:bg-blue-50"
-                  >
-                    Custom Date Range
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Date Range Selection */}
-            {quickFilter === 'custom' && (
-              <div className="p-4 border rounded-2xl bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-100 dark:border-blue-800 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
-                      <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                      From Date
-                    </Label>
-                    <DatePicker
-                      date={startDate}
-                      onDateChange={setStartDate}
-                      toDate={new Date()}
-                      placeholder="Start Date"
-                      className="w-full bg-white dark:bg-gray-950 border-blue-200 h-11"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
-                      <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                      To Date
-                    </Label>
-                    <DatePicker
-                      date={endDate}
-                      onDateChange={setEndDate}
-                      fromDate={startDate}
-                      toDate={new Date()}
-                      placeholder="End Date"
-                      className="w-full bg-white dark:bg-gray-950 border-indigo-200 h-11"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Employee Filter */}
-            <div className="space-y-2">
-              <Label>Employee Filter</Label>
-              <div className="flex gap-4">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    id="all-employees"
-                    name="employee-filter"
-                    checked={employeeFilter === "all"}
-                    onChange={() => {
-                      setEmployeeFilter("all");
-                      setSelectedEmployee(null);
-                      setEmployeeSearch("");
-                      setSelectedDepartmentFilter("");
-                      setFilteredEmployees([]);
-                    }}
-                    className="h-4 w-4 text-blue-600"
-                  />
-                  <Label htmlFor="all-employees" className="cursor-pointer">
-                    All Employees
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    id="specific-employee"
-                    name="employee-filter"
-                    checked={employeeFilter === "specific"}
-                    onChange={() => {
-                      setEmployeeFilter("specific");
-                      setSelectedEmployee(null);
-                      setSelectedDepartmentFilter("");
-                      setEmployeeSearch("");
-                      setFilteredEmployees([]);
-                    }}
-                    className="h-4 w-4 text-blue-600"
-                  />
-                  <Label htmlFor="specific-employee" className="cursor-pointer">
-                    Specific Employee
-                  </Label>
-                </div>
-              </div>
-            </div>
-
-            {/* Employee Selection */}
-            {employeeFilter === "specific" && (
+          <div className="space-y-8 p-8 flex-1 overflow-y-auto w-full">
+            {/* Report Layout & Format in Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+              {/* Report Layout Selection */}
               <div className="space-y-4">
+                <Label className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">Report Layout</Label>
+                <div className="grid grid-cols-1 gap-3">
+                  {[
+                    { id: 'basic', label: 'Basic', sub: 'Standard list', icon: FileText, color: 'blue' },
+                    { id: 'grid', label: 'Grid', sub: 'Monthly view', icon: Users, color: 'indigo' },
+                    { id: 'detailed_grid', label: 'Detailed Grid', sub: 'Full details', icon: LayoutGrid, color: 'purple' }
+                  ].map((layout) => (
+                    <button
+                      key={layout.id}
+                      type="button"
+                      onClick={() => setReportLayout(layout.id as any)}
+                      className={`group flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-300 relative overflow-hidden ${reportLayout === layout.id
+                        ? "border-black bg-slate-100 shadow-inner"
+                        : "border-slate-100 hover:border-black bg-white"
+                        }`}
+                    >
+                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${reportLayout === layout.id ? 'bg-black text-white scale-110' : 'bg-slate-50 text-slate-400 group-hover:bg-black group-hover:text-white'}`}>
+                        <layout.icon className="h-5 w-5" />
+                      </div>
+                      <div className="text-left">
+                        <p className={`text-xs font-black uppercase tracking-tight ${reportLayout === layout.id ? 'text-black' : 'text-slate-600'}`}>{layout.label}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{layout.sub}</p>
+                      </div>
+                      {reportLayout === layout.id && <div className="absolute right-4 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-black animate-pulse" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Export Format Selection */}
+              <div className="space-y-4">
+                <Label className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">Export Format</Label>
+                <div className="grid grid-cols-1 gap-3">
+                  {[
+                    { id: 'csv', label: 'CSV Excel', sub: '.csv format', icon: FileSpreadsheet, color: 'emerald' },
+                    { id: 'pdf', label: 'PDF Document', sub: '.pdf format', icon: FileText, color: 'rose' }
+                  ].map((format) => (
+                    <button
+                      key={format.id}
+                      type="button"
+                      onClick={() => setExportType(format.id as any)}
+                      className={`group flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-300 relative overflow-hidden ${exportType === format.id
+                        ? "border-black bg-slate-100 shadow-inner"
+                        : "border-slate-100 hover:border-black bg-white"
+                        }`}
+                    >
+                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${exportType === format.id ? 'bg-black text-white scale-110' : 'bg-slate-50 text-slate-400 group-hover:bg-black group-hover:text-white'}`}>
+                        <format.icon className="h-5 w-5" />
+                      </div>
+                      <div className="text-left">
+                        <p className={`text-xs font-black uppercase tracking-tight ${exportType === format.id ? 'text-black' : 'text-slate-600'}`}>{format.label}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{format.sub}</p>
+                      </div>
+                      {exportType === format.id && <div className="absolute right-4 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-black animate-pulse" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Filters Section */}
+            <div className="space-y-6 pt-6 border-t-2 border-black border-dashed">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Quick Filter */}
                 <div className="space-y-2">
-                  <Label
-                    htmlFor="department-select"
-                    className="text-sm font-medium"
-                  >
-                    Branch
-                  </Label>
-                  <Select
-                    value={selectedDepartmentFilter}
-                    onValueChange={(value) => {
-                      setSelectedDepartmentFilter(value);
-                      setSelectedEmployee(null);
-                      setEmployeeSearch("");
-                    }}
-                  >
-                    <SelectTrigger
-                      id="department-select"
-                      className="w-full h-10 border-2 border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                    >
-                      <SelectValue placeholder="Select department" />
+                  <Label htmlFor="quick-filter" className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">Time Period</Label>
+                  <Select value={quickFilter} onValueChange={handleQuickFilter}>
+                    <SelectTrigger id="quick-filter" className="w-full h-11 border-2 border-black rounded-xl font-bold text-sm bg-white">
+                      <Calendar className="h-4 w-4 mr-2 text-blue-500" />
+                      <SelectValue placeholder="Select period" />
                     </SelectTrigger>
-                    <SelectContent
-                      position="popper"
-                      className="w-[var(--radix-select-trigger-width)] min-w-[200px] max-w-[400px] max-h-[300px] z-50"
-                      sideOffset={5}
-                      align="start"
-                    >
-                      {coreDepartments.length ? (
-                        coreDepartments.map((dept) => (
-                          <SelectItem
-                            key={dept}
-                            value={dept}
-                            className="cursor-pointer hover:bg-blue-50"
-                          >
-                            {dept}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="__empty" disabled>
-                          No departments available
-                        </SelectItem>
-                      )}
+                    <SelectContent className="border-2 border-black rounded-xl">
+                      {['yesterday', 'current_month', 'last_month', 'last_3_months', 'last_6_months', 'last_year', 'custom'].map((val) => (
+                        <SelectItem key={val} value={val} className="font-bold text-sm uppercase">{val.replace('_', ' ')}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                {selectedDepartmentFilter ? (
-                  <div className="space-y-2">
-                    <Label htmlFor="employee-search">Select Employee</Label>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="employee-search"
-                        placeholder="Search by name or employee ID..."
-                        value={employeeSearch}
-                        onChange={(e) =>
-                          setEmployeeSearch(
-                            e.target.value.replace(
-                              /[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu,
-                              "",
-                            ),
-                          )
-                        }
-                        className="pl-10"
-                      />
-                    </div>
-                    <div className="border rounded-md max-h-40 overflow-y-auto mt-2">
-                      {filteredEmployees.length ? (
-                        filteredEmployees.map((emp) => {
-                          const isSelected =
-                            selectedEmployee?.user_id === emp.user_id;
-                          return (
-                            <button
-                              type="button"
-                              key={emp.user_id}
-                              onClick={() => setSelectedEmployee(emp)}
-                              className={`w-full text-left p-3 border-b last:border-b-0 transition-colors ${isSelected
-                                ? "bg-blue-50 dark:bg-blue-900"
-                                : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                                }`}
-                            >
-                              <div className="font-medium">{emp.name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {emp.employee_id
-                                  ? `ID: ${emp.employee_id}`
-                                  : "User ID: " + emp.user_id}
-                              </div>
-                            </button>
-                          );
-                        })
-                      ) : (
-                        <div className="p-3 text-sm text-muted-foreground">
-                          No employees found for this department.
-                        </div>
-                      )}
-                    </div>
-                    {selectedEmployee && (
-                      <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900 rounded-md flex items-center justify-between">
-                        <div>
-                          <div className="font-medium">
-                            {selectedEmployee.name}
-                          </div>
-                          {selectedEmployee.employee_id && (
-                            <div className="text-sm text-muted-foreground">
-                              ID: {selectedEmployee.employee_id}
-                            </div>
-                          )}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedEmployee(null);
-                            setEmployeeSearch("");
-                          }}
-                        >
-                          Clear
-                        </Button>
-                      </div>
-                    )}
+                {/* Employee Filter Selection */}
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">Employee Scope</Label>
+                  <div className="flex gap-4 p-1 bg-slate-100 rounded-xl border-2 border-black">
+                    <button
+                      type="button"
+                      onClick={() => { setEmployeeFilter("all"); setSelectedEmployee(null); setEmployeeSearch(""); setSelectedDepartmentFilter(""); setFilteredEmployees([]); }}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${employeeFilter === 'all' ? 'bg-black text-white shadow-md' : 'text-slate-500 hover:bg-slate-200'}`}
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setEmployeeFilter("specific"); setSelectedEmployee(null); setSelectedDepartmentFilter(""); setEmployeeSearch(""); setFilteredEmployees([]); }}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${employeeFilter === 'specific' ? 'bg-black text-white shadow-md' : 'text-slate-500 hover:bg-slate-200'}`}
+                    >
+                      Specific
+                    </button>
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Select a department to view its employees.
-                  </p>
-                )}
+                </div>
               </div>
-            )}
+
+              {/* Custom Date Selection */}
+              {quickFilter === 'custom' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 bg-slate-50 border-2 border-black rounded-2xl animate-in zoom-in-95 duration-200">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-2">
+                      <div className="h-1.5 w-1.5 rounded-full bg-blue-500" /> From Date
+                    </Label>
+                    <DatePicker date={startDate} onDateChange={setStartDate} toDate={new Date()} placeholder="Start" className="w-full h-11 border-2 border-black rounded-xl bg-white" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-2">
+                      <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" /> To Date
+                    </Label>
+                    <DatePicker date={endDate} onDateChange={setEndDate} fromDate={startDate} toDate={new Date()} placeholder="End" className="w-full h-11 border-2 border-black rounded-xl bg-white" />
+                  </div>
+                </div>
+              )}
+
+              {/* Specific Employee Selection Controls */}
+              {employeeFilter === "specific" && (
+                <div className="space-y-4 p-6 bg-slate-50 border-2 border-black rounded-2xl animate-in zoom-in-95 duration-200">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-black uppercase tracking-widest">Select Branch</Label>
+                    <Select
+                      value={selectedDepartmentFilter}
+                      onValueChange={(v) => { setSelectedDepartmentFilter(v); setSelectedEmployee(null); setEmployeeSearch(""); }}
+                    >
+                      <SelectTrigger className="w-full h-11 border-2 border-black rounded-xl bg-white font-bold">
+                        <SelectValue placeholder="All Branches" />
+                      </SelectTrigger>
+                      <SelectContent className="border-2 border-black rounded-xl">
+                        {coreDepartments.length ? (
+                          coreDepartments.map((d) => <SelectItem key={d} value={d} className="font-bold">{d}</SelectItem>)
+                        ) : (
+                          <SelectItem value="__none" disabled>No branches available</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {selectedDepartmentFilter && (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black text-black uppercase tracking-widest">Search Employee</Label>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input
+                            placeholder="Type employee name or ID..."
+                            value={employeeSearch}
+                            onChange={(e) => setEmployeeSearch(e.target.value)}
+                            className="pl-10 h-11 border-2 border-black rounded-xl bg-white font-bold"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2 max-h-[160px] overflow-y-auto p-1">
+                        {filteredEmployees.length ? (
+                          filteredEmployees.map((emp) => (
+                            <button
+                              key={emp.user_id}
+                              type="button"
+                              onClick={() => setSelectedEmployee(emp)}
+                              className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${selectedEmployee?.user_id === emp.user_id ? 'border-black bg-white shadow-md' : 'border-transparent hover:bg-white hover:border-slate-200'}`}
+                            >
+                              <div className="text-left">
+                                <p className="text-xs font-black text-black uppercase">{emp.name}</p>
+                                <p className="text-[10px] font-bold text-slate-400">ID: {emp.employee_id || emp.user_id}</p>
+                              </div>
+                              {selectedEmployee?.user_id === emp.user_id && <Check className="h-4 w-4 text-black" />}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="py-8 text-center bg-white rounded-xl border-2 border-dashed border-slate-200">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No results found</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="p-8 border-t-2 border-black bg-slate-50/50 sm:justify-between w-full">
             <Button
               variant="outline"
-              onClick={() => {
-                setExportModalOpen(false);
-                setExportType(null);
-              }}
-              disabled={isExporting}
+              onClick={() => { setExportModalOpen(false); setExportType(null); }}
+              className="h-12 px-8 rounded-xl border-2 border-black font-black text-[10px] uppercase tracking-widest transition-all hover:bg-slate-100"
             >
               Cancel
             </Button>
             <Button
               onClick={performExport}
-              disabled={
-                isExporting ||
-                !exportType ||
-                (!startDate && !endDate) ||
-                (employeeFilter === "specific" && !selectedEmployee)
-              }
-              className={
-                exportType === "csv"
-                  ? "bg-green-600 hover:bg-green-700"
-                  : exportType === "pdf"
-                    ? "bg-red-600 hover:bg-red-700"
-                    : ""
-              }
+              disabled={isExporting || !exportType || (!startDate && !endDate) || (employeeFilter === "specific" && !selectedEmployee)}
+              className="h-12 px-8 rounded-xl border-2 border-black bg-black text-white font-black text-[10px] uppercase tracking-widest gap-2 shadow-lg hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50"
             >
-              {isExporting
-                ? "Exporting..."
-                : exportType
-                  ? `Export ${exportType.toUpperCase()}`
-                  : "Select Format"}
+              <Download className="h-4 w-4" />
+              {isExporting ? "Exporting..." : `Generate ${exportType?.toUpperCase() || 'Report'}`}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3301,100 +3049,43 @@ const AttendanceManager: React.FC = () => {
   );
 
   const officeHoursContent = (
-    <div className="space-y-6">
-      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-5 rounded-2xl bg-gradient-to-br from-white to-purple-50/30 border border-purple-100/50 shadow-sm mt-1">
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-purple-100/20 rounded-full blur-3xl -z-10" />
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-purple-100/50 flex items-center justify-center border border-purple-200/50 shadow-sm group transition-all duration-300 hover:scale-110">
-            <Clock className="h-6 w-6 text-purple-600" />
-          </div>
-          <div>
-            <h2 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "30px", fontWeight: "bold" }} className="leading-tight">
-              Office Hour Control Center
-            </h2>
-            <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-0.5">
-              Define global timings, override specific departments, and keep
-              every team aligned.
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-8">
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {officeQuickStats.map((stat, index) => {
-          const colors = ["blue", "emerald", "orange", "purple"];
-          const color = colors[index % colors.length];
+          const labels = ["blue", "green", "orange", "purple"];
+          const label = labels[index % labels.length];
           const icons = [Clock, Timer, Timer, Settings];
           const Icon = icons[index % icons.length];
 
-          const subs = [
-            "Office Opens",
-            "Office Closes",
-            "Late Threshold",
-            "Early Threshold",
-          ];
-          const sub = subs[index % subs.length];
-
-          // Replicating exact styles from Attendance Stats in lines 1097+
-          const borderColor = `border-${color}-300/80 dark:border-${color}-700/50`;
-          const hoverBorder = `group-hover:border-${color}-500 dark:group-hover:border-${color}-400`;
-          const cardBg = `bg-${color}-50/40 dark:bg-${color}-950/10`;
-          const iconBg = `bg-${color}-50 text-${color}-600 dark:bg-${color}-900/20 dark:text-${color}-400`;
-
           return (
-            <Card
+            <SummaryCard
               key={stat.label}
-              className={`border-2 ${borderColor} ${hoverBorder} shadow-sm ${cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative cursor-pointer`}
-            >
-              <div
-                className={`absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-5 group-hover:opacity-10 transition-opacity bg-${color}-500`}
-              />
-
-              <CardContent className="p-5 relative">
-                <div className="flex justify-between items-start mb-3">
-                  <div
-                    className={`p-2.5 rounded-xl ${iconBg} shadow-sm group-hover:scale-110 transition-transform duration-300`}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-bold uppercase tracking-widest leading-none">
-                    {stat.label}
-                  </h3>
-                  <div style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="tracking-tight">
-                    {stat.value}
-                  </div>
-                  <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
-                    <div
-                      className={`h-1.5 w-1.5 rounded-full bg-${color}-500`}
-                    />
-                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-bold uppercase">
-                      {sub}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              title={stat.label}
+              value={stat.value}
+              icon={Icon}
+              iconColor={`text-${label}-600`}
+              iconBg={`bg-${label}-50`}
+            />
           );
         })}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="shadow-xl border border-blue-100 dark:border-slate-800">
-          <CardHeader className="space-y-1 pb-4">
-            <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
+        <Card className="shadow-xl border-2 border-[#000000] rounded-2xl overflow-hidden">
+          <CardHeader className="space-y-1 pb-4 bg-slate-50/50 dark:bg-slate-800/50 border-b-2 border-black">
+            <CardTitle className="text-sm font-black text-black dark:text-white uppercase tracking-widest font-outfit">
               Global Office Hours
             </CardTitle>
-            <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
-              Default schedule applied to every department unless specifically
-              overridden.
+            <CardDescription className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">
+              Default schedule applied to every branch
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 p-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="global-start" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Start Time</Label>
+                <Label htmlFor="global-start" className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">Start Time</Label>
                 <div className="relative">
                   <Input
                     id="global-start"
@@ -3406,19 +3097,18 @@ const AttendanceManager: React.FC = () => {
                         startTime: e.target.value,
                       }))
                     }
-                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-blue-100 focus:border-blue-400 pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
+                    className="h-11 border-2 border-black rounded-xl bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500 font-black text-sm pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
                   />
                   <button
                     type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-slate-50 focus:outline-none"
                     onClick={() =>
                       setOpenTimePicker((prev) =>
                         prev === "globalStart" ? null : "globalStart",
                       )
                     }
-                    aria-label="Set start time"
                   >
-                    <Clock className="h-4 w-4 text-blue-500" />
+                    <Clock className="h-4 w-4 text-black" />
                   </button>
                   {openTimePicker === "globalStart" && (
                     <TimePickerDropdown
@@ -3430,7 +3120,7 @@ const AttendanceManager: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="global-end" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>End Time</Label>
+                <Label htmlFor="global-end" className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">End Time</Label>
                 <div className="relative">
                   <Input
                     id="global-end"
@@ -3442,19 +3132,18 @@ const AttendanceManager: React.FC = () => {
                         endTime: e.target.value,
                       }))
                     }
-                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-blue-100 focus:border-blue-400 pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
+                    className="h-11 border-2 border-black rounded-xl bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500 font-black text-sm pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
                   />
                   <button
                     type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-slate-50 focus:outline-none"
                     onClick={() =>
                       setOpenTimePicker((prev) =>
                         prev === "globalEnd" ? null : "globalEnd",
                       )
                     }
-                    aria-label="Set end time"
                   >
-                    <Clock className="h-4 w-4 text-blue-500" />
+                    <Clock className="h-4 w-4 text-black" />
                   </button>
                   {openTimePicker === "globalEnd" && (
                     <TimePickerDropdown
@@ -3466,8 +3155,8 @@ const AttendanceManager: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="global-grace-in" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
-                  Check-in Grace (minutes)
+                <Label htmlFor="global-grace-in" className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">
+                  In Grace (Mins)
                 </Label>
                 <Input
                   id="global-grace-in"
@@ -3482,12 +3171,12 @@ const AttendanceManager: React.FC = () => {
                         e.target.value === "" ? "" : Number(e.target.value),
                     }))
                   }
-                  style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-blue-100 focus:border-blue-400"
+                  className="h-11 border-2 border-black rounded-xl bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500 font-black text-sm"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="global-grace-out" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
-                  Check-out Grace (minutes)
+                <Label htmlFor="global-grace-out" className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">
+                  Out Grace (Mins)
                 </Label>
                 <Input
                   id="global-grace-out"
@@ -3502,15 +3191,14 @@ const AttendanceManager: React.FC = () => {
                         e.target.value === "" ? "" : Number(e.target.value),
                     }))
                   }
-                  style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-blue-100 focus:border-blue-400"
+                  className="h-11 border-2 border-black rounded-xl bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500 font-black text-sm"
                 />
               </div>
             </div>
-            <div className="flex flex-wrap justify-end gap-3">
+            <div className="flex flex-wrap justify-end gap-3 pt-6 border-t-2 border-black">
               <Button
                 variant="outline"
-                className="bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-md"
-                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}
+                className="h-11 px-6 rounded-xl border-2 border-black font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-white hover:bg-slate-50"
                 onClick={() => loadOfficeTimings()}
                 disabled={officeFormLoading}
               >
@@ -3519,8 +3207,7 @@ const AttendanceManager: React.FC = () => {
               <Button
                 onClick={handleGlobalTimingSave}
                 disabled={isGlobalSaving || officeFormLoading}
-                className="gap-2 bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-md"
-                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}
+                className="h-11 px-6 rounded-xl border-2 border-black font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-black text-white hover:bg-[#333333]"
               >
                 {isGlobalSaving ? "Saving..." : "Save Global Settings"}
               </Button>
@@ -3530,20 +3217,19 @@ const AttendanceManager: React.FC = () => {
 
         <Card
           ref={departmentFormRef}
-          className="shadow-xl border border-purple-100 dark:border-slate-800 transition-all duration-300"
+          className="shadow-xl border-2 border-[#000000] rounded-2xl overflow-hidden transition-all duration-300"
         >
-          <CardHeader className="space-y-1 pb-4">
-            <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
-              Branch Timing
+          <CardHeader className="space-y-1 pb-4 bg-slate-50/50 dark:bg-slate-800/50 border-b-2 border-black">
+            <CardTitle className="text-sm font-black text-black dark:text-white uppercase tracking-widest font-outfit">
+              Department Timing Override
             </CardTitle>
-            <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
-              Override the global schedule for particular departments or create
-              new ones.
+            <CardDescription className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">
+              Customize schedule for specific departments
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 p-6">
             <div className="space-y-2">
-              <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Branch</Label>
+              <Label className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">Select Department</Label>
               <Select
                 value={departmentTimingForm.department || undefined}
                 onValueChange={handleDepartmentSelect}
@@ -3552,16 +3238,16 @@ const AttendanceManager: React.FC = () => {
                   !departmentTimingForm.department
                 }
               >
-                <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-purple-100 focus:border-purple-400">
+                <SelectTrigger className="h-11 border-2 border-black rounded-xl bg-white dark:bg-gray-950 font-black text-sm">
                   <SelectValue
                     placeholder={
                       coreDepartments.length
-                        ? "Select branch"
-                        : "No branches available"
+                        ? "Choose a department..."
+                        : "No departments available"
                     }
                   />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="border-2 border-black rounded-xl">
                   {coreDepartments.length === 0 ? (
                     <SelectItem value="__no_departments__" disabled>
                       {departmentTimingForm.department
@@ -3571,7 +3257,7 @@ const AttendanceManager: React.FC = () => {
                   ) : (
                     <>
                       {coreDepartments.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
+                        <SelectItem key={dept} value={dept} className="font-bold text-sm">
                           {dept}
                         </SelectItem>
                       ))}
@@ -3586,23 +3272,23 @@ const AttendanceManager: React.FC = () => {
                           <SelectItem
                             value={departmentTimingForm.department}
                             disabled
+                            className="font-bold text-sm"
                           >
                             {departmentTimingForm.department} (not in list)
                           </SelectItem>
                         )}
-                      <SelectItem value="__clear__" className="text-red-500">
+                      <SelectItem value="__clear__" className="text-red-500 font-bold text-sm">
                         Clear Selection
                       </SelectItem>
                     </>
                   )}
                 </SelectContent>
               </Select>
-              
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="dept-start" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Start Time</Label>
+                <Label htmlFor="dept-start" className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">Start Time</Label>
                 <div className="relative">
                   <Input
                     id="dept-start"
@@ -3614,19 +3300,18 @@ const AttendanceManager: React.FC = () => {
                         startTime: e.target.value,
                       }))
                     }
-                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-purple-100 focus:border-purple-400 pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
+                    className="h-11 border-2 border-black rounded-xl bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500 font-black text-sm pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
                   />
                   <button
                     type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-slate-50 focus:outline-none"
                     onClick={() =>
                       setOpenTimePicker((prev) =>
                         prev === "deptStart" ? null : "deptStart",
                       )
                     }
-                    aria-label="Set department start time"
                   >
-                    <Clock className="h-4 w-4 text-purple-500" />
+                    <Clock className="h-4 w-4 text-black" />
                   </button>
                   {openTimePicker === "deptStart" && (
                     <TimePickerDropdown
@@ -3638,7 +3323,7 @@ const AttendanceManager: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="dept-end" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>End Time</Label>
+                <Label htmlFor="dept-end" className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">End Time</Label>
                 <div className="relative">
                   <Input
                     id="dept-end"
@@ -3650,19 +3335,18 @@ const AttendanceManager: React.FC = () => {
                         endTime: e.target.value,
                       }))
                     }
-                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-purple-100 focus:border-purple-400 pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
+                    className="h-11 border-2 border-black rounded-xl bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500 font-black text-sm pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
                   />
                   <button
                     type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-slate-50 focus:outline-none"
                     onClick={() =>
                       setOpenTimePicker((prev) =>
                         prev === "deptEnd" ? null : "deptEnd",
                       )
                     }
-                    aria-label="Set department end time"
                   >
-                    <Clock className="h-4 w-4 text-purple-500" />
+                    <Clock className="h-4 w-4 text-black" />
                   </button>
                   {openTimePicker === "deptEnd" && (
                     <TimePickerDropdown
@@ -3674,7 +3358,7 @@ const AttendanceManager: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="dept-grace-in" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Check-in Grace (minutes)</Label>
+                <Label htmlFor="dept-grace-in" className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">In Grace (Mins)</Label>
                 <Input
                   id="dept-grace-in"
                   type="number"
@@ -3688,12 +3372,12 @@ const AttendanceManager: React.FC = () => {
                         e.target.value === "" ? "" : Number(e.target.value),
                     }))
                   }
-                  style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-purple-100 focus:border-purple-400"
+                  className="h-11 border-2 border-black rounded-xl bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500 font-black text-sm"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="dept-grace-out" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
-                  Check-out Grace (minutes)
+                <Label htmlFor="dept-grace-out" className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">
+                  Out Grace (Mins)
                 </Label>
                 <Input
                   id="dept-grace-out"
@@ -3708,12 +3392,12 @@ const AttendanceManager: React.FC = () => {
                         e.target.value === "" ? "" : Number(e.target.value),
                     }))
                   }
-                  style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-10 border-purple-100 focus:border-purple-400"
+                  className="h-11 border-2 border-black rounded-xl bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500 font-black text-sm"
                 />
               </div>
             </div>
 
-            <div className="flex flex-wrap justify-end gap-3">
+            <div className="flex flex-wrap justify-end gap-3 pt-6 border-t-2 border-black">
               <Button
                 type="button"
                 variant="outline"
@@ -3726,8 +3410,7 @@ const AttendanceManager: React.FC = () => {
                     checkOutGrace: globalTimingForm.checkOutGrace,
                   })
                 }
-                className="bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-md"
-                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}
+                className="h-11 px-6 rounded-xl border-2 border-black font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-white hover:bg-slate-50"
               >
                 Reset
               </Button>
@@ -3738,26 +3421,25 @@ const AttendanceManager: React.FC = () => {
                   officeFormLoading ||
                   !departmentTimingForm.department.trim()
                 }
-                className="gap-2 bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-md"
-                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}
+                className="h-11 px-6 rounded-xl border-2 border-black font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-black text-white hover:bg-[#333333]"
               >
-                {isDeptSaving ? "Saving..." : "Save Branch Timing"}
+                {isDeptSaving ? "Saving..." : "Save Department Timing"}
               </Button>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="shadow-xl border border-slate-100 dark:border-slate-800">
-        <CardHeader className="space-y-1 pb-4">
-          <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
+      <Card className="shadow-xl border-2 border-[#000000] rounded-2xl overflow-hidden">
+        <CardHeader className="space-y-1 pb-4 bg-slate-50/50 dark:bg-slate-800/50 border-b-2 border-black">
+          <CardTitle className="text-sm font-black text-black dark:text-white uppercase tracking-widest font-outfit">
             Configured Schedules
           </CardTitle>
-          <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
-            Overview of current global and department-specific office timings.
+          <CardDescription className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">
+            Overview of current global and department timings
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           {officeTimings.length > 0 ? (
             <div className="grid gap-4">
               {officeTimings.map((timing) => {
@@ -3765,62 +3447,60 @@ const AttendanceManager: React.FC = () => {
                 return (
                   <div
                     key={timing.id}
-                    className="group border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-gradient-to-r from-white to-slate-50 dark:from-slate-900 dark:to-slate-950 shadow-sm hover:shadow-lg transition-shadow"
+                    className="group border-2 border-black rounded-2xl p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-all hover:bg-slate-50/50"
                   >
-                    <div>
-                      <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="font-medium">
-                        {isGlobalTiming ? "Global Schedule" : "Branch"}
-                      </p>
-                      <h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
-                        {isGlobalTiming ? "All Branches" : timing.department}
-                      </h3>
-                      <div className="mt-3 flex flex-wrap gap-3">
-                        <Badge
-                          variant="secondary"
-                          className="bg-blue-50 text-blue-700"
-                        >
-                          Start: {formatTimeDisplay(timing.start_time)}
-                        </Badge>
-                        <Badge
-                          variant="secondary"
-                          className="bg-green-50 text-green-700"
-                        >
-                          End: {formatTimeDisplay(timing.end_time)}
-                        </Badge>
-                        <Badge
-                          variant="secondary"
-                          className="bg-amber-50 text-amber-700"
-                        >
-                          Grace In: {timing.check_in_grace_minutes}m
-                        </Badge>
-                        <Badge
-                          variant="secondary"
-                          className="bg-rose-50 text-rose-700"
-                        >
-                          Grace Out: {timing.check_out_grace_minutes}m
-                        </Badge>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${isGlobalTiming ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'}`}>
+                          {isGlobalTiming ? <Globe className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
+                        </div>
+                        <h3 className="text-lg font-black text-black dark:text-white uppercase tracking-tight font-outfit">
+                          {isGlobalTiming ? "Global Schedule" : timing.department}
+                        </h3>
+                        {isGlobalTiming && (
+                          <Badge className="bg-blue-600 text-white font-black text-[10px] px-2 py-0.5 rounded-md uppercase">Default</Badge>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-100 dark:border-emerald-900">
+                          <LogIn className="h-3.5 w-3.5 text-emerald-600" />
+                          <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-400 uppercase">
+                            Start: {formatTimeDisplay(timing.start_time)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 dark:bg-rose-950/30 rounded-xl border border-rose-100 dark:border-rose-900">
+                          <LogOut className="h-3.5 w-3.5 text-rose-600" />
+                          <span className="text-[11px] font-black text-rose-700 dark:text-rose-400 uppercase">
+                            End: {formatTimeDisplay(timing.end_time)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 dark:bg-orange-950/30 rounded-xl border border-orange-100 dark:border-orange-900">
+                          <Timer className="h-3.5 w-3.5 text-orange-600" />
+                          <span className="text-[11px] font-black text-orange-700 dark:text-orange-400 uppercase">
+                            Grace: {timing.check_in_grace_minutes}m In / {timing.check_out_grace_minutes}m Out
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex gap-2">
                       <Button
                         size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0 hover:bg-blue-100"
                         onClick={() => handleDepartmentTimingEdit(timing)}
-                        title="Edit"
+                        className="h-10 px-4 rounded-xl border-2 border-black bg-white hover:bg-slate-50 text-black font-black text-[10px] uppercase tracking-widest gap-2"
                       >
-                        <Edit className="h-4 w-4 text-blue-600" />
+                        <Edit className="h-3.5 w-3.5" />
+                        Edit
                       </Button>
                       {!isGlobalTiming && (
                         <Button
                           size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0 text-destructive hover:bg-red-50"
+                          variant="destructive"
                           onClick={() => handleDepartmentTimingDelete(timing)}
                           disabled={officeFormLoading}
-                          title="Remove"
+                          className="h-10 px-4 rounded-xl border-2 border-black bg-rose-500 hover:bg-rose-600 text-white font-black text-[10px] uppercase tracking-widest gap-2"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Delete
                         </Button>
                       )}
                     </div>
@@ -3829,14 +3509,13 @@ const AttendanceManager: React.FC = () => {
               })}
             </div>
           ) : (
-            <div className="p-10 text-center">
-              <Clock className="h-12 w-12 mx-auto text-slate-300 mb-3" />
-              <p className="text-lg font-medium">
-                No office timings configured yet
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Start by adding a global schedule, then override specific
-                departments as needed.
+            <div className="p-16 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
+              <div className="h-20 w-20 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Clock className="h-10 w-10 text-slate-300" />
+              </div>
+              <h3 className="text-xl font-black text-black dark:text-white uppercase tracking-tight mb-2">No schedules found</h3>
+              <p className="text-sm font-bold text-slate-500 uppercase tracking-wider max-w-md mx-auto">
+                Start by configuring global office hours or add department-specific overrides above.
               </p>
             </div>
           )}
@@ -3848,468 +3527,123 @@ const AttendanceManager: React.FC = () => {
   return (
     <div className="space-y-6">
       {isAdmin ? (
-        <Tabs
-          value={activeTab}
-          onValueChange={(value) =>
-            setActiveTab(
-              value as "attendance" | "office-hours" | "wfh-requests",
-            )
-          }
-          className="space-y-6"
-        >
-        <div className="flex justify-center w-full mb-8">
-          <TabsList className="grid grid-cols-3 h-14 w-full sm:w-[700px] bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-1.5 gap-2 shadow-sm">
-            <TabsTrigger
-              value="attendance"
-              className="flex items-center justify-center gap-2 text-sm font-medium transition-all duration-300 rounded-lg
-                data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:font-bold
-                data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
-            >
-              <Users className="h-5 w-5" />
-              <span>Attendance</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="office-hours"
-              className="flex items-center justify-center gap-2 text-sm font-medium transition-all duration-300 rounded-lg
-                data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:font-bold
-                data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
-            >
-              <Settings className="h-5 w-5" />
-              <span>Office Hours</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="wfh-requests"
-              className="flex items-center justify-center gap-2 text-sm font-medium transition-all duration-300 rounded-lg relative
-                data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:font-bold
-                data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
-            >
-              <FileText className="h-5 w-5" />
-              <span>WFH Requests</span>
-              {getAdminPendingWfhCount() > 0 && (
-                <Badge
-                  variant="destructive"
-                  className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] font-bold bg-red-500 text-white border-2 border-white dark:border-gray-800"
-                >
-                  {getAdminPendingWfhCount()}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
-        </div>
-          <TabsContent value="attendance" className="space-y-6">
-            {attendanceContent}
-          </TabsContent>
-          <TabsContent value="office-hours" className="space-y-6">
-            {officeHoursContent}
-          </TabsContent>
-          <TabsContent value="wfh-requests" className="space-y-6">
-            {/* Pending WFH Requests Section */}
-            <Card className="border-slate-200/60 border shadow-sm bg-white rounded-xl overflow-hidden">
-              <CardHeader className="border-b border-slate-100 bg-slate-50/30 px-5 py-4">
-                <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="flex items-center gap-2">
-                  <FileText className="h-4.5 w-4.5 text-blue-600" />
-                  WFH Pending Requests
-                  {getAdminPendingWfhCount() > 0 && (
-                    <Badge className="bg-rose-50 text-rose-600 hover:bg-rose-100 border-0 h-4.5 px-1.5 text-[10px] font-black">
-                      {getAdminPendingWfhCount()}
-                    </Badge>
-                  )}
-                </CardTitle>
-                <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-1">
-                  Review and process recent work from home requests.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {isLoadingWfhRequests ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Timer className="h-8 w-8 animate-spin text-purple-600" />
-                    <span className="ml-2 text-muted-foreground">
-                      Loading requests...
-                    </span>
-                  </div>
-                ) : allWfhRequests.filter((req) => req.status === "pending")
-                  .length > 0 ? (
-                  <>
-                    <div className="space-y-3">
-                      {allWfhRequests
-                        .filter((req) => req.status === "pending")
-                        .slice(
-                          (pendingWfhCurrentPage - 1) * pendingWfhItemsPerPage,
-                          pendingWfhCurrentPage * pendingWfhItemsPerPage,
-                        )
-                        .map((request) => (
-                          <div
-                            key={request.id}
-                            className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="space-y-2 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4 text-blue-600" />
-                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
-                                      {request.submittedBy}
-                                    </span>
-                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>
-                                      {formatRoleDisplay(request.role)}
-                                    </span>
+        <div className="space-y-6">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) =>
+              setActiveTab(
+                value as "attendance" | "office-hours" | "wfh-requests",
+              )
+            }
+            className="space-y-6"
+          >
+            {attendanceHeader}
+            <TabsContent value="attendance" className="space-y-6">
+              {attendanceContent}
+            </TabsContent>
+            <TabsContent value="office-hours" className="space-y-6">
+              {officeHoursContent}
+            </TabsContent>
+            <TabsContent value="wfh-requests" className="space-y-6">
+              {/* Pending WFH Requests Section */}
+              <Card className="border-2 border-[#000000] shadow-xl bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
+                <CardHeader className="bg-slate-50/50 dark:bg-slate-800/50 px-6 py-5 border-b-2 border-black">
+                  <CardTitle className="text-xl font-black text-[#000000] dark:text-white tracking-tight font-outfit uppercase flex items-center gap-3">
+                    <FileText className="h-6 w-6 text-blue-600" />
+                    WFH Pending Requests
+                    {getAdminPendingWfhCount() > 0 && (
+                      <Badge className="bg-rose-500 text-white border-0 h-6 px-2 text-[10px] font-black rounded-full">
+                        {getAdminPendingWfhCount()}
+                      </Badge>
+                    )}
+                  </CardTitle>
+                  <CardDescription className="text-xs font-bold text-[#5e5b5b] dark:text-slate-400 tracking-wider mt-1 uppercase">
+                    Review and process recent work from home requests
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  {isLoadingWfhRequests ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Timer className="h-8 w-8 animate-spin text-purple-600" />
+                      <span className="ml-2 text-muted-foreground">
+                        Loading requests...
+                      </span>
+                    </div>
+                  ) : allWfhRequests.filter((req) => req.status === "pending")
+                    .length > 0 ? (
+                    <>
+                      <div className="space-y-3">
+                        {allWfhRequests
+                          .filter((req) => req.status === "pending")
+                          .slice(
+                            (pendingWfhCurrentPage - 1) * pendingWfhItemsPerPage,
+                            pendingWfhCurrentPage * pendingWfhItemsPerPage,
+                          )
+                          .map((request) => (
+                            <div
+                              key={request.id}
+                              className="border-2 border-black rounded-xl p-5 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all duration-300 group shadow-sm hover:shadow-md"
+                            >
+                              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                                <div className="space-y-3 flex-1">
+                                  <div className="flex items-center gap-4 flex-wrap">
+                                    <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-100 dark:border-blue-800">
+                                      <User className="h-4 w-4 text-blue-600" />
+                                      <span className="text-sm font-black text-black dark:text-white uppercase tracking-tight">
+                                        {request.submittedBy}
+                                      </span>
+                                      <Badge variant="outline" className="text-[10px] font-bold border-blue-200 text-blue-700 bg-white">
+                                        {formatRoleDisplay(request.role)}
+                                      </Badge>
+                                    </div>
+                                    <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg border border-emerald-100 dark:border-emerald-800">
+                                      <Calendar className="h-4 w-4 text-emerald-600" />
+                                      <span className="text-sm font-black text-black dark:text-white uppercase tracking-tight">
+                                        {formatDateIST(request.startDate, "dd MMM yyyy")} - {formatDateIST(request.endDate, "dd MMM yyyy")}
+                                      </span>
+                                      <Badge variant="outline" className="text-[10px] font-bold border-emerald-200 text-emerald-700 bg-white">
+                                        {request.type === "full_day" ? "Full Day" : "Half Day"}
+                                      </Badge>
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <Calendar className="h-4 w-4 text-green-600" />
-                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
-                                      {formatDateIST(
-                                        request.startDate,
-                                        "dd MMM yyyy",
-                                      )}{" "}
-                                      -{" "}
-                                      {formatDateIST(
-                                        request.endDate,
-                                        "dd MMM yyyy",
-                                      )}
+                                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-relaxed italic">
+                                      "{request.reason}"
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">
+                                    <span className="flex items-center gap-1">
+                                      <History className="h-3 w-3" />
+                                      Submitted: {formatRelativeTime(request.submittedAt)}
                                     </span>
-                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>
-                                      {request.type === "full_day"
-                                        ? "Full Day"
-                                        : "Half Day"}
+                                    <span className="flex items-center gap-1">
+                                      <Globe className="h-3 w-3" />
+                                      Dept: {request.department}
                                     </span>
                                   </div>
                                 </div>
-                                <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
-                                  {request.reason}
-                                </p>
-                                <div style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="flex items-center gap-4">
-                                  <span>
-                                    Submitted:{" "}
-                                    {formatRelativeTime(request.submittedAt)} (
-                                    {formatDateTimeIST(
-                                      request.submittedAt,
-                                      "dd MMM yyyy, hh:mm a",
-                                    )}
-                                    )
-                                  </span>
-                                  <span>Department: {request.department}</span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 ml-4">
-                                <Badge variant="secondary">Pending</Badge>
-                                <div className="flex gap-2">
+                                <div className="flex flex-row lg:flex-col gap-3 min-w-[140px]">
                                   <Button
-                                    size="sm"
-                                    variant="outline"
-                                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}
-                                    className="text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-950"
-                                    onClick={() =>
-                                      handleAdminWfhRequestAction(
-                                        request.id,
-                                        "approve",
-                                      )
-                                    }
+                                    size="lg"
+                                    className="h-11 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white border-2 border-black font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-md flex-1 lg:w-full"
+                                    onClick={() => handleAdminWfhRequestAction(request.id, "approve")}
                                     disabled={isProcessingWfhRequest}
                                   >
-                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    <CheckCircle className="h-4 w-4 mr-2" />
                                     Approve
                                   </Button>
                                   <Button
-                                    size="sm"
-                                    variant="outline"
-                                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}
-                                    className="text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                                    size="lg"
+                                    className="h-11 px-6 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border-2 border-rose-600 font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex-1 lg:w-full"
                                     onClick={() => {
                                       setSelectedWfhRequest(request);
                                       setShowWfhRequestDialog(true);
                                     }}
                                     disabled={isProcessingWfhRequest}
                                   >
-                                    <X className="h-4 w-4 mr-1" />
+                                    <XCircle className="h-4 w-4 mr-2" />
                                     Reject
                                   </Button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                    <div className="mt-4">
-                      <Pagination
-                        currentPage={pendingWfhCurrentPage}
-                        totalPages={Math.ceil(
-                          allWfhRequests.filter(
-                            (req) => req.status === "pending",
-                          ).length / pendingWfhItemsPerPage,
-                        )}
-                        totalItems={
-                          allWfhRequests.filter(
-                            (req) => req.status === "pending",
-                          ).length
-                        }
-                        itemsPerPage={pendingWfhItemsPerPage}
-                        onPageChange={setPendingWfhCurrentPage}
-                        onItemsPerPageChange={setPendingWfhItemsPerPage}
-                        showItemsPerPage={true}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No pending WFH requests</p>
-                    <p className="text-sm">All requests have been processed</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Recent Decisions Section */}
-            <Card className="border-slate-200/60 border shadow-sm bg-white rounded-xl overflow-hidden">
-              <CardHeader className="border-b border-slate-100 bg-slate-50/30 px-5 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shadow-sm">
-                      <History className="h-4.5 w-4.5 text-blue-600" />
-                    </div>
-                    <div>
-                      <CardTitle style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
-                        Recent Decisions
-                      </CardTitle>
-                      <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-1">
-                        History of processed WFH requests.
-                      </CardDescription>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="space-y-4">
-                  {/* Filter Controls for Recent Decisions */}
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
-                      <div className="flex flex-col gap-2">
-                        <Label htmlFor="decision-status-filter" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} className="ml-1">
-                          Decision Status
-                        </Label>
-                        <Select
-                          value={wfhRequestFilter}
-                          onValueChange={(value: any) =>
-                            setWfhRequestFilter(value)
-                          }
-                        >
-                          <SelectTrigger
-                            id="decision-status-filter"
-                            style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-full h-11 bg-white dark:bg-gray-950 border-2"
-                          >
-                            <SelectValue placeholder="Select Status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Decisions</SelectItem>
-                            <SelectItem value="approved">Approved</SelectItem>
-                            <SelectItem value="rejected">Rejected</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex-1 max-w-xs">
-                        <Label htmlFor="decision-duration-filter" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Duration</Label>
-                        <Select value={wfhDecisionsDurationFilter} onValueChange={handleWfhDecisionsDurationFilter}>
-                          <SelectTrigger id="decision-duration-filter" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Time</SelectItem>
-                            <SelectItem value="current_month">
-                              Current Month
-                            </SelectItem>
-                            <SelectItem value="last_month">
-                              Last Month
-                            </SelectItem>
-                            <SelectItem value="last_3_months">
-                              Last 3 Months
-                            </SelectItem>
-                            <SelectItem value="last_6_months">
-                              Last 6 Months
-                            </SelectItem>
-                            <SelectItem value="last_year">
-                              Last 1 Year
-                            </SelectItem>
-                            <SelectItem value="custom">Custom Range</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="flex flex-col gap-2">
-                        <Label htmlFor="decision-role-filter" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} className="ml-1">
-                          Role Filter
-                        </Label>
-                        <Select
-                          value={wfhRoleFilter}
-                          onValueChange={(value: any) =>
-                            setWfhRoleFilter(value)
-                          }
-                        >
-                          <SelectTrigger
-                            id="decision-role-filter"
-                            style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-full h-11 bg-white dark:bg-gray-950 border-2"
-                          >
-                            <SelectValue placeholder="Select Role" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Roles</SelectItem>
-                            <SelectItem value="hr">HR</SelectItem>
-                            <SelectItem value="manager">Manager</SelectItem>
-                            <SelectItem value="team_lead">Team Lead</SelectItem>
-                            <SelectItem value="employee">Employee</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="flex flex-col gap-2">
-                        <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} className="ml-1">
-                          Summary
-                        </Label>
-                        <div style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="h-11 px-3 py-2 bg-muted rounded-md flex items-center justify-between">
-                          <span>
-                            {filteredRecentDecisions.length} of{" "}
-                            {
-                              allWfhRequests.filter(
-                                (req) => req.status !== "pending",
-                              ).length
-                            }{" "}
-                            decisions
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    {wfhDecisionsDurationFilter === 'custom' && (
-                      <div className="p-4 border rounded-2xl bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-100 dark:border-blue-800 shadow-sm">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1.5">
-                            <Label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
-                              <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                              From Date
-                            </Label>
-                            <DatePicker
-                              date={wfhDecisionsStartDate}
-                              onDateChange={setWfhDecisionsStartDate}
-                              placeholder="Start Date"
-                              className="w-full bg-white dark:bg-gray-950 border-blue-200"
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5 pl-1">
-                              <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                              To Date
-                            </Label>
-                            <DatePicker
-                              date={wfhDecisionsEndDate}
-                              onDateChange={setWfhDecisionsEndDate}
-                              fromDate={wfhDecisionsStartDate}
-                              placeholder="End Date"
-                              className="w-full bg-white dark:bg-gray-950 border-indigo-200"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {isLoadingWfhRequests ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Timer className="h-8 w-8 animate-spin text-blue-600" />
-                      <span className="ml-2 text-muted-foreground">
-                        Loading decisions...
-                      </span>
-                    </div>
-                  ) : filteredRecentDecisions.length > 0 ? (
-                    <>
-                      <div className="space-y-3">
-                        {filteredRecentDecisions
-                          .slice(
-                            (wfhCurrentPage - 1) * wfhItemsPerPage,
-                            wfhCurrentPage * wfhItemsPerPage,
-                          )
-                          .map((request) => (
-                            <div
-                              key={request.id}
-                              className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="space-y-2 flex-1">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <div className="flex items-center gap-2">
-                                      <User className="h-4 w-4 text-blue-600" />
-                                      <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
-                                        {request.submittedBy}
-                                      </span>
-                                      <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>
-                                        {formatRoleDisplay(request.role)}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <Calendar className="h-4 w-4 text-green-600" />
-                                      <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
-                                        {formatDateIST(
-                                          request.startDate,
-                                          "dd MMM yyyy",
-                                        )}{" "}
-                                        -{" "}
-                                        {formatDateIST(
-                                          request.endDate,
-                                          "dd MMM yyyy",
-                                        )}
-                                      </span>
-                                      <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>
-                                        {request.type === "full_day"
-                                          ? "Full Day"
-                                          : "Half Day"}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <p className="text-sm text-muted-foreground">
-                                    {request.reason}
-                                  </p>
-                                  <div style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="flex items-center gap-4">
-                                    <span>
-                                      Submitted:{" "}
-                                      {formatDateTimeIST(
-                                        request.submittedAt,
-                                        "dd MMM yyyy, hh:mm a",
-                                      )}
-                                    </span>
-                                    <span>
-                                      Decision:{" "}
-                                      {formatDateTimeIST(
-                                        request.processedAt ||
-                                        request.submittedAt,
-                                        "dd MMM yyyy, hh:mm a",
-                                      )}
-                                    </span>
-                                    <span>
-                                      Department: {request.department}
-                                    </span>
-                                  </div>
-                                  {request.rejectionReason && (
-                                    <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
-                                      <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#991B1B", fontSize: "14px" }}>
-                                        <strong style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#991B1B", fontSize: "14px", fontWeight: "bold" }}>Rejection Reason:</strong>{" "}
-                                        {request.rejectionReason}
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2 ml-4">
-                                  <Badge
-                                    variant={
-                                      request.status === "approved"
-                                        ? "default"
-                                        : "destructive"
-                                    }
-                                    className={
-                                      request.status === "approved"
-                                        ? "bg-green-500"
-                                        : ""
-                                    }
-                                  >
-                                    {request.status.charAt(0).toUpperCase() +
-                                      request.status.slice(1)}
-                                  </Badge>
                                 </div>
                               </div>
                             </div>
@@ -4317,101 +3651,249 @@ const AttendanceManager: React.FC = () => {
                       </div>
                       <div className="mt-4">
                         <Pagination
-                          currentPage={wfhCurrentPage}
+                          currentPage={pendingWfhCurrentPage}
                           totalPages={Math.ceil(
-                            filteredRecentDecisions.length / wfhItemsPerPage,
+                            allWfhRequests.filter(
+                              (req) => req.status === "pending",
+                            ).length / pendingWfhItemsPerPage,
                           )}
-                          totalItems={filteredRecentDecisions.length}
-                          itemsPerPage={wfhItemsPerPage}
-                          onPageChange={setWfhCurrentPage}
-                          onItemsPerPageChange={setWfhItemsPerPage}
+                          totalItems={
+                            allWfhRequests.filter(
+                              (req) => req.status === "pending",
+                            ).length
+                          }
+                          itemsPerPage={pendingWfhItemsPerPage}
+                          onPageChange={setPendingWfhCurrentPage}
+                          onItemsPerPageChange={setPendingWfhItemsPerPage}
                           showItemsPerPage={true}
                         />
                       </div>
                     </>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
-                      <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No decisions yet</p>
-                      <p className="text-sm">
-                        {wfhRequestFilter === "all"
-                          ? "No requests have been approved or rejected"
-                          : `No ${wfhRequestFilter} requests`}
-                      </p>
+                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No pending WFH requests</p>
+                      <p className="text-sm">All requests have been processed</p>
                     </div>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      ) : (
-        attendanceContent
-      )}
+                </CardContent>
+              </Card>
 
-      {/* Scope Selection Dialog (for resolving 409 Conflicts) */}
-      <Dialog open={activeScopeError} onOpenChange={setActiveScopeError}>
-        <DialogContent className="max-w-md border-2 border-amber-200">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-700">
-              <AlertCircle className="h-5 w-5" />
-              Scope Selection Required
-            </DialogTitle>
-            <DialogDescription className="font-medium text-slate-600">
-              Your account is assigned to multiple organizations or branches.
-              Please enter a specific ID to continue.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-bold">Current User Role: {user?.role}</Label>
-              <p className="text-[11px] text-slate-500 italic">
-                Tip: You can find your Branch ID and Company ID in your profile or from your administrator.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="debug-branch-id">Branch ID</Label>
-              <Input
-                id="debug-branch-id"
-                value={debugBranchId}
-                onChange={(e) => setDebugBranchId(e.target.value)}
-                placeholder="e.g. 1"
-                className="border-2 focus:border-blue-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="debug-company-id">Company ID</Label>
-              <Input
-                id="debug-company-id"
-                value={debugCompanyId}
-                onChange={(e) => setDebugCompanyId(e.target.value)}
-                placeholder="e.g. 1"
-                className="border-2 focus:border-blue-500"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setActiveScopeError(false)}
-              className="border-slate-300"
-            >
-              Close
-            </Button>
-            <Button
-              onClick={() => {
-                if (debugBranchId) localStorage.setItem('branchId', debugBranchId);
-                if (debugCompanyId) localStorage.setItem('companyId', debugCompanyId);
-                setActiveScopeError(false);
-                window.location.reload();
-              }}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
-            >
-              Apply Scope & Refresh
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <Card className="border-2 border-[#000000] shadow-xl bg-white dark:bg-slate-900 rounded-2xl overflow-hidden mt-8">
+                <CardHeader className="bg-slate-50/50 dark:bg-slate-800/50 px-6 py-5 border-b-2 border-black">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-xl bg-[#000000] flex items-center justify-center shadow-lg transition-transform duration-300 hover:scale-110">
+                        <History className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-xl font-black text-[#000000] dark:text-white tracking-tight font-outfit uppercase">
+                          Recent WFH Decisions
+                        </CardTitle>
+                        <CardDescription className="text-xs font-bold text-[#5e5b5b] dark:text-slate-400 tracking-wider mt-1 uppercase">
+                          History of processed requests
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    {/* Filter Controls for Recent Decisions */}
+                    <div className="bg-slate-50/50 dark:bg-slate-900/50 p-6 border-b-2 border-black rounded-xl">
+                      <div className="flex flex-col xl:flex-row gap-6 items-end w-full">
+                        <div className="flex-1 w-full xl:w-auto flex flex-col gap-2">
+                          <Label className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">
+                            Decision Status
+                          </Label>
+                          <Select value={wfhRequestFilter} onValueChange={(value: any) => setWfhRequestFilter(value)}>
+                            <SelectTrigger className="h-11 border-2 border-black rounded-xl bg-white dark:bg-gray-950 font-bold text-sm">
+                              <SelectValue placeholder="All Status" />
+                            </SelectTrigger>
+                            <SelectContent className="border-2 border-black rounded-xl">
+                              <SelectItem value="all">All Decisions</SelectItem>
+                              <SelectItem value="approved">Approved</SelectItem>
+                              <SelectItem value="rejected">Rejected</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex flex-col md:flex-row items-end gap-4 w-full xl:w-auto">
+                          <div className="flex flex-col gap-2 w-full md:w-[200px]">
+                            <Label className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">Time Period</Label>
+                            <Select value={wfhDecisionsDurationFilter} onValueChange={handleWfhDecisionsDurationFilter}>
+                              <SelectTrigger className="h-11 border-2 border-black rounded-xl bg-white dark:bg-gray-950 font-bold text-sm">
+                                <Calendar className="h-4 w-4 mr-2 text-blue-500" />
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="border-2 border-black rounded-xl">
+                                <SelectItem value="all">All Time</SelectItem>
+                                <SelectItem value="current_month">Current Month</SelectItem>
+                                <SelectItem value="last_month">Last Month</SelectItem>
+                                <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                                <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                                <SelectItem value="last_year">Last Year</SelectItem>
+                                <SelectItem value="custom">Custom Range</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {wfhDecisionsDurationFilter === 'custom' && (
+                            <div className="flex items-center gap-4 animate-in fade-in slide-in-from-left-2 duration-300 w-full md:w-auto">
+                              <div className="w-full md:w-[130px]">
+                                <DatePicker
+                                  date={wfhDecisionsStartDate}
+                                  onDateChange={setWfhDecisionsStartDate}
+                                  placeholder="Start"
+                                  className="w-full bg-white dark:bg-gray-950 border-2 border-black rounded-xl h-11 text-xs"
+                                />
+                              </div>
+                              <div className="w-full md:w-[130px]">
+                                <DatePicker
+                                  date={wfhDecisionsEndDate}
+                                  onDateChange={setWfhDecisionsEndDate}
+                                  fromDate={wfhDecisionsStartDate}
+                                  placeholder="End"
+                                  className="w-full bg-white dark:bg-gray-950 border-2 border-black rounded-xl h-11 text-xs"
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex flex-col gap-2 w-full md:w-[180px]">
+                            <Label className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">Role Filter</Label>
+                            <Select value={wfhRoleFilter} onValueChange={(value: any) => setWfhRoleFilter(value)}>
+                              <SelectTrigger className="h-11 border-2 border-black rounded-xl bg-white dark:bg-gray-950 font-bold text-sm">
+                                <Filter className="h-4 w-4 mr-2 text-blue-500" />
+                                <SelectValue placeholder="All Roles" />
+                              </SelectTrigger>
+                              <SelectContent className="border-2 border-black rounded-xl">
+                                <SelectItem value="all">All Roles</SelectItem>
+                                <SelectItem value="hr">HR</SelectItem>
+                                <SelectItem value="manager">Manager</SelectItem>
+                                <SelectItem value="team_lead">Team Lead</SelectItem>
+                                <SelectItem value="employee">Employee</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {isLoadingWfhRequests ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Timer className="h-8 w-8 animate-spin text-blue-600" />
+                        <span className="ml-2 text-muted-foreground">
+                          Loading decisions...
+                        </span>
+                      </div>
+                    ) : filteredRecentDecisions.length > 0 ? (
+                      <>
+                        <div className="space-y-3">
+                          {filteredRecentDecisions
+                            .slice(
+                              (wfhCurrentPage - 1) * wfhItemsPerPage,
+                              wfhCurrentPage * wfhItemsPerPage,
+                            )
+                            .map((request) => (
+                              <div
+                                key={request.id}
+                                className="border-2 border-black rounded-xl p-5 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all duration-300 group shadow-sm hover:shadow-md"
+                              >
+                                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                                  <div className="space-y-3 flex-1">
+                                    <div className="flex items-center gap-4 flex-wrap">
+                                      <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                                        <User className="h-3.5 w-3.5 text-slate-500" />
+                                        <span className="text-sm font-black text-black dark:text-white uppercase tracking-tight">
+                                          {request.submittedBy}
+                                        </span>
+                                        <Badge variant="outline" className="text-[10px] font-bold border-slate-200 text-slate-600 bg-white dark:bg-slate-900">
+                                          {formatRoleDisplay(request.role)}
+                                        </Badge>
+                                      </div>
+                                      <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                                        <Calendar className="h-3.5 w-3.5 text-slate-500" />
+                                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-300">
+                                          {formatDateIST(request.startDate, "dd MMM yyyy")} - {formatDateIST(request.endDate, "dd MMM yyyy")}
+                                        </span>
+                                        <Badge
+                                          className={`text-[10px] font-black rounded-lg border-0 px-2 h-5 flex items-center justify-center ${request.status === "approved"
+                                            ? "bg-emerald-500 text-white"
+                                            : "bg-rose-500 text-white"
+                                            }`}
+                                        >
+                                          {request.status.toUpperCase()}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                    <div className="p-4 bg-white dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800">
+                                      <p className="text-sm font-bold text-slate-600 dark:text-slate-400 italic">
+                                        {request.reason}
+                                      </p>
+                                    </div>
+                                    {request.rejectionReason && (
+                                      <div className="p-3 bg-rose-50 dark:bg-rose-950/20 border-2 border-rose-100 dark:border-rose-900/50 rounded-xl">
+                                        <p className="text-[12px] font-bold text-rose-700 dark:text-rose-400">
+                                          <span className="uppercase tracking-widest mr-2 opacity-70">Rejection Reason:</span>
+                                          {request.rejectionReason}
+                                        </p>
+                                      </div>
+                                    )}
+                                    <div className="flex items-center gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest pt-1 px-1">
+                                      <span className="flex items-center gap-1.5">
+                                        <History className="h-3 w-3" />
+                                        Submission: {formatDateTimeIST(request.submittedAt, "dd MMM yyyy, hh:mm a")}
+                                      </span>
+                                      <span className="h-1 w-1 rounded-full bg-slate-200" />
+                                      <span className="flex items-center gap-1.5">
+                                        <CheckCircle2 className="h-3 w-3" />
+                                        Decision: {formatDateTimeIST(request.processedAt || request.submittedAt, "dd MMM yyyy, hh:mm a")}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                        <div className="mt-4">
+                          <Pagination
+                            currentPage={wfhCurrentPage}
+                            totalPages={Math.ceil(
+                              filteredRecentDecisions.length / wfhItemsPerPage,
+                            )}
+                            totalItems={filteredRecentDecisions.length}
+                            itemsPerPage={wfhItemsPerPage}
+                            onPageChange={setWfhCurrentPage}
+                            onItemsPerPageChange={setWfhItemsPerPage}
+                            showItemsPerPage={true}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No decisions yet</p>
+                        <p className="text-sm">
+                          {wfhRequestFilter === "all"
+                            ? "No requests have been approved or rejected"
+                            : `No ${wfhRequestFilter} requests`}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {attendanceHeader}
+          {attendanceContent}
+        </div>
+      )}
     </div>
   );
 };

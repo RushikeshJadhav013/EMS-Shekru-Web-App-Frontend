@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import SummaryCard from '@/components/ui/SummaryCard';
 import { apiService } from '@/lib/api';
 import { Employee } from '@/lib/api';
 import { useNavigate, Link } from 'react-router-dom';
@@ -23,13 +25,14 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
-import { Search, Plus, Eye, Edit, FileText, TrendingUp, Download, AlertCircle, DollarSign, RefreshCw, Users, Building2, Ban, CheckCircle2 } from 'lucide-react';
+import { Search, Plus, Eye, Edit, FileText, TrendingUp, Download, AlertCircle, DollarSign, RefreshCw, Users, Building2, Ban, CheckCircle2, IndianRupee, Award } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole, SalaryStructure } from '@/types';
 import SalaryDetails from '@/pages/salary/SalaryDetails';
 
 const SalaryDashboard = () => {
     const { user } = useAuth();
+    const { t } = useLanguage();
     const navigate = useNavigate();
     const { toast } = useToast();
     const [employees, setEmployees] = useState<Employee[]>([]);
@@ -190,7 +193,15 @@ const SalaryDashboard = () => {
         setSalaryCurrentPage(1);
     }, [searchQuery, deptFilter, roleFilter]);
 
-
+    const stats = React.useMemo(() => {
+        const salaries = filteredItems.map(i => i.salary?.monthlyCtc || 0).filter(s => s > 0);
+        return {
+            totalSalary: salaries.reduce((a, b) => a + b, 0),
+            averageSalary: salaries.length > 0 ? salaries.reduce((a, b) => a + b, 0) / salaries.length : 0,
+            highestSalary: salaries.length > 0 ? Math.max(...salaries) : 0,
+            totalEmployees: filteredItems.length
+        };
+    }, [filteredItems]);
 
     const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -232,8 +243,8 @@ const SalaryDashboard = () => {
     }
 
     return (
-        <div className="p-6 space-y-6 animate-in fade-in duration-500">
-            <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border border-[#858282] shadow-sm mt-1">
+        <div className="w-full space-y-6 animate-in fade-in duration-500">
+            <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-sm mt-1">
                 <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-blue-500/5 rounded-full blur-3xl" />
                 <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
 
@@ -282,139 +293,51 @@ const SalaryDashboard = () => {
             {/* Analytics Section */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                    ...(userRole === 'admin'
-                        ? [
-                            {
-                                label: 'Annual Payroll (Filtered)',
-                                value: `₹ ${(filteredItems.reduce((acc, item) => acc + (item.salary?.annualCtc || 0), 0) / 10000000).toFixed(2)} Cr`,
-                                sub: 'Total Annual Cost to Company',
-                                icon: DollarSign,
-                                color: 'blue',
-                                bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
-                                cardBg: 'bg-blue-50/40 dark:bg-blue-950/10',
-                                borderColor: 'border-blue-300/80 dark:border-blue-700/50',
-                                hoverBorder: 'group-hover:border-blue-500 dark:group-hover:border-blue-400'
-                            },
-                            {
-                                label: 'Monthly Disbursement',
-                                value: `₹ ${filteredItems.reduce((acc, item) => acc + (item.salary?.monthlyCtc || 0), 0).toLocaleString('en-IN')}`,
-                                sub: 'Current Month Total CTC',
-                                icon: TrendingUp,
-                                color: 'emerald',
-                                bg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
-                                cardBg: 'bg-emerald-50/40 dark:bg-emerald-950/10',
-                                borderColor: 'border-emerald-300/80 dark:border-emerald-700/50',
-                                hoverBorder: 'group-hover:border-emerald-500 dark:group-hover:border-emerald-400'
-                            }
-                        ]
-                        : userRole === 'hr'
-                            ? [
-                                {
-                                    label: 'Total Employees',
-                                    value: filteredItems.length,
-                                    sub: 'In Current View',
-                                    icon: Users,
-                                    color: 'blue',
-                                    bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
-                                    cardBg: 'bg-blue-50/40 dark:bg-blue-950/10',
-                                    borderColor: 'border-blue-300/80 dark:border-blue-700/50',
-                                    hoverBorder: 'group-hover:border-blue-500 dark:group-hover:border-blue-400'
-                                },
-                                {
-                                    label: 'Active Pay Structures',
-                                    value: filteredItems.filter(i => i.salary).length,
-                                    sub: 'Verified Salary Records',
-                                    icon: FileText,
-                                    color: 'emerald',
-                                    bg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
-                                    cardBg: 'bg-emerald-50/40 dark:bg-emerald-950/10',
-                                    borderColor: 'border-emerald-300/80 dark:border-emerald-700/50',
-                                    hoverBorder: 'group-hover:border-emerald-500 dark:group-hover:border-emerald-400'
-                                }
-                            ]
-                            : [
-                                {
-                                    label: 'Total Departments',
-                                    value: uniqueDepts.length,
-                                    sub: 'Active Business Units',
-                                    icon: Building2,
-                                    color: 'blue',
-                                    bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
-                                    cardBg: 'bg-blue-50/40 dark:bg-blue-950/10',
-                                    borderColor: 'border-blue-300/80 dark:border-blue-700/50',
-                                    hoverBorder: 'group-hover:border-blue-500 dark:group-hover:border-blue-400'
-                                },
-                                {
-                                    label: 'Active Pay Structures',
-                                    value: filteredItems.filter(i => i.salary).length,
-                                    sub: 'Verified Salary Records',
-                                    icon: FileText,
-                                    color: 'emerald',
-                                    bg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
-                                    cardBg: 'bg-emerald-50/40 dark:bg-emerald-950/10',
-                                    borderColor: 'border-emerald-300/80 dark:border-emerald-700/50',
-                                    hoverBorder: 'group-hover:border-emerald-500 dark:group-hover:border-emerald-400'
-                                }
-                            ]),
                     {
-                        label: 'Average Annual Salary',
-                        value: `₹ ${(filteredItems.filter(i => i.salary).length > 0
-                            ? Math.round(filteredItems.reduce((acc, item) => acc + (item.salary?.annualCtc || 0), 0) / filteredItems.filter(i => i.salary).length)
-                            : 0).toLocaleString('en-IN')}`,
-                        sub: 'Per Filtered Employee',
-                        icon: AlertCircle,
-                        color: 'indigo',
-                        bg: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
-                        cardBg: 'bg-indigo-50/40 dark:bg-indigo-950/10',
-                        borderColor: 'border-indigo-300/80 dark:border-indigo-700/50',
-                        hoverBorder: 'group-hover:border-indigo-500 dark:group-hover:border-indigo-400'
+                        title: t.salary?.totalSalary || 'Total Salary',
+                        value: `₹${stats.totalSalary.toLocaleString()}`,
+                        icon: IndianRupee,
+                        iconColor: 'text-indigo-600',
+                        iconBg: 'bg-indigo-100',
                     },
                     {
-                        label: userRole === 'hr' ? 'Pending Salary Setup' : 'Showing Employees',
-                        value: userRole === 'hr'
-                            ? filteredItems.filter(i => !i.salary).length
-                            : filteredItems.length,
-                        sub: userRole === 'hr' ? 'Employees without salary' : 'Filtered Workforce',
+                        title: t.salary?.averageSalary || 'Average Salary',
+                        value: `₹${stats.averageSalary.toLocaleString()}`,
+                        icon: TrendingUp,
+                        iconColor: 'text-emerald-600',
+                        iconBg: 'bg-emerald-100',
+                    },
+                    {
+                        title: t.salary?.highestSalary || 'Highest Salary',
+                        value: `₹${stats.highestSalary.toLocaleString()}`,
+                        icon: Award,
+                        iconColor: 'text-amber-600',
+                        iconBg: 'bg-amber-100',
+                    },
+                    {
+                        title: t.salary?.totalEmployees || 'Total Employees',
+                        value: stats.totalEmployees,
                         icon: Users,
-                        color: 'amber',
-                        bg: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
-                        cardBg: 'bg-amber-50/40 dark:bg-amber-950/10',
-                        borderColor: 'border-amber-300/80 dark:border-amber-700/50',
-                        hoverBorder: 'group-hover:border-amber-500 dark:group-hover:border-amber-400'
-                    }
-                ].map((item, i) => (
-                    <Card key={i} className={`border-2 ${item.borderColor} ${item.hoverBorder} shadow-sm ${item.cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative`}>
-                        {/* Background Accent */}
-                        <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-5 group-hover:opacity-10 transition-opacity ${item.bg.split(' ')[0]}`} />
-
-                        <CardContent className="p-4 relative">
-                            <div className="flex justify-between items-start mb-2">
-                                <div className={`p-2.5 rounded-xl ${item.bg} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
-                                    <item.icon className="h-5 w-5" />
-                                </div>
-                            </div>
-                            <div className="space-y-1">
-                                <h3 className="font-bold uppercase tracking-widest leading-none" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>{item.label}</h3>
-                                <div className="tracking-tight font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px", fontWeight: "bold" }}>{item.value}</div>
-                                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
-                                    <div className={`h-1.5 w-1.5 rounded-full ${item.color === 'blue' ? 'bg-blue-500' :
-                                        item.color === 'emerald' ? 'bg-emerald-500' :
-                                            item.color === 'indigo' ? 'bg-indigo-500' :
-                                                'bg-amber-500'
-                                        }`} />
-                                    <span className="font-bold uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>{item.sub}</span>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                        iconColor: 'text-blue-600',
+                        iconBg: 'bg-blue-100',
+                    },
+                ].map((item, index) => (
+                    <SummaryCard
+                        key={index}
+                        title={item.title}
+                        value={item.value}
+                        icon={item.icon}
+                        iconColor={item.iconColor}
+                        iconBg={item.iconBg}
+                    />
                 ))}
             </div>
 
-            <Card className="border-none shadow-md bg-white/50 backdrop-blur-sm dark:bg-gray-900/50">
+            <Card className="border-2 border-[#000000] shadow-md bg-white/50 backdrop-blur-sm dark:bg-gray-900/50">
                 <CardHeader className="pb-3">
                     <div className="flex justify-between items-center">
                         <div>
-                            <CardTitle className="font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>Employee Salaries</CardTitle>
+                            <CardTitle className="font-bold mb-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>Employee Salaries</CardTitle>
                             <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>View and manage salary structures for all employees</CardDescription>
                         </div>
                         <div className="flex flex-wrap items-center gap-4">
@@ -422,7 +345,7 @@ const SalaryDashboard = () => {
                                 <div className="flex flex-col gap-2">
                                     <Label className="uppercase font-bold ml-1" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Department</Label>
                                     <Select value={deptFilter} onValueChange={setDeptFilter}>
-                                        <SelectTrigger className="w-[180px] h-10 bg-white dark:bg-gray-800 border-2 transition-all duration-300 hover:shadow-md" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+                                        <SelectTrigger className="w-[180px] h-10 bg-white dark:bg-gray-800 border-2 border-[#000000] transition-all duration-300 hover:shadow-md" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                                             <SelectValue placeholder="All Departments" />
                                         </SelectTrigger>
                                         <SelectContent side="bottom">
@@ -437,7 +360,7 @@ const SalaryDashboard = () => {
                                 <div className="flex flex-col gap-2">
                                     <Label className="uppercase font-bold ml-1" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Role</Label>
                                     <Select value={roleFilter} onValueChange={setRoleFilter}>
-                                        <SelectTrigger className="w-[160px] h-10 bg-white dark:bg-gray-800 border-2 transition-all duration-300 hover:shadow-md" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+                                        <SelectTrigger className="w-[160px] h-10 bg-white dark:bg-gray-800 border-2 border-[#000000] transition-all duration-300 hover:shadow-md" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                                             <SelectValue placeholder="All Roles" />
                                         </SelectTrigger>
                                         <SelectContent side="bottom">
@@ -460,7 +383,7 @@ const SalaryDashboard = () => {
                                         placeholder="Name, ID, or Dept..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
-                                        className="pl-9 w-[220px] h-10 bg-white dark:bg-gray-800 border-2 focus:ring-2 focus:ring-blue-500" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
+                                        className="pl-9 w-[220px] h-10 bg-white dark:bg-gray-800 border-2 border-[#000000] focus:ring-2 focus:ring-blue-500" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
                                     />
                                 </div>
                             </div>
@@ -468,7 +391,7 @@ const SalaryDashboard = () => {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="rounded-md border bg-white dark:bg-gray-800 overflow-hidden">
+                    <div className="rounded-md border-2 border-[#000000] bg-white dark:bg-gray-800 overflow-hidden">
                         <Table>
                             <TableHeader className="bg-gray-50 dark:bg-gray-900/50">
                                 <TableRow>
@@ -587,16 +510,16 @@ const SalaryDashboard = () => {
                     {filteredItems.length > 0 && (
                         <div className="mt-6 px-2">
                             <div style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
-                            <Pagination
-                                currentPage={salaryCurrentPage}
-                                totalPages={totalPages}
-                                totalItems={filteredItems.length}
-                                itemsPerPage={salaryItemsPerPage}
-                                onPageChange={setSalaryCurrentPage}
-                                onItemsPerPageChange={setSalaryItemsPerPage}
-                                showItemsPerPage={true}
-                                showEntriesInfo={true}
-                            />
+                                <Pagination
+                                    currentPage={salaryCurrentPage}
+                                    totalPages={totalPages}
+                                    totalItems={filteredItems.length}
+                                    itemsPerPage={salaryItemsPerPage}
+                                    onPageChange={setSalaryCurrentPage}
+                                    onItemsPerPageChange={setSalaryItemsPerPage}
+                                    showItemsPerPage={true}
+                                    showEntriesInfo={true}
+                                />
                             </div>
                         </div>
                     )}
@@ -607,4 +530,3 @@ const SalaryDashboard = () => {
 };
 
 export default SalaryDashboard;
-

@@ -21,12 +21,15 @@ import {
   XCircle,
   AlertTriangle,
   ArrowRight,
-  Calendar
+  Calendar,
+  ChevronRight,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatIST, nowIST, todayIST, parseToIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import SummaryCard from '@/components/ui/SummaryCard';
+
 import TruncatedText from '@/components/ui/TruncatedText';
 
 const EmployeeDashboard: React.FC = () => {
@@ -287,7 +290,7 @@ const EmployeeDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border border-[#858282] shadow-md mt-1 mb-8">
+      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-md mt-1 mb-8">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-indigo-500/10 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-purple-500/10 rounded-full blur-3xl" />
 
@@ -319,92 +322,60 @@ const EmployeeDashboard: React.FC = () => {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          {
-            label: t.dashboard.myTasks,
-            value: stats.tasksAssigned,
-            sub: `${stats.tasksCompleted} Completed`,
-            icon: ClipboardList,
-            color: 'indigo',
-            bg: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
-            cardBg: 'bg-indigo-50/40 dark:bg-indigo-950/10',
-            borderColor: 'border-indigo-300/80 dark:border-indigo-700/50',
-            hoverBorder: 'group-hover:border-indigo-500 dark:group-hover:border-indigo-400',
-            path: '/employee/tasks'
-          },
-          {
-            label: t.dashboard.attendanceRate,
-            value: `${stats.attendancePercentage}%`,
-            sub: 'Monthly Performance',
-            icon: Target,
-            color: 'emerald',
-            bg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
-            cardBg: 'bg-emerald-50/40 dark:bg-emerald-950/10',
-            borderColor: 'border-emerald-300/80 dark:border-emerald-700/50',
-            hoverBorder: 'group-hover:border-emerald-500 dark:group-hover:border-emerald-400',
-            path: '/employee/attendance'
-          },
-          {
-            label: t.dashboard.leavesAvailable,
-            value: leaveBalance.annual.remaining,
-            sub: `${leaveBalance.annual.used} Used This Year`,
-            icon: CalendarDays,
-            color: 'cyan',
-            bg: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-900/20 dark:text-cyan-400',
-            cardBg: 'bg-cyan-50/40 dark:bg-cyan-950/10',
-            borderColor: 'border-cyan-300/80 dark:border-cyan-700/50',
-            hoverBorder: 'group-hover:border-cyan-500 dark:group-hover:border-cyan-400',
-            path: '/employee/leaves'
-          },
-          {
-            label: t.dashboard.workHoursThisMonth,
-            value: formatWorkHours(stats.currentMonthHours),
-            sub: 'On Track',
-            icon: Clock,
-            color: 'rose',
-            bg: 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400',
-            cardBg: 'bg-rose-50/40 dark:bg-rose-950/10',
-            borderColor: 'border-rose-300/80 dark:border-rose-700/50',
-            hoverBorder: 'group-hover:border-rose-500 dark:group-hover:border-rose-400',
-            isMono: true
-          }
-        ].map((item, i) => (
-          <Card
-            key={i}
-            className={`border-2 ${item.borderColor} ${item.hoverBorder} shadow-sm ${item.cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative ${item.path ? 'cursor-pointer' : ''}`}
-            onClick={() => item.path && navigate(item.path)}
-          >
-            {/* Background Accent */}
-            <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-5 group-hover:opacity-10 transition-opacity ${item.bg.split(' ')[0]}`} />
+      <div className="border-2 border-[#000000] p-4 rounded-2xl bg-white/50 mb-8 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            {
+              label: t.dashboard.myTasks,
+              value: stats.tasksAssigned,
+              icon: ClipboardList,
+              iconColor: 'text-indigo-600',
+              iconBg: 'bg-indigo-50',
+              path: '/employee/tasks'
+            },
+            {
+              label: t.dashboard.attendanceRate,
+              value: `${stats.attendancePercentage}%`,
+              icon: Target,
+              iconColor: 'text-emerald-600',
+              iconBg: 'bg-emerald-50',
+              path: '/employee/attendance'
+            },
+            {
+              label: t.dashboard.leavesAvailable,
+              value: leaveBalance.annual.remaining,
+              icon: CalendarDays,
+              iconColor: 'text-cyan-600',
+              iconBg: 'bg-cyan-50',
+              path: '/employee/leaves'
+            },
+            {
+              label: t.dashboard.workHoursThisMonth,
+              value: formatWorkHours(stats.currentMonthHours),
+              icon: Clock,
+              iconColor: 'text-rose-600',
+              iconBg: 'bg-rose-50',
+              path: undefined
+            }
+          ].map((item, i) => (
+            <SummaryCard
+              key={i}
+              title={item.label}
+              value={item.value}
+              icon={item.icon}
+              iconColor={item.iconColor}
+              iconBg={item.iconBg}
+              onClick={() => item.path && navigate(item.path)}
+            />
+          ))}
 
-            <CardContent className="p-5 relative">
-              <div className="flex justify-between items-start mb-3">
-                <div className={`p-2.5 rounded-xl ${item.bg} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
-                  <item.icon className="h-5 w-5" />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <h3 className="text-[12px] font-bold uppercase tracking-widest leading-none" style={{ color: '#000000' }}>{item.label}</h3>
-                <div className={`text-2xl font-black tracking-tight ${item.isMono ? 'font-mono' : ''}`} style={{ color: '#000000' }}>{item.value}</div>
-                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5">
-                  <div className={`h-1.5 w-1.5 rounded-full ${item.color === 'indigo' ? 'bg-indigo-500' :
-                    item.color === 'emerald' ? 'bg-emerald-500' :
-                      item.color === 'cyan' ? 'bg-cyan-500' :
-                        'bg-rose-500'
-                    }`} />
-                  <span className="text-[12px] font-bold uppercase" style={{ color: '#000000' }}>{item.sub}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        </div>
       </div>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* My Tasks */}
-        <Card className="lg:col-span-3 border border-slate-200 shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+        <Card className="lg:col-span-3 border-2 border-[#000000] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
           <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-3 text-base">
@@ -579,7 +550,7 @@ const EmployeeDashboard: React.FC = () => {
         </Card>
 
         {/* Recent Activities */}
-        <Card className="lg:col-span-3 border border-slate-200 shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+        <Card className="lg:col-span-3 border-2 border-[#000000] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
           <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
             <CardTitle className="flex items-center gap-2" style={{ color: '#000000' }}>
               <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">

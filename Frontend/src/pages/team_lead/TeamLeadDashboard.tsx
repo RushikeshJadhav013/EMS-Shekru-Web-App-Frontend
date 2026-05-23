@@ -23,6 +23,8 @@ import { useNavigate } from 'react-router-dom';
 import { formatIST, todayIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
 import TruncatedText from '@/components/ui/TruncatedText';
+import SummaryCard from '@/components/ui/SummaryCard';
+
 
 interface TeamMemberStatus {
   name: string;
@@ -569,7 +571,7 @@ const TeamLeadDashboard: React.FC = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       {/* Header Section */}
-      <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border border-[#858282] shadow-sm p-8">
+      <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-sm p-8">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-emerald-500/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-teal-500/5 rounded-full blur-3xl" />
 
@@ -600,102 +602,58 @@ const TeamLeadDashboard: React.FC = () => {
       </div>
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          {
-            label: t.navigation.teamSize,
-            value: stats.teamSize,
-            sub: `${stats.employeeCount} Employees + 1 TeamLead`,
-            icon: Users,
-            color: 'blue',
-            bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
-            cardBg: 'bg-blue-50/40 dark:bg-blue-950/10',
-            borderColor: 'border-blue-300/80 dark:border-blue-700/50',
-            hoverBorder: 'group-hover:border-blue-500 dark:group-hover:border-blue-400'
-          },
-          {
-            label: t.navigation.teamEfficiency,
-            value: `${stats.teamEfficiency}%`,
-            sub: 'Overall Performance',
-            icon: TrendingUp,
-            color: 'emerald',
-            bg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
-            cardBg: 'bg-emerald-50/40 dark:bg-emerald-950/10',
-            borderColor: 'border-emerald-300/80 dark:border-emerald-700/50',
-            hoverBorder: 'group-hover:border-emerald-500 dark:group-hover:border-emerald-400',
-            progress: stats.teamEfficiency
-          },
-          {
-            label: 'Active Tasks',
-            value: stats.tasksInProgress,
-            sub: `${stats.completedToday} Done Today`,
-            icon: ClipboardList,
-            color: 'indigo',
-            bg: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
-            cardBg: 'bg-indigo-50/40 dark:bg-indigo-950/10',
-            borderColor: 'border-indigo-300/80 dark:border-indigo-700/50',
-            hoverBorder: 'group-hover:border-indigo-500 dark:group-hover:border-indigo-400'
-          },
-          {
-            label: 'Pending Reviews',
-            value: stats.pendingReviews,
-            sub: 'Requires Attention',
-            icon: AlertCircle,
-            color: 'amber',
-            bg: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
-            cardBg: 'bg-amber-50/40 dark:bg-amber-950/10',
-            borderColor: 'border-amber-300/80 dark:border-amber-700/50',
-            hoverBorder: 'group-hover:border-amber-500 dark:group-hover:border-amber-400',
-            action: true
-          },
-        ].map((stat, i) => (
-          <Card key={i} className={`border-2 border-[#858282] hover:border-black shadow-sm ${stat.cardBg} backdrop-blur-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative`}>
-            {/* Background Accent */}
-            <div className={`absolute -right-3 -top-3 w-16 h-16 rounded-full opacity-5 group-hover:opacity-10 transition-opacity ${stat.bg.split(' ')[0]}`} />
+      <div className="border-2 border-[#000000] p-4 rounded-2xl bg-white/50 mb-8 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            {
+              label: t.navigation.teamSize,
+              value: stats.teamSize,
+              icon: Users,
+              iconColor: 'text-blue-600',
+              iconBg: 'bg-blue-50',
+            },
+            {
+              label: t.navigation.teamEfficiency,
+              value: `${stats.teamEfficiency}%`,
+              icon: TrendingUp,
+              iconColor: 'text-emerald-600',
+              iconBg: 'bg-emerald-50',
+            },
+            {
+              label: 'Active Tasks',
+              value: stats.tasksInProgress,
+              icon: ClipboardList,
+              iconColor: 'text-indigo-600',
+              iconBg: 'bg-indigo-50',
+              path: '/team_lead/tasks'
+            },
+            {
+              label: 'Pending Reviews',
+              value: stats.pendingReviews,
+              icon: AlertCircle,
+              iconColor: 'text-amber-600',
+              iconBg: 'bg-amber-50',
+              path: '/team_lead/tasks'
+            },
+          ].map((stat, i) => (
+            <SummaryCard
+              key={i}
+              title={stat.label}
+              value={stat.value}
+              icon={stat.icon}
+              iconColor={stat.iconColor}
+              iconBg={stat.iconBg}
+              onClick={() => (stat as any).path && navigate((stat as any).path)}
+            />
+          ))}
 
-            <CardContent className="p-4 relative">
-              <div className="flex justify-between items-start mb-3">
-                <div className={`p-2 rounded-xl ${stat.bg} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
-                  <stat.icon className="h-5 w-5" />
-                </div>
-                {stat.action && (
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-full hover:bg-white/50 dark:hover:bg-black/20" onClick={() => navigate('/team_lead/tasks')}>
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: '#000000' }}>{stat.label}</h3>
-                <div className="flex items-baseline gap-1">
-                  <div className="text-2xl font-black" style={{ color: '#000000' }}>{stat.value}</div>
-                </div>
-                {stat.progress !== undefined ? (
-                  <div className="pt-1.5">
-                    <div className="flex justify-between text-[12px] font-bold mb-1" style={{ color: '#000000' }}>
-                      <span>PROGRESS</span>
-                      <span>{stat.progress}%</span>
-                    </div>
-                    <Progress value={stat.progress} className="h-1" />
-                  </div>
-                ) : (
-                  <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/50 dark:bg-gray-900/30 border border-black/5 dark:border-white/5`}>
-                    <CheckCircle2 className={`h-2.5 w-2.5 ${stat.color === 'blue' ? 'text-blue-500' :
-                      stat.color === 'indigo' ? 'text-indigo-500' :
-                        'text-amber-500'
-                      }`} />
-                    <span className="text-[12px] font-bold uppercase leading-tight" style={{ color: '#000000' }}>{stat.sub}</span>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        </div>
       </div>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Team Members Tracker */}
-        <Card className="lg:col-span-3 border border-[#858282] shadow-xl bg-white dark:bg-gray-900 rounded-2xl overflow-hidden flex flex-col h-full">
+        <Card className="lg:col-span-3 border-2 border-[#000000] shadow-xl bg-white dark:bg-gray-900 rounded-2xl overflow-hidden flex flex-col h-full">
           <CardHeader className="border-b border-slate-100 bg-slate-50 dark:bg-gray-950 px-6 py-4">
             <div className="flex justify-between items-center">
               <div>
@@ -869,7 +827,7 @@ const TeamLeadDashboard: React.FC = () => {
 
         {/* Activity Sidebar */}
         <div className="lg:col-span-2 space-y-6 flex flex-col h-full">
-          <Card className="border border-[#858282] shadow-xl bg-white dark:bg-gray-900 rounded-2xl overflow-hidden flex flex-col h-full">
+          <Card className="border-2 border-[#000000] shadow-xl bg-white dark:bg-gray-900 rounded-2xl overflow-hidden flex flex-col h-full">
             <CardHeader className="border-b border-slate-100 bg-slate-50 dark:bg-gray-950 px-6 py-4">
               <CardTitle className="flex items-center gap-2" style={{ color: '#000000' }}>
                 <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">

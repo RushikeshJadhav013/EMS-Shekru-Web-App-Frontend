@@ -922,7 +922,7 @@ const AttendancePage: React.FC = () => {
       return <Badge variant="destructive" className="text-sm">Late</Badge>;
     }
     if (checkOutTime && checkOutTime < '18:00:00') {
-      return <Badge variant="outline" className="border-orange-500 text-orange-500 text-[14px]" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>Early</Badge>;
+      return <Badge variant="outline" className="border-orange-500 text-orange-500 text-[14px]">Early</Badge>;
     }
     if (status === 'present') {
       return <Badge variant="default" className="bg-green-500 text-sm">On Time</Badge>;
@@ -948,7 +948,7 @@ const AttendancePage: React.FC = () => {
           onCancel={() => setShowCamera(false)}
         />
         {isLoading && (
-          <div className="text-center">
+          <div className="text-center font-outfit">
             <p className="text-muted-foreground animate-pulse">Recognizing face...</p>
           </div>
         )}
@@ -957,9 +957,9 @@ const AttendancePage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-outfit">
       {/* Modern Header */}
-      <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800 rounded-2xl p-6 shadow-sm border">
+      <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800 rounded-2xl p-6 shadow-sm border-2 border-[#000000]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
@@ -980,7 +980,7 @@ const AttendancePage: React.FC = () => {
       {/* Tabs for Self Attendance and WFH */}
       <div className="flex justify-center w-full mb-8">
         <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'self' | 'wfh')} className="w-full sm:w-auto">
-          <TabsList className="grid grid-cols-2 h-14 w-full sm:w-[600px] bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-1.5 gap-2 shadow-sm">
+          <TabsList className="grid grid-cols-2 h-14 w-full sm:w-[600px] bg-slate-100 dark:bg-slate-800 border-2 border-[#000000] dark:border-slate-700 rounded-xl p-1.5 gap-2 shadow-sm">
             <TabsTrigger
               value="self"
               className="flex items-center justify-center gap-2 text-sm font-medium transition-all duration-300 rounded-lg
@@ -1007,7 +1007,7 @@ const AttendancePage: React.FC = () => {
         <>
           {/* Self Attendance View */}
           {/* Location Status Card - Prominent Display */}
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
+          <Card className="border-2 border-[#000000] shadow-lg bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
             <CardHeader className="border-b bg-white/50 dark:bg-gray-900/50">
               <div className="flex items-center justify-between">
                 <div>
@@ -1097,7 +1097,7 @@ const AttendancePage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                    <div className="grid grid-cols-2 gap-4 pt-2 border-t font-outfit">
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Latitude</p>
                         <p className="font-mono text-sm font-semibold">{location.latitude.toFixed(6)}</p>
@@ -1108,7 +1108,7 @@ const AttendancePage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t text-xs text-muted-foreground">
+                    <div className="flex items-center justify-between pt-2 border-t text-xs text-muted-foreground font-outfit">
                       <div className="flex items-center gap-2">
                         <span className="flex items-center gap-1">
                           <span className="font-medium">Accuracy:</span>
@@ -1120,14 +1120,14 @@ const AttendancePage: React.FC = () => {
                           </span>
                         </span>
                         {isImprovingAccuracy && (
-                          <Badge variant="outline" className="text-xs py-0 px-2 border-blue-500 text-blue-600">
+                          <Badge variant="outline" className="text-xs py-0 px-2 border-blue-500 text-blue-600 font-outfit">
                             <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                             Improving...
                           </Badge>
                         )}
                       </div>
                       {location.updatedAt && (
-                        <span>
+                        <span className="font-outfit">
                           {formatTimeIST(location.updatedAt, 'HH:mm:ss')}
                         </span>
                       )}
@@ -1151,20 +1151,20 @@ const AttendancePage: React.FC = () => {
           </Card>
 
           {/* Current Status Card */}
-          <Card className="border-0 shadow-lg">
+          <Card className="border-2 border-[#000000] shadow-lg font-outfit">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-[24px] font-bold" style={{ color: '#000000' }}>{t.attendance.todayStatus}</CardTitle>
-                <CardDescription>Your attendance status for today</CardDescription>
+                <CardTitle className="text-[24px] font-bold font-outfit" style={{ color: '#000000' }}>{t.attendance.todayStatus}</CardTitle>
+                <CardDescription className="font-outfit">Your attendance status for today</CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 {currentAttendance && !currentAttendance.checkOutTime ? (
-                  <Badge className="bg-green-500 hover:bg-green-600 animate-pulse">
+                  <Badge className="bg-green-500 hover:bg-green-600 animate-pulse font-outfit">
                     <span className="h-2 w-2 rounded-full bg-white mr-2 shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
                     Online
                   </Badge>
                 ) : (
-                  <Badge variant="secondary" className="opacity-70">
+                  <Badge variant="secondary" className="opacity-70 font-outfit">
                     <span className="h-2 w-2 rounded-full bg-gray-400 mr-2" />
                     Offline
                   </Badge>
@@ -1180,10 +1180,10 @@ const AttendancePage: React.FC = () => {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <LogIn className="h-4 w-4 text-green-500" />
-                          <span className="text-sm font-bold text-black">Check-in Time</span>
+                          <span className="text-sm font-bold text-black font-outfit">Check-in Time</span>
                           {getStatusBadge(currentAttendance.status, currentAttendance.checkInTime)}
                         </div>
-                        <p className="text-lg font-semibold text-black">
+                        <p className="text-[16px] font-semibold text-black font-outfit">
                           {formatAttendanceTime(currentAttendance.date, currentAttendance.checkInTime)}
                         </p>
                       </div>
@@ -1191,11 +1191,11 @@ const AttendancePage: React.FC = () => {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <LogOut className="h-4 w-4 text-red-500" />
-                          <span className="text-sm font-bold text-black">Check-out Time</span>
+                          <span className="text-sm font-bold text-black font-outfit">Check-out Time</span>
                           {currentAttendance.checkOutTime &&
                             getStatusBadge(currentAttendance.status, undefined, currentAttendance.checkOutTime)}
                         </div>
-                        <p className="text-lg font-semibold text-black">
+                        <p className="text-[16px] font-semibold text-black font-outfit">
                           {currentAttendance.checkOutTime
                             ? formatAttendanceTime(currentAttendance.date, currentAttendance.checkOutTime)
                             : '-'}
@@ -1204,20 +1204,21 @@ const AttendancePage: React.FC = () => {
 
                       {currentAttendance.workHours && (
                         <div className="col-span-2">
-                          <div className="flex items-center gap-2 mb-2">
+                          <div className="flex items-center gap-2 mb-2 font-outfit">
                             <Clock className="h-4 w-4 text-blue-500" />
                             <span className="text-sm font-bold text-black">Total Work Hours</span>
                           </div>
-                          <div className="flex items-baseline text-3xl font-black text-blue-600 dark:text-blue-400 tabular-nums">
+                          <div className="flex items-baseline text-3xl font-black text-blue-600 dark:text-blue-400 tabular-nums font-outfit">
                             {formatWorkHours(currentAttendance.workHours)}
                           </div>
                         </div>
                       )}
                     </>
                   ) : (
-                    <div className="col-span-2 text-center py-8 text-black">
-                      <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Not Checked in Yet.</p>
+                    <div className="col-span-2 text-center py-10 text-black bg-slate-50 dark:bg-slate-900/50 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700">
+                      <Clock className="h-12 w-12 mx-auto mb-4 text-slate-400 animate-pulse-slow font-outfit" />
+                      <p className="text-xl font-bold font-outfit">Not Checked in Yet</p>
+                      <p className="text-sm text-muted-foreground mt-1 font-outfit">Please mark your attendance to start your shift</p>
                     </div>
                   )}
                 </div>
@@ -1229,13 +1230,13 @@ const AttendancePage: React.FC = () => {
                       {t.attendance.checkIn}
                     </Button>
                   ) : !currentAttendance.checkOutTime ? (
-                    <Button onClick={handleCheckOut} size="lg" className="flex-1 gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-md">
+                    <Button onClick={handleCheckOut} size="lg" className="flex-1 gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-md font-outfit">
                       <LogOut className="h-5 w-5" />
                       {t.attendance.checkOut}
                     </Button>
                   ) : (
-                    <div className="flex-1 text-center">
-                      <Badge className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
+                    <div className="flex-1 text-center font-outfit">
+                      <Badge className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 font-outfit">
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Attendance Completed for Today
                       </Badge>
@@ -1247,30 +1248,30 @@ const AttendancePage: React.FC = () => {
           </Card>
 
           {/* Attendance History */}
-          <Card className="border-0 shadow-lg">
+          <Card className="border-2 border-[#000000] shadow-lg font-outfit">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-              <CardTitle className="text-xl font-semibold">{t.attendance.history}</CardTitle>
-              <CardDescription>Your recent attendance records</CardDescription>
+              <CardTitle className="text-xl font-semibold font-outfit">{t.attendance.history}</CardTitle>
+              <CardDescription className="font-outfit">Your recent attendance records</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="space-y-3 font-outfit">
                 {attendanceHistory.length > 0 ? (
                   <>
                     {attendanceHistory
                       .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                       .map((record) => (
-                        <div key={record.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                          <div className="flex items-center gap-3">
+                        <div key={record.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors font-outfit">
+                          <div className="flex items-center gap-3 font-outfit">
                             <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
                               <Calendar className="h-6 w-6 text-white" />
                             </div>
-                            <div>
-                              <p className="font-medium">{formatDateIST(record.date, 'dd MMM yyyy')}</p>
-                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                <span>In: {formatAttendanceTime(record.date, record.checkInTime)}</span>
-                                <span>Out: {formatAttendanceTime(record.date, record.checkOutTime)}</span>
+                            <div className="font-outfit">
+                              <p className="font-medium font-outfit">{formatDateIST(record.date, 'dd MMM yyyy')}</p>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground font-outfit">
+                                <span className="font-outfit">In: {formatAttendanceTime(record.date, record.checkInTime)}</span>
+                                <span className="font-outfit">Out: {formatAttendanceTime(record.date, record.checkOutTime)}</span>
                                 {record.checkOutTime && (
-                                  <span className="inline-flex items-center font-bold text-slate-900 dark:text-white tabular-nums bg-slate-100 dark:bg-slate-800/50 px-2 py-0.5 rounded text-xs border border-slate-200 dark:border-slate-700">
+                                  <span className="inline-flex items-center font-bold text-slate-900 dark:text-white tabular-nums bg-slate-100 dark:bg-slate-800/50 px-2 py-0.5 rounded text-xs border border-slate-200 dark:border-slate-700 font-outfit">
                                     {formatWorkHours(record.workHours)}
                                   </span>
                                 )}
@@ -1319,7 +1320,7 @@ const AttendancePage: React.FC = () => {
       ) : (
         <>
           {/* Work From Home Request View */}
-          <Card className="border-0 shadow-lg">
+          <Card className="border-2 border-[#000000] shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950 dark:to-red-950">
               <CardTitle className="text-xl font-semibold flex items-center gap-2">
                 <Home className="h-5 w-5 text-orange-600" />
@@ -1357,7 +1358,7 @@ const AttendancePage: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="wfh-type">Work From Home Type</Label>
                   <Select value={wfhType} onValueChange={(value: 'full_day' | 'half_day') => setWfhType(value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="border-2 border-[#000000]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1375,7 +1376,7 @@ const AttendancePage: React.FC = () => {
                     value={wfhReason}
                     onChange={(e) => setWfhReason(e.target.value)}
                     rows={4}
-                    className="resize-none"
+                    className="resize-none border-2 border-[#000000]"
                   />
                 </div>
 
@@ -1418,7 +1419,7 @@ const AttendancePage: React.FC = () => {
           </Card>
 
           {/* WFH Request History */}
-          <Card className="border-0 shadow-lg">
+          <Card className="border-2 border-[#000000] shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
               <div className="flex items-center justify-between">
                 <div>
@@ -1511,7 +1512,7 @@ const AttendancePage: React.FC = () => {
 
       {/* Edit WFH Request Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md border-2 border-[#000000]">
           <DialogHeader>
             <DialogTitle>Edit WFH Request</DialogTitle>
             <DialogDescription>Update your work from home request details</DialogDescription>
@@ -1543,7 +1544,7 @@ const AttendancePage: React.FC = () => {
             <div className="space-y-2">
               <Label htmlFor="edit-wfh-type">WFH Type *</Label>
               <Select value={wfhType} onValueChange={(value: any) => setWfhType(value)}>
-                <SelectTrigger id="edit-wfh-type">
+                <SelectTrigger id="edit-wfh-type" className="border-2 border-[#000000]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1559,7 +1560,7 @@ const AttendancePage: React.FC = () => {
                 placeholder="Enter reason for WFH request"
                 value={wfhReason}
                 onChange={(e) => setWfhReason(e.target.value)}
-                className="min-h-24"
+                className="min-h-24 border-2 border-[#000000]"
               />
             </div>
           </div>

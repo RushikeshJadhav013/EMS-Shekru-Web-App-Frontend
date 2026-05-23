@@ -40,7 +40,9 @@ import {
   Check,
   ChevronsUpDown,
   Activity,
-  MessageCircle
+  MessageCircle,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useChat } from '@/contexts/ChatContext';
@@ -50,6 +52,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { formatDateIST } from '@/utils/timezone';
 import { apiService, type EmployeeData } from '@/lib/api';
 import { useFieldValidation } from '@/hooks/useFieldValidation';
+import SummaryCard from '@/components/ui/SummaryCard';
+import { UserCheck, UserX, UserPlus } from 'lucide-react';
 
 type ShiftType = 'general' | 'morning' | 'afternoon' | 'night' | 'rotational';
 
@@ -596,6 +600,24 @@ export default function EmployeeManagement() {
   }, [filteredEmployees, currentPage, itemsPerPage]);
 
   const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+
+  const stats = useMemo(() => {
+    return {
+      total: employees.length,
+      active: employees.filter(e => e.status === 'active').length,
+      inactive: employees.filter(e => e.status === 'inactive').length,
+      newJoiners: employees.filter(e => {
+        if (!e.joiningDate) return false;
+        try {
+          const joinDate = new Date(e.joiningDate);
+          const now = new Date();
+          return joinDate.getMonth() === now.getMonth() && joinDate.getFullYear() === now.getFullYear();
+        } catch (error) {
+          return false;
+        }
+      }).length
+    };
+  }, [employees]);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -1795,7 +1817,7 @@ export default function EmployeeManagement() {
   return (
     <div className="w-full space-y-6">
       {/* Modern Header Section */}
-      <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800 rounded-2xl p-6 shadow-sm border border-[#858282]">
+      <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800 rounded-2xl p-6 shadow-sm border-2 border-[#000000]">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
@@ -2026,8 +2048,56 @@ export default function EmployeeManagement() {
         </div>
       </div>
 
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <SummaryCard
+          title="Total Employees"
+          value={stats.total}
+          icon={Users}
+          iconColor="text-blue-600"
+          iconBg="bg-blue-50"
+          onClick={() => {
+            setSelectedStatus('all');
+            setSearchQuery('');
+          }}
+        />
+        <SummaryCard
+          title="Active Users"
+          value={stats.active}
+          icon={UserCheck}
+          iconColor="text-green-600"
+          iconBg="bg-green-50"
+          onClick={() => {
+            setSelectedStatus('active');
+            setSearchQuery('');
+          }}
+        />
+        <SummaryCard
+          title="Inactive Users"
+          value={stats.inactive}
+          icon={UserX}
+          iconColor="text-red-600"
+          iconBg="bg-red-50"
+          onClick={() => {
+            setSelectedStatus('inactive');
+            setSearchQuery('');
+          }}
+        />
+        <SummaryCard
+          title="New Joiners"
+          value={stats.newJoiners}
+          icon={UserPlus}
+          iconColor="text-orange-600"
+          iconBg="bg-orange-50"
+          onClick={() => {
+            setSelectedStatus('all');
+            setSearchQuery('');
+          }}
+        />
+      </div>
+
       {/* Main Content Card */}
-      <Card className="border-0 shadow-lg">
+      <Card className="border-2 border-[#000000] shadow-lg">
         <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -2077,7 +2147,7 @@ export default function EmployeeManagement() {
                     Add User
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] border-2 shadow-2xl flex flex-col">
+                <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] border-2 border-[#000000] shadow-2xl flex flex-col">
                   <DialogHeader className="pb-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 -m-6 mb-0 p-6 rounded-t-lg flex-shrink-0">
                     <div className="flex items-center gap-3">
                       <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
@@ -2735,7 +2805,7 @@ export default function EmployeeManagement() {
                     placeholder="Search by name, ID, or email..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
-                    className="pl-10 pr-4 h-11 w-full bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-blue-500" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
+                    className="pl-10 pr-4 h-11 w-full bg-white dark:bg-gray-950 border-2 border-[#000000] focus:ring-2 focus:ring-blue-500" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
                     aria-label="Search employees"
                   />
                 </div>
@@ -2744,9 +2814,9 @@ export default function EmployeeManagement() {
             <div className="flex flex-col gap-2 w-full sm:w-44">
               <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Department</Label>
               <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className={`w-full h-11 bg-white dark:bg-gray-950 border-2 transition-all duration-300 hover:shadow-md flex-shrink-0 ${selectedDepartment === 'all'
+                <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className={`w-full h-11 bg-white dark:bg-gray-950 border-2 border-[#000000] transition-all duration-300 hover:shadow-md flex-shrink-0 ${selectedDepartment === 'all'
                   ? 'border-blue-400 dark:border-blue-600 hover:border-blue-400 dark:hover:border-blue-600'
-                  : 'hover:border-blue-300 dark:hover:border-blue-700 border-gray-200 dark:border-gray-800'
+                  : 'hover:border-blue-300 dark:hover:border-blue-700'
                   }`}>
                   <Filter className={`h-4 w-4 mr-2 ${selectedDepartment === 'all'
                     ? 'text-blue-600'
@@ -2775,7 +2845,7 @@ export default function EmployeeManagement() {
             <div className="flex flex-col gap-2 w-full sm:w-44">
               <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Role</Label>
               <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-full h-11 bg-white dark:bg-gray-950 border-2 hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
+                <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-full h-11 bg-white dark:bg-gray-950 border-2 border-[#000000] hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
                   <UserIcon className="h-4 w-4 mr-2 text-purple-600" />
                   <SelectValue placeholder="Role" />
                 </SelectTrigger>
@@ -2820,7 +2890,7 @@ export default function EmployeeManagement() {
             <div className="flex flex-col gap-2 w-full sm:w-44">
               <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Status</Label>
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-full h-11 bg-white dark:bg-gray-950 border-2 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
+                <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-full h-11 bg-white dark:bg-gray-950 border-2 border-[#000000] hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
                   <Activity className="h-4 w-4 mr-2 text-emerald-600" />
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -2839,7 +2909,7 @@ export default function EmployeeManagement() {
             </div>
           </div>
 
-          <div className="rounded-xl border-2 border-gray-200 dark:border-gray-800 overflow-hidden shadow-lg">
+          <div className="rounded-xl border-2 border-[#000000] overflow-hidden shadow-lg">
             <Table>
               <TableHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
                 <TableRow className="hover:bg-transparent border-b-2">
@@ -2865,8 +2935,6 @@ export default function EmployeeManagement() {
                   <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>NAME</TableHead>
                   <TableHead className="hidden sm:table-cell" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>EMAIL</TableHead>
                   <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>DEPARTMENT</TableHead>
-                  <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>COMPANY</TableHead>
-                  <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>BRANCHES</TableHead>
                   <TableHead className="hidden md:table-cell" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ROLE</TableHead>
                   <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>STATUS</TableHead>
                   <TableHead className="text-right" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ACTIONS</TableHead>
@@ -2921,25 +2989,19 @@ export default function EmployeeManagement() {
                             : employee.department}
                         </span>
                       </TableCell>
-                      <TableCell>
-                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{employee.company || "-"}</span>
-                      </TableCell>
-                      <TableCell>
-                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{employee.branches || "-"}</span>
-                      </TableCell>
                       <TableCell className="hidden md:table-cell">
                         {(() => {
-                        const role = employee.role?.toLowerCase();
-                        let color = "#EF4444"; // Employee: Red
-                        if (role === 'hr') color = "#10B981"; // HR: Green
-                        else if (role === 'manager') color = "#3B82F6"; // Manager: Blue
-                        else if (role === 'team_lead') color = "#EAB308"; // Team Lead: Yellow
-                        return (
-                          <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: color, fontSize: "12px", fontWeight: "bold" }}>
-                            {employee.role ? employee.role.charAt(0).toUpperCase() + employee.role.slice(1).replace('_', ' ') : '-'}
-                          </span>
-                        );
-                      })()}
+                          const role = employee.role?.toLowerCase();
+                          let color = "#EF4444"; // Employee: Red
+                          if (role === 'hr') color = "#10B981"; // HR: Green
+                          else if (role === 'manager') color = "#3B82F6"; // Manager: Blue
+                          else if (role === 'team_lead') color = "#EAB308"; // Team Lead: Yellow
+                          return (
+                            <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: color, fontSize: "12px", fontWeight: "bold" }}>
+                              {employee.role ? employee.role.charAt(0).toUpperCase() + employee.role.slice(1).replace('_', ' ') : '-'}
+                            </span>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: employee.status === 'active' ? "#10B981" : "#EF4444", fontSize: "12px", fontWeight: "bold" }}>
@@ -2994,12 +3056,17 @@ export default function EmployeeManagement() {
                           </Button>
                           <Button
                             size="sm"
-                            variant="outline"
+                            variant="ghost"
                             onClick={() => handleToggleStatus(employee.employeeId)}
                             disabled={isDeleting === employee.employeeId}
-                            className="h-9 w-[90px] text-xs px-3 border-2 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950 dark:hover:to-indigo-950 transition-all font-medium"
+                            className={`h-9 w-9 p-0 transition-all hover:scale-110 rounded-lg ${employee.status === 'active' ? 'hover:bg-green-100 dark:hover:bg-green-900/40' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                            title={employee.status === 'active' ? 'Deactivate' : 'Activate'}
                           >
-                            {employee.status === 'active' ? 'Deactivate' : 'Activate'}
+                            {employee.status === 'active' ? (
+                              <ToggleRight className="h-5 w-5 text-green-600 dark:text-green-400" />
+                            ) : (
+                              <ToggleLeft className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+                            )}
                           </Button>
                         </div>
                       </TableCell>
@@ -3026,7 +3093,7 @@ export default function EmployeeManagement() {
       </Card >
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-[450px] max-h-[80vh] overflow-y-auto p-4">
+        <DialogContent className="w-[95vw] max-w-[450px] max-h-[80vh] overflow-y-auto p-4 border-2 border-[#000000]">
           <DialogHeader>
             <DialogTitle>Update Employee / User</DialogTitle>
             <DialogDescription>Update the employee / user details below</DialogDescription>
@@ -3598,7 +3665,7 @@ export default function EmployeeManagement() {
       </Dialog>
 
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-[450px] max-h-[85vh] flex flex-col p-0 border border-slate-200">
+        <DialogContent className="w-[95vw] max-w-[450px] max-h-[85vh] flex flex-col p-0 border-2 border-[#000000]">
           <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0 border-b">
             <DialogTitle className="text-xl font-semibold">Employee Profile</DialogTitle>
             <DialogDescription>Quick profile preview</DialogDescription>
@@ -3703,7 +3770,7 @@ export default function EmployeeManagement() {
       </Dialog>
 
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent className="border-2 border-[#000000]">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold">Confirm Delete</DialogTitle>
             <DialogDescription>
@@ -3731,7 +3798,7 @@ export default function EmployeeManagement() {
 
       {/* Export Dialog */}
       <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] border-2 border-[#000000]">
           <DialogHeader>
             <DialogTitle>Export Employee Data</DialogTitle>
             <DialogDescription>

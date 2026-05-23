@@ -46,6 +46,7 @@ import {
     CheckCircle2,
     Ban
 } from 'lucide-react';
+import SummaryCard from "@/components/ui/SummaryCard";
 import {
     Dialog,
     DialogContent,
@@ -126,7 +127,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
     const [selectedMonth, setSelectedMonth] = useState<string>("all");
     const [isAnnexureSending, setIsAnnexureSending] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
-    
+
     const [isGenerateSlipDialogOpen, setIsGenerateSlipDialogOpen] = useState(false);
     const [generateSlipForm, setGenerateSlipForm] = useState({
         optional_deduction_1_label: '',
@@ -727,7 +728,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         try {
             setIsGenerating(true);
             const month = parseInt(selectedMonth);
-            
+
             const options = {
                 optional_deduction_1_label: generateSlipForm.optional_deduction_1_label || undefined,
                 optional_deduction_1_amount: generateSlipForm.optional_deduction_1_amount ? Number(generateSlipForm.optional_deduction_1_amount) : undefined,
@@ -741,10 +742,10 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             };
 
             toast({ title: action === 'preview' ? 'Generating Preview' : 'Generating Slip', description: 'Preparing PDF...', variant: 'default' });
-            
+
             const blob = await apiService.downloadSalarySlip(targetUserId!, month, selectedYear, options);
             const url = window.URL.createObjectURL(blob);
-            
+
             if (action === 'preview') {
                 window.open(url, '_blank');
                 toast({ title: 'Success', description: 'Preview opened in a new tab.', variant: 'success' });
@@ -1004,8 +1005,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
     };
 
     return (
-        <div className="p-6 space-y-6 animate-in fade-in duration-500">
-            <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border border-[#858282] shadow-sm mt-1">
+        <div className="w-full space-y-6 animate-in fade-in duration-500">
+            <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-sm mt-1">
                 <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-emerald-500/5 rounded-full blur-3xl" />
                 <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-teal-500/5 rounded-full blur-3xl" />
 
@@ -1014,10 +1015,10 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                         <FileText className="h-8 w-8 text-white" />
                     </div>
                     <div>
-                        <h1 className="font-bold tracking-tight" style={{  color: '#000000', fontSize: '30px' }}>
+                        <h1 className="font-bold tracking-tight" style={{ color: '#000000', fontSize: '30px' }}>
                             {userName ? `${userName}'s Salary Details` : 'Salary Details'}
                         </h1>
-                        
+
                     </div>
                 </div>
 
@@ -1032,7 +1033,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 }
                             }}
                             className="rounded-xl px-6 h-12 transition-all active:scale-95"
-                            style={{  color: '#FFFFFF', backgroundColor: '#10B981', fontSize: '14px' }}
+                            style={{ color: '#FFFFFF', backgroundColor: '#10B981', fontSize: '14px' }}
                         >
                             <Edit className="mr-2 h-4 w-4" /> Edit Structure
                         </Button>
@@ -1042,22 +1043,18 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
 
             {/* Salary Summary Cards - Admin/HR or Owner Only */}
             {canViewAll && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {/* Calculate dynamic values based on selected month's slip if available */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {(() => {
                         const annualCtc = displaySalaryData.annualCtc || displaySalaryData.ctc_annual || 0;
                         const monthly_ctc = displaySalaryData.monthly_ctc || (annualCtc / 12);
 
-                        // Priority: 1. Selected Month Slip, 2. Calculated (Gross-Deductions), 3. Response field
                         let currentMonthlyInHand = displaySalaryData.monthlyInHand;
                         const calculatedInHand = (displaySalaryData.monthlyGross || (annualCtc / 12)) - (displaySalaryData.monthlyDeductions || 0);
 
-                        // Use calculated value if monthlyInHand is 0 or looks like a placeholder (e.g. very low)
                         if (currentMonthlyInHand <= 0 || (calculatedInHand > 0 && Math.abs(currentMonthlyInHand - calculatedInHand) > 100)) {
                             currentMonthlyInHand = calculatedInHand > 0 ? calculatedInHand : currentMonthlyInHand;
                         }
 
-                        // Check if a specific month is selected and we have a generated slip for it
                         if (selectedMonth !== "all" && salarySlipHistory.length > 0) {
                             const slip = salarySlipHistory.find(s => s.month.toString() === selectedMonth && s.year === selectedYear);
                             if (slip) {
@@ -1067,109 +1064,61 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
 
                         const currentMonthlyCTC = monthly_ctc;
 
-                        return [
-                            {
-                                label: 'Annual CTC',
-                                value: formatCurrency(annualCtc),
-                                sub: 'Cost to Company',
-                                icon: Briefcase,
-                                color: 'blue',
-                                iconColor: 'text-blue-600 dark:text-blue-400',
-                                iconBg: 'bg-blue-50 dark:bg-blue-900/40',
-                                accent: 'bg-blue-600',
-                                shadow: 'shadow-blue-100 dark:shadow-none'
-                            },
-                            {
-                                label: 'Monthly In-Hand',
-                                value: formatCurrency(currentMonthlyInHand),
-                                sub: selectedMonth !== "all" ? 'Actual Net Pay' : 'Net Pay / Month',
-                                icon: DollarSign,
-                                color: 'emerald',
-                                iconColor: 'text-emerald-600 dark:text-emerald-400',
-                                iconBg: 'bg-emerald-50 dark:bg-emerald-900/40',
-                                accent: 'bg-emerald-600',
-                                shadow: 'shadow-emerald-100 dark:shadow-none'
-                            },
-                            {
-                                label: 'Monthly CTC',
-                                value: formatCurrency(currentMonthlyCTC),
-                                sub: 'Gross Monthly Cost',
-                                icon: TrendingUp,
-                                color: 'indigo',
-                                iconColor: 'text-indigo-600 dark:text-indigo-400',
-                                iconBg: 'bg-indigo-50 dark:bg-indigo-900/40',
-                                accent: 'bg-indigo-600',
-                                shadow: 'shadow-indigo-100 dark:shadow-none'
-                            },
-                            {
-                                label: 'Payment Mode',
-                                value: displaySalaryData.paymentMode.replace('_', ' '),
-                                sub: maskData(displaySalaryData.bankName),
-                                icon: CreditCard,
-                                color: 'amber',
-                                iconColor: 'text-amber-600 dark:text-amber-400',
-                                iconBg: 'bg-amber-50 dark:bg-amber-900/40',
-                                accent: 'bg-amber-600',
-                                shadow: 'shadow-amber-100 dark:shadow-none',
-                                isCap: true
-                            }
-                        ];
-                    })().map((item, i) => (
-                        <Card key={i} className="group relative overflow-hidden rounded-3xl border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900 shadow-xl transition-all duration-300 hover:shadow-2xl hover:translate-y-[-2px]">
-                            {/* Accent Glow */}
-                            <div className={`absolute top-0 left-0 w-full h-1 ${item.accent} opacity-20`} />
-
-                            <CardContent className="p-6 relative">
-                                <div className="flex justify-between items-start">
-                                    <div className={`h-12 w-12 rounded-2xl ${item.iconBg} ${item.iconColor} flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-500`}>
-                                        <item.icon className="h-6 w-6" />
-                                    </div>
-                                    <div className={`h-1.5 w-1.5 rounded-full ${item.accent} animate-pulse`} />
-                                </div>
-
-                                <div className="mt-6 space-y-1">
-                                    <h3 className="uppercase tracking-[0.2em] leading-none mb-1 font-bold" style={{  color: '#000000', fontSize: '12px' }}>{item.label}</h3>
-                                    <div className={`tracking-tighter font-bold ${item.isCap ? 'capitalize' : ''}`} style={{  color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>
-                                        {item.value}
-                                    </div>
-
-                                    <div className="flex items-center gap-2 pt-2">
-                                        <div className="flex -space-x-1">
-                                            {[1, 2, 3].map((dot) => (
-                                                <div key={dot} className={`h-1 w-1 rounded-full ${item.accent} opacity-${20 * dot}`} />
-                                            ))}
-                                        </div>
-                                        <span className="uppercase tracking-widest font-bold" style={{  color: '#000000', fontSize: '12px' }}>{item.sub}</span>
-                                    </div>
-                                </div>
-
-                                {/* Geometric Background Decor */}
-                                <div className={`absolute -right-6 -bottom-6 h-24 w-24 rounded-full ${item.accent} opacity-[0.03] group-hover:scale-150 transition-transform duration-700`} />
-                            </CardContent>
-                        </Card>
-                    ))}
+                        return (
+                            <>
+                                <SummaryCard
+                                    title="Annual CTC"
+                                    value={formatCurrency(annualCtc)}
+                                    icon={Briefcase}
+                                    iconColor="text-blue-600"
+                                    iconBg="bg-blue-50"
+                                />
+                                <SummaryCard
+                                    title="Monthly In-Hand"
+                                    value={formatCurrency(currentMonthlyInHand)}
+                                    icon={DollarSign}
+                                    iconColor="text-green-600"
+                                    iconBg="bg-green-50"
+                                />
+                                <SummaryCard
+                                    title="Monthly CTC"
+                                    value={formatCurrency(currentMonthlyCTC)}
+                                    icon={TrendingUp}
+                                    iconColor="text-indigo-600"
+                                    iconBg="bg-indigo-50"
+                                />
+                                <SummaryCard
+                                    title="Payment Mode"
+                                    value={displaySalaryData.paymentMode.replace('_', ' ')}
+                                    icon={CreditCard}
+                                    iconColor="text-amber-600"
+                                    iconBg="bg-amber-50"
+                                />
+                            </>
+                        );
+                    })()}
                 </div>
             )}
 
             {/* Salary Slips Archive Section - Always prominent for everyone */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div className="lg:col-span-12">
-                    <Card className="border-none shadow-md overflow-hidden bg-white dark:bg-gray-900 border">
+                    <Card className="border-2 border-[#000000] shadow-md overflow-hidden bg-white dark:bg-gray-900">
                         <CardHeader className="flex flex-col sm:flex-row items-center justify-between bg-gray-50 dark:bg-gray-900/50 border-b py-5 px-6 gap-4">
                             <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
                                     <History className="h-5 w-5 text-emerald-600" />
                                 </div>
                                 <div>
-                                    <CardTitle className="font-bold" style={{  color: '#000000', fontSize: '16px', fontWeight: 'bold' }}>Salary Slips Archive</CardTitle>
-                                    <CardDescription className="font-medium" style={{  color: '#000000', fontSize: '14px' }}>History of generated payslips and payment statuses</CardDescription>
+                                    <CardTitle className="font-bold" style={{ color: '#000000', fontSize: '16px', fontWeight: 'bold' }}>Salary Slips Archive</CardTitle>
+                                    <CardDescription className="font-medium" style={{ color: '#000000', fontSize: '14px' }}>History of generated payslips and payment statuses</CardDescription>
                                 </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-3">
-                                <div className="flex items-center gap-3">
-                                    <Label className="uppercase font-bold" style={{  color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Year</Label>
+                                <div className="flex flex-col items-start gap-1">
+                                    <Label className="uppercase font-bold text-[10px] tracking-wider opacity-70" style={{ color: '#000000', fontWeight: 'bold' }}>Year</Label>
                                     <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
-                                        <SelectTrigger className="w-[85px] h-9 border dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm" style={{  color: '#000000', fontSize: '14px' }}>
+                                        <SelectTrigger className="w-[85px] h-9 border-2 border-[#000000] bg-white dark:bg-gray-800 shadow-sm" style={{ color: '#000000', fontSize: '14px' }}>
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -1179,10 +1128,10 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <Label className="uppercase font-bold" style={{  color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>Month</Label>
+                                <div className="flex flex-col items-start gap-1">
+                                    <Label className="uppercase font-bold text-[10px] tracking-wider opacity-70" style={{ color: '#000000', fontWeight: 'bold' }}>Month</Label>
                                     <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                                        <SelectTrigger className="w-[120px] h-9 border dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm" style={{  color: '#000000', fontSize: '14px' }}>
+                                        <SelectTrigger className="w-[120px] h-9 border-2 border-[#000000] bg-white dark:bg-gray-800 shadow-sm" style={{ color: '#000000', fontSize: '14px' }}>
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -1216,10 +1165,10 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 <Table>
                                     <TableHeader className="bg-gray-50/50 dark:bg-gray-900/20">
                                         <TableRow className="hover:bg-transparent">
-                                            <TableHead className="uppercase tracking-wider pl-6 py-4 font-bold" style={{  color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>PERIOD</TableHead>
-                                            <TableHead className="uppercase tracking-wider py-4 font-bold" style={{  color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>PAYMENT SUMMARY</TableHead>
-                                            <TableHead className="uppercase tracking-wider py-4 text-center font-bold" style={{  color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>STATUS</TableHead>
-                                            <TableHead className="text-right uppercase tracking-wider pr-6 py-4 font-bold" style={{  color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>ACTIONS</TableHead>
+                                            <TableHead className="uppercase tracking-wider pl-6 py-4 font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>PERIOD</TableHead>
+                                            <TableHead className="uppercase tracking-wider py-4 font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>PAYMENT SUMMARY</TableHead>
+                                            <TableHead className="uppercase tracking-wider py-4 text-center font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>STATUS</TableHead>
+                                            <TableHead className="text-right uppercase tracking-wider pr-6 py-4 font-bold" style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold' }}>ACTIONS</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -1265,18 +1214,18 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                     return (
                                                         <TableRow key={slip.id} className="group hover:bg-gray-50/80 dark:hover:bg-gray-900/40 transition-colors">
                                                             <TableCell className="pl-6 py-4">
-                                                                <div className="tracking-tight font-bold" style={{  color: '#000000', fontSize: '14px' }}>{monthName} {slip.year}</div>
-                                                                <div className="mt-1.5 font-bold" style={{  color: '#000000', fontSize: '12px' }}>ID: {String(slip.id).slice(0, 8)} | Generated: {date.toLocaleDateString()}</div>
+                                                                <div className="tracking-tight font-bold" style={{ color: '#000000', fontSize: '14px' }}>{monthName} {slip.year}</div>
+                                                                <div className="mt-1.5 font-bold" style={{ color: '#000000', fontSize: '12px' }}>ID: {String(slip.id).slice(0, 8)} | Generated: {date.toLocaleDateString()}</div>
                                                             </TableCell>
                                                             <TableCell className="py-4">
                                                                 <div className="flex gap-4">
                                                                     <div className="flex flex-col">
-                                                                        <span className="uppercase" style={{  color: '#000000', fontSize: '12px' }}>GROSS EARNINGS</span>
-                                                                        <span className="font-bold" style={{  color: '#000000', fontSize: '14px' }}>₹{slip.gross_salary?.toLocaleString('en-IN')}</span>
+                                                                        <span className="uppercase" style={{ color: '#000000', fontSize: '12px' }}>GROSS EARNINGS</span>
+                                                                        <span className="font-bold" style={{ color: '#000000', fontSize: '14px' }}>₹{slip.gross_salary?.toLocaleString('en-IN')}</span>
                                                                     </div>
                                                                     <div className="flex flex-col">
-                                                                        <span className="uppercase" style={{  color: '#000000', fontSize: '12px' }}>NET SELECTION</span>
-                                                                        <span className="font-bold" style={{  color: '#000000', fontSize: '14px' }}>₹{slip.net_salary?.toLocaleString('en-IN')}</span>
+                                                                        <span className="uppercase" style={{ color: '#000000', fontSize: '12px' }}>NET SELECTION</span>
+                                                                        <span className="font-bold" style={{ color: '#000000', fontSize: '14px' }}>₹{slip.net_salary?.toLocaleString('en-IN')}</span>
                                                                     </div>
                                                                 </div>
                                                             </TableCell>
@@ -1285,12 +1234,12 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                                     <Badge
                                                                         variant={slip.email_sent ? "default" : "secondary"}
                                                                         className={`border-none px-2.5 py-0.5 ${slip.email_sent ? "bg-emerald-50" : "bg-blue-50 shadow-sm"}`}
-                                                                        style={{  color: slip.email_sent ? '#16A34A' : '#2563EB', fontSize: '12px', fontWeight: 'bold' }}
+                                                                        style={{ color: slip.email_sent ? '#16A34A' : '#2563EB', fontSize: '12px', fontWeight: 'bold' }}
                                                                     >
                                                                         {slip.email_sent ? "EMAIL SENT" : "READY"}
                                                                     </Badge>
                                                                     {slip.email_sent_at && (
-                                                                        <div className="uppercase tracking-tighter font-bold" style={{  color: '#000000', fontSize: '12px' }}>Ref: {new Date(slip.email_sent_at).toLocaleDateString()}</div>
+                                                                        <div className="uppercase tracking-tighter font-bold" style={{ color: '#000000', fontSize: '12px' }}>Ref: {new Date(slip.email_sent_at).toLocaleDateString()}</div>
                                                                     )}
                                                                 </div>
                                                             </TableCell>
@@ -1346,8 +1295,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 {canViewAll && (
-                    <div className="flex justify-center mb-8">
-                        <TabsList className="h-14 p-1.5 bg-slate-100/50 dark:bg-slate-800/50 backdrop-blur-lg border border-slate-200/50 dark:border-slate-700/50 rounded-2xl shadow-inner w-fit">
+                    <div className="flex justify-center mb-6">
+                        <TabsList className="h-14 p-1.5 bg-slate-100/50 dark:bg-slate-800/50 backdrop-blur-lg border-2 border-[#000000] rounded-2xl shadow-inner w-fit">
                             <TabsTrigger
                                 value="breakdown"
                                 className="px-8 h-full rounded-xl uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-black data-[state=active]:shadow-lg active:scale-95"
@@ -1381,7 +1330,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                             {/* Monthly Earnings & Deductions Comparison */}
                             <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Earnings Card */}
-                                <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border border-slate-200/50 dark:border-slate-800/50 shadow-xl transition-all duration-300 hover:shadow-2xl">
+                                <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-xl transition-all duration-300 hover:shadow-2xl">
                                     <div className="absolute top-0 right-0 -mr-16 -mt-16 h-48 w-48 bg-emerald-500/5 rounded-full blur-3xl" />
 
                                     <div className="p-6 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -1445,7 +1394,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 </div>
 
                                 {/* Deductions Card */}
-                                <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border border-slate-200/50 dark:border-slate-800/50 shadow-xl transition-all duration-300 hover:shadow-2xl">
+                                <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-xl transition-all duration-300 hover:shadow-2xl">
                                     <div className="absolute top-0 right-0 -mr-16 -mt-16 h-48 w-48 bg-rose-500/5 rounded-full blur-3xl" />
 
                                     <div className="p-6 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -1503,7 +1452,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
 
                             {/* Net Take Home & High-level Summary */}
                             <div className="lg:col-span-4 space-y-6">
-                                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 to-blue-700 text-white shadow-xl p-8 group h-[320px] flex flex-col justify-between">
+                                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-xl p-8 group h-[320px] flex flex-col justify-between border-2 border-[#000000]">
                                     <div className="absolute top-0 right-0 -mr-20 -mt-20 h-80 w-80 bg-white/10 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-700" />
 
                                     <div className="relative">
@@ -1512,7 +1461,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                         </div>
                                         <div className="mt-6">
                                             <p className="uppercase tracking-[0.2em]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#FFFFFF", fontSize: "12px", fontWeight: "900" }}>Net Take Home</p>
-                                            <h2 className="tracking-tighter mt-2 font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "24px" }}>{formatCurrency(displaySalaryData.monthlyInHand)}</h2>
+                                            <h2 className="tracking-tighter mt-2 font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#FFFFFF", fontSize: "24px" }}>{formatCurrency(displaySalaryData.monthlyInHand)}</h2>
                                         </div>
                                     </div>
 
@@ -1520,7 +1469,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                         <Separator className="bg-white/20" />
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
-                                                <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                                                <div className="h-2 w-2 rounded-full bg-emerald-300 animate-pulse" />
                                                 <span className="uppercase tracking-widest" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#FFFFFF", fontSize: "12px", fontWeight: "bold" }}>Payment Processed</span>
                                             </div>
                                             <div className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 uppercase tracking-tighter" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#FFFFFF", fontSize: "12px", fontWeight: "900" }}>Verified</div>
@@ -1529,21 +1478,21 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 </div>
 
                                 {/* Annual Summary Mini Card */}
-                                <div className="relative overflow-hidden rounded-3xl bg-slate-900 text-white p-6 shadow-xl group border border-slate-800">
+                                <div className="relative overflow-hidden rounded-3xl bg-white text-black p-6 shadow-xl group border-2 border-[#000000]">
                                     <div className="flex items-center justify-between mb-4">
                                         <div className="flex items-center gap-3">
-                                            <Calendar className="h-5 w-5 text-indigo-400" />
+                                            <Calendar className="h-5 w-5 text-emerald-600" />
                                             <span className="text-sm font-bold tracking-tight">Annual Summary</span>
                                         </div>
-                                        <Badge variant="outline" className="border-slate-700 px-2 py-0" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#FFFFFF", fontSize: "12px" }}>FY 24-25</Badge>
+                                        <Badge variant="outline" className="border-black px-2 py-0" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>FY 24-25</Badge>
                                     </div>
                                     <div className="space-y-3">
                                         <div className="flex justify-between items-center">
-                                            <span className="uppercase tracking-widest font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#FFFFFF", fontSize: "12px" }}>Total CTC</span>
-                                            <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#FFFFFF", fontSize: "14px", fontWeight: "900" }}>{formatCurrency(displaySalaryData.ctc_annual || displaySalaryData.annualCtc)}</span>
+                                            <span className="uppercase tracking-widest font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>Total CTC</span>
+                                            <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "900" }}>{formatCurrency(displaySalaryData.ctc_annual || displaySalaryData.annualCtc)}</span>
                                         </div>
-                                        <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                                            <div className="h-full bg-indigo-500 rounded-full" style={{ width: '100%' }} />
+                                        <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-black/10">
+                                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: '100%' }} />
                                         </div>
                                     </div>
                                 </div>
@@ -1551,7 +1500,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
 
                             {/* Bank Details Overhaul */}
                             <div className="lg:col-span-12">
-                                <div className="relative overflow-hidden rounded-[2.5rem] bg-white dark:bg-gray-900 border border-slate-200/50 dark:border-slate-800/50 shadow-2xl">
+                                <div className="relative overflow-hidden rounded-[2.5rem] bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-2xl">
                                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
 
                                     <div className="p-8 pb-6 flex items-center justify-between">
@@ -1598,7 +1547,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                 { label: 'PF Identity', value: displaySalaryData.pfNumber, icon: '🆔', color: 'emerald' }
                                             ].map((item, idx) => (
                                                 <div key={idx} className="group relative">
-                                                    <div className="relative z-10 p-5 rounded-3xl bg-slate-50/50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800 transition-all duration-300 hover:bg-white dark:hover:bg-slate-800 shadow-sm hover:shadow-xl">
+                                                    <div className="relative z-10 p-5 rounded-3xl bg-slate-50/50 dark:bg-slate-800/20 border-2 border-[#000000] transition-all duration-300 hover:bg-white dark:hover:bg-slate-800 shadow-sm hover:shadow-xl">
                                                         <div className="flex items-center justify-between mb-3">
                                                             <span className="uppercase tracking-[0.15em] font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{item.label}</span>
                                                             <span className="text-lg grayscale group-hover:grayscale-0 transition-all">{item.icon}</span>
@@ -1611,7 +1560,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                             ))}
                                         </div>
 
-                                        <div className="mt-8 p-6 rounded-[2rem] bg-indigo-50/30 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/30 flex flex-col md:flex-row items-center justify-between gap-6">
+                                        <div className="mt-8 p-6 rounded-[2rem] bg-indigo-50/30 dark:bg-indigo-900/10 border-2 border-[#000000] flex flex-col md:flex-row items-center justify-between gap-6">
                                             <div className="flex items-center gap-6">
                                                 <div className="h-12 w-12 rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center shadow-md animate-bounce">
                                                     <Calendar className="h-6 w-6 text-indigo-600" />
@@ -1647,7 +1596,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                         {/* Foundation Documents - Left Side */}
                         <div className="lg:col-span-5 space-y-6">
-                            <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border border-slate-200/50 dark:border-slate-800/50 shadow-xl p-6 group h-full">
+                            <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-xl p-6 group h-full">
                                 <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-blue-500/5 rounded-full blur-3xl group-hover:bg-blue-500/10 transition-all duration-700" />
 
                                 <div className="relative flex items-center gap-5 mb-10">
@@ -1666,7 +1615,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 <div className="space-y-5">
                                     {/* Offer Letter Card - Only visible to Admin or HR (viewing others) */}
                                     {isAdminOrHr && (
-                                        <div className="relative p-5 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 hover:border-blue-200 dark:hover:border-blue-900/50 hover:bg-white dark:hover:bg-slate-800/40 transition-all duration-300 group/item overflow-hidden">
+                                        <div className="relative p-5 rounded-2xl border-2 border-[#000000] bg-slate-50/50 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800/40 transition-all duration-300 group/item overflow-hidden">
                                             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl -mr-16 -mt-16 transition-opacity opacity-0 group-hover/item:opacity-100" />
                                             <div className="flex justify-between items-center relative z-10">
                                                 <div className="flex items-center gap-4">
@@ -1694,7 +1643,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     )}
 
                                     {/* Salary Annexure Card */}
-                                    <div className="relative p-5 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 hover:border-purple-200 dark:hover:border-purple-900/50 hover:bg-white dark:hover:bg-slate-800/40 transition-all duration-300 group/item overflow-hidden">
+                                    <div className="relative p-5 rounded-2xl border-2 border-[#000000] bg-slate-50/50 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800/40 transition-all duration-300 group/item overflow-hidden">
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl -mr-16 -mt-16 transition-opacity opacity-0 group-hover/item:opacity-100" />
                                         <div className="flex justify-between items-center relative z-10">
                                             <div className="flex items-center gap-4">
@@ -1739,7 +1688,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     </div>
                                 </div>
 
-                                <div className="mt-8 p-4 rounded-2xl bg-yellow-50/50 dark:bg-yellow-950/20 border border-yellow-100/50 dark:border-yellow-900/30">
+                                <div className="mt-8 p-4 rounded-2xl bg-yellow-50/50 dark:bg-yellow-950/20 border-2 border-[#000000]">
                                     <div className="flex gap-3">
                                         <AlertCircle className="h-5 w-5 text-yellow-600 shrink-0" />
                                         <p className="leading-relaxed" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#A16207", fontSize: "12px" }}>
@@ -1753,7 +1702,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
 
                         {/* Increment Journey - Right Side */}
                         <div className="lg:col-span-7 space-y-6">
-                            <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border border-slate-200/50 dark:border-slate-800/50 shadow-xl p-6 group h-full flex flex-col">
+                            <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-xl p-6 group h-full flex flex-col">
                                 <div className="absolute bottom-0 right-0 -mr-20 -mb-20 h-80 w-80 bg-emerald-500/5 rounded-full blur-3xl group-hover:bg-emerald-500/10 transition-all duration-700" />
 
                                 <div className="relative flex justify-between items-start mb-8">
@@ -1790,9 +1739,9 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                     const isLatest = index === 0 && growthPage === 1;
 
                                                     return (
-                                                        <div key={inc.id} className={`group/inc relative p-5 rounded-2xl border-2 transition-all duration-300 ${isLatest
-                                                            ? 'bg-gradient-to-br from-emerald-50/80 to-teal-50/80 dark:from-emerald-900/20 dark:to-teal-900/20 border-emerald-200 dark:border-emerald-800/50 shadow-md shadow-emerald-500/5 scale-[1.02] z-10'
-                                                            : 'bg-white dark:bg-gray-800/30 border-slate-50 dark:border-slate-800 hover:border-emerald-100 hover:bg-slate-50/50 dark:hover:bg-slate-800/50'
+                                                        <div key={inc.id} className={`group/inc relative p-5 rounded-2xl border-2 border-[#000000] transition-all duration-300 ${isLatest
+                                                            ? 'bg-gradient-to-br from-emerald-50/80 to-teal-50/80 dark:from-emerald-900/20 dark:to-teal-900/20 shadow-md shadow-emerald-500/5 scale-[1.02] z-10'
+                                                            : 'bg-white dark:bg-gray-800/30 hover:bg-slate-50/50 dark:hover:bg-slate-800/50'
                                                             }`}>
                                                             {isLatest && (
                                                                 <div className="absolute -top-3 left-6">
@@ -1893,7 +1842,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
 
                 {isAdminOrHr && (
                     <TabsContent value="history" className="space-y-6 pt-4">
-                        <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border border-slate-200/50 dark:border-slate-800/50 shadow-xl overflow-x-hidden">
+                        <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-xl overflow-x-hidden">
                             <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
 
                             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10">
@@ -2018,7 +1967,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                 </Table>
                             </div>
 
-                            
+
                         </div>
                     </TabsContent>
                 )}
@@ -2026,7 +1975,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
 
             {/* Bank Details Edit Dialog */}
             < Dialog open={isBankEditDialogOpen} onOpenChange={setIsBankEditDialogOpen} >
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-2 border-[#000000] rounded-3xl shadow-2xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <CreditCard className="h-5 w-5 text-blue-500" />
@@ -2087,7 +2036,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     value={bankForm.payment_mode}
                                     onValueChange={(value) => setBankForm(prev => ({ ...prev, payment_mode: value }))}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="border-2 border-[#000000] h-10 bg-white dark:bg-slate-800">
                                         <SelectValue placeholder="Select payment mode" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -2107,6 +2056,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     value={bankForm.working_days_per_month}
                                     onChange={(e) => setBankForm(prev => ({ ...prev, working_days_per_month: e.target.value === '' ? '' : parseInt(e.target.value) }))}
                                     placeholder="e.g. 26"
+                                    className="border-2 border-[#000000] h-10 bg-white dark:bg-slate-800"
                                 />
                             </div>
 
@@ -2117,6 +2067,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     value={bankForm.pf_no}
                                     onChange={(e) => setBankForm(prev => ({ ...prev, pf_no: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                                     placeholder="Enter PF number"
+                                    className="border-2 border-[#000000] h-10 bg-white dark:bg-slate-800"
                                 />
                             </div>
                         </div>
@@ -2155,7 +2106,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             {
                 showIncrementForm && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2 border-[#000000]">
                             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                                 <div className="flex items-center justify-between">
                                     <h2 className="text-xl font-bold">Process Salary Increment</h2>
@@ -2166,7 +2117,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                             </div>
 
                             <form onSubmit={incrementForm.handleSubmit(handleCreateIncrement)} className="p-6 space-y-6">
-                                <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-[#000000]">
                                     <p className="text-sm text-muted-foreground">Current Annual CTC</p>
                                     <p className="text-xl font-bold">
                                         {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(currentCtc)}
@@ -2181,6 +2132,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                             onChange={handleAmountChange}
                                             value={incrementForm.watch('incrementAmount')}
                                             placeholder="Enter increment amount"
+                                            className="border-2 border-[#000000] h-10 bg-white dark:bg-slate-800"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -2191,6 +2143,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                             onChange={handlePercentChange}
                                             value={incrementForm.watch('incrementPercentage')}
                                             placeholder="Enter percentage"
+                                            className="border-2 border-[#000000] h-10 bg-white dark:bg-slate-800"
                                         />
                                     </div>
                                 </div>
@@ -2201,7 +2154,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                         type="number"
                                         onChange={handleNewCtcChange}
                                         value={incrementForm.watch('newCtc')}
-                                        className="text-lg font-bold text-green-600"
+                                        className="text-lg font-bold text-green-600 border-2 border-[#000000] h-10 bg-white dark:bg-slate-800"
                                         placeholder="Enter new CTC"
                                     />
                                 </div>
@@ -2214,7 +2167,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                             control={incrementForm.control}
                                             render={({ field }) => (
                                                 <Select onValueChange={field.onChange} value={field.value}>
-                                                    <SelectTrigger>
+                                                    <SelectTrigger className="border-2 border-[#000000] h-10 bg-white dark:bg-slate-800">
                                                         <SelectValue placeholder="Select Type" />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -2232,6 +2185,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                             type="number"
                                             {...incrementForm.register('variablePayValue', { valueAsNumber: true })}
                                             placeholder="Enter variable pay"
+                                            className="border-2 border-[#000000] h-10 bg-white dark:bg-slate-800"
                                         />
                                     </div>
                                 </div>
@@ -2241,6 +2195,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     <Input
                                         type="date"
                                         {...incrementForm.register('effectiveDate')}
+                                        className="border-2 border-[#000000] h-10 bg-white dark:bg-slate-800"
                                     />
                                 </div>
 
@@ -2254,6 +2209,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                         })}
                                         placeholder="e.g. Annual Appraisal, Promotion, etc."
                                         rows={3}
+                                        className="border-2 border-[#000000] bg-white dark:bg-slate-800"
                                     />
                                 </div>
 
@@ -2290,20 +2246,11 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 )
             }
 
-            {/* Audit & Compliance Footer */}
-            <div className="mt-8 border-t pt-6 text-center text-xs text-muted-foreground">
-                <p className="font-medium">Confidential & Proprietary</p>
-                <p className="mt-1">Salary calculations follow company payroll policy. Values shown are subject to verification.</p>
-                {displaySalaryData?.updatedAt && (
-                    <p className="mt-1 text-gray-400">
-                        Record ID: {displaySalaryData.id} • Last synced: {new Date(displaySalaryData.updatedAt).toLocaleString()}
-                    </p>
-                )}
-            </div>
+
 
             {/* Increment Detail Dialog */}
             <Dialog open={isViewingIncrement} onOpenChange={setIsViewingIncrement}>
-                <DialogContent className="sm:max-w-[500px] border-none shadow-2xl p-0 overflow-hidden rounded-[2rem]">
+                <DialogContent className="sm:max-w-[500px] border-2 border-[#000000] shadow-2xl p-0 overflow-hidden rounded-[2rem]">
                     <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-8 text-white relative">
                         <div className="absolute top-0 right-0 p-6 opacity-20">
                             <TrendingUp className="h-24 w-24 rotate-12" />
@@ -2328,11 +2275,11 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                         ) : selectedIncrementDetail ? (
                             <div className="space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border-2 border-[#000000]">
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Previous CTC</p>
                                         <p className="text-lg font-black text-slate-600 dark:text-slate-400">{formatCurrency(selectedIncrementDetail.previous_salary)}</p>
                                     </div>
-                                    <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/50">
+                                    <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 border-2 border-[#000000]">
                                         <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">New CTC</p>
                                         <p className="text-lg font-black text-emerald-700 dark:text-emerald-400">{formatCurrency(selectedIncrementDetail.new_salary)}</p>
                                     </div>
@@ -2353,7 +2300,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     </div>
                                 </div>
 
-                                <div className="p-4 rounded-2xl bg-slate-900 text-white shadow-xl shadow-slate-900/20">
+                                <div className="p-4 rounded-2xl bg-slate-900 text-white shadow-xl shadow-slate-900/20 border-2 border-[#000000]">
                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Revision Reason</p>
                                     <p className="text-sm font-medium leading-relaxed italic">"{selectedIncrementDetail.reason}"</p>
                                 </div>
@@ -2380,7 +2327,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
 
             {/* Offer Letter Download Dialog */}
             <Dialog open={isOfferLetterDialogOpen} onOpenChange={setIsOfferLetterDialogOpen}>
-                <DialogContent className="sm:max-w-[500px]">
+                <DialogContent className="sm:max-w-[500px] border-2 border-[#000000] rounded-3xl shadow-2xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <FileText className="h-5 w-5 text-blue-600" />
@@ -2460,134 +2407,134 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                             )}
                         </Button>
                     </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                        <Dialog open={isGenerateSlipDialogOpen} onOpenChange={setIsGenerateSlipDialogOpen}>
-                            <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden bg-white dark:bg-slate-900 border-none rounded-3xl shadow-2xl">
-                                <div className="bg-emerald-600 p-6 text-white text-center rounded-t-3xl relative">
-                                    <div className="absolute top-0 right-0 -mr-12 -mt-12 h-32 w-32 bg-white/10 rounded-full blur-2xl" />
-                                    <h2 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>Generate Salary Slip</h2>
-                                    <p className="mt-2 text-emerald-100 opacity-90 font-medium">Add manual deductions before generating</p>
-                                </div>
-                                <div className="p-8 space-y-6">
-                                    {/* Other Deduction 1 */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Other Deduction 1 (Label)</Label>
-                                            <Input
-                                                value={generateSlipForm.optional_deduction_1_label}
-                                                onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_1_label: e.target.value }))}
-                                                placeholder="e.g. Gratuity"
-                                                className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Amount (₹)</Label>
-                                            <Input
-                                                type="number"
-                                                value={generateSlipForm.optional_deduction_1_amount}
-                                                onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_1_amount: e.target.value }))}
-                                                placeholder="0"
-                                                className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                                            />
-                                        </div>
-                                    </div>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={isGenerateSlipDialogOpen} onOpenChange={setIsGenerateSlipDialogOpen}>
+                <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden bg-white dark:bg-slate-900 border-2 border-[#000000] rounded-3xl shadow-2xl">
+                    <div className="bg-emerald-600 p-6 text-white text-center rounded-t-3xl relative">
+                        <div className="absolute top-0 right-0 -mr-12 -mt-12 h-32 w-32 bg-white/10 rounded-full blur-2xl" />
+                        <h2 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>Generate Salary Slip</h2>
+                        <p className="mt-2 text-emerald-100 opacity-90 font-medium">Add manual deductions before generating</p>
+                    </div>
+                    <div className="p-8 space-y-6">
+                        {/* Other Deduction 1 */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Other Deduction 1 (Label)</Label>
+                                <Input
+                                    value={generateSlipForm.optional_deduction_1_label}
+                                    onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_1_label: e.target.value }))}
+                                    placeholder="e.g. Gratuity"
+                                    className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-[#000000]"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Amount (₹)</Label>
+                                <Input
+                                    type="number"
+                                    value={generateSlipForm.optional_deduction_1_amount}
+                                    onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_1_amount: e.target.value }))}
+                                    placeholder="0"
+                                    className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-[#000000]"
+                                />
+                            </div>
+                        </div>
 
-                                    {/* Other Deduction 2 */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Other Deduction 2 (Label)</Label>
-                                            <Input
-                                                value={generateSlipForm.optional_deduction_2_label}
-                                                onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_2_label: e.target.value }))}
-                                                placeholder="e.g. Insurance"
-                                                className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Amount (₹)</Label>
-                                            <Input
-                                                type="number"
-                                                value={generateSlipForm.optional_deduction_2_amount}
-                                                onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_2_amount: e.target.value }))}
-                                                placeholder="0"
-                                                className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                                            />
-                                        </div>
-                                    </div>
+                        {/* Other Deduction 2 */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Other Deduction 2 (Label)</Label>
+                                <Input
+                                    value={generateSlipForm.optional_deduction_2_label}
+                                    onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_2_label: e.target.value }))}
+                                    placeholder="e.g. Insurance"
+                                    className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-[#000000]"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Amount (₹)</Label>
+                                <Input
+                                    type="number"
+                                    value={generateSlipForm.optional_deduction_2_amount}
+                                    onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_2_amount: e.target.value }))}
+                                    placeholder="0"
+                                    className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-[#000000]"
+                                />
+                            </div>
+                        </div>
 
-                                    {/* Other Deduction 3 */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Other Deduction 3 (Label)</Label>
-                                            <Input
-                                                value={generateSlipForm.optional_deduction_3_label}
-                                                onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_3_label: e.target.value }))}
-                                                placeholder="e.g. Loan Recovery"
-                                                className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Amount (₹)</Label>
-                                            <Input
-                                                type="number"
-                                                value={generateSlipForm.optional_deduction_3_amount}
-                                                onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_3_amount: e.target.value }))}
-                                                placeholder="0"
-                                                className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                                            />
-                                        </div>
-                                    </div>
+                        {/* Other Deduction 3 */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Other Deduction 3 (Label)</Label>
+                                <Input
+                                    value={generateSlipForm.optional_deduction_3_label}
+                                    onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_3_label: e.target.value }))}
+                                    placeholder="e.g. Loan Recovery"
+                                    className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-[#000000]"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Amount (₹)</Label>
+                                <Input
+                                    type="number"
+                                    value={generateSlipForm.optional_deduction_3_amount}
+                                    onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_3_amount: e.target.value }))}
+                                    placeholder="0"
+                                    className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-[#000000]"
+                                />
+                            </div>
+                        </div>
 
-                                    {/* Leave Deduction */}
-                                    <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                        <Label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                                            <Calendar className="h-4 w-4 text-emerald-600" />
-                                            Manual Leave Days Deduction
-                                        </Label>
-                                        <Input
-                                            type="number"
-                                            step="0.5"
-                                            value={generateSlipForm.manual_leave_days}
-                                            onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, manual_leave_days: e.target.value }))}
-                                            placeholder="Number of days (e.g. 1.5)"
-                                            className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 w-full"
-                                        />
-                                        <p className="text-xs text-slate-500 mt-1">Leave deduction will be calculated automatically based on monthly gross.</p>
-                                    </div>
-                                </div>
-                                
-                                <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3 rounded-b-3xl border-t border-slate-100 dark:border-slate-800">
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setIsGenerateSlipDialogOpen(false)}
-                                        className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest text-slate-500"
-                                        disabled={isGenerating}
-                                    >
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => handleGenerateSlipAction('preview')}
-                                        className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest border-emerald-200 text-emerald-600 hover:bg-emerald-50"
-                                        disabled={isGenerating}
-                                    >
-                                        {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <EyeIcon className="h-4 w-4 mr-2" />}
-                                        Preview
-                                    </Button>
-                                    <Button
-                                        onClick={() => handleGenerateSlipAction('download')}
-                                        className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 dark:shadow-none"
-                                        disabled={isGenerating}
-                                    >
-                                        {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-                                        Download
-                                    </Button>
-                                </div>
-                            </DialogContent>
-                        </Dialog>
-                    </div >
-                );
-            };
+                        {/* Leave Deduction */}
+                        <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-emerald-600" />
+                                Manual Leave Days Deduction
+                            </Label>
+                            <Input
+                                type="number"
+                                step="0.5"
+                                value={generateSlipForm.manual_leave_days}
+                                onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, manual_leave_days: e.target.value }))}
+                                placeholder="Number of days (e.g. 1.5)"
+                                className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-[#000000] w-full"
+                            />
+                            <p className="text-xs text-slate-500 mt-1">Leave deduction will be calculated automatically based on monthly gross.</p>
+                        </div>
+                    </div>
 
-            export default SalaryDetails;
+                    <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3 rounded-b-3xl border-t border-slate-100 dark:border-slate-800">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsGenerateSlipDialogOpen(false)}
+                            className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest text-slate-500"
+                            disabled={isGenerating}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => handleGenerateSlipAction('preview')}
+                            className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest border-emerald-200 text-emerald-600 hover:bg-emerald-50"
+                            disabled={isGenerating}
+                        >
+                            {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <EyeIcon className="h-4 w-4 mr-2" />}
+                            Preview
+                        </Button>
+                        <Button
+                            onClick={() => handleGenerateSlipAction('download')}
+                            className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 dark:shadow-none"
+                            disabled={isGenerating}
+                        >
+                            {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                            Download
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </div >
+    );
+};
+
+export default SalaryDetails;

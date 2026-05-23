@@ -64,7 +64,8 @@ All colors MUST be HSL.
     --info-soft: 199 89% 95%;
 
     /* Borders & Input */
-    --border: 220 13% 82%; /* Slightly more visible medium gray for cards/modules */
+    --border: 220 13% 82%;
+    /* Slightly more visible medium gray for cards/modules */
     --input: 220 13% 82%;
     --ring: 221 83% 53%;
     --focus: 221 83% 53%;
@@ -165,6 +166,7 @@ All colors MUST be HSL.
     --primary-hover: 23 90% 48%;
     --ring: 23 90% 54%;
   }
+
   .theme-pink {
     --primary: 330 81% 60%;
     --primary-hover: 330 81% 55%;
@@ -186,6 +188,13 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  html {
+    height: 100%;
+    overflow: hidden;
   }
 
   /* Prevent text cursor on non-editable headings and labels */
@@ -290,7 +299,11 @@ All colors MUST be HSL.
 
   /* Table Headers */
   th {
-    @apply text-xs font-semibold uppercase tracking-wider text-muted-foreground;
+    @apply text-xs font-semibold tracking-wider text-muted-foreground;
+  }
+
+  .font-outfit {
+    font-family: 'Outfit', sans-serif !important;
   }
 }
 

@@ -1,5 +1,7 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import SummaryCard from "@/components/ui/SummaryCard";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -130,7 +132,7 @@ const TaskFormSection = ({
         {taskList.map((task, index) => (
           <div
             key={index}
-            className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3 shadow-sm"
+            className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border-2 border-[#000000] space-y-3 shadow-sm"
           >
             <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
               <div className="md:col-span-2 space-y-1.5">
@@ -219,7 +221,7 @@ const TaskFormSection = ({
                   </Badge>
                 )}
               </div>
-              <div className="max-h-40 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-xl divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-950 shadow-inner">
+              <div className="max-h-40 overflow-y-auto border-2 border-[#000000] rounded-xl divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-950 shadow-inner">
                 {assignableEmployees.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-6 text-slate-400 gap-1">
                     <User className="h-5 w-5 opacity-20" />
@@ -259,7 +261,7 @@ const TaskFormSection = ({
       </div>
       <Button
         variant="outline"
-        
+
         onClick={addTaskRow}
         className="gap-2 w-full border-dashed py-5 border-slate-300 dark:border-slate-600 text-slate-500 hover:text-violet-600 hover:border-violet-300 hover:bg-violet-50 transition-all rounded-xl"
       >
@@ -634,7 +636,7 @@ function ProjectCard({
   const cancelledCount = tasks.filter((t) => normalizeStatus(t.status) === "Cancelled").length;
 
   return (
-    <Card className="border-2 border-[#858282] rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+    <Card className="border-2 border-[#000000] rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
       <CardContent className="p-0">
         {/* ── Card Header ── */}
         <div className="p-5">
@@ -1878,7 +1880,7 @@ export default function ProjectManagement() {
   return (
     <div className="w-full space-y-6">
       {/* ── Header Card ── */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-md border border-[#858282]">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-md border-2 border-[#000000]">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-4">
             <div className="h-12 w-12 rounded-2xl bg-violet-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-violet-200 dark:shadow-violet-900">
@@ -1935,75 +1937,69 @@ export default function ProjectManagement() {
       </div>
 
       {/* ── Stats ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {[
           {
-            label: "Total",
+            label: "Total Projects",
             value: projects.length,
-            color: "from-purple-400 to-indigo-500",
             icon: FolderKanban,
+            iconColor: "text-violet-600",
+            iconBg: "bg-violet-100",
           },
           {
-            label: "Pending",
+            label: "Planned",
             value: projects.filter(
-              (p) => normalizeStatus(p.status) === "todo",
+              (p) => normalizeStatus(p.status) === "Pending" || normalizeStatus(p.status) === "planned",
             ).length,
-            color: "from-amber-400 to-orange-500",
             icon: Briefcase,
+            iconColor: "text-amber-600",
+            iconBg: "bg-amber-100",
           },
           {
             label: "In Progress",
             value: projects.filter(
-              (p) => normalizeStatus(p.status) === "in-progress",
+              (p) => normalizeStatus(p.status) === "In Progress",
             ).length,
-            color: "from-blue-400 to-blue-500",
             icon: Clock,
+            iconColor: "text-blue-600",
+            iconBg: "bg-blue-100",
           },
           {
             label: "Complete",
             value: projects.filter(
-              (p) => normalizeStatus(p.status) === "completed",
+              (p) => normalizeStatus(p.status) === "Completed",
             ).length,
-            color: "from-emerald-400 to-teal-500",
             icon: CheckCircle2,
+            iconColor: "text-emerald-600",
+            iconBg: "bg-emerald-100",
           },
           {
             label: "Cancelled",
             value: projects.filter(
-              (p) => normalizeStatus(p.status) === "cancelled",
+              (p) => normalizeStatus(p.status) === "Cancelled",
             ).length,
-            color: "from-slate-400 to-slate-500",
             icon: XCircle,
+            iconColor: "text-slate-600",
+            iconBg: "bg-slate-100",
           },
           {
             label: "Archived",
             value: projects.filter(
-              (p) => normalizeStatus(p.status) === "archived",
+              (p) => normalizeStatus(p.status) === "Archived",
             ).length,
-            color: "from-yellow-400 to-yellow-500",
             icon: ArchiveIcon,
+            iconColor: "text-yellow-600",
+            iconBg: "bg-yellow-100",
           },
-        ].map((s) => (
-          <Card
-            key={s.label}
-            className="border-2 border-[#858282] shadow-md rounded-2xl overflow-hidden min-w-0"
-          >
-            <CardContent className="p-4 flex items-center gap-3">
-              <div
-                className={`bg-gradient-to-br ${s.color} h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md`}
-              >
-                <s.icon className="h-5 w-5 text-white" />
-              </div>
-              <div className="min-w-0">
-                <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }} className="truncate">
-                  {s.value}
-                </p>
-                <p style={{ color: "#000000", fontSize: "12px" }} className="font-bold uppercase truncate">
-                  {s.label}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        ].map((s, i) => (
+          <SummaryCard
+            key={i}
+            title={s.label}
+            value={s.value}
+            icon={s.icon}
+            iconColor={s.iconColor}
+            iconBg={s.iconBg}
+          />
         ))}
       </div>
 
@@ -2143,7 +2139,7 @@ export default function ProjectManagement() {
               <>
                 {/* Project Overview Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
+                  <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-[#000000] shadow-sm flex items-center gap-3">
                     <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600">
                       <User className="h-5 w-5" />
                     </div>
@@ -2158,7 +2154,7 @@ export default function ProjectManagement() {
                       </p>
                     </div>
                   </div>
-                  <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
+                  <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-[#000000] shadow-sm flex items-center gap-3">
                     <div className="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
                       <Users className="h-5 w-5" />
                     </div>
@@ -2173,7 +2169,7 @@ export default function ProjectManagement() {
                       </p>
                     </div>
                   </div>
-                  <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
+                  <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-[#000000] shadow-sm flex items-center gap-3">
                     <div className="h-10 w-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-violet-600">
                       <ClipboardList className="h-5 w-5" />
                     </div>
@@ -2214,7 +2210,7 @@ export default function ProjectManagement() {
                       {selectedProject.members.map((m) => (
                         <div
                           key={m.user_id}
-                          className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-3 group hover:shadow-md transition-all"
+                          className="bg-white dark:bg-slate-900 p-3 rounded-2xl border-2 border-[#000000] shadow-sm flex items-center gap-3 group hover:shadow-md transition-all"
                         >
                           <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
                             {m.name?.[0]?.toUpperCase()}
@@ -2272,7 +2268,7 @@ export default function ProjectManagement() {
                       </p>
                     </div>
                   ) : (
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-[#000000] shadow-sm overflow-hidden">
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-slate-50/50 dark:bg-slate-900/50 border-0">
@@ -2386,7 +2382,7 @@ export default function ProjectManagement() {
                               {meeting.meeting_url && (
                                 <Button
                                   variant="outline"
-                                  
+
                                   className="h-8 rounded-full text-xs font-bold border-rose-200 text-rose-600 hover:bg-rose-50 gap-1.5"
                                   onClick={() =>
                                     window.open(meeting.meeting_url, "_blank")
@@ -2712,28 +2708,6 @@ export default function ProjectManagement() {
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-1.5">
-              <Label>Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(v) => setFormData({ ...formData, status: v })}
-                disabled={["completed", "complete", "achieved"].includes(
-                  normalizeStatus(selectedProject?.status),
-                )}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todo">Planned</SelectItem>
-                  <SelectItem value="in-progress">In-Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
           <DialogFooter>
             <Button
@@ -2860,13 +2834,11 @@ export default function ProjectManagement() {
                       </div>
                       <Button
                         variant="ghost"
-                        
-                        className="h-8 px-2 hover:bg-red-50 hover:text-red-600 gap-1 rounded-lg"
+                        className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 rounded-lg text-slate-400"
                         onClick={() => handleRemoveMember(m.user_id)}
                         title="Remove from project"
                       >
-                        <UserMinus className="h-5 w-5" />
-                        <span className="text-xs font-medium">Remove</span>
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
@@ -2934,11 +2906,11 @@ export default function ProjectManagement() {
                       </div>
                       <Button
                         variant="ghost"
-                        
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl"
+                        className="h-10 w-10 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl"
                         onClick={() => handleRemoveMember(m.user_id)}
+                        title="Remove from project"
                       >
-                        Remove
+                        <Trash2 className="h-5 w-5" />
                       </Button>
                     </div>
                   ))}

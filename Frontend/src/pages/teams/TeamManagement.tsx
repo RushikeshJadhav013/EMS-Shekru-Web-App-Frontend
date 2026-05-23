@@ -14,6 +14,7 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatTimeIST, formatDateIST } from '@/utils/timezone';
 import V2Overlay from '@/components/ui/V2Overlay';
+import SummaryCard from '@/components/ui/SummaryCard';
 import {
   Users,
   Plus,
@@ -262,53 +263,35 @@ export default function TeamManagement() {
       <div className="w-full space-y-6">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Shift Schedule</h1>
         {/* Team Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Teams</p>
-                  <p className="text-2xl font-bold">{teams.length}</p>
-                </div>
-                <Users className="h-8 w-8 text-primary opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Members</p>
-                  <p className="text-2xl font-bold">
-                    {teams.reduce((acc, team) => acc + team.members.length, 0)}
-                  </p>
-                </div>
-                <UserPlus className="h-8 w-8 text-green-500 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Active Projects</p>
-                  <p className="text-2xl font-bold">5</p>
-                </div>
-                <Target className="h-8 w-8 text-blue-500 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Team Performance</p>
-                  <p className="text-2xl font-bold">92%</p>
-                </div>
-                <TrendingUp className="h-8 w-8 text-purple-500 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <SummaryCard
+            title="Total Teams"
+            value={teams.length}
+            icon={Users}
+            iconColor="text-blue-600"
+            iconBg="bg-blue-50"
+          />
+          <SummaryCard
+            title="Total Members"
+            value={teams.reduce((acc, team) => acc + team.members.length, 0)}
+            icon={UserPlus}
+            iconColor="text-green-600"
+            iconBg="bg-green-50"
+          />
+          <SummaryCard
+            title="Active Projects"
+            value={5}
+            icon={Target}
+            iconColor="text-blue-600"
+            iconBg="bg-blue-50"
+          />
+          <SummaryCard
+            title="Team Performance"
+            value="92%"
+            icon={TrendingUp}
+            iconColor="text-purple-600"
+            iconBg="bg-purple-50"
+          />
         </div>
 
         <Tabs defaultValue="teams" className="w-full">

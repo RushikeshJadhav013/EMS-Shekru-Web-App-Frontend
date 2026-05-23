@@ -23,6 +23,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { formatIST, formatDateTimeIST, formatTimeIST, todayIST, parseToIST, nowIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
+import SummaryCard from '@/components/ui/SummaryCard';
+
 
 const CORE_DEPARTMENTS = [
   'Engineering',
@@ -262,7 +264,7 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       {/* Header */}
-      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 rounded-2xl bg-white border border-[#858282] shadow-xl mt-1">
+      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 rounded-2xl bg-white border-2 border-[#000000] shadow-xl mt-1">
         <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-blue-100/20 rounded-full blur-3xl -z-10" />
 
         <div className="flex items-center gap-4">
@@ -290,89 +292,59 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Quick Stats Grid Wrapper */}
-      <div className="border border-[#858282] p-4 rounded-2xl bg-white/50 mb-8 shadow-sm">
+      <div className="border-2 border-[#000000] p-4 rounded-2xl bg-white/50 mb-8 shadow-sm">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          {
-            title: t.dashboard.totalEmployees,
-            value: stats.totalEmployees,
-            icon: Users,
-            color: 'blue',
-            bgColor: 'bg-blue-50/50',
-            cardBg: 'bg-blue-50/20 hover:bg-blue-50/40',
-            borderColor: 'border-blue-300 dark:border-blue-700/50',
-            hoverBorder: 'hover:border-blue-500 dark:hover:border-blue-400',
-            iconColor: 'text-blue-600',
-            path: '/admin/employees',
-          },
-          {
-            title: t.dashboard.presentToday,
-            value: stats.presentToday,
-            icon: Clock,
-            color: 'emerald',
-            bgColor: 'bg-emerald-50/50',
-            cardBg: 'bg-emerald-50/20 hover:bg-emerald-50/40',
-            borderColor: 'border-emerald-300 dark:border-emerald-700/50',
-            hoverBorder: 'hover:border-emerald-500 dark:hover:border-emerald-400',
-            iconColor: 'text-emerald-600',
-            path: '/admin/attendance',
-          },
-          {
-            title: t.dashboard.pendingApprovals,
-            value: stats.pendingLeaves,
-            icon: AlertCircle,
-            color: 'amber',
-            bgColor: 'bg-amber-50/50',
-            cardBg: 'bg-amber-50/20 hover:bg-amber-50/40',
-            borderColor: 'border-amber-300 dark:border-amber-700/50',
-            hoverBorder: 'hover:border-amber-500 dark:hover:border-amber-400',
-            iconColor: 'text-amber-600',
-            path: '/admin/leaves',
-          },
-          {
-            title: t.dashboard.activeTasks,
-            value: stats.activeTasks,
-            icon: ClipboardList,
-            color: 'purple',
-            bgColor: 'bg-purple-50/50',
-            cardBg: 'bg-purple-50/20 hover:bg-purple-50/40',
-            borderColor: 'border-purple-300 dark:border-purple-700/50',
-            hoverBorder: 'hover:border-purple-500 dark:hover:border-purple-400',
-            iconColor: 'text-purple-600',
-            path: '/admin/tasks',
-          },
-        ].map((item, index) => (
-          <Card
-            key={index}
-            className={`group relative overflow-hidden bg-white border border-[#858282] shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer rounded-2xl`}
-            onClick={() => navigate(item.path)}
-          >
-            <CardHeader className="flex flex-row items-center justify-between pb-2 p-4">
-              <CardTitle className="text-[12px] font-bold uppercase tracking-widest leading-none" style={{ color: '#000000' }}>
-                {item.title}
-              </CardTitle>
-              <div className={`h-8 w-8 rounded-lg ${item.bgColor} flex items-center justify-center border border-${item.color}-200/50 group-hover:scale-110 transition-transform duration-500`}>
-                <item.icon className={`h-4 w-4 ${item.iconColor}`} />
-              </div>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <div className="text-2xl font-bold tracking-tight leading-none" style={{ color: '#000000' }}>{item.value}</div>
-              <div 
-                className="flex items-center mt-2.5 font-bold text-xs uppercase tracking-wider group-hover:translate-x-1 transition-all duration-300 opacity-80 group-hover:opacity-100"
-                style={{ color: '#000000' }}
-              >
-                <span>View Details</span>
-                <ChevronRight className="h-3 w-3 ml-1" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+          {[
+            {
+              title: t.dashboard.totalEmployees,
+              value: stats.totalEmployees,
+              icon: Users,
+              iconColor: 'text-blue-600',
+              iconBg: 'bg-blue-50',
+              path: '/admin/employees',
+            },
+            {
+              title: t.dashboard.presentToday,
+              value: stats.presentToday,
+              icon: Clock,
+              iconColor: 'text-emerald-600',
+              iconBg: 'bg-emerald-50',
+              path: '/admin/attendance',
+            },
+            {
+              title: t.dashboard.pendingApprovals,
+              value: stats.pendingLeaves,
+              icon: AlertCircle,
+              iconColor: 'text-amber-600',
+              iconBg: 'bg-amber-50',
+              path: '/admin/leaves',
+            },
+            {
+              title: t.dashboard.activeTasks,
+              value: stats.activeTasks,
+              icon: ClipboardList,
+              iconColor: 'text-purple-600',
+              iconBg: 'bg-purple-50',
+              path: '/admin/tasks',
+            },
+          ].map((item, index) => (
+            <SummaryCard
+              key={index}
+              title={item.title}
+              value={item.value}
+              icon={item.icon}
+              iconColor={item.iconColor}
+              iconBg={item.iconBg}
+              onClick={() => navigate(item.path)}
+            />
+          ))}
+
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Department Performance */}
-        <Card className="lg:col-span-3 border border-[#858282] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+        <Card className="lg:col-span-3 border-2 border-[#000000] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
           <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -381,8 +353,8 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div>
                   <CardTitle className="text-[16px] font-bold" style={{ color: '#000000' }}>
-                  {t.dashboard.departmentPerformance}
-                </CardTitle>
+                    {t.dashboard.departmentPerformance}
+                  </CardTitle>
                 </div>
               </div>
               <Button
@@ -465,7 +437,7 @@ const AdminDashboard: React.FC = () => {
         </Card>
 
         {/* Recent Activities */}
-        <Card className="lg:col-span-2 border border-[#858282] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
+        <Card className="lg:col-span-2 border-2 border-[#000000] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
           <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm">
@@ -506,11 +478,11 @@ const AdminDashboard: React.FC = () => {
                           </p>
                         </div>
                         <div className="flex flex-col items-end">
-                          <div 
+                          <div
                             className={`text-xs font-bold px-2 py-0.5 capitalize`}
-                            style={{ 
-                              color: getStatusConfig(activity).label === 'LATE' || getStatusConfig(activity).label === 'EARLY' || getStatusConfig(activity).label === 'ABSENT' 
-                                ? '#dc2626' 
+                            style={{
+                              color: getStatusConfig(activity).label === 'LATE' || getStatusConfig(activity).label === 'EARLY' || getStatusConfig(activity).label === 'ABSENT'
+                                ? '#dc2626'
                                 : getStatusConfig(activity).label === 'ON TIME' || getStatusConfig(activity).label === 'PRESENT'
                                   ? '#16a34a'
                                   : '#ca8a04' // Amber/Yellow for others
