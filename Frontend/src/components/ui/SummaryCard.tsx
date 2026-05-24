@@ -29,7 +29,7 @@ const SummaryCard = ({
         )}>
             <CardContent className="p-6">
                 <div className="flex justify-between items-start mb-6">
-                    <h3 className="text-[11px] font-extrabold uppercase tracking-[0.05em] text-black/80" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                    <h3 className="text-[11px] font-extrabold tracking-wide text-black/80">
                         {title}
                     </h3>
                     <div className={cn("p-2.5 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110", iconBg)}>
@@ -38,17 +38,16 @@ const SummaryCard = ({
                 </div>
 
                 <div className="mb-4">
-                    <span className="text-[36px] font-bold tracking-tight text-black" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                    <span className="text-[36px] font-bold tracking-tight text-black">
                         {value}
                     </span>
                 </div>
 
                 <button
                     onClick={onClick}
-                    className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-black/80 hover:text-black transition-colors"
-                    style={{ fontFamily: 'Outfit, sans-serif' }}
+                    className="flex items-center gap-1.5 text-[11px] font-black tracking-wide text-black/80 hover:text-black transition-colors"
                 >
-                    VIEW DETAILS
+                    View details
                     <ChevronRight className="h-3 w-3 stroke-[3px]" />
                 </button>
             </CardContent>

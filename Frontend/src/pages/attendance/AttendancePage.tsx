@@ -1097,7 +1097,7 @@ const AttendancePage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 pt-2 border-t font-outfit">
+                    <div className="grid grid-cols-2 gap-4 pt-2 border-t">
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Latitude</p>
                         <p className="font-mono text-sm font-semibold">{location.latitude.toFixed(6)}</p>
@@ -1108,7 +1108,7 @@ const AttendancePage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t text-xs text-muted-foreground font-outfit">
+                    <div className="flex items-center justify-between pt-2 border-t text-xs text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <span className="flex items-center gap-1">
                           <span className="font-medium">Accuracy:</span>
@@ -1120,14 +1120,14 @@ const AttendancePage: React.FC = () => {
                           </span>
                         </span>
                         {isImprovingAccuracy && (
-                          <Badge variant="outline" className="text-xs py-0 px-2 border-blue-500 text-blue-600 font-outfit">
+                          <Badge variant="outline" className="text-xs py-0 px-2 border-blue-500 text-blue-600">
                             <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                             Improving...
                           </Badge>
                         )}
                       </div>
                       {location.updatedAt && (
-                        <span className="font-outfit">
+                        <span>
                           {formatTimeIST(location.updatedAt, 'HH:mm:ss')}
                         </span>
                       )}
@@ -1151,20 +1151,20 @@ const AttendancePage: React.FC = () => {
           </Card>
 
           {/* Current Status Card */}
-          <Card className="border-2 border-[#000000] shadow-lg font-outfit">
+          <Card className="border-2 border-[#000000] shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-[24px] font-bold font-outfit" style={{ color: '#000000' }}>{t.attendance.todayStatus}</CardTitle>
-                <CardDescription className="font-outfit">Your attendance status for today</CardDescription>
+                <CardTitle className="text-[24px] font-bold" style={{ color: '#000000' }}>{t.attendance.todayStatus}</CardTitle>
+                <CardDescription>Your attendance status for today</CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 {currentAttendance && !currentAttendance.checkOutTime ? (
-                  <Badge className="bg-green-500 hover:bg-green-600 animate-pulse font-outfit">
+                  <Badge className="bg-green-500 hover:bg-green-600 animate-pulse">
                     <span className="h-2 w-2 rounded-full bg-white mr-2 shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
                     Online
                   </Badge>
                 ) : (
-                  <Badge variant="secondary" className="opacity-70 font-outfit">
+                  <Badge variant="secondary" className="opacity-70">
                     <span className="h-2 w-2 rounded-full bg-gray-400 mr-2" />
                     Offline
                   </Badge>
@@ -1180,10 +1180,10 @@ const AttendancePage: React.FC = () => {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <LogIn className="h-4 w-4 text-green-500" />
-                          <span className="text-sm font-bold text-black font-outfit">Check-in Time</span>
+                          <span className="text-sm font-bold text-black">Check-in Time</span>
                           {getStatusBadge(currentAttendance.status, currentAttendance.checkInTime)}
                         </div>
-                        <p className="text-[16px] font-semibold text-black font-outfit">
+                        <p className="text-[16px] font-semibold text-black">
                           {formatAttendanceTime(currentAttendance.date, currentAttendance.checkInTime)}
                         </p>
                       </div>
@@ -1191,11 +1191,11 @@ const AttendancePage: React.FC = () => {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <LogOut className="h-4 w-4 text-red-500" />
-                          <span className="text-sm font-bold text-black font-outfit">Check-out Time</span>
+                          <span className="text-sm font-bold text-black">Check-out Time</span>
                           {currentAttendance.checkOutTime &&
                             getStatusBadge(currentAttendance.status, undefined, currentAttendance.checkOutTime)}
                         </div>
-                        <p className="text-[16px] font-semibold text-black font-outfit">
+                        <p className="text-[16px] font-semibold text-black">
                           {currentAttendance.checkOutTime
                             ? formatAttendanceTime(currentAttendance.date, currentAttendance.checkOutTime)
                             : '-'}
@@ -1204,11 +1204,11 @@ const AttendancePage: React.FC = () => {
 
                       {currentAttendance.workHours && (
                         <div className="col-span-2">
-                          <div className="flex items-center gap-2 mb-2 font-outfit">
+                          <div className="flex items-center gap-2 mb-2">
                             <Clock className="h-4 w-4 text-blue-500" />
                             <span className="text-sm font-bold text-black">Total Work Hours</span>
                           </div>
-                          <div className="flex items-baseline text-3xl font-black text-blue-600 dark:text-blue-400 tabular-nums font-outfit">
+                          <div className="flex items-baseline text-3xl font-black text-blue-600 dark:text-blue-400 tabular-nums">
                             {formatWorkHours(currentAttendance.workHours)}
                           </div>
                         </div>
@@ -1216,9 +1216,9 @@ const AttendancePage: React.FC = () => {
                     </>
                   ) : (
                     <div className="col-span-2 text-center py-10 text-black bg-slate-50 dark:bg-slate-900/50 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700">
-                      <Clock className="h-12 w-12 mx-auto mb-4 text-slate-400 animate-pulse-slow font-outfit" />
-                      <p className="text-xl font-bold font-outfit">Not Checked in Yet</p>
-                      <p className="text-sm text-muted-foreground mt-1 font-outfit">Please mark your attendance to start your shift</p>
+                      <Clock className="h-12 w-12 mx-auto mb-4 text-slate-400 animate-pulse-slow" />
+                      <p className="text-xl font-bold">Not Checked in Yet</p>
+                      <p className="text-sm text-muted-foreground mt-1">Please mark your attendance to start your shift</p>
                     </div>
                   )}
                 </div>
@@ -1230,13 +1230,13 @@ const AttendancePage: React.FC = () => {
                       {t.attendance.checkIn}
                     </Button>
                   ) : !currentAttendance.checkOutTime ? (
-                    <Button onClick={handleCheckOut} size="lg" className="flex-1 gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-md font-outfit">
+                    <Button onClick={handleCheckOut} size="lg" className="flex-1 gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-md">
                       <LogOut className="h-5 w-5" />
                       {t.attendance.checkOut}
                     </Button>
                   ) : (
-                    <div className="flex-1 text-center font-outfit">
-                      <Badge className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 font-outfit">
+                    <div className="flex-1 text-center">
+                      <Badge className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Attendance Completed for Today
                       </Badge>
@@ -1248,30 +1248,30 @@ const AttendancePage: React.FC = () => {
           </Card>
 
           {/* Attendance History */}
-          <Card className="border-2 border-[#000000] shadow-lg font-outfit">
+          <Card className="border-2 border-[#000000] shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
-              <CardTitle className="text-xl font-semibold font-outfit">{t.attendance.history}</CardTitle>
-              <CardDescription className="font-outfit">Your recent attendance records</CardDescription>
+              <CardTitle className="text-xl font-semibold">{t.attendance.history}</CardTitle>
+              <CardDescription>Your recent attendance records</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3 font-outfit">
+              <div className="space-y-3">
                 {attendanceHistory.length > 0 ? (
                   <>
                     {attendanceHistory
                       .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                       .map((record) => (
-                        <div key={record.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors font-outfit">
-                          <div className="flex items-center gap-3 font-outfit">
+                        <div key={record.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                          <div className="flex items-center gap-3">
                             <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
                               <Calendar className="h-6 w-6 text-white" />
                             </div>
-                            <div className="font-outfit">
-                              <p className="font-medium font-outfit">{formatDateIST(record.date, 'dd MMM yyyy')}</p>
-                              <div className="flex items-center gap-4 text-sm text-muted-foreground font-outfit">
-                                <span className="font-outfit">In: {formatAttendanceTime(record.date, record.checkInTime)}</span>
-                                <span className="font-outfit">Out: {formatAttendanceTime(record.date, record.checkOutTime)}</span>
+                            <div>
+                              <p className="font-medium">{formatDateIST(record.date, 'dd MMM yyyy')}</p>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <span>In: {formatAttendanceTime(record.date, record.checkInTime)}</span>
+                                <span>Out: {formatAttendanceTime(record.date, record.checkOutTime)}</span>
                                 {record.checkOutTime && (
-                                  <span className="inline-flex items-center font-bold text-slate-900 dark:text-white tabular-nums bg-slate-100 dark:bg-slate-800/50 px-2 py-0.5 rounded text-xs border border-slate-200 dark:border-slate-700 font-outfit">
+                                  <span className="inline-flex items-center font-bold text-slate-900 dark:text-white tabular-nums bg-slate-100 dark:bg-slate-800/50 px-2 py-0.5 rounded text-xs border border-slate-200 dark:border-slate-700">
                                     {formatWorkHours(record.workHours)}
                                   </span>
                                 )}

@@ -2064,7 +2064,7 @@ const AttendanceManager: React.FC = () => {
   };
 
   const attendanceHeader = (
-    <div className="relative overflow-hidden flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-sm mt-1">
+    <div className="relative overflow-hidden flex flex-col xl:flex-row justify-between items-start xl:items-center p-8 rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-sm mt-1">
       <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-blue-500/5 rounded-full blur-3xl" />
       <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
 
@@ -2073,66 +2073,68 @@ const AttendanceManager: React.FC = () => {
           <Clock className="h-8 w-8 text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-[#000000] dark:text-white sm:text-3xl font-outfit uppercase whitespace-nowrap">
+          <h1 className="text-2xl font-black tracking-tight text-[#000000] dark:text-white sm:text-3xl whitespace-nowrap">
             {t.attendance.employeeAttendance}
           </h1>
-          <p className="text-[#5e5b5b] dark:text-slate-400 font-bold flex items-center gap-2 mt-1 text-xs tracking-wider uppercase">
+          <p className="text-[#5e5b5b] dark:text-slate-400 font-bold flex items-center gap-2 mt-1 text-xs tracking-wide">
             <Users className="h-4 w-4 text-blue-600" />
             {t.attendance.monitorTeamAttendance}
           </p>
         </div>
       </div>
 
-      <div className="relative flex flex-col md:flex-row items-center gap-6 w-full xl:w-auto">
-        <TabsList className="grid grid-cols-3 h-12 w-full sm:w-[500px] bg-slate-100/50 dark:bg-slate-800/50 border-2 border-[#000000] dark:border-slate-700 rounded-2xl p-1 gap-2 shadow-sm">
-          <TabsTrigger
-            value="attendance"
-            className="rounded-xl font-black text-[9px] uppercase tracking-widest transition-all duration-300
-              data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
-              data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
-          >
-            <Users className="h-3 w-3 mr-1.5" />
-            Attendance
-          </TabsTrigger>
-          <TabsTrigger
-            value="office-hours"
-            className="rounded-xl font-black text-[9px] uppercase tracking-widest transition-all duration-300
-              data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
-              data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
-          >
-            <Settings className="h-3 w-3 mr-1.5" />
-            Office Hours
-          </TabsTrigger>
-          <TabsTrigger
-            value="wfh-requests"
-            className="rounded-xl font-black text-[9px] uppercase tracking-widest transition-all duration-300 relative
-              data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
-              data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
-          >
-            <FileText className="h-3 w-3 mr-1.5" />
-            WFH Requests
-            {getAdminPendingWfhCount() > 0 && (
-              <Badge
-                className="absolute -top-1 -right-1 h-4 min-w-4 rounded-full p-0 flex items-center justify-center text-[8px] font-black bg-rose-500 text-white border-2 border-white dark:border-gray-800"
-              >
-                {getAdminPendingWfhCount()}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
-
-        <div className="relative flex gap-3 shrink-0">
-          <Button
-            onClick={() => setExportModalOpen(true)}
-            size="lg"
-            className="rounded-xl px-6 h-12 bg-[#000000] hover:bg-[#333333] text-white shadow-md transition-all active:scale-95 gap-2 font-black text-xs tracking-widest uppercase border-2 border-black"
-            disabled={isExporting}
-          >
-            <Download className="h-4 w-4" />
-            {isExporting ? t.attendance.exporting : "Export"}
-          </Button>
-        </div>
+      <div className="relative flex gap-3 shrink-0 md:mt-0 mt-4">
+        <Button
+          onClick={() => setExportModalOpen(true)}
+          size="lg"
+          className="rounded-xl px-6 h-12 bg-[#000000] hover:bg-[#333333] text-white shadow-md transition-all active:scale-95 gap-2 font-bold text-xs tracking-wide border-2 border-black"
+          disabled={isExporting}
+        >
+          <Download className="h-4 w-4" />
+          {isExporting ? t.attendance.exporting : "Export"}
+        </Button>
       </div>
+    </div>
+  );
+
+  const tabsContainer = (
+    <div className="flex justify-center w-full py-2">
+      <TabsList className="grid grid-cols-3 h-12 w-full sm:w-[600px] bg-white dark:bg-slate-900 border-2 border-[#000000] dark:border-slate-700 rounded-2xl p-1 gap-2 shadow-sm">
+        <TabsTrigger
+          value="attendance"
+          className="rounded-xl font-bold text-[10px] tracking-wide transition-all duration-300
+            data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
+            data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
+        >
+          <Users className="h-3 w-3 mr-1.5" />
+          Attendance
+        </TabsTrigger>
+        <TabsTrigger
+          value="office-hours"
+          className="rounded-xl font-bold text-[10px] tracking-wide transition-all duration-300
+            data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
+            data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
+        >
+          <Settings className="h-3 w-3 mr-1.5" />
+          Office hours
+        </TabsTrigger>
+        <TabsTrigger
+          value="wfh-requests"
+          className="rounded-xl font-bold text-[10px] tracking-wide transition-all duration-300 relative
+            data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
+            data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
+        >
+          <FileText className="h-3 w-3 mr-1.5" />
+          Wfh requests
+          {getAdminPendingWfhCount() > 0 && (
+            <Badge
+              className="absolute -top-1 -right-1 h-4 min-w-4 rounded-full p-0 flex items-center justify-center text-[8px] font-black bg-rose-500 text-white border-2 border-white dark:border-gray-800"
+            >
+              {getAdminPendingWfhCount()}
+            </Badge>
+          )}
+        </TabsTrigger>
+      </TabsList>
     </div>
   );
 
@@ -3538,6 +3540,7 @@ const AttendanceManager: React.FC = () => {
             className="space-y-6"
           >
             {attendanceHeader}
+            {tabsContainer}
             <TabsContent value="attendance" className="space-y-6">
               {attendanceContent}
             </TabsContent>

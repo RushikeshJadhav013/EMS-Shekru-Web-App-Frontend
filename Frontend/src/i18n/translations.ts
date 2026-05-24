@@ -117,7 +117,7 @@ export const translations = {
       locationRequired: 'Location access required',
       cameraRequired: 'Camera access required',
       // Attendance Manager specific
-      employeeAttendance: 'Attendance Management',
+      employeeAttendance: 'Attendance management',
       monitorTeamAttendance: 'Monitor team attendance and export reports',
       exportCSV: 'Export CSV',
       exportPDF: 'Export PDF',
@@ -188,7 +188,7 @@ export const translations = {
       exportedSuccessfully: 'Attendance data exported as {type} successfully.',
       exportFailed: 'Export Failed',
       failedToExport: 'Failed to export {type}: {error}',
-      officeHours: 'Office Hours',
+      officeHours: 'Office hours',
       officeTimingManagement: 'Office Timing Management',
       configureWorkingHours: 'Configure working hours and grace periods for your organization',
       defaultStart: 'Default Start',
