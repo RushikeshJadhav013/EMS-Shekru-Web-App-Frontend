@@ -2063,50 +2063,16 @@ const AttendanceManager: React.FC = () => {
     }
   };
 
-  const attendanceHeader = (
-    <div className="relative overflow-hidden flex flex-col xl:flex-row justify-between items-start xl:items-center p-8 rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-sm mt-1">
-      <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-blue-500/5 rounded-full blur-3xl" />
-      <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
-
-      <div className="relative flex items-center gap-5 shrink-0">
-        <div className="h-16 w-16 rounded-2xl bg-[#000000] flex items-center justify-center shadow-lg transition-transform duration-300 hover:scale-105">
-          <Clock className="h-8 w-8 text-white" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-[#000000] dark:text-white sm:text-3xl whitespace-nowrap">
-            {t.attendance.employeeAttendance}
-          </h1>
-          <p className="text-[#5e5b5b] dark:text-slate-400 font-bold flex items-center gap-2 mt-1 text-xs tracking-wide">
-            <Users className="h-4 w-4 text-blue-600" />
-            {t.attendance.monitorTeamAttendance}
-          </p>
-        </div>
-      </div>
-
-      <div className="relative flex gap-3 shrink-0 md:mt-0 mt-4">
-        <Button
-          onClick={() => setExportModalOpen(true)}
-          size="lg"
-          className="rounded-xl px-6 h-12 bg-[#000000] hover:bg-[#333333] text-white shadow-md transition-all active:scale-95 gap-2 font-bold text-xs tracking-wide border-2 border-black"
-          disabled={isExporting}
-        >
-          <Download className="h-4 w-4" />
-          {isExporting ? t.attendance.exporting : "Export"}
-        </Button>
-      </div>
-    </div>
-  );
-
   const tabsContainer = (
-    <div className="flex justify-center w-full py-2">
-      <TabsList className="grid grid-cols-3 h-12 w-full sm:w-[600px] bg-white dark:bg-slate-900 border-2 border-[#000000] dark:border-slate-700 rounded-2xl p-1 gap-2 shadow-sm">
+    <div className="flex items-center w-full max-w-[500px]">
+      <TabsList className="grid grid-cols-3 h-12 w-full bg-white dark:bg-slate-900 border-2 border-[#000000] dark:border-slate-700 rounded-2xl p-1 gap-2 shadow-sm">
         <TabsTrigger
           value="attendance"
           className="rounded-xl font-bold text-[10px] tracking-wide transition-all duration-300
             data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
             data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
+          style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
         >
-          <Users className="h-3 w-3 mr-1.5" />
           Attendance
         </TabsTrigger>
         <TabsTrigger
@@ -2114,8 +2080,8 @@ const AttendanceManager: React.FC = () => {
           className="rounded-xl font-bold text-[10px] tracking-wide transition-all duration-300
             data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
             data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
+          style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
         >
-          <Settings className="h-3 w-3 mr-1.5" />
           Office hours
         </TabsTrigger>
         <TabsTrigger
@@ -2123,8 +2089,8 @@ const AttendanceManager: React.FC = () => {
           className="rounded-xl font-bold text-[10px] tracking-wide transition-all duration-300 relative
             data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
             data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
+          style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
         >
-          <FileText className="h-3 w-3 mr-1.5" />
           Wfh requests
           {getAdminPendingWfhCount() > 0 && (
             <Badge
@@ -2135,6 +2101,46 @@ const AttendanceManager: React.FC = () => {
           )}
         </TabsTrigger>
       </TabsList>
+    </div>
+  );
+
+  const attendanceHeader = (
+    <div className="space-y-6">
+      <div className="relative overflow-hidden flex flex-col xl:flex-row justify-between items-start xl:items-center p-8 rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-sm mt-1">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-blue-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
+
+        <div className="relative flex items-center gap-5 shrink-0">
+          <div className="h-16 w-16 rounded-2xl bg-[#000000] flex items-center justify-center shadow-lg transition-transform duration-300 hover:scale-105">
+            <Clock className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black tracking-tight text-[#000000] dark:text-white sm:text-3xl whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>
+              {t.attendance.employeeAttendance}
+            </h1>
+            <p className="text-[#5e5b5b] dark:text-slate-400 font-bold flex items-center gap-2 mt-1 text-xs tracking-wide" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>
+              <Users className="h-4 w-4 text-blue-600" />
+              {t.attendance.monitorTeamAttendance}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto mt-6 xl:mt-0">
+          {tabsContainer}
+          <div className="relative flex gap-3 shrink-0">
+            <Button
+              onClick={() => setExportModalOpen(true)}
+              size="lg"
+              className="rounded-xl px-6 h-12 bg-[#000000] hover:bg-[#333333] text-white shadow-md transition-all active:scale-95 gap-2 font-bold text-xs tracking-wide border-2 border-black"
+              disabled={isExporting}
+              style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
+            >
+              <Download className="h-4 w-4" />
+              {isExporting ? t.attendance.exporting : "Export"}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 
@@ -2922,26 +2928,7 @@ const AttendanceManager: React.FC = () => {
                   </Select>
                 </div>
 
-                {/* Employee Filter Selection */}
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">Employee Scope</Label>
-                  <div className="flex gap-4 p-1 bg-slate-100 rounded-xl border-2 border-black">
-                    <button
-                      type="button"
-                      onClick={() => { setEmployeeFilter("all"); setSelectedEmployee(null); setEmployeeSearch(""); setSelectedDepartmentFilter(""); setFilteredEmployees([]); }}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${employeeFilter === 'all' ? 'bg-black text-white shadow-md' : 'text-slate-500 hover:bg-slate-200'}`}
-                    >
-                      All
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setEmployeeFilter("specific"); setSelectedEmployee(null); setSelectedDepartmentFilter(""); setEmployeeSearch(""); setFilteredEmployees([]); }}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${employeeFilter === 'specific' ? 'bg-black text-white shadow-md' : 'text-slate-500 hover:bg-slate-200'}`}
-                    >
-                      Specific
-                    </button>
-                  </div>
-                </div>
+
               </div>
 
               {/* Custom Date Selection */}
@@ -2965,24 +2952,7 @@ const AttendanceManager: React.FC = () => {
               {/* Specific Employee Selection Controls */}
               {employeeFilter === "specific" && (
                 <div className="space-y-4 p-6 bg-slate-50 border-2 border-black rounded-2xl animate-in zoom-in-95 duration-200">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-black uppercase tracking-widest">Select Branch</Label>
-                    <Select
-                      value={selectedDepartmentFilter}
-                      onValueChange={(v) => { setSelectedDepartmentFilter(v); setSelectedEmployee(null); setEmployeeSearch(""); }}
-                    >
-                      <SelectTrigger className="w-full h-11 border-2 border-black rounded-xl bg-white font-bold">
-                        <SelectValue placeholder="All Branches" />
-                      </SelectTrigger>
-                      <SelectContent className="border-2 border-black rounded-xl">
-                        {coreDepartments.length ? (
-                          coreDepartments.map((d) => <SelectItem key={d} value={d} className="font-bold">{d}</SelectItem>)
-                        ) : (
-                          <SelectItem value="__none" disabled>No branches available</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
+
 
                   {selectedDepartmentFilter && (
                     <div className="space-y-4">
@@ -3078,10 +3048,10 @@ const AttendanceManager: React.FC = () => {
         <Card className="shadow-xl border-2 border-[#000000] rounded-2xl overflow-hidden">
           <CardHeader className="space-y-1 pb-4 bg-slate-50/50 dark:bg-slate-800/50 border-b-2 border-black">
             <CardTitle className="text-sm font-black text-black dark:text-white uppercase tracking-widest font-outfit">
-              Global Office Hours
+              Office Hours
             </CardTitle>
             <CardDescription className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">
-              Default schedule applied to every branch
+              Default schedule for the organization
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 p-6">
@@ -3540,7 +3510,6 @@ const AttendanceManager: React.FC = () => {
             className="space-y-6"
           >
             {attendanceHeader}
-            {tabsContainer}
             <TabsContent value="attendance" className="space-y-6">
               {attendanceContent}
             </TabsContent>

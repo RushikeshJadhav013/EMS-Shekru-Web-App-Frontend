@@ -84,7 +84,7 @@ const SalaryDashboard = () => {
                     salary = { ...salary, annualCtc, monthlyCtc, monthlyInHand };
                 }
 
-                const department = (emp.department || emp.branch || '').trim();
+                const department = (emp.department || '').trim();
                 return { ...emp, id, department, salary };
             });
 
@@ -148,7 +148,7 @@ const SalaryDashboard = () => {
             return false;
         }
 
-        const itemDepts = (item.department || item.branch || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+        const itemDepts = (item.department || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
 
         const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.employee_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -164,7 +164,7 @@ const SalaryDashboard = () => {
     const uniqueDepts = React.useMemo(() => {
         const depts = new Set<string>();
         items.forEach(item => {
-            const deptField = item.department || item.branch;
+            const deptField = item.department;
             if (deptField) {
                 deptField.split(',').forEach(d => {
                     const trimmed = d.trim();
@@ -257,7 +257,6 @@ const SalaryDashboard = () => {
                             Salary Management
                         </h1>
                         <p className="font-medium flex items-center gap-2 mt-1" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
-                            <Building2 className="h-4 w-4 text-blue-500" />
                             Manage employee salaries, slips, and increments.
                         </p>
                     </div>
@@ -434,7 +433,7 @@ const SalaryDashboard = () => {
                                             <TableCell>
                                                 <div className="flex flex-col">
                                                     <span className="capitalize font-semibold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{item.role?.replace('_', ' ')}</span>
-                                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>{item.department || item.branch || '-'}</span>
+                                                    <span>{item.department || '-'}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>

@@ -253,7 +253,20 @@ class ApiService {
   }
 
   public async request(endpoint: string, options: RequestInit = {}) {
-    const url = `${this.baseURL}${endpoint}`;
+    let url = `${this.baseURL}${endpoint}`;
+
+    // If company_slug is available and the endpoint doesn't already start with it,
+    // inject it into the path (except for auth endpoints)
+    const companySlug = localStorage.getItem("company_slug");
+    if (companySlug &&
+      !endpoint.startsWith("/auth/") &&
+      !endpoint.startsWith(`/${companySlug}/`) &&
+      endpoint !== "/auth/me" &&
+      endpoint !== "/auth/me/companies" &&
+      !endpoint.startsWith("/auth/me/switch-company/")) {
+      url = `${this.baseURL}/${companySlug}${endpoint}`;
+      console.debug(`Tenant URL path adjusted: ${url}`);
+    }
 
     const headers: Record<string, string> = {
       ...this.getAuthHeader(),
@@ -383,7 +396,14 @@ class ApiService {
     endpoint: string,
     options: RequestInit = {},
   ): Promise<Blob> {
-    const url = `${this.baseURL}${endpoint}`;
+    let url = `${this.baseURL}${endpoint}`;
+
+    // If company_slug is available, inject it into the path
+    const companySlug = localStorage.getItem("company_slug");
+    if (companySlug && !endpoint.startsWith(`/${companySlug}/`)) {
+      url = `${this.baseURL}/${companySlug}${endpoint}`;
+      console.debug(`Tenant download path adjusted: ${url}`);
+    }
 
     const config: RequestInit = {
       ...options,
@@ -2719,6 +2739,20 @@ class ApiService {
     const queryString = queryParams.toString();
     const endpoint = `/reports/task-management${queryString ? `?${queryString}` : ""}`;
     return this.download(endpoint);
+  }
+
+  async getAccessibleCompanies(): Promise<any[]> {
+    return this.request("/auth/me/companies");
+  }
+
+  async getCurrentUser(): Promise<any> {
+    return this.request("/auth/me");
+  }
+
+  async switchCompany(companySlug: string): Promise<any> {
+    return this.request(`/auth/me/switch-company/${companySlug}`, {
+      method: "POST"
+    });
   }
 }
 

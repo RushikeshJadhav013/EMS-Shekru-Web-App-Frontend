@@ -428,7 +428,7 @@ export default function LeaveManagement() {
     Record<string, { id: number; ids: number[]; days: string[] }>
   >({});
   const [isLoadingWeekOffs, setIsLoadingWeekOffs] = useState(true);
-  const [companyDepartments, setCompanyDepartments] = useState<string[]>([]);
+  const [availableDepartments, setAvailableDepartments] = useState<string[]>([]);
   const [weekOffForm, setWeekOffForm] = useState<{
     department: string;
     days: string[];
@@ -639,7 +639,7 @@ export default function LeaveManagement() {
 
   const departmentOptions = useMemo(() => {
     const deptSet = new Set<string>();
-    companyDepartments.forEach(
+    availableDepartments.forEach(
       (dept) =>
         dept && deptSet.add(dept.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, "")),
     );
@@ -670,7 +670,7 @@ export default function LeaveManagement() {
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b));
   }, [
-    companyDepartments,
+    availableDepartments,
     leaveRequests,
     approvalRequests,
     user?.department,
@@ -784,7 +784,7 @@ export default function LeaveManagement() {
           const names = response
             .map((dept: any) => dept.name || "")
             .filter(Boolean);
-          setCompanyDepartments(names);
+          setAvailableDepartments(names);
         }
       } catch (error) {
         console.error(
@@ -793,7 +793,7 @@ export default function LeaveManagement() {
         );
         // Fallback: if user has a department, at least show their own
         if (user?.department) {
-          setCompanyDepartments([user.department]);
+          setAvailableDepartments([user.department]);
         }
       }
     };
@@ -3595,7 +3595,7 @@ export default function LeaveManagement() {
                   </SelectTrigger>
                   <SelectContent className="border-2 border-black">
                     <SelectItem value="all">All Departments</SelectItem>
-                    {companyDepartments.map((dept) => (
+                    {availableDepartments.map((dept) => (
                       <SelectItem key={dept} value={dept}>
                         {dept}
                       </SelectItem>
@@ -3896,7 +3896,7 @@ export default function LeaveManagement() {
               <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 text-sm text-muted-foreground">
                 <p className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-red-500"></span>
-                  This is a company-wide holiday. All offices will be closed.
+                  This is a scheduled holiday. All operations will be closed.
                 </p>
               </div>
             </div>

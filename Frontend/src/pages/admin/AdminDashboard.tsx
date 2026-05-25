@@ -19,6 +19,7 @@ import {
   Target,
   Award,
   LogOut,
+  Building2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatIST, formatDateTimeIST, formatTimeIST, todayIST, parseToIST, nowIST } from '@/utils/timezone';
@@ -62,6 +63,8 @@ const AdminDashboard: React.FC = () => {
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [activitiesPage, setActivitiesPage] = useState(1);
   const ACTIVITIES_PER_PAGE = 10;
+  const [accessibleCompanies, setAccessibleCompanies] = useState<any[]>([]);
+  const [isCompaniesLoading, setIsCompaniesLoading] = useState(false);
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -201,8 +204,24 @@ const AdminDashboard: React.FC = () => {
       }
     };
 
+    const fetchCompanies = async () => {
+      if (user?.role === 'admin') {
+        setIsCompaniesLoading(true);
+        try {
+          const companies = await apiService.getAccessibleCompanies();
+          setAccessibleCompanies(companies);
+          console.log('Accessible Companies fetched:', companies);
+        } catch (error) {
+          console.error('Failed to fetch accessible companies:', error);
+        } finally {
+          setIsCompaniesLoading(false);
+        }
+      }
+    };
+
     loadDashboard();
-  }, []);
+    fetchCompanies();
+  }, [user]);
 
   const formatActivityTime = (timeString: string) => {
     if (!timeString) return '-';
@@ -274,6 +293,11 @@ const AdminDashboard: React.FC = () => {
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: '#000000' }}>
               {t.common.welcome}, <span style={{ color: '#2563EB' }}>{user?.name}</span>
+              {localStorage.getItem('company_name') && (
+                <span className="ml-2 text-xl font-bold text-slate-400">
+                  @ {localStorage.getItem('company_name')}
+                </span>
+              )}
             </h1>
             <p className="font-normal text-[14px] mt-0.5 flex items-center gap-1.5" style={{ color: '#000000' }}>
               <CalendarDays className="h-3.5 w-3.5" style={{ color: '#000000' }} />
@@ -534,7 +558,72 @@ const AdminDashboard: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
+
+      {/* Accessible Companies */}
+      {
+        user?.role === 'admin' && (
+          <Card className="border-2 border-[#000000] shadow-xl bg-white rounded-2xl overflow-hidden mt-8">
+            <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+                  <Building2 className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <CardTitle className="text-[16px] font-bold" style={{ color: '#000000' }}>
+                    Accessible Companies
+                  </CardTitle>
+                  <CardDescription className="text-xs font-semibold uppercase tracking-tight">
+                    Organizations you have management access to
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              {isCompaniesLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <div className="h-8 w-8 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin" />
+                </div>
+              ) : accessibleCompanies.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {accessibleCompanies.map((company) => (
+                    <div
+                      key={company.company_id}
+                      className="p-4 rounded-xl border-2 border-slate-100 hover:border-black transition-all duration-300 group cursor-pointer bg-slate-50/50 hover:bg-white"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden shadow-sm group-hover:scale-110 transition-transform">
+                          {company.company_logo ? (
+                            <img src={company.company_logo} alt={company.company_name} className="h-full w-full object-contain" />
+                          ) : (
+                            <Building className="h-6 w-6 text-slate-400" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-sm text-slate-900 truncate">{company.company_name}</h4>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className="text-[10px] font-black h-5 border-slate-200 text-slate-500 uppercase">
+                              ID: {company.company_id}
+                            </Badge>
+                            {company.status && (
+                              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-10 text-slate-400">
+                  <Building className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                  <p className="font-bold text-sm">No companies found</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )
+      }
+    </div >
   );
 };
 

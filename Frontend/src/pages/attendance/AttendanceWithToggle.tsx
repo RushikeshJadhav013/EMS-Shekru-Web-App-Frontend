@@ -6307,69 +6307,7 @@ const AttendanceWithToggle: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* Scope Selection Dialog (for resolving 409 Conflicts) */}
-      <Dialog open={activeScopeError} onOpenChange={setActiveScopeError}>
-        <DialogContent className="max-w-md border-2 border-amber-200">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-700">
-              <AlertCircle className="h-5 w-5" />
-              Scope Selection Required
-            </DialogTitle>
-            <DialogDescription className="font-medium text-slate-600">
-              Your account is assigned to multiple organizations or branches.
-              Please enter a specific ID to continue.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-bold">Current User Role: {user?.role}</Label>
-              <p className="text-[11px] text-slate-500 italic">
-                Tip: You can find your Branch ID and Company ID in your profile or from your administrator.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="debug-branch-id">Branch ID</Label>
-              <Input
-                id="debug-branch-id"
-                value={debugBranchId}
-                onChange={(e) => setDebugBranchId(e.target.value)}
-                placeholder="e.g. 1"
-                className="border-2 focus:border-blue-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="debug-company-id">Company ID</Label>
-              <Input
-                id="debug-company-id"
-                value={debugCompanyId}
-                onChange={(e) => setDebugCompanyId(e.target.value)}
-                placeholder="e.g. 1"
-                className="border-2 focus:border-blue-500"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setActiveScopeError(false)}
-              className="border-slate-300"
-            >
-              Close
-            </Button>
-            <Button
-              onClick={() => {
-                if (debugBranchId) localStorage.setItem('branchId', debugBranchId);
-                if (debugCompanyId) localStorage.setItem('companyId', debugCompanyId);
-                setActiveScopeError(false);
-                window.location.reload();
-              }}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
-            >
-              Apply Scope & Refresh
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
     </div>
   );
 };

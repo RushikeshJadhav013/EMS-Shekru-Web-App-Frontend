@@ -135,7 +135,6 @@ const MainLayout: React.FC = () => {
         { icon: MessageCircle, label: t.navigation.chat, path: '/admin/chat' },
         { icon: Banknote, label: t.navigation.salary, path: '/salary' },
         { icon: Video, label: t.navigation.meetings, path: '/meetings', badgeCount: unreadMeetingsCount },
-        { icon: Briefcase, label: t.navigation.departments, path: '/admin/branches' },
         { icon: FolderKanban, label: t.navigation.projects, path: '/admin/projects' },
         { icon: BarChart3, label: t.navigation.reports, path: '/admin/reports' },
       ],
@@ -185,7 +184,7 @@ const MainLayout: React.FC = () => {
 
     // For chat and other main management routes, use startsWith to catch sub-routes
     // e.g., /admin/employees should match /admin/employees/new/
-    if (itemPath.includes('/chat') || itemPath.includes('/employees') || itemPath.includes('/branches') || itemPath.includes('/hiring') || itemPath.includes('/projects') || itemPath.includes('/reports')) {
+    if (itemPath.includes('/chat') || itemPath.includes('/employees') || itemPath.includes('/hiring') || itemPath.includes('/projects') || itemPath.includes('/reports')) {
       return currentPath.startsWith(itemPath);
     }
 
