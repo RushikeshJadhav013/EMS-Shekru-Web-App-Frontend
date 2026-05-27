@@ -740,6 +740,16 @@ class ApiService {
     return this.request("/tasks/");
   }
 
+  async getTaskHistory(taskId: string | number) {
+    return this.request(`/tasks/${taskId}/history`);
+  }
+
+  async updateTaskStatus(taskId: string | number, status: string) {
+    return this.request(`/tasks/${taskId}/status?status=${encodeURIComponent(status)}`, {
+      method: "PUT",
+    });
+  }
+
   // Bulk create tasks (POST /tasks/bulk)
   async assignBulkTasks(data: {
     title: string;

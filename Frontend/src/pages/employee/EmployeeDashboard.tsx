@@ -86,13 +86,42 @@ const EmployeeDashboard: React.FC = () => {
           ).length;
         }
 
+        // Recalculate attendance rate if it seems incorrect (e.g., > 100%) or as a standard fetch
+        let attendancePercentage = dashboardData.attendancePercentage || 0;
+        try {
+          const userIdNum = user?.id ? (typeof user.id === 'string' ? parseInt(user.id) : user.id) : null;
+          if (userIdNum) {
+            const attendSummary = await apiService.getWorkingHoursSummary({
+              user_id: userIdNum,
+              period: 'current_month'
+            });
+            if (attendSummary && attendSummary.days && attendSummary.days.length > 0) {
+              const presentDays = attendSummary.days.filter(d => d.working_hours > 0).length;
+              const totalDaysSoFar = attendSummary.days.length;
+              attendancePercentage = Math.round((presentDays / totalDaysSoFar) * 100);
+            }
+          }
+        } catch (e) {
+          console.error("Error recalibrating attendance rate:", e);
+          // Fallback to capping at 100 if the re-calculation fails
+          if (attendancePercentage > 100) attendancePercentage = 100;
+        }
+
         setStats({
           ...dashboardData,
           tasksAssigned,
           tasksCompleted,
           tasksPending,
+          attendancePercentage,
         });
-        setMyTasks(tasksData);
+
+        // Sort tasks to show latest first (use task_id as ID field name in raw data)
+        const sortedTasks = [...tasksData].sort((a, b) => {
+          const idA = a.id || a.task_id || 0;
+          const idB = b.id || b.task_id || 0;
+          return Number(idB) - Number(idA);
+        });
+        setMyTasks(sortedTasks);
 
         // --- Fetch & Build Recent Activities (for Today) ---
         const today = todayIST(); // YYYY-MM-DD

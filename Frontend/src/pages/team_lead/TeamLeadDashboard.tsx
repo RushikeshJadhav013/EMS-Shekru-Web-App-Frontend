@@ -28,6 +28,7 @@ import SummaryCard from '@/components/ui/SummaryCard';
 
 interface TeamMemberStatus {
   name: string;
+  designation: string;
   status: 'present' | 'on-leave' | 'absent';
   task: string;
   taskStatus?: string;
@@ -91,16 +92,7 @@ const TeamLeadDashboard: React.FC = () => {
           emp.id !== user.id // Avoid duplicates if TL is also in employee list
         );
 
-        // Explicitly add the Team Lead (self) to the list for dashboard tracking
-        const selfAsMember = {
-          id: user.id,
-          name: user.name,
-          department: user.department,
-          role: user.role || 'TeamLead',
-          is_active: true
-        };
-
-        const allTrackedMembers = [selfAsMember, ...departmentEmployees];
+        const allTrackedMembers = [...departmentEmployees];
 
         // Fetch all tasks
         const tasks = await apiService.getMyTasks();
@@ -470,6 +462,7 @@ const TeamLeadDashboard: React.FC = () => {
 
             return {
               name: emp.id === user.id ? `${emp.name} (You)` : (emp.name || 'Unknown'),
+              designation: emp.designation || (emp.id === user.id ? 'Team Lead' : 'Employee'),
               status,
               task: currentTask,
               taskStatus: taskStatus,
@@ -489,44 +482,44 @@ const TeamLeadDashboard: React.FC = () => {
           })
         );
 
-        // Sort teamMembers: Prioritize employees with nearest deadlines, then 'You' at the top, then alphabetically
+        // Sort teamMembers alphabetically
         const sortedMembers = [...teamMembersData].sort((a, b) => {
-          // 1. Priority: Employees with upcoming deadlines first
-          if (a.hasUpcomingDeadline && !b.hasUpcomingDeadline) return -1;
-          if (!a.hasUpcomingDeadline && b.hasUpcomingDeadline) return 1;
-
-          // 2. If both have deadlines, sort by deadline priority (today > soon > null)
-          if (a.hasUpcomingDeadline && b.hasUpcomingDeadline) {
-            const priorityOrder = { 'today': 0, 'soon': 1, null: 2 };
-            const aPriority = priorityOrder[a.deadlinePriority || null];
-            const bPriority = priorityOrder[b.deadlinePriority || null];
-
-            if (aPriority !== bPriority) {
-              return aPriority - bPriority;
-            }
-
-            // If same priority, sort by days until deadline (nearest first)
-            if (a.daysUntilDeadline !== undefined && b.daysUntilDeadline !== undefined) {
-              return a.daysUntilDeadline - b.daysUntilDeadline;
-            }
-          }
-
-          // 3. Put 'You' at the top (if no deadline priority)
-          if (a.userId === String(user.id)) return -1;
-          if (b.userId === String(user.id)) return 1;
-
-          // 4. Alphabetical by name
           return a.name.localeCompare(b.name);
         });
 
         setTeamMembers(sortedMembers);
+
+        // Calculate aggregate stats for summary cards
+        const totalTasksGlobal = tasks.length;
+        const completedTasksGlobal = tasks.filter((t: any) => {
+          const s = (t.status || '').toLowerCase();
+          return s === 'completed' || s === 'done';
+        }).length;
+
+        const inProgressTasksGlobal = tasks.filter((t: any) => {
+          const s = (t.status || '').toLowerCase();
+          return s === 'in-progress' || s === 'inprogress' || s === 'in_progress';
+        }).length;
+
+        // Pending reviews: tasks with status pending, review, or submitted
+        const pendingReviewsCount = tasks.filter((t: any) => {
+          const s = (t.status || '').toLowerCase();
+          return s === 'pending' || s === 'review' || s === 'submitted';
+        }).length;
+
+        const efficiency = totalTasksGlobal > 0
+          ? Math.round((completedTasksGlobal / totalTasksGlobal) * 100)
+          : 0;
 
         // Update stats based on filtered data
         setStats(prev => ({
           ...prev,
           teamSize: allTrackedMembers.length,
           employeeCount: departmentEmployees.length,
-          presentToday: teamMembersData.filter(m => m.status === 'present').length
+          presentToday: teamMembersData.filter(m => m.status === 'present').length,
+          tasksInProgress: inProgressTasksGlobal,
+          pendingReviews: pendingReviewsCount,
+          teamEfficiency: efficiency
         }));
 
         // Inject TL activity if not present
@@ -698,124 +691,18 @@ const TeamLeadDashboard: React.FC = () => {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="flex items-center gap-4 flex-1 min-w-0">
                         <div className="relative flex-shrink-0">
-                          <div className={`h-12 w-12 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center border-2 shadow-sm font-bold text-gray-600 dark:text-gray-300 ${member.hasUpcomingDeadline && member.deadlinePriority === 'today'
-                            ? 'border-red-500'
-                            : member.hasUpcomingDeadline && member.deadlinePriority === 'soon'
-                              ? 'border-orange-500'
-                              : 'border-white'
-                            }`}>
+                          <div className="h-12 w-12 rounded-full bg-gradient-to-br from-emerald-100 to-teal-200 dark:from-emerald-800 dark:to-teal-900 flex items-center justify-center border-2 border-white shadow-sm font-bold text-emerald-700 dark:text-emerald-300">
                             {member.name.charAt(0)}
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <h4 className="text-[14px] font-bold truncate" style={{ color: '#000000' }}>
-                              {member.name}
-                            </h4>
-                            <div className="flex items-center gap-1.5 ml-1">
-                              {member.isOnline ? (
-                                <Badge className="bg-green-500 hover:bg-green-600 h-5.5 px-2 text-[12px] animate-pulse">
-                                  Online
-                                </Badge>
-                              ) : (
-                                <Badge className="bg-red-500 hover:bg-red-600 h-5.5 px-2 text-[12px] text-white">
-                                  Offline
-                                </Badge>
-                              )}
-                            </div>
-                            {/* Upcoming Deadline Badge */}
-                            {member.hasUpcomingDeadline && (
-                              <Badge
-                                variant="outline"
-                                className={`text-[9px] px-2 py-0 h-5 font-bold flex items-center gap-1 ${member.deadlinePriority === 'today'
-                                  ? 'bg-red-100 text-red-700 border-red-400 dark:bg-red-950/50 dark:text-red-400 dark:border-red-800'
-                                  : 'bg-orange-100 text-orange-700 border-orange-400 dark:bg-orange-950/50 dark:text-orange-400 dark:border-orange-800'
-                                  }`}
-                              >
-                                <AlertTriangle className="h-3 w-3" />
-                                {member.deadlinePriority === 'today'
-                                  ? 'Deadline Today'
-                                  : member.daysUntilDeadline !== undefined
-                                    ? `Due in ${member.daysUntilDeadline} day${member.daysUntilDeadline !== 1 ? 's' : ''}`
-                                    : 'Upcoming Deadline'}
-                              </Badge>
-                            )}
-                          </div>
-                          {/* Show upcoming deadline task if exists, otherwise show today's task */}
-                          {member.hasUpcomingDeadline && member.deadlineTaskTitle ? (
-                            <div className="space-y-1 mt-1">
-                              <div className="flex items-center gap-2">
-                                <ClipboardList className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                                <div className="text-xs font-semibold flex-1 min-w-0" style={{ color: '#000000' }}>
-                                  <TruncatedText
-                                    text={member.deadlineTaskTitle}
-                                    maxLength={35}
-                                    showToggle={false}
-                                  />
-                                </div>
-                                {member.deadlineTaskStatus && (
-                                  <Badge
-                                    variant="outline"
-                                    className={`text-[9px] px-1.5 py-0 h-4 font-bold ${member.deadlineTaskStatus === 'Completed'
-                                      ? 'bg-green-50 text-green-700 border-green-300 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800'
-                                      : member.deadlineTaskStatus === 'In Progress'
-                                        ? 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800'
-                                        : 'bg-gray-50 text-gray-700 border-gray-300 dark:bg-gray-950/30 dark:text-gray-400 dark:border-gray-800'
-                                      }`}
-                                  >
-                                    {member.deadlineTaskStatus}
-                                  </Badge>
-                                )}
-                              </div>
-                              {member.deadlineDate && (
-                                <div className="flex items-center gap-1 ml-5">
-                                  <CalendarDays className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-[10px] text-muted-foreground font-medium">
-                                    Due: {formatIST(new Date(member.deadlineDate), 'MMM dd, yyyy')}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 mt-1">
-                              <ClipboardList className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                              <div className="text-xs font-semibold flex-1 min-w-0" style={{ color: '#000000' }}>
-                                <TruncatedText
-                                  text={member.task}
-                                  maxLength={35}
-                                  showToggle={false}
-                                />
-                              </div>
-                              {member.taskStatus && member.task !== 'No task assigned today' && (
-                                <Badge
-                                  variant="outline"
-                                  className={`text-[9px] px-1.5 py-0 h-4 font-bold ${member.taskStatus === 'Completed'
-                                    ? 'bg-green-50 text-green-700 border-green-300 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800'
-                                    : member.taskStatus === 'In Progress'
-                                      ? 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800'
-                                      : member.taskStatus === 'Cancelled'
-                                        ? 'bg-red-50 text-red-700 border-red-300 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800'
-                                        : 'bg-gray-50 text-gray-700 border-gray-300 dark:bg-gray-950/30 dark:text-gray-400 dark:border-gray-800'
-                                    }`}
-                                >
-                                  {member.taskStatus}
-                                </Badge>
-                              )}
-                            </div>
-                          )}
+                          <h4 className="text-[14px] font-bold truncate" style={{ color: '#000000' }}>
+                            {member.name}
+                          </h4>
+                          <p className="text-[12px] font-medium text-muted-foreground" style={{ color: '#666666' }}>
+                            {member.designation}
+                          </p>
                         </div>
-                      </div>
-
-                      <div className="flex items-center gap-6 flex-shrink-0">
-                        {member.task !== 'No task assigned today' && member.taskCount !== undefined && member.taskCount > 0 && (
-                          <div className="hidden sm:block w-32">
-                            <div className="flex justify-between text-[10px] font-black uppercase text-muted-foreground mb-1">
-                              <span>Progress</span>
-                              <span className="text-emerald-600">{member.progress}%</span>
-                            </div>
-                            <Progress value={member.progress} className="h-1.5" />
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>

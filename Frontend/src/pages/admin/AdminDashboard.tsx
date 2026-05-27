@@ -385,7 +385,7 @@ const AdminDashboard: React.FC = () => {
                 variant="ghost"
                 size="sm"
                 className="h-8 px-3 rounded-lg text-blue-600 hover:bg-blue-50 font-bold text-[14px]"
-                onClick={() => navigate('/admin/reports?tab=branch')}
+                onClick={() => navigate('/admin/reports?tab=department')}
               >
                 VIEW ALL
               </Button>
@@ -397,7 +397,7 @@ const AdminDashboard: React.FC = () => {
                 <div
                   key={dept.name}
                   className="group relative p-4 rounded-xl border border-slate-200 hover:border-black hover:bg-slate-50 transition-all duration-300 cursor-pointer"
-                  onClick={() => navigate('/admin/reports?tab=branch')}
+                  onClick={() => navigate('/admin/reports?tab=department')}
                 >
                   <div className="flex justify-between items-center mb-3">
                     <div className="flex items-center gap-3">

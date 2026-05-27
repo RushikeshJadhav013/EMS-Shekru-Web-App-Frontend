@@ -227,11 +227,19 @@ const AttendanceWithToggle: React.FC = () => {
   const [selectedExportDepartment, setSelectedExportDepartment] =
     useState<string>("");
   const [exportDepartments, setExportDepartments] = useState<string[]>([]);
+  const [coreDepartments, setCoreDepartments] = useState<string[]>([]);
 
   const [isExporting, setIsExporting] = useState(false);
   const [reportLayout, setReportLayout] = useState<
     "basic" | "grid" | "detailed_grid"
   >("basic");
+
+  const [gridExportMonth, setGridExportMonth] = useState<string>(
+    String(new Date().getMonth() + 1),
+  );
+  const [gridExportYear, setGridExportYear] = useState<string>(
+    String(new Date().getFullYear()),
+  );
 
   // Online/Offline status state
   const [isOnline, setIsOnline] = useState(true);
@@ -656,7 +664,7 @@ const AttendanceWithToggle: React.FC = () => {
 
   // Determine if user can view employee attendance (management roles)
   const canViewEmployeeAttendance = user?.role && ['admin', 'hr', 'manager', 'team_lead', 'teamlead'].includes(user.role.toLowerCase());
-  const canExportAttendance = user?.role && ['admin', 'hr', 'manager'].includes(user.role.toLowerCase());
+  const canExportAttendance = user?.role && ['admin', 'hr'].includes(user.role.toLowerCase());
 
   // Access rules for attendance viewing
   const getViewableRoles = (): UserRole[] => {
@@ -953,6 +961,23 @@ const AttendanceWithToggle: React.FC = () => {
     today.setHours(23, 59, 59, 999);
 
     switch (filter) {
+      case "yesterday": {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setHours(0, 0, 0, 0);
+        const yesterdayEnd = new Date(yesterday);
+        yesterdayEnd.setHours(23, 59, 59, 999);
+        setExportStartDate(yesterday);
+        setExportEndDate(yesterdayEnd);
+        break;
+      }
+      case "current_month": {
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        firstDayOfMonth.setHours(0, 0, 0, 0);
+        setExportStartDate(firstDayOfMonth);
+        setExportEndDate(today);
+        break;
+      }
       case "last_month":
         setExportStartDate(subMonths(today, 1));
         setExportEndDate(today);
@@ -965,6 +990,13 @@ const AttendanceWithToggle: React.FC = () => {
         setExportStartDate(subMonths(today, 6));
         setExportEndDate(today);
         break;
+      case "last_year": {
+        const oneYearAgo = new Date(today);
+        oneYearAgo.setFullYear(today.getFullYear() - 1);
+        setExportStartDate(oneYearAgo);
+        setExportEndDate(today);
+        break;
+      }
       case "custom":
       default:
         break;
@@ -1062,45 +1094,31 @@ const AttendanceWithToggle: React.FC = () => {
 
       let blob: Blob;
       if (reportLayout === "grid") {
-        // Grid export needs month and year
-        const exportMonth = exportStartDate
-          ? (exportStartDate.getMonth() + 1).toString()
-          : (new Date().getMonth() + 1).toString();
-        const exportYear = exportStartDate
-          ? exportStartDate.getFullYear().toString()
-          : new Date().getFullYear().toString();
-
+        // Grid export uses directly selected month and year
         blob =
           exportType === "csv"
             ? await apiService.exportMonthlyGridCSV({
-              month: exportMonth,
-              year: exportYear,
+              month: gridExportMonth,
+              year: gridExportYear,
               department: params.department,
             })
             : await apiService.exportMonthlyGridPDF({
-              month: exportMonth,
-              year: exportYear,
+              month: gridExportMonth,
+              year: gridExportYear,
               department: params.department,
             });
       } else if (reportLayout === "detailed_grid") {
-        // Detailed Grid export
-        const exportMonth = exportStartDate
-          ? (exportStartDate.getMonth() + 1).toString()
-          : (new Date().getMonth() + 1).toString();
-        const exportYear = exportStartDate
-          ? exportStartDate.getFullYear().toString()
-          : new Date().getFullYear().toString();
-
+        // Detailed Grid export uses directly selected month and year
         blob =
           exportType === "csv"
             ? await apiService.exportMonthlyGridDetailedCSV({
-              month: exportMonth,
-              year: exportYear,
+              month: gridExportMonth,
+              year: gridExportYear,
               department: params.department,
             })
             : await apiService.downloadMonthlyDetailedAttendanceGridPDF({
-              month: exportMonth,
-              year: exportYear,
+              month: gridExportMonth,
+              year: gridExportYear,
               department: params.department,
             });
       } else {
@@ -1627,25 +1645,24 @@ const AttendanceWithToggle: React.FC = () => {
           // 3. Role lookup (normalized) and Hierarchy check
           const role = (userRoleMap[recUserId] || '').toLowerCase();
 
-          // Trust backend results for managers, but apply safety check if role is known
+          // Role-based visibility rules
           if (role) {
             if (currentUserRole === 'manager') {
-              // Managers can see employees, team leads, and potentially other managers in same branch
+              // Managers can see employees, team leads, and other managers
               const isAllowed = ['employee', 'teamlead', 'team_lead', 'manager'].includes(role);
               if (!isAllowed) return false;
             } else if (currentUserRole === 'team_lead' || currentUserRole === 'teamlead') {
-              // Team leads should only see employees
+              // Team leads see employees
               if (role !== 'employee') return false;
             }
           }
 
-          // 4. If manager has department, enforce department scope.
-          //    Allow observation if record department is missing (rely on backend manager_id scope)
-          if (userDept && recDept && recDept !== userDept) {
+          // 4. Department Scope (Only for Team Leads if needed, usually Managers see all)
+          if ((currentUserRole === 'team_lead' || currentUserRole === 'teamlead') && userDept && recDept && recDept !== userDept) {
             return false;
           }
 
-          return false;
+          return true;
         });
       }
 
@@ -1951,6 +1968,25 @@ const AttendanceWithToggle: React.FC = () => {
       setExportDepartments([]);
     }
   }, [canExportAttendance, user?.department, user?.role]);
+
+  useEffect(() => {
+    const fetchCoreDepartments = async () => {
+      try {
+        const items = await apiService.getDepartmentNames();
+        const names = items
+          .map((d) => d?.name)
+          .filter((name): name is string => Boolean(name && name.trim()))
+          .map((name) => name.trim());
+        setCoreDepartments(
+          Array.from(new Set(names)).sort((a, b) => a.localeCompare(b)),
+        );
+      } catch (err) {
+        console.error("fetchCoreDepartments error", err);
+        setCoreDepartments([]);
+      }
+    };
+    fetchCoreDepartments();
+  }, []);
 
   useEffect(() => {
     if (canExportAttendance) {
@@ -2903,16 +2939,18 @@ const AttendanceWithToggle: React.FC = () => {
     checkInTime?: string,
     checkOutTime?: string,
   ) => {
-    // Only show "Late" or "On Time" as requested.
-    // The backend is the source of truth for shift-aware late determination.
-
-    return <Badge variant="destructive" className="text-sm">Late</Badge>;
-
-    // Default to "On Time" for present/active sessions, 
-    // and hide other statuses like "absent" or "early".
-    if (status === "present") {
+    // Show "Late" or "On Time" clearly
+    if (status === "late") {
       return (
-        <Badge variant="default" className="bg-green-500 text-sm">
+        <Badge variant="destructive" className="text-[10px] font-bold uppercase py-0.5 px-2">
+          Late
+        </Badge>
+      );
+    }
+
+    if (status === "present" || (checkInTime && !status)) {
+      return (
+        <Badge variant="default" className="bg-green-600 text-[10px] font-bold uppercase py-0.5 px-2">
           On Time
         </Badge>
       );
@@ -4034,9 +4072,6 @@ const AttendanceWithToggle: React.FC = () => {
                           {t.attendance.department}
                         </th>
                         <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white">Work location</th>
-                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap">
-                          Online status
-                        </th>
                         <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                           {t.attendance.checkInTime}
                         </th>
@@ -4124,31 +4159,6 @@ const AttendanceWithToggle: React.FC = () => {
                                     </span>
                                   </div>
                                 )}
-                              </td>
-                              <td className="p-3 whitespace-nowrap">
-                                {(() => {
-                                  const statusInfo =
-                                    getOnlineStatusForEmployeeDisplay(record);
-                                  if (statusInfo.showAbsent) {
-                                    return null;
-                                  } else if (
-                                    statusInfo.label === "Checked Out"
-                                  ) {
-                                    return (
-                                      <span className="text-[14px] font-bold text-black dark:text-white" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                                        Checked Out
-                                      </span>
-                                    );
-                                  } else {
-                                    return (
-                                      <OnlineStatusIndicator
-                                        isOnline={statusInfo.isOnline}
-                                        size="sm"
-                                        showLabel={true}
-                                      />
-                                    );
-                                  }
-                                })()}
                               </td>
                               <td className="p-3 whitespace-nowrap">
                                 <div className="flex items-center gap-1.5">
@@ -4253,48 +4263,36 @@ const AttendanceWithToggle: React.FC = () => {
                                 </div>
                               </td>
                               <td className="p-3 whitespace-nowrap">
-                                <div className="flex flex-col items-center gap-1">
+                                <div className="flex flex-col items-center gap-1.5">
+                                  {/* Online status */}
                                   <div className="flex justify-center">
+                                    {(() => {
+                                      const statusInfo = getOnlineStatusForEmployeeDisplay(record);
+                                      if (statusInfo.showAbsent) return null;
+                                      if (statusInfo.label === "Checked Out") {
+                                        return (
+                                          <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight">
+                                            Offline
+                                          </span>
+                                        );
+                                      }
+                                      return (
+                                        <OnlineStatusIndicator
+                                          isOnline={statusInfo.isOnline}
+                                          size="sm"
+                                          showLabel={true}
+                                        />
+                                      );
+                                    })()}
+                                  </div>
+
+                                  {/* Attendance status */}
+                                  <div className="flex justify-center flex-wrap gap-1">
                                     {getStatusBadge(
                                       record.status,
                                       record.checkInTime,
                                       record.checkOutTime,
                                     )}
-                                  </div>
-                                  <div className="flex flex-col items-center gap-1 border-t border-slate-100 dark:border-slate-800 pt-1 mt-1 w-full">
-                                    <div className="flex items-center gap-1 text-[12px] font-medium text-black dark:text-white">
-                                      <Timer className="h-2.5 w-2.5 text-blue-400" />
-                                      <span>
-                                        {(record.scheduledStart || "10:00").replace(/^0/, '')} -{" "}
-                                        {(record.scheduledEnd || "19:00").replace(/^0/, '')}
-                                      </span>
-                                    </div>
-                                    <div className="flex flex-col items-center gap-1">
-                                      {record.checkInStatus && (
-                                        <Badge
-                                          variant="outline"
-                                          className={`text-[12px] px-1 py-0 uppercase font-bold border-0 ${record.checkInStatus.toLowerCase() ===
-                                            "late"
-                                            ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
-                                            : "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400"
-                                            }`}
-                                        >
-                                          In: {record.checkInStatus}
-                                        </Badge>
-                                      )}
-                                      {record.checkOutStatus && (
-                                        <Badge
-                                          variant="outline"
-                                          className={`text-[12px] px-1 py-0 uppercase font-bold border-0 ${record.checkOutStatus.toLowerCase() ===
-                                            "early"
-                                            ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
-                                            : "bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-400"
-                                            }`}
-                                        >
-                                          Out: {record.checkOutStatus}
-                                        </Badge>
-                                      )}
-                                    </div>
                                   </div>
                                 </div>
                               </td>
@@ -5372,7 +5370,10 @@ const AttendanceWithToggle: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setReportLayout("detailed_grid")}
+                  onClick={() => {
+                    setReportLayout("detailed_grid");
+                    setExportType("pdf");
+                  }}
                   className={`p-2.5 rounded-lg border transition-all ${reportLayout === "detailed_grid"
                     ? "border-purple-600 bg-purple-50 dark:bg-purple-950"
                     : "border-gray-200 hover:border-purple-300 dark:border-gray-700"
@@ -5404,11 +5405,12 @@ const AttendanceWithToggle: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
+                  disabled={reportLayout === "detailed_grid"}
                   onClick={() => setExportType("csv")}
                   className={`p-2.5 rounded-lg border transition-all ${exportType === "csv"
                     ? "border-green-600 bg-green-50 dark:bg-green-950"
                     : "border-gray-200 hover:border-green-300 dark:border-gray-700"
-                    }`}
+                    } ${reportLayout === "detailed_grid" ? "opacity-50 cursor-not-allowed grayscale" : ""}`}
 
                 >
                   <div className="flex flex-col items-center gap-1.5">
@@ -5451,53 +5453,103 @@ const AttendanceWithToggle: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Filter Dropdown */}
-            <div className="space-y-2">
-              <Label htmlFor="quick-filter" className="text-sm font-medium">
-                Quick Filter
-              </Label>
-              <Select value={quickFilter} onValueChange={handleQuickFilter}>
-                <SelectTrigger
-                  id="quick-filter"
-                  className={`w-full h-10 border-2 border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all ${quickFilter === 'custom' ? 'md:min-w-[240px]' : ''}`}
-                >
-                  <SelectValue placeholder="Select Duration" />
-                </SelectTrigger>
-                <SelectContent
-                  position="popper"
-                  className="w-[var(--radix-select-trigger-width)] min-w-[200px] max-w-[400px] z-50"
-                  sideOffset={5}
-                  align="start"
-                >
-                  <SelectItem value="last_month">Last Month</SelectItem>
-                  <SelectItem value="last_3_months">Last 3 Months</SelectItem>
-                  <SelectItem value="last_6_months">Last 6 Months</SelectItem>
-                  <SelectItem value="custom">Custom Range</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Date Selection — Month/Year for grid layouts, Date Range for basic */}
+            {(reportLayout === "grid" || reportLayout === "detailed_grid") ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="grid-export-month" className="text-sm font-medium">
+                    Month
+                  </Label>
+                  <Select value={gridExportMonth} onValueChange={setGridExportMonth}>
+                    <SelectTrigger id="grid-export-month" className="w-full h-10 border-2">
+                      <SelectValue placeholder="Select Month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">January</SelectItem>
+                      <SelectItem value="2">February</SelectItem>
+                      <SelectItem value="3">March</SelectItem>
+                      <SelectItem value="4">April</SelectItem>
+                      <SelectItem value="5">May</SelectItem>
+                      <SelectItem value="6">June</SelectItem>
+                      <SelectItem value="7">July</SelectItem>
+                      <SelectItem value="8">August</SelectItem>
+                      <SelectItem value="9">September</SelectItem>
+                      <SelectItem value="10">October</SelectItem>
+                      <SelectItem value="11">November</SelectItem>
+                      <SelectItem value="12">December</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="grid-export-year" className="text-sm font-medium">
+                    Year
+                  </Label>
+                  <Select value={gridExportYear} onValueChange={setGridExportYear}>
+                    <SelectTrigger id="grid-export-year" className="w-full h-10 border-2">
+                      <SelectValue placeholder="Select Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((yr) => (
+                        <SelectItem key={yr} value={String(yr)}>{yr}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Quick Filter Dropdown */}
+                <div className="space-y-2">
+                  <Label htmlFor="quick-filter" className="text-sm font-medium">
+                    Quick Filter
+                  </Label>
+                  <Select value={quickFilter} onValueChange={handleQuickFilter}>
+                    <SelectTrigger
+                      id="quick-filter"
+                      className={`w-full h-10 border-2 border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all ${quickFilter === 'custom' ? 'md:min-w-[240px]' : ''}`}
+                    >
+                      <SelectValue placeholder="Select Duration" />
+                    </SelectTrigger>
+                    <SelectContent
+                      position="popper"
+                      className="w-[var(--radix-select-trigger-width)] min-w-[200px] max-w-[400px] z-50"
+                      sideOffset={5}
+                      align="start"
+                    >
+                      <SelectItem value="yesterday">Yesterday</SelectItem>
+                      <SelectItem value="current_month">Current Month</SelectItem>
+                      <SelectItem value="last_month">Last Month</SelectItem>
+                      <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                      <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                      <SelectItem value="last_year">Last 1 Year</SelectItem>
+                      <SelectItem value="custom">Custom Range</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            {/* Date Range Selection */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="export-start" className="text-sm font-medium">
-                  Start Date
-                </Label>
-                <DatePicker
-                  date={exportStartDate}
-                  onDateChange={setExportStartDate}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="export-end" className="text-sm font-medium">
-                  End Date
-                </Label>
-                <DatePicker
-                  date={exportEndDate}
-                  onDateChange={setExportEndDate}
-                />
-              </div>
-            </div>
+                {/* Date Range Selection */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="export-start" className="text-sm font-medium">
+                      Start Date
+                    </Label>
+                    <DatePicker
+                      date={exportStartDate}
+                      onDateChange={setExportStartDate}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="export-end" className="text-sm font-medium">
+                      End Date
+                    </Label>
+                    <DatePicker
+                      date={exportEndDate}
+                      onDateChange={setExportEndDate}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Employee Filter */}
             <div className="space-y-2">
@@ -5555,8 +5607,8 @@ const AttendanceWithToggle: React.FC = () => {
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {exportDepartments.length ? (
-                        exportDepartments.map((dept) => (
+                      {coreDepartments.length ? (
+                        coreDepartments.map((dept) => (
                           <SelectItem key={dept} value={dept}>
                             {dept}
                           </SelectItem>
@@ -5672,7 +5724,7 @@ const AttendanceWithToggle: React.FC = () => {
               onClick={performExport}
               disabled={
                 isExporting ||
-                (!exportStartDate && !exportEndDate) ||
+                (reportLayout === "basic" && !exportStartDate && !exportEndDate) ||
                 (employeeExportFilter === "specific" && !selectedExportEmployee)
               }
               className={

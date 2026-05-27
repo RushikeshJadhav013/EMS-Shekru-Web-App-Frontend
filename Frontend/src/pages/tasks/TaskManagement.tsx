@@ -657,24 +657,14 @@ const TaskManagement: React.FC = () => {
 
   const fetchAndStoreHistory = useCallback(
     async (taskId: string) => {
-      if (!authToken) return;
       try {
-        const response = await fetch(
-          `${API_BASE_URL}/tasks/${taskId}/history`,
-          {
-            headers: authorizedHeaders,
-          },
-        );
-        if (!response.ok) {
-          throw new Error(`Failed to load history (${response.status})`);
-        }
-        const data: TaskHistoryEntry[] = await response.json();
+        const data = await apiService.getTaskHistory(taskId);
         setTaskHistory((prev) => ({ ...prev, [taskId]: data }));
       } catch (error) {
         console.error("Failed to fetch task history", error);
       }
     },
-    [authToken, authorizedHeaders],
+    [],
   );
 
   useEffect(() => {
@@ -899,13 +889,7 @@ const TaskManagement: React.FC = () => {
         try {
           // Use formatted status for backend
           const backendStatus = frontendToBackendStatus["overdue"];
-          await fetch(
-            `${API_BASE_URL}/tasks/${task.id}/status?status=${encodeURIComponent(backendStatus)}`,
-            {
-              method: "PUT",
-              headers: authorizedHeaders,
-            },
-          );
+          await apiService.updateTaskStatus(task.id, backendStatus);
         } catch (error) {
           console.error(
             `Failed to update task ${task.id} to overdue status`,
@@ -932,16 +916,8 @@ const TaskManagement: React.FC = () => {
           return aStatusPriority - bStatusPriority;
         }
 
-        // Within same status, sort by deadline (earliest first)
-        // Tasks without deadline go to the end
-        const aDeadline = a.deadline
-          ? new Date(a.deadline).getTime()
-          : Number.MAX_SAFE_INTEGER;
-        const bDeadline = b.deadline
-          ? new Date(b.deadline).getTime()
-          : Number.MAX_SAFE_INTEGER;
-
-        return aDeadline - bDeadline;
+        // Within same status, sort by ID (latest first) to show newest tasks at the top
+        return Number(b.id) - Number(a.id);
       });
       setTasks(sortedTasks);
       setTaskHistory({});
@@ -3608,7 +3584,7 @@ const TaskManagement: React.FC = () => {
         </div>
       </div>
 
-      <Tabs value={activeViewTab} onValueChange={setActiveViewTab} className="w-full">
+      <Tabs value={activeViewTab} onValueChange={(value) => setActiveViewTab(value as "all" | "project")} className="w-full">
         <TabsList
           className="grid w-full grid-cols-2 h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm"
         >

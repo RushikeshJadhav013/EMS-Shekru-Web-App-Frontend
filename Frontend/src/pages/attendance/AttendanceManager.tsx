@@ -194,6 +194,12 @@ const AttendanceManager: React.FC = () => {
     "basic" | "grid" | "detailed_grid"
   >("basic");
   const [quickFilter, setQuickFilter] = useState<string>("custom");
+  const [gridMonth, setGridMonth] = useState<string>(
+    String(new Date().getMonth() + 1),
+  );
+  const [gridYear, setGridYear] = useState<string>(
+    String(new Date().getFullYear()),
+  );
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [employeeFilter, setEmployeeFilter] = useState<"all" | "specific">(
@@ -871,9 +877,7 @@ const AttendanceManager: React.FC = () => {
           ].includes(role);
           if (!isAllowedRole) return false;
 
-          // 3. If manager has department, filter by it. Otherwise show all provided by backend.
-          if (normalizedDept && empDept && empDept !== normalizedDept) return false;
-
+          // 3. Role-based filtering is sufficient; backend handles branch/company scoping.
           return true;
         });
 
@@ -1146,13 +1150,7 @@ const AttendanceManager: React.FC = () => {
         const params: any = {};
         if (targetDate) params.date = targetDate;
 
-        // Enforce backend-level filtering for Managers (Department Scope + Manager ID)
-        if (user?.role === 'manager') {
-          if (user.department) {
-            params.department = user.department;
-          }
-          params.manager_id = user.id;
-        }
+
 
         let [data, employeesRaw] = await Promise.all([
           apiService.getAttendanceRecords(params),
@@ -1187,59 +1185,7 @@ const AttendanceManager: React.FC = () => {
 
         console.log("Attendance data received:", data);
 
-        // Enforce simplified visibility validation for Managers
-        if (user?.role === 'manager') {
-          const managerId = String(user.id);
-          const normalizedDept = (user.department || "").trim().toLowerCase();
 
-          data = data.filter((rec: any) => {
-            const recUserId = String(rec.user_id || rec.userId);
-            let recDept = (rec.department || "").trim().toLowerCase();
-
-            // 1. Always show Self (Manager)
-            if (recUserId === managerId) return true;
-
-            // 2. Fallback department lookup
-            if (!recDept && userDepartmentMap[recUserId]) {
-              recDept = userDepartmentMap[recUserId];
-            }
-
-            // 3. Role check
-            const role = userRoleMap[recUserId];
-            const isAllowedRole = [
-              "employee",
-              "teamlead",
-              "team_lead",
-              "manager",
-            ].includes(role);
-            if (!isAllowedRole) return false;
-
-            // 4. If manager has department, enforce department scope
-            // Support multi-department managers by checking for overlap
-            if (normalizedDept && recDept) {
-              const managerDepts = normalizedDept
-                .split(",")
-                .map((d) => d.trim().toLowerCase())
-                .filter(Boolean);
-              const recordDepts = recDept
-                .split(",")
-                .map((d) => d.trim().toLowerCase())
-                .filter(Boolean);
-              const hasOverlap = recordDepts.some((rd) =>
-                managerDepts.includes(rd),
-              );
-              if (!hasOverlap) return false;
-            }
-
-            return true;
-          });
-
-          console.log("Manager attendance filtering simplified:", {
-            managerId,
-            department: normalizedDept,
-            filteredRecordsCount: data.length,
-          });
-        }
 
         // Transform backend data to EmployeeAttendance format
         const transformedData: EmployeeAttendance[] = data
@@ -1663,6 +1609,8 @@ const AttendanceManager: React.FC = () => {
     setEndDate(today);
     setStartDate(undefined);
     setQuickFilter("custom");
+    setGridMonth(String(today.getMonth() + 1));
+    setGridYear(String(today.getFullYear()));
     setEmployeeFilter("all");
     setEmployeeSearch("");
     setSelectedEmployee(null);
@@ -1725,45 +1673,31 @@ const AttendanceManager: React.FC = () => {
       // Use apiService for export with proper authentication
       let blob: Blob;
       if (reportLayout === "grid") {
-        // Grid export needs month and year
-        const exportMonth = startDate
-          ? (startDate.getMonth() + 1).toString()
-          : (new Date().getMonth() + 1).toString();
-        const exportYear = startDate
-          ? startDate.getFullYear().toString()
-          : new Date().getFullYear().toString();
-
+        // Grid export uses selected month and year
         blob =
           exportType === "csv"
             ? await apiService.exportMonthlyGridCSV({
-              month: exportMonth,
-              year: exportYear,
+              month: gridMonth,
+              year: gridYear,
               department: exportParams.department,
             })
             : await apiService.exportMonthlyGridPDF({
-              month: exportMonth,
-              year: exportYear,
+              month: gridMonth,
+              year: gridYear,
               department: exportParams.department,
             });
       } else if (reportLayout === "detailed_grid") {
-        // Detailed Grid export also needs month and year
-        const exportMonth = startDate
-          ? (startDate.getMonth() + 1).toString()
-          : (new Date().getMonth() + 1).toString();
-        const exportYear = startDate
-          ? startDate.getFullYear().toString()
-          : new Date().getFullYear().toString();
-
+        // Detailed Grid export also uses selected month and year
         blob =
           exportType === "csv"
             ? await apiService.exportMonthlyGridDetailedCSV({
-              month: exportMonth,
-              year: exportYear,
+              month: gridMonth,
+              year: gridYear,
               department: exportParams.department,
             })
             : await apiService.downloadMonthlyDetailedAttendanceGridPDF({
-              month: exportMonth,
-              year: exportYear,
+              month: gridMonth,
+              year: gridYear,
               department: exportParams.department,
             });
       } else {
@@ -2064,43 +1998,45 @@ const AttendanceManager: React.FC = () => {
   };
 
   const tabsContainer = (
-    <div className="flex items-center w-full max-w-[500px]">
-      <TabsList className="grid grid-cols-3 h-12 w-full bg-white dark:bg-slate-900 border-2 border-[#000000] dark:border-slate-700 rounded-2xl p-1 gap-2 shadow-sm">
-        <TabsTrigger
-          value="attendance"
-          className="rounded-xl font-bold text-[10px] tracking-wide transition-all duration-300
+    <div className="flex justify-center w-full">
+      <div className="flex items-center w-full max-w-[500px]">
+        <TabsList className="grid grid-cols-3 h-12 w-full bg-white dark:bg-slate-900 border-2 border-[#000000] dark:border-slate-700 rounded-2xl p-1 gap-2 shadow-sm">
+          <TabsTrigger
+            value="attendance"
+            className="rounded-xl font-bold text-[10px] tracking-wide transition-all duration-300
             data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
             data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
-          style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
-        >
-          Attendance
-        </TabsTrigger>
-        <TabsTrigger
-          value="office-hours"
-          className="rounded-xl font-bold text-[10px] tracking-wide transition-all duration-300
+            style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
+          >
+            Attendance
+          </TabsTrigger>
+          <TabsTrigger
+            value="office-hours"
+            className="rounded-xl font-bold text-[10px] tracking-wide transition-all duration-300
             data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
             data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
-          style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
-        >
-          Office hours
-        </TabsTrigger>
-        <TabsTrigger
-          value="wfh-requests"
-          className="rounded-xl font-bold text-[10px] tracking-wide transition-all duration-300 relative
+            style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
+          >
+            Office hours
+          </TabsTrigger>
+          <TabsTrigger
+            value="wfh-requests"
+            className="rounded-xl font-bold text-[10px] tracking-wide transition-all duration-300 relative
             data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
             data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
-          style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
-        >
-          Wfh requests
-          {getAdminPendingWfhCount() > 0 && (
-            <Badge
-              className="absolute -top-1 -right-1 h-4 min-w-4 rounded-full p-0 flex items-center justify-center text-[8px] font-black bg-rose-500 text-white border-2 border-white dark:border-gray-800"
-            >
-              {getAdminPendingWfhCount()}
-            </Badge>
-          )}
-        </TabsTrigger>
-      </TabsList>
+            style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
+          >
+            Wfh requests
+            {getAdminPendingWfhCount() > 0 && (
+              <Badge
+                className="absolute -top-1 -right-1 h-4 min-w-4 rounded-full p-0 flex items-center justify-center text-[8px] font-black bg-rose-500 text-white border-2 border-white dark:border-gray-800"
+              >
+                {getAdminPendingWfhCount()}
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+      </div>
     </div>
   );
 
@@ -2125,9 +2061,8 @@ const AttendanceManager: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto mt-6 xl:mt-0">
-          {tabsContainer}
-          <div className="relative flex gap-3 shrink-0">
+        <div className="relative flex gap-3 shrink-0 mt-6 xl:mt-0">
+          {(user?.role === "admin" || user?.role === "hr") && (
             <Button
               onClick={() => setExportModalOpen(true)}
               size="lg"
@@ -2138,7 +2073,7 @@ const AttendanceManager: React.FC = () => {
               <Download className="h-4 w-4" />
               {isExporting ? t.attendance.exporting : "Export"}
             </Button>
-          </div>
+          )}
         </div>
       </div>
     </div>
@@ -2225,7 +2160,6 @@ const AttendanceManager: React.FC = () => {
                     <SelectItem value="present">Present</SelectItem>
                     <SelectItem value="late">Late</SelectItem>
                     <SelectItem value="early">Early Departure</SelectItem>
-                    <SelectItem value="absent">Absent</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -2238,13 +2172,7 @@ const AttendanceManager: React.FC = () => {
                   <Select value={timePeriodFilter} onValueChange={(value: any) => setTimePeriodFilter(value)}>
                     <SelectTrigger className="w-full h-11 bg-white dark:bg-gray-950 border-2 border-black rounded-xl text-slate-700 dark:text-slate-200 font-bold text-sm">
                       <Calendar className="h-4 w-4 mr-2 text-blue-500" />
-                      <SelectValue>
-                        {timePeriodFilter === 'custom'
-                          ? (customStartDate && customEndDate
-                            ? `${formatDateIST(customStartDate)} - ${formatDateIST(customEndDate)}`
-                            : 'Custom Range')
-                          : undefined}
-                      </SelectValue>
+                      <SelectValue placeholder="Duration" />
                     </SelectTrigger>
                     <SelectContent className="border-2 border-black rounded-xl">
                       <SelectItem value="today">Today</SelectItem>
@@ -2310,7 +2238,6 @@ const AttendanceManager: React.FC = () => {
                       {t.attendance.department}
                     </th>
                     <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">Work Location</th>
-                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">Online Status</th>
                     <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
                       {t.attendance.checkInTime}
                     </th>
@@ -2397,32 +2324,7 @@ const AttendanceManager: React.FC = () => {
                               </div>
                             )}
                           </td>
-                          <td className="p-4">
-                            <div className="flex flex-col items-center gap-1">
-                              {(() => {
-                                const statusInfo = getOnlineStatusForDisplay(record);
-                                if (statusInfo.showAbsent) return null;
-                                if (statusInfo.label === "Checked Out") {
-                                  return (
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                      Offline
-                                    </span>
-                                  );
-                                }
-                                return (
-                                  <OnlineStatusIndicator
-                                    isOnline={statusInfo.isOnline}
-                                    size="sm"
-                                    showLabel={true}
-                                    clickable={isAdmin}
-                                    attendanceId={parseInt(record.id)}
-                                    userId={parseInt(record.userId)}
-                                    userName={record.userName}
-                                  />
-                                );
-                              })()}
-                            </div>
-                          </td>
+
                           <td className="p-4 font-outfit">
                             <div className="flex items-center gap-2 px-2 py-1 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-100 dark:border-emerald-900/50">
                               <Clock className="h-3.5 w-3.5 text-emerald-600" />
@@ -2493,22 +2395,35 @@ const AttendanceManager: React.FC = () => {
                             </div>
                           </td>
                           <td className="p-4">
-                            <div className="flex flex-col gap-1.5">
+                            <div className="flex flex-col gap-2">
+                              {/* Online Status */}
                               <div className="flex justify-center">
-                                {getStatusBadge(record)}
+                                {(() => {
+                                  const statusInfo = getOnlineStatusForDisplay(record);
+                                  if (statusInfo.showAbsent) return null;
+                                  if (statusInfo.label === "Checked Out") {
+                                    return (
+                                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Offline
+                                      </span>
+                                    );
+                                  }
+                                  return (
+                                    <OnlineStatusIndicator
+                                      isOnline={statusInfo.isOnline}
+                                      size="sm"
+                                      showLabel={true}
+                                      clickable={isAdmin}
+                                      attendanceId={parseInt(record.id)}
+                                      userId={parseInt(record.userId)}
+                                      userName={record.userName}
+                                    />
+                                  );
+                                })()}
                               </div>
-                              <div className="flex flex-col items-center gap-1 border-t border-slate-100 dark:border-slate-800 pt-1.5 mt-0.5">
-                                {record.checkInStatus && (
-                                  <Badge
-                                    variant="outline"
-                                    className={`text-[9px] px-1.5 py-0 font-black border-0 uppercase ${record.checkInStatus.toLowerCase() === "late"
-                                      ? "bg-rose-50 text-rose-600 dark:bg-rose-950/30"
-                                      : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30"
-                                      }`}
-                                  >
-                                    IN: {record.checkInStatus}
-                                  </Badge>
-                                )}
+                              {/* Attendance Level Status */}
+                              <div className="flex justify-center flex-wrap gap-1">
+                                {getStatusBadge(record)}
                               </div>
                             </div>
                           </td>
@@ -2859,11 +2774,16 @@ const AttendanceManager: React.FC = () => {
                     <button
                       key={layout.id}
                       type="button"
-                      onClick={() => setReportLayout(layout.id as any)}
+                      onClick={() => {
+                        setReportLayout(layout.id as any);
+                        if (layout.id === "detailed_grid") {
+                          setExportType("pdf");
+                        }
+                      }}
                       className={`group flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-300 relative overflow-hidden ${reportLayout === layout.id
                         ? "border-black bg-slate-100 shadow-inner"
                         : "border-slate-100 hover:border-black bg-white"
-                        }`}
+                        } ${layout.id === 'detailed_grid' && exportType === 'csv' ? 'hover:border-purple-400' : ''}`}
                     >
                       <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${reportLayout === layout.id ? 'bg-black text-white scale-110' : 'bg-slate-50 text-slate-400 group-hover:bg-black group-hover:text-white'}`}>
                         <layout.icon className="h-5 w-5" />
@@ -2889,11 +2809,12 @@ const AttendanceManager: React.FC = () => {
                     <button
                       key={format.id}
                       type="button"
+                      disabled={reportLayout === "detailed_grid" && format.id === "csv"}
                       onClick={() => setExportType(format.id as any)}
                       className={`group flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-300 relative overflow-hidden ${exportType === format.id
                         ? "border-black bg-slate-100 shadow-inner"
                         : "border-slate-100 hover:border-black bg-white"
-                        }`}
+                        } ${reportLayout === "detailed_grid" && format.id === "csv" ? "opacity-50 cursor-not-allowed grayscale" : ""}`}
                     >
                       <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${exportType === format.id ? 'bg-black text-white scale-110' : 'bg-slate-50 text-slate-400 group-hover:bg-black group-hover:text-white'}`}>
                         <format.icon className="h-5 w-5" />
@@ -2912,21 +2833,65 @@ const AttendanceManager: React.FC = () => {
             {/* Filters Section */}
             <div className="space-y-6 pt-6 border-t-2 border-black border-dashed">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Quick Filter */}
-                <div className="space-y-2">
-                  <Label htmlFor="quick-filter" className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">Time Period</Label>
-                  <Select value={quickFilter} onValueChange={handleQuickFilter}>
-                    <SelectTrigger id="quick-filter" className="w-full h-11 border-2 border-black rounded-xl font-bold text-sm bg-white">
-                      <Calendar className="h-4 w-4 mr-2 text-blue-500" />
-                      <SelectValue placeholder="Select period" />
-                    </SelectTrigger>
-                    <SelectContent className="border-2 border-black rounded-xl">
-                      {['yesterday', 'current_month', 'last_month', 'last_3_months', 'last_6_months', 'last_year', 'custom'].map((val) => (
-                        <SelectItem key={val} value={val} className="font-bold text-sm uppercase">{val.replace('_', ' ')}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Date Selection — Month/Year for grid layouts, Date Range for basic */}
+                {(reportLayout === "grid" || reportLayout === "detailed_grid") ? (
+                  <div className="grid grid-cols-2 gap-4 w-full">
+                    <div className="space-y-2">
+                      <Label htmlFor="grid-month" className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">Month</Label>
+                      <Select value={gridMonth} onValueChange={setGridMonth}>
+                        <SelectTrigger id="grid-month" className="w-full h-11 border-2 border-black rounded-xl font-bold text-sm bg-white">
+                          <SelectValue placeholder="Select Month" />
+                        </SelectTrigger>
+                        <SelectContent className="border-2 border-black rounded-xl">
+                          <SelectItem value="1" className="font-bold">JANUARY</SelectItem>
+                          <SelectItem value="2" className="font-bold">FEBRUARY</SelectItem>
+                          <SelectItem value="3" className="font-bold">MARCH</SelectItem>
+                          <SelectItem value="4" className="font-bold">APRIL</SelectItem>
+                          <SelectItem value="5" className="font-bold">MAY</SelectItem>
+                          <SelectItem value="6" className="font-bold">JUNE</SelectItem>
+                          <SelectItem value="7" className="font-bold">JULY</SelectItem>
+                          <SelectItem value="8" className="font-bold">AUGUST</SelectItem>
+                          <SelectItem value="9" className="font-bold">SEPTEMBER</SelectItem>
+                          <SelectItem value="10" className="font-bold">OCTOBER</SelectItem>
+                          <SelectItem value="11" className="font-bold">NOVEMBER</SelectItem>
+                          <SelectItem value="12" className="font-bold">DECEMBER</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="grid-year" className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">Year</Label>
+                      <Select value={gridYear} onValueChange={setGridYear}>
+                        <SelectTrigger id="grid-year" className="w-full h-11 border-2 border-black rounded-xl font-bold text-sm bg-white">
+                          <SelectValue placeholder="Select Year" />
+                        </SelectTrigger>
+                        <SelectContent className="border-2 border-black rounded-xl">
+                          {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((yr) => (
+                            <SelectItem key={yr} value={String(yr)} className="font-bold">{yr}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2 w-full">
+                    <Label htmlFor="quick-filter" className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">Time Period</Label>
+                    <Select value={quickFilter} onValueChange={handleQuickFilter}>
+                      <SelectTrigger id="quick-filter" className="w-full h-11 border-2 border-black rounded-xl font-bold text-sm bg-white">
+                        <Calendar className="h-4 w-4 mr-2 text-blue-500" />
+                        <SelectValue placeholder="Select period" />
+                      </SelectTrigger>
+                      <SelectContent className="border-2 border-black rounded-xl">
+                        <SelectItem value="yesterday" className="font-bold text-sm uppercase">Yesterday</SelectItem>
+                        <SelectItem value="current_month" className="font-bold text-sm uppercase">Current Month</SelectItem>
+                        <SelectItem value="last_month" className="font-bold text-sm uppercase">Last Month</SelectItem>
+                        <SelectItem value="last_3_months" className="font-bold text-sm uppercase">Last 3 Months</SelectItem>
+                        <SelectItem value="last_6_months" className="font-bold text-sm uppercase">Last 6 Months</SelectItem>
+                        <SelectItem value="last_year" className="font-bold text-sm uppercase">Last 1 Year</SelectItem>
+                        <SelectItem value="custom" className="font-bold text-sm uppercase">Custom Range</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
 
               </div>
@@ -2952,7 +2917,19 @@ const AttendanceManager: React.FC = () => {
               {/* Specific Employee Selection Controls */}
               {employeeFilter === "specific" && (
                 <div className="space-y-4 p-6 bg-slate-50 border-2 border-black rounded-2xl animate-in zoom-in-95 duration-200">
-
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-black uppercase tracking-widest ml-1">Department</Label>
+                    <Select value={selectedDepartmentFilter} onValueChange={setSelectedDepartmentFilter}>
+                      <SelectTrigger className="w-full h-11 border-2 border-black rounded-xl font-bold text-sm bg-white">
+                        <SelectValue placeholder="Select Department" />
+                      </SelectTrigger>
+                      <SelectContent className="border-2 border-black rounded-xl">
+                        {coreDepartments.map((dept) => (
+                          <SelectItem key={dept} value={dept} className="font-bold text-sm uppercase">{dept}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   {selectedDepartmentFilter && (
                     <div className="space-y-4">
@@ -3510,6 +3487,7 @@ const AttendanceManager: React.FC = () => {
             className="space-y-6"
           >
             {attendanceHeader}
+            {tabsContainer}
             <TabsContent value="attendance" className="space-y-6">
               {attendanceContent}
             </TabsContent>

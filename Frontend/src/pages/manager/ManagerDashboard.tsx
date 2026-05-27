@@ -20,7 +20,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { formatTimeIST, formatIST, nowIST } from '@/utils/timezone';
+import { formatTimeIST, formatIST, nowIST, todayIST } from '@/utils/timezone';
 import { apiService, API_BASE_URL } from '@/lib/api';
 import TruncatedText from '@/components/ui/TruncatedText';
 import { cn } from '@/lib/utils';
@@ -84,13 +84,65 @@ const ManagerDashboard: React.FC = () => {
         completedTasks: statSnapshot.completedTasks ?? prev.completedTasks
       }));
 
-      // Filter Team Activities
-      const allActivities = data.teamActivities || data.recentActivities || [];
-      const userDepts = (user?.department || '').split(',').map((d: any) => d.trim().toLowerCase()).filter(Boolean);
+      // Enhanced Recent Activities Logic - Fetch today's records for accurate timing
+      const todayDateStr = todayIST();
 
-      // Simple filter for activities if the API doesn't already filter by manager department
-      const filteredActivities = allActivities.slice(0, ACTIVITIES_PER_PAGE);
-      setTeamActivities(filteredActivities);
+      // 1. Initial filter from dashboard data (tasks, leaves, etc.)
+      let activities = (data.teamActivities || data.recentActivities || []).filter((a: any) => {
+        if (!a.time) return false;
+        // Avoid duplicate check-ins/outs as we fetch fresh ones next
+        if (a.type === 'check-in' || a.type === 'check-out') return false;
+        return a.time.split('T')[0] === todayDateStr;
+      });
+
+      // 2. Fetch fresh attendance records for today to get accurate timings
+      try {
+        const attendanceData = await apiService.getAttendanceRecords({ date: todayDateStr });
+        const attendanceActivities: any[] = [];
+
+        if (Array.isArray(attendanceData)) {
+          attendanceData.forEach((rec: any) => {
+            const userName = rec.userName || rec.user?.name || rec.name || 'Unknown User';
+            const recId = rec.id || rec.attendance_id;
+
+            const checkInTime = rec.check_in || rec.checkInTime;
+            const checkOutTime = rec.check_out || rec.checkOutTime;
+
+            // Add Check-In Activity
+            if (checkInTime && checkInTime.split('T')[0] === todayDateStr) {
+              attendanceActivities.push({
+                id: `in-${recId}`,
+                type: 'check-in',
+                user: userName,
+                time: checkInTime,
+                status: rec.status || 'present',
+                checkInStatus: rec.checkInStatus || rec.check_in_status,
+              });
+            }
+
+            // Add Check-Out Activity
+            if (checkOutTime && checkOutTime.split('T')[0] === todayDateStr) {
+              attendanceActivities.push({
+                id: `out-${recId}`,
+                type: 'check-out',
+                user: userName,
+                time: checkOutTime,
+                status: 'checked_out',
+                checkOutStatus: rec.checkOutStatus || rec.check_out_status,
+              });
+            }
+          });
+        }
+
+        // Merge and Sort
+        activities = [...activities, ...attendanceActivities];
+        activities.sort((a: any, b: any) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+      } catch (attError) {
+        console.error("Failed to fetch fresh attendance for manager dashboard activities", attError);
+      }
+
+      setTeamActivities(activities.slice(0, 100));
 
       // Filter Team Performance
       const allPerformance = data.teamPerformance || [];
@@ -113,15 +165,10 @@ const ManagerDashboard: React.FC = () => {
       const userDepts = (user?.department || '').split(',').map((d: any) => d.trim().toLowerCase()).filter(Boolean);
 
       const departmentEmployees = employees.filter((emp: any) => {
-        const role = (emp.role || '').toLowerCase();
-        const empDepts = (emp.department || '').split(',').map((d: any) => d.trim().toLowerCase()).filter(Boolean);
         const uId = String(emp.user_id || emp.userId || emp.id);
 
-        if (uId === userId) return true;
-
-        // Share any department and role is employee/team_lead
-        const hasMatchingDept = userDepts.length === 0 || empDepts.some(d => userDepts.includes(d));
-        return hasMatchingDept && (role === 'employee' || role === 'team_lead');
+        // Show all employees as requested
+        return true;
       });
 
       const attendanceMap: Record<string, any> = {};
@@ -191,7 +238,7 @@ const ManagerDashboard: React.FC = () => {
         };
       });
 
-      setTeamMembers(teamMembersData);
+      setTeamMembers(teamMembersData.sort((a, b) => a.name.localeCompare(b.name)));
 
       // Update team members count in stats if it changed
       setStats(prev => ({

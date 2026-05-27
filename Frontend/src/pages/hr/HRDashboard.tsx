@@ -23,7 +23,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { formatTimeIST, formatIST } from '@/utils/timezone';
+import { formatTimeIST, formatIST, todayIST, formatDateIST } from '@/utils/timezone';
 import { apiService } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import SummaryCard from '@/components/ui/SummaryCard';
@@ -83,17 +83,71 @@ const HRDashboard: React.FC = () => {
         completedTasks: (statSnapshot as any).completedTasks ?? prev.completedTasks
       }));
 
-      // Show all recent activities from API (removed strict "Today" filter for better visibility)
-      const allActivities = (Array.isArray(activityFeed) ? activityFeed : []);
+      // Enhanced Recent Activities Logic - Fetch today's records for accurate timing
+      const todayDateStr = todayIST();
 
-      // Sort by time (most recent first)
-      allActivities.sort((a, b) => {
-        const timeA = a.time ? new Date(a.time).getTime() : 0;
-        const timeB = b.time ? new Date(b.time).getTime() : 0;
-        return timeB - timeA;
+      // 1. Initial filter from dashboard data (tasks, leaves, etc.)
+      let activities = (Array.isArray(activityFeed) ? activityFeed : []).filter((a: any) => {
+        if (!a.time) return false;
+        // Avoid duplicate check-ins/outs as we fetch fresh ones next
+        if (a.type === 'attendance') return false; // In HR dashboard, attendance type is used instead of check-in/out
+
+        // Show current day activities only
+        return formatDateIST(a.time) === todayDateStr;
       });
 
-      setRecentActivities(allActivities);
+      // 2. Fetch fresh attendance records for today to get accurate timings
+      try {
+        const attendanceData = await apiService.getAttendanceRecords({ date: todayDateStr });
+        const attendanceActivities: any[] = [];
+
+        if (Array.isArray(attendanceData)) {
+          attendanceData.forEach((rec: any) => {
+            const userName = rec.userName || rec.user?.name || rec.name || 'Unknown User';
+            const recId = rec.id || rec.attendance_id;
+
+            const checkInTime = rec.check_in || rec.checkInTime;
+            const checkOutTime = rec.check_out || rec.checkOutTime;
+
+            // Add Check-In Activity
+            if (checkInTime && formatDateIST(checkInTime) === todayDateStr) {
+              attendanceActivities.push({
+                id: `in-${recId}`,
+                type: 'attendance',
+                user: userName,
+                time: checkInTime,
+                status: rec.status || 'present',
+                checkInStatus: rec.checkInStatus || rec.check_in_status,
+              });
+            }
+
+            // Add Check-Out Activity
+            if (checkOutTime && formatDateIST(checkOutTime) === todayDateStr) {
+              attendanceActivities.push({
+                id: `out-${recId}`,
+                type: 'attendance',
+                user: userName,
+                time: checkOutTime,
+                status: 'checked_out',
+                checkOutStatus: rec.checkOutStatus || rec.check_out_status,
+              });
+            }
+          });
+        }
+
+        // Merge and Sort
+        activities = [...activities, ...attendanceActivities];
+        activities.sort((a, b) => {
+          const timeA = a.time ? new Date(a.time).getTime() : 0;
+          const timeB = b.time ? new Date(b.time).getTime() : 0;
+          return timeB - timeA;
+        });
+
+      } catch (attError) {
+        console.error("Failed to fetch fresh attendance for HR dashboard activities", attError);
+      }
+
+      setRecentActivities(activities.slice(0, 100));
     } catch (error) {
       console.error('Failed to load HR dashboard', error);
     } finally {
