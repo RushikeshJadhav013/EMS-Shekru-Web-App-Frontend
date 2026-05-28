@@ -74,118 +74,113 @@ const App = () => {
                               <Route path="/contact-support" element={<ContactSupport />} />
 
                               {/* Protected Routes */}
-                              <Route element={
+                              <Route path="/:companySlug?" element={
                                 <ProtectedRoute>
                                   <MainLayout />
                                 </ProtectedRoute>
                               }>
                                 {/* Salary Management Routes */}
-                                <Route path="/salary" element={
+                                <Route path="salary" element={
                                   <ProtectedRoute allowedRoles={['admin', 'hr', 'employee', 'manager', 'team_lead']}>
                                     <SalaryDashboard />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/salary/add" element={
+                                <Route path="salary/add" element={
                                   <ProtectedRoute allowedRoles={['admin', 'hr']}>
                                     <AddEditSalary />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/salary/employee/:id" element={
+                                <Route path="salary/employee/:id" element={
                                   <ProtectedRoute allowedRoles={['admin', 'hr', 'employee', 'manager', 'team_lead']}>
                                     <SalaryDetails />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/salary/increment/add" element={
+                                <Route path="salary/increment/add" element={
                                   <ProtectedRoute allowedRoles={['admin', 'hr']}>
                                     <AddIncrement />
                                   </ProtectedRoute>
                                 } />
 
                                 {/* Meetings Route - Universal */}
-                                <Route path="/meetings" element={
+                                <Route path="meetings" element={
                                   <ProtectedRoute allowedRoles={['admin', 'hr', 'employee', 'manager', 'team_lead']}>
                                     <MeetingsPage />
                                   </ProtectedRoute>
                                 } />
 
                                 {/* Admin Routes */}
-                                <Route path="/admin" element={
+                                <Route path="admin" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <AdminDashboard />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/admin/chat" element={
+                                <Route path="admin/chat" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <Chat />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/admin/chat/:chatId" element={
+                                <Route path="admin/chat/:chatId" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <Chat />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/admin/attendance" element={
+                                <Route path="admin/attendance" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <AttendanceManager />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/admin/tasks" element={
+                                <Route path="admin/tasks" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <TaskManagement />
                                   </ProtectedRoute>
                                 } />
 
-                                <Route path="/admin/employees" element={
+                                <Route path="admin/employees" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <EmployeeManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/admin/employees/new/" element={
+                                <Route path="admin/employees/new/" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <EmployeeManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/admin/branches" element={
+                                <Route path="admin/branches" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <BranchManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/admin/reports" element={
+                                <Route path="admin/reports" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <Reports />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/admin/access" element={
+                                <Route path="admin/access" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <AccessControl />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/admin/employees" element={
-                                  <ProtectedRoute allowedRoles={['admin']}>
-                                    <EmployeeManagement />
-                                  </ProtectedRoute>
-                                } />
-                                <Route path="/admin/leaves" element={
+                                <Route path="admin/leaves" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <LeaveManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/admin/hiring" element={
+                                <Route path="admin/hiring" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <HiringManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/admin/projects" element={
+                                <Route path="admin/projects" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <ProjectManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/admin/profile" element={
+                                <Route path="admin/profile" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <Profile />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/admin/settings" element={
+                                <Route path="admin/settings" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <SettingsPage />
                                   </ProtectedRoute>
@@ -194,83 +189,78 @@ const App = () => {
 
 
                                 {/* HR Routes */}
-                                <Route path="/hr" element={
+                                <Route path="hr" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <HRDashboard />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/hr/chat" element={
+                                <Route path="hr/chat" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <Chat />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/hr/chat/:chatId" element={
+                                <Route path="hr/chat/:chatId" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <Chat />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/hr/attendance" element={
+                                <Route path="hr/attendance" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <AttendanceWithToggle />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/hr/tasks" element={
+                                <Route path="hr/tasks" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <TaskManagement />
                                   </ProtectedRoute>
                                 } />
 
-                                <Route path="/hr/leaves" element={
+                                <Route path="hr/leaves" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <LeaveManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/hr/wfh" element={
+                                <Route path="hr/wfh" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <WFHRequests />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/hr/employees" element={
+                                <Route path="hr/employees" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <EmployeeManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/hr/employees/new/" element={
+                                <Route path="hr/employees/new/" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <EmployeeManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/hr/branches" element={
+                                <Route path="hr/branches" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <BranchManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/hr/employees" element={
-                                  <ProtectedRoute allowedRoles={['hr']}>
-                                    <EmployeeManagement />
-                                  </ProtectedRoute>
-                                } />
-                                <Route path="/hr/reports" element={
+                                <Route path="hr/reports" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <Reports />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/hr/hiring" element={
+                                <Route path="hr/hiring" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <HiringManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/hr/projects" element={
+                                <Route path="hr/projects" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <ProjectManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/hr/profile" element={
+                                <Route path="hr/profile" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <Profile />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/hr/settings" element={
+                                <Route path="hr/settings" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <SettingsPage />
                                   </ProtectedRoute>
@@ -279,69 +269,69 @@ const App = () => {
 
 
                                 {/* Manager Routes */}
-                                <Route path="/manager" element={
+                                <Route path="manager" element={
                                   <ProtectedRoute allowedRoles={['manager']}>
                                     <ManagerDashboard />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/manager/chat" element={
+                                <Route path="manager/chat" element={
                                   <ProtectedRoute allowedRoles={['manager']}>
                                     <Chat />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/manager/chat/:chatId" element={
+                                <Route path="manager/chat/:chatId" element={
                                   <ProtectedRoute allowedRoles={['manager']}>
                                     <Chat />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/manager/team" element={
+                                <Route path="manager/team" element={
                                   <ProtectedRoute allowedRoles={['manager']}>
                                     <TeamManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/manager/teams" element={
+                                <Route path="manager/teams" element={
                                   <ProtectedRoute allowedRoles={['manager']}>
                                     <TeamManagement />
                                   </ProtectedRoute>
                                 } />
 
-                                <Route path="/manager/shift-schedule" element={
+                                <Route path="manager/shift-schedule" element={
                                   <ProtectedRoute allowedRoles={['manager']}>
                                     <ShiftScheduleManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/manager/attendance" element={
+                                <Route path="manager/attendance" element={
                                   <ProtectedRoute allowedRoles={['manager']}>
                                     <AttendanceWithToggle />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/manager/tasks" element={
+                                <Route path="manager/tasks" element={
                                   <ProtectedRoute allowedRoles={['manager']}>
                                     <TaskManagement />
                                   </ProtectedRoute>
                                 } />
 
-                                <Route path="/manager/leaves" element={
+                                <Route path="manager/leaves" element={
                                   <ProtectedRoute allowedRoles={['manager']}>
                                     <LeaveManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/manager/wfh" element={
+                                <Route path="manager/wfh" element={
                                   <ProtectedRoute allowedRoles={['manager']}>
                                     <WFHRequests />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/manager/projects" element={
+                                <Route path="manager/projects" element={
                                   <ProtectedRoute allowedRoles={['manager']}>
                                     <ProjectManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/manager/profile" element={
+                                <Route path="manager/profile" element={
                                   <ProtectedRoute allowedRoles={['manager']}>
                                     <Profile />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/manager/settings" element={
+                                <Route path="manager/settings" element={
                                   <ProtectedRoute allowedRoles={['manager']}>
                                     <SettingsPage />
                                   </ProtectedRoute>
@@ -349,63 +339,63 @@ const App = () => {
 
 
                                 {/* Team Lead Routes */}
-                                <Route path="/team_lead" element={
+                                <Route path="team_lead" element={
                                   <ProtectedRoute allowedRoles={['team_lead']}>
                                     <TeamLeadDashboard />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/team_lead/chat" element={
+                                <Route path="team_lead/chat" element={
                                   <ProtectedRoute allowedRoles={['team_lead']}>
                                     <Chat />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/team_lead/chat/:chatId" element={
+                                <Route path="team_lead/chat/:chatId" element={
                                   <ProtectedRoute allowedRoles={['team_lead']}>
                                     <Chat />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/team_lead/attendance" element={
+                                <Route path="team_lead/attendance" element={
                                   <ProtectedRoute allowedRoles={['team_lead']}>
                                     <AttendanceWithToggle />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/team_lead/tasks" element={
+                                <Route path="team_lead/tasks" element={
                                   <ProtectedRoute allowedRoles={['team_lead']}>
                                     <TaskManagement />
                                   </ProtectedRoute>
                                 } />
 
-                                <Route path="/team_lead/leaves" element={
+                                <Route path="team_lead/leaves" element={
                                   <ProtectedRoute allowedRoles={['team_lead']}>
                                     <LeaveManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/team_lead/wfh" element={
+                                <Route path="team_lead/wfh" element={
                                   <ProtectedRoute allowedRoles={['team_lead']}>
                                     <WFHRequests />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/team_lead/team" element={
+                                <Route path="team_lead/team" element={
                                   <ProtectedRoute allowedRoles={['team_lead']}>
                                     <TeamShifts />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/team_lead/teams" element={
+                                <Route path="team_lead/teams" element={
                                   <ProtectedRoute allowedRoles={['team_lead']}>
                                     <TeamManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/team_lead/projects" element={
+                                <Route path="team_lead/projects" element={
                                   <ProtectedRoute allowedRoles={['team_lead']}>
                                     <ProjectManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/team_lead/profile" element={
+                                <Route path="team_lead/profile" element={
                                   <ProtectedRoute allowedRoles={['team_lead']}>
                                     <Profile />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/team_lead/settings" element={
+                                <Route path="team_lead/settings" element={
                                   <ProtectedRoute allowedRoles={['team_lead']}>
                                     <SettingsPage />
                                   </ProtectedRoute>
@@ -413,58 +403,58 @@ const App = () => {
 
 
                                 {/* Employee Routes */}
-                                <Route path="/employee" element={
+                                <Route path="employee" element={
                                   <ProtectedRoute allowedRoles={['employee']}>
                                     <EmployeeDashboard />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/employee/chat" element={
+                                <Route path="employee/chat" element={
                                   <ProtectedRoute allowedRoles={['employee']}>
                                     <Chat />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/employee/chat/:chatId" element={
+                                <Route path="employee/chat/:chatId" element={
                                   <ProtectedRoute allowedRoles={['employee']}>
                                     <Chat />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/employee/attendance" element={
+                                <Route path="employee/attendance" element={
                                   <ProtectedRoute allowedRoles={['employee']}>
                                     <AttendanceWithToggle />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/employee/tasks" element={
+                                <Route path="employee/tasks" element={
                                   <ProtectedRoute allowedRoles={['employee']}>
                                     <TaskManagement />
                                   </ProtectedRoute>
                                 } />
 
-                                <Route path="/employee/team" element={
+                                <Route path="employee/team" element={
                                   <ProtectedRoute allowedRoles={['employee']}>
                                     <TeamShifts />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/employee/leaves" element={
+                                <Route path="employee/leaves" element={
                                   <ProtectedRoute allowedRoles={['employee']}>
                                     <LeaveManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/employee/wfh" element={
+                                <Route path="employee/wfh" element={
                                   <ProtectedRoute allowedRoles={['employee', 'hr', 'manager', 'team_lead']}>
                                     <WFHRequests />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/employee/projects" element={
+                                <Route path="employee/projects" element={
                                   <ProtectedRoute allowedRoles={['employee']}>
                                     <ProjectManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/employee/profile" element={
+                                <Route path="employee/profile" element={
                                   <ProtectedRoute allowedRoles={['employee']}>
                                     <Profile />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="/employee/settings" element={
+                                <Route path="employee/settings" element={
                                   <ProtectedRoute allowedRoles={['employee']}>
                                     <SettingsPage />
                                   </ProtectedRoute>
@@ -477,9 +467,9 @@ const App = () => {
                             </Routes>
                           </ChatProvider>
                         </NotificationProvider>
-                         </HolidayProvider>
-                       </LeaveBalanceProvider>
-                   </RouteRestorer>
+                      </HolidayProvider>
+                    </LeaveBalanceProvider>
+                  </RouteRestorer>
                 </WFHProvider>
               </AuthProvider>
             </LanguageProvider>

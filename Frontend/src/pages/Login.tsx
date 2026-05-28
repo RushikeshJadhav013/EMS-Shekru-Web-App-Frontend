@@ -619,15 +619,17 @@ const Login: React.FC = () => {
                             let finalUserData = { ...tempAuthData };
                             try {
                               const freshProfile = await apiService.getCurrentUser();
-                              if (freshProfile.company_slug) localStorage.setItem('company_slug', freshProfile.company_slug);
-                              if (freshProfile.company_name) localStorage.setItem('company_name', freshProfile.company_name);
-                              if (freshProfile.company_id) localStorage.setItem('companyId', String(freshProfile.company_id));
-
                               finalUserData = {
                                 ...tempAuthData,
                                 ...freshProfile,
                                 user_id: freshProfile.user_id || tempAuthData.user_id,
+                                company_slug: selectedComp?.company_slug || freshProfile.company_slug,
+                                company_name: selectedComp?.company_name || freshProfile.company_name,
+                                company_id: selectedComp?.company_id || freshProfile.company_id,
                               };
+                              if (finalUserData.company_slug) localStorage.setItem('company_slug', finalUserData.company_slug);
+                              if (finalUserData.company_name) localStorage.setItem('company_name', finalUserData.company_name);
+                              if (finalUserData.company_id) localStorage.setItem('companyId', String(finalUserData.company_id));
                             } catch (profileErr) {
                               console.error('Failed to get me after company select:', profileErr);
                             }

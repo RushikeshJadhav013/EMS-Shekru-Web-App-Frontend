@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigationGuard } from '@/hooks/useNavigationGuard';
@@ -69,6 +69,7 @@ const MainLayout: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
+  const { companySlug } = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
@@ -168,7 +169,17 @@ const MainLayout: React.FC = () => {
       ],
     };
 
-    return roleSpecificItems[user.role];
+    const items = roleSpecificItems[user.role];
+
+    // Prepend companySlug if it exists
+    if (companySlug) {
+      return items.map(item => ({
+        ...item,
+        path: item.path.startsWith('/') ? `/${companySlug}${item.path}` : `/${companySlug}/${item.path}`
+      }));
+    }
+
+    return items;
   };
 
   const navigationItems = getNavigationItems();
@@ -219,7 +230,7 @@ const MainLayout: React.FC = () => {
           </Button>
 
           {/* Logo */}
-          <div className="flex items-center cursor-pointer group" onClick={() => navigate(`/${user.role}`)}>
+          <div className="flex items-center cursor-pointer group" onClick={() => navigate(companySlug ? `/${companySlug}/${user.role}` : `/${user.role}`)}>
             <Logo
               className="flex items-center gap-2 group-hover:scale-[1.02] transition-transform duration-200"
               iconClassName="h-10 w-10 drop-shadow-sm"
@@ -380,7 +391,7 @@ const MainLayout: React.FC = () => {
 
           <div className="flex-shrink-0 px-2 py-3 mb-2 border-t border-slate-100 dark:border-slate-800">
             <div
-              onClick={() => navigate(`/${user.role}/profile`)}
+              onClick={() => navigate(companySlug ? `/${companySlug}/${user.role}/profile` : `/${user.role}/profile`)}
               className={`group flex items-center gap-3 px-2.5 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 hover:shadow-xl hover:shadow-slate-200/40 transition-all duration-300 cursor-pointer ${!sidebarOpen ? 'justify-center' : ''}`}
             >
               <div className="relative">

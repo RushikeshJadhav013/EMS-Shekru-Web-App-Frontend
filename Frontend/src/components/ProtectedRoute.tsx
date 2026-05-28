@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
 import { isTokenValid } from '@/utils/jwt';
@@ -12,6 +12,7 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const location = useLocation();
+  const { companySlug } = useParams();
 
   // Store the current path in localStorage for persistence across page refreshes
   useEffect(() => {
@@ -65,8 +66,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     console.log('Invalid role, redirecting to user homepage');
     // Redirect to user's appropriate dashboard based on their role
+    // Store company slug from params or localStorage
+    const slug = companySlug || localStorage.getItem('company_slug');
     const roleRoutes: Record<UserRole, string> = {
-      admin: '/admin',
+      admin: slug ? `/${slug}/admin` : '/admin',
       hr: '/hr',
       manager: '/manager',
       team_lead: '/team_lead',

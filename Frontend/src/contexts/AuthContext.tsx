@@ -286,12 +286,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('token', userData.access_token);
       localStorage.setItem('userId', user.id.toString());
-      
+
       // Store scope IDs if provided by backend
       const anyUserData = userData as any;
       const branchId = anyUserData.branch_id || anyUserData.branchId;
       const companyId = anyUserData.company_id || anyUserData.companyId;
-      
+
       if (branchId) localStorage.setItem('branchId', branchId.toString());
       if (companyId) localStorage.setItem('companyId', companyId.toString());
 
@@ -302,8 +302,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       // Redirect to the appropriate dashboard based on role
+      const company_slug = localStorage.getItem('company_slug');
       const roleRoutes: Record<UserRole, string> = {
-        admin: '/admin',
+        admin: company_slug ? `/${company_slug}/admin` : '/admin',
         hr: '/hr',
         manager: '/manager',
         team_lead: '/team_lead',
@@ -311,7 +312,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       const redirectPath = roleRoutes[user.role];
-      console.log('Redirecting to:', redirectPath); // Debug log
+      console.log('Redirecting to:', redirectPath, 'with slug:', company_slug); // Debug log
 
       if (!redirectPath) {
         console.error('Invalid role:', user.role);
