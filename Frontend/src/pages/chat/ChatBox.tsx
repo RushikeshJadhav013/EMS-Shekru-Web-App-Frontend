@@ -122,15 +122,6 @@ const ChatBox: React.FC = () => {
     }
   }, [messages]);
 
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout;
-    if (activeChat) {
-      intervalId = setInterval(() => {
-        loadMessages(activeChat.id, activeChat.type);
-      }, 5000);
-    }
-    return () => { if (intervalId) clearInterval(intervalId); };
-  }, [activeChat, loadMessages]);
 
   useEffect(() => {
     if (chatId && (!activeChat || activeChat.id !== chatId)) {
@@ -567,7 +558,7 @@ const ChatBox: React.FC = () => {
                         <div className="w-full border-t border-slate-100 dark:border-slate-800/50"></div>
                       </div>
                       <span className="relative px-4 py-1.5 rounded-full border shadow-sm backdrop-blur-md bg-white border-slate-100 uppercase tracking-widest"
-                      style={{ color: "#000000", fontSize: "12px", fontWeight: "bold" }}>
+                        style={{ color: "#000000", fontSize: "12px", fontWeight: "bold" }}>
                         {formatDateIST(message.timestamp, 'MMMM d, yyyy')}
                       </span>
                     </div>

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Chat, ChatMessage, User } from '@/types';
 import { chatService } from '@/services/chatService';
 import { useAuth } from './AuthContext';
@@ -38,6 +38,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Stable ref to chats — lets callbacks read latest chats without adding it as a dep
+  const chatsRef = useRef<Chat[]>([]);
+  useEffect(() => {
+    chatsRef.current = chats;
+  }, [chats]);
 
   // RBAC Filtering logic
   const isUserVisible = useCallback((targetUser: { role: string; department?: string; id: string }) => {
@@ -83,13 +89,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const unreadCount = chats.reduce((total, chat) => total + chat.unreadCount, 0);
 
   // Load chats
-  const loadChats = useCallback(async () => {
+  const loadChats = useCallback(async (silent = false) => {
     if (!user) return;
 
-    setIsLoading(true);
+    if (!silent) setIsLoading(true);
     try {
       const fetchedChats = await chatService.getChats();
-      
+
       setChats(prev => {
         // Prevent recent messages in the sidebar from flickering or reverting to old data
         return fetchedChats.map(fc => {
@@ -97,16 +103,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (localMatch && localMatch.lastMessage && fc.lastMessage) {
             const localTime = new Date(localMatch.lastMessage.timestamp).getTime();
             const fetchedTime = new Date(fc.lastMessage.timestamp).getTime();
-            
-            // If our local last message is newer AND was sent within the last 20 seconds,
-            // we trust it more than the server's version (which might be lagging).
+
             if (localTime > fetchedTime && (Date.now() - localTime < 20000)) {
-              return { 
-                ...fc, 
+              return {
+                ...fc,
                 lastMessage: localMatch.lastMessage,
                 updatedAt: localMatch.updatedAt,
-                // Keep the unread count from server, but content from local
-                unreadCount: fc.unreadCount 
+                unreadCount: fc.unreadCount
               };
             }
           }
@@ -114,17 +117,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       });
 
-      // aggressively fix 'No messages yet' issues:
-      // if any chat has a timestamp indicating a message exists, but the backend didn't supply the content block:
       const chatsNeedingSync = fetchedChats.filter(c => c.lastMessage && !c.lastMessage.content && c.lastMessage.timestamp);
       if (chatsNeedingSync.length > 0) {
-        // Fire and forget: fetch the missing texts natively
         Promise.all(chatsNeedingSync.map(async chat => {
           try {
-            // grab the latest chat log (which comes with up to 50 messages to ensure we reach the newest)
             const msgs = await chatService.getChatMessages(chat.id, chat.type, 1, 5);
             if (msgs.length > 0) {
-              // The backend returns messages in chronological order, so the latest is the very last item
               const actualLatestMessage = msgs[msgs.length - 1];
               setChats(prev => prev.map(c =>
                 c.id === chat.id
@@ -132,69 +130,41 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   : c
               ));
             }
-          } catch (e) {
-            // Silent catch to prevent console spam
-          }
+          } catch (e) { }
         }));
       }
 
     } catch (error) {
       console.error('Failed to load chats:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load chats',
-        variant: 'destructive',
-      });
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
-  }, [user, toast]);
+  }, [user]);
 
   // Load messages for a specific chat
-  const loadMessages = useCallback(async (chatId: string, type?: 'individual' | 'group') => {
-    setIsLoading(true);
+  const loadMessages = useCallback(async (chatId: string, type?: 'individual' | 'group', silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       let chatType = type;
       if (!chatType) {
-        if (activeChat?.id === chatId) {
-          chatType = activeChat.type;
-        } else {
-          const chat = chats.find(c => c.id === chatId);
-          chatType = chat?.type || (chatId.includes('_') ? 'individual' : 'group');
-        }
+        // Use ref instead of closing over chats state — avoids dependency on chats
+        const chat = chatsRef.current.find(c => c.id === chatId);
+        chatType = chat?.type || (chatId.includes('_') ? 'individual' : 'group');
       }
 
       const fetchedMessages = await chatService.getChatMessages(chatId, chatType);
-      // Reverse so oldest are at the top, newest at the bottom (WhatsApp style)
       const serverMessages = [...fetchedMessages].reverse();
 
       setMessages(prev => {
-        // 1. Map server messages and potentially restore truncated content from local state
         const mergedServerMessages = serverMessages.map(sm => {
           const localMatch = prev.find(pm => pm.id === sm.id);
-          // If we have a local version with the same ID and its content is LONGER,
-          // it strongly suggests the server version was truncated. 
-          // We preserve our full local content and the correct messageType.
           if (localMatch && localMatch.content.length > sm.content.length) {
-            return { 
-              ...sm, 
-              content: localMatch.content,
-              messageType: localMatch.messageType // Preserve type even if server says 'text'
-            };
+            return { ...sm, content: localMatch.content, messageType: localMatch.messageType };
           }
           return sm;
         });
 
-        // 2. Preserve LOCAL-ONLY media messages for THIS chat only (optimistic messages
-        // whose large base64 payload the backend didn't persist).
-        const localOnly = prev.filter(m =>
-          typeof m.id === 'string' &&
-          m.id.startsWith('local_') &&
-          m.chatId === chatId
-        );
-
-        // 3. Filter out local messages that the server now includes 
-        // (Matched by sender, type, and time. Content length check is removed because of truncation.)
+        const localOnly = prev.filter(m => typeof m.id === 'string' && m.id.startsWith('local_') && m.chatId === chatId);
         const unsyncedLocals = localOnly.filter(lm =>
           !mergedServerMessages.some(sm =>
             sm.senderId === lm.senderId &&
@@ -204,39 +174,27 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           )
         );
 
-        // 4. Handle "Sync Gap": If a message was recently confirmed (no longer 'local_')
-        // but the backend pole hasn't returned it yet (due to replica lag or cache slow-burn),
-        // we keep it in the state for 15 seconds so it doesn't vanish and reappear.
         const existingIds = new Set(mergedServerMessages.map(m => m.id));
         const missingButRecent = prev.filter(m =>
-          m.chatId === chatId &&
-          typeof m.id === 'string' &&
-          !m.id.startsWith('local_') &&
-          !existingIds.has(m.id) &&
-          Math.abs(Date.now() - new Date(m.timestamp).getTime()) < 15000 // 15s grace period
+          m.chatId === chatId && typeof m.id === 'string' && !m.id.startsWith('local_') && !existingIds.has(m.id) &&
+          Math.abs(Date.now() - new Date(m.timestamp).getTime()) < 15000
         );
 
         return [...mergedServerMessages, ...unsyncedLocals, ...missingButRecent];
       });
     } catch (error) {
       console.error('Failed to load messages:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load messages',
-        variant: 'destructive',
-      });
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
-  }, [chats, activeChat, toast]);
+  }, []); // No deps: uses chatsRef.current instead of chats
 
-  // Load available users
+  // Load available users — only depends on user, not on isUserVisible
   const loadAvailableUsers = useCallback(async () => {
     if (!user) return;
 
     try {
       const users = await chatService.getAvailableUsers();
-      // Backend automatically returns eligible users, so we can set them directly
       setAvailableUsers(users);
     } catch (error) {
       console.error('Failed to load available users:', error);
@@ -246,7 +204,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: 'destructive',
       });
     }
-  }, [user, toast, isUserVisible]);
+  }, [user, toast]);
 
   // Send message – with optimistic UI so files appear instantly
   const sendMessage = useCallback(async (content: string, messageType: 'text' | 'emoji' | 'image' | 'file' = 'text', replyTo?: string) => {
@@ -277,7 +235,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const newMessage = await chatService.sendMessage(activeChat.id, activeChat.type, content, messageType, replyTo);
-      
+
       // If server version is truncated, keep local version
       if ((messageType === 'image' || messageType === 'file') && newMessage.content.length < content.length) {
         newMessage.content = content;
@@ -309,7 +267,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const isImage = file.type.startsWith('image/');
     const messageType = isImage ? 'image' : 'file';
-    
+
     // Create local preview content
     const base64 = await chatService.fileToBase64(file);
     const localContent = isImage ? base64 : `${file.name}|${base64}`;
@@ -380,7 +338,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const newMessage = await chatService.sendMessageWithFile(activeChat.id, activeChat.type, fileToSend, content, replyTo);
-      
+
       // Replace optimistic message with server-confirmed one
       setMessages(prev => prev.map(m => m.id === optimisticId ? newMessage : m));
       setChats(prev => prev.map(chat =>
@@ -390,13 +348,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ));
     } catch (error: any) {
       console.error('Failed to send file message:', error);
-      
+
       const isTooLarge = error.message?.includes('413') || error.status === 413;
-      
+
       toast({
         title: isTooLarge ? 'File Too Large' : 'Upload Failed',
-        description: isTooLarge 
-          ? 'The file is too large for the server. Please try a smaller file or compress it first.' 
+        description: isTooLarge
+          ? 'The file is too large for the server. Please try a smaller file or compress it first.'
           : 'Could not send the file. Please try again.',
         variant: 'destructive',
       });
@@ -479,18 +437,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [chats, toast]);
 
   // Mark messages as read
-  // Now takes messageIds to mark specific messages
   const markAsRead = useCallback(async (chatId: string, messageIds: string[]) => {
-    const chat = chats.find(c => c.id === chatId);
+    const chat = chatsRef.current.find(c => c.id === chatId);
     if (!chat || messageIds.length === 0) return;
 
     try {
-      // Parallelize requests if there are multiple. 
-      // Note: In a real app with many messages, this might be loop-heavy, 
-      // but API only supports single message read receipt.
       await Promise.all(messageIds.map(msgId => chatService.markMessageAsRead(chatId, chat.type, msgId)));
 
-      // Update local state
       setChats(prev => prev.map(c =>
         c.id === chatId ? { ...c, unreadCount: Math.max(0, c.unreadCount - messageIds.length) } : c
       ));
@@ -501,18 +454,18 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Failed to mark messages as read:', error);
     }
-  }, [chats]);
+  }, []); // No deps: uses chatsRef.current
 
   // Send typing status
   const sendTyping = useCallback(async (chatId: string) => {
-    const chat = chats.find(c => c.id === chatId);
+    const chat = chatsRef.current.find(c => c.id === chatId);
     if (!chat) return;
     try {
       await chatService.sendTypingStatus(chatId, chat.type);
     } catch (error) {
       console.error('Failed to send typing status:', error);
     }
-  }, [chats]);
+  }, []); // No deps: uses chatsRef.current
 
   // Delete message
   const deleteMessage = useCallback(async (messageId: string) => {
@@ -670,23 +623,49 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [loadMessages]);
 
+  // Refs for polling to avoid interval restarts
+  const activeChatRef = React.useRef<Chat | null>(null);
+  const loadChatsRef = React.useRef(loadChats);
+  const loadMessagesRef = React.useRef(loadMessages);
+
+  useEffect(() => {
+    activeChatRef.current = activeChat;
+  }, [activeChat]);
+
+  useEffect(() => {
+    loadChatsRef.current = loadChats;
+  }, [loadChats]);
+
+  useEffect(() => {
+    loadMessagesRef.current = loadMessages;
+  }, [loadMessages]);
+
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
 
     if (user) {
+      // Initial load
       loadChats();
-      loadAvailableUsers();
+      loadAvailableUsers(); // Load users once on mount — no need to poll this
 
-      // Auto-refresh chat list every 10 seconds to update unread badges & latest messages
+      // Stable polling: only chats + active messages, not users
       intervalId = setInterval(() => {
-        loadChats();
-      }, 10000);
+        // Use refs to call the latest version of functions without restarting the interval
+        if (loadChatsRef.current) {
+          loadChatsRef.current(true);
+        }
+
+        const currentActive = activeChatRef.current;
+        if (currentActive && loadMessagesRef.current) {
+          loadMessagesRef.current(currentActive.id, currentActive.type, true);
+        }
+      }, 5000);
     }
 
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [user, loadChats, loadAvailableUsers]);
+  }, [user]); // Only restart if user changes — loadChats/loadAvailableUsers captured via refs
 
   const value = {
     chats,

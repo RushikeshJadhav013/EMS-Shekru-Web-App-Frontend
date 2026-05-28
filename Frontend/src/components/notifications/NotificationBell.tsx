@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Check, X, Clock, AlertCircle, CheckCircle, FileText, Calendar, Loader2, IndianRupee, Home, Video, MessageSquare } from 'lucide-react';
+import { Bell, Check, X, Clock, AlertCircle, CheckCircle, FileText, Calendar, Loader2, IndianRupee, Home, Video, MessageSquare, Briefcase, UserPlus, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -64,56 +64,16 @@ export const NotificationBell: React.FC = () => {
   const wfhNotifications = allNotifications.filter(n => n.type === 'wfh');
   const meetingNotifications = allNotifications.filter(n => n.type === 'meeting');
   const chatNotifications = allNotifications.filter(n => n.type === 'chat');
-  const otherNotifications = allNotifications.filter(n => !['leave', 'task', 'shift', 'wfh', 'meeting', 'chat'].includes(n.type));
+  const attendanceNotifications = allNotifications.filter(n => n.type === 'attendance');
+  const hiringNotifications = allNotifications.filter(n => n.type === 'hiring');
+  const projectNotifications = allNotifications.filter(n => n.type === 'project');
+  const salaryNotifications = allNotifications.filter(n => n.type === 'salary');
+  const otherNotifications = allNotifications.filter(n => !['leave', 'task', 'shift', 'wfh', 'meeting', 'chat', 'attendance', 'hiring', 'project', 'salary'].includes(n.type));
 
   const handleNotificationClick = async (notification: any) => {
-    // Remove notification from list immediately (clearNotification handles marking as read)
-    clearNotification(notification.id);
-
-    const userRole = user?.role || 'employee';
-
-    // Route based on notification type and metadata
-    if (notification.type === 'leave' && notification.metadata?.leaveId) {
-      // For leave notifications, go to role-based leaves page with approvals tab
-      navigate(`/${userRole}/leaves?tab=approvals&leaveId=${notification.metadata.leaveId}`);
-      setIsOpen(false);
-    } else if (notification.type === 'task' && notification.metadata?.taskId) {
-      // For task notifications, go to role-based tasks page with taskId
-      navigate(`/${userRole}/tasks?taskId=${notification.metadata.taskId}`);
-      setIsOpen(false);
-    } else if (notification.type === 'shift') {
-      // For shift notifications, redirect to Team page
-      if (notification.actionUrl) {
-        navigate(notification.actionUrl);
-      } else {
-        // Fallback based on role
-        if (userRole === 'team_lead') {
-          navigate('/team_lead/team');
-        } else {
-          navigate('/employee/team');
-        }
-      }
-      setIsOpen(false);
-    } else if (notification.type === 'wfh' && notification.metadata?.wfhId) {
-      // For WFH notifications, go to role-based WFH page
-      navigate(`/${userRole}/wfh?wfhId=${notification.metadata.wfhId}`);
-      setIsOpen(false);
-    } else if (notification.type === 'meeting') {
-      // For meeting notifications, go to meetings page
-      navigate('/meetings');
-      setIsOpen(false);
-    } else if (notification.type === 'chat') {
-      // For chat notifications, go to messages page
-      navigate('/admin/messages');
-      setIsOpen(false);
-    } else if (notification.actionUrl) {
-      // Fallback to actionUrl if provided
-      navigate(notification.actionUrl);
-      setIsOpen(false);
-    } else {
-      // For info/warning notifications without specific routing, go to dashboard
-      navigate(`/${userRole}/dashboard`);
-      setIsOpen(false);
+    // Only mark as read, don't clear (remove) and don't navigate
+    if (!notification.read) {
+      markAsRead(notification.id);
     }
   };
 
@@ -131,6 +91,14 @@ export const NotificationBell: React.FC = () => {
         return <Video className="h-5 w-5 text-indigo-500" />;
       case 'chat':
         return <MessageSquare className="h-5 w-5 text-emerald-500" />;
+      case 'attendance':
+        return <UserCheck className="h-5 w-5 text-green-600" />;
+      case 'hiring':
+        return <UserPlus className="h-5 w-5 text-pink-500" />;
+      case 'project':
+        return <Briefcase className="h-5 w-5 text-cyan-600" />;
+      case 'salary':
+        return <IndianRupee className="h-5 w-5 text-gold-500" />;
       case 'warning':
         return <AlertCircle className="h-5 w-5 text-red-500" />;
       default:
@@ -152,6 +120,14 @@ export const NotificationBell: React.FC = () => {
         return 'bg-indigo-50 dark:bg-indigo-950/20 border-l-4 border-indigo-500';
       case 'chat':
         return 'bg-emerald-50 dark:bg-emerald-950/20 border-l-4 border-emerald-500';
+      case 'attendance':
+        return 'bg-green-50 dark:bg-green-950/20 border-l-4 border-green-600';
+      case 'hiring':
+        return 'bg-pink-50 dark:bg-pink-950/20 border-l-4 border-pink-500';
+      case 'project':
+        return 'bg-cyan-50 dark:bg-cyan-950/20 border-l-4 border-cyan-600';
+      case 'salary':
+        return 'bg-yellow-50 dark:bg-yellow-950/20 border-l-4 border-yellow-500';
       case 'warning':
         return 'bg-red-50 dark:bg-red-950/20 border-l-4 border-red-500';
       default:
@@ -173,6 +149,14 @@ export const NotificationBell: React.FC = () => {
         return 'Meeting';
       case 'chat':
         return 'Chat';
+      case 'attendance':
+        return 'Attendance';
+      case 'hiring':
+        return 'Hiring';
+      case 'project':
+        return 'Project';
+      case 'salary':
+        return 'Salary';
       default:
         return 'Other';
     }
@@ -193,7 +177,7 @@ export const NotificationBell: React.FC = () => {
               <TruncatedText
                 text={notification.title || 'Notification'}
                 maxLength={60}
-                showToggle={false}
+                showToggle={true}
               />
             </div>
             {!notification.read && (
@@ -207,7 +191,7 @@ export const NotificationBell: React.FC = () => {
               <TruncatedText
                 text={notification.message}
                 maxLength={100}
-                showToggle={false}
+                showToggle={true}
               />
             </div>
           )}
@@ -276,21 +260,8 @@ export const NotificationBell: React.FC = () => {
               )}
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2 w-full">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => {
-                navigate(`/${user?.role}/inbox`);
-                setIsOpen(false);
-              }}
-              className="flex-1 text-xs bg-blue-600 hover:bg-blue-700 shadow-sm"
-            >
-              <Bell className="h-3 w-3 mr-1.5" />
-              Notifications
-            </Button>
-            
             <Button
               variant="outline"
               size="sm"
@@ -299,7 +270,7 @@ export const NotificationBell: React.FC = () => {
               className="flex-1 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 shadow-sm"
             >
               <Check className="h-3 w-3 mr-1.5" />
-              Mark as read
+              Mark all as read
             </Button>
           </div>
         </div>
@@ -322,104 +293,158 @@ export const NotificationBell: React.FC = () => {
           </div>
         ) : (
           <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full justify-start border-b rounded-none bg-transparent p-0 h-auto">
-              <TabsTrigger
-                value="all"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent px-4 py-2"
-              >
-                <span className="text-xs font-medium">All</span>
-                {allNotifications.length > 0 && (
-                  <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-gray-500 text-white">
-                    {allNotifications.length}
-                  </Badge>
+            <div className="w-full overflow-x-auto scrollbar-hide border-b bg-muted/30">
+              <TabsList className="flex w-max min-w-full justify-start rounded-none bg-transparent p-0 h-auto">
+                <TabsTrigger
+                  value="all"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent px-4 py-3 transition-colors hover:bg-muted/50"
+                >
+                  <span className="text-xs font-semibold uppercase tracking-wider">All</span>
+                  {allNotifications.length > 0 && (
+                    <Badge className="ml-2 h-5 min-w-[20px] rounded-full p-0 flex items-center justify-center text-[10px] bg-slate-500 text-white border-0">
+                      {allNotifications.length}
+                    </Badge>
+                  )}
+                  {unreadCount > 0 && (
+                    <Badge className="ml-1 h-5 min-w-[20px] rounded-full p-0 flex items-center justify-center text-[10px] bg-red-600 text-white border-0 shadow-sm animate-pulse">
+                      {unreadCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+
+                {leaveNotifications.length > 0 && (
+                  <TabsTrigger
+                    value="leave"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500 data-[state=active]:bg-transparent px-4 py-3 transition-colors hover:bg-muted/50"
+                  >
+                    <Calendar className="h-3.5 w-3.5 mr-2 text-purple-500" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">Leave</span>
+                    <Badge className="ml-2 h-5 min-w-[20px] rounded-full p-0 flex items-center justify-center text-[10px] bg-purple-500 text-white border-0">
+                      {leaveNotifications.length}
+                    </Badge>
+                  </TabsTrigger>
                 )}
-                {unreadCount > 0 && (
-                  <Badge className="ml-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-red-500 text-white">
-                    {unreadCount}
-                  </Badge>
+
+                {taskNotifications.length > 0 && (
+                  <TabsTrigger
+                    value="task"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent px-4 py-3 transition-colors hover:bg-muted/50"
+                  >
+                    <FileText className="h-3.5 w-3.5 mr-2 text-blue-500" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">Tasks</span>
+                    <Badge className="ml-2 h-5 min-w-[20px] rounded-full p-0 flex items-center justify-center text-[10px] bg-blue-500 text-white border-0">
+                      {taskNotifications.length}
+                    </Badge>
+                  </TabsTrigger>
                 )}
-              </TabsTrigger>
 
-              {leaveNotifications.length > 0 && (
-                <TabsTrigger
-                  value="leave"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500 data-[state=active]:bg-transparent px-4 py-2"
-                >
-                  <Calendar className="h-4 w-4 mr-1 text-purple-500" />
-                  <span className="text-xs font-medium">Leave</span>
-                  <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-purple-500 text-white">
-                    {leaveNotifications.length}
-                  </Badge>
-                </TabsTrigger>
-              )}
+                {shiftNotifications.length > 0 && (
+                  <TabsTrigger
+                    value="shift"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-orange-500 data-[state=active]:bg-transparent px-4 py-3 transition-colors hover:bg-muted/50"
+                  >
+                    <Clock className="h-3.5 w-3.5 mr-2 text-orange-500" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">Shifts</span>
+                    <Badge className="ml-2 h-5 min-w-[20px] rounded-full p-0 flex items-center justify-center text-[10px] bg-orange-500 text-white border-0">
+                      {shiftNotifications.length}
+                    </Badge>
+                  </TabsTrigger>
+                )}
 
-              {taskNotifications.length > 0 && (
-                <TabsTrigger
-                  value="task"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent px-4 py-2"
-                >
-                  <FileText className="h-4 w-4 mr-1 text-blue-500" />
-                  <span className="text-xs font-medium">Tasks</span>
-                  <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-blue-500 text-white">
-                    {taskNotifications.length}
-                  </Badge>
-                </TabsTrigger>
-              )}
+                {wfhNotifications.length > 0 && (
+                  <TabsTrigger
+                    value="wfh"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-500 data-[state=active]:bg-transparent px-4 py-3 transition-colors hover:bg-muted/50"
+                  >
+                    <Home className="h-3.5 w-3.5 mr-2 text-teal-500" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">WFH</span>
+                    <Badge className="ml-2 h-5 min-w-[20px] rounded-full p-0 flex items-center justify-center text-[10px] bg-teal-500 text-white border-0">
+                      {wfhNotifications.length}
+                    </Badge>
+                  </TabsTrigger>
+                )}
 
-              {shiftNotifications.length > 0 && (
-                <TabsTrigger
-                  value="shift"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-orange-500 data-[state=active]:bg-transparent px-4 py-2"
-                >
-                  <Clock className="h-4 w-4 mr-1 text-orange-500" />
-                  <span className="text-xs font-medium">Shifts</span>
-                  <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-orange-500 text-white">
-                    {shiftNotifications.length}
-                  </Badge>
-                </TabsTrigger>
-              )}
+                {meetingNotifications.length > 0 && (
+                  <TabsTrigger
+                    value="meeting"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:bg-transparent px-4 py-3 transition-colors hover:bg-muted/50"
+                  >
+                    <Video className="h-3.5 w-3.5 mr-2 text-indigo-500" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">Meetings</span>
+                    <Badge className="ml-2 h-5 min-w-[20px] rounded-full p-0 flex items-center justify-center text-[10px] bg-indigo-500 text-white border-0">
+                      {meetingNotifications.length}
+                    </Badge>
+                  </TabsTrigger>
+                )}
 
-              {wfhNotifications.length > 0 && (
-                <TabsTrigger
-                  value="wfh"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-500 data-[state=active]:bg-transparent px-4 py-2"
-                >
-                  <Home className="h-4 w-4 mr-1 text-teal-500" />
-                  <span className="text-xs font-medium">WFH</span>
-                  <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-teal-500 text-white">
-                    {wfhNotifications.length}
-                  </Badge>
-                </TabsTrigger>
-              )}
+                {chatNotifications.length > 0 && (
+                  <TabsTrigger
+                    value="chat"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-500 data-[state=active]:bg-transparent px-4 py-3 transition-colors hover:bg-muted/50"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5 mr-2 text-emerald-500" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">Chat</span>
+                    <Badge className="ml-2 h-5 min-w-[20px] rounded-full p-0 flex items-center justify-center text-[10px] bg-emerald-500 text-white border-0">
+                      {chatNotifications.length}
+                    </Badge>
+                  </TabsTrigger>
+                )}
 
-              {meetingNotifications.length > 0 && (
-                <TabsTrigger
-                  value="meeting"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:bg-transparent px-4 py-2"
-                >
-                  <Video className="h-4 w-4 mr-1 text-indigo-500" />
-                  <span className="text-xs font-medium">Meetings</span>
-                  <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-indigo-500 text-white">
-                    {meetingNotifications.length}
-                  </Badge>
-                </TabsTrigger>
-              )}
+                {attendanceNotifications.length > 0 && (
+                  <TabsTrigger
+                    value="attendance"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-green-600 data-[state=active]:bg-transparent px-4 py-3 transition-colors hover:bg-muted/50"
+                  >
+                    <UserCheck className="h-3.5 w-3.5 mr-2 text-green-600" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">Attendance</span>
+                    <Badge className="ml-2 h-5 min-w-[20px] rounded-full p-0 flex items-center justify-center text-[10px] bg-green-600 text-white border-0">
+                      {attendanceNotifications.length}
+                    </Badge>
+                  </TabsTrigger>
+                )}
 
-              {chatNotifications.length > 0 && (
-                <TabsTrigger
-                  value="chat"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-500 data-[state=active]:bg-transparent px-4 py-2"
-                >
-                  <MessageSquare className="h-4 w-4 mr-1 text-emerald-500" />
-                  <span className="text-xs font-medium">Chat</span>
-                  <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-emerald-500 text-white">
-                    {chatNotifications.length}
-                  </Badge>
-                </TabsTrigger>
-              )}
-            </TabsList>
+                {hiringNotifications.length > 0 && (
+                  <TabsTrigger
+                    value="hiring"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-pink-500 data-[state=active]:bg-transparent px-4 py-3 transition-colors hover:bg-muted/50"
+                  >
+                    <UserPlus className="h-3.5 w-3.5 mr-2 text-pink-500" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">Hiring</span>
+                    <Badge className="ml-2 h-5 min-w-[20px] rounded-full p-0 flex items-center justify-center text-[10px] bg-pink-500 text-white border-0">
+                      {hiringNotifications.length}
+                    </Badge>
+                  </TabsTrigger>
+                )}
 
-            <ScrollArea className="h-[400px]">
+                {projectNotifications.length > 0 && (
+                  <TabsTrigger
+                    value="project"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-cyan-600 data-[state=active]:bg-transparent px-4 py-3 transition-colors hover:bg-muted/50"
+                  >
+                    <Briefcase className="h-3.5 w-3.5 mr-2 text-cyan-600" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">Projects</span>
+                    <Badge className="ml-2 h-5 min-w-[20px] rounded-full p-0 flex items-center justify-center text-[10px] bg-cyan-600 text-white border-0">
+                      {projectNotifications.length}
+                    </Badge>
+                  </TabsTrigger>
+                )}
+
+                {salaryNotifications.length > 0 && (
+                  <TabsTrigger
+                    value="salary"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-yellow-500 data-[state=active]:bg-transparent px-4 py-3 transition-colors hover:bg-muted/50"
+                  >
+                    <IndianRupee className="h-3.5 w-3.5 mr-2 text-yellow-500" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">Salary</span>
+                    <Badge className="ml-2 h-5 min-w-[20px] rounded-full p-0 flex items-center justify-center text-[10px] bg-yellow-500 text-white border-0">
+                      {salaryNotifications.length}
+                    </Badge>
+                  </TabsTrigger>
+                )}
+              </TabsList>
+            </div>
+
+            <ScrollArea className="h-[450px] w-full">
               <TabsContent value="all" className="m-0 divide-y">
                 {allNotifications.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
@@ -503,20 +528,55 @@ export const NotificationBell: React.FC = () => {
                   ))
                 )}
               </TabsContent>
+
+              <TabsContent value="attendance" className="m-0 divide-y">
+                {attendanceNotifications.length === 0 ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground">
+                    <p className="text-sm">No attendance notifications</p>
+                  </div>
+                ) : (
+                  attendanceNotifications.map((notification) => (
+                    <NotificationItem key={notification.id} notification={notification} />
+                  ))
+                )}
+              </TabsContent>
+
+              <TabsContent value="hiring" className="m-0 divide-y">
+                {hiringNotifications.length === 0 ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground">
+                    <p className="text-sm">No hiring notifications</p>
+                  </div>
+                ) : (
+                  hiringNotifications.map((notification) => (
+                    <NotificationItem key={notification.id} notification={notification} />
+                  ))
+                )}
+              </TabsContent>
+
+              <TabsContent value="project" className="m-0 divide-y">
+                {projectNotifications.length === 0 ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground">
+                    <p className="text-sm">No project notifications</p>
+                  </div>
+                ) : (
+                  projectNotifications.map((notification) => (
+                    <NotificationItem key={notification.id} notification={notification} />
+                  ))
+                )}
+              </TabsContent>
+
+              <TabsContent value="salary" className="m-0 divide-y">
+                {salaryNotifications.length === 0 ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground">
+                    <p className="text-sm">No salary notifications</p>
+                  </div>
+                ) : (
+                  salaryNotifications.map((notification) => (
+                    <NotificationItem key={notification.id} notification={notification} />
+                  ))
+                )}
+              </TabsContent>
             </ScrollArea>
-            <div className="p-3 border-t bg-slate-50 dark:bg-slate-900 sticky bottom-0">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full text-xs font-bold hover:bg-blue-600 hover:text-white transition-all duration-300"
-                onClick={() => {
-                  navigate(`/${user?.role}/inbox`);
-                  setIsOpen(false);
-                }}
-              >
-                View All Notifications
-              </Button>
-            </div>
           </Tabs>
         )}
       </DropdownMenuContent>

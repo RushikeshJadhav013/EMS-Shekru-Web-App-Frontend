@@ -330,20 +330,6 @@ const Login: React.FC = () => {
         if (userData.branchId) localStorage.setItem('branchId', String(userData.branchId));
         if (userData.companyId) localStorage.setItem('companyId', String(userData.companyId));
 
-        // Fetch additional user profile and tenant context
-        try {
-          const profileData = await apiService.getCurrentUser();
-          console.log('User Profile & Tenant Context:', profileData);
-          if (profileData.company_slug) {
-            localStorage.setItem('company_slug', profileData.company_slug);
-          }
-          if (profileData.company_name) {
-            localStorage.setItem('company_name', profileData.company_name);
-          }
-        } catch (profileErr) {
-          console.error('Failed to fetch user profile after login:', profileErr);
-        }
-
         // If admin, fetch accessible companies and show selector
         if (userData.role === 'Admin' || userData.role === 'admin') {
           try {
@@ -362,6 +348,7 @@ const Login: React.FC = () => {
               if (singleCompany.company_slug) {
                 localStorage.setItem('company_slug', singleCompany.company_slug);
                 localStorage.setItem('company_name', singleCompany.company_name);
+                if (singleCompany.company_id) localStorage.setItem('companyId', String(singleCompany.company_id));
               }
             }
             localStorage.setItem('accessibleCompanies', JSON.stringify(companies));
@@ -371,20 +358,36 @@ const Login: React.FC = () => {
         }
 
         // --- Standard Login Flow (Non-admin or Single-company Admin) ---
-        await login({
-          user_id: userData.user_id,
-          email: userData.email,
-          name: userData.name,
-          role: userData.role,
-          access_token: userData.access_token,
-          department: userData.department,
-          designation: userData.designation,
-          joining_date: userData.joining_date,
-          branch_id: userData.branch_id,
-          company_id: userData.company_id,
-        } as any);
+        // Fetch additional user profile and tenant context AFTER company is determined (explicitly or implicitly)
+        let finalUserData = { ...userData };
+        try {
+          const profileData = await apiService.getCurrentUser();
+          console.log('User Profile & Tenant Context:', profileData);
+          if (profileData.company_slug) {
+            localStorage.setItem('company_slug', profileData.company_slug);
+          }
+          if (profileData.company_name) {
+            localStorage.setItem('company_name', profileData.company_name);
+          }
+          if (profileData.company_id) {
+            localStorage.setItem('companyId', String(profileData.company_id));
+          }
 
-        navigate('/admin', { replace: true });
+          // Merge profile data (which contains tenant-specific info) into auth data
+          finalUserData = {
+            ...userData,
+            ...profileData,
+            user_id: profileData.user_id || userData.user_id, // Ensure user_id is preserved
+          };
+        } catch (profileErr) {
+          console.error('Failed to fetch user profile after login:', profileErr);
+          // Proceed with base userData if profile fetch fails
+        }
+
+        await login(finalUserData as any);
+
+        // Navigation is handled by AuthContext.login, but we can provide a fallback
+        // navigate('/admin', { replace: true });
       }
     } catch (err: any) {
       console.error('OTP verification error:', err);
@@ -613,23 +616,26 @@ const Login: React.FC = () => {
                             }
 
                             // Fetch fresh profile data to get the final tenant context
+                            let finalUserData = { ...tempAuthData };
                             try {
                               const freshProfile = await apiService.getCurrentUser();
                               if (freshProfile.company_slug) localStorage.setItem('company_slug', freshProfile.company_slug);
                               if (freshProfile.company_name) localStorage.setItem('company_name', freshProfile.company_name);
                               if (freshProfile.company_id) localStorage.setItem('companyId', String(freshProfile.company_id));
+
+                              finalUserData = {
+                                ...tempAuthData,
+                                ...freshProfile,
+                                user_id: freshProfile.user_id || tempAuthData.user_id,
+                              };
                             } catch (profileErr) {
                               console.error('Failed to get me after company select:', profileErr);
                             }
 
-                            if (tempAuthData) {
-                              await login({
-                                ...tempAuthData,
-                                company_id: selectedComp ? selectedComp.company_id : tempAuthData.company_id
-                              });
+                            if (finalUserData) {
+                              await login(finalUserData as any);
                             }
                             setShowCompanySelect(false);
-                            navigate('/admin', { replace: true });
                           } catch (err) {
                             console.error('Failed to switch company:', err);
                             toast({ title: "Switch Failed", description: "Failed to connect to selected organization.", variant: "destructive" });

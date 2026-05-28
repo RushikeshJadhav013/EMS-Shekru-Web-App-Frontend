@@ -676,13 +676,16 @@ export default function EmployeeManagement() {
     const upperId = employeeId.toUpperCase();
 
     // Check for duplicates in local state
-    if (!isEdit) {
-      const isDuplicate = employees.some(emp =>
-        emp.employeeId && emp.employeeId.toUpperCase() === upperId
-      );
-      if (isDuplicate) {
-        return { valid: false, message: 'Employee ID already exists. Please choose a unique ID.' };
+    const isDuplicate = employees.some(emp => {
+      // If we are editing, ignore the employee being edited (check both DB id and original employeeId)
+      if (isEdit && selectedEmployee) {
+        if (emp.id === selectedEmployee.id) return false;
       }
+      return emp.employeeId && emp.employeeId.toUpperCase() === upperId;
+    });
+
+    if (isDuplicate) {
+      return { valid: false, message: 'Employee ID already exists. Please choose a unique ID.' };
     }
 
     // Check if it contains at least one letter
@@ -3064,16 +3067,25 @@ export default function EmployeeManagement() {
               </p>
             </div>
             <div>
-              <Label htmlFor="edit-employeeId">Employee ID *</Label>
+              <Label htmlFor="edit-employeeId">Employee ID * <span className="text-xs text-gray-500">(Uppercase & Numbers only)</span></Label>
               <Input
                 id="edit-employeeId"
                 value={formData.employeeId || ''}
-                readOnly
-                disabled
-                aria-readonly="true"
+                onChange={(e) => {
+                  // Convert to uppercase and remove all non-alphanumeric characters
+                  const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                  setFormData((prev) => ({ ...prev, employeeId: value }));
+                }}
                 required
-                className="mt-1 bg-gray-50 text-muted-foreground cursor-not-allowed"
+                className="mt-1"
+                placeholder="e.g., EMP001"
               />
+              {formData.employeeId && !/[A-Z]/.test(formData.employeeId) && (
+                <p className="text-red-500 text-sm mt-1">Employee ID must contain at least one letter</p>
+              )}
+              {formData.employeeId && !/[0-9]/.test(formData.employeeId) && (
+                <p className="text-red-500 text-sm mt-1">Employee ID must contain at least one number</p>
+              )}
             </div>
             <div>
               <Label htmlFor="edit-name">Name *</Label>

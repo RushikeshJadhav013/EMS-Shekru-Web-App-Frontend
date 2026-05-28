@@ -30,7 +30,6 @@ class ChatService {
   async getChats(): Promise<Chat[]> {
     try {
       const data = await apiService.request('/chats/sessions');
-      console.log("CHATS SESSIONS PAYLOAD:", data);
 
       return data.map((session: any) => ({
         id: session.chat_id?.toString(),
@@ -111,7 +110,7 @@ class ChatService {
         const fileUrl = msg.file_url;
         const fileName = msg.file_name;
         const fileType = msg.file_type || rawType;
-        
+
         // Priority: If it's a file message from the new API, we MUST use file_url as the primary content 
         // for rendering, even if a text 'content' exists as a caption.
         let content: string = fileUrl || msg.content || '';
@@ -191,7 +190,7 @@ class ChatService {
 
       // Map response: prefer file_url for content property if available
       let finalContent = data.file_url || data.content || '';
-      
+
       const fallbackType = isImage ? 'image' : 'file';
       const resolvedMessageType = (data.file_type || data.message_type || fallbackType).startsWith('image') || (data.file_type || data.message_type || fallbackType).includes('image') ? 'image' : 'file';
 

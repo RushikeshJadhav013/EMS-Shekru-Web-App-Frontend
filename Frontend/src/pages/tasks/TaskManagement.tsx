@@ -83,6 +83,7 @@ import {
   ChevronUp,
   ClipboardList,
   LayoutGrid,
+  Bell,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -437,7 +438,7 @@ const TaskManagement: React.FC = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
   const location = useLocation();
-  const { addNotification } = useNotifications();
+  const { notifications, addNotification, markAsRead, clearNotification } = useNotifications();
   const [tasks, setTasks] = useState<TaskWithPassMeta[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [isOverdueFilterActive, setIsOverdueFilterActive] = useState(false);
@@ -454,7 +455,7 @@ const TaskManagement: React.FC = () => {
   >("received");
   const [selectedDepartmentFilter, setSelectedDepartmentFilter] =
     useState<string>("all");
-  const [activeViewTab, setActiveViewTab] = useState<"all" | "project">("all");
+  const [activeViewTab, setActiveViewTab] = useState<"all" | "project" | "notifications">("all");
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
@@ -599,6 +600,16 @@ const TaskManagement: React.FC = () => {
     if (user?.id === undefined || user?.id === null) return null;
     return String(user.id);
   }, [user?.id]);
+
+  const taskNotifications = useMemo(() => {
+    return notifications
+      .filter((n) => n.type === "task")
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [notifications]);
+
+  const taskUnreadNotifications = useMemo(() => {
+    return taskNotifications.filter(n => !n.read);
+  }, [taskNotifications]);
 
   const normalizedUserRole = useMemo(
     () => normalizeRole(user?.role),
@@ -1889,25 +1900,7 @@ const TaskManagement: React.FC = () => {
         note: passNote.trim() || undefined,
       };
 
-      const response = await fetch(
-        `${API_BASE_URL}/tasks/${passTaskTarget.id}/pass`,
-        {
-          method: "POST",
-          headers: authorizedHeaders,
-          body: JSON.stringify(payload),
-        },
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const detail =
-          errorData?.detail ?? `Failed to pass task (${response.status})`;
-        throw new Error(
-          typeof detail === "string" ? detail : JSON.stringify(detail),
-        );
-      }
-
-      const updatedTask: BackendTask = await response.json();
+      const updatedTask: BackendTask = await apiService.passTask(passTaskTarget.id, payload);
       const converted = mapBackendTaskToFrontend(updatedTask);
       setTasks((prev) =>
         prev.map((task) => (task.id === converted.id ? converted : task)),
@@ -2147,6 +2140,7 @@ const TaskManagement: React.FC = () => {
       assignedTo: "",
       startDate: "",
       deadline: "",
+      priority: "medium",
       projectId: "",
     });
     setIsUpdatingTask(false);
@@ -2160,6 +2154,7 @@ const TaskManagement: React.FC = () => {
       assignedTo: task.assignedTo[0] || "",
       startDate: formatDateForInput(task.startDate),
       deadline: formatDateForInput(task.deadline),
+      priority: task.priority || "medium",
       projectId: task.projectId ? String(task.projectId) : "",
     });
     setIsEditDialogOpen(true);
@@ -2280,31 +2275,12 @@ const TaskManagement: React.FC = () => {
 
     setIsReassigning(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/tasks/${reassignTask.id}`, {
-        method: "PUT",
-        headers: authorizedHeaders,
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const detail =
-          errorData?.detail ?? `Failed to reassign task (${response.status})`;
-        throw new Error(
-          typeof detail === "string" ? detail : JSON.stringify(detail),
-        );
-      }
+      const updatedTask: BackendTask = await apiService.updateTask(reassignTask.id, payload);
 
       // Explicitly update status to 'Pending' (todo) via the dedicated status endpoint
       // This is necessary because the general update endpoint might not process status changes for overdue tasks
       try {
-        await fetch(
-          `${API_BASE_URL}/tasks/${reassignTask.id}/status?status=Pending`,
-          {
-            method: "PUT",
-            headers: authorizedHeaders,
-          },
-        );
+        await apiService.updateTaskStatus(reassignTask.id, "Pending");
       } catch (statusError) {
         console.warn(
           "Failed to explicitly reset status during reassignment:",
@@ -2313,7 +2289,6 @@ const TaskManagement: React.FC = () => {
         // We continue anyway as the main update might have worked or we'll optimistic update locally
       }
 
-      const updatedTask: BackendTask = await response.json();
       let converted = mapBackendTaskToFrontend(updatedTask);
 
       // Force status to 'todo' (Pending) in local state for immediate feedback
@@ -2456,67 +2431,23 @@ const TaskManagement: React.FC = () => {
       return;
     }
 
-    const payload: Record<string, unknown> = {};
-    if (trimmedTitle !== editingTask.title) {
-      payload.title = trimmedTitle;
-    }
-    if (trimmedDescription !== editingTask.description) {
-      payload.description = trimmedDescription;
-    }
-    if (nextAssignee !== currentAssignee) {
-      payload.assigned_to = assignedToNumber;
-    }
+    const payload: Record<string, unknown> = {
+      task_id: Number(editingTask.id),
+      title: trimmedTitle,
+      description: trimmedDescription,
+      assigned_to: assignedToNumber,
+      priority: frontendToBackendPriority[editTaskForm.priority || editingTask.priority || "medium"],
+      due_date: editTaskForm.deadline || null,
+      start_date: editTaskForm.startDate || null,
+    };
 
-    const originalStartDate = editingTask.startDate
-      ? formatDateForInput(editingTask.startDate)
-      : "";
-    if (editTaskForm.startDate !== originalStartDate) {
-      payload.start_date = editTaskForm.startDate || null;
-    }
-
-    const originalDeadline = editingTask.deadline
-      ? formatDateForInput(editingTask.deadline)
-      : "";
-    if (editTaskForm.deadline !== originalDeadline) {
-      payload.due_date = editTaskForm.deadline || null;
-    }
-
-    if (
-      String(editTaskForm.projectId || "") !==
-      String(editingTask.projectId || "")
-    ) {
-      payload.project_id = editTaskForm.projectId
-        ? Number(editTaskForm.projectId)
-        : null;
-    }
-
-    if (Object.keys(payload).length === 0) {
-      toast({
-        title: "No changes detected",
-        description: "Update at least one field before saving.",
-        variant: "default",
-      });
-      return;
+    if (editTaskForm.projectId) {
+      payload.project_id = Number(editTaskForm.projectId);
     }
 
     setIsUpdatingTask(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/tasks/${editingTask.id}`, {
-        method: "PUT",
-        headers: authorizedHeaders,
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const detail =
-          errorData?.detail ?? `Failed to update task (${response.status})`;
-        throw new Error(
-          typeof detail === "string" ? detail : JSON.stringify(detail),
-        );
-      }
-
-      const updatedTask: BackendTask = await response.json();
+      const updatedTask: BackendTask = await apiService.updateTask(editingTask.id, payload);
       const converted = mapBackendTaskToFrontend(updatedTask);
       setTasks((prev) =>
         prev.map((task) => (task.id === converted.id ? converted : task)),
@@ -2610,19 +2541,7 @@ const TaskManagement: React.FC = () => {
 
       setDeletingTaskId(taskId);
       try {
-        const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
-          method: "DELETE",
-          headers: authorizedHeaders,
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          const detail =
-            errorData?.detail ?? `Failed to delete task (${response.status})`;
-          throw new Error(
-            typeof detail === "string" ? detail : JSON.stringify(detail),
-          );
-        }
+        await apiService.deleteTask(taskId);
 
         setTasks((prev) => prev.filter((task) => task.id !== taskId));
         // Also remove from project tasks if present
@@ -2774,22 +2693,7 @@ const TaskManagement: React.FC = () => {
     setUpdatingTaskId(taskId);
     try {
       const backendStatus = frontendToBackendStatus[newStatus];
-      const response = await fetch(
-        `${API_BASE_URL}/tasks/${taskId}/status?status=${encodeURIComponent(backendStatus)}`,
-        {
-          method: "PUT",
-          headers: authorizedHeaders,
-        },
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.detail || `Failed to update status (${response.status})`,
-        );
-      }
-
-      const updatedTask: BackendTask = await response.json();
+      const updatedTask: BackendTask = await apiService.updateTaskStatus(taskId, backendStatus);
       const convertedTask = mapBackendTaskToFrontend(updatedTask);
 
       // Update tasks list immediately
@@ -3584,25 +3488,149 @@ const TaskManagement: React.FC = () => {
         </div>
       </div>
 
-      <Tabs value={activeViewTab} onValueChange={(value) => setActiveViewTab(value as "all" | "project")} className="w-full">
+      <Tabs value={activeViewTab} onValueChange={(value) => setActiveViewTab(value as "all" | "project" | "notifications")} className="w-full">
         <TabsList
-          className="grid w-full grid-cols-2 h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm"
+          className="grid w-full grid-cols-3 h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm"
         >
           <TabsTrigger
             value="all"
             className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold text-black dark:text-white data-[state=inactive]:font-bold text-[14px] transition-all duration-300 rounded-md"
-            style={{}}
           >
             All Tasks
           </TabsTrigger>
           <TabsTrigger
             value="project"
             className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold text-black dark:text-white data-[state=inactive]:font-bold text-[14px] transition-all duration-300 rounded-md"
-            style={{}}
           >
             Project Tasks
           </TabsTrigger>
+          <TabsTrigger
+            value="notifications"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold text-black dark:text-white data-[state=inactive]:font-bold text-[14px] transition-all duration-300 rounded-md gap-2"
+          >
+            Notifications
+            {taskUnreadNotifications.length > 0 && (
+              <Badge className="bg-red-500 text-white border-0 h-5 px-1.5 min-w-[20px] justify-center text-[10px] animate-pulse">
+                {taskUnreadNotifications.length}
+              </Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="notifications" className="space-y-6 mt-6">
+          <Card className="border-2 border-[#000000] shadow-lg rounded-xl overflow-hidden min-h-[400px]">
+            <CardHeader className="border-b-2 border-[#000000] bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg">
+                    <Bell className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-black text-black dark:text-white uppercase tracking-wider">
+                      Task Notifications
+                    </CardTitle>
+                    <CardDescription className="text-xs font-bold text-slate-500">
+                      Recent activity and alerts for your tasks
+                    </CardDescription>
+                  </div>
+                </div>
+                {taskUnreadNotifications.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => taskUnreadNotifications.forEach(n => markAsRead(n.id))}
+                    className="h-8 border-2 border-black/10 dark:border-white/10 font-bold text-xs hover:bg-white dark:hover:bg-slate-900"
+                  >
+                    Mark all as read
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {taskNotifications.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="h-20 w-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
+                    <Bell className="h-10 w-10 text-slate-300" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                    No notifications yet
+                  </h3>
+                  <p className="text-sm text-slate-500 max-w-[250px] mx-auto mt-2">
+                    When you are assigned tasks or when task status changes, you'll see them here.
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y-2 divide-black/5 dark:divide-white/5">
+                  {taskNotifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      onClick={() => {
+                        if (notification.metadata?.taskId) {
+                          const task = tasks.find(t => t.id === notification.metadata?.taskId);
+                          if (task) {
+                            setSelectedTask(task);
+                          }
+                        }
+                        if (!notification.read) markAsRead(notification.id);
+                      }}
+                      className={cn(
+                        "p-4 flex items-start gap-4 cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-900/50 relative",
+                        !notification.read && "bg-blue-50/30 dark:bg-blue-900/10"
+                      )}
+                    >
+                      {!notification.read && (
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600" />
+                      )}
+                      <div className={cn(
+                        "h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm",
+                        notification.read ? "bg-slate-100 dark:bg-slate-800" : "bg-blue-100 dark:bg-blue-900/30"
+                      )}>
+                        <FileText className={cn("h-5 w-5", notification.read ? "text-slate-400" : "text-blue-600")} />
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className={cn(
+                            "text-sm font-bold truncate",
+                            notification.read ? "text-slate-700 dark:text-slate-300" : "text-black dark:text-white"
+                          )}>
+                            {notification.title}
+                          </h4>
+                          <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">
+                            {formatDateTimeIST(notification.createdAt, "MMM dd, HH:mm")}
+                          </span>
+                        </div>
+                        <p className="text-[13px] text-slate-500 line-clamp-2 leading-snug">
+                          {notification.message}
+                        </p>
+                        <div className="flex items-center gap-3 pt-1">
+                          {notification.read ? (
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Read</span>
+                          ) : (
+                            <Badge className="bg-blue-600 text-white border-0 h-4 px-1.5 text-[9px] font-black uppercase tracking-widest">New</Badge>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 px-0 text-[10px] font-black text-blue-600 hover:bg-transparent underline underline-offset-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (notification.metadata?.taskId) {
+                                const task = tasks.find(t => t.id === notification.metadata?.taskId);
+                                if (task) setSelectedTask(task);
+                              }
+                            }}
+                          >
+                            View Task
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="all" className="space-y-6 mt-6">
           {/* Stats Cards - Clickable Filters */}
@@ -4791,10 +4819,10 @@ const TaskManagement: React.FC = () => {
             </Card>
           </div>
         </TabsContent>
-      </Tabs>
+      </Tabs >
 
       {/* Pass Task Dialog */}
-      <Dialog
+      < Dialog
         open={isPassDialogOpen}
         onOpenChange={(open) => {
           if (!open) {
@@ -4917,7 +4945,7 @@ const TaskManagement: React.FC = () => {
             </div>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       <Dialog
         open={isEditDialogOpen}
@@ -5082,6 +5110,32 @@ const TaskManagement: React.FC = () => {
                   }
                   className="h-11 border-2 focus:ring-2 focus:ring-blue-500 transition-all"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="edit-priority"
+                  className="text-sm font-semibold flex items-center gap-2"
+                >
+                  <AlertCircle className="h-4 w-4 text-blue-600" />
+                  Priority
+                </Label>
+                <Select
+                  value={editTaskForm.priority || "medium"}
+                  onValueChange={(value: BaseTask["priority"]) =>
+                    setEditTaskForm((prev) => ({ ...prev, priority: value }))
+                  }
+                >
+                  <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950 uppercase font-bold text-xs tracking-widest">
+                    <SelectValue placeholder="Select Priority" />
+                  </SelectTrigger>
+                  <SelectContent className="border-2 shadow-xl">
+                    <SelectItem value="low" className="text-blue-600 font-bold uppercase tracking-widest text-[10px]">Low</SelectItem>
+                    <SelectItem value="medium" className="text-yellow-600 font-bold uppercase tracking-widest text-[10px]">Medium</SelectItem>
+                    <SelectItem value="high" className="text-orange-600 font-bold uppercase tracking-widest text-[10px]">High</SelectItem>
+                    <SelectItem value="urgent" className="text-red-600 font-bold uppercase tracking-widest text-[10px]">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {canSeeAdminFilters && (
@@ -6567,7 +6621,7 @@ const TaskManagement: React.FC = () => {
 
 
 
-    </div>
+    </div >
   );
 };
 

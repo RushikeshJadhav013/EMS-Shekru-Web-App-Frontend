@@ -744,28 +744,6 @@ class ApiService {
     return this.request(`/tasks/${taskId}/history`);
   }
 
-  async updateTaskStatus(taskId: string | number, status: string) {
-    return this.request(`/tasks/${taskId}/status?status=${encodeURIComponent(status)}`, {
-      method: "PUT",
-    });
-  }
-
-  // Bulk create tasks (POST /tasks/bulk)
-  async assignBulkTasks(data: {
-    title: string;
-    description?: string;
-    status?: string;
-    due_date?: string | null;
-    start_date?: string | null;
-    priority?: string;
-    assigned_to_ids: number[];
-    project_id?: number;
-  }) {
-    return this.request("/tasks/bulk", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
 
   // Legacy/Compatibility Bulk create tasks (PUT /tasks/bulk)
   async createTasksBulk(
@@ -1425,10 +1403,6 @@ class ApiService {
       params.append("end_date", endDate);
     }
     return this.request(`/shift/schedule/department/week?${params.toString()}`);
-  }
-
-  async getShiftNotifications() {
-    return this.request("/shift/notifications");
   }
 
   async markShiftNotificationAsRead(notificationId: number) {
@@ -2539,7 +2513,7 @@ class ApiService {
     });
   }
 
-  async assignTasksBulk(payload: {
+  async assignBulkTasks(payload: {
     title: string;
     description?: string;
     status?: string;
@@ -2559,31 +2533,33 @@ class ApiService {
     return this.request(`/tasks/projects/${projectId}`);
   }
 
-  async updateProjectTaskStatus(
-    projectId: number,
-    taskId: number,
-    status: string,
-    additionalData: any = {}
+  async updateTaskStatus(
+    taskId: number | string,
+    status: string
   ): Promise<any> {
-    // The backend expects 'status' as a query parameter, 
-    // but may also require title/assignee in the body.
-    const encodedStatus = encodeURIComponent(status);
-    return this.request(`/tasks/${taskId}/status?status=${encodedStatus}`, {
+    return this.request(`/tasks/${taskId}/status`, {
       method: "PUT",
-      body: JSON.stringify(additionalData),
+      body: JSON.stringify({ task_id: Number(taskId), status }),
     });
   }
 
-  async updateProjectTask(taskId: number, taskData: any): Promise<any> {
+  async updateTask(taskId: number | string, taskData: any): Promise<any> {
     return this.request(`/tasks/${taskId}`, {
       method: "PUT",
       body: JSON.stringify(taskData),
     });
   }
 
-  async deleteProjectTask(taskId: number): Promise<any> {
+  async deleteTask(taskId: number | string): Promise<any> {
     return this.request(`/tasks/${taskId}`, {
       method: "DELETE",
+    });
+  }
+
+  async passTask(taskId: number | string, payload: { new_assignee_id: number, note?: string }): Promise<any> {
+    return this.request(`/tasks/${taskId}/pass`, {
+      method: "POST",
+      body: JSON.stringify(payload),
     });
   }
 
@@ -2757,6 +2733,76 @@ class ApiService {
 
   async getCurrentUser(): Promise<any> {
     return this.request("/auth/me");
+  }
+
+  async getTaskNotifications(slug?: string) {
+    const endpoint = "/tasks/notifications";
+    return this.request(slug ? `/${slug}${endpoint}` : endpoint);
+  }
+
+  async getLeaveNotifications(slug?: string) {
+    const endpoint = "/leave/notifications";
+    return this.request(slug ? `/${slug}${endpoint}` : endpoint);
+  }
+
+  async getShiftNotifications(slug?: string) {
+    const endpoint = "/shift/notifications";
+    return this.request(slug ? `/${slug}${endpoint}` : endpoint);
+  }
+
+  async getWFHNotifications(slug?: string) {
+    const endpoint = "/wfh/notifications";
+    return this.request(slug ? `/${slug}${endpoint}` : endpoint);
+  }
+
+  async getMeetingNotifications(slug?: string) {
+    const endpoint = "/meetings/notifications";
+    return this.request(slug ? `/${slug}${endpoint}` : endpoint);
+  }
+
+  async getSalaryNotifications(slug?: string) {
+    const endpoint = "/salary/notifications";
+    return this.request(slug ? `/${slug}${endpoint}` : endpoint);
+  }
+
+  async getProjectNotifications(slug?: string) {
+    const endpoint = "/projects/notifications";
+    return this.request(slug ? `/${slug}${endpoint}` : endpoint);
+  }
+
+  async getChatNotifications(slug?: string) {
+    const endpoint = "/chats/notifications";
+    return this.request(slug ? `/${slug}${endpoint}` : endpoint);
+  }
+
+  async getAttendanceNotifications(slug?: string) {
+    const endpoint = "/attendance/notifications";
+    return this.request(slug ? `/${slug}${endpoint}` : endpoint);
+  }
+
+  async getHiringNotifications(slug?: string) {
+    const endpoint = "/hiring/notifications";
+    return this.request(slug ? `/${slug}${endpoint}` : endpoint);
+  }
+
+  async markNotificationAsRead(type: string, notificationId: number) {
+    let module = type;
+    // Map internal types to backend modules if different
+    if (type === 'meeting') module = 'meetings';
+    if (type === 'chat') module = 'chats';
+    if (type === 'project') module = 'projects';
+    if (type === 'task') module = 'tasks';
+    if (type === 'leave') module = 'leaves';
+    if (type === 'shift') module = 'shifts';
+    if (type === 'wfh') module = 'wfh';
+    if (type === 'salary') module = 'salary';
+    if (type === 'attendance') module = 'attendance';
+    if (type === 'hiring') module = 'hiring';
+
+    return this.request(`/${module}/notifications/${notificationId}/read`, {
+      method: "PUT",
+      body: JSON.stringify({ notification_id: notificationId }),
+    });
   }
 
   async switchCompany(companySlug: string): Promise<any> {
