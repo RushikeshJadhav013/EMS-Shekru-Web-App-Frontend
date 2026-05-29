@@ -513,25 +513,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setError(null);
 
     try {
-      const currentSlug = localStorage.getItem('company_slug') || undefined;
-      let slugsToFetch: (string | undefined)[] = [currentSlug];
-
-      // Try to get all accessible companies for admins to fetch cross-tenant notifications
-      const storedCompanies = localStorage.getItem('accessibleCompanies');
-      if (storedCompanies) {
-        try {
-          const companies = JSON.parse(storedCompanies);
-          if (Array.isArray(companies)) {
-            const allSlugs = companies
-              .map(c => c.company_slug)
-              .filter(s => !!s && s !== currentSlug);
-            slugsToFetch = [currentSlug, ...allSlugs];
-          }
-        } catch (e) {
-          // ignore parse error
-        }
-      }
-
       const unwrap = <T,>(result: PromiseSettledResult<any>): T[] => {
         if (result.status === 'fulfilled' && result.value) {
           const val = result.value;
@@ -556,25 +537,29 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       let hasAuthError = false;
 
-      for (const slug of slugsToFetch) {
-        const results = await Promise.allSettled([
-          apiService.getTaskNotifications(slug),
-          apiService.getLeaveNotifications(slug),
-          apiService.getShiftNotifications(slug),
-          apiService.getWFHNotifications(slug),
-          apiService.getMeetingNotifications(slug),
-          apiService.getSalaryNotifications(slug),
-          apiService.getProjectNotifications(slug),
-          apiService.getChatNotifications(slug),
-          apiService.getAttendanceNotifications(slug),
-          apiService.getHiringNotifications(slug),
-        ]);
+      // ✅ FIX: Do NOT pass slug to apiService methods.
+      // apiService.request() already auto-injects company_slug from localStorage.
+      // Passing slug explicitly caused DOUBLE-SLUG in URL:
+      //   e.g. baseURL/pvg-pvt-ltd/pvg-pvt-ltd/tasks/notifications → 404 / empty
+      // We call with no arguments so the API client injects the slug exactly once.
+      const results = await Promise.allSettled([
+        apiService.getTaskNotifications(),
+        apiService.getLeaveNotifications(),
+        apiService.getShiftNotifications(),
+        apiService.getWFHNotifications(),
+        apiService.getMeetingNotifications(),
+        apiService.getSalaryNotifications(),
+        apiService.getProjectNotifications(),
+        apiService.getChatNotifications(),
+        apiService.getAttendanceNotifications(),
+        apiService.getHiringNotifications(),
+      ]);
 
-        if (results.some(r => r.status === 'rejected' && (r.reason?.status === 401 || r.reason?.status === 403))) {
-          hasAuthError = true;
-          continue;
-        }
+      if (results.some(r => r.status === 'rejected' && (r.reason?.status === 401 || r.reason?.status === 403))) {
+        hasAuthError = true;
+      }
 
+      if (!hasAuthError) {
         allFetchedTasks.push(...unwrap<BackendTaskNotification>(results[0]));
         allFetchedLeaves.push(...unwrap<BackendLeaveNotification>(results[1]));
         allFetchedShifts.push(...unwrap<BackendShiftNotification>(results[2]));
@@ -587,7 +572,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         allFetchedHiring.push(...unwrap<BackendHiringNotification>(results[9]));
       }
 
-      if (hasAuthError && slugsToFetch.length === 1) {
+      if (hasAuthError) {
         stopPolling();
         return;
       }

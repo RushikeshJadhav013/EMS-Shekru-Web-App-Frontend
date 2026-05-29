@@ -112,7 +112,9 @@ const ChatList: React.FC = () => {
 
   const handleChatClick = (chat: any) => {
     setActiveChat(chat);
-    navigate(`/${user?.role}/chat/${chat.id}`);
+    const slug = localStorage.getItem('company_slug');
+    const basePath = slug && user?.role === 'admin' ? `/${slug}/${user?.role}/chat` : `/${user?.role}/chat`;
+    navigate(`${basePath}/${chat.id}`);
   };
 
   const getLastMessagePreview = (chat: any) => {
@@ -148,11 +150,11 @@ const ChatList: React.FC = () => {
     }
 
     const fullPreview = `${senderName}${content}`;
-    
+
     // Check if the preview is just a raw media URL or Base64 data and summarize it nicely
     const isUrlOrPath = content.startsWith('http') || content.startsWith('/') || content.startsWith('data:');
     const isBase64Document = content.includes('|data:application/') || content.startsWith('data:application/');
-    
+
     if (isUrlOrPath || isBase64Document) {
       if (content.startsWith('data:image/') || content.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || content.includes('staffly_type=image') || chat.lastMessage.messageType === 'image') {
         return `${senderName}📷 Image`;

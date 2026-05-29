@@ -292,7 +292,9 @@ const ChatBox: React.FC = () => {
       await deleteGroup(activeChat.id);
       setIsGroupSettingsOpen(false);
       setIsDeletingGroup(false);
-      navigate(`/${user?.role}/chat`);
+      const slug = localStorage.getItem('company_slug');
+      const chatBase = slug && user?.role === 'admin' ? `/${slug}/${user?.role}/chat` : `/${user?.role}/chat`;
+      navigate(chatBase);
     } catch (error) {
       console.error('Failed to delete group:', error);
     }
@@ -445,7 +447,11 @@ const ChatBox: React.FC = () => {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate(`/${user?.role}/chat`)}
+            onClick={() => {
+              const slug = localStorage.getItem('company_slug');
+              const chatBase = slug && user?.role === 'admin' ? `/${slug}/${user?.role}/chat` : `/${user?.role}/chat`;
+              navigate(chatBase);
+            }}
             className="sm:hidden p-2 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
           >
             <ArrowLeft className={cn("h-5 w-5", themeClasses.text)} />
@@ -508,7 +514,11 @@ const ChatBox: React.FC = () => {
                 </>
               )}
               <DropdownMenuItem
-                onClick={() => navigate(`/${user?.role}/chat`)}
+                onClick={() => {
+                  const slug = localStorage.getItem('company_slug');
+                  const chatBase = slug && user?.role === 'admin' ? `/${slug}/${user?.role}/chat` : `/${user?.role}/chat`;
+                  navigate(chatBase);
+                }}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <LogOut className="h-4 w-4 text-slate-500" />

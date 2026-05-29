@@ -25,9 +25,9 @@ const ChatPlaceholder = () => {
           "relative p-10 rounded-full border shadow-2xl backdrop-blur-sm transition-transform hover:scale-105 duration-700",
           isDark ? "bg-[#1f2c33]/40 border-slate-700/50" : "bg-white border-slate-100"
         )}>
-          <Logo 
-            showText={false} 
-            iconClassName="h-28 w-28 opacity-90" 
+          <Logo
+            showText={false}
+            iconClassName="h-28 w-28 opacity-90"
             className="flex items-center justify-center"
           />
           <div className="absolute -top-1 -right-1">
@@ -43,7 +43,7 @@ const ChatPlaceholder = () => {
           Staffly Web
         </h2>
         <p className={cn("text-sm leading-relaxed font-medium opacity-60", isDark ? "text-slate-400" : "text-slate-500")}>
-          Send and receive messages instantly with your team. <br/> 
+          Send and receive messages instantly with your team. <br />
           Staffly Web links your entire organization for seamless collaboration.
         </p>
       </div>
@@ -61,15 +61,26 @@ const ChatPlaceholder = () => {
 const Chat: React.FC = () => {
   const { themeMode } = useTheme();
   const location = useLocation();
-  const { chatId } = useParams();
+  const { chatId: paramChatId } = useParams();
   const { chats, setActiveChat, activeChat } = useChat();
   const isDark = themeMode === 'dark' || (themeMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  // Robustly derive the chatId from the URL pathname, regardless of slug prefix
+  // The chat URL pattern is: /{role}/chat/{chatId} or /{slug}/{role}/chat/{chatId}
+  const chatId = React.useMemo(() => {
+    const parts = location.pathname.split('/').filter(Boolean);
+    const chatIndex = parts.findIndex(p => p === 'chat');
+    if (chatIndex !== -1 && parts.length > chatIndex + 1) {
+      return parts[chatIndex + 1];
+    }
+    return paramChatId || null;
+  }, [location.pathname, paramChatId]);
 
   // Sync active chat when URL changes (for deep links/refresh)
   React.useEffect(() => {
     if (chatId) {
       if (!activeChat || activeChat.id !== chatId) {
-        const chat = chats.find(c => c.id === chatId);
+        const chat = chats.find(c => String(c.id) === String(chatId));
         if (chat) {
           setActiveChat(chat);
         }
