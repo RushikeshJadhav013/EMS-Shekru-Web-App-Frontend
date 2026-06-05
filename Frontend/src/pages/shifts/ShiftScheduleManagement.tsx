@@ -72,6 +72,9 @@ export default function ShiftScheduleManagement() {
   const { t } = useLanguage();
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [schedule, setSchedule] = useState<DepartmentSchedule | null>(null);
+  // Separate schedule used by the Assign dialog (tracks the chosen assignment date, not the view date)
+  const [assignSchedule, setAssignSchedule] = useState<DepartmentSchedule | null>(null);
+  const [isLoadingAssignSchedule, setIsLoadingAssignSchedule] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(formatDateIST(new Date(), 'yyyy-MM-dd'));
   const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
   const [weekStartDate, setWeekStartDate] = useState<string>(formatDateIST(new Date(), 'yyyy-MM-dd'));
@@ -512,14 +515,35 @@ export default function ShiftScheduleManagement() {
     }
   };
 
+  // Load schedule for the assignment date (used in Assign dialog)
+  const loadAssignSchedule = async (date: string) => {
+    if (!date) return;
+    try {
+      setIsLoadingAssignSchedule(true);
+      const data = await apiService.getDepartmentSchedule(date);
+      setAssignSchedule(data);
+    } catch (error: any) {
+      // Silently fail – user list may be empty but dialog still usable
+      console.error('Failed to load schedule for assignment date:', error);
+      setAssignSchedule(null);
+    } finally {
+      setIsLoadingAssignSchedule(false);
+    }
+  };
+
   const openAssignDialog = (shiftId?: number) => {
+    const dateToLoad = assignFormData.assignment_date || selectedDate;
     if (shiftId) {
-      setAssignFormData({ ...assignFormData, shift_id: shiftId });
+      setAssignFormData({ ...assignFormData, shift_id: shiftId, assignment_date: dateToLoad });
+    } else {
+      setAssignFormData((prev) => ({ ...prev, assignment_date: dateToLoad }));
     }
     // Ensure shifts are loaded before opening dialog
     if (shifts.length === 0) {
       loadShifts();
     }
+    // Load the schedule for the target assignment date
+    loadAssignSchedule(dateToLoad);
     setIsAssignDialogOpen(true);
   };
 
@@ -528,12 +552,28 @@ export default function ShiftScheduleManagement() {
     setIsReassignDialogOpen(true);
   };
 
+  // Returns users available (not yet assigned) for the chosen assignment date
   const getAvailableUsers = () => {
-    if (!schedule) return [];
+    // Use the assign-dialog-specific schedule if available; fall back to main view schedule
+    const src = assignSchedule || schedule;
+    if (!src) return [];
     const assignedUserIds = new Set(
-      schedule.shifts.flatMap(s => s.assignments.map(a => a.user_id))
+      src.shifts.flatMap(s => s.assignments.map(a => a.user_id))
     );
-    return schedule.unassigned_users.filter(u => !assignedUserIds.has(u.user_id));
+    // All department users = assigned + unassigned (unassigned_users are already those without a shift)
+    const allUsers = [
+      ...src.unassigned_users,
+      ...src.shifts.flatMap(s => s.assignments.map(a => a.user).filter((u): u is User => !!u)),
+    ];
+    // Deduplicate
+    const seen = new Set<number>();
+    const uniqueUsers = allUsers.filter(u => {
+      if (seen.has(u.user_id)) return false;
+      seen.add(u.user_id);
+      return true;
+    });
+    // Return only those NOT assigned on the chosen assignment date
+    return uniqueUsers.filter(u => !assignedUserIds.has(u.user_id));
   };
 
   return (
@@ -1222,39 +1262,52 @@ export default function ShiftScheduleManagement() {
                 id="assignment_date"
                 type="date"
                 value={assignFormData.assignment_date}
-                onChange={(e) => setAssignFormData({ ...assignFormData, assignment_date: e.target.value })}
+                onChange={(e) => {
+                  const newDate = e.target.value;
+                  setAssignFormData({ ...assignFormData, assignment_date: newDate });
+                  // Reload available employees for the newly selected date
+                  loadAssignSchedule(newDate);
+                }}
               />
             </div>
             <div className="space-y-2">
               <Label>Available Users</Label>
               <div className="border rounded-lg p-4 max-h-60 overflow-y-auto">
-                {getAvailableUsers().map((user) => (
-                  <div key={user.user_id} className="flex items-center justify-between py-2 border-b last:border-b-0">
-                    <div>
-                      <div className="font-medium">{user.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {user.employee_id || 'N/A'} • {user.designation || 'N/A'}
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant={selectedUsers.includes(user.user_id) ? 'default' : 'outline'}
-                      onClick={() => {
-                        if (selectedUsers.includes(user.user_id)) {
-                          setSelectedUsers(selectedUsers.filter(id => id !== user.user_id));
-                        } else {
-                          setSelectedUsers([...selectedUsers, user.user_id]);
-                        }
-                      }}
-                    >
-                      {selectedUsers.includes(user.user_id) ? 'Selected' : 'Select'}
-                    </Button>
-                  </div>
-                ))}
-                {getAvailableUsers().length === 0 && (
+                {isLoadingAssignSchedule ? (
                   <div className="text-center py-4 text-muted-foreground">
-                    No available users
+                    Loading employees for selected date...
                   </div>
+                ) : (
+                  <>
+                    {getAvailableUsers().map((user) => (
+                      <div key={user.user_id} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                        <div>
+                          <div className="font-medium">{user.name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {user.employee_id || 'N/A'} • {user.designation || 'N/A'}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={selectedUsers.includes(user.user_id) ? 'default' : 'outline'}
+                          onClick={() => {
+                            if (selectedUsers.includes(user.user_id)) {
+                              setSelectedUsers(selectedUsers.filter(id => id !== user.user_id));
+                            } else {
+                              setSelectedUsers([...selectedUsers, user.user_id]);
+                            }
+                          }}
+                        >
+                          {selectedUsers.includes(user.user_id) ? 'Selected' : 'Select'}
+                        </Button>
+                      </div>
+                    ))}
+                    {getAvailableUsers().length === 0 && (
+                      <div className="text-center py-4 text-muted-foreground">
+                        All employees are already assigned for this date
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

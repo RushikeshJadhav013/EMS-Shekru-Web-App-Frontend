@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "hr" | "manager" | "team_lead" | "employee";
+export type UserRole = "admin" | "hr" | "manager" | "team_lead" | "teamlead" | "employee" | "staff";
 
 export interface User {
   id: string;
@@ -21,6 +21,7 @@ export interface User {
   company_id?: string | number;
   createdAt: string;
   updatedAt: string;
+  isOnline?: boolean;
 }
 
 export interface LoginCredentials {
@@ -72,12 +73,12 @@ export interface LeaveRequest {
   id: string;
   userId: string;
   leaveType:
-    | "sick"
-    | "casual"
-    | "earned"
-    | "maternity"
-    | "paternity"
-    | "unpaid";
+  | "sick"
+  | "casual"
+  | "earned"
+  | "maternity"
+  | "paternity"
+  | "unpaid";
   startDate: string;
   endDate: string;
   reason: string;
@@ -289,6 +290,7 @@ export interface SalaryPreview {
   otherDeduction: number;
   monthlyInHand: number;
   annualCtc: number;
+  pfNo?: string;
 }
 
 export interface SalarySlip {

@@ -630,10 +630,10 @@ export default function BranchManagement() {
 
         <SummaryCard
           title="Total Employees"
-          value={departments.reduce((acc, dept) => acc + (dept.member_count || 0), 0)}
+          value={departments.reduce((acc, dept) => acc + (dept.employee_count || dept.employeeCount || 0), 0)}
           icon={Users}
-          iconColor="text-purple-600"
-          iconBg="bg-purple-100"
+          iconColor="text-blue-600"
+          iconBg="bg-blue-100"
         />
 
         <SummaryCard
@@ -692,7 +692,6 @@ export default function BranchManagement() {
                 <TableRow>
                   <TableHead className="w-[100px] px-6 py-3 uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>CODE</TableHead>
                   <TableHead className="px-6 py-3 uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>DEPARTMENT</TableHead>
-                  <TableHead className="px-6 py-3 uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>MANAGER</TableHead>
                   <TableHead className="px-6 py-3 uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>EMPLOYEES</TableHead>
                   <TableHead className="px-6 py-3 uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>LOCATION</TableHead>
                   <TableHead className="px-6 py-3 uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>STATUS</TableHead>
@@ -740,22 +739,6 @@ export default function BranchManagement() {
                               <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="line-clamp-2 max-w-xs">
                                 {department.description}
                               </p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            {managerNameStr ? (
-                              <>
-                                <div className="h-6 w-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                                  <span className="text-xs font-semibold text-green-700 dark:text-green-300">
-                                    {managerNameStr.charAt(0).toUpperCase()}
-                                  </span>
-                                </div>
-                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{managerNameStr}</span>
-                              </>
-                            ) : (
-                              <span className="text-sm text-slate-400 dark:text-slate-500 italic">Unassigned</span>
                             )}
                           </div>
                         </TableCell>
@@ -948,27 +931,6 @@ export default function BranchManagement() {
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <Label className="text-sm font-medium text-slate-600 dark:text-slate-400">Manager</Label>
-                    <div className="flex items-center gap-2 mt-1 bg-slate-50 dark:bg-slate-800 px-3 py-2 rounded border border-slate-200 dark:border-slate-700">
-                      {allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewBranch.manager_id)) ? (
-                        <>
-                          <div className="h-8 w-8 rounded-full bg-green-600 flex items-center justify-center">
-                            <span className="text-sm font-bold text-white">
-                              {(allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewBranch.manager_id))?.name ||
-                                allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewBranch.manager_id))?.full_name || '').charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <span className="text-base font-medium text-slate-900 dark:text-white">
-                            {allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewBranch.manager_id))?.name ||
-                              allEmployees.find(emp => String(emp.id || emp.user_id || emp.userId || emp.employee_id || emp.employeeId) === String(viewBranch.manager_id))?.full_name}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-slate-500 dark:text-slate-400 italic">Unassigned</span>
-                      )}
-                    </div>
-                  </div>
-                  <div>
                     <Label className="text-sm font-medium text-slate-600 dark:text-slate-400">Employee Count</Label>
                     <div className="flex items-center gap-2 mt-1">
                       <Users className="h-4 w-4 text-slate-500" />
@@ -1118,13 +1080,13 @@ function BranchForm({
       <div className="border-2 border-[#000000] dark:border-slate-700 rounded-lg p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-3">
-            <Users className="h-5 w-5 text-green-600 dark:text-green-400" />
+            <Activity className="h-5 w-5 text-green-600 dark:text-green-400" />
             <div>
               <p className="text-base font-semibold text-slate-900 dark:text-white">
-                Leadership & Status
+                Operational Status
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Assign a manager and define operational status
+                Define the current operational status of this department
               </p>
             </div>
           </div>
@@ -1134,64 +1096,7 @@ function BranchForm({
             </p>
           )}
         </div>
-        <div className="grid sm:grid-cols-2 gap-5">
-          <div className="space-y-2.5">
-            <Label htmlFor="manager" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Department Manager
-            </Label>
-            <Select
-              value={formData.manager_id}
-              onValueChange={onManagerChange}
-              disabled={isManagersLoading || managers.length === 0}
-            >
-              <SelectTrigger className="border-2 border-[#000000] dark:border-slate-600">
-                <SelectValue
-                  placeholder={
-                    isManagersLoading
-                      ? 'Loading managers...'
-                      : managers.length === 0
-                        ? managerLoadError ?? 'No eligible managers'
-                        : 'Select manager'
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {isManagersLoading && (
-                  <SelectItem value="loading" disabled>
-                    Loading...
-                  </SelectItem>
-                )}
-                {!isManagersLoading && (
-                  <SelectItem value="none">
-                    <span className="text-slate-500 italic">Unassigned</span>
-                  </SelectItem>
-                )}
-                {!isManagersLoading && managers.length === 0 && (
-                  <SelectItem value="loading" disabled>
-                    {managerLoadError ?? 'No employees found'}
-                  </SelectItem>
-                )}
-                {!isManagersLoading &&
-                  managers.length > 0 &&
-                  managers.map((manager) => (
-                    <SelectItem key={manager.id} value={manager.id}>
-                      <div className="flex flex-col">
-                        <span>{manager.name}</span>
-                        {manager.email && (
-                          <span className="text-xs text-slate-400">{manager.email}</span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-            {managerLoadError && !isManagersLoading && (
-              <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 p-2 rounded-lg">{managerLoadError}</p>
-            )}
-            <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-2 rounded-lg">
-              💡 When you assign a manager, their role will be automatically updated to "Manager" in the Employee Management system.
-            </p>
-          </div>
+        <div className="grid sm:grid-cols-1 gap-5">
           <div className="space-y-2.5">
             <Label htmlFor="status" className="text-sm font-medium text-slate-700 dark:text-slate-300">
               Status

@@ -488,7 +488,7 @@ const TaskManagement: React.FC = () => {
     "all",
   );
   const [departments, setDepartments] = useState<string[]>([]);
-  const [showAllDepartments, setShowAllDepartments] = useState(false);
+  const [showAllDepartments, setShowAllDepartments] = useState(true);
   const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
   const [userCache, setUserCache] = useState<Map<string, EmployeeSummary>>(
     new Map(),
@@ -506,6 +506,7 @@ const TaskManagement: React.FC = () => {
     assignedTo: "",
     startDate: "",
     deadline: "",
+    priority: "medium" as BaseTask["priority"],
     projectId: "",
   });
   const [isUpdatingTask, setIsUpdatingTask] = useState(false);
@@ -739,11 +740,13 @@ const TaskManagement: React.FC = () => {
         setActiveScopeError(true);
       }
 
-      toast({
-        title: "Employee fetch failed",
-        description: error.message || "Unable to load employees from server.",
-        variant: "destructive",
-      });
+      if (normalizedUserRole && normalizedUserRole !== "employee") {
+        toast({
+          title: "Employee fetch failed",
+          description: error.message || "Unable to load employees from server.",
+          variant: "destructive",
+        });
+      }
     }
   }, [
     authToken,
@@ -1383,12 +1386,12 @@ const TaskManagement: React.FC = () => {
       ? employeesById.get(currentAssigneeId)
       : null;
 
-    // Auto-update department only when an assignee is actually chosen
-    // Admin/HR can change department manually, so we don't force overwrite if no assignee is set
-    const nextDepartment =
-      assignee && assignee.userId !== userId
-        ? assignee.department || newTask.department || user.department || ""
-        : newTask.department;
+    // Auto-update department only if it's currently empty and an assignee is chosen.
+    // If the user has manually selected a department, we respect that choice.
+    let nextDepartment = newTask.department;
+    if (!newTask.department && assignee && assignee.userId !== userId) {
+      nextDepartment = assignee.department || user.department || "";
+    }
 
     const nextEmployeeId = assignee?.employeeId || "";
 
@@ -1604,7 +1607,9 @@ const TaskManagement: React.FC = () => {
           (p.description || "").toLowerCase().includes(query);
 
         // Filter tasks within this project based on current filters AND visibility
-        const filteredProjectTasks = (p.tasks || []).filter((task: any) => {
+        // Instead of p.tasks (which might be empty on load), we pull from the authoritative tasks list
+        const projectTasksFromMain = tasks.filter(t => t.projectId && String(t.projectId) === String(p.project_id || p.id));
+        const filteredProjectTasks = projectTasksFromMain.filter((task: any) => {
           // 1. Visibility Check
           if (!isTaskVisible(task)) return false;
 
@@ -1636,7 +1641,7 @@ const TaskManagement: React.FC = () => {
         };
       })
       .filter((p) => p.projectMatchesSearch || p.filteredTasks.length > 0);
-  }, [projects, searchQuery, filterStatus, isOverdueFilterActive, isTaskVisible, taskOwnershipFilter, userId]);
+  }, [projects, tasks, searchQuery, filterStatus, isOverdueFilterActive, isTaskVisible, taskOwnershipFilter, userId]);
 
   // Paginated projects
   const paginatedProjects = useMemo(() => {
@@ -3071,80 +3076,78 @@ const TaskManagement: React.FC = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {canSeeAdminFilters && (
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="assignRoleFilter"
-                            className="text-sm font-semibold flex items-center gap-2"
-                          >
-                            <Filter className="h-4 w-4 text-violet-600" />
-                            Filter Role
-                          </Label>
-                          <Select
-                            value={assignRoleFilter}
-                            onValueChange={(value: "all" | UserRole) =>
-                              setAssignRoleFilter(value)
-                            }
-                          >
-                            <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                              <SelectValue placeholder="All Roles" />
-                            </SelectTrigger>
-                            <SelectContent
-                              className="border-2 shadow-xl"
-                              side="bottom"
+                        <>
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="assignRoleFilter"
+                              className="text-sm font-semibold flex items-center gap-2"
                             >
-                              <SelectItem value="all">All Roles</SelectItem>
-                              {normalizedUserRole === "admin" && (
-                                <SelectItem value="hr">HR</SelectItem>
-                              )}
-                              {(normalizedUserRole === "admin" ||
-                                normalizedUserRole === "hr") && (
-                                  <SelectItem value="manager">Manager</SelectItem>
+                              <Filter className="h-4 w-4 text-violet-600" />
+                              Filter Role
+                            </Label>
+                            <Select
+                              value={assignRoleFilter}
+                              onValueChange={(value: "all" | UserRole) =>
+                                setAssignRoleFilter(value)
+                              }
+                            >
+                              <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                                <SelectValue placeholder="All Roles" />
+                              </SelectTrigger>
+                              <SelectContent
+                                className="border-2 shadow-xl"
+                                side="bottom"
+                              >
+                                <SelectItem value="all">All Roles</SelectItem>
+                                {normalizedUserRole === "admin" && (
+                                  <SelectItem value="hr">HR</SelectItem>
                                 )}
-                              <SelectItem value="team_lead">Team Lead</SelectItem>
-                              <SelectItem value="employee">Employee</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
+                                {(normalizedUserRole === "admin" ||
+                                  normalizedUserRole === "hr") && (
+                                    <SelectItem value="manager">Manager</SelectItem>
+                                  )}
+                                <SelectItem value="team_lead">Team Lead</SelectItem>
+                                <SelectItem value="employee">Employee</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
 
-                      {canSeeAdminFilters && (
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="assignDeptFilter"
-                            className="text-sm font-semibold flex items-center gap-2"
-                          >
-                            <Building2 className="h-4 w-4 text-violet-600" />
-                            Filter Department
-                          </Label>
-                          <Select
-                            value={newTask.department || "all"}
-                            onValueChange={(value) =>
-                              setNewTask({
-                                ...newTask,
-                                department: value === "all" ? "" : value,
-                              })
-                            }
-                          >
-                            <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                              <SelectValue placeholder="All Departments" />
-                            </SelectTrigger>
-                            <SelectContent
-                              className="border-2 shadow-xl"
-                              side="bottom"
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="assignDepartmentFilter"
+                              className="text-sm font-semibold flex items-center gap-2"
                             >
-                              <SelectItem value="all">All Departments</SelectItem>
-                              {departments
-                                .slice()
-                                .filter((dept) => dept && dept.trim() !== "")
-                                .sort((a, b) => a.localeCompare(b))
-                                .map((dept) => (
+                              <Building2 className="h-4 w-4 text-violet-600" />
+                              Filter Department
+                            </Label>
+                            <Select
+                              value={newTask.department || "all"}
+                              onValueChange={(value) =>
+                                setNewTask({
+                                  ...newTask,
+                                  department: value === "all" ? "" : value,
+                                })
+                              }
+                            >
+                              <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                                <SelectValue placeholder="All Departments" />
+                              </SelectTrigger>
+                              <SelectContent
+                                className="border-2 shadow-xl"
+                                side="bottom"
+                              >
+                                <SelectItem value="all">
+                                  All Departments
+                                </SelectItem>
+                                {departmentOptions.map((dept) => (
                                   <SelectItem key={dept} value={dept}>
                                     {dept}
                                   </SelectItem>
                                 ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </>
                       )}
                     </div>
 
@@ -3157,25 +3160,7 @@ const TaskManagement: React.FC = () => {
                           <User className="h-4 w-4 text-violet-600" />
                           Assign To <span className="text-red-500">*</span>
                         </Label>
-                        {/* Show All Departments toggle - Only for Admin, HR, Manager */}
-                        {canSeeAdminFilters && (
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              id="show-all-depts"
-                              checked={showAllDepartments}
-                              onCheckedChange={(checked) =>
-                                setShowAllDepartments(!!checked)
-                              }
-                              className="data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
-                            />
-                            <Label
-                              htmlFor="show-all-depts"
-                              className="text-[10px] font-medium text-slate-500 cursor-pointer"
-                            >
-                              Show All Departments
-                            </Label>
-                          </div>
-                        )}
+                        {/* Show All Departments toggle removed as per request */}
                       </div>
 
                       {/* Assign To Filter / Search */}
@@ -3792,43 +3777,6 @@ const TaskManagement: React.FC = () => {
                         </SelectContent>
                       </Select>
                     </div>
-
-                    {/* Department Filter - Show when viewing All Tasks for Admin and Manager */}
-                    {taskOwnershipFilter === "all" &&
-                      (normalizedUserRole === "admin" ||
-                        normalizedUserRole === "hr" ||
-                        normalizedUserRole === "manager" ||
-                        normalizedUserRole === "team_lead") && (
-                        <div className="flex flex-col gap-2">
-                          <Label className="text-[14px] font-black text-black dark:text-white" style={{}}>
-                            Department
-                          </Label>
-                          <Select
-                            value={selectedDepartmentFilter}
-                            onValueChange={setSelectedDepartmentFilter}
-                          >
-                            <SelectTrigger className="w-full sm:w-[180px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 text-[14px] text-black dark:text-white font-medium rounded-lg shadow-sm" style={{}}>
-                              <SelectValue placeholder="Select Department" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {(normalizedUserRole === "admin" ||
-                                normalizedUserRole === "hr" ||
-                                normalizedUserRole === "manager" ||
-                                normalizedUserRole === "team_lead") && (
-                                  <SelectItem value="all">All Departments</SelectItem>
-                                )}
-                              {departments
-                                .filter((dept) => dept && dept.trim() !== "")
-                                .sort((a, b) => a.localeCompare(b))
-                                .map((dept) => (
-                                  <SelectItem key={dept} value={dept}>
-                                    {dept}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
                   </div>
 
                   <div className="flex items-end gap-3">
@@ -4546,7 +4494,7 @@ const TaskManagement: React.FC = () => {
                 </CardHeader>
                 <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.completed}</div></CardContent>
               </Card>
-              <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(true); }} className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${isOverdueFilterActive ? "bg-rose-50 dark:bg-rose-900/40" : "bg-white dark:bg-gray-950 hover:bg-slate-50"}`}>
+              <Card onClick={() => { setFilterStatus("overdue"); setIsOverdueFilterActive(true); }} className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${isOverdueFilterActive ? "bg-rose-50 dark:bg-rose-900/40" : "bg-white dark:bg-gray-950 hover:bg-slate-50"}`}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Overdue</CardTitle>
                   <div className="h-8 w-8 rounded-lg bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center">
@@ -5421,7 +5369,7 @@ const TaskManagement: React.FC = () => {
             open={Boolean(selectedTask)}
             onOpenChange={() => setSelectedTask(null)}
           >
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader className="flex-shrink-0">
                 <DialogTitle className="text-2xl font-bold whitespace-pre-wrap break-words">
                   {selectedTask.title}
@@ -5499,6 +5447,21 @@ const TaskManagement: React.FC = () => {
                         >
                           {capitalizePriority(selectedTask.priority)}
                         </Badge>
+                      </div>
+
+                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                        <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                          <Calendar className="h-4 w-4 text-violet-600" />
+                          Start Date
+                        </h4>
+                        <p className="text-muted-foreground font-medium">
+                          {selectedTask.startDate
+                            ? formatDateIST(
+                              parseToIST(selectedTask.startDate) || new Date(),
+                              "MMM dd, yyyy",
+                            )
+                            : "N/A"}
+                        </p>
                       </div>
 
                       <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
@@ -6506,10 +6469,24 @@ const TaskManagement: React.FC = () => {
                       const toInfo = toId
                         ? getAssignedToInfo(toId)
                         : { name: "Unknown", roleLabel: undefined };
+
+                      // Prioritize names from backend details if available
+                      const fromName =
+                        typeof details?.from_name === "string"
+                          ? details.from_name
+                          : fromInfo.name;
+
                       const toName =
                         typeof details?.to_name === "string"
                           ? details.to_name
                           : toInfo.name;
+
+                      const actorNameFromBackend =
+                        typeof details?.actor_name === "string"
+                          ? details.actor_name
+                          : typeof details?.user_name === "string"
+                            ? details.user_name
+                            : null;
                       const note =
                         typeof details?.note === "string" &&
                           details.note.trim().length > 0
@@ -6521,6 +6498,9 @@ const TaskManagement: React.FC = () => {
                         String(entry.user_id),
                         actorRole,
                       );
+
+                      const displayActorName = actorNameFromBackend || actorInfo.name;
+
                       const timestamp = formatDateTimeIST(
                         entry.created_at,
                         "MMM dd, yyyy HH:mm",
@@ -6541,7 +6521,7 @@ const TaskManagement: React.FC = () => {
                                   Pass #{index + 1}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  by {actorInfo.name}
+                                  by {displayActorName}
                                   {actorInfo.roleLabel && (
                                     <span className="ml-1">
                                       ({actorInfo.roleLabel})
@@ -6562,7 +6542,7 @@ const TaskManagement: React.FC = () => {
                                 From
                               </div>
                               <div className="font-medium text-sm">
-                                {fromInfo.name}
+                                {fromName}
                               </div>
                               {fromInfo.roleLabel && (
                                 <div className="text-xs text-muted-foreground mt-0.5">

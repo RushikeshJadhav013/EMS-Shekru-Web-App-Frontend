@@ -95,7 +95,7 @@ const MeetingsPage: React.FC = () => {
     const [departments, setDepartments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [mainTab, setMainTab] = useState<"all" | "my">("all");
-    const [typeFilter, setTypeFilter] = useState("one-to-one");
+    const [typeFilter, setTypeFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
@@ -146,32 +146,44 @@ const MeetingsPage: React.FC = () => {
 
         let finalType: Meeting['type'] = 'company';
 
-        const isProjectKeyword = titleLower.includes('project') || titleLower.includes('prj') || titleLower.includes('sprint') || titleLower.includes('scrum') || titleLower.includes('milestone') || titleLower.includes('development');
-        const isTeamKeyword = titleLower.includes('team') || titleLower.includes('dept') || titleLower.includes('standup') || titleLower.includes('stand up') || titleLower.includes('sync') || titleLower.includes('huddle') || titleLower.includes('meeting') && (titleLower.includes('daily') || titleLower.includes('weekly'));
+        const isProjectKeyword = titleLower.includes('project') || titleLower.includes('prj') || titleLower.includes('sprint') || titleLower.includes('scrum') || titleLower.includes('milestone') || titleLower.includes('development') || titleLower.includes('backlog');
+        const isTeamKeyword = titleLower.includes('team') || titleLower.includes('dept') || titleLower.includes('huddle') || titleLower.includes('sync') || titleLower.includes('standup') || titleLower.includes('stand up') || titleLower.includes('group') || (titleLower.includes('meeting') && (titleLower.includes('daily') || titleLower.includes('weekly') || titleLower.includes('monthly')));
 
-        // 1. Explicit priority for project and team based on IDs or explicit Type fields
-        if (rawTypeField === 'project' || (projectId && String(projectId) !== '0' && String(projectId) !== 'null')) {
+        // 1. Explicit priority based on API Type fields
+        if (rawTypeField === 'project') {
             finalType = 'project';
-        } else if (rawTypeField === 'team' || rawTypeField === 'department' || (teamId && String(teamId) !== '0' && String(teamId) !== 'null')) {
+        } else if (rawTypeField === 'team' || rawTypeField === 'department') {
+            finalType = 'team';
+        } else if (rawTypeField === 'one-to-one' || rawTypeField === '1:1') {
+            finalType = 'one-to-one';
+        } else if (rawTypeField === 'company' || rawTypeField === 'townhall') {
+            finalType = 'company';
+        }
+        // 2. Specific keyword matches (Very high confidence)
+        else if (titleLower.includes('1:1') || titleLower.includes('one to one') || titleLower.includes('one-to-one')) {
+            finalType = 'one-to-one';
+        } else if (titleLower.includes('townhall') || titleLower.includes('all hands') || titleLower.includes('company meet')) {
+            finalType = 'company';
+        }
+        // 3. ID-based matching (High confidence)
+        else if (projectId && String(projectId) !== '0' && String(projectId) !== 'null') {
+            finalType = 'project';
+        } else if (teamId && String(teamId) !== '0' && String(teamId) !== 'null') {
             finalType = 'team';
         }
-        // 2. Name-based matching (if API returns names even without IDs)
+        // 4. Name-based matching (Medium confidence)
         else if (projectName && String(projectName) !== 'null' && String(projectName) !== '') {
             finalType = 'project';
         } else if (teamName && String(teamName) !== 'null' && String(teamName) !== '') {
             finalType = 'team';
         }
-        // 3. Keyword-based matching
+        // 5. General Keyword-based matching (Lower confidence)
         else if (isProjectKeyword) {
             finalType = 'project';
         } else if (isTeamKeyword) {
             finalType = 'team';
-        } else if (titleLower.includes('1:1') || titleLower.includes('one to one') || rawTypeField === 'one-to-one' || rawTypeField === '1:1') {
-            finalType = 'one-to-one';
-        } else if (rawTypeField === 'company' || rawTypeField === 'townhall' || titleLower.includes('townhall')) {
-            finalType = 'company';
         }
-        // 4. Default heuristics
+        // 6. Default heuristics
         else if (m.participants && Array.isArray(m.participants) && m.participants.length > 0 && m.participants.length <= 2) {
             finalType = 'one-to-one';
         } else {
@@ -217,16 +229,16 @@ const MeetingsPage: React.FC = () => {
 
             const rawAll = extractMeetings(allMeetingsData);
             const rawMy = extractMeetings(participationData);
-            const rawProject = extractMeetings(projectMeetingsData).map(m => ({ ...m, type: 'project' }));
-            const rawTeam = extractMeetings(teamMeetingsData).map(m => ({ ...m, type: 'team' }));
+            const rawProject = extractMeetings(projectMeetingsData);
+            const rawTeam = extractMeetings(teamMeetingsData);
 
-            // Merge all sources to ensure distribution is captured from every possible endpoint
+            // Merge all sources. normalizeMeeting will determine the type correctly from API fields.
             const mergedAll = [...rawAll, ...rawProject, ...rawTeam];
 
-            const normalizedAll = mergedAll.map(normalizeMeeting).filter((m: Meeting) => m.id);
-            const normalizedMy = rawMy.map(normalizeMeeting).filter((m: Meeting) => m.id);
+            const normalizedAll = mergedAll.map(normalizeMeeting).filter((m: Meeting) => m?.id);
+            const normalizedMy = rawMy.map(normalizeMeeting).filter((m: Meeting) => m?.id);
 
-            // De-duplicate by ID
+            // De-duplicate by ID - ensures we have a unique set of meetings
             const uniqueAll = Array.from(new Map(normalizedAll.map(m => [m.id, m])).values());
             const uniqueMy = Array.from(new Map(normalizedMy.map(m => [m.id, m])).values());
 
@@ -526,9 +538,9 @@ const MeetingsPage: React.FC = () => {
 
                                             if (v === 'company') {
                                                 newFormData.participant_ids = employees.map(emp => Number(emp.user_id || emp.id)).filter(id => !isNaN(id));
-                                            } else if (v === 'team' && isTeamLead && user?.department) {
+                                            } else if (v === 'team' && (isTeamLead || isManager) && user?.department) {
                                                 // Handle multi-department strings (e.g., "Engineering, HR")
-                                                const userDepts = user.department.split(',').map(d => d.trim().toLowerCase());
+                                                const userDepts = (user.department || "").split(',').map(d => d.trim().toLowerCase());
                                                 const myDept = departments.find(d => {
                                                     const deptName = (d.name || "").toLowerCase().trim();
                                                     return userDepts.includes(deptName) ||
@@ -571,10 +583,13 @@ const MeetingsPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            {formData.type === 'team' && !isTeamLead && (
+                            {formData.type === 'team' && (
                                 <div className="grid gap-2">
                                     <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Select Department</Label>
-                                    <Select value={formData.team_id?.toString() || ""} onValueChange={(v) => setFormData({ ...formData, team_id: v ? parseInt(v) : undefined })}>
+                                    <Select value={formData.team_id?.toString() || ""} onValueChange={(v) => {
+                                        const tId = v ? parseInt(v) : undefined;
+                                        setFormData({ ...formData, team_id: tId, participant_ids: [] });
+                                    }}>
                                         <SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Choose Department" /></SelectTrigger>
                                         <SelectContent>
                                             {departments.map((d: any) => <SelectItem key={d.id} value={d.id?.toString()}>{d.name || "Unnamed"}</SelectItem>)}
@@ -686,10 +701,18 @@ const MeetingsPage: React.FC = () => {
 
             <div className="flex-1 overflow-y-auto w-full custom-scrollbar">
                 <div className="max-w-7xl mx-auto px-6 py-8">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
+                        <SummaryCard
+                            title="All Meetings"
+                            value={activeMeetings.length}
+                            icon={Video}
+                            iconColor="text-slate-600"
+                            iconBg="bg-slate-50"
+                            onClick={() => setTypeFilter('all')}
+                        />
                         <SummaryCard
                             title="1:1 meeting"
-                            value={meetings.filter(m => m.type === 'one-to-one').length}
+                            value={activeMeetings.filter(m => m.type === 'one-to-one').length}
                             icon={Users}
                             iconColor="text-amber-600"
                             iconBg="bg-amber-50"
@@ -697,7 +720,7 @@ const MeetingsPage: React.FC = () => {
                         />
                         <SummaryCard
                             title="Townhall meeting"
-                            value={meetings.filter(m => m.type === 'company').length}
+                            value={activeMeetings.filter(m => m.type === 'company').length}
                             icon={Briefcase}
                             iconColor="text-indigo-600"
                             iconBg="bg-indigo-50"
@@ -705,7 +728,7 @@ const MeetingsPage: React.FC = () => {
                         />
                         <SummaryCard
                             title="Project meeting"
-                            value={meetings.filter(m => m.type === 'project').length}
+                            value={activeMeetings.filter(m => m.type === 'project').length}
                             icon={FolderKanban}
                             iconColor="text-blue-600"
                             iconBg="bg-blue-50"
@@ -713,7 +736,7 @@ const MeetingsPage: React.FC = () => {
                         />
                         <SummaryCard
                             title="Team meeting"
-                            value={meetings.filter(m => m.type === 'team').length}
+                            value={activeMeetings.filter(m => m.type === 'team').length}
                             icon={Users2}
                             iconColor="text-rose-600"
                             iconBg="bg-rose-50"
@@ -729,6 +752,7 @@ const MeetingsPage: React.FC = () => {
                     <Tabs value={typeFilter} onValueChange={setTypeFilter} className="w-full">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                             <TabsList className="h-14 p-1.5 rounded-[1.5rem] bg-white dark:bg-slate-900 shadow-sm border-2 border-[#000000] mx-auto">
+                                <TabsTrigger value="all" className="rounded-2xl px-6 data-[state=active]:bg-slate-900 data-[state=active]:text-white" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>All Meetings</TabsTrigger>
                                 <TabsTrigger value="one-to-one" className="rounded-2xl px-6 data-[state=active]:bg-amber-500 data-[state=active]:text-white" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>1:1 meeting</TabsTrigger>
                                 <TabsTrigger value="company" className="rounded-2xl px-6 data-[state=active]:bg-indigo-600 data-[state=active]:text-white" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>Townhall meeting</TabsTrigger>
                                 <TabsTrigger value="project" className="rounded-2xl px-6 data-[state=active]:bg-blue-600 data-[state=active]:text-white" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>Project meeting</TabsTrigger>

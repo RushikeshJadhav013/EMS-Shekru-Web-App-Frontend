@@ -88,7 +88,8 @@ const ChatBox: React.FC = () => {
     deleteGroup,
     addParticipants,
     removeParticipants,
-    loadMessages
+    loadMessages,
+    loadAvailableUsers
   } = useChat();
 
   const { user } = useAuth();
@@ -124,11 +125,14 @@ const ChatBox: React.FC = () => {
 
 
   useEffect(() => {
-    if (chatId && (!activeChat || activeChat.id !== chatId)) {
-      const foundChat = chats.find(chat => chat.id?.toString() === chatId?.toString());
-      if (foundChat) setActiveChat(foundChat);
+    if (chatId) {
+      loadAvailableUsers();
+      if (!activeChat || activeChat.id !== chatId) {
+        const foundChat = chats.find(chat => chat.id?.toString() === chatId?.toString());
+        if (foundChat) setActiveChat(foundChat);
+      }
     }
-  }, [chatId, activeChat, chats, setActiveChat]);
+  }, [chatId, activeChat, chats, setActiveChat, loadAvailableUsers]);
 
   useEffect(() => {
     if (activeChat && messages.length > 0) {
@@ -501,16 +505,18 @@ const ChatBox: React.FC = () => {
                     <Settings className="h-4 w-4 text-slate-500" />
                     <span style={{ color: "#000000", fontSize: "14px" }}>Group Settings</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setSelectedNewUsers([]);
-                      setIsAddingMembers(true);
-                    }}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <UserPlus className="h-4 w-4 text-slate-500" />
-                    <span style={{ color: "#000000", fontSize: "14px" }}>Add Members</span>
-                  </DropdownMenuItem>
+                  {user?.role && ['admin', 'hr', 'manager'].includes(user.role) && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSelectedNewUsers([]);
+                        setIsAddingMembers(true);
+                      }}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <UserPlus className="h-4 w-4 text-slate-500" />
+                      <span style={{ color: "#000000", fontSize: "14px" }}>Add Members</span>
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
               <DropdownMenuItem
@@ -795,14 +801,16 @@ const ChatBox: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between px-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Members ({activeChat?.participants.length})</label>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsAddingMembers(true)}
-                  className="h-7 px-2 text-[10px] font-black text-green-600 hover:bg-green-50 rounded-lg uppercase tracking-wider"
-                >
-                  <Plus className="h-3 w-3 mr-1" /> Add New
-                </Button>
+                {user?.role && ['admin', 'hr', 'manager'].includes(user.role) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsAddingMembers(true)}
+                    className="h-7 px-2 text-[10px] font-black text-green-600 hover:bg-green-50 rounded-lg uppercase tracking-wider"
+                  >
+                    <Plus className="h-3 w-3 mr-1" /> Add New
+                  </Button>
+                )}
               </div>
 
               <ScrollArea className="h-[200px] rounded-2xl border-2 p-2">
@@ -823,7 +831,7 @@ const ChatBox: React.FC = () => {
                         {p.isAdmin && (
                           <Badge variant="outline" className="text-[8px] font-black uppercase bg-amber-50 text-amber-600 border-amber-200">Admin</Badge>
                         )}
-                        {activeChat.participants.find(part => part.userId === user?.id)?.isAdmin && p.userId !== user?.id && (
+                        {(activeChat.participants.find(part => part.userId === user?.id)?.isAdmin || (user?.role && ['admin', 'hr', 'manager'].includes(user.role))) && p.userId !== user?.id && (
                           <Button
                             variant="ghost"
                             size="icon"

@@ -74,7 +74,7 @@ const TASK_STATUSES = [
 ] as const;
 type TaskStatus = (typeof TASK_STATUSES)[number];
 
-const PRIORITY_OPTIONS = ["Low", "Medium", "High"] as const;
+const PRIORITY_OPTIONS = ["Low", "Medium", "High", "Urgent"] as const;
 type Priority = (typeof PRIORITY_OPTIONS)[number];
 
 // Form-only type: supports multiple assignees per task row
@@ -134,8 +134,8 @@ const TaskFormSection = ({
             key={index}
             className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border-2 border-[#000000] space-y-3 shadow-sm"
           >
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-              <div className="md:col-span-2 space-y-1.5">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+              <div className="md:col-span-4 space-y-1.5">
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Name</p>
                 <Input
                   placeholder="Task name *"
@@ -146,7 +146,7 @@ const TaskFormSection = ({
                   className="shadow-inner"
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="md:col-span-3 space-y-1.5">
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Start Date</p>
                 <Input
                   type="date"
@@ -157,7 +157,7 @@ const TaskFormSection = ({
                   className="shadow-inner"
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="md:col-span-3 space-y-1.5">
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Due Date</p>
                 <Input
                   type="date"
@@ -168,7 +168,7 @@ const TaskFormSection = ({
                   className="shadow-inner"
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="md:col-span-2 space-y-1.5">
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Priority</p>
                 <div className="flex gap-2">
                   <Select
@@ -293,7 +293,7 @@ interface ProjectTask {
   due_date?: string;
   assigned_by?: number | string;
   assigned_by_name?: string;
-  priority?: "Low" | "Medium" | "High";
+  priority?: "Low" | "Medium" | "High" | "Urgent";
   status:
   | "Pending"
   | "In Progress"
@@ -424,6 +424,8 @@ function statusColor(s?: string) {
     return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
   if (status === "Completed")
     return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
+  if (status === "Overdue")
+    return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
   if (status === "Cancelled" || status === "Archived")
     return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
   return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
@@ -519,27 +521,14 @@ function TaskRow({
           <span className="truncate">{task.assigned_by_name || "Admin"}</span>
         </div>
       </TableCell>
-      <TableCell>
-        <div className="flex flex-col gap-0.5 text-[10px] whitespace-nowrap">
-          <div className="flex items-center gap-1">
-            <span className="text-[8px] font-black text-slate-400 w-4">ST</span>
-            <span className="text-slate-600 dark:text-slate-400 font-bold tabular-nums">
-              {task.start_date ? formatDateIST(task.start_date, "MMM dd, yyyy") : "—"}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[8px] font-black text-slate-400 w-4">DU</span>
-            <span className={`font-bold tabular-nums ${isOverdue ? 'text-red-600' : 'text-slate-600 dark:text-slate-400'}`}>
-              {task.due_date ? formatDateIST(task.due_date, "MMM dd, yyyy") : "—"}
-            </span>
-          </div>
-        </div>
+      <TableCell className="text-xs font-bold text-slate-600 dark:text-slate-400 tabular-nums">
+        {task.start_date ? formatDateIST(task.start_date, "MMM dd, yyyy") : "—"}
+      </TableCell>
+      <TableCell className={`text-xs font-bold tabular-nums ${isOverdue ? 'text-red-600' : 'text-slate-600 dark:text-slate-400'}`}>
+        {task.due_date ? formatDateIST(task.due_date, "MMM dd, yyyy") : "—"}
       </TableCell>
       <TableCell>
-        {(!canManageProjects ||
-          normalizeStatus(task.status) === "Completed" ||
-          normalizeStatus(task.status) === "Cancelled" ||
-          isOverdue) ? (
+        {(!canManageProjects) ? (
           <TaskStatusBadge status={effectiveStatus} />
         ) : (
           <Select
@@ -562,10 +551,22 @@ function TaskRow({
                   In Progress
                 </span>
               </SelectItem>
-              <SelectItem value="archived">
+              <SelectItem value="Completed">
+                <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Completed
+                </span>
+              </SelectItem>
+              <SelectItem value="Cancelled">
                 <span className="flex items-center gap-1.5 text-slate-600 font-medium">
-                  <FolderKanban className="h-3 w-3" />
-                  Archived
+                  <XCircle className="h-3 w-3" />
+                  Cancelled
+                </span>
+              </SelectItem>
+              <SelectItem value="Overdue">
+                <span className="flex items-center gap-1.5 text-red-600 font-medium font-bold">
+                  <AlertCircle className="h-3 w-3" />
+                  Overdue
                 </span>
               </SelectItem>
             </SelectContent>
@@ -631,7 +632,11 @@ function ProjectCard({
   const [expanded, setExpanded] = useState(false);
   const tasks = project.tasks || [];
   const members = project.members || [];
-  const todoCount = tasks.filter((t) => normalizeStatus(t.status) === "Pending" || normalizeStatus(t.status) === "todo").length;
+  const todoCount = tasks.filter((t) => {
+    const s = normalizeStatus(t.status);
+    return s === "Pending" || s === "todo" || s === "Overdue";
+  }).length;
+  const overdueCount = tasks.filter((t) => normalizeStatus(t.status) === "Overdue").length;
   const completedCount = tasks.filter((t) => normalizeStatus(t.status) === "Completed").length;
   const cancelledCount = tasks.filter((t) => normalizeStatus(t.status) === "Cancelled").length;
 
@@ -683,56 +688,8 @@ function ProjectCard({
                 </div>
               )}
             </div>
-            {/* Status Dropdown */}
             <div className="flex-1 flex justify-center">
-              <Select
-                value={normalizeStatus(project.status)}
-                onValueChange={(v) =>
-                  onProjectStatusChange(project.project_id, v)
-                }
-                disabled={
-                  !canManageProjects ||
-                  ["Completed", "Archived", "Cancelled"].includes(
-                    normalizeStatus(project.status),
-                  )
-                }
-              >
-                <SelectTrigger className="h-7 w-32 border-slate-200 dark:border-slate-700 font-medium" style={{ fontSize: "12px" }}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent side="bottom" className="shadow-md">
-                  <SelectItem value="Pending">
-                    <span className="flex items-center gap-1.5 text-amber-600 font-medium">
-                      <Clock className="h-3 w-3" />
-                      Pending
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="In Progress">
-                    <span className="flex items-center gap-1.5 text-blue-600 font-medium">
-                      <Clock className="h-3 w-3" />
-                      In Progress
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="Completed">
-                    <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
-                      <CheckCircle2 className="h-3 w-3" />
-                      Completed
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="Archived">
-                    <span className="flex items-center gap-1.5 text-slate-600 font-medium">
-                      <FolderKanban className="h-3 w-3" />
-                      Archived
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="cancelled">
-                    <span className="flex items-center gap-1.5 text-red-500 dark:text-red-400 font-bold uppercase tracking-tight text-[10px]">
-                      <XCircle className="h-3 w-3" />
-                      Canceled
-                    </span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              {/* Status Dropdown removed from card and moved to Edit Project dialog as requested */}
             </div>
 
             {/* Actions */}
@@ -845,12 +802,23 @@ function ProjectCard({
                   <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
                     {
                       tasks.filter(
-                        (t) => normalizeStatus(t.status) === "Pending" || normalizeStatus(t.status) === "todo",
+                        (t) => {
+                          const s = normalizeStatus(t.status);
+                          return s === "Pending" || s === "todo";
+                        }
                       ).length
                     }{" "}
                     Pending
                   </span>
                 </div>
+                {overdueCount > 0 && (
+                  <div className="flex items-center gap-1.5 bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-full border border-red-100/50">
+                    <AlertCircle className="h-5 w-5 text-red-500" />
+                    <span className="text-xs font-bold text-red-600 dark:text-red-400">
+                      {overdueCount} Overdue
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-full">
                   <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                   <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
@@ -961,6 +929,7 @@ function ProjectCard({
                       <TableRow className="bg-slate-50/80 dark:bg-slate-900/40">
                         <TableHead className="pl-4 text-xs">Task</TableHead>
                         <TableHead className="text-xs">Assigned To</TableHead>
+                        <TableHead className="text-xs">Start Date</TableHead>
                         <TableHead className="text-xs">Due Date</TableHead>
                         <TableHead className="text-xs">Status</TableHead>
                         <TableHead className="text-xs text-right pr-4">Actions</TableHead>
@@ -1045,7 +1014,7 @@ export default function ProjectManagement() {
     start_date: "",
     end_date: "",
     status: "In Progress",
-    person_in_charge_id: "",
+    person_in_charge_id: String(user?.id || ""),
   });
   // Multi-select members (for create)
   const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
@@ -1150,7 +1119,7 @@ export default function ProjectManagement() {
       start_date: "",
       end_date: "",
       status: "In Progress",
-      person_in_charge_id: "",
+      person_in_charge_id: String(user?.id || ""),
     });
     setSelectedMemberIds([]);
     setMemberSearch("");
@@ -1674,11 +1643,20 @@ export default function ProjectManagement() {
       const taskObj: any = project.tasks?.find(t => (t.task_id === taskId || t.id === taskId));
 
       // Map UI status back to backend-friendly status
+      const lowStatus = status.toLowerCase().replace(/-/g, " ").replace(/_/g, " ").trim();
       let backendStatus = status;
-      if (status === "todo") backendStatus = "Pending";
-      else if (status === "in-progress") backendStatus = "In Progress";
-      else if (status === "completed") backendStatus = "Completed";
-      else if (status === "cancelled") backendStatus = "Cancelled";
+
+      if (lowStatus === "todo" || lowStatus === "pending") {
+        backendStatus = "Pending";
+      } else if (lowStatus === "in progress" || lowStatus === "inprogress") {
+        backendStatus = "In Progress";
+      } else if (lowStatus === "completed" || lowStatus === "complete") {
+        backendStatus = "Completed";
+      } else if (lowStatus === "cancelled" || lowStatus === "canceled") {
+        backendStatus = "Cancelled";
+      } else if (lowStatus === "overdue") {
+        backendStatus = "Overdue";
+      }
 
       await apiService.updateProjectTaskStatus(projectId, taskId, backendStatus, {
         title: taskObj?.task_name || taskObj?.title || "Project Task",
@@ -1791,11 +1769,20 @@ export default function ProjectManagement() {
 
       const rawProject = project as any;
 
+      const lowStatus = status.toLowerCase().replace(/-/g, " ").replace(/_/g, " ").trim();
       let backendStatus = status;
-      if (status === "todo") backendStatus = "planned";
-      else if (status === "in-progress") backendStatus = "in_progress";
-      else if (status === "completed") backendStatus = "completed";
-      else if (status === "cancelled") backendStatus = "cancelled";
+
+      if (lowStatus === "todo" || lowStatus === "pending" || lowStatus === "planned") {
+        backendStatus = "planned";
+      } else if (lowStatus === "in progress" || lowStatus === "inprogress" || lowStatus === "active") {
+        backendStatus = "in_progress";
+      } else if (lowStatus === "completed" || lowStatus === "complete") {
+        backendStatus = "completed";
+      } else if (lowStatus === "cancelled" || lowStatus === "canceled") {
+        backendStatus = "cancelled";
+      } else if (lowStatus === "archived") {
+        backendStatus = "archived";
+      }
 
       // Try PATCH first (status-only, no field requirements)
       // If backend doesn't support PATCH, fall back to full PUT
@@ -1937,19 +1924,19 @@ export default function ProjectManagement() {
       </div>
 
       {/* ── Stats ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         {[
           {
             label: "Total Projects",
-            value: projects.length,
+            value: filteredProjects.length,
             icon: FolderKanban,
             iconColor: "text-violet-600",
             iconBg: "bg-violet-100",
           },
           {
             label: "Planned",
-            value: projects.filter(
-              (p) => normalizeStatus(p.status) === "Pending" || normalizeStatus(p.status) === "planned",
+            value: filteredProjects.filter(
+              (p) => normalizeStatus(p.status) === "Pending"
             ).length,
             icon: Briefcase,
             iconColor: "text-amber-600",
@@ -1957,7 +1944,7 @@ export default function ProjectManagement() {
           },
           {
             label: "In Progress",
-            value: projects.filter(
+            value: filteredProjects.filter(
               (p) => normalizeStatus(p.status) === "In Progress",
             ).length,
             icon: Clock,
@@ -1965,8 +1952,17 @@ export default function ProjectManagement() {
             iconBg: "bg-blue-100",
           },
           {
+            label: "Overdue",
+            value: filteredProjects.filter(
+              (p) => normalizeStatus(p.status) === "Overdue",
+            ).length,
+            icon: AlertCircle,
+            iconColor: "text-red-600",
+            iconBg: "bg-red-100",
+          },
+          {
             label: "Complete",
-            value: projects.filter(
+            value: filteredProjects.filter(
               (p) => normalizeStatus(p.status) === "Completed",
             ).length,
             icon: CheckCircle2,
@@ -1975,7 +1971,7 @@ export default function ProjectManagement() {
           },
           {
             label: "Cancelled",
-            value: projects.filter(
+            value: filteredProjects.filter(
               (p) => normalizeStatus(p.status) === "Cancelled",
             ).length,
             icon: XCircle,
@@ -1984,7 +1980,7 @@ export default function ProjectManagement() {
           },
           {
             label: "Archived",
-            value: projects.filter(
+            value: filteredProjects.filter(
               (p) => normalizeStatus(p.status) === "Archived",
             ).length,
             icon: ArchiveIcon,
@@ -2281,6 +2277,12 @@ export default function ProjectManagement() {
                             <TableHead className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                               Assigned By
                             </TableHead>
+                            <TableHead className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                              Start Date
+                            </TableHead>
+                            <TableHead className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                              End Date
+                            </TableHead>
                             <TableHead className="text-[10px] font-bold uppercase tracking-wider text-slate-500 text-center">
                               Status
                             </TableHead>
@@ -2461,7 +2463,7 @@ export default function ProjectManagement() {
                     }
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Start Date</Label>
                     <Input
@@ -2481,35 +2483,6 @@ export default function ProjectManagement() {
                         setFormData({ ...formData, end_date: e.target.value })
                       }
                     />
-                  </div>
-                  {/* Status & PIC */}
-                  <div className="space-y-1.5">
-                    <Label>Person in Charge *</Label>
-                    <Select
-                      value={String(formData.person_in_charge_id)}
-                      onValueChange={(v) =>
-                        setFormData({ ...formData, person_in_charge_id: v })
-                      }
-                    >
-                      <SelectTrigger className="h-10 rounded-xl">
-                        <SelectValue placeholder="Select PIC" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {assignableEmployees.map((emp) => (
-                          <SelectItem
-                            key={emp.user_id}
-                            value={String(emp.user_id)}
-                          >
-                            <div className="flex items-center gap-2">
-                              <div className="h-5 w-5 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-bold text-slate-600">
-                                {emp.name?.[0]?.toUpperCase()}
-                              </div>
-                              <span className="text-xs">{emp.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
                 </div>
               </div>
@@ -2684,27 +2657,42 @@ export default function ProjectManagement() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Person in Charge *</Label>
+              <Label>Update Status</Label>
               <Select
-                value={String(formData.person_in_charge_id)}
+                value={formData.status}
                 onValueChange={(v) =>
-                  setFormData({ ...formData, person_in_charge_id: v })
+                  setFormData({ ...formData, status: v })
                 }
               >
                 <SelectTrigger className="h-10 rounded-xl">
-                  <SelectValue placeholder="Select PIC" />
+                  <SelectValue placeholder="Update Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  {assignableEmployees.map((emp) => (
-                    <SelectItem key={emp.user_id} value={String(emp.user_id)}>
-                      <div className="flex items-center gap-2">
-                        <div className="h-5 w-5 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-bold text-slate-600">
-                          {emp.name?.[0]?.toUpperCase()}
-                        </div>
-                        <span className="text-xs">{emp.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="Pending">
+                    <span className="flex items-center gap-2 text-amber-600">
+                      <Clock className="h-4 w-4" /> Pending
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="In Progress">
+                    <span className="flex items-center gap-2 text-blue-600">
+                      <Clock className="h-4 w-4" /> In Progress
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="Completed">
+                    <span className="flex items-center gap-2 text-emerald-600">
+                      <CheckCircle2 className="h-4 w-4" /> Completed
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="Archived">
+                    <span className="flex items-center gap-2 text-slate-600">
+                      <FolderKanban className="h-4 w-4" /> Archived
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="Cancelled">
+                    <span className="flex items-center gap-2 text-red-600 font-bold uppercase text-[10px]">
+                      <XCircle className="h-4 w-4" /> Cancelled
+                    </span>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -2944,17 +2932,7 @@ export default function ProjectManagement() {
             </DialogDescription>
           </DialogHeader>
 
-          {/* Show current members for context */}
-          {selectedProject?.members && selectedProject.members.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pb-3 border-b">
-              <span className="text-xs text-slate-400 self-center">Team:</span>
-              {selectedProject.members.map((m) => (
-                <Badge key={m.user_id} variant="secondary" className="text-xs">
-                  {m.name}
-                </Badge>
-              ))}
-            </div>
-          )}
+          {/* Team members list removed from header per user request */}
 
           <TaskFormSection
             taskList={taskList}

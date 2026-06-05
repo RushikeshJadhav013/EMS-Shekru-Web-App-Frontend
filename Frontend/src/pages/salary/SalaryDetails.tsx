@@ -366,7 +366,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 pfEmployer: data.pfEmployer || 0,
                 professionalTax: data.professionalTax || 0,
                 otherDeduction: data.otherDeduction || 0,
-                variablePay: data.variablePay || 0,
+                variablePay: data.variablePay || data.variable_pay || 0,
 
                 // Totals
                 monthlyGross: data.monthlyGross || 0,
@@ -387,18 +387,30 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 // Recalculate monthly components proportionally if they seem outdated
                 const expectedMonthlyBasic = (data.basic_annual || 0) / 12 || data.monthlyBasic || 0;
                 const expectedMonthlyHra = (data.hra_annual || 0) / 12 || data.hra || 0;
+                const expectedMonthlyMedical = (data.medical_allowance_annual || 0) / 12 || data.medicalAllowance || 0;
+                const expectedMonthlyConveyance = (data.conveyance_annual || 0) / 12 || data.conveyanceAllowance || 0;
+                const expectedMonthlyOtherAllowance = (data.other_allowance_annual || 0) / 12 || data.otherAllowance || 0;
 
                 // PF Calculation Fallback: use pf_annual if available, otherwise calculate 12% of basic
                 const annualPfTotal = data.pf_annual || (expectedMonthlyBasic * 0.12 * 2 * 12);
                 const expectedMonthlyPfEmployer = annualPfTotal / 24;
                 const expectedMonthlyPfEmployee = annualPfTotal / 24;
 
-                const expectedMonthlyPt = (data.professional_tax_annual || 0) / 12 || data.professionalTax || (currentAnnualCtc > 0 ? 200 : 0);
+                // Professional Tax: 200 for 11 months, 300 for February (Total 2500)
+                let expectedMonthlyPt = 200;
+                const currentMonth = selectedMonth === "all" ? (new Date().getMonth() + 1).toString() : selectedMonth;
+                if (currentMonth === "2") {
+                    expectedMonthlyPt = 300;
+                }
+
                 const expectedMonthlyOtherDed = (data.other_deduction_annual || 0) / 12 || data.otherDeduction || 0;
 
                 // Update monthly values if they don't match expected calculations
                 data.monthlyBasic = expectedMonthlyBasic;
                 data.hra = expectedMonthlyHra;
+                data.medicalAllowance = expectedMonthlyMedical;
+                data.conveyanceAllowance = expectedMonthlyConveyance;
+                data.otherAllowance = expectedMonthlyOtherAllowance;
                 data.pfEmployer = expectedMonthlyPfEmployer;
                 data.pfEmployee = expectedMonthlyPfEmployee;
                 data.professionalTax = expectedMonthlyPt;
@@ -409,7 +421,9 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 const knownComponents = data.monthlyBasic + data.hra + (data.medicalAllowance || 0) +
                     (data.conveyanceAllowance || 0) + (data.otherAllowance || 0) + data.pfEmployer;
 
-                data.specialAllowance = Math.max(0, monthlyFixedCtc - knownComponents);
+                // Use the stored special allowance if available, otherwise balance it
+                const storedMonthlySpecial = (data.special_allowance_annual || 0) / 12 || data.specialAllowance;
+                data.specialAllowance = storedMonthlySpecial > 0 ? storedMonthlySpecial : Math.max(0, monthlyFixedCtc - knownComponents);
 
                 // Recalculate totals
                 data.monthlyGross = data.monthlyBasic + data.hra + data.specialAllowance +
@@ -465,7 +479,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         } finally {
             setLoading(false);
         }
-    }, [targetUserId]);
+    }, [targetUserId, selectedMonth]);
 
     const loadUserDetails = useCallback(async () => {
         try {
@@ -550,7 +564,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 loadIncrements();
             }
         }
-    }, [targetUserId, loadSalaryDetails, loadUserDetails, loadSalarySlipHistory, loadIncrements, isAdminOrHr, isOwner]);
+    }, [targetUserId, selectedMonth, loadSalaryDetails, loadUserDetails, loadSalarySlipHistory, loadIncrements, isAdminOrHr, isOwner]);
 
 
     const openBankEditDialog = () => {
@@ -949,52 +963,63 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         return <div className="p-8 flex justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div></div>;
     }
 
-    // Create default salary structure when no salary data exists
-    const displaySalaryData: SalaryStructure = salaryData || {
-        id: '',
-        userId: targetUserId || '',
-        annualCtc: 0,
-        monthlyBasic: 0,
-        hra: 0,
-        specialAllowance: 0,
-        medicalAllowance: 0,
-        conveyanceAllowance: 0,
-        otherAllowance: 0,
-        professionalTax: 0,
-        pfEmployer: 0,
-        pfEmployee: 0,
-        variablePayType: 'none',
-        variablePayValue: 0,
-        variablePay: 0,
-        monthlyGross: 0,
-        monthlyDeductions: 0,
-        otherDeduction: 0,
-        monthlyInHand: 0,
-        workingDays: 26,
-        paymentMode: 'bank_transfer',
-        bankName: '',
-        accountNumber: '',
-        ifscCode: '',
-        panNumber: '',
-        uanNumber: '',
-        effectiveDate: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        basic_annual: 0,
-        hra_annual: 0,
-        special_allowance_annual: 0,
-        conveyance_annual: 0,
-        medical_allowance_annual: 0,
-        other_allowance_annual: 0,
-        professional_tax_annual: 0,
-        other_deduction_annual: 0,
-        pf_annual: 0,
-        total_earnings_annual: 0,
-        total_deductions_annual: 0,
-        ctc_annual: 0,
-        monthly_ctc: 0,
-        is_active: true
-    };
+    // Create memoized salary structure for consistent display across summary and breakdown
+    const displaySalaryData: SalaryStructure = React.useMemo(() => {
+        const base = salaryData || {
+            id: '',
+            userId: targetUserId || '',
+            annualCtc: 0,
+            monthlyBasic: 0,
+            hra: 0,
+            specialAllowance: 0,
+            medicalAllowance: 0,
+            conveyanceAllowance: 0,
+            otherAllowance: 0,
+            professionalTax: 0,
+            pfEmployer: 0,
+            pfEmployee: 0,
+            variablePayType: 'none',
+            variablePayValue: 0,
+            variablePay: 0,
+            monthlyGross: 0,
+            monthlyDeductions: 0,
+            otherDeduction: 0,
+            monthlyInHand: 0,
+            workingDays: 26,
+            paymentMode: 'bank_transfer' as const,
+            bankName: '',
+            accountNumber: '',
+            ifscCode: '',
+            panNumber: '',
+            uanNumber: '',
+            pfNumber: '',
+            effectiveDate: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            is_active: true
+        };
+
+        // If a specific month is selected and we have history, try to use the net_salary from history
+        let inHand = (base.monthlyGross || 0) - (base.monthlyDeductions || 0);
+        if (selectedMonth !== "all" && salarySlipHistory.length > 0) {
+            const slip = salarySlipHistory.find(s => s.month.toString() === selectedMonth && s.year === selectedYear);
+            if (slip && slip.net_salary) {
+                inHand = slip.net_salary;
+            }
+        }
+
+        // Ensure totals match components if not overridden by slip
+        const calculatedGross = (base.monthlyBasic || 0) + (base.hra || 0) + (base.specialAllowance || 0) +
+            (base.medicalAllowance || 0) + (base.conveyanceAllowance || 0) + (base.otherAllowance || 0);
+        const calculatedDeductions = (base.professionalTax || 0) + (base.pfEmployee || 0) + (base.otherDeduction || 0);
+
+        return {
+            ...base,
+            monthlyGross: calculatedGross > 0 ? calculatedGross : base.monthlyGross,
+            monthlyDeductions: calculatedDeductions > 0 ? calculatedDeductions : base.monthlyDeductions,
+            monthlyInHand: inHand > 0 ? inHand : (calculatedGross - calculatedDeductions)
+        };
+    }, [salaryData, targetUserId, selectedMonth, selectedYear, salarySlipHistory]);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-IN', {
@@ -1049,19 +1074,6 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                         const monthly_ctc = displaySalaryData.monthly_ctc || (annualCtc / 12);
 
                         let currentMonthlyInHand = displaySalaryData.monthlyInHand;
-                        const calculatedInHand = (displaySalaryData.monthlyGross || (annualCtc / 12)) - (displaySalaryData.monthlyDeductions || 0);
-
-                        if (currentMonthlyInHand <= 0 || (calculatedInHand > 0 && Math.abs(currentMonthlyInHand - calculatedInHand) > 100)) {
-                            currentMonthlyInHand = calculatedInHand > 0 ? calculatedInHand : currentMonthlyInHand;
-                        }
-
-                        if (selectedMonth !== "all" && salarySlipHistory.length > 0) {
-                            const slip = salarySlipHistory.find(s => s.month.toString() === selectedMonth && s.year === selectedYear);
-                            if (slip) {
-                                if (slip.net_salary) currentMonthlyInHand = slip.net_salary;
-                            }
-                        }
-
                         const currentMonthlyCTC = monthly_ctc;
 
                         return (
@@ -1122,7 +1134,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {[2022, 2023, 2024, 2025, 2026].map(y => (
+                                            {[2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
                                                 <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
                                             ))}
                                         </SelectContent>
@@ -1382,6 +1394,14 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                         <TableCell className="text-right pr-6 font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{formatCurrency(displaySalaryData.conveyanceAllowance)}</TableCell>
                                                     </TableRow>
                                                 )}
+                                                {displaySalaryData.otherAllowance > 0 && (
+                                                    <TableRow className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-none group">
+                                                        <TableCell className="pl-6 py-4">
+                                                            <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Other Allowance</span>
+                                                        </TableCell>
+                                                        <TableCell className="text-right pr-6 font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{formatCurrency(displaySalaryData.otherAllowance)}</TableCell>
+                                                    </TableRow>
+                                                )}
                                             </TableBody>
                                         </Table>
                                         <div className="p-6 bg-emerald-50/40 dark:bg-emerald-900/10 border-t border-emerald-100 dark:border-emerald-800/50 rounded-b-3xl">
@@ -1420,16 +1440,16 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                 </TableRow>
                                                 <TableRow className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-none group">
                                                     <TableCell className="pl-6 py-4">
-                                                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Provident Fund (EPF)</span>
+                                                        <div className="flex flex-col">
+                                                            <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Provident Fund (EPF)</span>
+                                                            {displaySalaryData.pfNumber && (
+                                                                <span className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">PF NO: {displaySalaryData.pfNumber}</span>
+                                                            )}
+                                                        </div>
                                                     </TableCell>
                                                     <TableCell className="text-right pr-6 font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>-{formatCurrency(displaySalaryData.pfEmployee)}</TableCell>
                                                 </TableRow>
-                                                <TableRow className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-none group">
-                                                    <TableCell className="pl-6 py-4">
-                                                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Income Tax (TDS)</span>
-                                                    </TableCell>
-                                                    <TableCell className="text-right pr-6 font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>-{formatCurrency(0)}</TableCell>
-                                                </TableRow>
+
                                                 {displaySalaryData.otherDeduction > 0 && (
                                                     <TableRow className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-none group">
                                                         <TableCell className="pl-6 py-4">
@@ -1484,7 +1504,17 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                             <Calendar className="h-5 w-5 text-emerald-600" />
                                             <span className="text-sm font-bold tracking-tight">Annual Summary</span>
                                         </div>
-                                        <Badge variant="outline" className="border-black px-2 py-0" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>FY 24-25</Badge>
+                                        <Badge variant="outline" className="border-black px-2 py-0" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>
+                                            {(() => {
+                                                const m = selectedMonth === "all" ? new Date().getMonth() + 1 : parseInt(selectedMonth);
+                                                const y = selectedYear;
+                                                if (m >= 4) {
+                                                    return `FY ${y}-${(y + 1).toString().slice(-2)}`;
+                                                } else {
+                                                    return `FY ${y - 1}-${y.toString().slice(-2)}`;
+                                                }
+                                            })()}
+                                        </Badge>
                                     </div>
                                     <div className="space-y-3">
                                         <div className="flex justify-between items-center">
