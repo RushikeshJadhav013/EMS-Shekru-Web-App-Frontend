@@ -959,10 +959,6 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         }
     };
 
-    if (loading) {
-        return <div className="p-8 flex justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div></div>;
-    }
-
     // Create memoized salary structure for consistent display across summary and breakdown
     const displaySalaryData: SalaryStructure = React.useMemo(() => {
         const base = salaryData || {
@@ -1028,6 +1024,10 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             maximumFractionDigits: 0
         }).format(amount);
     };
+
+    if (loading) {
+        return <div className="p-8 flex justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div></div>;
+    }
 
     return (
         <div className="w-full space-y-6 animate-in fade-in duration-500">

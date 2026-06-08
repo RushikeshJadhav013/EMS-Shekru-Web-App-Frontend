@@ -36,7 +36,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDateIST } from '@/utils/timezone';
 import { cn } from '@/lib/utils';
 
-import MessageBubble from '../../components/chat/MessageBubble';
+import MessageBubble, { ImageLightbox } from '../../components/chat/MessageBubble';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -89,7 +89,8 @@ const ChatBox: React.FC = () => {
     addParticipants,
     removeParticipants,
     loadMessages,
-    loadAvailableUsers
+    loadAvailableUsers,
+    setIsLightboxOpen
   } = useChat();
 
   const { user } = useAuth();
@@ -111,10 +112,20 @@ const ChatBox: React.FC = () => {
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const typingPulseRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isScrolledToBottom = useRef(true);
+
+  useEffect(() => {
+    setIsLightboxOpen(!!lightboxUrl);
+  }, [lightboxUrl, setIsLightboxOpen]);
+
+  // Clean up lightbox state on unmount
+  useEffect(() => {
+    return () => setIsLightboxOpen(false);
+  }, [setIsLightboxOpen]);
 
   // ── Effects ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -129,10 +140,19 @@ const ChatBox: React.FC = () => {
       loadAvailableUsers();
       if (!activeChat || activeChat.id !== chatId) {
         const foundChat = chats.find(chat => chat.id?.toString() === chatId?.toString());
-        if (foundChat) setActiveChat(foundChat);
+        if (foundChat) {
+          setActiveChat(foundChat);
+        }
       }
     }
   }, [chatId, activeChat, chats, setActiveChat, loadAvailableUsers]);
+
+  // Synchronously compute the chat to display to prevent "Loading..." flickers
+  const displayedChat = useMemo(() => {
+    if (activeChat?.id === chatId) return activeChat;
+    const found = chats.find(c => c.id?.toString() === chatId?.toString());
+    return found || activeChat;
+  }, [activeChat, chats, chatId]);
 
   useEffect(() => {
     if (activeChat && messages.length > 0) {
@@ -345,28 +365,28 @@ const ChatBox: React.FC = () => {
 
 
   const chatName = useMemo(() => {
-    if (!activeChat) return '';
-    if (activeChat.name && activeChat.name !== 'string' && activeChat.name !== 'null') return activeChat.name;
+    if (!displayedChat) return '';
+    if (displayedChat.name && displayedChat.name !== 'string' && displayedChat.name !== 'null') return displayedChat.name;
     const currentUserId = user?.id?.toString();
-    const otherParticipant = activeChat.participants?.find((p: any) => p.userId?.toString() !== currentUserId);
+    const otherParticipant = displayedChat.participants?.find((p: any) => p.userId?.toString() !== currentUserId);
     if (otherParticipant) {
       const u = availableUsers?.find(u => u.id?.toString() === otherParticipant.userId?.toString());
       return u?.name || otherParticipant.userName || 'Chat User';
     }
-    return activeChat.type === 'group' ? 'Group Chat' : 'Chat User';
-  }, [activeChat, availableUsers, user]);
+    return displayedChat.type === 'group' ? 'Group Chat' : 'Chat User';
+  }, [displayedChat, availableUsers, user]);
 
   const chatAvatar = useMemo(() => {
-    if (!activeChat) return '';
-    if (activeChat.type === 'group') return activeChat.groupAvatar || '';
+    if (!displayedChat) return '';
+    if (displayedChat.type === 'group') return displayedChat.groupAvatar || '';
     const currentUserId = user?.id?.toString();
-    const otherParticipant = activeChat.participants?.find((p: any) => p.userId?.toString() !== currentUserId);
+    const otherParticipant = displayedChat.participants?.find((p: any) => p.userId?.toString() !== currentUserId);
     if (otherParticipant && availableUsers) {
       const userData = availableUsers.find(u => u.id?.toString() === otherParticipant.userId?.toString());
       return userData?.profilePhoto || '';
     }
     return '';
-  }, [activeChat, availableUsers, user]);
+  }, [displayedChat, availableUsers, user]);
 
   const enrichedMessages = useMemo(() => {
     return messages.map(msg => {
@@ -390,7 +410,7 @@ const ChatBox: React.FC = () => {
         senderAvatar: userDetails?.profilePhoto || msg.senderAvatar
       };
     });
-  }, [messages, availableUsers, activeChat, user]);
+  }, [messages, availableUsers, displayedChat, user]);
 
   const isDark = themeMode === 'dark' || (themeMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
@@ -404,7 +424,7 @@ const ChatBox: React.FC = () => {
     border: isDark ? 'border-slate-800' : 'border-slate-100',
   };
 
-  if (isLoading && !activeChat) {
+  if (isLoading && !displayedChat) {
     return (
       <div className={cn("flex items-center justify-center h-full", themeClasses.background)}>
         <div className="flex flex-col items-center gap-3">
@@ -415,7 +435,7 @@ const ChatBox: React.FC = () => {
     );
   }
 
-  if (!activeChat) {
+  if (!displayedChat) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center space-y-4 bg-inherit">
         <div className="relative">
@@ -432,6 +452,12 @@ const ChatBox: React.FC = () => {
 
   return (
     <div className={cn("flex flex-col h-full relative overflow-hidden", themeClasses.background)}>
+      {lightboxUrl && (
+        <ImageLightbox
+          src={lightboxUrl}
+          onClose={() => setLightboxUrl(null)}
+        />
+      )}
       {/* Dynamic Background Patterns (WhatsApp Style) */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className={cn(
@@ -493,11 +519,11 @@ const ChatBox: React.FC = () => {
                 Chat Options
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {activeChat.type === 'group' && (
+              {displayedChat.type === 'group' && (
                 <>
                   <DropdownMenuItem
                     onClick={() => {
-                      setNewGroupName(activeChat.name || '');
+                      setNewGroupName(displayedChat.name || '');
                       setIsGroupSettingsOpen(true);
                     }}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -530,7 +556,7 @@ const ChatBox: React.FC = () => {
                 <LogOut className="h-4 w-4 text-slate-500" />
                 <span style={{ color: "#000000", fontSize: "14px" }}>Exit Chat</span>
               </DropdownMenuItem>
-              {activeChat.type === 'group' && (activeChat.participants.find(p => p.userId === user?.id)?.isAdmin || user?.role === 'admin' || user?.role === 'hr') && (
+              {displayedChat.type === 'group' && (displayedChat.participants.find(p => p.userId === user?.id)?.isAdmin || user?.role === 'admin' || user?.role === 'hr') && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -585,6 +611,7 @@ const ChatBox: React.FC = () => {
                     onReply={() => setReplyingTo(message.id)}
                     onEdit={() => handleEditClick(message)}
                     onDelete={() => handleDeleteClick(message)}
+                    onImageClick={(url) => setLightboxUrl(url)}
                     replyMessage={message.replyTo ? enrichedMessages.find(m => m.id === message.replyTo) : undefined}
                   />
                 </div>
@@ -596,104 +623,106 @@ const ChatBox: React.FC = () => {
       </div>
 
       {/* Input Section */}
-      <div className={cn("p-4 px-6 relative z-20 transition-all", themeClasses.inputBg)}>
-        {replyingTo && (
-          <div className={cn(
-            "flex items-center justify-between p-3.5 border-l-[3.5px] border-lime-500 mb-4 rounded-r-2xl animate-in slide-in-from-bottom-4 fade-in duration-300 shadow-sm transition-all",
-            isDark ? "bg-[#1a1b1e]/80" : "bg-slate-50/80"
-          )}>
-            <div className="min-w-0 pr-6">
-              <div className="flex items-center gap-2 mb-1">
-                <Reply className="h-3 w-3 text-lime-500" />
-                <p className="text-[10px] text-lime-600 dark:text-lime-500 font-black uppercase tracking-widest">
-                  Replying to {enrichedMessages.find(m => m.id === replyingTo)?.senderName || 'Message'}
+      {!lightboxUrl && (
+        <div className={cn("p-4 px-6 relative z-20 transition-all", themeClasses.inputBg)}>
+          {replyingTo && (
+            <div className={cn(
+              "flex items-center justify-between p-3.5 border-l-[3.5px] border-lime-500 mb-4 rounded-r-2xl animate-in slide-in-from-bottom-4 fade-in duration-300 shadow-sm transition-all",
+              isDark ? "bg-[#1a1b1e]/80" : "bg-slate-50/80"
+            )}>
+              <div className="min-w-0 pr-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <Reply className="h-3 w-3 text-lime-500" />
+                  <p className="text-[10px] text-lime-600 dark:text-lime-500 font-black uppercase tracking-widest">
+                    Replying to {enrichedMessages.find(m => m.id === replyingTo)?.senderName || 'Message'}
+                  </p>
+                </div>
+                <p className={cn("text-[13px] truncate opacity-80 font-medium italic", themeClasses.text)}>
+                  {(() => {
+                    const replyMsg = enrichedMessages.find(m => m.id === replyingTo);
+                    if (!replyMsg) return '';
+                    const c = replyMsg.content;
+                    if (c.startsWith('data:image/') || c.includes('staffly_type=image') || replyMsg.messageType === 'image') return '📷 Photo';
+                    if (c.includes('|data:application/') || c.includes('staffly_type=file') || replyMsg.messageType === 'file') return '📄 Document';
+                    return `"${c}"`;
+                  })()}
                 </p>
               </div>
-              <p className={cn("text-[13px] truncate opacity-80 font-medium italic", themeClasses.text)}>
-                {(() => {
-                  const replyMsg = enrichedMessages.find(m => m.id === replyingTo);
-                  if (!replyMsg) return '';
-                  const c = replyMsg.content;
-                  if (c.startsWith('data:image/') || c.includes('staffly_type=image') || replyMsg.messageType === 'image') return '📷 Photo';
-                  if (c.includes('|data:application/') || c.includes('staffly_type=file') || replyMsg.messageType === 'file') return '📄 Document';
-                  return `"${c}"`;
-                })()}
-              </p>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full hover:bg-red-500/10 hover:text-red-500 transition-all active:scale-90"
+                onClick={() => setReplyingTo(null)}
+              >
+                <X className="h-4.5 w-4.5" />
+              </Button>
             </div>
+          )}
+
+          <div className="flex items-end space-x-3 mt-auto relative z-10">
+            <div className={cn(
+              "flex-1 relative rounded-[28px] px-4 py-1.5 flex items-center transition-all shadow-lg ring-1 ring-slate-200 dark:ring-slate-800 focus-within:ring-green-500/50",
+              themeClasses.inputFieldBg
+            )}>
+
+              {/* Hidden File Input */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+
+              <div className="flex items-center gap-1.5 mr-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={isUploading}
+                  onClick={() => triggerFileSelect("image/*")}
+                  className="h-9 w-9 rounded-full text-slate-400 hover:text-green-500 hover:bg-green-500/10 transition-all active:scale-95"
+                >
+                  <ImageIcon className="h-4.5 w-4.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={isUploading}
+                  onClick={() => triggerFileSelect(".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar")}
+                  className="h-9 w-9 rounded-full text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 transition-all active:scale-95"
+                >
+                  <Paperclip className="h-4.5 w-4.5" />
+                </Button>
+              </div>
+
+              <Input
+                ref={inputRef}
+                value={messageText}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                disabled={isUploading}
+                placeholder={isUploading ? "Uploading file..." : "Type your message..."}
+                className="border-0 bg-transparent focus-visible:ring-0 shadow-none h-11 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
+              />
+            </div>
+
             <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-full hover:bg-red-500/10 hover:text-red-500 transition-all active:scale-90"
-              onClick={() => setReplyingTo(null)}
+              onClick={handleSendMessage}
+              disabled={!messageText.trim() || isUploading}
+              className={cn(
+                "rounded-full h-[52px] w-[52px] shadow-xl transition-all hover:scale-105 active:scale-95 p-0",
+                messageText.trim() ? "bg-green-500 hover:bg-green-600 shadow-green-500/20" : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+              )}
             >
-              <X className="h-4.5 w-4.5" />
+              {isUploading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Send className={cn("h-5 w-5 transition-transform", messageText.trim() && "translate-x-0.5 -translate-y-0.5 rotate-[-15deg]")} />
+              )}
             </Button>
           </div>
-        )}
-
-        <div className="flex items-end space-x-3 mt-auto relative z-10">
-          <div className={cn(
-            "flex-1 relative rounded-[28px] px-4 py-1.5 flex items-center transition-all shadow-lg ring-1 ring-slate-200 dark:ring-slate-800 focus-within:ring-green-500/50",
-            themeClasses.inputFieldBg
-          )}>
-
-            {/* Hidden File Input */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              onChange={handleFileUpload}
-            />
-
-            <div className="flex items-center gap-1.5 mr-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={isUploading}
-                onClick={() => triggerFileSelect("image/*")}
-                className="h-9 w-9 rounded-full text-slate-400 hover:text-green-500 hover:bg-green-500/10 transition-all active:scale-95"
-              >
-                <ImageIcon className="h-4.5 w-4.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={isUploading}
-                onClick={() => triggerFileSelect(".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar")}
-                className="h-9 w-9 rounded-full text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 transition-all active:scale-95"
-              >
-                <Paperclip className="h-4.5 w-4.5" />
-              </Button>
-            </div>
-
-            <Input
-              ref={inputRef}
-              value={messageText}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              disabled={isUploading}
-              placeholder={isUploading ? "Uploading file..." : "Type your message..."}
-              className="border-0 bg-transparent focus-visible:ring-0 shadow-none h-11 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-              style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
-            />
-          </div>
-
-          <Button
-            onClick={handleSendMessage}
-            disabled={!messageText.trim() || isUploading}
-            className={cn(
-              "rounded-full h-[52px] w-[52px] shadow-xl transition-all hover:scale-105 active:scale-95 p-0",
-              messageText.trim() ? "bg-green-500 hover:bg-green-600 shadow-green-500/20" : "bg-slate-100 dark:bg-slate-800 text-slate-400"
-            )}
-          >
-            {isUploading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Send className={cn("h-5 w-5 transition-transform", messageText.trim() && "translate-x-0.5 -translate-y-0.5 rotate-[-15deg]")} />
-            )}
-          </Button>
         </div>
-      </div>
+      )}
 
       {/* Custom Confirmation Dialog for Deletion */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

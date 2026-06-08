@@ -293,11 +293,6 @@ const AdminDashboard: React.FC = () => {
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: '#000000' }}>
               {t.common.welcome}, <span style={{ color: '#2563EB' }}>{user?.name}</span>
-              {localStorage.getItem('company_name') && (
-                <span className="ml-2 text-xl font-bold text-slate-400">
-                  @ {localStorage.getItem('company_name')}
-                </span>
-              )}
             </h1>
             <p className="font-normal text-[14px] mt-0.5 flex items-center gap-1.5" style={{ color: '#000000' }}>
               <CalendarDays className="h-3.5 w-3.5" style={{ color: '#000000' }} />

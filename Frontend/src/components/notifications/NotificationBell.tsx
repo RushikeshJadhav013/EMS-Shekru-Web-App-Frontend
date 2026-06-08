@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Check, X, Clock, AlertCircle, CheckCircle, FileText, Calendar, Loader2, IndianRupee, Home, Video, MessageSquare, Briefcase, UserPlus, UserCheck } from 'lucide-react';
+import { Bell, BellOff, Check, X, Clock, AlertCircle, CheckCircle, FileText, Calendar, Loader2, IndianRupee, Home, Video, MessageSquare, Briefcase, UserPlus, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -14,13 +14,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { formatBackendDateIST } from '@/utils/timezone';
 import TruncatedText from '@/components/ui/TruncatedText';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
+import { useDesktopNotification } from '@/hooks/useDesktopNotification';
 
 export const NotificationBell: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { notifications, unreadCount, isLoading, error, markAsRead, markAllAsRead, clearNotification } = useNotifications();
+  const { notifications, unreadCount, isLoading, error, markAsRead, markAllAsRead, clearNotification, unlockAudioContext } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  const { soundEnabled, toggleSound } = useNotificationSound();
+  const { requestPermission } = useDesktopNotification();
+  const hasUnlockedRef = useRef(false);
 
   // ✅ REMOVED: No more API calls from UI component
   // Notifications are fetched ONLY from NotificationContext on:
@@ -34,6 +39,17 @@ export const NotificationBell: React.FC = () => {
       console.log('[NotificationBell] Unread count:', unreadCount);
     }
   }, [notifications.length, unreadCount]);
+
+  // Unlock AudioContext and request desktop notification permission on first open
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open && !hasUnlockedRef.current) {
+      hasUnlockedRef.current = true;
+      unlockAudioContext();
+      // Lazily request desktop notification permission
+      requestPermission().catch(() => {/* ignore */ });
+    }
+  };
 
   // Check if notifications are enabled
   const areNotificationsEnabled = () => {
@@ -232,7 +248,7 @@ export const NotificationBell: React.FC = () => {
   );
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+    <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -259,6 +275,18 @@ export const NotificationBell: React.FC = () => {
                 <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
               )}
             </div>
+            {/* Sound toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSound}
+              className="h-8 w-8 rounded-lg hover:bg-white/60 dark:hover:bg-white/10 transition-all"
+              title={soundEnabled ? 'Disable notification sound' : 'Enable notification sound'}
+            >
+              {soundEnabled
+                ? <Bell className="h-4 w-4 text-blue-600" />
+                : <BellOff className="h-4 w-4 text-slate-400" />}
+            </Button>
           </div>
 
           <div className="flex items-center gap-2 w-full">

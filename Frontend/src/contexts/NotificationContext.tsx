@@ -2,6 +2,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { apiService } from '@/lib/api';
+import { playNotificationChime, unlockAudio } from '@/utils/notificationSound';
+import { useDesktopNotification } from '@/hooks/useDesktopNotification';
 
 // Polling disabled - only fetch on app init/auth
 const FETCH_INTERVAL_MS = 0; // Disabled
@@ -54,6 +56,7 @@ interface NotificationContextType {
   clearNotification: (notificationId: string) => void;
   clearAll: () => void;
   refreshNotifications: () => Promise<void>;
+  unlockAudioContext: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -203,9 +206,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const abortControllerRef = useRef<AbortController | null>(null);
   const retryTimeoutRef = useRef<number | null>(null);
   const lastFetchRef = useRef<number>(0);
-  const previousUnreadCountRef = useRef<number>(0);
+  // -1 means "baseline not yet established" — avoids sound on initial load
+  const previousUnreadCountRef = useRef<number>(-1);
   const isFetchingRef = useRef<boolean>(false);
   const initialFetchDoneRef = useRef<boolean>(false);
+  const seenNotificationIdsRef = useRef<Set<string>>(new Set());
+
+  const { sendDesktopNotification } = useDesktopNotification();
 
   const areNotificationsEnabled = () => {
     const stored = localStorage.getItem('notificationsEnabled');
@@ -243,23 +250,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, [notifications, user]);
 
-  const playNotificationSound = useCallback(() => {
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      oscillator.frequency.value = 800;
-      oscillator.type = 'sine';
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-      oscillator.start(audioContext.currentTime);
-      setTimeout(() => oscillator.stop(), 500);
-    } catch (e) {
-      console.warn('Audio feedback failed', e);
-    }
-  }, []);
+  // Sound is handled by the notificationSound utility imported above
 
   const mapBackendTaskNotification = useCallback((notification: BackendTaskNotification, userRole?: string, currentUserId?: string): Notification | null => {
     const notificationUserId = String(notification.user_id);
@@ -608,11 +599,34 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
 
-        const newUnreadCount = sortedNotifications.filter(n => !n.read).length;
-        if (newUnreadCount > previousUnreadCountRef.current && previousUnreadCountRef.current > 0) {
-          playNotificationSound();
+        const currentUnreadCount = sortedNotifications.filter(n => !n.read).length;
+
+        if (previousUnreadCountRef.current === -1) {
+          // ── First load: establish baseline, never play sound ──
+          previousUnreadCountRef.current = currentUnreadCount;
+          // Seed seenIds so we don't re-fire on next poll
+          sortedNotifications.forEach(n => seenNotificationIdsRef.current.add(n.id));
+        } else {
+          // ── Subsequent fetches: detect truly new notifications ──
+          const newOnes = sortedNotifications.filter(
+            n => !n.read && !seenNotificationIdsRef.current.has(n.id)
+          );
+          if (newOnes.length > 0) {
+            // Play chime once regardless of how many new notifications arrived
+            playNotificationChime();
+            // Fire desktop notification for each new one
+            newOnes.forEach(n => {
+              sendDesktopNotification(n.title, { body: n.message });
+            });
+            // Mark them as seen to prevent duplicate sounds
+            newOnes.forEach(n => seenNotificationIdsRef.current.add(n.id));
+          } else {
+            // Seed any remaining unseen IDs (e.g. read ones)
+            sortedNotifications.forEach(n => seenNotificationIdsRef.current.add(n.id));
+          }
+          previousUnreadCountRef.current = currentUnreadCount;
         }
-        previousUnreadCountRef.current = newUnreadCount;
+
         return sortedNotifications;
       });
 
@@ -634,7 +648,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       isFetchingRef.current = false;
       if (isManualRefresh) setIsLoading(false);
     }
-  }, [user, playNotificationSound, mapBackendTaskNotification, mapBackendLeaveNotification, mapBackendShiftNotification, mapBackendWFHNotification, mapBackendMeetingNotification, mapBackendSalaryNotification, mapBackendProjectNotification, mapBackendChatNotification, mapBackendAttendanceNotification, mapBackendHiringNotification, stopPolling]);
+  }, [user, mapBackendTaskNotification, mapBackendLeaveNotification, mapBackendShiftNotification, mapBackendWFHNotification, mapBackendMeetingNotification, mapBackendSalaryNotification, mapBackendProjectNotification, mapBackendChatNotification, mapBackendAttendanceNotification, mapBackendHiringNotification, stopPolling, sendDesktopNotification]);
 
   const schedulePollingStop = useCallback(() => {
     if (pollIdleTimeoutRef.current) window.clearTimeout(pollIdleTimeoutRef.current);
@@ -646,6 +660,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       stopPolling();
       initialFetchDoneRef.current = false;
       isFetchingRef.current = false;
+      // Reset sound-gate state so next login doesn't re-play for old notifications
+      previousUnreadCountRef.current = -1;
+      seenNotificationIdsRef.current = new Set();
       return;
     }
 
@@ -684,11 +701,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
 
     setNotifications(prev => [newNotification, ...prev]);
-    playNotificationSound();
 
-    if ('Notification' in window && window.Notification.permission === 'granted') {
-      new window.Notification(notification.title, { body: notification.message });
-    }
+    // Play sound & desktop notification for programmatic additions
+    playNotificationChime();
+    sendDesktopNotification(notification.title, { body: notification.message });
+
+    // Track as seen to avoid duplicate sound on next fetch
+    seenNotificationIdsRef.current.add(newNotification.id);
   };
 
   const markAsRead = useCallback(async (notificationId: string) => {
@@ -773,6 +792,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     clearNotification,
     clearAll,
     refreshNotifications,
+    unlockAudioContext: unlockAudio,
   }), [notifications, unreadCount, isLoading, error, markAsRead, markAllAsRead, clearNotification, refreshNotifications]);
 
   return (

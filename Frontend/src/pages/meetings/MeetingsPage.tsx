@@ -497,8 +497,8 @@ const MeetingsPage: React.FC = () => {
     return (
         <div className="flex-1 flex flex-col h-full bg-[#f8fafc] dark:bg-[#020617] overflow-hidden">
             <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-slate-900 border-2 border-[#000000] shadow-sm mt-1">
-                <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-blue-500/5 rounded-full blur-3xl" />
-                <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
+                <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
                 <div className="flex items-center gap-6">
                     <div className="h-16 w-16 bg-blue-600 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
                         <Video className="h-8 w-8" />
@@ -510,9 +510,9 @@ const MeetingsPage: React.FC = () => {
                 </div>
                 <Button
                     onClick={() => { resetForm(); setIsCreateDialogOpen(true); }}
-                    className="h-14 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-500/10 transition-all active:scale-95"
+                    className="relative z-10 h-14 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-500/10 transition-all active:scale-95"
                 >
-                    <Plus className="h-5 w-5 mr-2" />
+                    <Plus className="h-5 w-5 mr-2 pointer-events-none" />
                     Schedule Meeting
                 </Button>
 

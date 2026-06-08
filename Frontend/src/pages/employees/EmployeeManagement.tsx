@@ -44,6 +44,7 @@ import {
   ToggleLeft,
   ToggleRight
 } from 'lucide-react';
+import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useChat } from '@/contexts/ChatContext';
 import { User, type UserRole } from '@/types';
@@ -951,6 +952,7 @@ export default function EmployeeManagement() {
         branches: formData.branches,
         company_id: formData.companyId,
         branch_id: formData.branchId,
+        joining_date: formData.joiningDate,
         profile_photo: imageFile || undefined
       };
 
@@ -1119,6 +1121,7 @@ export default function EmployeeManagement() {
         branches: formData.branches,
         company_id: formData.companyId,
         branch_id: formData.branchId,
+        joining_date: formData.joiningDate,
         profile_photo: imageFile || formData.profilePhoto || (imagePreview === '' ? '' : undefined), // Pass the file or removal signal
         is_verified: true,
         created_at: formData.createdAt || new Date().toISOString(),
@@ -1437,6 +1440,7 @@ export default function EmployeeManagement() {
         employee_type: employeeType || undefined,
         company: company || undefined,
         branches: branches || undefined,
+        joining_date: data.joiningdate || undefined,
       };
 
       try {
@@ -1501,9 +1505,18 @@ export default function EmployeeManagement() {
     setIsExportDialogOpen(false);
 
     try {
+      const branchId = localStorage.getItem('branchId');
+      const companyId = localStorage.getItem('companyId');
+
+      const filtersWithScope = {
+        ...exportFilters,
+        branch_id: branchId || undefined,
+        company_id: companyId || undefined
+      };
+
       const blob = exportType === 'csv'
-        ? await apiService.exportEmployeesCSV(exportFilters)
-        : await apiService.exportEmployeesPDF(exportFilters);
+        ? await apiService.exportEmployeesCSV(filtersWithScope)
+        : await apiService.exportEmployeesPDF(filtersWithScope);
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -3118,6 +3131,16 @@ export default function EmployeeManagement() {
               )}
             </div>
             <div>
+              <Label htmlFor="edit-joiningDate">Joining Date *</Label>
+              <Input
+                id="edit-joiningDate"
+                type="date"
+                value={formData.joiningDate || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, joiningDate: e.target.value }))}
+                className="mt-1"
+              />
+            </div>
+            <div>
               <Label htmlFor="edit-role">Role *</Label>
               <Select
                 value={formData.role || 'employee'}
@@ -3633,6 +3656,10 @@ export default function EmployeeManagement() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Phone</span>
                     <span className="font-medium">{viewEmployee.phone || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Joining Date</span>
+                    <span className="font-medium">{viewEmployee.joiningDate ? format(new Date(viewEmployee.joiningDate), 'dd MMM yyyy') : '-'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Gender</span>

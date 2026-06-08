@@ -2607,6 +2607,9 @@ const TaskManagement: React.FC = () => {
       currentStatus: BaseTask["status"],
       newStatus: BaseTask["status"],
     ): boolean => {
+      // 1. Admins should always have full control
+      if (normalizedUserRole === "admin") return true;
+
       // Define status hierarchy
       const statusHierarchy: BaseTask["status"][] = [
         "todo",
@@ -2618,39 +2621,35 @@ const TaskManagement: React.FC = () => {
       const currentIndex = statusHierarchy.indexOf(currentStatus);
       const newIndex = statusHierarchy.indexOf(newStatus);
 
-      // Special rules:
-      // 1. Can move from 'todo' to 'in-progress' and back
+      // 2. Can always stay at current status
+      if (currentStatus === newStatus) return true;
+
+      // 3. Can move from 'todo' to 'in-progress' and back
       if (
-        currentStatus === "todo" ||
+        (currentStatus === "todo" && newStatus === "in-progress") ||
         (currentStatus === "in-progress" && newStatus === "todo")
       ) {
         return true;
       }
 
-      // 2. Overdue tasks are locked - status cannot be changed directly
-      // Users must reassign the task to reset the status/deadline
+      // 4. Allow moving from 'overdue' to 'in-progress' or 'completed'
       if (currentStatus === "overdue") {
-        return false;
+        return ["in-progress", "completed", "cancelled"].includes(newStatus);
       }
 
-      // 3. Can move from 'in-progress' to 'overdue' (automatic or manual)
-      if (currentStatus === "in-progress" && newStatus === "overdue") {
-        return true;
+      // 5. Once completed or cancelled, can go back to 'in-progress' or 'todo' (reopening)
+      if (currentStatus === "completed" || currentStatus === "cancelled") {
+        return ["todo", "in-progress"].includes(newStatus);
       }
 
-      // 4. Once completed or cancelled, cannot go back to previous statuses
-      if (currentIndex >= 4 && newIndex < 4) {
-        return false;
-      }
-
-      // 5. Can always move forward or stay at current status
-      if (newIndex >= currentIndex) {
+      // 6. Can move forward in hierarchy
+      if (newIndex > currentIndex) {
         return true;
       }
 
       return false;
     },
-    [],
+    [normalizedUserRole],
   );
 
   // Check if task can be deleted/cancelled
@@ -3878,7 +3877,7 @@ const TaskManagement: React.FC = () => {
                               </TableCell>
                             </TableRow>
                           ) : (
-                            visibleTasks.map((task) => {
+                            paginatedTasks.map((task) => {
                               const assignedByInfo = getAssignedByInfo(
                                 task.assignedBy,
                                 task.assignedByRole,
@@ -3889,7 +3888,7 @@ const TaskManagement: React.FC = () => {
                               );
                               // In "All Tasks" view, admin can only manage tasks they created
                               const canManageTask = Boolean(
-                                userId && task.assignedBy === userId,
+                                userId && (task.assignedBy === userId || normalizedUserRole === "admin"),
                               );
                               const isReceivedTask = Boolean(
                                 userId && task.assignedTo.includes(userId),
@@ -3987,35 +3986,29 @@ const TaskManagement: React.FC = () => {
                                     </div>
                                   </TableCell>
                                   <TableCell>
-                                    {["completed", "cancelled", "overdue"].includes(task.status) ? (
-                                      <div className="flex items-center gap-2">
-                                        {getStatusBadge(task.status)}
-                                      </div>
-                                    ) : (
-                                      <Select
-                                        value={task.status}
-                                        onValueChange={(value: BaseTask["status"]) =>
-                                          updateTaskStatus(task.id, value)
-                                        }
-                                        disabled={updatingTaskId === task.id}
+                                    <Select
+                                      value={task.status}
+                                      onValueChange={(value: BaseTask["status"]) =>
+                                        updateTaskStatus(task.id, value)
+                                      }
+                                      disabled={updatingTaskId === task.id}
+                                    >
+                                      <SelectTrigger
+                                        className={`w-[170px] h-10 border-2 bg-white dark:bg-gray-950 px-3 transition-all text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm`}
+                                        style={{}}
                                       >
-                                        <SelectTrigger
-                                          className={`w-[170px] h-10 border-2 bg-white dark:bg-gray-950 px-3 transition-all text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm`}
-                                          style={{}}
-                                        >
-                                          <div className="flex items-center gap-2">
-                                            <div className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
-                                            <SelectValue />
-                                          </div>
-                                        </SelectTrigger>
-                                        <SelectContent className="border-2 shadow-xl">
-                                          <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
-                                          <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
-                                          <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
-                                          {canManageTask && <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>}
-                                        </SelectContent>
-                                      </Select>
-                                    )}
+                                        <div className="flex items-center gap-2">
+                                          <div className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
+                                          <SelectValue />
+                                        </div>
+                                      </SelectTrigger>
+                                      <SelectContent className="border-2 shadow-xl">
+                                        <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
+                                        <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+                                        <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
+                                        <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
+                                      </SelectContent>
+                                    </Select>
                                   </TableCell>
                                   <TableCell>
                                     {task.lastPassedBy && task.lastPassedTo ? (
@@ -4153,7 +4146,7 @@ const TaskManagement: React.FC = () => {
                       );
                       // In "All Tasks" view, admin can only manage tasks they created
                       const canManageTask = Boolean(
-                        userId && task.assignedBy === userId,
+                        userId && (task.assignedBy === userId || normalizedUserRole === "admin"),
                       );
                       const isReceivedTask = Boolean(
                         userId && task.assignedTo.includes(userId),
@@ -4220,25 +4213,30 @@ const TaskManagement: React.FC = () => {
                                   />
                                 </div>
                               </div>
-                              {/* Progress Ring or Simple Status Icon */}
-                              <div
-                                className={`h-8 w-8 rounded-full flex items-center justify-center border-2 ${task.status === "completed"
-                                  ? "border-green-100 bg-green-50 text-green-600 dark:border-green-900/30 dark:bg-green-900/20"
-                                  : task.status === "in-progress"
-                                    ? "border-blue-100 bg-blue-50 text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20"
-                                    : "border-slate-100 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900"
-                                  }`}
-                              >
-                                {typeof task.progress === "number" &&
-                                  task.progress > 0 ? (
-                                  <span className="text-[10px] font-bold">
-                                    {task.progress}%
-                                  </span>
-                                ) : (
-                                  <div
-                                    className={`h-2.5 w-2.5 rounded-full ${getStatusColor(task.status)}`}
-                                  />
-                                )}
+                              {/* Interactive Status Select */}
+                              <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <Select
+                                  value={task.status}
+                                  onValueChange={(value: BaseTask["status"]) =>
+                                    updateTaskStatus(task.id, value)
+                                  }
+                                  disabled={updatingTaskId === task.id || (!isReceivedTask && !canManageTask)}
+                                >
+                                  <SelectTrigger
+                                    className="h-8 border-2 bg-white dark:bg-gray-950 px-2 transition-all text-[11px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm w-auto min-w-[100px]"
+                                  >
+                                    <div className="flex items-center gap-1.5">
+                                      <div className={`h-2 w-2 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
+                                      <SelectValue />
+                                    </div>
+                                  </SelectTrigger>
+                                  <SelectContent className="border-2 shadow-xl">
+                                    <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
+                                    <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+                                    <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
+                                    <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </div>
                             </div>
                           </CardHeader>
@@ -4634,7 +4632,7 @@ const TaskManagement: React.FC = () => {
                                       project.filteredTasks.map((task: any) => {
                                         const assignedByInfo = getAssignedByInfo(task.assignedBy, task.assignedByRole);
                                         const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || "", task.assignedToRole);
-                                        const canManageTask = Boolean(userId && task.assignedBy === userId);
+                                        const canManageTask = Boolean(userId && (task.assignedBy === userId || normalizedUserRole === "admin"));
                                         const isReceivedTask = Boolean(userId && task.assignedTo.includes(userId));
                                         const canPassTask = isReceivedTask && task.assignedTo[0] === userId && passEligibleEmployees.length > 0 &&
                                           task.status !== "completed" && task.status !== "cancelled" && task.status !== "overdue";
@@ -4677,34 +4675,28 @@ const TaskManagement: React.FC = () => {
                                               </div>
                                             </TableCell>
                                             <TableCell onClick={(e) => e.stopPropagation()}>
-                                              {["completed", "cancelled", "overdue"].includes(task.status) ? (
-                                                <div className="flex items-center gap-2">
-                                                  {getStatusBadge(task.status)}
-                                                </div>
-                                              ) : (
-                                                <Select
-                                                  value={task.status}
-                                                  onValueChange={(value: BaseTask["status"]) =>
-                                                    updateTaskStatus(task.id, value)
-                                                  }
-                                                  disabled={updatingTaskId === task.id}
+                                              <Select
+                                                value={task.status}
+                                                onValueChange={(value: BaseTask["status"]) =>
+                                                  updateTaskStatus(task.id, value)
+                                                }
+                                                disabled={updatingTaskId === task.id || (!isReceivedTask && !canManageTask)}
+                                              >
+                                                <SelectTrigger
+                                                  className={`w-[160px] h-9 border-2 bg-white dark:bg-gray-950 px-3 transition-all text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm`}
                                                 >
-                                                  <SelectTrigger
-                                                    className={`w-[160px] h-9 border-2 bg-white dark:bg-gray-950 px-3 transition-all text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm`}
-                                                  >
-                                                    <div className="flex items-center gap-2">
-                                                      <div className={`h-2 w-2 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
-                                                      <SelectValue />
-                                                    </div>
-                                                  </SelectTrigger>
-                                                  <SelectContent className="border-2 shadow-xl">
-                                                    <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
-                                                    <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
-                                                    <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
-                                                    {canManageTask && <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>}
-                                                  </SelectContent>
-                                                </Select>
-                                              )}
+                                                  <div className="flex items-center gap-2">
+                                                    <div className={`h-2 w-2 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
+                                                    <SelectValue />
+                                                  </div>
+                                                </SelectTrigger>
+                                                <SelectContent className="border-2 shadow-xl">
+                                                  <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
+                                                  <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+                                                  <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
+                                                  <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
+                                                </SelectContent>
+                                              </Select>
                                             </TableCell>
                                             <TableCell>
                                               {task.lastPassedBy ? (
@@ -4765,8 +4757,8 @@ const TaskManagement: React.FC = () => {
                 )}
               </CardContent>
             </Card>
-          </div>
-        </TabsContent>
+          </div >
+        </TabsContent >
       </Tabs >
 
       {/* Pass Task Dialog */}

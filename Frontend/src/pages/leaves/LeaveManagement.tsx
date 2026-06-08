@@ -20,7 +20,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -103,6 +106,8 @@ interface LeaveRequest {
   comments?: string;
   requestDate: Date;
   isWFH?: boolean;
+  duration_days?: number;
+  leave_session?: string | null;
 }
 
 export default function LeaveManagement() {
@@ -204,9 +209,14 @@ export default function LeaveManagement() {
     startDate: new Date(),
     endDate: new Date(),
     reason: "",
+    unpaidSubType: "full_day" as "full_day" | "half_day_before_lunch" | "half_day_after_lunch",
   });
 
+  const canApproveLeaves = user?.role === "admin" || user?.role === "hr" || user?.role === "manager" || user?.role === "team_lead";
+  const canViewTeamLeaves = user?.role === "admin" || user?.role === "hr" || user?.role === "manager" || user?.role === "team_lead";
+
   const [isDeletingLeave, setIsDeletingLeave] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [approvingLeaveId, setApprovingLeaveId] = useState<string | null>(null);
 
   const fetchApprovals = useCallback(async () => {
@@ -319,7 +329,6 @@ export default function LeaveManagement() {
   const [isUpdatingLeave, setIsUpdatingLeave] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [leaveToDelete, setLeaveToDelete] = useState<LeaveRequest | null>(null);
-  const [isDeletingLeave, setIsDeletingLeave] = useState(false);
 
   // Pagination states for approval requests
   const [approvalCurrentPage, setApprovalCurrentPage] = useState(1);
@@ -841,10 +850,6 @@ export default function LeaveManagement() {
     weekOffForm.days,
   ]);
 
-  const canApproveLeaves = ["admin", "hr", "manager", "team_lead"].includes(
-    user?.role || "",
-  );
-  const canViewTeamLeaves = ["team_lead"].includes(user?.role || "");
   const canExport = ["admin", "hr"].includes(user?.role || "");
   // Admins should not have an option to apply for leave from the admin dashboard
   const canApply = user?.role !== "admin";
@@ -914,7 +919,7 @@ export default function LeaveManagement() {
           : undefined;
         const endStr = endDate ? format(endDate, "yyyy-MM-dd") : undefined;
         const requests = await apiService.getLeaveRequests(
-          period,
+          period === "all" ? "" : period,
           startStr,
           endStr,
         );
@@ -938,6 +943,8 @@ export default function LeaveManagement() {
             reason: req.reason,
             status,
             requestDate: new Date(req.start_date),
+            duration_days: req.duration_days,
+            leave_session: req.leave_session,
           };
         });
 
@@ -1108,63 +1115,61 @@ export default function LeaveManagement() {
     );
 
     if (!validation.valid) {
-      if (
-        formData.type === "sick" &&
-        (validation.error ===
-          "Sick leave must be applied at least 2 hours before the start date." ||
-          validation.error?.includes("3 or more days") ||
-          (user?.role !== "admin" &&
-            validation.error?.toLowerCase().includes("sick leave")))
-      ) {
-        // Carry on to custom sick leave timing check and allow < 3 days for non-admin roles
-      } else {
-        toast({
-          title: "Request Invalid",
-          description: validation.error,
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
-    // Custom Sick Leave Timing Validation
-    if (formData.type === "sick") {
-      const now = new Date();
-      const officeStartTime = new Date(formData.startDate);
-      officeStartTime.setHours(9, 30, 0, 0);
-      const diffToOfficeHours =
-        (officeStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-      if (diffToOfficeHours < 2) {
-        toast({
-          title: "Request Invalid",
-          description:
-            "Sick leave must be applied in between 2 hours and 24 hours before office working hours.",
-          variant: "destructive",
-        });
-        return;
-      }
-      if (diffToOfficeHours > 24) {
-        toast({
-          title: "Request Invalid",
-          description:
-            "Sick leave must be applied in between 2 hours and 24 hours before office working hours.",
-          variant: "destructive",
-        });
-        return;
-      }
+      toast({
+        title: "Request Invalid",
+        description: validation.error,
+        variant: "destructive",
+      });
+      return;
     }
 
     setIsSubmitting(true);
 
     try {
       // Prepare data for API (Matches SR.NO 4)
+      const unpaidSubTypeLabel =
+        formData.unpaidSubType === "full_day"
+          ? "Full Day"
+          : formData.unpaidSubType === "half_day_before_lunch"
+            ? "Half Day (Before Lunch)"
+            : "Half Day (After Lunch)";
+
+      const reasonWithSubType =
+        formData.type === "unpaid"
+          ? `[${unpaidSubTypeLabel}] ${formData.reason}`
+          : formData.reason;
+
+      const companySlug = localStorage.getItem("company_slug") || "";
+      const branchId = localStorage.getItem("branchId") || "";
+      const companyId = localStorage.getItem("companyId") || "";
+
+      // Map unpaidSubType to session and duration as per API spec
+      let leaveSession = null;
+      let durationDays = calculateLeaveDays(formData.startDate, formData.endDate);
+
+      if (formData.type === "unpaid") {
+        if (formData.unpaidSubType === "half_day_before_lunch") {
+          leaveSession = "before_lunch";
+          durationDays = 0.5;
+        } else if (formData.unpaidSubType === "half_day_after_lunch") {
+          leaveSession = "after_lunch";
+          durationDays = 0.5;
+        } else {
+          durationDays = 1;
+        }
+      }
+
       const leaveRequestData = {
         user_id: String(user.id),
+        company_slug: companySlug,
+        "X-Branch-Id": branchId,
+        "X-Company-Id": companyId,
         start_date: format(formData.startDate, "yyyy-MM-dd"),
         end_date: format(formData.endDate, "yyyy-MM-dd"),
-        reason: formData.reason,
+        reason: reasonWithSubType,
         leave_type: formData.type,
+        duration_days: durationDays,
+        leave_session: leaveSession,
       };
 
       // Submit to API
@@ -1221,6 +1226,7 @@ export default function LeaveManagement() {
         startDate: new Date(),
         endDate: new Date(),
         reason: "",
+        unpaidSubType: "full_day",
       });
     } catch (error) {
       console.error("Error submitting leave request:", error);
@@ -1419,60 +1425,28 @@ export default function LeaveManagement() {
     );
 
     if (!validation.valid) {
-      if (
-        editingLeave.type === "sick" &&
-        (validation.error ===
-          "Sick leave must be applied at least 2 hours before the start date." ||
-          validation.error?.includes("3 or more days") ||
-          (user?.role !== "admin" &&
-            validation.error?.toLowerCase().includes("sick leave")))
-      ) {
-        // Carry on to custom sick leave timing check and allow < 3 days for non-admin roles
-      } else {
-        toast({
-          title: "Update Invalid",
-          description: validation.error,
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
-    // Custom Sick Leave Timing Validation
-    if (editingLeave.type === "sick") {
-      const now = new Date();
-      const officeStartTime = new Date(editFormData.startDate);
-      officeStartTime.setHours(9, 30, 0, 0);
-      const diffToOfficeHours =
-        (officeStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-      if (diffToOfficeHours < 2) {
-        toast({
-          title: "Update Invalid",
-          description:
-            "Sick leave must be applied in between 2 hours and 24 hours before office working hours.",
-          variant: "destructive",
-        });
-        return;
-      }
-      if (diffToOfficeHours > 24) {
-        toast({
-          title: "Update Invalid",
-          description:
-            "Sick leave must be applied in between 2 hours and 24 hours before office working hours.",
-          variant: "destructive",
-        });
-        return;
-      }
+      toast({
+        title: "Update Invalid",
+        description: validation.error,
+        variant: "destructive",
+      });
+      return;
     }
 
     setIsUpdatingLeave(true);
     try {
+      let durationDays = calculateLeaveDays(editFormData.startDate, editFormData.endDate);
+      if (editingLeave.type === "unpaid" && editingLeave.leave_session) {
+        durationDays = 0.5;
+      }
+
       await apiService.updateLeaveRequest(editingLeave.id, {
         start_date: format(editFormData.startDate, "yyyy-MM-dd"),
         end_date: format(editFormData.endDate, "yyyy-MM-dd"),
         reason: editFormData.reason,
         leave_type: editingLeave.type,
+        duration_days: durationDays,
+        leave_session: editingLeave.leave_session,
       });
       await loadLeaveRequests(leaveHistoryPeriod);
       await loadLeaveBalance();
@@ -2114,10 +2088,15 @@ export default function LeaveManagement() {
                   <div className="space-y-2">
                     <Label className="text-[14px] font-bold text-black dark:text-white" style={{}}>Leave Type</Label>
                     <Select
-                      value={formData.type}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, type: value })
-                      }
+                      value={formData.type === "unpaid" ? `unpaid:${formData.unpaidSubType}` : formData.type}
+                      onValueChange={(value) => {
+                        if (value.startsWith("unpaid:")) {
+                          const subType = value.split(":")[1] as "full_day" | "half_day_before_lunch" | "half_day_after_lunch";
+                          setFormData({ ...formData, type: "unpaid", unpaidSubType: subType });
+                        } else {
+                          setFormData({ ...formData, type: value, unpaidSubType: "full_day" });
+                        }
+                      }}
                     >
                       <SelectTrigger className="text-[14px] text-black dark:text-white font-medium border-2 border-[#000000]" style={{}}>
                         <SelectValue placeholder="Select Leave Type" />
@@ -2147,7 +2126,18 @@ export default function LeaveManagement() {
                         <SelectItem value="paternity">
                           Paternity Leave
                         </SelectItem>
-                        <SelectItem value="unpaid">Unpaid Leave</SelectItem>
+
+                        <SelectGroup>
+                          <SelectItem value="unpaid:full_day">
+                            Unpaid Leave (Full Day)
+                          </SelectItem>
+                          <SelectItem value="unpaid:half_day_before_lunch">
+                            Unpaid Leave (Half Day Before Lunch)
+                          </SelectItem>
+                          <SelectItem value="unpaid:half_day_after_lunch">
+                            Unpaid Leave (Half Day After Lunch)
+                          </SelectItem>
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                   </div>

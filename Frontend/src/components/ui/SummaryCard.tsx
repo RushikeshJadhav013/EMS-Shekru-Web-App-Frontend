@@ -43,13 +43,15 @@ const SummaryCard = ({
                     </span>
                 </div>
 
-                <button
-                    onClick={onClick}
-                    className="flex items-center gap-1.5 text-[11px] font-black tracking-wide text-black/80 hover:text-black transition-colors"
-                >
-                    View details
-                    <ChevronRight className="h-3 w-3 stroke-[3px]" />
-                </button>
+                {onClick && (
+                    <button
+                        onClick={onClick}
+                        className="flex items-center gap-1.5 text-[11px] font-black tracking-wide text-black/80 hover:text-black transition-colors"
+                    >
+                        View details
+                        <ChevronRight className="h-3 w-3 stroke-[3px]" />
+                    </button>
+                )}
             </CardContent>
         </Card>
     );

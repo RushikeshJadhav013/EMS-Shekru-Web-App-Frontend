@@ -630,7 +630,7 @@ export default function BranchManagement() {
 
         <SummaryCard
           title="Total Employees"
-          value={departments.reduce((acc, dept) => acc + (dept.employee_count || dept.employeeCount || 0), 0)}
+          value={totalEmployees}
           icon={Users}
           iconColor="text-blue-600"
           iconBg="bg-blue-100"

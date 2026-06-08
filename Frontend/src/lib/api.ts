@@ -28,6 +28,7 @@ interface EmployeeData {
   company_id?: number;
   branch_id?: number;
   department?: string;
+  joining_date?: string;
 }
 
 interface Employee {
@@ -65,6 +66,11 @@ interface LeaveRequestData {
   end_date: string;
   reason: string;
   leave_type: string;
+  company_slug?: string;
+  "X-Branch-Id"?: string;
+  "X-Company-Id"?: string;
+  duration_days?: number;
+  leave_session?: string | null;
 }
 
 interface LeaveRequestResponse {
@@ -75,6 +81,9 @@ interface LeaveRequestResponse {
   reason: string;
   status: string;
   leave_type: string;
+  duration_days?: number;
+  leave_session?: string | null;
+  company_id?: number;
 }
 
 interface LeaveUpdateData {
@@ -82,6 +91,8 @@ interface LeaveUpdateData {
   end_date?: string;
   reason?: string;
   leave_type?: string;
+  duration_days?: number;
+  leave_session?: string | null;
 }
 
 interface LeaveBalanceItem {
@@ -549,12 +560,12 @@ class ApiService {
 
     if (params) {
       if (params.department && params.department !== "all") queryParams.append("department", params.department);
-      if (params.role) queryParams.append("role", params.role);
-      if (params.designation) queryParams.append("designation", params.designation);
+      if (params.role && params.role !== "all") queryParams.append("role", params.role);
+      if (params.designation && params.designation !== "all") queryParams.append("designation", params.designation);
 
       const activeStatus = params.is_active !== undefined ? params.is_active : params.status;
       if (activeStatus !== undefined && activeStatus !== "all") {
-        queryParams.append("status", String(activeStatus));
+        queryParams.append("is_active", String(activeStatus === 'active' ? 'true' : activeStatus === 'inactive' ? 'false' : activeStatus));
       }
 
       if (params.branch_id) extraHeaders['X-Branch-Id'] = String(params.branch_id);
@@ -582,12 +593,12 @@ class ApiService {
 
     if (params) {
       if (params.department && params.department !== "all") queryParams.append("department", params.department);
-      if (params.role) queryParams.append("role", params.role);
-      if (params.designation) queryParams.append("designation", params.designation);
+      if (params.role && params.role !== "all") queryParams.append("role", params.role);
+      if (params.designation && params.designation !== "all") queryParams.append("designation", params.designation);
 
       const activeStatus = params.is_active !== undefined ? params.is_active : params.status;
       if (activeStatus !== undefined && activeStatus !== "all") {
-        queryParams.append("status", String(activeStatus));
+        queryParams.append("is_active", String(activeStatus === 'active' ? 'true' : activeStatus === 'inactive' ? 'false' : activeStatus));
       }
 
       if (params.branch_id) extraHeaders['X-Branch-Id'] = String(params.branch_id);
@@ -875,13 +886,21 @@ class ApiService {
 
   // Get all leave requests with optional period filter
   async getLeaveRequests(
-    period: string = "current_month",
+    period: string = "",
     startDate?: string,
     endDate?: string,
   ): Promise<LeaveRequestResponse[]> {
-    let url = `/leave/?period=${period}`;
-    if (startDate) url += `&start_date=${startDate}`;
-    if (endDate) url += `&end_date=${endDate}`;
+    const companySlug = localStorage.getItem("company_slug") || "";
+    const branchId = localStorage.getItem("branchId") || "";
+    const companyId = localStorage.getItem("companyId") || "";
+
+    let url = `/leave/?company_slug=${companySlug}`;
+    if (period) url += `&period=${period}`;
+    if (startDate) url += `&from_date=${startDate}`;
+    if (endDate) url += `&to_date=${endDate}`;
+    if (branchId) url += `&X-Branch-Id=${branchId}`;
+    if (companyId) url += `&X-Company-Id=${companyId}`;
+
     return this.request(url);
   }
 
@@ -937,10 +956,17 @@ class ApiService {
     leaveId: string,
     data: LeaveUpdateData,
   ): Promise<LeaveRequestResponse> {
+    const companySlug = localStorage.getItem("company_slug") || "";
+    const branchId = localStorage.getItem("branchId") || "";
+    const companyId = localStorage.getItem("companyId") || "";
+
     return this.request(`/leave/${leaveId}`, {
       method: "PUT",
       body: JSON.stringify({
         leave_id: Number(leaveId),
+        company_slug: companySlug,
+        "X-Branch-Id": branchId,
+        "X-Company-Id": companyId,
         ...data,
       }),
     });
@@ -963,7 +989,15 @@ class ApiService {
       role?: string;
     })[]
   > {
-    return this.request("/leave/approvals");
+    const companySlug = localStorage.getItem("company_slug") || "";
+    const branchId = localStorage.getItem("branchId") || "";
+    const companyId = localStorage.getItem("companyId") || "";
+
+    let url = `/leave/approvals?company_slug=${companySlug}`;
+    if (branchId) url += `&X-Branch-Id=${branchId}`;
+    if (companyId) url += `&X-Company-Id=${companyId}`;
+
+    return this.request(url);
   }
 
   // Get approvals decision history for current approver (Matches SR.NO 7)
@@ -979,8 +1013,16 @@ class ApiService {
       role?: string;
     })[]
   > {
+    const companySlug = localStorage.getItem("company_slug") || "";
+    const branchId = localStorage.getItem("branchId") || "";
+    const companyId = localStorage.getItem("companyId") || "";
+
     const query = new URLSearchParams();
-    if (params?.period) query.append("period", params.period);
+    query.append("company_slug", companySlug);
+    if (branchId) query.append("X-Branch-Id", branchId);
+    if (companyId) query.append("X-Company-Id", companyId);
+
+    if (params?.period) query.append("date_range", params.period);
     if (params?.start_date) query.append("start_date", params.start_date);
     if (params?.end_date) query.append("end_date", params.end_date);
     const queryString = query.toString() ? `?${query.toString()}` : "";
@@ -1000,9 +1042,19 @@ class ApiService {
     leaveId: string,
     approved: boolean,
   ): Promise<LeaveRequestResponse> {
+    const companySlug = localStorage.getItem("company_slug") || "";
+    const branchId = localStorage.getItem("branchId") || "";
+    const companyId = localStorage.getItem("companyId") || "";
+
     return this.request(`/leave/${leaveId}/approve`, {
       method: "PUT",
-      body: JSON.stringify({ approved }),
+      body: JSON.stringify({
+        leave_id: parseInt(leaveId),
+        company_slug: companySlug,
+        "X-Branch-Id": branchId,
+        "X-Company-Id": companyId,
+        approved
+      }),
     });
   }
 
