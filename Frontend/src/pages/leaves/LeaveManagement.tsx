@@ -1573,7 +1573,21 @@ export default function LeaveManagement() {
         const isSameDept = userDepts.includes(
           (req.department || "").trim().toLowerCase(),
         );
-        return isAllowedRole && isSameDept;
+        const isSelf = String(req.employeeId) === String(user?.id);
+        return (isAllowedRole && isSameDept) || isSelf;
+      }
+
+      if (userRole === "teamlead") {
+        const isAllowedRole = ["employee"].includes(role);
+        const isSameDept = userDepts.includes(
+          (req.department || "").trim().toLowerCase(),
+        );
+        const isSelf = String(req.employeeId) === String(user?.id);
+        return (isAllowedRole && isSameDept) || isSelf;
+      }
+
+      if (userRole === "employee") {
+        return String(req.employeeId) === String(user?.id);
       }
 
       return false;

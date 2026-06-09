@@ -892,7 +892,7 @@ class ApiService {
     endDate?: string,
   ): Promise<LeaveRequestResponse[]> {
     const query = new URLSearchParams();
-    if (period) query.append("period", period);
+    if (period && period !== "all") query.append("period", period);
     if (startDate) query.append("from_date", startDate);
     if (endDate) query.append("to_date", endDate);
 
@@ -995,7 +995,7 @@ class ApiService {
     })[]
   > {
     const query = new URLSearchParams();
-    if (params?.period) query.append("date_range", params.period);
+    if (params?.period && params.period !== "all") query.append("date_range", params.period);
     if (params?.start_date) query.append("start_date", params.start_date);
     if (params?.end_date) query.append("end_date", params.end_date);
     const queryString = query.toString() ? `?${query.toString()}` : "";
@@ -2826,6 +2826,13 @@ class ApiService {
   async switchCompany(companySlug: string): Promise<any> {
     return this.request(`/auth/me/switch-company/${companySlug}`, {
       method: "POST"
+    });
+  }
+
+  async changePin(data: { current_pin: string; new_pin: string; confirm_pin: string }): Promise<any> {
+    return this.request("/auth/change-pin", {
+      method: "POST",
+      body: JSON.stringify(data),
     });
   }
 }

@@ -264,24 +264,7 @@ const MainLayout: React.FC = () => {
 
             <div className="flex-1" />
 
-            {/* Language Selector */}
-            <Select value={language} onValueChange={(value: Language) => setLanguage(value)}>
-              <SelectTrigger className="w-[140px] h-10 bg-white dark:bg-gray-900 border border-[#5e5b5b] hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 rounded-lg">
-                <Globe className="h-5 w-5 mr-2 text-gray-600 dark:text-gray-400" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="border border-gray-200 dark:border-gray-700 shadow-lg">
-                <SelectItem value="en" className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
-                  <span className="font-medium">English</span>
-                </SelectItem>
-                <SelectItem value="hi" className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
-                  <span className="font-medium">हिंदी</span>
-                </SelectItem>
-                <SelectItem value="mr" className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
-                  <span className="font-medium">मराठी</span>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+
 
             {/* Notification Bell */}
             <div className="flex items-center">
