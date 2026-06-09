@@ -66,9 +66,6 @@ interface LeaveRequestData {
   end_date: string;
   reason: string;
   leave_type: string;
-  company_slug?: string;
-  "X-Branch-Id"?: string;
-  "X-Company-Id"?: string;
   duration_days?: number;
   leave_session?: string | null;
 }
@@ -755,6 +752,10 @@ class ApiService {
     return this.request(`/tasks/${taskId}/history`);
   }
 
+  async getTaskDeadlineWarnings(userId: string | number) {
+    return this.request(`/tasks/deadline-warnings/${userId}`);
+  }
+
 
   // Legacy/Compatibility Bulk create tasks (PUT /tasks/bulk)
   async createTasksBulk(
@@ -890,18 +891,13 @@ class ApiService {
     startDate?: string,
     endDate?: string,
   ): Promise<LeaveRequestResponse[]> {
-    const companySlug = localStorage.getItem("company_slug") || "";
-    const branchId = localStorage.getItem("branchId") || "";
-    const companyId = localStorage.getItem("companyId") || "";
+    const query = new URLSearchParams();
+    if (period) query.append("period", period);
+    if (startDate) query.append("from_date", startDate);
+    if (endDate) query.append("to_date", endDate);
 
-    let url = `/leave/?company_slug=${companySlug}`;
-    if (period) url += `&period=${period}`;
-    if (startDate) url += `&from_date=${startDate}`;
-    if (endDate) url += `&to_date=${endDate}`;
-    if (branchId) url += `&X-Branch-Id=${branchId}`;
-    if (companyId) url += `&X-Company-Id=${companyId}`;
-
-    return this.request(url);
+    const queryString = query.toString() ? `?${query.toString()}` : "";
+    return this.request(`/leave/${queryString}`);
   }
 
   async getLeaveBalance(): Promise<LeaveBalanceResponse> {
@@ -956,17 +952,10 @@ class ApiService {
     leaveId: string,
     data: LeaveUpdateData,
   ): Promise<LeaveRequestResponse> {
-    const companySlug = localStorage.getItem("company_slug") || "";
-    const branchId = localStorage.getItem("branchId") || "";
-    const companyId = localStorage.getItem("companyId") || "";
-
     return this.request(`/leave/${leaveId}`, {
       method: "PUT",
       body: JSON.stringify({
         leave_id: Number(leaveId),
-        company_slug: companySlug,
-        "X-Branch-Id": branchId,
-        "X-Company-Id": companyId,
         ...data,
       }),
     });
@@ -989,15 +978,7 @@ class ApiService {
       role?: string;
     })[]
   > {
-    const companySlug = localStorage.getItem("company_slug") || "";
-    const branchId = localStorage.getItem("branchId") || "";
-    const companyId = localStorage.getItem("companyId") || "";
-
-    let url = `/leave/approvals?company_slug=${companySlug}`;
-    if (branchId) url += `&X-Branch-Id=${branchId}`;
-    if (companyId) url += `&X-Company-Id=${companyId}`;
-
-    return this.request(url);
+    return this.request("/leave/approvals");
   }
 
   // Get approvals decision history for current approver (Matches SR.NO 7)
@@ -1013,15 +994,7 @@ class ApiService {
       role?: string;
     })[]
   > {
-    const companySlug = localStorage.getItem("company_slug") || "";
-    const branchId = localStorage.getItem("branchId") || "";
-    const companyId = localStorage.getItem("companyId") || "";
-
     const query = new URLSearchParams();
-    query.append("company_slug", companySlug);
-    if (branchId) query.append("X-Branch-Id", branchId);
-    if (companyId) query.append("X-Company-Id", companyId);
-
     if (params?.period) query.append("date_range", params.period);
     if (params?.start_date) query.append("start_date", params.start_date);
     if (params?.end_date) query.append("end_date", params.end_date);
@@ -1042,17 +1015,10 @@ class ApiService {
     leaveId: string,
     approved: boolean,
   ): Promise<LeaveRequestResponse> {
-    const companySlug = localStorage.getItem("company_slug") || "";
-    const branchId = localStorage.getItem("branchId") || "";
-    const companyId = localStorage.getItem("companyId") || "";
-
     return this.request(`/leave/${leaveId}/approve`, {
       method: "PUT",
       body: JSON.stringify({
         leave_id: parseInt(leaveId),
-        company_slug: companySlug,
-        "X-Branch-Id": branchId,
-        "X-Company-Id": companyId,
         approved
       }),
     });

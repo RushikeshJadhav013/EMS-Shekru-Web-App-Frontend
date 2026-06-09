@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { AlertTriangle, Clock, FileText, Send } from 'lucide-react';
 import { formatDateIST } from '@/utils/timezone';
 import TruncatedText from '@/components/ui/TruncatedText';
-import { API_BASE_URL } from '@/lib/api';
+import { apiService } from '@/lib/api';
 
 // Allow only letters, numbers, spaces, and new lines (no special characters)
 const sanitizeAlphaNumText = (value: string) => value.replace(/[^a-zA-Z0-9 \n]/g, '');
@@ -53,23 +53,11 @@ const WorkSummaryDialog: React.FC<WorkSummaryDialogProps> = ({
   const fetchOverdueTasks = async () => {
     if (!user?.id) return;
 
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
     setIsLoadingTasks(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/tasks/deadline-warnings/${user.id}`, {
-        headers: {
-          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const todayTasks = data.warnings?.filter((w: any) => w.warning_type === 'due_today') || [];
-        setOverdueTasks(todayTasks);
-      }
+      const data = await apiService.getTaskDeadlineWarnings(user.id);
+      const todayTasks = data.warnings?.filter((w: any) => w.warning_type === 'due_today') || [];
+      setOverdueTasks(todayTasks);
     } catch (error) {
       console.error('Failed to fetch overdue tasks:', error);
     } finally {

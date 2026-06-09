@@ -505,7 +505,7 @@ const ManagerDashboard: React.FC = () => {
                       <span className="font-normal"> • {team.members} members</span>
                     </p>
                   </div>
-                  <span className="text-xs" style={{ color: '#000000' }}>{team.completion}%</span>
+                  <span className="text-[14px] font-bold text-black">{team.completion}%</span>
                 </div>
                 <Progress value={team.completion} className="h-2" />
               </div>
@@ -570,9 +570,9 @@ const ManagerDashboard: React.FC = () => {
                 </div>
                 {(member.status === 'present' || member.status === 'completed') && (
                   <div className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span style={{ color: '#000000' }}>Progress</span>
-                      <span style={{ color: '#000000' }}>{member.progress}%</span>
+                    <div className="flex justify-between text-[14px] font-bold text-black">
+                      <span>Progress</span>
+                      <span>{member.progress}%</span>
                     </div>
                     <Progress value={member.progress} className="h-1" />
                   </div>

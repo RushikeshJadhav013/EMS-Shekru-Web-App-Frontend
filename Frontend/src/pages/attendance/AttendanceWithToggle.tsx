@@ -3067,7 +3067,7 @@ const AttendanceWithToggle: React.FC = () => {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-[16px] font-bold" style={{ color: '#000000' }}>
+          <h2 className="text-[16px] font-bold" style={{ color: '#000000', fontFamily: 'Outfit, sans-serif' }}>
             {isCheckingIn ? t.attendance.checkIn : t.attendance.checkOut}
           </h2>
         </div>
@@ -3246,13 +3246,6 @@ const AttendanceWithToggle: React.FC = () => {
                             currentAttendance.checkInTime,
                           )}
                         </p>
-                        {currentAttendance.workLocation === "work_from_home" ||
-                          (currentAttendance.workLocation !== "office" &&
-                            getTodayWfhStatus()?.hasApprovedWfh) ? (
-                          <p className="text-xs text-orange-600 dark:text-orange-400 font-outfit">
-                            Working from home today
-                          </p>
-                        ) : null}
                       </div>
 
                       <div className="space-y-2">

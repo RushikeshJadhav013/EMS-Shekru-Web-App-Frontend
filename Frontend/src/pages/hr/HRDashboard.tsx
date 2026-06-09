@@ -413,18 +413,9 @@ const HRDashboard: React.FC = () => {
               <p className="text-xs font-medium" style={{ color: '#000000' }}>
                 {formatActivityTime(activity.time)}
               </p>
-              <div
-                className="text-xs mt-1 capitalize font-bold"
-                style={{
-                  color: ['approved', 'new-joiner', 'completed', 'on-time'].includes((getCorrectAttendanceStatus(activity) || '').toLowerCase())
-                    ? '#16a34a'
-                    : ['late', 'rejected', 'cancelled', 'absent'].includes((getCorrectAttendanceStatus(activity) || '').toLowerCase())
-                      ? '#dc2626'
-                      : '#ca8a04'
-                }}
-              >
+              <Badge className="bg-yellow-500 text-white hover:bg-yellow-600 border-0 font-bold uppercase text-[10px] h-5 mt-1">
                 {formatStatusLabel(getCorrectAttendanceStatus(activity))}
-              </div>
+              </Badge>
             </div>
           </div>
         ))}
@@ -629,18 +620,9 @@ const HRDashboard: React.FC = () => {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <div className="text-sm font-bold truncate" style={{ color: '#000000' }}>{req.user_name}</div>
-                        <div
-                          className="text-xs capitalize font-bold"
-                          style={{
-                            color: (req.status || '').toLowerCase() === 'approved'
-                              ? '#16a34a'
-                              : (req.status || '').toLowerCase() === 'rejected'
-                                ? '#dc2626'
-                                : '#ca8a04'
-                          }}
-                        >
+                        <Badge className="bg-yellow-500 text-white hover:bg-yellow-600 border-0 font-bold uppercase text-[10px] h-5">
                           {formatStatusLabel(req.status)}
-                        </div>
+                        </Badge>
                       </div>
                       <div className="text-xs font-medium mt-1" style={{ color: '#000000' }}>
                         {formatShortDate(req.start_date)} → {formatShortDate(req.end_date)} • {req.department}

@@ -1139,12 +1139,8 @@ export default function LeaveManagement() {
           ? `[${unpaidSubTypeLabel}] ${formData.reason}`
           : formData.reason;
 
-      const companySlug = localStorage.getItem("company_slug") || "";
-      const branchId = localStorage.getItem("branchId") || "";
-      const companyId = localStorage.getItem("companyId") || "";
-
       // Map unpaidSubType to session and duration as per API spec
-      let leaveSession = null;
+      let leaveSession: string | null = null;
       let durationDays = calculateLeaveDays(formData.startDate, formData.endDate);
 
       if (formData.type === "unpaid") {
@@ -1159,11 +1155,11 @@ export default function LeaveManagement() {
         }
       }
 
+      // Note: company_slug is auto-injected into the URL path by the api.ts request() method.
+      // X-Branch-Id and X-Company-Id are sent as headers automatically.
+      // Only include the fields the API actually expects in the request body.
       const leaveRequestData = {
         user_id: String(user.id),
-        company_slug: companySlug,
-        "X-Branch-Id": branchId,
-        "X-Company-Id": companyId,
         start_date: format(formData.startDate, "yyyy-MM-dd"),
         end_date: format(formData.endDate, "yyyy-MM-dd"),
         reason: reasonWithSubType,

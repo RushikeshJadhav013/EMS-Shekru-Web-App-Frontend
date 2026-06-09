@@ -513,11 +513,10 @@ const EmployeeDashboard: React.FC = () => {
                                 maxLength={35}
                                 showToggle={false}
                                 textClassName={cn(
-                                  "font-bold text-sm",
-                                  !isCompleted && "text-black",
-                                  isCompleted && "text-muted-foreground line-through decoration-slate-400"
+                                  "font-bold text-sm text-black",
+                                  isCompleted && "line-through decoration-slate-400"
                                 )}
-                                style={!isCompleted ? { color: '#000000' } : undefined}
+                                style={{ color: '#000000' }}
                               />
                               <div className="mt-1">
                                 <TruncatedText
