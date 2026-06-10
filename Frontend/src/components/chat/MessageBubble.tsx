@@ -15,6 +15,7 @@ interface MessageBubbleProps {
   onReply?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onImageClick?: (url: string) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -124,7 +125,7 @@ interface LightboxProps {
   onClose: () => void;
 }
 
-const ImageLightbox: React.FC<LightboxProps> = ({ src, alt, onClose }) => {
+export const ImageLightbox: React.FC<LightboxProps> = ({ src, alt, onClose }) => {
   const [scale, setScale] = useState(1);
 
   const handleDownload = useCallback(() => {
@@ -152,64 +153,70 @@ const ImageLightbox: React.FC<LightboxProps> = ({ src, alt, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[10000] flex flex-col bg-black/95 backdrop-blur-md animate-in fade-in duration-300"
       onClick={handleBackdrop}
     >
-      {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/70 to-transparent z-10">
-        <span className="text-black/80 text-sm font-medium truncate max-w-[200px]">{fileNameFromUrl(src)}</span>
-        <div className="flex items-center gap-2">
+      {/* Top bar - Now a regular flex child to prevent overlapping */}
+      <div className="w-full flex items-center justify-between px-6 py-4 bg-gradient-to-b from-black/80 to-transparent z-20 shrink-0">
+        <span className="text-white/90 text-sm font-semibold truncate max-w-[300px] drop-shadow-sm">{fileNameFromUrl(src)}</span>
+        <div className="flex items-center gap-3">
           <button
-            className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-black transition-all active:scale-90"
+            className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-all active:scale-90 border border-white/5"
             onClick={() => setScale(s => Math.min(s + 0.5, 4))}
             title="Zoom in"
           >
-            <ZoomIn className="h-4 w-4" />
+            <ZoomIn className="h-5 w-5" />
           </button>
           <button
-            className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-black transition-all active:scale-90"
+            className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-all active:scale-90 border border-white/5"
             onClick={handleCopy}
             title="Copy image"
           >
-            <Copy className="h-4 w-4" />
+            <Copy className="h-5 w-5" />
           </button>
           <button
-            className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-black transition-all active:scale-90"
+            className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-all active:scale-90 border border-white/5"
             onClick={handleShare}
             title="Share"
           >
-            <Share2 className="h-4 w-4" />
+            <Share2 className="h-5 w-5" />
           </button>
           <button
-            className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-black transition-all active:scale-90"
+            className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-all active:scale-90 border border-white/5"
             onClick={handleDownload}
             title="Download"
           >
-            <Download className="h-4 w-4" />
+            <Download className="h-5 w-5" />
           </button>
           <button
-            className="h-9 w-9 rounded-full bg-white/10 hover:bg-red-500/60 flex items-center justify-center text-black transition-all active:scale-90"
+            className="h-10 w-10 rounded-full bg-white/10 hover:bg-red-500/80 flex items-center justify-center text-white transition-all active:scale-90 border border-white/5"
             onClick={onClose}
             title="Close"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </div>
       </div>
 
-      {/* Image */}
-      <img
-        src={src}
-        alt={alt || 'Image'}
-        draggable={false}
-        style={{ transform: `scale(${scale})`, transition: 'transform 0.2s ease', maxHeight: '85vh', maxWidth: '90vw', objectFit: 'contain', borderRadius: 12 }}
-        onClick={(e) => { e.stopPropagation(); setScale(s => s === 1 ? 2 : 1); }}
-        className="cursor-zoom-in select-none shadow-2xl"
-      />
-
-      {/* Bottom hint */}
-      <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-        <span className="text-black/40 text-xs">Click image to zoom · Click outside to close</span>
+      {/* Main Container - Centering Image in the remaining viewport space */}
+      <div className="flex-1 w-full relative flex items-center justify-center overflow-auto p-4 md:p-8 pointer-events-none">
+        <div className="relative flex items-center justify-center min-h-full min-w-full pointer-events-auto">
+          <img
+            src={src}
+            alt={alt || 'Image'}
+            draggable={false}
+            style={{
+              transform: `scale(${scale})`,
+              transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              maxHeight: 'calc(100vh - 120px)',
+              maxWidth: '95vw',
+              objectFit: 'contain',
+              borderRadius: 12
+            }}
+            onClick={(e) => { e.stopPropagation(); setScale(s => s === 1 ? 2 : 1); }}
+            className="cursor-zoom-in select-none shadow-2xl transition-all duration-300"
+          />
+        </div>
       </div>
     </div>
   );
@@ -352,9 +359,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   onReply,
   onEdit,
   onDelete,
+  onImageClick,
 }) => {
   const [showActions, setShowActions] = useState(false);
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const { user } = useAuth();
   const { themeMode } = useTheme();
 
@@ -375,12 +382,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   return (
     <>
-      {lightboxUrl && (
-        <ImageLightbox
-          src={lightboxUrl}
-          onClose={() => setLightboxUrl(null)}
-        />
-      )}
 
       <div
         className={cn(
@@ -460,7 +461,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     <Button
                       variant="ghost" size="icon"
                       className="h-8 w-8 rounded-xl hover:bg-purple-500/10 hover:text-purple-500 transition-all active:scale-90"
-                      onClick={(e) => { e.stopPropagation(); setLightboxUrl(trimmed.startsWith('data:image/') ? trimmed : extractFileParts(trimmed).url); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const url = trimmed.startsWith('data:image/') ? trimmed : extractFileParts(trimmed).url;
+                        onImageClick?.(url);
+                      }}
                       title="View full image"
                     >
                       <ZoomIn className="h-4 w-4" />
@@ -554,7 +559,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     isOwn={isOwn}
                     isDark={isDark}
                     messageType={message.messageType}
-                    onImageClick={(url) => setLightboxUrl(url)}
+                    onImageClick={onImageClick}
                   />
                 )}
               </div>

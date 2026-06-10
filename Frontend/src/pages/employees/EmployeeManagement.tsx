@@ -44,6 +44,7 @@ import {
   ToggleLeft,
   ToggleRight
 } from 'lucide-react';
+import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useChat } from '@/contexts/ChatContext';
 import { User, type UserRole } from '@/types';
@@ -468,6 +469,11 @@ export default function EmployeeManagement() {
       if (newDept) {
         setDepartments(prev => [...prev, newDept.name].sort());
         setFormData(prev => ({ ...prev, department: newDept.name }));
+        if (isHROrManager) {
+          setSelectedDepartments(prev =>
+            prev.includes(newDept.name) ? prev : [...prev, newDept.name]
+          );
+        }
         setIsDeptPopoverOpen(false);
         setDeptSearchValue('');
         toast({ title: 'Success', description: `Department "${newDept.name}" created successfully` });
@@ -677,9 +683,10 @@ export default function EmployeeManagement() {
 
     // Check for duplicates in local state
     const isDuplicate = employees.some(emp => {
-      // If we are editing, ignore the employee being edited (check both DB id and original employeeId)
+      // If we are editing, ignore the employee being edited
+      // Compare as strings to handle number/string type mismatches
       if (isEdit && selectedEmployee) {
-        if (emp.id === selectedEmployee.id) return false;
+        if (String(emp.id) === String(selectedEmployee.id)) return false;
       }
       return emp.employeeId && emp.employeeId.toUpperCase() === upperId;
     });
@@ -846,7 +853,8 @@ export default function EmployeeManagement() {
 
     // Validate required fields based on role
     const isHROrManager = formData.role === 'hr' || formData.role === 'manager';
-    const departmentValid = isHROrManager ? selectedDepartments.length > 0 : formData.department;
+    // For HR, department is now optional (SR requirement)
+    const departmentValid = formData.role === 'hr' ? true : (formData.role === 'manager' ? selectedDepartments.length > 0 : formData.department);
 
     if (!formData.name || !formData.email || !formData.employeeId || !departmentValid || !formData.panCard || !formData.aadharCard || !formData.shift || !formData.employeeType || !formData.gender) {
       if (!formData.gender) {
@@ -854,7 +862,7 @@ export default function EmployeeManagement() {
       }
       toast({
         title: 'Error',
-        description: isHROrManager
+        description: formData.role === 'manager'
           ? 'Please fill in all required fields and select at least one department'
           : 'Please fill in all required fields',
         variant: 'destructive'
@@ -944,6 +952,7 @@ export default function EmployeeManagement() {
         branches: formData.branches,
         company_id: formData.companyId,
         branch_id: formData.branchId,
+        joining_date: formData.joiningDate,
         profile_photo: imageFile || undefined
       };
 
@@ -996,12 +1005,13 @@ export default function EmployeeManagement() {
 
     // Validate required fields based on role
     const isHROrManager = formData.role === 'hr' || formData.role === 'manager';
-    const departmentValid = isHROrManager ? selectedDepartments.length > 0 : formData.department;
+    // For HR, department is now optional
+    const departmentValid = formData.role === 'hr' ? true : (formData.role === 'manager' ? selectedDepartments.length > 0 : formData.department);
 
     if (!formData.name || !formData.email || !formData.employeeId || !departmentValid || !formData.panCard || !formData.aadharCard || !formData.shift) {
       toast({
         title: 'Error',
-        description: isHROrManager
+        description: formData.role === 'manager'
           ? 'Please fill in all required fields and select at least one department'
           : 'Please fill in all required fields',
         variant: 'destructive'
@@ -1111,6 +1121,7 @@ export default function EmployeeManagement() {
         branches: formData.branches,
         company_id: formData.companyId,
         branch_id: formData.branchId,
+        joining_date: formData.joiningDate,
         profile_photo: imageFile || formData.profilePhoto || (imagePreview === '' ? '' : undefined), // Pass the file or removal signal
         is_verified: true,
         created_at: formData.createdAt || new Date().toISOString(),
@@ -1343,44 +1354,62 @@ export default function EmployeeManagement() {
 
       const errors: string[] = [];
 
-      // REQUIRED FIELDS - Must be present and valid
+      // REQUIRED FIELDS - All fields except Designation and ResignationDate are mandatory
       if (!name) errors.push('Name is required');
       if (!email) errors.push('Email is required');
       if (email && !isValidEmail(email)) errors.push('Email format is invalid');
-      if (!department) errors.push('Department is required');
+      // Department - required for most roles, optional for HR
+      if (!department && role !== 'hr') {
+        errors.push('Department is required');
+      }
+      if (!role) errors.push('Role is required');
+      if (!gender) errors.push('Gender is required');
+      if (!employeeType) errors.push('EmployeeType is required (contract or permanent)');
+      if (!data.joiningdate) errors.push('JoiningDate is required');
+      if (!data.status) errors.push('Status is required (active or inactive)');
 
-      // Check for duplicates only if provided
+      // Phone - required
+      if (!phoneDigits) {
+        errors.push('Phone is required');
+      } else if (!isValidPhone(phoneDigits, countryCode)) {
+        errors.push('Phone number format is invalid');
+      }
+
+      // Address - required
+      if (!address) errors.push('Address is required');
+
+      // PAN Card - required and must be valid format
+      if (!panCard) {
+        errors.push('PANCard is required');
+      } else if (!isValidPan(panCard.toUpperCase())) {
+        errors.push('PAN card format is invalid (must be like ABCDE1234F)');
+      }
+
+      // Aadhar Card - required and must be valid format
+      if (!aadharCard) {
+        errors.push('AadharCard is required');
+      } else if (!isValidAadhar(aadharCard)) {
+        errors.push('Aadhar card format is invalid (must be like 1234-5678-9012)');
+      }
+
+      // Shift - required and must be valid value
+      if (!shift) {
+        errors.push('Shift is required (general, morning, afternoon, night, or rotational)');
+      } else if (!['general', 'morning', 'afternoon', 'night', 'rotational'].includes(shift.toLowerCase())) {
+        errors.push('Shift must be general, morning, afternoon, night, or rotational');
+      }
+
+      // EmployeeType - required and must be valid value
+      if (employeeType && !['contract', 'permanent'].includes(employeeType.toLowerCase())) {
+        errors.push('Employee type must be contract or permanent');
+      }
+
+      // Check for duplicates
       if (employeeId && (existingEmployeeIds.has(employeeIdKey) || batchEmployeeIds.has(employeeIdKey))) {
         errors.push('Duplicate employee ID found');
       }
       if (email && (existingEmails.has(emailKey) || batchEmails.has(emailKey))) {
         errors.push('Duplicate email found');
-      }
-
-      // OPTIONAL FIELDS - Only validate if provided (not empty)
-      // PAN Card - optional, but if provided must be valid
-      if (panCard && !isValidPan(panCard.toUpperCase())) {
-        errors.push('PAN card format is invalid (must be like ABCDE1234F)');
-      }
-
-      // Aadhar Card - optional, but if provided must be valid
-      if (aadharCard && !isValidAadhar(aadharCard)) {
-        errors.push('Aadhar card format is invalid (must be like 1234-5678-9012)');
-      }
-
-      // Shift - optional, but if provided must be valid
-      if (shift && !['general', 'morning', 'afternoon', 'night', 'rotational'].includes(shift.toLowerCase())) {
-        errors.push('Shift must be general, morning, afternoon, night, or rotational');
-      }
-
-      // Employee Type - optional, but if provided must be valid
-      if (employeeType && !['contract', 'permanent'].includes(employeeType.toLowerCase())) {
-        errors.push('Employee type must be contract or permanent');
-      }
-
-      // Phone - optional, but if provided must be valid
-      if (phoneDigits && !isValidPhone(phoneDigits, countryCode)) {
-        errors.push('Phone number format is invalid');
       }
 
       if (errors.length > 0) {
@@ -1411,6 +1440,7 @@ export default function EmployeeManagement() {
         employee_type: employeeType || undefined,
         company: company || undefined,
         branches: branches || undefined,
+        joining_date: data.joiningdate || undefined,
       };
 
       try {
@@ -1475,9 +1505,18 @@ export default function EmployeeManagement() {
     setIsExportDialogOpen(false);
 
     try {
+      const branchId = localStorage.getItem('branchId');
+      const companyId = localStorage.getItem('companyId');
+
+      const filtersWithScope = {
+        ...exportFilters,
+        branch_id: branchId || undefined,
+        company_id: companyId || undefined
+      };
+
       const blob = exportType === 'csv'
-        ? await apiService.exportEmployeesCSV(exportFilters)
-        : await apiService.exportEmployeesPDF(exportFilters);
+        ? await apiService.exportEmployeesCSV(filtersWithScope)
+        : await apiService.exportEmployeesPDF(filtersWithScope);
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1890,11 +1929,11 @@ export default function EmployeeManagement() {
                         <div className="text-sm text-gray-700 mt-2 space-y-1.5">
                           <div className="flex items-start gap-2">
                             <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold flex-shrink-0 mt-0.5">*</span>
-                            <span><strong>Required:</strong> EmployeeID, Name, Email, Department</span>
+                            <span><strong>Required:</strong> EmployeeID, Name, Email, Department, Role, Phone, Address, JoiningDate, Status, Gender, EmployeeType, PANCard, AadharCard, Shift</span>
                           </div>
                           <div className="flex items-start gap-2">
                             <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-gray-300 text-white text-xs font-bold flex-shrink-0 mt-0.5">○</span>
-                            <span><strong>Optional:</strong> Role, Designation, Phone, Address, JoiningDate, Status, Gender, EmployeeType, ResignationDate, PANCard, AadharCard, Shift</span>
+                            <span><strong>Optional:</strong> Designation, ResignationDate</span>
                           </div>
                         </div>
                         <div className="mt-3 p-3 bg-white rounded-lg border border-blue-200">
@@ -2278,11 +2317,8 @@ export default function EmployeeManagement() {
                             }
                           }
 
-                          // If role is HR, automatically select ALL departments
-                          if (roleValue === 'hr') {
-                            setSelectedDepartments([...departments]);
-                          } else if (roleValue === 'manager' && formData.department && selectedDepartments.length === 0) {
-                            // If switching TO manager, migrate single department TO multi-select list
+                          // If switching TO manager, migrate single department TO multi-select list
+                          if (roleValue === 'manager' && formData.department && selectedDepartments.length === 0) {
                             setSelectedDepartments([formData.department]);
                           }
 
@@ -2311,7 +2347,9 @@ export default function EmployeeManagement() {
                           {user?.role !== 'admin' && user?.role !== 'hr' && (
                             <SelectItem value="admin">Admin</SelectItem>
                           )}
-                          <SelectItem value="hr">HR</SelectItem>
+                          {user?.role === 'admin' && (
+                            <SelectItem value="hr">HR</SelectItem>
+                          )}
                           <SelectItem value="manager">Manager</SelectItem>
                           <SelectItem value="team_lead">TeamLead</SelectItem>
                           <SelectItem value="employee">Employee</SelectItem>
@@ -2319,99 +2357,96 @@ export default function EmployeeManagement() {
                       </Select>
                     </div>
 
-                    {/* Single Department Selection or "All Departments" for HR */}
-                    {!isManager && (
-                      <div>
-                        <Label htmlFor="create-department">Department *</Label>
-                        {isHR ? (
-                          <Input
-                            value="All Departments"
-                            readOnly
-                            className="mt-1 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 font-medium text-blue-700 dark:text-blue-300"
-                          />
-                        ) : (
-                          <Popover open={isDeptPopoverOpen} onOpenChange={setIsDeptPopoverOpen}>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={isDeptPopoverOpen}
-                                className="w-full justify-between mt-1 h-10 px-3 font-normal"
-                                disabled={isCreatingDepartment}
-                              >
-                                {formData.department
-                                  ? departments.find((d) => d.toLowerCase() === formData.department?.toLowerCase()) || formData.department
-                                  : "Select or type department"}
-                                {isCreatingDepartment ? (
-                                  <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
-                                ) : (
-                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                )}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[400px] p-0" align="start">
-                              <Command>
-                                <CommandInput
-                                  placeholder="Search department..."
-                                  value={deptSearchValue}
-                                  onValueChange={(val) => setDeptSearchValue(val.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
-                                />
-                                <CommandList className="max-h-[300px]">
-                                  {deptSearchValue.trim().length > 0 && !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
-                                    <CommandGroup heading="New Department">
-                                      <CommandItem
-                                        value={deptSearchValue}
-                                        onSelect={() => handleCreateDepartment(deptSearchValue)}
-                                        className="cursor-pointer text-blue-600 font-medium"
-                                      >
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Create "{deptSearchValue}"
-                                      </CommandItem>
-                                    </CommandGroup>
-                                  )}
-                                  <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
-                                    {deptSearchValue.trim().length === 0 ? "No departments available." : "No matching departments found."}
-                                  </CommandEmpty>
-                                  <CommandGroup heading="Existing Departments">
-                                    {departments.map((dept) => (
-                                      <CommandItem
-                                        key={dept}
-                                        value={dept}
-                                        onSelect={(currentValue) => {
-                                          setFormData(prev => ({ ...prev, department: currentValue }));
-                                          setIsDeptPopoverOpen(false);
-                                          setDeptSearchValue('');
-                                        }}
-                                        className="cursor-pointer"
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            formData.department?.toLowerCase() === dept.toLowerCase() ? "opacity-100" : "opacity-0"
-                                          )}
-                                        />
-                                        {dept}
-                                      </CommandItem>
-                                    ))}
-                                  </CommandGroup>
-                                </CommandList>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
-                        )}
-                        {!isHR && departments.length === 0 && (
-                          <p className="text-sm text-amber-600 mt-1">
-                            ⚠️ No departments available. Please go to Department Management to create departments first.
-                          </p>
-                        )}
-                      </div>
-                    )}
+                    {/* Single Department Selection / Create Department */}
+                    <div>
+                      <Label htmlFor="create-department">
+                        {isHROrManager ? "Primary Department (Optional)" : "Department *"}
+                      </Label>
+                      <Popover open={isDeptPopoverOpen} onOpenChange={setIsDeptPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={isDeptPopoverOpen}
+                            className="w-full justify-between mt-1 h-10 px-3 font-normal"
+                            disabled={isCreatingDepartment}
+                          >
+                            {formData.department
+                              ? departments.find((d) => d.toLowerCase() === formData.department?.toLowerCase()) || formData.department
+                              : "Select or type department"}
+                            {isCreatingDepartment ? (
+                              <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
+                            ) : (
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[400px] p-0" align="start">
+                          <Command>
+                            <CommandInput
+                              placeholder="Search department..."
+                              value={deptSearchValue}
+                              onValueChange={(val) => setDeptSearchValue(val.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
+                            />
+                            <CommandList className="max-h-[300px]">
+                              {deptSearchValue.trim().length > 0 && !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
+                                <CommandGroup heading="New Department">
+                                  <CommandItem
+                                    value={deptSearchValue}
+                                    onSelect={() => handleCreateDepartment(deptSearchValue)}
+                                    className="cursor-pointer text-blue-600 font-medium"
+                                  >
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Create "{deptSearchValue}"
+                                  </CommandItem>
+                                </CommandGroup>
+                              )}
+                              <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
+                                {deptSearchValue.trim().length === 0 ? "No departments available." : "No matching departments found."}
+                              </CommandEmpty>
+                              <CommandGroup heading="Existing Departments">
+                                {departments.map((dept) => (
+                                  <CommandItem
+                                    key={dept}
+                                    value={dept}
+                                    onSelect={(currentValue) => {
+                                      setFormData((prev) => ({ ...prev, department: currentValue }));
+                                      if (isHROrManager) {
+                                        setSelectedDepartments((prev) =>
+                                          prev.includes(currentValue) ? prev : [...prev, currentValue]
+                                        );
+                                      }
+                                      setIsDeptPopoverOpen(false);
+                                      setDeptSearchValue('');
+                                    }}
+                                    className="cursor-pointer"
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        formData.department?.toLowerCase() === dept.toLowerCase() ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {dept}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      {departments.length === 0 && (
+                        <p className="text-sm text-amber-600 mt-1">
+                          ⚠️ No departments available. Please go to Department Management to create departments first.
+                        </p>
+                      )}
+                    </div>
 
-                    {/* Multiple Department Selection for Manager */}
-                    {isManager && (
+                    {/* Multiple Department Selection for Manager or HR */}
+                    {isHROrManager && (
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <Label>Assigned Departments *</Label>
+                          <Label>Assigned Departments {isManager && '*'}</Label>
                           {departments.length > 0 && (
                             <button
                               type="button"
@@ -2950,32 +2985,7 @@ export default function EmployeeManagement() {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setEmployeeToDelete(employee);
-                              setIsDeleteDialogOpen(true);
-                            }}
-                            disabled={isDeleting === employee.id}
-                            className="h-9 w-9 p-0 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900 transition-all hover:scale-110 rounded-lg"
-                          >
-                            {isDeleting === employee.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleStartChat(employee)}
-                            disabled={isDeleting === employee.id || employee.id?.toString() === user?.id?.toString()}
-                            className="h-9 w-9 p-0 hover:bg-green-100 hover:text-green-600 dark:hover:bg-green-900 transition-all hover:scale-110 rounded-lg"
-                            title="Chat with employee"
-                          >
-                            <MessageCircle className="h-4 w-4" />
-                          </Button>
+
                           <Button
                             size="sm"
                             variant="ghost"
@@ -3121,6 +3131,16 @@ export default function EmployeeManagement() {
               )}
             </div>
             <div>
+              <Label htmlFor="edit-joiningDate">Joining Date *</Label>
+              <Input
+                id="edit-joiningDate"
+                type="date"
+                value={formData.joiningDate || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, joiningDate: e.target.value }))}
+                className="mt-1"
+              />
+            </div>
+            <div>
               <Label htmlFor="edit-role">Role *</Label>
               <Select
                 value={formData.role || 'employee'}
@@ -3169,7 +3189,9 @@ export default function EmployeeManagement() {
                   {user?.role !== 'admin' && user?.role !== 'hr' && (
                     <SelectItem value="admin">Admin</SelectItem>
                   )}
-                  <SelectItem value="hr">HR</SelectItem>
+                  {user?.role === 'admin' && (
+                    <SelectItem value="hr">HR</SelectItem>
+                  )}
                   <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="team_lead">TeamLead</SelectItem>
                   <SelectItem value="employee">Employee</SelectItem>
@@ -3177,94 +3199,91 @@ export default function EmployeeManagement() {
               </Select>
             </div>
 
-            {/* Single Department Selection or "All Departments" for HR in Edit */}
-            {!isManager && (
-              <div>
-                <Label htmlFor="edit-department">Department *</Label>
-                {isHR ? (
-                  <Input
-                    value="All Departments"
-                    readOnly
-                    className="mt-1 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 font-medium text-blue-700 dark:text-blue-300"
-                  />
-                ) : (
-                  <Popover open={isDeptPopoverOpen} onOpenChange={setIsDeptPopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={isDeptPopoverOpen}
-                        className="w-full justify-between mt-1 h-10 px-3 font-normal"
-                        disabled={isCreatingDepartment}
-                      >
-                        {formData.department
-                          ? departments.find((d) => d.toLowerCase() === formData.department?.toLowerCase()) || formData.department
-                          : "Select or type department"}
-                        {isCreatingDepartment ? (
-                          <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
-                        ) : (
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[400px] p-0" align="start">
-                      <Command>
-                        <CommandInput
-                          placeholder="Search department..."
-                          value={deptSearchValue}
-                          onValueChange={(val) => setDeptSearchValue(val.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
-                        />
-                        <CommandList className="max-h-[300px]">
-                          {deptSearchValue.trim().length > 0 && !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
-                            <CommandGroup heading="New Department">
-                              <CommandItem
-                                value={deptSearchValue}
-                                onSelect={() => handleCreateDepartment(deptSearchValue)}
-                                className="cursor-pointer text-blue-600 font-medium"
-                              >
-                                <Plus className="mr-2 h-4 w-4" />
-                                Create "{deptSearchValue}"
-                              </CommandItem>
-                            </CommandGroup>
-                          )}
-                          <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
-                            {deptSearchValue.trim().length === 0 ? "No departments available." : "No matching departments found."}
-                          </CommandEmpty>
-                          <CommandGroup heading="Existing Departments">
-                            {departments.map((dept) => (
-                              <CommandItem
-                                key={dept}
-                                value={dept}
-                                onSelect={(currentValue) => {
-                                  setFormData(prev => ({ ...prev, department: currentValue }));
-                                  setIsDeptPopoverOpen(false);
-                                  setDeptSearchValue('');
-                                }}
-                                className="cursor-pointer"
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    formData.department?.toLowerCase() === dept.toLowerCase() ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {dept}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                )}
-              </div>
-            )}
+            {/* Single Department Selection / Create Department in Edit */}
+            <div>
+              <Label htmlFor="edit-department">
+                {isHROrManager ? "Primary Department (Optional)" : "Department *"}
+              </Label>
+              <Popover open={isDeptPopoverOpen} onOpenChange={setIsDeptPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={isDeptPopoverOpen}
+                    className="w-full justify-between mt-1 h-10 px-3 font-normal"
+                    disabled={isCreatingDepartment}
+                  >
+                    {formData.department
+                      ? departments.find((d) => d.toLowerCase() === formData.department?.toLowerCase()) || formData.department
+                      : "Select or type department"}
+                    {isCreatingDepartment ? (
+                      <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
+                    ) : (
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0" align="start">
+                  <Command>
+                    <CommandInput
+                      placeholder="Search department..."
+                      value={deptSearchValue}
+                      onValueChange={(val) => setDeptSearchValue(val.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
+                    />
+                    <CommandList className="max-h-[300px]">
+                      {deptSearchValue.trim().length > 0 && !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
+                        <CommandGroup heading="New Department">
+                          <CommandItem
+                            value={deptSearchValue}
+                            onSelect={() => handleCreateDepartment(deptSearchValue)}
+                            className="cursor-pointer text-blue-600 font-medium"
+                          >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create "{deptSearchValue}"
+                          </CommandItem>
+                        </CommandGroup>
+                      )}
+                      <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
+                        {deptSearchValue.trim().length === 0 ? "No departments available." : "No matching departments found."}
+                      </CommandEmpty>
+                      <CommandGroup heading="Existing Departments">
+                        {departments.map((dept) => (
+                          <CommandItem
+                            key={dept}
+                            value={dept}
+                            onSelect={(currentValue) => {
+                              setFormData(prev => ({ ...prev, department: currentValue }));
+                              if (isHROrManager) {
+                                setSelectedDepartments((prev) =>
+                                  prev.includes(currentValue) ? prev : [...prev, currentValue]
+                                );
+                              }
+                              setIsDeptPopoverOpen(false);
+                              setDeptSearchValue('');
+                            }}
+                            className="cursor-pointer"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                formData.department?.toLowerCase() === dept.toLowerCase() ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {dept}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
 
-            {/* Multiple Department Selection for Manager in Edit */}
-            {isManager && (
+            {/* Multiple Department Selection for Manager or HR in Edit */}
+            {isHROrManager && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Assigned Departments *</Label>
+                  <Label>Assigned Departments {isManager && '*'}</Label>
                   {departments.length > 0 && (
                     <button
                       type="button"
@@ -3637,6 +3656,10 @@ export default function EmployeeManagement() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Phone</span>
                     <span className="font-medium">{viewEmployee.phone || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Joining Date</span>
+                    <span className="font-medium">{viewEmployee.joiningDate ? format(new Date(viewEmployee.joiningDate), 'dd MMM yyyy') : '-'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Gender</span>

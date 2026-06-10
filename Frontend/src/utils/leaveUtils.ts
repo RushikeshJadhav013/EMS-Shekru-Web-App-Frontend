@@ -105,33 +105,32 @@ export const validateLeaveRequest = (
 
   const leaveDays = calculateLeaveDays(startDate, endDate);
 
-  // Sick leave minimum duration check
-  if (leaveType === 'sick' && leaveDays < 3) {
-    return {
-      valid: false,
-      error: 'Sick leave can only be applied for 3 or more days. For shorter periods (1-2 days), please use Casual Leave instead.',
-    };
-  }
-
-  // Advance notice requirements
+  // Advance notice requirements based on leave types (Relative to 10:00 AM office start)
   const now = new Date();
-  const timeDifference = startDate.getTime() - now.getTime();
-  const hoursDifference = timeDifference / (1000 * 60 * 60);
+  const OFFICE_START_HOUR = 10;
+  const officeStart = new Date(startDate);
+  officeStart.setHours(OFFICE_START_HOUR, 0, 0, 0);
 
-  if (leaveType === 'sick') {
-    if (hoursDifference < 2) {
+  const timeDifference = officeStart.getTime() - now.getTime();
+  const hoursNotice = timeDifference / (1000 * 60 * 60);
+
+  if (['casual', 'maternity', 'paternity', 'annual'].includes(leaveType)) {
+    if (hoursNotice < 24) {
       return {
         valid: false,
-        error: 'Sick leave must be applied at least 2 hours before the start date.',
+        error: 'Casual, Maternity, and Paternity leaves must be applied at least 24 hours before the office day starts.',
       };
     }
-  } else {
-    if (hoursDifference < 24) {
+  } else if (leaveType === 'sick') {
+    if (hoursNotice < 2 || hoursNotice > 24) {
       return {
         valid: false,
-        error: 'Leave requests must be submitted at least 24 hours in advance.',
+        error: 'Sick leave must be applied between 2 to 24 hours before the office day starts.',
       };
     }
+  } else if (leaveType === 'unpaid') {
+    // Unpaid leaves can be applicable any time as per user request
+    return { valid: true };
   }
 
   // Check balance for specific leave types

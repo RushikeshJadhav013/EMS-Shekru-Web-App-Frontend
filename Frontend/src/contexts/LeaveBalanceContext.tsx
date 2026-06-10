@@ -88,10 +88,10 @@ export const LeaveBalanceProvider: React.FC<{ children: React.ReactNode }> = ({ 
           if (key.includes('sick')) key = 'sick';
           else if (key.includes('casual')) key = 'casual';
           else if (key.includes('annual') || key.includes('privilege')) key = 'annual';
-          else if (key.includes('unpaid') || key.includes('loss of pay')) key = 'unpaid';
+          else if (key.includes('unpaid') || key.includes('loss of pay') || key.includes('lwp') || key.includes('without pay')) key = 'unpaid';
 
           if (key === 'unpaid') {
-            unpaidCount = Number(item.used) || 0;
+            unpaidCount += Number(item.used) || 0;
           } else if (key in defaults) {
             defaults[key as keyof typeof defaults] = {
               allocated: Number(item.allocated) || 0,

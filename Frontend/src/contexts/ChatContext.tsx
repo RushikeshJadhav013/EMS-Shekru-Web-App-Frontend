@@ -26,6 +26,8 @@ interface ChatContextType {
   deleteGroup: (chatId: string) => Promise<void>;
   addParticipants: (chatId: string, userIds: string[]) => Promise<void>;
   removeParticipants: (chatId: string, userIds: string[]) => Promise<void>;
+  isLightboxOpen: boolean;
+  setIsLightboxOpen: (isOpen: boolean) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -36,6 +38,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -92,12 +95,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadChats = useCallback(async (silent = false) => {
     if (!user) return;
 
-    if (!silent) setIsLoading(true);
     try {
       const fetchedChats = await chatService.getChats();
-
       setChats(prev => {
-        // Prevent recent messages in the sidebar from flickering or reverting to old data
+        // ... (rest of existing setChats logic)
         return fetchedChats.map(fc => {
           const localMatch = prev.find(p => p.id === fc.id);
           if (localMatch && localMatch.lastMessage && fc.lastMessage) {
@@ -143,7 +144,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Load messages for a specific chat
   const loadMessages = useCallback(async (chatId: string, type?: 'individual' | 'group', silent = false) => {
-    if (!silent) setIsLoading(true);
+    // Only show loading if we don't have any messages yet for this chat
+    const hasMessages = messages.length > 0 && messages[0].chatId === chatId;
+    if (!silent && !hasMessages) setIsLoading(true);
     try {
       let chatType = type;
       if (!chatType) {
@@ -615,13 +618,16 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Handle active chat change
   const handleSetActiveChat = useCallback((chat: Chat | null) => {
+    // Prevent redundant state updates if same chat is selected
+    if (activeChat?.id === chat?.id && messages.length > 0) return;
+
     setActiveChat(chat);
     if (chat) {
       loadMessages(chat.id, chat.type);
     } else {
       setMessages([]);
     }
-  }, [loadMessages]);
+  }, [loadMessages, activeChat, messages.length]);
 
   // Refs for polling to avoid interval restarts
   const activeChatRef = React.useRef<Chat | null>(null);
@@ -688,7 +694,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateGroupName,
     deleteGroup,
     addParticipants,
-    removeParticipants
+    removeParticipants,
+    isLightboxOpen,
+    setIsLightboxOpen
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

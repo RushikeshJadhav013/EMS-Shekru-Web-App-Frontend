@@ -656,10 +656,10 @@ const TeamLeadDashboard: React.FC = () => {
                   </div>
                   <span className="text-[16px] font-bold uppercase tracking-tight">{t.navigation.teamMembers}</span>
                 </CardTitle>
-                <CardDescription className="text-xs font-medium mt-1" style={{ color: '#000000' }}>Real-time status and task monitoring</CardDescription>
+                <CardDescription className="text-[14px] font-medium mt-1 text-black">Real-time status and task monitoring</CardDescription>
               </div>
-              <Badge variant="outline" className="rounded-full px-4 h-8 bg-white dark:bg-gray-800 border border-slate-200">
-                <span className="text-[14px] font-bold" style={{ color: '#000000' }}>{teamMembers.length} Total</span>
+              <Badge variant="outline" className="rounded-full px-4 h-8 bg-white dark:bg-gray-800 border-2 border-black">
+                <span className="text-[14px] font-bold text-black">{teamMembers.length} Total</span>
               </Badge>
             </div>
           </CardHeader>
@@ -699,7 +699,7 @@ const TeamLeadDashboard: React.FC = () => {
                           <h4 className="text-[14px] font-bold truncate" style={{ color: '#000000' }}>
                             {member.name}
                           </h4>
-                          <p className="text-[12px] font-medium text-muted-foreground" style={{ color: '#666666' }}>
+                          <p className="text-[12px] font-medium text-black">
                             {member.designation}
                           </p>
                         </div>
@@ -747,7 +747,7 @@ const TeamLeadDashboard: React.FC = () => {
                         showToggle={false}
                       />
                     </div>
-                    <p className="text-[12px] font-bold uppercase tracking-tight pt-1" style={{ color: '#000000' }}>
+                    <p className="text-[12px] font-bold uppercase tracking-tight pt-1 text-black">
                       {activity.time}
                     </p>
                   </div>

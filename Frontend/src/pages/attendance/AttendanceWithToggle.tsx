@@ -82,6 +82,7 @@ import {
   FileSpreadsheet,
   Timer,
   ArrowRight,
+  RefreshCw,
 } from "lucide-react";
 import { AttendanceRecord, UserRole } from "@/types";
 import { format, subMonths, isAfter, subDays } from "date-fns";
@@ -667,13 +668,17 @@ const AttendanceWithToggle: React.FC = () => {
   const canExportAttendance = user?.role && ['admin', 'hr'].includes(user.role.toLowerCase());
 
   // Access rules for attendance viewing
+  // Access rules for attendance viewing
   const getViewableRoles = (): UserRole[] => {
-    const role = (user?.role || '').toLowerCase();
-    if (role === 'admin') return ['admin', 'hr', 'manager', 'team_lead', 'employee'];
-    if (role === 'hr') return ['hr', 'manager', 'team_lead', 'employee'];
-    if (role === 'manager') return ['team_lead', 'employee'];
-    if (role === 'team_lead' || role === 'teamlead') return ['employee'];
-    return [];
+    const roleMap: Record<string, UserRole[]> = {
+      admin: ["admin", "hr", "manager", "team_lead", "teamlead", "employee", "staff"],
+      hr: ["hr", "manager", "team_lead", "teamlead", "employee", "staff"],
+      manager: ["admin", "hr", "manager", "team_lead", "teamlead", "employee", "staff"],
+      team_lead: ["admin", "hr", "manager", "team_lead", "teamlead", "employee", "staff"],
+      teamlead: ["admin", "hr", "manager", "team_lead", "teamlead", "employee", "staff"],
+    };
+    const role = (user?.role || "").toLowerCase();
+    return roleMap[role] || [];
   };
 
   const refreshLocation = useCallback(async () => {
@@ -898,21 +903,6 @@ const AttendanceWithToggle: React.FC = () => {
     if (viewMode === "wfh_requests" && canViewEmployeeAttendance) {
       // Load immediately when tab is opened
       loadAllWfhRequests();
-
-      // Refresh data every 30 seconds to keep timestamps current
-      const dataInterval = setInterval(() => {
-        loadAllWfhRequests();
-      }, 30000);
-
-      // Force re-render every minute to update relative timestamps
-      const renderInterval = setInterval(() => {
-        setAllWfhRequests((prev) => [...prev]); // Trigger re-render
-      }, 60000);
-
-      return () => {
-        clearInterval(dataInterval);
-        clearInterval(renderInterval);
-      };
     }
   }, [viewMode, canViewEmployeeAttendance, loadAllWfhRequests]);
 
@@ -1233,7 +1223,7 @@ const AttendanceWithToggle: React.FC = () => {
               workLocation = "office";
             }
 
-            let status = "present";
+            let status = (rec.status || rec.checkInStatus || "present").toLowerCase();
             const recordDateStr = formatDateIST(rec.check_in, "yyyy-MM-dd");
             const todayStr = formatDateIST(new Date(), "yyyy-MM-dd");
 
@@ -1292,8 +1282,8 @@ const AttendanceWithToggle: React.FC = () => {
               checkOutLocationLabel: rec.checkOutLocationLabel,
               checkInStatus: rec.checkInStatus,
               checkOutStatus: rec.checkOutStatus,
-              scheduledStart: rec.scheduledStart,
-              scheduledEnd: rec.scheduledEnd,
+              scheduledStart: rec.scheduledStart || rec.scheduled_start,
+              scheduledEnd: rec.scheduledEnd || rec.scheduled_end,
             };
           })
           .sort((a, b) => {
@@ -1372,7 +1362,7 @@ const AttendanceWithToggle: React.FC = () => {
           },
           checkInSelfie: todayRecord.checkInSelfie || todayRecord.selfie || "",
           checkOutSelfie: todayRecord.checkOutSelfie || "",
-          status: "present",
+          status: todayRecord.status || todayRecord.checkInStatus || "present",
           workHours: todayRecord.total_online_hours !== undefined ? todayRecord.total_online_hours : ((todayRecord.total_hours || 0) - (todayRecord.total_offline_hours || 0)),
           workSummary:
             todayRecord.workSummary || todayRecord.work_summary || null,
@@ -1406,8 +1396,8 @@ const AttendanceWithToggle: React.FC = () => {
           checkOutLocationLabel: todayRecord.checkOutLocationLabel,
           checkInStatus: todayRecord.checkInStatus,
           checkOutStatus: todayRecord.checkOutStatus,
-          scheduledStart: todayRecord.scheduledStart,
-          scheduledEnd: todayRecord.scheduledEnd,
+          scheduledStart: todayRecord.scheduledStart || todayRecord.scheduled_start,
+          scheduledEnd: todayRecord.scheduledEnd || todayRecord.scheduled_end,
         };
         setCurrentAttendance(attendance);
 
@@ -1553,12 +1543,11 @@ const AttendanceWithToggle: React.FC = () => {
 
       const attendanceParams: any = {};
       const userRoleLower = (user?.role || '').toLowerCase();
-      if (userRoleLower === 'manager') {
-        if (user?.department) attendanceParams.department = user.department;
-        attendanceParams.manager_id = user?.id;
-      } else if (userRoleLower === 'team_lead' || userRoleLower === 'teamlead') {
-        if (user?.department) attendanceParams.department = user.department;
-        attendanceParams.team_lead_id = user?.id;
+      // For managers and team leads, we want to broaden visibility to see all records they are authorized for
+      // Removing restrictive filters allows them to see more records as requested
+      if (userRoleLower === 'manager' || userRoleLower === 'team_lead' || userRoleLower === 'teamlead') {
+        // Broadened visibility for management roles to see all team records as requested
+        // No department or role-specific ID restriction here to ensure visibility
       }
 
       // Fetch attendance and employees in parallel to ensure we have role data
@@ -1647,24 +1636,29 @@ const AttendanceWithToggle: React.FC = () => {
 
           // Role-based visibility rules
           if (role) {
-            if (currentUserRole === 'manager') {
-              // Managers can see employees, team leads, and other managers
-              const isAllowed = ['employee', 'teamlead', 'team_lead', 'manager'].includes(role);
+            if (currentUserRole === 'manager' || currentUserRole === 'team_lead' || currentUserRole === 'teamlead') {
+              // Management roles can see employees, team leads, managers, hr, staff, and admin
+              // Broadened to ensure all requested records are visible
+              const isAllowed = ['employee', 'teamlead', 'team_lead', 'manager', 'hr', 'staff', 'admin'].includes(role);
               if (!isAllowed) return false;
-            } else if (currentUserRole === 'team_lead' || currentUserRole === 'teamlead') {
-              // Team leads see employees
-              if (role !== 'employee') return false;
             }
           }
 
-          // 4. Department Scope (Only for Team Leads if needed, usually Managers see all)
-          if ((currentUserRole === 'team_lead' || currentUserRole === 'teamlead') && userDept && recDept && recDept !== userDept) {
+          // 4. Department Scope
+          // Relaxing department scope for management roles if requested to see "All"
+          // We allow them to see all departments if returned by backend
+          // Commented out to allow full company visibility as requested
+          /*
+          if (userDept && recDept && recDept !== userDept) {
             return false;
           }
+          */
 
           return true;
         });
       }
+
+
 
 
       // Calculate date range based on time period filter
@@ -1725,7 +1719,7 @@ const AttendanceWithToggle: React.FC = () => {
             : "";
           const todayStr = formatDateIST(new Date(), "yyyy-MM-dd");
 
-          let statusResult = (rec.status || "present").toLowerCase();
+          let statusResult = (rec.status || rec.checkInStatus || "present").toLowerCase();
           // If it's a past date and check-out is missing, mark as absent (forgotten checkout)
           if (recordDateStr && recordDateStr < todayStr && !checkOutDate) {
             statusResult = "absent";
@@ -2938,9 +2932,35 @@ const AttendanceWithToggle: React.FC = () => {
     status: string,
     checkInTime?: string,
     checkOutTime?: string,
+    scheduledStart?: string,
   ) => {
     // Show "Late" or "On Time" clearly
-    if (status === "late") {
+    const normalizedStatus = (status || "").toLowerCase();
+
+    // Client-side grace period optimization (10 minutes)
+    // If backend says late but they are within 10 mins of scheduled start, show as On Time
+    if (normalizedStatus === "late" && checkInTime && scheduledStart) {
+      try {
+        const checkIn = new Date(checkInTime);
+        const [schedHours, schedMins] = scheduledStart.split(":").map(Number);
+        const scheduledDate = new Date(checkIn);
+        scheduledDate.setHours(schedHours, schedMins || 0, 0, 0);
+
+        // If they checked in within 10 minutes of scheduled start, consider it On Time
+        const diffInMinutes = (checkIn.getTime() - scheduledDate.getTime()) / (1000 * 60);
+        if (diffInMinutes <= 10) {
+          return (
+            <Badge variant="default" className="bg-green-600 text-[10px] font-bold uppercase py-0.5 px-2">
+              On Time
+            </Badge>
+          );
+        }
+      } catch (e) {
+        console.error("Grace period calculation failed:", e);
+      }
+    }
+
+    if (normalizedStatus === "late" || normalizedStatus === "late arrival" || normalizedStatus === "late_arrival") {
       return (
         <Badge variant="destructive" className="text-[10px] font-bold uppercase py-0.5 px-2">
           Late
@@ -2948,10 +2968,18 @@ const AttendanceWithToggle: React.FC = () => {
       );
     }
 
-    if (status === "present" || (checkInTime && !status)) {
+    if (normalizedStatus === "present" || normalizedStatus === "on time" || normalizedStatus === "on_time" || (checkInTime && !normalizedStatus)) {
       return (
         <Badge variant="default" className="bg-green-600 text-[10px] font-bold uppercase py-0.5 px-2">
           On Time
+        </Badge>
+      );
+    }
+
+    if (normalizedStatus === "absent") {
+      return (
+        <Badge variant="destructive" className="bg-red-500 text-[10px] font-bold uppercase py-0.5 px-2">
+          Absent
         </Badge>
       );
     }
@@ -3039,7 +3067,7 @@ const AttendanceWithToggle: React.FC = () => {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-[16px] font-bold" style={{ color: '#000000' }}>
+          <h2 className="text-[16px] font-bold" style={{ color: '#000000', fontFamily: 'Outfit, sans-serif' }}>
             {isCheckingIn ? t.attendance.checkIn : t.attendance.checkOut}
           </h2>
         </div>
@@ -3218,13 +3246,6 @@ const AttendanceWithToggle: React.FC = () => {
                             currentAttendance.checkInTime,
                           )}
                         </p>
-                        {currentAttendance.workLocation === "work_from_home" ||
-                          (currentAttendance.workLocation !== "office" &&
-                            getTodayWfhStatus()?.hasApprovedWfh) ? (
-                          <p className="text-xs text-orange-600 dark:text-orange-400 font-outfit">
-                            Working from home today
-                          </p>
-                        ) : null}
                       </div>
 
                       <div className="space-y-2">
@@ -3517,9 +3538,6 @@ const AttendanceWithToggle: React.FC = () => {
                                 Work location
                               </th>
                               <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap">
-                                Online status
-                              </th>
-                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap">
                                 {t.attendance.checkInTime}
                               </th>
                               <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap">
@@ -3594,63 +3612,7 @@ const AttendanceWithToggle: React.FC = () => {
                                       </div>
                                     )}
                                   </td>
-                                  <td className="p-3 whitespace-nowrap">
-                                    <div className="flex flex-col items-center gap-1">
-                                      {(() => {
-                                        if (
-                                          !record.checkOutTime &&
-                                          record.date === todayIST()
-                                        ) {
-                                          return (
-                                            <OnlineStatusIndicator
-                                              isOnline={isOnline}
-                                              size="sm"
-                                              showLabel={true}
-                                            />
-                                          );
-                                        } else if (record.checkOutTime) {
-                                          return (
-                                            <span className="text-[12px] font-medium text-black dark:text-white">
-                                              Checked Out
-                                            </span>
-                                          );
-                                        } else {
-                                          return (
-                                            <span className="text-[12px] font-medium text-black dark:text-white">
-                                              Offline
-                                            </span>
-                                          );
-                                        }
-                                      })()}
 
-                                      {(record.checkInStatus || record.checkOutStatus) && (
-                                        <div className="flex flex-col items-center gap-1 border-t border-slate-100 dark:border-slate-800 pt-1 mt-1 w-full">
-                                          {record.checkInStatus && (
-                                            <Badge
-                                              variant="outline"
-                                              className={`text-[12px] px-1 py-0 font-bold border-0 ${record.checkInStatus.toLowerCase() === "late"
-                                                ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
-                                                : "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400"
-                                                }`}
-                                            >
-                                              In: {record.checkInStatus}
-                                            </Badge>
-                                          )}
-                                          {record.checkOutStatus && (
-                                            <Badge
-                                              variant="outline"
-                                              className={`text-[12px] px-1 py-0 font-bold border-0 ${record.checkOutStatus.toLowerCase() === "early"
-                                                ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
-                                                : "bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-400"
-                                                }`}
-                                            >
-                                              Out: {record.checkOutStatus}
-                                            </Badge>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </td>
                                   <td className="p-3 whitespace-nowrap">
                                     <div className="flex items-center gap-1.5">
                                       <Clock className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
@@ -3755,47 +3717,48 @@ const AttendanceWithToggle: React.FC = () => {
                                     </div>
                                   </td>
                                   <td className="p-3 whitespace-nowrap">
-                                    <div className="flex flex-col items-center gap-1">
+                                    <div className="flex flex-col items-center gap-1.5">
+                                      {/* Online and Attendance Status Combined */}
+                                      <div className="flex justify-center">
+                                        {(() => {
+                                          if (!record.checkOutTime && record.date === todayIST()) {
+                                            return (
+                                              <OnlineStatusIndicator
+                                                isOnline={isOnline}
+                                                size="sm"
+                                                showLabel={true}
+                                              />
+                                            );
+                                          } else if (record.checkOutTime) {
+                                            return (
+                                              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight">
+                                                Offline
+                                              </span>
+                                            );
+                                          } else {
+                                            return (
+                                              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight">
+                                                Offline
+                                              </span>
+                                            );
+                                          }
+                                        })()}
+                                      </div>
                                       <div className="flex justify-center">
                                         {getStatusBadge(
                                           record.status,
                                           record.checkInTime,
                                           record.checkOutTime,
+                                          record.scheduledStart,
                                         )}
                                       </div>
-                                      <div className="flex flex-col items-center gap-1 border-t border-slate-100 dark:border-slate-800 pt-1 mt-1 w-full">
-                                        <div className="flex items-center gap-1 text-[12px] font-medium text-black dark:text-white">
-                                          <Timer className="h-2.5 w-2.5 text-blue-400" />
+                                      <div className="flex flex-col items-center gap-1 border-t border-slate-100 dark:border-slate-800 pt-1 mt-0.5 w-full">
+                                        <div className="flex items-center gap-1 text-[11px] font-medium text-black/60 dark:text-white/60">
+                                          <Timer className="h-2.5 w-2.5" />
                                           <span>
                                             {(record.scheduledStart || "10:00").replace(/^0/, '')} -{" "}
                                             {(record.scheduledEnd || "19:00").replace(/^0/, '')}
                                           </span>
-                                        </div>
-                                        <div className="flex flex-col items-center gap-1">
-                                          {record.checkInStatus && (
-                                            <Badge
-                                              variant="outline"
-                                              className={`text-[12px] px-1 py-0 font-bold border-0 ${record.checkInStatus.toLowerCase() ===
-                                                "late"
-                                                ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
-                                                : "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400"
-                                                }`}
-                                            >
-                                              In: {record.checkInStatus}
-                                            </Badge>
-                                          )}
-                                          {record.checkOutStatus && (
-                                            <Badge
-                                              variant="outline"
-                                              className={`text-[12px] px-1 py-0 font-bold border-0 ${record.checkOutStatus.toLowerCase() ===
-                                                "early"
-                                                ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
-                                                : "bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-400"
-                                                }`}
-                                            >
-                                              Out: {record.checkOutStatus}
-                                            </Badge>
-                                          )}
                                         </div>
                                       </div>
                                     </div>
@@ -4292,6 +4255,7 @@ const AttendanceWithToggle: React.FC = () => {
                                       record.status,
                                       record.checkInTime,
                                       record.checkOutTime,
+                                      record.scheduledStart,
                                     )}
                                   </div>
                                 </div>
@@ -4382,18 +4346,32 @@ const AttendanceWithToggle: React.FC = () => {
           {/* Pending WFH Requests Section */}
           <Card className="border-0 shadow-lg">
             <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950">
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                <FileText className="h-5 w-5 text-purple-600" />
-                Pending WFH Requests
-                {getPendingWfhCount() > 0 && (
-                  <Badge variant="destructive" className="ml-2">
-                    {getPendingWfhCount()}
-                  </Badge>
-                )}
-              </CardTitle>
-              <CardDescription>
-                Review and approve/reject pending work from home requests
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-purple-600" />
+                    Pending WFH Requests
+                    {getPendingWfhCount() > 0 && (
+                      <Badge variant="destructive" className="ml-2">
+                        {getPendingWfhCount()}
+                      </Badge>
+                    )}
+                  </CardTitle>
+                  <CardDescription>
+                    Review and approve/reject pending work from home requests
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => loadAllWfhRequests()}
+                  disabled={isLoadingWfhRequests}
+                  className="bg-white dark:bg-slate-900 border-2"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingWfhRequests ? "animate-spin" : ""}`} />
+                  Refresh
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="pt-6">
               {isLoadingWfhRequests ? (
@@ -4553,6 +4531,16 @@ const AttendanceWithToggle: React.FC = () => {
                     </CardDescription>
                   </div>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => loadAllWfhRequests()}
+                  disabled={isLoadingWfhRequests}
+                  className="bg-white dark:bg-slate-900 border-2"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingWfhRequests ? "animate-spin" : ""}`} />
+                  Refresh
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="pt-6">

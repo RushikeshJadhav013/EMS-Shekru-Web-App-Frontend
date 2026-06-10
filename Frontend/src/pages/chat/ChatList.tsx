@@ -278,6 +278,11 @@ const ChatList: React.FC = () => {
         ) : (
           filteredChats.map((chat) => {
             const isActive = activeChatId === chat.id?.toString();
+            const otherParticipant = chat.type === 'individual'
+              ? chat.participants?.find((p: any) => p.userId?.toString() !== user?.id?.toString())
+              : null;
+            const isOnline = otherParticipant?.isOnline === true;
+
             return (
               <div
                 key={chat.id}
@@ -306,7 +311,7 @@ const ChatList: React.FC = () => {
                   <div className={cn(
                     "absolute -bottom-0.5 -right-0.5 h-3 w-3 border rounded-full",
                     isDark ? "border-[#0a1628]" : "border-white",
-                    chat.type === 'group' ? "bg-indigo-500" : "bg-green-400"
+                    chat.type === 'group' ? "bg-indigo-500" : isOnline ? "bg-green-500" : "bg-slate-300 dark:bg-slate-600"
                   )}>
                     {chat.type === 'group' && <Users className="h-1.5 w-1.5 text-white absolute inset-0 m-auto" />}
                   </div>
@@ -317,15 +322,19 @@ const ChatList: React.FC = () => {
                     <h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: isActive ? "#22C55E" : "#000000", fontSize: "14px", fontWeight: "bold" }} className="truncate tracking-tight transition-colors">
                       {getChatName(chat)}
                     </h3>
-                    {chat.lastMessage && (
-                      <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>
+                    {chat.lastMessage ? (
+                      <span className={cn("text-[10px] font-medium", themeClasses.textSecondary)}>
                         {formatChatTimestampIST(chat.lastMessage.timestamp)}
                       </span>
+                    ) : (
+                      <span className="text-[10px] opacity-0">Hidden</span>
                     )}
                   </div>
                   <div className="flex items-center justify-between">
-                    <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }} className="truncate font-medium max-w-[200px] lg:max-w-[280px]">
-                      {getLastMessagePreview(chat)}
+                    <p className={cn("truncate text-xs font-medium max-w-[200px] lg:max-w-[280px]", themeClasses.textSecondary)}>
+                      {chat.type === 'group'
+                        ? (chat.participants?.map((p: any) => p.userName || 'Member').filter((n: string) => n !== 'string').slice(0, 3).join(', ') + (chat.participants?.length > 3 ? ` +${chat.participants.length - 3}` : ''))
+                        : getLastMessagePreview(chat)}
                     </p>
                     {chat.unreadCount > 0 && (
                       <Badge className="h-4 min-w-[16px] px-1 bg-green-500 hover:bg-green-600 text-[9px] font-black pointer-events-none">

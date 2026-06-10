@@ -28,6 +28,7 @@ interface EmployeeData {
   company_id?: number;
   branch_id?: number;
   department?: string;
+  joining_date?: string;
 }
 
 interface Employee {
@@ -65,6 +66,8 @@ interface LeaveRequestData {
   end_date: string;
   reason: string;
   leave_type: string;
+  duration_days?: number;
+  leave_session?: string | null;
 }
 
 interface LeaveRequestResponse {
@@ -75,6 +78,9 @@ interface LeaveRequestResponse {
   reason: string;
   status: string;
   leave_type: string;
+  duration_days?: number;
+  leave_session?: string | null;
+  company_id?: number;
 }
 
 interface LeaveUpdateData {
@@ -82,6 +88,8 @@ interface LeaveUpdateData {
   end_date?: string;
   reason?: string;
   leave_type?: string;
+  duration_days?: number;
+  leave_session?: string | null;
 }
 
 interface LeaveBalanceItem {
@@ -549,12 +557,12 @@ class ApiService {
 
     if (params) {
       if (params.department && params.department !== "all") queryParams.append("department", params.department);
-      if (params.role) queryParams.append("role", params.role);
-      if (params.designation) queryParams.append("designation", params.designation);
+      if (params.role && params.role !== "all") queryParams.append("role", params.role);
+      if (params.designation && params.designation !== "all") queryParams.append("designation", params.designation);
 
       const activeStatus = params.is_active !== undefined ? params.is_active : params.status;
       if (activeStatus !== undefined && activeStatus !== "all") {
-        queryParams.append("status", String(activeStatus));
+        queryParams.append("is_active", String(activeStatus === 'active' ? 'true' : activeStatus === 'inactive' ? 'false' : activeStatus));
       }
 
       if (params.branch_id) extraHeaders['X-Branch-Id'] = String(params.branch_id);
@@ -582,12 +590,12 @@ class ApiService {
 
     if (params) {
       if (params.department && params.department !== "all") queryParams.append("department", params.department);
-      if (params.role) queryParams.append("role", params.role);
-      if (params.designation) queryParams.append("designation", params.designation);
+      if (params.role && params.role !== "all") queryParams.append("role", params.role);
+      if (params.designation && params.designation !== "all") queryParams.append("designation", params.designation);
 
       const activeStatus = params.is_active !== undefined ? params.is_active : params.status;
       if (activeStatus !== undefined && activeStatus !== "all") {
-        queryParams.append("status", String(activeStatus));
+        queryParams.append("is_active", String(activeStatus === 'active' ? 'true' : activeStatus === 'inactive' ? 'false' : activeStatus));
       }
 
       if (params.branch_id) extraHeaders['X-Branch-Id'] = String(params.branch_id);
@@ -744,6 +752,10 @@ class ApiService {
     return this.request(`/tasks/${taskId}/history`);
   }
 
+  async getTaskDeadlineWarnings(userId: string | number) {
+    return this.request(`/tasks/deadline-warnings/${userId}`);
+  }
+
 
   // Legacy/Compatibility Bulk create tasks (PUT /tasks/bulk)
   async createTasksBulk(
@@ -875,14 +887,17 @@ class ApiService {
 
   // Get all leave requests with optional period filter
   async getLeaveRequests(
-    period: string = "current_month",
+    period: string = "",
     startDate?: string,
     endDate?: string,
   ): Promise<LeaveRequestResponse[]> {
-    let url = `/leave/?period=${period}`;
-    if (startDate) url += `&start_date=${startDate}`;
-    if (endDate) url += `&end_date=${endDate}`;
-    return this.request(url);
+    const query = new URLSearchParams();
+    if (period && period !== "all") query.append("period", period);
+    if (startDate) query.append("from_date", startDate);
+    if (endDate) query.append("to_date", endDate);
+
+    const queryString = query.toString() ? `?${query.toString()}` : "";
+    return this.request(`/leave/${queryString}`);
   }
 
   async getLeaveBalance(): Promise<LeaveBalanceResponse> {
@@ -980,7 +995,7 @@ class ApiService {
     })[]
   > {
     const query = new URLSearchParams();
-    if (params?.period) query.append("period", params.period);
+    if (params?.period && params.period !== "all") query.append("date_range", params.period);
     if (params?.start_date) query.append("start_date", params.start_date);
     if (params?.end_date) query.append("end_date", params.end_date);
     const queryString = query.toString() ? `?${query.toString()}` : "";
@@ -1002,7 +1017,10 @@ class ApiService {
   ): Promise<LeaveRequestResponse> {
     return this.request(`/leave/${leaveId}/approve`, {
       method: "PUT",
-      body: JSON.stringify({ approved }),
+      body: JSON.stringify({
+        leave_id: parseInt(leaveId),
+        approved
+      }),
     });
   }
 
@@ -2808,6 +2826,13 @@ class ApiService {
   async switchCompany(companySlug: string): Promise<any> {
     return this.request(`/auth/me/switch-company/${companySlug}`, {
       method: "POST"
+    });
+  }
+
+  async changePin(data: { current_pin: string; new_pin: string; confirm_pin: string }): Promise<any> {
+    return this.request("/auth/change-pin", {
+      method: "POST",
+      body: JSON.stringify(data),
     });
   }
 }

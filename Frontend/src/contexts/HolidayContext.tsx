@@ -39,7 +39,7 @@ export const HolidayProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setIsLoading(true);
       setError(null);
       const response = await apiService.getHolidays();
-      
+
       // Convert API response to Holiday objects
       const convertedHolidays: Holiday[] = response.map((h: any) => ({
         id: h.id,
@@ -50,7 +50,7 @@ export const HolidayProvider: React.FC<{ children: React.ReactNode }> = ({ child
         created_at: h.created_at,
         updated_at: h.updated_at || undefined,
       }));
-      
+
       // Remove duplicates by date - keep the first occurrence (by ID if available)
       const uniqueHolidays = convertedHolidays.reduce((acc: Holiday[], current) => {
         const existingIndex = acc.findIndex(h => isSameDay(h.date, current.date));
@@ -66,7 +66,7 @@ export const HolidayProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
         return acc;
       }, []);
-      
+
       setHolidays(uniqueHolidays);
     } catch (err) {
       console.error('Failed to fetch holidays:', err);
@@ -88,12 +88,12 @@ export const HolidayProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const addHoliday = useCallback(async (holiday: Omit<Holiday, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       setError(null);
-      
+
       // Check if user is admin
       if (user?.role !== 'admin') {
         throw new Error('Only administrators can add holidays.');
       }
-      
+
       // Check if holiday already exists for this date (both in local state and backend)
       const existingHoliday = holidays.find(h => isSameDay(h.date, holiday.date));
       if (existingHoliday) {
@@ -102,7 +102,7 @@ export const HolidayProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       // Format date as ISO string (YYYY-MM-DD) for API
       const dateStr = holiday.date.toISOString().split('T')[0];
-      
+
       // Prepare data for API - ensure all required fields are present
       const holidayData = {
         date: dateStr,
@@ -110,7 +110,7 @@ export const HolidayProvider: React.FC<{ children: React.ReactNode }> = ({ child
         description: holiday.description?.trim() || '',
         is_recurring: holiday.is_recurring ?? false,
       };
-      
+
       const response = await apiService.createHoliday(holidayData);
 
       // Refresh holidays from backend to ensure consistency and avoid duplicates
@@ -125,14 +125,14 @@ export const HolidayProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const removeHoliday = useCallback(async (id: number) => {
     try {
       setError(null);
-      
+
       // Check if user is admin
       if (user?.role !== 'admin') {
         throw new Error('Only administrators can remove holidays.');
       }
-      
+
       await apiService.deleteHoliday(id);
-      
+
       // Refresh holidays from backend to ensure consistency
       await fetchHolidays();
     } catch (err) {
@@ -145,12 +145,12 @@ export const HolidayProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const updateHoliday = useCallback(async (id: number, updates: Partial<Omit<Holiday, 'id' | 'created_at' | 'updated_at'>>) => {
     try {
       setError(null);
-      
+
       // Check if user is admin
       if (user?.role !== 'admin') {
         throw new Error('Only administrators can update holidays.');
       }
-      
+
       // Check for duplicate date if date is being updated
       if (updates.date) {
         const existingHoliday = holidays.find(h => h.id !== id && isSameDay(h.date, updates.date!));
@@ -158,7 +158,7 @@ export const HolidayProvider: React.FC<{ children: React.ReactNode }> = ({ child
           throw new Error(`A holiday "${existingHoliday.name}" already exists for this date.`);
         }
       }
-      
+
       const updateData: any = {};
       if (updates.date) {
         updateData.date = updates.date.toISOString().split('T')[0];
@@ -185,11 +185,24 @@ export const HolidayProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [holidays, user?.role, fetchHolidays]);
 
   const isHoliday = (date: Date): boolean => {
-    return holidays.some(h => isSameDay(h.date, date));
+    return holidays.some(h => {
+      if (isSameDay(h.date, date)) return true;
+      // Recurring holidays match any year on the same month+day
+      if (h.is_recurring) {
+        return h.date.getMonth() === date.getMonth() && h.date.getDate() === date.getDate();
+      }
+      return false;
+    });
   };
 
   const getHolidayName = (date: Date): string | undefined => {
-    const holiday = holidays.find(h => isSameDay(h.date, date));
+    const holiday = holidays.find(h => {
+      if (isSameDay(h.date, date)) return true;
+      if (h.is_recurring) {
+        return h.date.getMonth() === date.getMonth() && h.date.getDate() === date.getDate();
+      }
+      return false;
+    });
     return holiday?.name;
   };
 

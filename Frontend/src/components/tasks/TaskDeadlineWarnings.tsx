@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { AlertTriangle, Clock, Calendar, CheckCircle2 } from 'lucide-react';
 import { formatDateIST } from '@/utils/timezone';
 import TruncatedText from '@/components/ui/TruncatedText';
-import { API_BASE_URL } from '@/lib/api';
+import { apiService } from '@/lib/api';
 
 // Helper component for View Tasks button with proper role-based navigation
 const ViewTasksButton: React.FC = () => {
@@ -63,31 +63,10 @@ const TaskDeadlineWarnings: React.FC<TaskDeadlineWarningsProps> = ({
     if (!user?.id) return;
 
     const targetUserId = userId || user.id;
-    const token = localStorage.getItem('token');
-
-    if (!token) {
-      toast({
-        title: 'Authentication required',
-        description: 'Please log in again to check task deadlines.',
-        variant: 'destructive',
-      });
-      return;
-    }
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/tasks/deadline-warnings/${targetUserId}`, {
-        headers: {
-          'Authorization': token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch warnings: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await apiService.getTaskDeadlineWarnings(targetUserId);
       setWarnings(data.warnings || []);
     } catch (error) {
       console.error('Failed to fetch task warnings:', error);

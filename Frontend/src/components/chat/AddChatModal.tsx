@@ -229,12 +229,21 @@ const AddChatModal: React.FC<AddChatModalProps> = ({ isOpen, onClose, permission
                               {u.name.charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 bg-green-500 border-2 border-white dark:border-slate-800 rounded-full" />
+                          <div className={cn(
+                            "absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 border-2 border-white dark:border-slate-800 rounded-full transition-colors duration-500",
+                            u.isOnline ? "bg-green-500" : "bg-slate-300 dark:bg-slate-600"
+                          )} />
                         </div>
                         <div className="ml-4 flex-1 min-w-0">
                           <p className={cn("font-bold truncate text-sm", isDark ? "text-white" : "text-slate-900")}>{u.name}</p>
-                          <p className={cn("text-xs font-medium opacity-60", isDark ? "text-slate-400" : "text-slate-500")}>
-                            {u.designation} {u.department ? `• ${u.department}` : ''}
+                          <p className={cn("text-xs font-medium opacity-60 truncate", isDark ? "text-slate-400" : "text-slate-500")}>
+                            {existingChat?.lastMessage ? (
+                              <span className="text-green-500 italic">
+                                Last: {typeof existingChat.lastMessage === 'string' ? existingChat.lastMessage : (existingChat.lastMessage.content || 'Message received')}
+                              </span>
+                            ) : (
+                              `${u.designation || 'Staff'} ${u.department ? `• ${u.department}` : ''}`
+                            )}
                           </p>
                         </div>
                         {existingChat ? (

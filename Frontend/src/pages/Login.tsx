@@ -34,7 +34,11 @@ import { API_BASE_URL, apiService } from '@/lib/api';
 // API endpoints
 const API_ENDPOINTS = {
   sendOtp: `${API_BASE_URL}/auth/send-otp`,
-  verifyOtp: `${API_BASE_URL}/auth/verify-otp`
+  verifyOtp: `${API_BASE_URL}/auth/verify-otp`,
+  loginOptions: `${API_BASE_URL}/auth/login-options`,
+  loginPin: `${API_BASE_URL}/auth/login-pin`,
+  setPin: `${API_BASE_URL}/auth/set-pin`,
+  resetPin: `${API_BASE_URL}/auth/reset-pin`
 };
 
 // Configure axios defaults
@@ -74,7 +78,13 @@ const Login: React.FC = () => {
   const [tempAuthData, setTempAuthData] = useState<any>(null);
   const [lastShownError, setLastShownError] = useState<string>('');
   const [lastOtpAttempt, setLastOtpAttempt] = useState<string>('');
+  const [pin, setPinValue] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [requiresPinSetup, setRequiresPinSetup] = useState(false);
+  const [isResettingPin, setIsResettingPin] = useState(false);
+  const [loginMode, setLoginMode] = useState<'email' | 'otp' | 'pin' | 'set-pin' | 'reset-pin'>('email');
   const otpInputRef = React.useRef<HTMLInputElement>(null);
+  const pinInputRef = React.useRef<HTMLInputElement>(null);
 
   // Auto-focus OTP input when OTP form is shown
   useEffect(() => {
@@ -157,7 +167,19 @@ const Login: React.FC = () => {
     };
   }, [isAuthenticated]);
 
-  const handleSendOtp = async (e: React.FormEvent) => {
+  const formatErrorMessage = (err: any, fallback: string): string => {
+    if (!err.response?.data) return fallback;
+    const data = err.response.data;
+
+    if (typeof data.detail === 'string') return data.detail;
+    if (Array.isArray(data.detail)) {
+      return data.detail.map((e: any) => e.msg || (typeof e === 'object' ? JSON.stringify(e) : String(e))).join(', ');
+    }
+    if (data.message) return data.message;
+    return fallback;
+  };
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
@@ -165,61 +187,71 @@ const Login: React.FC = () => {
     setError('');
 
     try {
-      // Create axios instance with timeout and proper error handling
-      const axiosInstance = axios.create({
-        timeout: 30000, // 30 seconds
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
+      // Use the API_ENDPOINTS.loginOptions with email query parameter
+      const response = await axios.get(`${API_ENDPOINTS.loginOptions}?email=${encodeURIComponent(email)}`);
+      const options = response.data;
 
-      // Send email as query parameter
-      const response = await axiosInstance.post(`${API_ENDPOINTS.sendOtp}?email=${encodeURIComponent(email)}`);
+      // Update state based on options results
+      if (options.requires_pin_setup !== undefined) {
+        setRequiresPinSetup(options.requires_pin_setup);
+      }
 
-      // Handle successful response
+      // Check for PIN lockout
+      if (options.pin_locked) {
+        setError(`PIN is temporarily locked. Please use OTP to login.`);
+        await triggerSendOtp();
+        return;
+      }
+
+      // Decision logic for login mode
+      if (options.has_pin && options.available_methods?.includes('pin')) {
+        setLoginMode('pin');
+        setOtpSent(false);
+      } else {
+        // Fallback or explicit OTP request
+        await triggerSendOtp();
+      }
+    } catch (err: any) {
+      console.warn('Login options check failed, defaulting to OTP:', err);
+      // Fallback: if options check fails, try to just send OTP directly
+      setError(''); // Clear any previous error before fallback
+      await triggerSendOtp();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const triggerSendOtp = async (targetMode: 'otp' | 'reset-pin' = 'otp') => {
+    try {
+      const response = await axios.post(`${API_ENDPOINTS.sendOtp}?email=${encodeURIComponent(email)}`);
+
       if (response.status === 200 || response.status === 201) {
         setOtpSent(true);
-        // Use backend expiry time or default to 120 seconds
+        setLoginMode(targetMode);
         const expirySeconds = response.data?.expires_in_seconds || 120;
         setOtpExpiryTime(expirySeconds);
         setCanResend(false);
-        const successMessage = response.data?.message || "OTP sent successfully";
         toast({
           variant: "success",
           title: "Success",
-          description: successMessage,
+          description: response.data?.message || "OTP sent successfully",
         });
       }
     } catch (err: any) {
-      console.error('OTP send error:', err);
-      let errorMessage = 'Failed to send OTP';
-
-      // Handle different types of errors
-      if (err.code === 'ECONNABORTED') {
-        errorMessage = 'Request timeout. Please check your internet connection and try again.';
-      } else if (err.code === 'ERR_NETWORK') {
-        errorMessage = 'Network error. Please check if the server is running and try again.';
-      } else if (err.response?.data?.detail) {
-        if (typeof err.response.data.detail === 'string') {
-          errorMessage = err.response.data.detail;
-        } else if (Array.isArray(err.response.data.detail)) {
-          errorMessage = err.response.data.detail.map((error: any) => error.msg).join(', ');
-        }
-      } else if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (!err.response) {
-        errorMessage = 'Unable to connect to the server. Please check if the server is running.';
-      }
-
+      const errorMessage = formatErrorMessage(err, 'Failed to send OTP');
       setError(errorMessage);
       toast({
         variant: "destructive",
         title: "Error",
         description: errorMessage,
       });
-    } finally {
-      setIsLoading(false);
+      throw err;
     }
+  };
+
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    handleEmailSubmit(e);
   };
 
   // Format countdown time as MM:SS
@@ -288,146 +320,243 @@ const Login: React.FC = () => {
     }
   };
 
+  const completeLogin = async (userData: any) => {
+    try {
+      // Store auth token and scope IDs immediately on successful login
+      if (userData.access_token) {
+        localStorage.setItem('token', userData.access_token);
+      }
+      if (userData.branch_id) localStorage.setItem('branchId', String(userData.branch_id));
+      if (userData.company_id) localStorage.setItem('companyId', String(userData.company_id));
+      if (userData.branchId) localStorage.setItem('branchId', String(userData.branchId));
+      if (userData.companyId) localStorage.setItem('companyId', String(userData.companyId));
+
+      // If admin, fetch accessible companies and show selector
+      if (userData.role === 'Admin' || userData.role === 'admin') {
+        try {
+          const companies = await apiService.getAccessibleCompanies();
+          console.log('Admin Accessible Companies:', companies);
+
+          if (companies && companies.length > 1) {
+            localStorage.setItem('token', userData.access_token); // Store token for switch API
+            setAccessibleCompanies(companies);
+            setTempAuthData(userData);
+            setShowCompanySelect(true);
+            setLoginMode('email'); // Reset mode but show company select
+            setIsLoading(false);
+            return; // STOP HERE: Don't call login() or navigate() yet
+          } else if (companies && companies.length === 1) {
+            const singleCompany = companies[0];
+            if (singleCompany.company_slug) {
+              localStorage.setItem('company_slug', singleCompany.company_slug);
+              localStorage.setItem('company_name', singleCompany.company_name);
+              if (singleCompany.company_id) localStorage.setItem('companyId', String(singleCompany.company_id));
+            }
+          }
+          localStorage.setItem('accessibleCompanies', JSON.stringify(companies));
+        } catch (compErr) {
+          console.error('Failed to fetch companies after login:', compErr);
+        }
+      }
+
+      // --- Standard Login Flow (Non-admin or Single-company Admin) ---
+      let finalUserData = { ...userData };
+      try {
+        const profileData = await apiService.getCurrentUser();
+        if (profileData.company_slug) localStorage.setItem('company_slug', profileData.company_slug);
+        if (profileData.company_name) localStorage.setItem('company_name', profileData.company_name);
+        if (profileData.company_id) localStorage.setItem('companyId', String(profileData.company_id));
+
+        finalUserData = {
+          ...userData,
+          ...profileData,
+          user_id: profileData.user_id || userData.user_id,
+        };
+      } catch (profileErr) {
+        console.error('Failed to fetch user profile after login:', profileErr);
+      }
+
+      await login(finalUserData as any);
+    } catch (err) {
+      console.error('Login completion error:', err);
+      setError('An error occurred during login completion.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleVerifyOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!email || !otp) return;
+    if (isLoading) return;
 
-    // Prevent duplicate submissions while already loading
+    setIsLoading(true);
+    setError('');
+
+    if (isResettingPin) {
+      setLoginMode('reset-pin');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${API_ENDPOINTS.verifyOtp}?email=${encodeURIComponent(email)}&otp=${otp}`
+      );
+
+      if (response.status === 200 || response.status === 201) {
+        const userData = response.data;
+        setLastShownError('');
+        setLastOtpAttempt('');
+
+        if (userData.requires_pin_setup) {
+          setTempAuthData(userData);
+          setLoginMode('set-pin');
+          setIsLoading(false);
+          return;
+        }
+
+        await completeLogin(userData);
+      }
+    } catch (err: any) {
+      console.error('OTP verification error:', err);
+      const errorMessage = formatErrorMessage(err, 'Failed to verify OTP');
+      setError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Verification Failed",
+        description: errorMessage,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyPin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!email || !pin) return;
     if (isLoading) return;
 
     setIsLoading(true);
     setError('');
 
     try {
-      // Create axios instance with timeout
-      const axiosInstance = axios.create({
-        timeout: 30000, // 30 seconds
-        headers: {
-          'Content-Type': 'application/json',
-        }
+      const response = await axios.post(`${API_ENDPOINTS.loginPin}`, {
+        email: email,
+        pin: pin
       });
 
-      // Send email and otp as query parameters
-      const response = await axiosInstance.post(
-        `${API_ENDPOINTS.verifyOtp}?email=${encodeURIComponent(email)}&otp=${otp}`
-      );
-
-      // Handle successful OTP verification
       if (response.status === 200 || response.status === 201) {
-        const userData = response.data;
-        console.log('Verify OTP Response:', userData); // Debug log
-
-        // Clear error tracking on success
-        setLastShownError('');
-        setLastOtpAttempt('');
-
-        // Store auth token and scope IDs immediately on successful login
-        if (userData.access_token) {
-          localStorage.setItem('token', userData.access_token);
-        }
-        if (userData.branch_id) localStorage.setItem('branchId', String(userData.branch_id));
-        if (userData.company_id) localStorage.setItem('companyId', String(userData.company_id));
-        if (userData.branchId) localStorage.setItem('branchId', String(userData.branchId));
-        if (userData.companyId) localStorage.setItem('companyId', String(userData.companyId));
-
-        // If admin, fetch accessible companies and show selector
-        if (userData.role === 'Admin' || userData.role === 'admin') {
-          try {
-            const companies = await apiService.getAccessibleCompanies();
-            console.log('Admin Accessible Companies:', companies);
-
-            if (companies && companies.length > 1) {
-              localStorage.setItem('token', userData.access_token); // Store token for switch API
-              setAccessibleCompanies(companies);
-              setTempAuthData(userData);
-              setShowCompanySelect(true);
-              setIsLoading(false);
-              return; // STOP HERE: Don't call login() or navigate() yet
-            } else if (companies && companies.length === 1) {
-              const singleCompany = companies[0];
-              if (singleCompany.company_slug) {
-                localStorage.setItem('company_slug', singleCompany.company_slug);
-                localStorage.setItem('company_name', singleCompany.company_name);
-                if (singleCompany.company_id) localStorage.setItem('companyId', String(singleCompany.company_id));
-              }
-            }
-            localStorage.setItem('accessibleCompanies', JSON.stringify(companies));
-          } catch (compErr) {
-            console.error('Failed to fetch companies after login:', compErr);
-          }
-        }
-
-        // --- Standard Login Flow (Non-admin or Single-company Admin) ---
-        // Fetch additional user profile and tenant context AFTER company is determined (explicitly or implicitly)
-        let finalUserData = { ...userData };
-        try {
-          const profileData = await apiService.getCurrentUser();
-          console.log('User Profile & Tenant Context:', profileData);
-          if (profileData.company_slug) {
-            localStorage.setItem('company_slug', profileData.company_slug);
-          }
-          if (profileData.company_name) {
-            localStorage.setItem('company_name', profileData.company_name);
-          }
-          if (profileData.company_id) {
-            localStorage.setItem('companyId', String(profileData.company_id));
-          }
-
-          // Merge profile data (which contains tenant-specific info) into auth data
-          finalUserData = {
-            ...userData,
-            ...profileData,
-            user_id: profileData.user_id || userData.user_id, // Ensure user_id is preserved
-          };
-        } catch (profileErr) {
-          console.error('Failed to fetch user profile after login:', profileErr);
-          // Proceed with base userData if profile fetch fails
-        }
-
-        await login(finalUserData as any);
-
-        // Navigation is handled by AuthContext.login, but we can provide a fallback
-        // navigate('/admin', { replace: true });
+        await completeLogin(response.data);
       }
     } catch (err: any) {
-      console.error('OTP verification error:', err);
-      let errorMessage = 'Failed to verify OTP';
-
-      // Handle different types of errors
-      if (err.code === 'ECONNABORTED') {
-        errorMessage = 'Request timeout. Please check your internet connection and try again.';
-      } else if (err.code === 'ERR_NETWORK') {
-        errorMessage = 'Network error. Please check if the server is running and try again.';
-      } else if (err.response?.data?.detail) {
-        if (typeof err.response.data.detail === 'string') {
-          errorMessage = err.response.data.detail;
-        } else if (Array.isArray(err.response.data.detail)) {
-          errorMessage = err.response.data.detail.map((error: any) => error.msg).join(', ');
-        }
-      } else if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (!err.response) {
-        errorMessage = 'Unable to connect to the server. Please check if the server is running.';
-      }
-
+      const errorMessage = formatErrorMessage(err, 'Invalid PIN');
       setError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-      // Only show toast notification if:
-      // 1. The error message is different from the last shown error, OR
-      // 2. The OTP value has changed since the last attempt
-      const shouldShowToast = lastShownError !== errorMessage || lastOtpAttempt !== otp;
+  const handleSetPin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!pin || !confirmPin || !tempAuthData?.access_token) return;
 
-      if (shouldShowToast) {
+    if (pin !== confirmPin) {
+      setError('PINs do not match. Please try again.');
+      return;
+    }
+
+    if (pin.length !== 4) {
+      setError('PIN must be 4 digits');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await axios.post(
+        `${API_ENDPOINTS.setPin}`,
+        {
+          pin: pin,
+          confirm_pin: confirmPin
+        },
+        { headers: { Authorization: `Bearer ${tempAuthData.access_token}` } }
+      );
+
+      if (response.status === 200 || response.status === 201) {
         toast({
-          variant: "destructive",
-          title: "Verification Failed",
-          description: errorMessage,
+          variant: "success",
+          title: "PIN Set",
+          description: "Your login PIN has been configured successfully.",
+        });
+        await completeLogin(tempAuthData);
+      }
+    } catch (err: any) {
+      const errorMessage = formatErrorMessage(err, 'Failed to set PIN');
+      setError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!email || !otp || !pin || !confirmPin) return;
+
+    if (pin !== confirmPin) {
+      setError('PINs do not match. Please try again.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await axios.post(`${API_ENDPOINTS.resetPin}`, {
+        email: email,
+        otp: parseInt(otp),
+        new_pin: pin,
+        confirm_pin: confirmPin
+      });
+
+      if (response.status === 200 || response.status === 201) {
+        toast({
+          variant: "success",
+          title: "PIN Reset Successful",
+          description: "Your PIN has been reset. You can now login.",
         });
 
-        // Update tracking variables
-        setLastShownError(errorMessage);
-        setLastOtpAttempt(otp);
+        const userData = response.data;
+        if (userData && (userData.access_token || userData.token)) {
+          await completeLogin(userData);
+        } else {
+          setLoginMode('pin');
+        }
+
+        setPinValue('');
+        setConfirmPin('');
+        setOtp('');
+        setIsResettingPin(false);
       }
+    } catch (err: any) {
+      const errorMessage = formatErrorMessage(err, 'Failed to reset PIN');
+      setError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -437,11 +566,19 @@ const Login: React.FC = () => {
 
   // Auto-submit when OTP is filled
   useEffect(() => {
-    if (otp.length === 6 && !isLoading) {
+    if (otp.length === 6 && !isLoading && otp !== lastOtpAttempt) {
       handleVerifyOtp();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otp]);
+
+  // Auto-submit when PIN is filled
+  useEffect(() => {
+    if (loginMode === 'pin' && pin.length === 4 && !isLoading) {
+      handleVerifyPin();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin, loginMode]);
 
   return (
     <div className="relative min-h-screen flex overflow-x-hidden">
@@ -527,26 +664,18 @@ const Login: React.FC = () => {
           <div className="w-full max-w-md">
             <Card className="bg-white shadow-xl border-0 rounded-3xl overflow-hidden">
               <CardHeader className="space-y-1 pb-6 pt-8 px-8">
-                {/* Language Selector */}
-                <div className="flex justify-end mb-4">
-                  <Select value={language} onValueChange={(value: Language) => setLanguage(value)}>
-                    <SelectTrigger className="w-[140px] h-9 border-slate-200 bg-white rounded-lg">
-                      <Globe className="h-4 w-4 mr-2 text-slate-600" />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="hi">हिंदी</SelectItem>
-                      <SelectItem value="mr">मराठी</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+
 
                 <CardTitle className="text-2xl font-bold text-center text-slate-800">
                   Login to Staffly
                 </CardTitle>
                 <CardDescription className="text-center text-slate-600">
-                  Enter your email to receive a secure OTP
+                  {showCompanySelect ? 'Select an organization to continue' : (
+                    loginMode === 'email' ? 'Enter your email to receive a secure OTP' :
+                      loginMode === 'pin' ? 'Enter your 6-digit security PIN' :
+                        loginMode === 'otp' ? 'Enter the OTP sent to your email' :
+                          'Choose a secure 6-digit PIN for future logins'
+                  )}
                 </CardDescription>
               </CardHeader>
 
@@ -656,8 +785,9 @@ const Login: React.FC = () => {
                         onClick={() => {
                           setShowCompanySelect(false);
                           setTempAuthData(null);
-                          setOtpSent(false);
+                          setLoginMode('email');
                           setOtp('');
+                          setPinValue('');
                         }}
                         className="w-full h-10 text-slate-400 hover:text-slate-900 font-bold uppercase text-[10px] tracking-widest"
                       >
@@ -665,9 +795,9 @@ const Login: React.FC = () => {
                       </Button>
                     </div>
                   </div>
-                ) : !otpSent ? (
+                ) : loginMode === 'email' ? (
                   /* --- EMAIL INPUT VIEW --- */
-                  <form onSubmit={handleSendOtp} className="space-y-5">
+                  <form onSubmit={handleEmailSubmit} className="space-y-5">
                     <div className="space-y-2">
                       <Label htmlFor="email" className="text-slate-700 font-medium text-sm">
                         Email Address
@@ -704,11 +834,217 @@ const Login: React.FC = () => {
                       {isLoading ? (
                         <>
                           <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin mr-2" />
-                          Sending OTP...
+                          Checking access...
                         </>
                       ) : (
-                        'Send OTP'
+                        'Continue'
                       )}
+                    </Button>
+                  </form>
+                ) : loginMode === 'pin' ? (
+                  /* --- PIN INPUT VIEW --- */
+                  <form onSubmit={handleVerifyPin} className="space-y-5">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="pin" className="text-slate-700 font-medium">
+                          Security PIN
+                        </Label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setError('');
+                            setIsResettingPin(true);
+                            triggerSendOtp('otp');
+                          }}
+                          className="text-xs text-emerald-600 hover:text-emerald-700 font-bold uppercase tracking-wider underline underline-offset-4"
+                        >
+                          Forgot PIN?
+                        </button>
+                      </div>
+                      <Input
+                        ref={pinInputRef}
+                        id="pin"
+                        type="password"
+                        placeholder="••••"
+                        value={pin}
+                        onChange={(e) => setPinValue(e.target.value.replace(/\D/g, ''))}
+                        maxLength={4}
+                        required
+                        disabled={isLoading}
+                        className="text-center tracking-[0.8em] text-2xl font-bold h-14 bg-white border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded-xl"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={() => triggerSendOtp()}
+                        className="text-xs text-slate-500 hover:text-slate-900 font-bold uppercase tracking-widest"
+                      >
+                        Login with OTP instead
+                      </button>
+                    </div>
+
+                    {error && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                        {error}
+                      </div>
+                    )}
+
+                    <Button
+                      type="submit"
+                      className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
+                      disabled={isLoading || pin.length !== 4}
+                    >
+                      {isLoading ? (
+                        <>
+                          <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                          Verifying...
+                        </>
+                      ) : (
+                        <>
+                          Unlock Dashboard <ChevronRight className="h-4 w-4" />
+                        </>
+                      )}
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      onClick={() => setLoginMode('email')}
+                      className="w-full h-10 text-slate-400 hover:text-slate-900 font-bold uppercase text-[10px] tracking-widest"
+                    >
+                      ← Back to Email
+                    </Button>
+                  </form>
+                ) : loginMode === 'reset-pin' ? (
+                  /* --- RESET PIN VIEW --- */
+                  <form onSubmit={handleResetPin} className="space-y-4">
+                    <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-xl mb-2">
+                      <p className="text-[10px] text-emerald-800 font-bold uppercase tracking-wider text-center">
+                        Configure Your New Security PIN
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="new-pin" className="text-slate-700 font-medium text-xs">
+                          New PIN
+                        </Label>
+                        <Input
+                          id="new-pin"
+                          type="password"
+                          placeholder="••••"
+                          value={pin}
+                          onChange={(e) => setPinValue(e.target.value.replace(/\D/g, ''))}
+                          maxLength={4}
+                          required
+                          disabled={isLoading}
+                          className="text-center tracking-[0.4em] font-bold h-11 bg-white border-slate-200 focus:border-emerald-500 rounded-xl"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirm-pin" className="text-slate-700 font-medium text-xs">
+                          Confirm
+                        </Label>
+                        <Input
+                          id="confirm-pin"
+                          type="password"
+                          placeholder="••••"
+                          value={confirmPin}
+                          onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+                          maxLength={4}
+                          required
+                          disabled={isLoading}
+                          className="text-center tracking-[0.4em] font-bold h-11 bg-white border-slate-200 focus:border-emerald-500 rounded-xl"
+                        />
+                      </div>
+                    </div>
+
+                    {error && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                        {error}
+                      </div>
+                    )}
+
+                    <Button
+                      type="submit"
+                      className="w-full h-11 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold rounded-xl shadow-md transition-all mt-2"
+                      disabled={isLoading || otp.length !== 6 || pin.length !== 4 || pin !== confirmPin}
+                    >
+                      {isLoading ? 'Resetting...' : 'Reset & Login with PIN'}
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      onClick={() => setLoginMode('pin')}
+                      className="w-full h-8 text-slate-400 hover:text-slate-900 font-bold uppercase text-[9px] tracking-widest"
+                    >
+                      ← Back to PIN
+                    </Button>
+                  </form>
+                ) : loginMode === 'set-pin' ? (
+                  /* --- SET PIN VIEW --- */
+                  <form onSubmit={handleSetPin} className="space-y-5">
+                    <div className="bg-emerald-50 border-2 border-emerald-100 p-4 rounded-xl mb-4">
+                      <p className="text-xs text-emerald-800 font-bold leading-relaxed">
+                        Security requirement: Please configure a 4-digit security PIN for your account to continue.
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="new-pin" className="text-slate-700 font-medium">
+                          New 4-digit PIN
+                        </Label>
+                        <Input
+                          id="new-pin"
+                          type="password"
+                          placeholder="••••"
+                          value={pin}
+                          onChange={(e) => {
+                            setPinValue(e.target.value.replace(/\D/g, ''));
+                            setError('');
+                          }}
+                          maxLength={4}
+                          required
+                          disabled={isLoading}
+                          className="text-center tracking-[0.8em] text-2xl font-bold h-14 bg-white border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded-xl shadow-sm"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="confirm-pin" className="text-slate-700 font-medium">
+                          Confirm PIN
+                        </Label>
+                        <Input
+                          id="confirm-pin"
+                          type="password"
+                          placeholder="••••"
+                          value={confirmPin}
+                          onChange={(e) => {
+                            setConfirmPin(e.target.value.replace(/\D/g, ''));
+                            setError('');
+                          }}
+                          maxLength={4}
+                          required
+                          disabled={isLoading}
+                          className="text-center tracking-[0.8em] text-2xl font-bold h-14 bg-white border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 rounded-xl shadow-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {error && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                        {error}
+                      </div>
+                    )}
+
+                    <Button
+                      type="submit"
+                      className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
+                      disabled={isLoading || pin.length !== 4 || confirmPin.length !== 4}
+                    >
+                      {isLoading ? 'Setting PIN...' : 'Save & Continue'}
                     </Button>
                   </form>
                 ) : (

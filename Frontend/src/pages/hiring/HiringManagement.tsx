@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Pagination } from '@/components/ui/pagination';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Slider } from '@/components/ui/slider';
@@ -154,6 +155,14 @@ export default function HiringManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+
+  // Pagination states
+  const [vacancyPage, setVacancyPage] = useState(1);
+  const [vacancyRowsPerPage, setVacancyRowsPerPage] = useState(10);
+  const [candidatePage, setCandidatePage] = useState(1);
+  const [candidateRowsPerPage, setCandidateRowsPerPage] = useState(10);
+  const [interviewPage, setInterviewPage] = useState(1);
+  const [interviewRowsPerPage, setInterviewRowsPerPage] = useState(10);
 
   // Dialogs
   const [isVacancyDialogOpen, setIsVacancyDialogOpen] = useState(false);
@@ -410,38 +419,88 @@ export default function HiringManagement() {
     }
   }, [activeTab]);
 
-  const filteredVacancies = vacancies.filter((vacancy) => {
-    if (!vacancy) return false;
-    const query = (searchQuery || '').toLowerCase();
-    return (
-      (vacancy.title || '').toLowerCase().includes(query) ||
-      (vacancy.department || '').toLowerCase().includes(query) ||
-      (vacancy.location || '').toLowerCase().includes(query) ||
-      (vacancy.description || '').toLowerCase().includes(query)
-    );
-  });
+  // Reset pagination on filter change
+  useEffect(() => {
+    setVacancyPage(1);
+  }, [searchQuery, selectedDepartment, selectedStatus]);
 
-  const filteredCandidates = candidates.filter((candidate) => {
-    if (!candidate) return false;
-    const query = (searchQuery || '').toLowerCase();
-    return (
-      (candidate.name || '').toLowerCase().includes(query) ||
-      (candidate.email || '').toLowerCase().includes(query) ||
-      (candidate.vacancy_title || '').toLowerCase().includes(query) ||
-      (candidate.phone || '').toLowerCase().includes(query)
-    );
-  });
+  useEffect(() => {
+    setCandidatePage(1);
+  }, [searchQuery, selectedStatus]);
 
-  const filteredInterviews = interviews.filter((interview) => {
-    if (!interview) return false;
-    const query = (searchQuery || '').toLowerCase();
-    return (
-      (interview.candidate_name || '').toLowerCase().includes(query) ||
-      (interview.vacancy_title || '').toLowerCase().includes(query) ||
-      (interview.round_type || '').toLowerCase().includes(query) ||
-      (interview.location || '').toLowerCase().includes(query)
-    );
-  });
+  useEffect(() => {
+    setInterviewPage(1);
+  }, [searchQuery, selectedStatus]);
+
+  const filteredVacancies = useMemo(() => {
+    return vacancies.filter((vacancy) => {
+      if (!vacancy) return false;
+      const query = (searchQuery || '').toLowerCase();
+
+      const matchesSearch = (
+        (vacancy.title || '').toLowerCase().includes(query) ||
+        (vacancy.department || '').toLowerCase().includes(query) ||
+        (vacancy.location || '').toLowerCase().includes(query) ||
+        (vacancy.description || '').toLowerCase().includes(query)
+      );
+
+      const matchesDepartment = selectedDepartment === 'all' || vacancy.department === selectedDepartment;
+      const matchesStatus = selectedStatus === 'all' || vacancy.status === selectedStatus;
+
+      return matchesSearch && matchesDepartment && matchesStatus;
+    });
+  }, [vacancies, searchQuery, selectedDepartment, selectedStatus]);
+
+  const paginatedVacancies = useMemo(() => {
+    const start = (vacancyPage - 1) * vacancyRowsPerPage;
+    return filteredVacancies.slice(start, start + vacancyRowsPerPage);
+  }, [filteredVacancies, vacancyPage, vacancyRowsPerPage]);
+
+  const filteredCandidates = useMemo(() => {
+    return candidates.filter((candidate) => {
+      if (!candidate) return false;
+      const query = (searchQuery || '').toLowerCase();
+
+      const matchesSearch = (
+        (candidate.name || '').toLowerCase().includes(query) ||
+        (candidate.email || '').toLowerCase().includes(query) ||
+        (candidate.vacancy_title || '').toLowerCase().includes(query) ||
+        (candidate.phone || '').toLowerCase().includes(query)
+      );
+
+      const matchesStatus = selectedStatus === 'all' || candidate.status === selectedStatus;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [candidates, searchQuery, selectedStatus]);
+
+  const paginatedCandidates = useMemo(() => {
+    const start = (candidatePage - 1) * candidateRowsPerPage;
+    return filteredCandidates.slice(start, start + candidateRowsPerPage);
+  }, [filteredCandidates, candidatePage, candidateRowsPerPage]);
+
+  const filteredInterviews = useMemo(() => {
+    return interviews.filter((interview) => {
+      if (!interview) return false;
+      const query = (searchQuery || '').toLowerCase();
+
+      const matchesSearch = (
+        (interview.candidate_name || '').toLowerCase().includes(query) ||
+        (interview.vacancy_title || '').toLowerCase().includes(query) ||
+        (interview.round_type || '').toLowerCase().includes(query) ||
+        (interview.location || '').toLowerCase().includes(query)
+      );
+
+      const matchesStatus = selectedStatus === 'all' || interview.status === selectedStatus;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [interviews, searchQuery, selectedStatus]);
+
+  const paginatedInterviews = useMemo(() => {
+    const start = (interviewPage - 1) * interviewRowsPerPage;
+    return filteredInterviews.slice(start, start + interviewRowsPerPage);
+  }, [filteredInterviews, interviewPage, interviewRowsPerPage]);
 
   const hiringStats = useMemo(() => {
     return {
@@ -669,11 +728,12 @@ export default function HiringManagement() {
       return;
     }
 
-    // Email validation (Must be @gmail.com)
-    if (!candidateFormData.email.toLowerCase().endsWith('@gmail.com')) {
+    // Email validation (Must be @gmail.com, allow existing if unchanged)
+    const isNewEmail = candidateFormData.email.toLowerCase() !== selectedCandidate.email.toLowerCase();
+    if (isNewEmail && !candidateFormData.email.toLowerCase().endsWith('@gmail.com')) {
       toast({
         title: 'Invalid Email',
-        description: 'Only @gmail.com email addresses are allowed',
+        description: 'Only @gmail.com email addresses are allowed for new entries',
         variant: 'destructive',
       });
       return;
@@ -683,17 +743,37 @@ export default function HiringManagement() {
     try {
       const payload = {
         ...candidateFormData,
+        vacancy_id: Number(candidateFormData.vacancy_id),
         name: `${candidateFormData.first_name} ${candidateFormData.last_name}`,
       };
+
+      // Check for duplicate mobile number (excluding current candidate)
+      if (candidateFormData.phone) {
+        const isDuplicatePhone = candidates.some(c =>
+          c.phone === candidateFormData.phone && c.candidate_id !== selectedCandidate.candidate_id
+        );
+        if (isDuplicatePhone) {
+          toast({
+            title: 'Duplicate Mobile Number',
+            description: 'A candidate with this mobile number already exists',
+            variant: 'destructive',
+          });
+          setIsUpdating(false);
+          return;
+        }
+      }
+
       await apiService.updateCandidate(selectedCandidate.candidate_id, payload);
 
       // If a new resume file or URL was provided, use the resume update API
       if (candidateResumeFile || candidateFormData.resume_external_url) {
-        await apiService.updateCandidateResume(
-          selectedCandidate.candidate_id,
-          candidateResumeFile || undefined,
-          candidateFormData.resume_external_url
-        );
+        if (candidateResumeFile || (candidateFormData.resume_external_url !== selectedCandidate.resume_external_url)) {
+          await apiService.updateCandidateResume(
+            selectedCandidate.candidate_id,
+            candidateResumeFile || undefined,
+            candidateFormData.resume_external_url
+          );
+        }
       }
 
       toast({
@@ -1650,7 +1730,7 @@ export default function HiringManagement() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredVacancies.map((vacancy) => {
+                      {paginatedVacancies.map((vacancy) => {
                         return (
                           <TableRow key={vacancy.vacancy_id}>
                             <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{vacancy.title}</TableCell>
@@ -1705,6 +1785,19 @@ export default function HiringManagement() {
                 </div>
               )}
             </CardContent>
+            {filteredVacancies.length > 0 && (
+              <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+                <Pagination
+                  currentPage={vacancyPage}
+                  totalPages={Math.ceil(filteredVacancies.length / vacancyRowsPerPage)}
+                  totalItems={filteredVacancies.length}
+                  itemsPerPage={vacancyRowsPerPage}
+                  onPageChange={setVacancyPage}
+                  onItemsPerPageChange={setVacancyRowsPerPage}
+                  showItemsPerPage={true}
+                />
+              </div>
+            )}
           </Card>
         </TabsContent>
 
@@ -1785,7 +1878,7 @@ export default function HiringManagement() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredCandidates.map((candidate) => (
+                      {paginatedCandidates.map((candidate) => (
                         <TableRow key={candidate.candidate_id}>
                           <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{candidate.name}</TableCell>
                           <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{candidate.email}</TableCell>
@@ -1901,6 +1994,19 @@ export default function HiringManagement() {
                 </div>
               )}
             </CardContent>
+            {filteredCandidates.length > 0 && (
+              <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+                <Pagination
+                  currentPage={candidatePage}
+                  totalPages={Math.ceil(filteredCandidates.length / candidateRowsPerPage)}
+                  totalItems={filteredCandidates.length}
+                  itemsPerPage={candidateRowsPerPage}
+                  onPageChange={setCandidatePage}
+                  onItemsPerPageChange={setCandidateRowsPerPage}
+                  showItemsPerPage={true}
+                />
+              </div>
+            )}
           </Card>
         </TabsContent>
 
@@ -1978,7 +2084,7 @@ export default function HiringManagement() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredInterviews.map((interview) => (
+                      {paginatedInterviews.map((interview) => (
                         <TableRow key={interview.interview_id}>
                           <TableCell className="font-medium max-w-[150px]"><p className="truncate" title={interview.candidate_name} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{interview.candidate_name}</p>
                           </TableCell>
@@ -2132,6 +2238,19 @@ export default function HiringManagement() {
                 </div>
               )}
             </CardContent>
+            {filteredInterviews.length > 0 && (
+              <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+                <Pagination
+                  currentPage={interviewPage}
+                  totalPages={Math.ceil(filteredInterviews.length / interviewRowsPerPage)}
+                  totalItems={filteredInterviews.length}
+                  itemsPerPage={interviewRowsPerPage}
+                  onPageChange={setInterviewPage}
+                  onItemsPerPageChange={setInterviewRowsPerPage}
+                  showItemsPerPage={true}
+                />
+              </div>
+            )}
           </Card>
         </TabsContent>
       </Tabs>
@@ -2812,14 +2931,19 @@ export default function HiringManagement() {
                   <SelectValue placeholder="Select a job opening" />
                 </SelectTrigger>
                 <SelectContent>
-                  {vacancies.filter(v => v.status === 'open').length > 0 ? (
-                    vacancies.filter(v => v.status === 'open').map((v) => (
-                      <SelectItem key={v.vacancy_id} value={String(v.vacancy_id)}>
-                        {v.title} ({v.department})
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" disabled>No open vacancies found</SelectItem>
+                  {vacancies.map((v) => {
+                    // Show if open OR if it's the candidate's currently selected vacancy
+                    if (v.status === 'open' || (selectedCandidate && Number(v.vacancy_id) === Number(selectedCandidate.vacancy_id))) {
+                      return (
+                        <SelectItem key={v.vacancy_id} value={String(v.vacancy_id)}>
+                          {v.title} ({v.department}) {v.status !== 'open' && ` - ${v.status}`}
+                        </SelectItem>
+                      );
+                    }
+                    return null;
+                  })}
+                  {vacancies.filter(v => v.status === 'open' || (selectedCandidate && Number(v.vacancy_id) === Number(selectedCandidate.vacancy_id))).length === 0 && (
+                    <SelectItem value="none" disabled>No vacancies available</SelectItem>
                   )}
                 </SelectContent>
               </Select>

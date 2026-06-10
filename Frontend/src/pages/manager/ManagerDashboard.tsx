@@ -327,12 +327,12 @@ const ManagerDashboard: React.FC = () => {
 
         <div className="relative flex gap-3">
           <Button
-            onClick={() => navigate('/manager/employees/', { state: { highlight: true } })}
-            className="rounded-xl px-6 h-12 bg-[#2563EB] hover:bg-blue-700 text-white shadow-lg shadow-blue-200 border-2 border-[#2563EB] transition-all active:scale-95 gap-2"
+            onClick={() => navigate('/manager/tasks', { state: { createFor: user?.id } })}
+            className="rounded-xl px-6 h-12 bg-[#0D9488] hover:bg-teal-700 text-white shadow-lg shadow-teal-200 border-2 border-[#0D9488] transition-all active:scale-95 gap-2"
             style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
           >
-            <UserPlus className="h-4 w-4" />
-            {t.employee.addEmployee}
+            <ClipboardList className="h-4 w-4" />
+            {t.task.createTask}
           </Button>
         </div>
       </div>
@@ -347,7 +347,6 @@ const ManagerDashboard: React.FC = () => {
               icon: Users,
               iconColor: 'text-blue-600',
               iconBg: 'bg-blue-50',
-              path: '/manager/employees',
             },
             {
               label: 'Present Today',
@@ -383,7 +382,7 @@ const ManagerDashboard: React.FC = () => {
               icon={item.icon}
               iconColor={item.iconColor}
               iconBg={item.iconBg}
-              onClick={() => item.path && navigate(item.path, { state: item.pathState })}
+              onClick={item.path ? () => navigate(item.path, { state: item.pathState }) : undefined}
             />
           ))}
 
@@ -506,7 +505,7 @@ const ManagerDashboard: React.FC = () => {
                       <span className="font-normal"> • {team.members} members</span>
                     </p>
                   </div>
-                  <span className="text-xs" style={{ color: '#000000' }}>{team.completion}%</span>
+                  <span className="text-[14px] font-bold text-black">{team.completion}%</span>
                 </div>
                 <Progress value={team.completion} className="h-2" />
               </div>
@@ -571,9 +570,9 @@ const ManagerDashboard: React.FC = () => {
                 </div>
                 {(member.status === 'present' || member.status === 'completed') && (
                   <div className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span style={{ color: '#000000' }}>Progress</span>
-                      <span style={{ color: '#000000' }}>{member.progress}%</span>
+                    <div className="flex justify-between text-[14px] font-bold text-black">
+                      <span>Progress</span>
+                      <span>{member.progress}%</span>
                     </div>
                     <Progress value={member.progress} className="h-1" />
                   </div>

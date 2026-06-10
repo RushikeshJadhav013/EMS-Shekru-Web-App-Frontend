@@ -81,6 +81,21 @@ const salarySchema = z.object({
 }, {
     message: "Variable pay cannot exceed 50% of CTC",
     path: ["variablePayValue"],
+}).refine((data) => {
+    // Require PF and UAN if PF is deducted (in Guided Mode or if pfAnnual is set in Manual)
+    const isPfDeducted = data.pfType !== 'none' || (data.pfAnnual && data.pfAnnual > 0);
+    if (isPfDeducted && !data.pfNo) return false;
+    return true;
+}, {
+    message: "PF Number is required when PF is deducted",
+    path: ["pfNo"],
+}).refine((data) => {
+    const isPfDeducted = data.pfType !== 'none' || (data.pfAnnual && data.pfAnnual > 0);
+    if (isPfDeducted && !data.uanNumber) return false;
+    return true;
+}, {
+    message: "UAN Number is required when PF is deducted",
+    path: ["uanNumber"],
 });
 
 // Helper for component logic
@@ -113,6 +128,20 @@ const AddEditSalary = () => {
     const [isCalculating, setIsCalculating] = useState(false);
     const [existingSalary, setExistingSalary] = useState<SalaryStructure | null>(null);
     const [activeTab, setActiveTab] = useState<"auto" | "manual">("auto");
+
+    // Helper to clear 0 on focus and restore on blur if empty
+    const handleNumericFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+        if (e.target.value === '0') {
+            e.target.value = '';
+        }
+    };
+
+    const handleNumericBlur = (e: React.FocusEvent<HTMLInputElement>, fieldName: keyof SalaryFormValues) => {
+        if (e.target.value === '') {
+            e.target.value = '0';
+            form.setValue(fieldName, 0, { shouldValidate: true });
+        }
+    };
 
 
 
@@ -156,6 +185,7 @@ const AddEditSalary = () => {
     const watchWorkingDays = form.watch('workingDays');
     const watchPfType = form.watch('pfType');
     const watchPfValue = form.watch('pfValue');
+    const watchPfNo = form.watch('pfNo');
 
     useEffect(() => {
         loadEmployees();
@@ -219,8 +249,8 @@ const AddEditSalary = () => {
     }, [
         watchCtc, watchVarType, watchVarValue, watchWorkingDays,
         watchBasicAnn, watchHraAnn, watchSpecialAnn, watchPFAnn,
-        watchVarPayAnn, watchConveyanceAnn, watchMedicalAnn,
-        watchOtherAnn, watchPTAnn, watchDeductionAnn, activeTab
+        watchVarPayAnn, watchConveyanceAnn, watchMedicalAnn, watchOtherAnn,
+        watchPTAnn, watchDeductionAnn, activeTab, watchPfNo
     ]);
 
     // Sync manual components when CTC changes in both Guided and Manual modes
@@ -409,7 +439,12 @@ const AddEditSalary = () => {
                 const medical = Math.round(parseNumber(values.medicalAllowanceAnnual || 0) / 12);
                 const conveyance = Math.round(parseNumber(values.conveyanceAnnual || 0) / 12);
                 const other = Math.round(parseNumber(values.otherAllowanceAnnual || 0) / 12);
-                const pt = Math.round(parseNumber(values.professionalTaxAnnual || 0) / 12);
+                const ptAnnual = parseNumber(values.professionalTaxAnnual || 0);
+                let pt = Math.round(ptAnnual / 12);
+                if (ptAnnual === 2500) {
+                    const isFeb = new Date().getMonth() === 1;
+                    pt = isFeb ? 300 : 200;
+                }
                 const otherDed = Math.round(parseNumber(values.otherDeductionAnnual || 0) / 12);
 
                 // PF Calculation: Split Annual Total into Employer and Employee shares (50/50)
@@ -460,7 +495,8 @@ const AddEditSalary = () => {
 
                     const pfEmployer = data.pf_employer || data.pfEmployer || (data.pf_annual ? (data.pf_annual / 2) / 12 : (monthlyBasic > 0 ? Math.round(monthlyBasic * 0.12) : 0));
                     const pfEmployee = data.pf_employee || data.pfEmployee || (data.pf_annual ? (data.pf_annual / 2) / 12 : (monthlyBasic > 0 ? Math.round(monthlyBasic * 0.12) : 0));
-                    const professionalTax = data.professional_tax || data.professionalTax || (data.professional_tax_annual ? data.professional_tax_annual / 12 : (ctcVal > 0 ? 200 : 0));
+                    const isFeb = new Date().getMonth() === 1; // 0-indexed, February = 1
+                    const professionalTax = data.professional_tax || data.professionalTax || (isFeb ? 300 : 200);
                     const otherDeduction = data.other_deduction || data.otherDeduction || (data.other_deduction_annual ? data.other_deduction_annual / 12 : 0);
 
                     const monthlyGross = data.monthly_gross || data.monthlyGross || (monthlyBasic + hra + specialAllowance + medicalAllowance + conveyanceAllowance + otherAllowance);
@@ -486,7 +522,8 @@ const AddEditSalary = () => {
                         monthlyDeductions: totalMonthlyDeductions,
                         monthlyInHand,
                         annualCtc,
-                        annualBasic: data.annualBasic || (monthlyBasic * 12)
+                        annualBasic: data.annualBasic || (monthlyBasic * 12),
+                        pfNo: form.getValues('pfNo')
                     });
                 } catch (error) {
                     console.warn('API calculation failed, using fallback:', error);
@@ -524,7 +561,9 @@ const AddEditSalary = () => {
                         monthlyPfOneSide = 0;
                     }
 
-                    const monthlySpecial = Math.max(0, monthlyCtc - (monthlyBasic + monthlyHra + monthlyMedical + monthlyConveyance + monthlyOtherAllowance));
+                    // Special Allowance balance calculation
+                    const monthlyVariable = (vType === 'percentage' ? (ctcVal * (vValueVal / 100)) : vValueVal) / 12;
+                    const monthlySpecial = Math.max(0, monthlyCtc - (monthlyBasic + monthlyHra + monthlyMedical + monthlyConveyance + monthlyOtherAllowance + monthlyPfOneSide + monthlyVariable));
 
                     const monthlyGross = monthlyBasic + monthlyHra + monthlySpecial + monthlyMedical + monthlyConveyance + monthlyOtherAllowance;
                     const monthlyDeductions = monthlyPfOneSide + monthlyPt + monthlyOtherTax;
@@ -547,6 +586,7 @@ const AddEditSalary = () => {
                         monthlyDeductions,
                         otherDeduction: monthlyOtherTax,
                         monthlyInHand,
+                        pfNo: form.getValues('pfNo')
                     });
                 }
             }
@@ -570,22 +610,34 @@ const AddEditSalary = () => {
                 // Map backend response to form values
                 form.reset({
                     userId: uid,
-                    annualCtc: data.package_ctc_annual || data.annualCtc,
-                    variablePayType: data.variable_pay_type || data.variablePayType || 'none',
-                    variablePayValue: data.variable_pay_value || data.variablePayValue || 0,
-                    workingDays: data.working_days || data.workingDays || 22,
+                    annualCtc: data.annualCtc || 0,
+                    variablePayType: data.variablePayType || 'none',
+                    variablePayValue: data.variablePayValue || 0,
+                    workingDays: data.workingDays || 22,
+
+                    // Restore Bank & Statutory Details
+                    uanNumber: data.uanNumber || '',
+                    pfNo: data.pfNumber || '',
+                    bankName: data.bankName || '',
+                    bankAccount: data.accountNumber || '',
+                    ifscCode: data.ifscCode || '',
+                    paymentMode: data.paymentMode || 'bank_transfer',
+
+                    // Restore PF Settings for Guided Mode
+                    pfType: data.pfEmployer > 0 ? (data.variablePayType === 'percentage' ? 'percentage' : 'fixed') : 'none',
+                    pfValue: data.pfEmployer || 0,
 
                     // Manual entry fields (annual values) - from Salary API
-                    basicAnnual: (data.monthly_basic || data.monthlyBasic || 0) * 12,
+                    basicAnnual: (data.monthlyBasic || 0) * 12,
                     hraAnnual: (data.hra || 0) * 12,
-                    pfAnnual: (data.pf_employer || data.pfEmployer || 0) * 12,
-                    professionalTaxAnnual: (data.professional_tax || data.professionalTax || 0) * 12,
-                    specialAllowanceAnnual: (data.special_allowance || data.specialAllowance || 0) * 12,
-                    conveyanceAnnual: (data.conveyance_allowance || data.conveyanceAllowance || 0) * 12,
-                    medicalAllowanceAnnual: (data.medical_allowance || data.medicalAllowance || 0) * 12,
-                    otherAllowanceAnnual: (data.other_allowance || data.otherAllowance || 0) * 12,
-                    otherDeductionAnnual: (data.other_deduction || data.otherDeduction || 0) * 12,
-                    variablePayAnnual: data.variable_pay || data.variablePay || 0
+                    pfAnnual: (data.pfEmployer || 0) * 12 + (data.pfEmployee || 0) * 12,
+                    professionalTaxAnnual: (data.professionalTax || 0) * 12,
+                    specialAllowanceAnnual: (data.specialAllowance || 0) * 12,
+                    conveyanceAnnual: (data.conveyanceAllowance || 0) * 12,
+                    medicalAllowanceAnnual: (data.medicalAllowance || 0) * 12,
+                    otherAllowanceAnnual: (data.otherAllowance || 0) * 12,
+                    otherDeductionAnnual: (data.otherDeduction || 0) * 12,
+                    variablePayAnnual: data.variablePay || 0
                 });
 
                 // Set selected employee if employees are loaded
@@ -713,7 +765,10 @@ const AddEditSalary = () => {
 
                 let response;
                 if (existingSalary) {
-                    const ctcChanged = parseNumber(data.annualCtc) !== parseNumber(existingSalary.package_ctc_annual);
+                    const ctcChanged = parseNumber(data.annualCtc) !== parseNumber(existingSalary.annualCtc) ||
+                        data.variablePayType !== existingSalary.variablePayType ||
+                        parseNumber(data.variablePayValue) !== parseNumber(existingSalary.variablePayValue) ||
+                        data.pfType !== (existingSalary.pfEmployer > 0 ? (data.pfType === 'percentage' ? 'percentage' : 'fixed') : 'none');
 
                     if (ctcChanged) {
                         // Recalculate components via update-ctc
@@ -895,8 +950,7 @@ const AddEditSalary = () => {
                             {/* Left Column: Input Fields */}
                             <div className="lg:col-span-8 space-y-8">
 
-                                <Tabs defaultValue="auto" value={activeTab} onValueChange={(val) => {
-                                    if (userRole === 'hr' && val === "manual") return;
+                                <Tabs value={activeTab} onValueChange={(val) => {
                                     if (val === "auto" || val === "manual") {
                                         setActiveTab(val);
                                     }
@@ -988,7 +1042,7 @@ const AddEditSalary = () => {
                                         }, 100);
                                     }
                                 }} className="w-full">
-                                    {userRole === 'admin' && (
+                                    {(userRole === 'admin' || userRole === 'hr') && (
                                         <TabsList className="grid w-full grid-cols-2 mb-6 bg-slate-100/50 dark:bg-slate-800/50">
                                             <TabsTrigger value="auto" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
                                                 <Calculator className="h-4 w-4 mr-2" /> Guided Mode
@@ -1024,6 +1078,8 @@ const AddEditSalary = () => {
                                                                 disabled={false}
                                                                 {...form.register("annualCtc")}
                                                                 onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
+                                                                onFocus={handleNumericFocus}
+                                                                onBlur={(e) => handleNumericBlur(e, 'annualCtc')}
                                                             />
                                                         </div>
                                                         {form.formState.errors.annualCtc && <p className="text-red-500 text-xs mt-1">{form.formState.errors.annualCtc.message}</p>}
@@ -1037,6 +1093,8 @@ const AddEditSalary = () => {
                                                             disabled={false}
                                                             {...form.register("workingDays")}
                                                             onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
+                                                            onFocus={handleNumericFocus}
+                                                            onBlur={(e) => handleNumericBlur(e, 'workingDays')}
                                                         />
                                                     </div>
                                                 </div>
@@ -1077,6 +1135,8 @@ const AddEditSalary = () => {
                                                                 disabled={watchPfType === 'none'}
                                                                 {...form.register("pfValue")}
                                                                 onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
+                                                                onFocus={handleNumericFocus}
+                                                                onBlur={(e) => handleNumericBlur(e, 'pfValue')}
                                                             />
                                                             {watchPfType === 'percentage' && (
                                                                 <span className="absolute right-3 top-2.5 text-muted-foreground">%</span>
@@ -1133,6 +1193,8 @@ const AddEditSalary = () => {
                                                                     disabled={watchVarType === 'none'}
                                                                     {...form.register("variablePayValue")}
                                                                     onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
+                                                                    onFocus={handleNumericFocus}
+                                                                    onBlur={(e) => handleNumericBlur(e, 'variablePayValue')}
                                                                 />
                                                                 {watchVarType === 'percentage' && (
                                                                     <span className="absolute right-3 top-2.5 text-muted-foreground">%</span>
@@ -1216,39 +1278,41 @@ const AddEditSalary = () => {
                                                             type="text"
                                                             className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("basicAnnual")}
                                                             onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
+                                                            onFocus={handleNumericFocus}
+                                                            onBlur={(e) => handleNumericBlur(e, 'basicAnnual')}
                                                         />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>HRA Annual (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("hraAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("hraAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} onFocus={handleNumericFocus} onBlur={(e) => handleNumericBlur(e, 'hraAnnual')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Special Allowance (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("specialAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("specialAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} onFocus={handleNumericFocus} onBlur={(e) => handleNumericBlur(e, 'specialAllowanceAnnual')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Conveyance (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("conveyanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("conveyanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} onFocus={handleNumericFocus} onBlur={(e) => handleNumericBlur(e, 'conveyanceAnnual')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Medical (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("medicalAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("medicalAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} onFocus={handleNumericFocus} onBlur={(e) => handleNumericBlur(e, 'medicalAllowanceAnnual')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Other Allowance (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("otherAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("otherAllowanceAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} onFocus={handleNumericFocus} onBlur={(e) => handleNumericBlur(e, 'otherAllowanceAnnual')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Professional Tax (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("professionalTaxAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("professionalTaxAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} onFocus={handleNumericFocus} onBlur={(e) => handleNumericBlur(e, 'professionalTaxAnnual')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Working Days</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("workingDays")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("workingDays")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} onFocus={handleNumericFocus} onBlur={(e) => handleNumericBlur(e, 'workingDays')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Other Taxes (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("otherDeductionAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} />
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("otherDeductionAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} onFocus={handleNumericFocus} onBlur={(e) => handleNumericBlur(e, 'otherDeductionAnnual')} />
                                                     </div>
 
                                                     <div className="space-y-2 lg:col-span-2 p-4 bg-green-50/50 dark:bg-green-950/20 rounded-lg border-2 border-[#000000]">
@@ -1286,6 +1350,8 @@ const AddEditSalary = () => {
                                                                         disabled={watchPfType === 'none'}
                                                                         {...form.register("pfValue")}
                                                                         onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
+                                                                        onFocus={handleNumericFocus}
+                                                                        onBlur={(e) => handleNumericBlur(e, 'pfValue')}
                                                                     />
                                                                     {watchPfType === 'percentage' && (
                                                                         <span className="absolute right-3 top-2.5 text-muted-foreground">%</span>
@@ -1343,6 +1409,8 @@ const AddEditSalary = () => {
                                                                         disabled={form.watch('variablePayType') === 'none'}
                                                                         {...form.register("variablePayValue")}
                                                                         onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
+                                                                        onFocus={handleNumericFocus}
+                                                                        onBlur={(e) => handleNumericBlur(e, 'variablePayValue')}
                                                                     />
                                                                     {form.watch('variablePayType') === 'percentage' && (
                                                                         <span className="absolute right-3 top-2.5 text-muted-foreground">%</span>
@@ -1382,12 +1450,18 @@ const AddEditSalary = () => {
                                     <CardContent className="space-y-5">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                             <div className="space-y-2">
-                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>UAN Number</Label>
+                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
+                                                    UAN Number {(watchPfType !== 'none' || parseNumber(form.watch('pfAnnual')) > 0) && <span className="text-red-500">*</span>}
+                                                </Label>
                                                 <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. 975610472162" {...form.register("uanNumber")} />
+                                                {form.formState.errors.uanNumber && <p className="text-red-500 text-xs mt-1">{form.formState.errors.uanNumber.message}</p>}
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PF Number</Label>
+                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
+                                                    PF Number {(watchPfType !== 'none' || parseNumber(form.watch('pfAnnual')) > 0) && <span className="text-red-500">*</span>}
+                                                </Label>
                                                 <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. MH/PUN/9673924/168/1039756" {...form.register("pfNo")} />
+                                                {form.formState.errors.pfNo && <p className="text-red-500 text-xs mt-1">{form.formState.errors.pfNo.message}</p>}
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Bank Name</Label>
@@ -1494,7 +1568,12 @@ const AddEditSalary = () => {
                                                                 <span className="text-xs italic text-muted-foreground">Incl. in CTC</span>
                                                             </div>
                                                             <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
-                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>EPF (Employee)</span>
+                                                                <div className="flex flex-col">
+                                                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>EPF (Employee)</span>
+                                                                    {previewData.pfNo && (
+                                                                        <span className="text-[10px] text-muted-foreground uppercase tracking-widest">PF NO: {previewData.pfNo}</span>
+                                                                    )}
+                                                                </div>
                                                                 <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>-{formatCurrency(previewData.pfEmployee)}</span>
                                                             </div>
                                                             <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">

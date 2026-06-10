@@ -305,10 +305,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const company_slug = localStorage.getItem('company_slug');
       const roleRoutes: Record<UserRole, string> = {
         admin: company_slug ? `/${company_slug}/admin` : '/admin',
-        hr: '/hr',
-        manager: '/manager',
-        team_lead: '/team_lead',
-        employee: '/employee',
+        hr: company_slug ? `/${company_slug}/hr` : '/hr',
+        manager: company_slug ? `/${company_slug}/manager` : '/manager',
+        team_lead: company_slug ? `/${company_slug}/team_lead` : '/team_lead',
+        teamlead: company_slug ? `/${company_slug}/team_lead` : '/team_lead',
+        employee: company_slug ? `/${company_slug}/employee` : '/employee',
+        staff: company_slug ? `/${company_slug}/employee` : '/employee',
       };
 
       const redirectPath = roleRoutes[user.role];

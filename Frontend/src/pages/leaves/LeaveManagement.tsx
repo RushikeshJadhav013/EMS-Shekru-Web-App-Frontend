@@ -20,7 +20,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -103,6 +106,8 @@ interface LeaveRequest {
   comments?: string;
   requestDate: Date;
   isWFH?: boolean;
+  duration_days?: number;
+  leave_session?: string | null;
 }
 
 export default function LeaveManagement() {
@@ -204,10 +209,115 @@ export default function LeaveManagement() {
     startDate: new Date(),
     endDate: new Date(),
     reason: "",
+    unpaidSubType: "full_day" as "full_day" | "half_day_before_lunch" | "half_day_after_lunch",
   });
 
+  const canApproveLeaves = user?.role === "admin" || user?.role === "hr" || user?.role === "manager" || user?.role === "team_lead";
+  const canViewTeamLeaves = user?.role === "admin" || user?.role === "hr" || user?.role === "manager" || user?.role === "team_lead";
+
+  const [isDeletingLeave, setIsDeletingLeave] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [approvingLeaveId, setApprovingLeaveId] = useState<string | null>(null);
+
+  const fetchApprovals = useCallback(async () => {
+    try {
+      if (!(canApproveLeaves || canViewTeamLeaves)) return;
+      const approvals = await apiService.getLeaveApprovals();
+
+      const formattedLeaves: LeaveRequest[] = approvals
+        .filter((req: any) => (req.leave_type || "").toLowerCase() !== "wfh")
+        .map((req: any) => ({
+          id: String(req.leave_id),
+          employeeId: String(req.user_id),
+          employeeName: req.name || req.employee_id,
+          department: req.department || req.department_name || "",
+          role: req.role || "employee",
+          type: (
+            req.leave_type || "annual"
+          ).toLowerCase() as LeaveRequest["type"],
+          startDate: new Date(req.start_date),
+          endDate: new Date(req.end_date),
+          reason: req.reason,
+          status: String(
+            req.status || "pending",
+          ).toLowerCase() as LeaveRequest["status"],
+          requestDate: new Date(req.start_date),
+          isWFH: false,
+        }));
+
+      setApprovalRequests(formattedLeaves);
+    } catch (error) {
+      console.error("Error fetching approvals:", error);
+    }
+  }, [canApproveLeaves, canViewTeamLeaves]);
+
+  const fetchApprovalHistory = useCallback(async () => {
+    try {
+      if (!canApproveLeaves) return;
+
+      // Prepare parameters based on historyFilter
+      const params: {
+        period?: string;
+        start_date?: string;
+        end_date?: string;
+      } = {
+        period: historyFilter,
+      };
+
+      if (
+        historyFilter === "custom" &&
+        customHistoryStartDate &&
+        customHistoryEndDate
+      ) {
+        params.start_date = format(customHistoryStartDate, "yyyy-MM-dd");
+        params.end_date = format(customHistoryEndDate, "yyyy-MM-dd");
+      }
+
+      const history = await apiService.getLeaveApprovalsHistory(params);
+
+      const formattedLeaves: LeaveRequest[] = history
+        .filter((req: any) => (req.leave_type || "").toLowerCase() !== "wfh")
+        .map((req: any) => ({
+          id: String(req.leave_id),
+          employeeId: String(req.user_id),
+          employeeName: req.name || req.employee_id,
+          department: req.department || req.department_name || "",
+          role: req.role || "employee",
+          type: (
+            req.leave_type || "annual"
+          ).toLowerCase() as LeaveRequest["type"],
+          startDate: new Date(req.start_date),
+          endDate: new Date(req.end_date),
+          reason: req.reason,
+          status: String(
+            req.status || "approved",
+          ).toLowerCase() as LeaveRequest["status"],
+          requestDate: new Date(req.start_date),
+          isWFH: false,
+        }));
+
+      // Merge with existing history
+      setApprovalHistory((prev) => {
+        const existingIds = new Set(formattedLeaves.map((r) => r.id));
+        const localDecisions = prev.filter(
+          (r) => !existingIds.has(r.id) && r.status !== "pending",
+        );
+        const combined = [...localDecisions, ...formattedLeaves];
+        return combined.sort((a, b) => {
+          const timeA = new Date(a.requestDate).getTime();
+          const timeB = new Date(b.requestDate).getTime();
+          return timeB - timeA;
+        });
+      });
+    } catch (error) {
+      console.error("Error fetching approvals history:", error);
+    }
+  }, [
+    canApproveLeaves,
+    historyFilter,
+    customHistoryStartDate,
+    customHistoryEndDate,
+  ]);
   const [leaveHistoryPeriod, setLeaveHistoryPeriod] = useState<string>("all");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingLeave, setEditingLeave] = useState<LeaveRequest | null>(null);
@@ -219,7 +329,6 @@ export default function LeaveManagement() {
   const [isUpdatingLeave, setIsUpdatingLeave] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [leaveToDelete, setLeaveToDelete] = useState<LeaveRequest | null>(null);
-  const [isDeletingLeave, setIsDeletingLeave] = useState(false);
 
   // Pagination states for approval requests
   const [approvalCurrentPage, setApprovalCurrentPage] = useState(1);
@@ -741,10 +850,6 @@ export default function LeaveManagement() {
     weekOffForm.days,
   ]);
 
-  const canApproveLeaves = ["admin", "hr", "manager", "team_lead"].includes(
-    user?.role || "",
-  );
-  const canViewTeamLeaves = ["team_lead"].includes(user?.role || "");
   const canExport = ["admin", "hr"].includes(user?.role || "");
   // Admins should not have an option to apply for leave from the admin dashboard
   const canApply = user?.role !== "admin";
@@ -814,7 +919,7 @@ export default function LeaveManagement() {
           : undefined;
         const endStr = endDate ? format(endDate, "yyyy-MM-dd") : undefined;
         const requests = await apiService.getLeaveRequests(
-          period,
+          period === "all" ? "" : period,
           startStr,
           endStr,
         );
@@ -838,6 +943,8 @@ export default function LeaveManagement() {
             reason: req.reason,
             status,
             requestDate: new Date(req.start_date),
+            duration_days: req.duration_days,
+            leave_session: req.leave_session,
           };
         });
 
@@ -941,155 +1048,6 @@ export default function LeaveManagement() {
         }
       };
 
-      const fetchApprovals = async () => {
-        try {
-          if (!(canApproveLeaves || canViewTeamLeaves)) return;
-          const [approvals, wfhApprovals] = await Promise.all([
-            apiService.getLeaveApprovals(),
-            apiService.getWFHRequests(),
-          ]);
-
-          const formattedLeaves: LeaveRequest[] = approvals.map((req: any) => ({
-            id: String(req.leave_id),
-            employeeId: String(req.user_id),
-            employeeName: req.name || req.employee_id,
-            department: req.department || req.department_name || "",
-            role: req.role || "employee",
-            type: (
-              req.leave_type || "annual"
-            ).toLowerCase() as LeaveRequest["type"],
-            startDate: new Date(req.start_date),
-            endDate: new Date(req.end_date),
-            reason: req.reason,
-            status: String(
-              req.status || "pending",
-            ).toLowerCase() as LeaveRequest["status"],
-            requestDate: new Date(req.start_date),
-            isWFH: false,
-          }));
-
-          const formattedWFH: LeaveRequest[] = (
-            Array.isArray(wfhApprovals)
-              ? wfhApprovals
-              : wfhApprovals?.data || wfhApprovals?.requests || []
-          )
-            .filter(
-              (req: any) =>
-                (req.status || "pending").toLowerCase() === "pending",
-            )
-            .map((req: any) => ({
-              id: String(req.wfh_id || req.id),
-              employeeId: String(req.user_id),
-              employeeName: req.employee_name || req.name || "Unknown",
-              department: req.department || req.department_name || "",
-              role: req.role || req.requester_role || "employee",
-              type: "wfh" as any,
-              startDate: new Date(req.start_date),
-              endDate: new Date(req.end_date),
-              reason: req.reason,
-              status: "pending" as const,
-              requestDate: new Date(req.created_at || req.start_date),
-              isWFH: true,
-            }));
-
-          setApprovalRequests([...formattedLeaves, ...formattedWFH]);
-        } catch (error) {
-          console.error("Error fetching approvals:", error);
-        }
-      };
-
-      const fetchApprovalHistory = async () => {
-        try {
-          if (!canApproveLeaves) return;
-
-          // Prepare parameters based on historyFilter
-          const params: {
-            period?: string;
-            start_date?: string;
-            end_date?: string;
-          } = {
-            period: historyFilter,
-          };
-
-          if (
-            historyFilter === "custom" &&
-            customHistoryStartDate &&
-            customHistoryEndDate
-          ) {
-            params.start_date = format(customHistoryStartDate, "yyyy-MM-dd");
-            params.end_date = format(customHistoryEndDate, "yyyy-MM-dd");
-          }
-
-          const [history, wfhHistory] = await Promise.all([
-            apiService.getLeaveApprovalsHistory(params),
-            apiService.getWFHRequests(), // Reusing same endpoint, filtering for processed in map/filter if needed
-          ]);
-
-          const formattedLeaves: LeaveRequest[] = history.map((req: any) => ({
-            id: String(req.leave_id),
-            employeeId: String(req.user_id),
-            employeeName: req.name || req.employee_id,
-            department: req.department || req.department_name || "",
-            role: req.role || "employee",
-            type: (
-              req.leave_type || "annual"
-            ).toLowerCase() as LeaveRequest["type"],
-            startDate: new Date(req.start_date),
-            endDate: new Date(req.end_date),
-            reason: req.reason,
-            status: String(
-              req.status || "approved",
-            ).toLowerCase() as LeaveRequest["status"],
-            requestDate: new Date(req.start_date),
-            isWFH: false,
-          }));
-
-          const formattedWFH: LeaveRequest[] = (
-            Array.isArray(wfhHistory)
-              ? wfhHistory
-              : wfhHistory?.data || wfhHistory?.requests || []
-          )
-            .filter(
-              (req: any) =>
-                (req.status || "pending").toLowerCase() !== "pending",
-            )
-            .map((req: any) => ({
-              id: String(req.wfh_id || req.id),
-              employeeId: String(req.user_id),
-              employeeName: req.employee_name || req.name || "Unknown",
-              department: req.department || req.department_name || "",
-              role: req.role || req.requester_role || "employee",
-              type: "wfh" as any,
-              startDate: new Date(req.start_date),
-              endDate: new Date(req.end_date),
-              reason: req.reason,
-              status: String(
-                req.status || "approved",
-              ).toLowerCase() as LeaveRequest["status"],
-              requestDate: new Date(req.created_at || req.start_date),
-              isWFH: true,
-            }));
-
-          const allFormatted = [...formattedLeaves, ...formattedWFH];
-
-          // Merge with existing history
-          setApprovalHistory((prev) => {
-            const existingIds = new Set(allFormatted.map((r) => r.id));
-            const localDecisions = prev.filter(
-              (r) => !existingIds.has(r.id) && r.status !== "pending",
-            );
-            const combined = [...localDecisions, ...allFormatted];
-            return combined.sort((a, b) => {
-              const timeA = new Date(a.requestDate).getTime();
-              const timeB = new Date(b.requestDate).getTime();
-              return timeB - timeA;
-            });
-          });
-        } catch (error) {
-          console.error("Error fetching approvals history:", error);
-        }
-      };
-
       fetchLeaveRequests();
       fetchApprovals();
       fetchApprovalHistory();
@@ -1105,6 +1063,8 @@ export default function LeaveManagement() {
     customHistoryStartDate,
     customHistoryEndDate,
     loadLeaveRequests,
+    fetchApprovals,
+    fetchApprovalHistory,
     loadLeaveBalance,
     loadLeaveAllocationConfig,
     canApproveLeaves,
@@ -1155,63 +1115,57 @@ export default function LeaveManagement() {
     );
 
     if (!validation.valid) {
-      if (
-        formData.type === "sick" &&
-        (validation.error ===
-          "Sick leave must be applied at least 2 hours before the start date." ||
-          validation.error?.includes("3 or more days") ||
-          (user?.role !== "admin" &&
-            validation.error?.toLowerCase().includes("sick leave")))
-      ) {
-        // Carry on to custom sick leave timing check and allow < 3 days for non-admin roles
-      } else {
-        toast({
-          title: "Request Invalid",
-          description: validation.error,
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
-    // Custom Sick Leave Timing Validation
-    if (formData.type === "sick") {
-      const now = new Date();
-      const officeStartTime = new Date(formData.startDate);
-      officeStartTime.setHours(9, 30, 0, 0);
-      const diffToOfficeHours =
-        (officeStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-      if (diffToOfficeHours < 2) {
-        toast({
-          title: "Request Invalid",
-          description:
-            "Sick leave must be applied in between 2 hours and 24 hours before office working hours.",
-          variant: "destructive",
-        });
-        return;
-      }
-      if (diffToOfficeHours > 24) {
-        toast({
-          title: "Request Invalid",
-          description:
-            "Sick leave must be applied in between 2 hours and 24 hours before office working hours.",
-          variant: "destructive",
-        });
-        return;
-      }
+      toast({
+        title: "Request Invalid",
+        description: validation.error,
+        variant: "destructive",
+      });
+      return;
     }
 
     setIsSubmitting(true);
 
     try {
       // Prepare data for API (Matches SR.NO 4)
+      const unpaidSubTypeLabel =
+        formData.unpaidSubType === "full_day"
+          ? "Full Day"
+          : formData.unpaidSubType === "half_day_before_lunch"
+            ? "Half Day (Before Lunch)"
+            : "Half Day (After Lunch)";
+
+      const reasonWithSubType =
+        formData.type === "unpaid"
+          ? `[${unpaidSubTypeLabel}] ${formData.reason}`
+          : formData.reason;
+
+      // Map unpaidSubType to session and duration as per API spec
+      let leaveSession: string | null = null;
+      let durationDays = calculateLeaveDays(formData.startDate, formData.endDate);
+
+      if (formData.type === "unpaid") {
+        if (formData.unpaidSubType === "half_day_before_lunch") {
+          leaveSession = "before_lunch";
+          durationDays = 0.5;
+        } else if (formData.unpaidSubType === "half_day_after_lunch") {
+          leaveSession = "after_lunch";
+          durationDays = 0.5;
+        } else {
+          durationDays = 1;
+        }
+      }
+
+      // Note: company_slug is auto-injected into the URL path by the api.ts request() method.
+      // X-Branch-Id and X-Company-Id are sent as headers automatically.
+      // Only include the fields the API actually expects in the request body.
       const leaveRequestData = {
         user_id: String(user.id),
         start_date: format(formData.startDate, "yyyy-MM-dd"),
         end_date: format(formData.endDate, "yyyy-MM-dd"),
-        reason: formData.reason,
+        reason: reasonWithSubType,
         leave_type: formData.type,
+        duration_days: durationDays,
+        leave_session: leaveSession,
       };
 
       // Submit to API
@@ -1268,6 +1222,7 @@ export default function LeaveManagement() {
         startDate: new Date(),
         endDate: new Date(),
         reason: "",
+        unpaidSubType: "full_day",
       });
     } catch (error) {
       console.error("Error submitting leave request:", error);
@@ -1308,18 +1263,14 @@ export default function LeaveManagement() {
     try {
       // Call API to approve/reject
       const approved = status === "approved";
-      if (request.isWFH) {
-        await apiService.approveWFHRequest(Number(id), approved);
-      } else {
-        await apiService.approveLeaveRequest(id, approved);
-      }
+      await apiService.approveLeaveRequest(id, approved);
 
-      // Update approvals list - move approved/rejected request to the top
+      // Prepare the updated request with new status and approver info
       const updatedRequest = { ...request, status, approvedBy: user?.name };
-      const otherRequests = approvalRequests.filter((req) => req.id !== id);
 
-      // Move the updated request to the top of the list
-      setApprovalRequests([updatedRequest, ...otherRequests]);
+      // Remove the processed request from the pending list
+      const otherRequests = approvalRequests.filter((req) => req.id !== id);
+      setApprovalRequests(otherRequests);
 
       // Reset pagination to show the updated request at the top
       setApprovalCurrentPage(1);
@@ -1328,10 +1279,14 @@ export default function LeaveManagement() {
       // This ensures both approved and rejected requests appear in Recent Decisions
       setApprovalHistory((prev) => [updatedRequest, ...prev]);
 
-      // Refresh leave history to get updated status
+      // Refresh records to ensure consistency
       try {
-        await loadLeaveRequests(leaveHistoryPeriod);
-        await loadLeaveBalance();
+        await Promise.all([
+          loadLeaveRequests(leaveHistoryPeriod),
+          fetchApprovals(),
+          fetchApprovalHistory(),
+          loadLeaveBalance(),
+        ]);
       } catch (refreshError) {
         console.error("Error refreshing leave requests:", refreshError);
         // Fallback: update local state if refresh fails
@@ -1415,8 +1370,6 @@ export default function LeaveManagement() {
         return "bg-indigo-100 text-indigo-800";
       case "unpaid":
         return "bg-gray-100 text-gray-800";
-      case "wfh":
-        return "bg-cyan-100 text-cyan-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -1468,60 +1421,28 @@ export default function LeaveManagement() {
     );
 
     if (!validation.valid) {
-      if (
-        editingLeave.type === "sick" &&
-        (validation.error ===
-          "Sick leave must be applied at least 2 hours before the start date." ||
-          validation.error?.includes("3 or more days") ||
-          (user?.role !== "admin" &&
-            validation.error?.toLowerCase().includes("sick leave")))
-      ) {
-        // Carry on to custom sick leave timing check and allow < 3 days for non-admin roles
-      } else {
-        toast({
-          title: "Update Invalid",
-          description: validation.error,
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
-    // Custom Sick Leave Timing Validation
-    if (editingLeave.type === "sick") {
-      const now = new Date();
-      const officeStartTime = new Date(editFormData.startDate);
-      officeStartTime.setHours(9, 30, 0, 0);
-      const diffToOfficeHours =
-        (officeStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-      if (diffToOfficeHours < 2) {
-        toast({
-          title: "Update Invalid",
-          description:
-            "Sick leave must be applied in between 2 hours and 24 hours before office working hours.",
-          variant: "destructive",
-        });
-        return;
-      }
-      if (diffToOfficeHours > 24) {
-        toast({
-          title: "Update Invalid",
-          description:
-            "Sick leave must be applied in between 2 hours and 24 hours before office working hours.",
-          variant: "destructive",
-        });
-        return;
-      }
+      toast({
+        title: "Update Invalid",
+        description: validation.error,
+        variant: "destructive",
+      });
+      return;
     }
 
     setIsUpdatingLeave(true);
     try {
+      let durationDays = calculateLeaveDays(editFormData.startDate, editFormData.endDate);
+      if (editingLeave.type === "unpaid" && editingLeave.leave_session) {
+        durationDays = 0.5;
+      }
+
       await apiService.updateLeaveRequest(editingLeave.id, {
         start_date: format(editFormData.startDate, "yyyy-MM-dd"),
         end_date: format(editFormData.endDate, "yyyy-MM-dd"),
         reason: editFormData.reason,
         leave_type: editingLeave.type,
+        duration_days: durationDays,
+        leave_session: editingLeave.leave_session,
       });
       await loadLeaveRequests(leaveHistoryPeriod);
       await loadLeaveBalance();
@@ -1631,7 +1552,10 @@ export default function LeaveManagement() {
     const normalize = (r: string) =>
       (r || "").toLowerCase().replace(/[\s_]+/g, "");
     const userRole = normalize(user?.role || "");
-    const userDept = (user?.department || "").trim().toLowerCase();
+    const userDepts = (user?.department || "")
+      .split(",")
+      .map((d) => d.trim().toLowerCase())
+      .filter(Boolean);
 
     // 1. Apply Visibility Rules (Admin: all, HR: manager/tl/emp, Manager: tl/emp in dept)
     const visibleHistory = approvalHistory.filter((req) => {
@@ -1646,9 +1570,24 @@ export default function LeaveManagement() {
         const isAllowedRole = ["teamlead", "team_lead", "employee"].includes(
           role,
         );
-        const isSameDept =
-          (req.department || "").trim().toLowerCase() === userDept;
-        return isAllowedRole && isSameDept;
+        const isSameDept = userDepts.includes(
+          (req.department || "").trim().toLowerCase(),
+        );
+        const isSelf = String(req.employeeId) === String(user?.id);
+        return (isAllowedRole && isSameDept) || isSelf;
+      }
+
+      if (userRole === "teamlead") {
+        const isAllowedRole = ["employee"].includes(role);
+        const isSameDept = userDepts.includes(
+          (req.department || "").trim().toLowerCase(),
+        );
+        const isSelf = String(req.employeeId) === String(user?.id);
+        return (isAllowedRole && isSameDept) || isSelf;
+      }
+
+      if (userRole === "employee") {
+        return String(req.employeeId) === String(user?.id);
       }
 
       return false;
@@ -1782,7 +1721,10 @@ export default function LeaveManagement() {
     const normalize = (r: string) =>
       (r || "").toLowerCase().replace(/[\s_]+/g, "");
     const userRole = normalize(user?.role || "");
-    const userDept = (user?.department || "").trim().toLowerCase();
+    const userDepts = (user?.department || "")
+      .split(",")
+      .map((d) => d.trim().toLowerCase())
+      .filter(Boolean);
 
     return approvalRequests
       .filter((req) => {
@@ -1799,15 +1741,17 @@ export default function LeaveManagement() {
           const isAllowedRole = ["teamlead", "team_lead", "employee"].includes(
             role,
           );
-          const isSameDept =
-            (req.department || "").trim().toLowerCase() === userDept;
+          const isSameDept = userDepts.includes(
+            (req.department || "").trim().toLowerCase(),
+          );
           return isAllowedRole && isSameDept;
         }
 
         if (userRole === "teamlead") {
           const isAllowedRole = role === "employee";
-          const isSameDept =
-            (req.department || "").trim().toLowerCase() === userDept;
+          const isSameDept = userDepts.includes(
+            (req.department || "").trim().toLowerCase(),
+          );
           return isAllowedRole && isSameDept;
         }
 
@@ -1977,6 +1921,19 @@ export default function LeaveManagement() {
   const totalUsed = leaveBalance.annual.used || 0;
   const totalRemaining = Math.max(0, totalAllocated - totalUsed);
 
+  // Calculate total unpaid days applied (including pending) from history to ensure visibility
+  const totalUnpaidApplied = useMemo(() => {
+    return leaveRequests
+      .filter((req) =>
+        (req.type === "unpaid" || String(req.type).toLowerCase().includes("loss of pay")) &&
+        (req.status === "approved" || req.status === "pending") &&
+        String(req.employeeId) === String(user?.id)
+      )
+      .reduce((acc, req) => {
+        return acc + calculateLeaveDays(new Date(req.startDate), new Date(req.endDate));
+      }, 0);
+  }, [leaveRequests, user?.id]);
+
   // Calculate total columns for tabs based on user permissions
   const colsClass = useMemo(() => {
     let count = 1; // Start with 'Leave Calendar' which is always visible
@@ -2087,7 +2044,7 @@ export default function LeaveManagement() {
                 },
                 {
                   label: "Unpaid Leave",
-                  value: leaveBalance.unpaid.used,
+                  value: Math.max(leaveBalance.unpaid.used, totalUnpaidApplied),
                   icon: FileText,
                   iconColor: "text-slate-600",
                   iconBg: "bg-slate-100",
@@ -2141,10 +2098,15 @@ export default function LeaveManagement() {
                   <div className="space-y-2">
                     <Label className="text-[14px] font-bold text-black dark:text-white" style={{}}>Leave Type</Label>
                     <Select
-                      value={formData.type}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, type: value })
-                      }
+                      value={formData.type === "unpaid" ? `unpaid:${formData.unpaidSubType}` : formData.type}
+                      onValueChange={(value) => {
+                        if (value.startsWith("unpaid:")) {
+                          const subType = value.split(":")[1] as "full_day" | "half_day_before_lunch" | "half_day_after_lunch";
+                          setFormData({ ...formData, type: "unpaid", unpaidSubType: subType });
+                        } else {
+                          setFormData({ ...formData, type: value, unpaidSubType: "full_day" });
+                        }
+                      }}
                     >
                       <SelectTrigger className="text-[14px] text-black dark:text-white font-medium border-2 border-[#000000]" style={{}}>
                         <SelectValue placeholder="Select Leave Type" />
@@ -2174,7 +2136,18 @@ export default function LeaveManagement() {
                         <SelectItem value="paternity">
                           Paternity Leave
                         </SelectItem>
-                        <SelectItem value="unpaid">Unpaid Leave</SelectItem>
+
+                        <SelectGroup>
+                          <SelectItem value="unpaid:full_day">
+                            Unpaid Leave (Full Day)
+                          </SelectItem>
+                          <SelectItem value="unpaid:half_day_before_lunch">
+                            Unpaid Leave (Half Day Before Lunch)
+                          </SelectItem>
+                          <SelectItem value="unpaid:half_day_after_lunch">
+                            Unpaid Leave (Half Day After Lunch)
+                          </SelectItem>
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                   </div>
@@ -2639,9 +2612,10 @@ export default function LeaveManagement() {
                           type="number"
                           min="0"
                           max="365"
-                          value={leaveAllocationConfig.sick_leave_allocation}
+                          value={leaveAllocationConfig.sick_leave_allocation === 0 ? "" : leaveAllocationConfig.sick_leave_allocation}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => {
-                            const val = parseInt(e.target.value) || 0;
+                            const val = e.target.value === "" ? 0 : parseInt(e.target.value) || 0;
                             setLeaveAllocationConfig((prev) => ({
                               ...prev,
                               sick_leave_allocation: val,
@@ -2665,9 +2639,10 @@ export default function LeaveManagement() {
                           type="number"
                           min="0"
                           max="365"
-                          value={leaveAllocationConfig.casual_leave_allocation}
+                          value={leaveAllocationConfig.casual_leave_allocation === 0 ? "" : leaveAllocationConfig.casual_leave_allocation}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => {
-                            const val = parseInt(e.target.value) || 0;
+                            const val = e.target.value === "" ? 0 : parseInt(e.target.value) || 0;
                             setLeaveAllocationConfig((prev) => ({
                               ...prev,
                               casual_leave_allocation: val,
@@ -2691,9 +2666,10 @@ export default function LeaveManagement() {
                           type="number"
                           min="0"
                           max="365"
-                          value={leaveAllocationConfig.other_leave_allocation}
+                          value={leaveAllocationConfig.other_leave_allocation === 0 ? "" : leaveAllocationConfig.other_leave_allocation}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => {
-                            const val = parseInt(e.target.value) || 0;
+                            const val = e.target.value === "" ? 0 : parseInt(e.target.value) || 0;
                             setLeaveAllocationConfig((prev) => ({
                               ...prev,
                               other_leave_allocation: val,
@@ -3063,7 +3039,23 @@ export default function LeaveManagement() {
                         day: "h-full w-full rounded-none flex flex-col items-end p-2 text-lg font-black hover:bg-slate-50 transition-all",
                       }}
                       modifiers={{
-                        holiday: holidays.map((h) => h.date),
+                        holiday: holidays.flatMap((h) => {
+                          const dates: Date[] = [h.date];
+                          if (h.is_recurring) {
+                            // Add occurrence in the currently displayed year
+                            const displayedYear = displayedMonth.getFullYear();
+                            const recurringDate = new Date(displayedYear, h.date.getMonth(), h.date.getDate());
+                            // Also add current calendar year if different
+                            const currentYear = new Date().getFullYear();
+                            if (displayedYear !== h.date.getFullYear()) {
+                              dates.push(recurringDate);
+                            }
+                            if (currentYear !== h.date.getFullYear() && currentYear !== displayedYear) {
+                              dates.push(new Date(currentYear, h.date.getMonth(), h.date.getDate()));
+                            }
+                          }
+                          return dates;
+                        }),
                         weekOff: (date) =>
                           userWeekOffDays.some(
                             (day) =>
@@ -3141,12 +3133,26 @@ export default function LeaveManagement() {
                       </CardHeader>
                       <CardContent className="pt-6">
                         {(() => {
-                          const monthHolidays = holidays
+                          // Expand recurring holidays to the currently displayed year before filtering
+                          const displayedYear = displayedMonth.getFullYear();
+                          const expandedHolidays = holidays.map((h) => {
+                            if (
+                              h.is_recurring &&
+                              h.date.getFullYear() !== displayedYear
+                            ) {
+                              return {
+                                ...h,
+                                date: new Date(displayedYear, h.date.getMonth(), h.date.getDate()),
+                              };
+                            }
+                            return h;
+                          });
+
+                          const monthHolidays = expandedHolidays
                             .filter(
                               (h) =>
-                                h.date.getFullYear() ===
-                                displayedMonth.getFullYear() &&
-                                h.date.getMonth() === displayedMonth.getMonth(),
+                                h.date.getMonth() === displayedMonth.getMonth() &&
+                                h.date.getFullYear() === displayedYear,
                             )
                             .sort((a, b) => a.date.getTime() - b.date.getTime());
 

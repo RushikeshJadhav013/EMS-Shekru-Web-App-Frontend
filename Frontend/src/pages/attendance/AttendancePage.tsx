@@ -939,7 +939,7 @@ const AttendancePage: React.FC = () => {
     return (
       <div className="w-full space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold" style={{ color: '#000000' }}>
+          <h2 className="text-[16px] font-bold" style={{ color: '#000000', fontFamily: 'Outfit, sans-serif' }}>
             {isCheckingIn ? t.attendance.checkIn : t.attendance.checkOut}
           </h2>
         </div>
@@ -1183,7 +1183,7 @@ const AttendancePage: React.FC = () => {
                           <span className="text-sm font-bold text-black">Check-in Time</span>
                           {getStatusBadge(currentAttendance.status, currentAttendance.checkInTime)}
                         </div>
-                        <p className="text-[16px] font-semibold text-black">
+                        <p className="text-[16px] font-bold text-black" style={{ color: '#000000', fontFamily: 'Outfit, sans-serif' }}>
                           {formatAttendanceTime(currentAttendance.date, currentAttendance.checkInTime)}
                         </p>
                       </div>
@@ -1195,7 +1195,7 @@ const AttendancePage: React.FC = () => {
                           {currentAttendance.checkOutTime &&
                             getStatusBadge(currentAttendance.status, undefined, currentAttendance.checkOutTime)}
                         </div>
-                        <p className="text-[16px] font-semibold text-black">
+                        <p className="text-[16px] font-bold text-black" style={{ color: '#000000', fontFamily: 'Outfit, sans-serif' }}>
                           {currentAttendance.checkOutTime
                             ? formatAttendanceTime(currentAttendance.date, currentAttendance.checkOutTime)
                             : '-'}

@@ -38,7 +38,7 @@ const AttendanceCamera: React.FC<AttendanceCameraProps> = ({ onCapture, onCancel
         },
         audio: false
       });
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         setStream(mediaStream);
@@ -59,7 +59,7 @@ const AttendanceCamera: React.FC<AttendanceCameraProps> = ({ onCapture, onCancel
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
-      
+
       if (context) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -70,10 +70,10 @@ const AttendanceCamera: React.FC<AttendanceCameraProps> = ({ onCapture, onCancel
         context.scale(-1, 1);
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         context.restore();
-        
+
         const imageData = canvas.toDataURL('image/jpeg', 0.8);
         setPhoto(imageData);
-        
+
         // Stop the camera stream after capturing to save resources
         if (stream) {
           stream.getTracks().forEach(track => track.stop());
@@ -103,8 +103,8 @@ const AttendanceCamera: React.FC<AttendanceCameraProps> = ({ onCapture, onCancel
   return (
     <Card className="p-6 max-w-2xl mx-auto">
       <div className="space-y-4">
-        <h3 className="text-[14px] font-bold text-center" style={{ color: '#000000', fontFamily: 'Outfit, sans-serif' }}>{t.attendance.capturePhoto}</h3>
-        
+        <h3 className="text-[14px] text-center text-black" style={{ color: '#000000', fontFamily: 'Outfit, sans-serif' }}>{t.attendance.capturePhoto}</h3>
+
         <div className="relative rounded-lg overflow-hidden bg-muted aspect-[4/3]">
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -113,7 +113,7 @@ const AttendanceCamera: React.FC<AttendanceCameraProps> = ({ onCapture, onCancel
               </div>
             </div>
           )}
-          
+
           {!photo ? (
             <video
               ref={videoRef}
@@ -126,10 +126,10 @@ const AttendanceCamera: React.FC<AttendanceCameraProps> = ({ onCapture, onCancel
           ) : (
             <img src={photo} alt="Captured" className="w-full h-full object-cover" />
           )}
-          
+
           <canvas ref={canvasRef} className="hidden" />
         </div>
-        
+
         <div className="flex gap-3 justify-center">
           {!photo ? (
             <>

@@ -293,11 +293,6 @@ const AdminDashboard: React.FC = () => {
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: '#000000' }}>
               {t.common.welcome}, <span style={{ color: '#2563EB' }}>{user?.name}</span>
-              {localStorage.getItem('company_name') && (
-                <span className="ml-2 text-xl font-bold text-slate-400">
-                  @ {localStorage.getItem('company_name')}
-                </span>
-              )}
             </h1>
             <p className="font-normal text-[14px] mt-0.5 flex items-center gap-1.5" style={{ color: '#000000' }}>
               <CalendarDays className="h-3.5 w-3.5" style={{ color: '#000000' }} />
@@ -307,7 +302,7 @@ const AdminDashboard: React.FC = () => {
         </div>
         <Button
           onClick={() => navigate('/admin/employees/', { state: { highlight: true } })}
-          className="h-12 px-8 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white shadow-xl shadow-blue-200 border-2 border-[#2563EB] transition-all duration-300 hover:-translate-y-1 text-xs font-bold uppercase tracking-widest gap-3"
+          className="h-12 px-8 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white shadow-xl shadow-blue-200 border-2 border-[#2563EB] transition-all duration-300 hover:-translate-y-1 text-sm font-bold uppercase tracking-widest gap-3"
           style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
         >
           <UserPlus className="h-4 w-4" />
@@ -406,10 +401,10 @@ const AdminDashboard: React.FC = () => {
                       </div>
                       <div>
                         <p className="font-bold text-[14px] leading-tight" style={{ color: '#000000' }}>{dept.name}</p>
-                        <p className="text-[12px] font-bold mt-0.5 flex items-center gap-1" style={{ color: '#000000' }}>
-                          <Users className="h-3 w-3" style={{ color: '#000000' }} />
-                          <span className="font-black">{dept.employees}</span>
-                          <span className="font-bold uppercase tracking-tighter">Employees</span>
+                        <p className="text-[12px] font-bold mt-0.5 flex items-center gap-1 text-black">
+                          <Users className="h-3 w-3 text-black" />
+                          <span className="font-black text-black">{dept.employees}</span>
+                          <span className="font-bold uppercase tracking-tighter text-black">Employees</span>
                         </p>
                       </div>
                     </div>

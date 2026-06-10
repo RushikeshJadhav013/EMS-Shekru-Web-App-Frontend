@@ -9,6 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Globe, Palette, Bell, Lock, Check, Sparkles, Sun, Moon, Monitor, Shield } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { apiService } from '@/lib/api';
 
 export default function SettingsPage() {
   const { colorTheme, setColorTheme, themeMode, setThemeMode } = useTheme();
@@ -31,6 +41,15 @@ export default function SettingsPage() {
     const saved = localStorage.getItem('twoFactorAuth');
     return saved ? JSON.parse(saved) : false;
   });
+
+  // Change PIN state
+  const [changePinDialogOpen, setChangePinDialogOpen] = useState(false);
+  const [pinForm, setPinForm] = useState({
+    current_pin: '',
+    new_pin: '',
+    confirm_pin: ''
+  });
+  const [isSubmittingPin, setIsSubmittingPin] = useState(false);
 
   // Save notification settings
   useEffect(() => {
@@ -76,6 +95,48 @@ export default function SettingsPage() {
         : 'Two-factor authentication has been disabled',
       variant: checked ? 'default' : 'destructive',
     });
+  };
+
+  const handleChangePin = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (pinForm.new_pin !== pinForm.confirm_pin) {
+      toast({
+        title: "Error",
+        description: "New PINs do not match",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (pinForm.new_pin.length !== 4) {
+      toast({
+        title: "Error",
+        description: "PIN must be 4 digits",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSubmittingPin(true);
+    try {
+      await apiService.changePin(pinForm);
+      toast({
+        title: "Success",
+        description: "Security PIN changed successfully",
+        variant: "success"
+      });
+      setChangePinDialogOpen(false);
+      setPinForm({ current_pin: '', new_pin: '', confirm_pin: '' });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to change PIN",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmittingPin(false);
+    }
   };
 
   const languages = [
@@ -145,14 +206,14 @@ export default function SettingsPage() {
                         });
                       }}
                       className={`group relative p-6 rounded-2xl border-2 transition-all duration-300 hover:scale-105 hover:shadow-lg ${themeMode === mode.value
-                          ? 'border-primary shadow-xl ring-2 ring-primary/20 bg-primary/5'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-primary/50 bg-card'
+                        ? 'border-primary shadow-xl ring-2 ring-primary/20 bg-primary/5'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-primary/50 bg-card'
                         }`}
                     >
                       <div className="flex flex-col items-center gap-3">
                         <div className={`h-16 w-16 rounded-2xl flex items-center justify-center transition-all ${themeMode === mode.value
-                            ? 'bg-gradient-to-br from-primary to-primary/60 text-white'
-                            : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'
+                          ? 'bg-gradient-to-br from-primary to-primary/60 text-white'
+                          : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'
                           }`}>
                           <Icon className="h-8 w-8" />
                         </div>
@@ -198,8 +259,8 @@ export default function SettingsPage() {
                       });
                     }}
                     className={`group relative p-4 rounded-2xl border-2 transition-all duration-300 hover:scale-105 hover:shadow-lg ${colorTheme === themeOption.name
-                        ? 'border-primary shadow-xl ring-2 ring-primary/20'
-                        : 'border-gray-200 dark:border-gray-800 hover:border-primary/50'
+                      ? 'border-primary shadow-xl ring-2 ring-primary/20'
+                      : 'border-gray-200 dark:border-gray-800 hover:border-primary/50'
                       }`}
                   >
                     <div className={`h-16 w-full rounded-xl bg-gradient-to-r ${themeOption.color} shadow-md group-hover:shadow-lg transition-shadow`}></div>
@@ -215,43 +276,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Language Settings */}
-          <Card className="border border-slate-200 shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent pb-4">
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <Globe className="h-6 w-6 text-primary" />
-                Language Preferences
-              </CardTitle>
-              <CardDescription className="text-base">
-                Choose your preferred language for the application
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
-                <div className="space-y-1">
-                  <Label htmlFor="language" className="text-base font-semibold">Language</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Select your preferred language for the interface
-                  </p>
-                </div>
-                <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger className="w-[180px] border-2">
-                    <SelectValue placeholder="Select language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {languages.map((lang) => (
-                      <SelectItem key={lang.value} value={lang.value}>
-                        <div className="flex items-center gap-2">
-                          <Globe className="h-4 w-4" />
-                          {lang.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+
 
           {/* Notifications */}
           <Card className="border border-slate-200 shadow-xl">
@@ -345,12 +370,27 @@ export default function SettingsPage() {
               <Separator />
               <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                 <div className="space-y-1">
+                  <p className="text-base font-semibold">Security PIN</p>
+                  <p className="text-sm text-muted-foreground">
+                    Update your 4-digit security PIN for authentication
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  className="font-semibold border-slate-300 hover:bg-slate-100"
+                  onClick={() => setChangePinDialogOpen(true)}
+                >
+                  Change PIN
+                </Button>
+              </div>
+              <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+                <div className="space-y-1">
                   <p className="text-base font-semibold">Password</p>
                   <p className="text-sm text-muted-foreground">
                     Update your password regularly for better security
                   </p>
                 </div>
-                <Button variant="outline" className="font-semibold">
+                <Button variant="outline" className="font-semibold border-slate-300 hover:bg-slate-100">
                   Change Password
                 </Button>
               </div>
@@ -358,6 +398,76 @@ export default function SettingsPage() {
           </Card>
         </div>
       </div>
+
+      {/* Change PIN Dialog */}
+      <Dialog open={changePinDialogOpen} onOpenChange={setChangePinDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Change Security PIN</DialogTitle>
+            <DialogDescription>
+              Enter your current PIN and choose a new 4-digit security code.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleChangePin} className="space-y-6 py-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="current_pin">Current PIN</Label>
+                <Input
+                  id="current_pin"
+                  type="password"
+                  placeholder="••••"
+                  maxLength={4}
+                  value={pinForm.current_pin}
+                  onChange={(e) => setPinForm({ ...pinForm, current_pin: e.target.value.replace(/\D/g, '') })}
+                  required
+                />
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <Label htmlFor="new_pin">New 4-digit PIN</Label>
+                <Input
+                  id="new_pin"
+                  type="password"
+                  placeholder="••••"
+                  maxLength={4}
+                  value={pinForm.new_pin}
+                  onChange={(e) => setPinForm({ ...pinForm, new_pin: e.target.value.replace(/\D/g, '') })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm_pin">Confirm New PIN</Label>
+                <Input
+                  id="confirm_pin"
+                  type="password"
+                  placeholder="••••"
+                  maxLength={4}
+                  value={pinForm.confirm_pin}
+                  onChange={(e) => setPinForm({ ...pinForm, confirm_pin: e.target.value.replace(/\D/g, '') })}
+                  required
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setChangePinDialogOpen(false)}
+                disabled={isSubmittingPin}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                disabled={isSubmittingPin || pinForm.new_pin.length !== 4 || pinForm.confirm_pin.length !== 4}
+              >
+                {isSubmittingPin ? "Updating..." : "Update PIN"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
