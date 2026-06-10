@@ -307,7 +307,7 @@ const MainLayout: React.FC = () => {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="my-0" />
-                <DropdownMenuItem onClick={() => navigate(`/${user.role}/profile`)} className="cursor-pointer py-3 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors">
+                <DropdownMenuItem onClick={() => navigate(companySlug ? `/${companySlug}/profile` : '/profile')} className="cursor-pointer py-3 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                       <User className="h-5 w-5 text-white" />
@@ -315,16 +315,6 @@ const MainLayout: React.FC = () => {
                     <span className="font-medium">{t.common.profile}</span>
                   </div>
                 </DropdownMenuItem>
-
-                <DropdownMenuItem onClick={() => navigate('/settings')} className="cursor-pointer py-3 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-slate-500 to-gray-600 flex items-center justify-center">
-                      <Shield className="h-5 w-5 text-white" />
-                    </div>
-                    <span className="font-medium">Settings & Security</span>
-                  </div>
-                </DropdownMenuItem>
-
                 <DropdownMenuSeparator className="my-0" />
                 <DropdownMenuItem onClick={handleLogoutClick} className="text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
@@ -410,7 +400,7 @@ const MainLayout: React.FC = () => {
 
             <div className="flex-shrink-0 px-2 py-3 mb-2 border-t border-slate-100 dark:border-slate-800">
               <div
-                onClick={() => navigate(companySlug ? `/${companySlug}/${user.role}/profile` : `/${user.role}/profile`)}
+                onClick={() => navigate(companySlug ? `/${companySlug}/profile` : '/profile')}
                 className={`group flex items-center gap-3 px-2.5 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 hover:shadow-xl hover:shadow-slate-200/40 transition-all duration-300 cursor-pointer ${!sidebarOpen ? 'justify-center' : ''}`}
               >
                 <div className="relative">
@@ -492,7 +482,7 @@ const MainLayout: React.FC = () => {
                 <div
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    navigate(`/${user.role}/profile`);
+                    navigate(companySlug ? `/${companySlug}/profile` : '/profile');
                   }}
                   className="flex items-center gap-3.5 p-2 rounded-[1.25rem] bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800"
                 >

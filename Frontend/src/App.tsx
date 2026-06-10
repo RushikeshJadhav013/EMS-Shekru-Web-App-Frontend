@@ -101,6 +101,13 @@ const App = () => {
                                   </ProtectedRoute>
                                 } />
 
+                                {/* Universal Routes */}
+                                <Route path="profile" element={
+                                  <ProtectedRoute>
+                                    <Profile />
+                                  </ProtectedRoute>
+                                } />
+
                                 {/* Meetings Route - Universal */}
                                 <Route path="meetings" element={
                                   <ProtectedRoute allowedRoles={['admin', 'hr', 'employee', 'manager', 'team_lead']}>
@@ -173,11 +180,6 @@ const App = () => {
                                 <Route path="admin/projects" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <ProjectManagement />
-                                  </ProtectedRoute>
-                                } />
-                                <Route path="admin/profile" element={
-                                  <ProtectedRoute allowedRoles={['admin']}>
-                                    <Profile />
                                   </ProtectedRoute>
                                 } />
                                 <Route path="admin/settings" element={
@@ -255,11 +257,6 @@ const App = () => {
                                     <ProjectManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="hr/profile" element={
-                                  <ProtectedRoute allowedRoles={['hr']}>
-                                    <Profile />
-                                  </ProtectedRoute>
-                                } />
                                 <Route path="hr/settings" element={
                                   <ProtectedRoute allowedRoles={['hr']}>
                                     <SettingsPage />
@@ -326,11 +323,6 @@ const App = () => {
                                     <ProjectManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="manager/profile" element={
-                                  <ProtectedRoute allowedRoles={['manager']}>
-                                    <Profile />
-                                  </ProtectedRoute>
-                                } />
                                 <Route path="manager/settings" element={
                                   <ProtectedRoute allowedRoles={['manager']}>
                                     <SettingsPage />
@@ -390,11 +382,6 @@ const App = () => {
                                     <ProjectManagement />
                                   </ProtectedRoute>
                                 } />
-                                <Route path="team_lead/profile" element={
-                                  <ProtectedRoute allowedRoles={['team_lead']}>
-                                    <Profile />
-                                  </ProtectedRoute>
-                                } />
                                 <Route path="team_lead/settings" element={
                                   <ProtectedRoute allowedRoles={['team_lead']}>
                                     <SettingsPage />
@@ -447,11 +434,6 @@ const App = () => {
                                 <Route path="employee/projects" element={
                                   <ProtectedRoute allowedRoles={['employee']}>
                                     <ProjectManagement />
-                                  </ProtectedRoute>
-                                } />
-                                <Route path="employee/profile" element={
-                                  <ProtectedRoute allowedRoles={['employee']}>
-                                    <Profile />
                                   </ProtectedRoute>
                                 } />
                                 <Route path="employee/settings" element={
