@@ -81,6 +81,7 @@ const Login: React.FC = () => {
   const [pin, setPinValue] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [requiresPinSetup, setRequiresPinSetup] = useState(false);
+  const [isResettingPin, setIsResettingPin] = useState(false);
   const [loginMode, setLoginMode] = useState<'email' | 'otp' | 'pin' | 'set-pin' | 'reset-pin'>('email');
   const otpInputRef = React.useRef<HTMLInputElement>(null);
   const pinInputRef = React.useRef<HTMLInputElement>(null);
@@ -220,13 +221,13 @@ const Login: React.FC = () => {
     }
   };
 
-  const triggerSendOtp = async () => {
+  const triggerSendOtp = async (targetMode: 'otp' | 'reset-pin' = 'otp') => {
     try {
       const response = await axios.post(`${API_ENDPOINTS.sendOtp}?email=${encodeURIComponent(email)}`);
 
       if (response.status === 200 || response.status === 201) {
         setOtpSent(true);
-        setLoginMode('otp');
+        setLoginMode(targetMode);
         const expirySeconds = response.data?.expires_in_seconds || 120;
         setOtpExpiryTime(expirySeconds);
         setCanResend(false);
@@ -392,6 +393,12 @@ const Login: React.FC = () => {
     setIsLoading(true);
     setError('');
 
+    if (isResettingPin) {
+      setLoginMode('reset-pin');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await axios.post(
         `${API_ENDPOINTS.verifyOtp}?email=${encodeURIComponent(email)}&otp=${otp}`
@@ -460,7 +467,7 @@ const Login: React.FC = () => {
     if (!pin || !confirmPin || !tempAuthData?.access_token) return;
 
     if (pin !== confirmPin) {
-      setError('PINs do not match');
+      setError('PINs do not match. Please try again.');
       return;
     }
 
@@ -508,7 +515,7 @@ const Login: React.FC = () => {
     if (!email || !otp || !pin || !confirmPin) return;
 
     if (pin !== confirmPin) {
-      setError('PINs do not match');
+      setError('PINs do not match. Please try again.');
       return;
     }
 
@@ -529,10 +536,18 @@ const Login: React.FC = () => {
           title: "PIN Reset Successful",
           description: "Your PIN has been reset. You can now login.",
         });
-        setLoginMode('pin');
+
+        const userData = response.data;
+        if (userData && (userData.access_token || userData.token)) {
+          await completeLogin(userData);
+        } else {
+          setLoginMode('pin');
+        }
+
         setPinValue('');
         setConfirmPin('');
         setOtp('');
+        setIsResettingPin(false);
       }
     } catch (err: any) {
       const errorMessage = formatErrorMessage(err, 'Failed to reset PIN');
@@ -838,8 +853,8 @@ const Login: React.FC = () => {
                           type="button"
                           onClick={() => {
                             setError('');
-                            triggerSendOtp();
-                            setLoginMode('reset-pin');
+                            setIsResettingPin(true);
+                            triggerSendOtp('otp');
                           }}
                           className="text-xs text-emerald-600 hover:text-emerald-700 font-bold uppercase tracking-wider underline underline-offset-4"
                         >
@@ -906,25 +921,8 @@ const Login: React.FC = () => {
                   <form onSubmit={handleResetPin} className="space-y-4">
                     <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-xl mb-2">
                       <p className="text-[10px] text-emerald-800 font-bold uppercase tracking-wider text-center">
-                        Verify OTP to Reset Your PIN
+                        Configure Your New Security PIN
                       </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="reset-otp" className="text-slate-700 font-medium text-xs">
-                        Enter 6-digit OTP
-                      </Label>
-                      <Input
-                        id="reset-otp"
-                        type="text"
-                        placeholder="••••••"
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                        maxLength={6}
-                        required
-                        disabled={isLoading}
-                        className="text-center tracking-[0.5em] text-lg font-bold h-11 bg-white border-slate-200 focus:border-emerald-500 rounded-xl"
-                      />
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
@@ -963,9 +961,9 @@ const Login: React.FC = () => {
                     </div>
 
                     {error && (
-                      <p className="text-red-500 text-xs font-bold text-center bg-red-50 py-2 rounded-lg border border-red-100">
+                      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
                         {error}
-                      </p>
+                      </div>
                     )}
 
                     <Button
@@ -1034,6 +1032,12 @@ const Login: React.FC = () => {
                         />
                       </div>
                     </div>
+
+                    {error && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                        {error}
+                      </div>
+                    )}
 
                     <Button
                       type="submit"

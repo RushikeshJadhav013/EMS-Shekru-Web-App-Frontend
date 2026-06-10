@@ -55,6 +55,7 @@ import {
   Banknote,
   FolderKanban,
   Video,
+  Shield,
 } from 'lucide-react';
 import { UserRole } from '@/types';
 import { Language } from '@/i18n/translations';
@@ -312,6 +313,15 @@ const MainLayout: React.FC = () => {
                       <User className="h-5 w-5 text-white" />
                     </div>
                     <span className="font-medium">{t.common.profile}</span>
+                  </div>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={() => navigate('/settings')} className="cursor-pointer py-3 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-slate-500 to-gray-600 flex items-center justify-center">
+                      <Shield className="h-5 w-5 text-white" />
+                    </div>
+                    <span className="font-medium">Settings & Security</span>
                   </div>
                 </DropdownMenuItem>
 

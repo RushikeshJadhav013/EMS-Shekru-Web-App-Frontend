@@ -12,6 +12,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 
 import { useNavigate } from 'react-router-dom';
 import {
@@ -26,6 +35,8 @@ import {
   Shield,
   Target,
   Plus,
+  KeyRound,
+  RotateCcw,
 } from 'lucide-react';
 import { formatDateIST } from '@/utils/timezone';
 
@@ -39,6 +50,11 @@ const Profile: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [employeeData, setEmployeeData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [newPin, setNewPin] = useState('');
+  const [isSavingPin, setIsSavingPin] = useState(false);
+  const [changePinOpen, setChangePinOpen] = useState(false);
+  const [changePinForm, setChangePinForm] = useState({ current_pin: '', new_pin: '', confirm_pin: '' });
+  const [isChangingPin, setIsChangingPin] = useState(false);
 
 
   // Fetch employee data from database
@@ -138,6 +154,66 @@ const Profile: React.FC = () => {
       title: 'Profile Photo Removed',
       description: 'Your profile photo has been removed.',
     });
+  };
+
+  const handleSavePin = async () => {
+    if (newPin.length !== 4) {
+      toast({
+        title: 'Invalid PIN',
+        description: 'PIN must be 4 digits',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSavingPin(true);
+    try {
+      await apiService.request('/auth/set-pin', {
+        method: 'POST',
+        body: JSON.stringify({
+          pin: newPin,
+          confirm_pin: newPin
+        })
+      });
+
+      toast({
+        title: 'Success',
+        description: 'Security PIN updated successfully',
+        variant: 'success',
+      });
+      setNewPin('');
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to update PIN',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingPin(false);
+    }
+  };
+
+  const handleChangePin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (changePinForm.new_pin !== changePinForm.confirm_pin) {
+      toast({ title: 'Error', description: 'New PINs do not match', variant: 'destructive' });
+      return;
+    }
+    if (changePinForm.new_pin.length !== 4) {
+      toast({ title: 'Error', description: 'PIN must be exactly 4 digits', variant: 'destructive' });
+      return;
+    }
+    setIsChangingPin(true);
+    try {
+      await apiService.changePin(changePinForm);
+      toast({ title: 'Success', description: 'PIN changed successfully', variant: 'success' });
+      setChangePinOpen(false);
+      setChangePinForm({ current_pin: '', new_pin: '', confirm_pin: '' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to change PIN', variant: 'destructive' });
+    } finally {
+      setIsChangingPin(false);
+    }
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -286,6 +362,27 @@ const Profile: React.FC = () => {
                     className="disabled:opacity-60"
                   />
                 </div>
+                <div className="md:col-span-2 space-y-3">
+                  <Label>Security PIN</Label>
+                  <div className="flex items-center justify-between p-4 rounded-xl border-2 border-slate-200 hover:border-primary/40 bg-slate-50 dark:bg-slate-900/50 transition-colors max-w-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow">
+                        <KeyRound className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">Change PIN</p>
+                        <p className="text-[11px] text-muted-foreground">Update your current PIN</p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => setChangePinOpen(true)}
+                      className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs px-3"
+                    >
+                      Change
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -362,6 +459,76 @@ const Profile: React.FC = () => {
 
 
         </Tabs>
+
+        {/* Change PIN Dialog */}
+        <Dialog open={changePinOpen} onOpenChange={setChangePinOpen}>
+          <DialogContent className="sm:max-w-[420px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <KeyRound className="h-5 w-5 text-emerald-500" />
+                Change Security PIN
+              </DialogTitle>
+              <DialogDescription>
+                Enter your current PIN and choose a new 4-digit security code.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleChangePin} className="space-y-5 py-2">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cp_current">Current PIN</Label>
+                  <Input
+                    id="cp_current"
+                    type="password"
+                    placeholder="••••"
+                    maxLength={4}
+                    value={changePinForm.current_pin}
+                    onChange={(e) => setChangePinForm({ ...changePinForm, current_pin: e.target.value.replace(/\D/g, '') })}
+                    required
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label htmlFor="cp_new">New PIN</Label>
+                  <Input
+                    id="cp_new"
+                    type="password"
+                    placeholder="••••"
+                    maxLength={4}
+                    value={changePinForm.new_pin}
+                    onChange={(e) => setChangePinForm({ ...changePinForm, new_pin: e.target.value.replace(/\D/g, '') })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cp_confirm">Confirm New PIN</Label>
+                  <Input
+                    id="cp_confirm"
+                    type="password"
+                    placeholder="••••"
+                    maxLength={4}
+                    value={changePinForm.confirm_pin}
+                    onChange={(e) => setChangePinForm({ ...changePinForm, confirm_pin: e.target.value.replace(/\D/g, '') })}
+                    required
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="ghost" onClick={() => setChangePinOpen(false)} disabled={isChangingPin}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  disabled={isChangingPin || changePinForm.new_pin.length !== 4 || changePinForm.confirm_pin.length !== 4}
+                >
+                  {isChangingPin ? (
+                    <><div className="h-4 w-4 border-2 border-white border-t-transparent animate-spin mr-2" />Saving...</>
+                  ) : 'Save PIN'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
