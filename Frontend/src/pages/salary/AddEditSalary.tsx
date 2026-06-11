@@ -50,12 +50,12 @@ const salarySchema = z.object({
     pfType: z.enum(['none', 'fixed', 'percentage']).default('none'),
     pfValue: z.preprocess(preprocessNumber, z.number().min(0).default(0)),
     // Bank & Statutory Details
-    uanNumber: z.string().optional(),
-    pfNo: z.string().optional(),
+    uanNumber: z.string().optional().or(z.literal('')),
+    pfNo: z.string().optional().or(z.literal('')),
     bankName: z.string().optional(),
     bankAccount: z.string().optional(),
     ifscCode: z.string().optional(),
-    paymentMode: z.string().default('bank_transfer'),
+    paymentMode: z.string().default('Bank Transfer'),
     // Manual Entry Fields (Annual)
     basicAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
     hraAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
@@ -81,23 +81,6 @@ const salarySchema = z.object({
 }, {
     message: "Variable pay cannot exceed 50% of CTC",
     path: ["variablePayValue"],
-}).refine((data) => {
-    // Require PF Number only when admin has explicitly enabled PF deduction (pfType is not 'none')
-    // Do NOT rely on pfAnnual > 0 since it is auto-populated by the preview calculation
-    const isPfExplicitlyEnabled = data.pfType !== 'none';
-    if (isPfExplicitlyEnabled && !data.pfNo) return false;
-    return true;
-}, {
-    message: "PF Number is required when PF is deducted",
-    path: ["pfNo"],
-}).refine((data) => {
-    // Require UAN Number only when admin has explicitly enabled PF deduction (pfType is not 'none')
-    const isPfExplicitlyEnabled = data.pfType !== 'none';
-    if (isPfExplicitlyEnabled && !data.uanNumber) return false;
-    return true;
-}, {
-    message: "UAN Number is required when PF is deducted",
-    path: ["uanNumber"],
 });
 
 // Helper for component logic
@@ -166,7 +149,7 @@ const AddEditSalary = () => {
             bankName: '',
             bankAccount: '',
             ifscCode: '',
-            paymentMode: 'bank_transfer',
+            paymentMode: 'Bank Transfer',
             basicAnnual: 0,
             hraAnnual: 0,
             specialAllowanceAnnual: 0,
@@ -784,11 +767,11 @@ const AddEditSalary = () => {
 
                     // Update non-calculated fields (Bank details, PF numbers, etc.)
                     response = await apiService.updateSalaryDetails(data.userId, {
-                        uan_number: data.uanNumber,
-                        pf_no: data.pfNo,
-                        bank_name: data.bankName,
-                        bank_account: data.bankAccount,
-                        ifsc_code: data.ifscCode,
+                        ...(data.uanNumber ? { uan_number: data.uanNumber } : {}),
+                        ...(data.pfNo ? { pf_no: data.pfNo } : {}),
+                        ...(data.bankName ? { bank_name: data.bankName } : {}),
+                        ...(data.bankAccount ? { bank_account: data.bankAccount } : {}),
+                        ...(data.ifscCode ? { ifsc_code: data.ifscCode } : {}),
                         working_days_per_month: data.workingDays,
                         payment_mode: data.paymentMode,
                         variable_pay_type: data.variablePayType,
@@ -822,16 +805,15 @@ const AddEditSalary = () => {
             // Parse backend validation errors if available
             let errorMessage = "Failed to save salary details. Please check all fields.";
 
-            if (error.message) {
-                // Check if error contains validation details
-                if (error.message.includes("Annual CTC") || error.message.includes("minimum")) {
-                    errorMessage = error.message;
+            if (error && typeof error === 'object' && error.message) {
+                errorMessage = error.message;
 
-                    // Map to form field error if it's a CTC validation error
-                    if (error.message.toLowerCase().includes("ctc")) {
-                        form.setError('annualCtc', { message: error.message });
-                    }
+                // Map to form field error if it's a known validation error
+                if (errorMessage.toLowerCase().includes("ctc")) {
+                    form.setError('annualCtc', { message: errorMessage });
                 }
+            } else if (typeof error === 'string') {
+                errorMessage = error;
             }
 
             toast({
@@ -1452,16 +1434,12 @@ const AddEditSalary = () => {
                                     <CardContent className="space-y-5">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                             <div className="space-y-2">
-                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
-                                                    UAN Number {(watchPfType !== 'none' || parseNumber(form.watch('pfAnnual')) > 0) && <span className="text-red-500">*</span>}
-                                                </Label>
+                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>UAN Number</Label>
                                                 <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. 975610472162" {...form.register("uanNumber")} />
                                                 {form.formState.errors.uanNumber && <p className="text-red-500 text-xs mt-1">{form.formState.errors.uanNumber.message}</p>}
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
-                                                    PF Number {(watchPfType !== 'none' || parseNumber(form.watch('pfAnnual')) > 0) && <span className="text-red-500">*</span>}
-                                                </Label>
+                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PF Number</Label>
                                                 <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. MH/PUN/9673924/168/1039756" {...form.register("pfNo")} />
                                                 {form.formState.errors.pfNo && <p className="text-red-500 text-xs mt-1">{form.formState.errors.pfNo.message}</p>}
                                             </div>

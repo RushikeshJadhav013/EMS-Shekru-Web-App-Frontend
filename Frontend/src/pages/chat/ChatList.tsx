@@ -118,8 +118,8 @@ const ChatList: React.FC = () => {
   };
 
   const getLastMessagePreview = (chat: any) => {
-    if (!chat.lastMessage) {
-      if (chat.unreadCount > 0) return 'New message received';
+    if (!chat || !chat.lastMessage) {
+      if (chat?.unreadCount > 0) return 'New message received';
       return 'No messages yet';
     }
 

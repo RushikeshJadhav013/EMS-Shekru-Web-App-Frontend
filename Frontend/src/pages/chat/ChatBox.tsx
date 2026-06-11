@@ -860,7 +860,7 @@ const ChatBox: React.FC = () => {
                         {p.isAdmin && (
                           <Badge variant="outline" className="text-[8px] font-black uppercase bg-amber-50 text-amber-600 border-amber-200">Admin</Badge>
                         )}
-                        {(activeChat.participants.find(part => part.userId === user?.id)?.isAdmin || (user?.role && ['admin', 'hr', 'manager'].includes(user.role))) && p.userId !== user?.id && (
+                        {(displayedChat.participants?.find(part => part.userId === user?.id)?.isAdmin || (user?.role && ['admin', 'hr', 'manager'].includes(user.role))) && p.userId !== user?.id && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -879,7 +879,7 @@ const ChatBox: React.FC = () => {
           </div>
 
           <div className="p-6 bg-slate-50 dark:bg-slate-900 border-t mt-auto flex flex-col gap-3">
-            {(activeChat.participants.find(p => p.userId === user?.id)?.isAdmin || user?.role === 'admin' || user?.role === 'hr') && (
+            {(displayedChat.participants?.find(p => p.userId === user?.id)?.isAdmin || user?.role === 'admin' || user?.role === 'hr') && (
               <Button
                 variant="destructive"
                 className="w-full rounded-xl font-bold py-6 bg-red-500 hover:bg-red-600 text-white border-none shadow-lg shadow-red-500/20"

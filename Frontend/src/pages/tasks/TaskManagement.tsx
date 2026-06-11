@@ -956,25 +956,49 @@ const TaskManagement: React.FC = () => {
       const projectList = Array.isArray(data) ? data : (data as any)?.projects || (data as any)?.data || [];
       const normalizedProjects = await Promise.all(projectList.map(async (p: any) => {
         let members = p.members || [];
+        let projectTasks: any[] = [];
         const pid = p.project_id || p.id;
-        if (!members.length && pid) {
+
+        if (pid) {
           try {
-            members = await apiService.getProjectMembers(pid);
+            // Fetch members if not present
+            if (!members.length) {
+              members = await apiService.getProjectMembers(pid);
+            }
+            // Fetch tasks specifically linked to this project
+            const tasksData = await apiService.getProjectTasks(pid);
+            projectTasks = Array.isArray(tasksData) ? tasksData : (tasksData as any)?.tasks || [];
           } catch (e) {
-            console.error(`Failed to fetch members for project ${pid}`, e);
+            console.error(`Failed to fetch supplementary data for project ${pid}`, e);
           }
         }
+
         return {
           ...p,
           project_id: pid,
           name: p.name || "Untitled Project",
-          task_count: p.task_count || 0,
+          task_count: p.task_count || projectTasks.length || 0,
           members: Array.isArray(members) ? members : [],
-          tasks: [],
+          tasks: projectTasks.map(mapBackendTaskToFrontend),
           isExpanded: false,
         };
       }));
+
       setProjects(normalizedProjects);
+
+      // Also merge all project tasks into the main tasks state to ensure they show up in stats and global list if visible
+      const allProjectTasks = normalizedProjects.flatMap(p => p.tasks || []);
+      if (allProjectTasks.length > 0) {
+        setTasks(prev => {
+          const combined = [...prev];
+          allProjectTasks.forEach(pt => {
+            if (!combined.some(t => t.id === pt.id)) {
+              combined.push(pt);
+            }
+          });
+          return combined;
+        });
+      }
     }).catch(err => console.error("Failed to fetch projects", err))
       .finally(() => setIsProjectsLoading(false));
   }, [fetchEmployees]);
@@ -2644,8 +2668,8 @@ const TaskManagement: React.FC = () => {
       currentStatus: BaseTask["status"],
       newStatus: BaseTask["status"],
     ): boolean => {
-      // 1. Admins should always have full control
-      if (normalizedUserRole === "admin") return true;
+      // 1. All roles have full control over status transitions for tasks they can see
+      return true;
 
       // Define status hierarchy
       const statusHierarchy: BaseTask["status"][] = [
@@ -3801,9 +3825,9 @@ const TaskManagement: React.FC = () => {
                                 task.assignedTo[0] || "",
                                 task.assignedToRole,
                               );
-                              // In "All Tasks" view, admin can only manage tasks they created
+                              // Management roles can manage tasks they created or all tasks if they have appropriate permissions
                               const canManageTask = Boolean(
-                                userId && (task.assignedBy === userId || normalizedUserRole === "admin"),
+                                userId && (task.assignedBy === userId || ["admin", "hr", "manager", "team_lead"].includes(normalizedUserRole)),
                               );
                               const isReceivedTask = Boolean(
                                 userId && task.assignedTo.includes(userId),
@@ -3920,6 +3944,7 @@ const TaskManagement: React.FC = () => {
                                       <SelectContent className="border-2 shadow-xl">
                                         <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
                                         <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+                                        <SelectItem value="overdue" disabled={!isStatusTransitionAllowed(task.status, "overdue")}>Overdue</SelectItem>
                                         <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
                                         <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
                                       </SelectContent>
@@ -4059,9 +4084,9 @@ const TaskManagement: React.FC = () => {
                         task.assignedTo[0] || "",
                         task.assignedToRole,
                       );
-                      // In "All Tasks" view, admin can only manage tasks they created
+                      // Management roles can manage tasks they created or all tasks if they have appropriate permissions
                       const canManageTask = Boolean(
-                        userId && (task.assignedBy === userId || normalizedUserRole === "admin"),
+                        userId && (task.assignedBy === userId || ["admin", "hr", "manager", "team_lead"].includes(normalizedUserRole)),
                       );
                       const isReceivedTask = Boolean(
                         userId && task.assignedTo.includes(userId),
@@ -4135,7 +4160,7 @@ const TaskManagement: React.FC = () => {
                                   onValueChange={(value: BaseTask["status"]) =>
                                     updateTaskStatus(task.id, value)
                                   }
-                                  disabled={updatingTaskId === task.id || (!isReceivedTask && !canManageTask)}
+                                  disabled={updatingTaskId === task.id}
                                 >
                                   <SelectTrigger
                                     className="h-8 border-2 bg-white dark:bg-gray-950 px-2 transition-all text-[11px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm w-auto min-w-[100px]"
@@ -4148,6 +4173,7 @@ const TaskManagement: React.FC = () => {
                                   <SelectContent className="border-2 shadow-xl">
                                     <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
                                     <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+                                    <SelectItem value="overdue" disabled={!isStatusTransitionAllowed(task.status, "overdue")}>Overdue</SelectItem>
                                     <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
                                     <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
                                   </SelectContent>
@@ -4547,7 +4573,7 @@ const TaskManagement: React.FC = () => {
                                       project.filteredTasks.map((task: any) => {
                                         const assignedByInfo = getAssignedByInfo(task.assignedBy, task.assignedByRole);
                                         const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || "", task.assignedToRole);
-                                        const canManageTask = Boolean(userId && (task.assignedBy === userId || normalizedUserRole === "admin"));
+                                        const canManageTask = Boolean(userId && (task.assignedBy === userId || ["admin", "hr", "manager", "team_lead"].includes(normalizedUserRole)));
                                         const isReceivedTask = Boolean(userId && task.assignedTo.includes(userId));
                                         const canPassTask = isReceivedTask && task.assignedTo[0] === userId && passEligibleEmployees.length > 0 &&
                                           task.status !== "completed" && task.status !== "cancelled" && task.status !== "overdue";
@@ -4595,7 +4621,7 @@ const TaskManagement: React.FC = () => {
                                                 onValueChange={(value: BaseTask["status"]) =>
                                                   updateTaskStatus(task.id, value)
                                                 }
-                                                disabled={updatingTaskId === task.id || (!isReceivedTask && !canManageTask)}
+                                                disabled={updatingTaskId === task.id}
                                               >
                                                 <SelectTrigger
                                                   className={`w-[160px] h-9 border-2 bg-white dark:bg-gray-950 px-3 transition-all text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm`}
@@ -4608,7 +4634,7 @@ const TaskManagement: React.FC = () => {
                                                 <SelectContent className="border-2 shadow-xl">
                                                   <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
                                                   <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
-                                                  <SelectItem value="overdue" disabled>Overdue</SelectItem>
+                                                  <SelectItem value="overdue" disabled={!isStatusTransitionAllowed(task.status, "overdue")}>Overdue</SelectItem>
                                                   <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
                                                   <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
                                                 </SelectContent>

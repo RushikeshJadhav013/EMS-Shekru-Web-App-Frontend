@@ -596,14 +596,12 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
 
             const payload = {
                 user_id: parseInt(targetUserId!),
-                ...bankForm,
-                // Ensure numeric fields are correctly formatted or null
-                working_days_per_month: bankForm.working_days_per_month === '' ? null : Number(bankForm.working_days_per_month),
-                uan_number: bankForm.uan_number || null,
                 bank_name: bankForm.bank_name || null,
                 bank_account: bankForm.bank_account || null,
                 ifsc_code: bankForm.ifsc_code || null,
-                pf_no: bankForm.pf_no || null
+                working_days_per_month: bankForm.working_days_per_month === '' ? null : Number(bankForm.working_days_per_month),
+                ...(bankForm.uan_number ? { uan_number: bankForm.uan_number } : {}),
+                ...(bankForm.pf_no ? { pf_no: bankForm.pf_no } : {})
             };
 
             const response = await apiService.updateBankDetails(targetUserId!, payload);

@@ -88,7 +88,9 @@ export function formatDistanceToNowIST(date: string | Date | number): string {
  * Older: "Jan 15"
  */
 export function formatChatTimestampIST(date: string | Date | number): string {
+  if (!date) return '';
   const istDate = toIST(date);
+  if (isNaN(istDate.getTime())) return '';
   const now = nowIST();
 
   const isToday = formatDateIST(istDate) === formatDateIST(now);

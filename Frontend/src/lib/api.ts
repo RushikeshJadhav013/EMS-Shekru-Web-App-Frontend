@@ -2196,6 +2196,7 @@ class ApiService {
           ifscCode: response.ifsc_code || "",
           panNumber: response.pan_number || "",
           uanNumber: response.uan_number || "",
+          pfNumber: response.pf_no || "",
           is_active:
             response.is_active !== undefined ? response.is_active : true,
           effectiveDate: response.created_at || "",
@@ -2557,7 +2558,7 @@ class ApiService {
   ): Promise<any> {
     return this.request(`/tasks/${taskId}/status`, {
       method: "PUT",
-      body: JSON.stringify({ task_id: Number(taskId), status }),
+      body: JSON.stringify({ status }),
     });
   }
 
@@ -2569,7 +2570,7 @@ class ApiService {
   ): Promise<any> {
     return this.request(`/tasks/${taskId}/status`, {
       method: "PUT",
-      body: JSON.stringify({ task_id: Number(taskId), status, ...additionalData }),
+      body: JSON.stringify({ status, ...additionalData }),
     });
   }
 

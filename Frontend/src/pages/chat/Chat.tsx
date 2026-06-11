@@ -70,10 +70,16 @@ const Chat: React.FC = () => {
   const chatId = React.useMemo(() => {
     const parts = location.pathname.split('/').filter(Boolean);
     const chatIndex = parts.findIndex(p => p === 'chat');
+    let derivedId = null;
     if (chatIndex !== -1 && parts.length > chatIndex + 1) {
-      return parts[chatIndex + 1];
+      derivedId = parts[chatIndex + 1];
+    } else {
+      derivedId = paramChatId || null;
     }
-    return paramChatId || null;
+
+    // Safety check: sometimes URL might contain "null" or "undefined" as strings
+    if (derivedId === 'null' || derivedId === 'undefined') return null;
+    return derivedId;
   }, [location.pathname, paramChatId]);
 
   // Sync active chat when URL changes (for deep links/refresh)
