@@ -520,6 +520,8 @@ export default function ShiftScheduleManagement() {
     if (!date) return;
     try {
       setIsLoadingAssignSchedule(true);
+      // Clear the previous schedule so we don't use stale data for the wrong date
+      setAssignSchedule(null);
       const data = await apiService.getDepartmentSchedule(date);
       setAssignSchedule(data);
     } catch (error: any) {
@@ -554,15 +556,24 @@ export default function ShiftScheduleManagement() {
 
   // Returns users available (not yet assigned) for the chosen assignment date
   const getAvailableUsers = () => {
-    // Use the assign-dialog-specific schedule if available; fall back to main view schedule
-    const src = assignSchedule || schedule;
+    const targetDate = assignFormData.assignment_date;
+
+    // Prioritize the assignment-specific schedule, but only if it matches the target date
+    let src = assignSchedule;
+    if (src && src.date !== targetDate) {
+      src = null;
+    }
+
+    // In the dialog, we really only want the date-specific data
     if (!src) return [];
+
     const assignedUserIds = new Set(
       src.shifts.flatMap(s => s.assignments.map(a => a.user_id))
     );
-    // All department users = assigned + unassigned (unassigned_users are already those without a shift)
+    // All department users = assigned + unassigned + on_leave
     const allUsers = [
       ...src.unassigned_users,
+      ...src.users_on_leave,
       ...src.shifts.flatMap(s => s.assignments.map(a => a.user).filter((u): u is User => !!u)),
     ];
     // Deduplicate

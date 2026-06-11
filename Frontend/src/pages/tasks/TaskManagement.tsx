@@ -83,7 +83,6 @@ import {
   ChevronUp,
   ClipboardList,
   LayoutGrid,
-  Bell,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -283,7 +282,7 @@ const mapBackendTaskToFrontend = (task: BackendTask): TaskWithPassMeta => {
     assignedByRole: task.assigned_by_role
       ? normalizeRole(task.assigned_by_role)
       : undefined,
-    projectId: task.project_id ?? null,
+    projectId: task.project_id ?? (task as any).projectId ?? (task as any).project?.project_id ?? (task as any).project?._id ?? null,
   };
 };
 
@@ -438,7 +437,7 @@ const TaskManagement: React.FC = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
   const location = useLocation();
-  const { notifications, addNotification, markAsRead, clearNotification } = useNotifications();
+  const { addNotification } = useNotifications();
   const [tasks, setTasks] = useState<TaskWithPassMeta[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [isOverdueFilterActive, setIsOverdueFilterActive] = useState(false);
@@ -455,7 +454,7 @@ const TaskManagement: React.FC = () => {
   >("received");
   const [selectedDepartmentFilter, setSelectedDepartmentFilter] =
     useState<string>("all");
-  const [activeViewTab, setActiveViewTab] = useState<"all" | "project" | "notifications">("all");
+  const [activeViewTab, setActiveViewTab] = useState<"all" | "project">("all");
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
@@ -543,6 +542,7 @@ const TaskManagement: React.FC = () => {
     priority: "medium" as BaseTask["priority"],
     projectId: "",
   });
+
   const [isReassigning, setIsReassigning] = useState(false);
 
   // Task Comments State
@@ -602,15 +602,7 @@ const TaskManagement: React.FC = () => {
     return String(user.id);
   }, [user?.id]);
 
-  const taskNotifications = useMemo(() => {
-    return notifications
-      .filter((n) => n.type === "task")
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [notifications]);
 
-  const taskUnreadNotifications = useMemo(() => {
-    return taskNotifications.filter(n => !n.read);
-  }, [taskNotifications]);
 
   const normalizedUserRole = useMemo(
     () => normalizeRole(user?.role),
@@ -618,7 +610,7 @@ const TaskManagement: React.FC = () => {
   );
 
   const canSeeAdminFilters = useMemo(() => {
-    return ["admin", "hr", "manager"].includes(normalizedUserRole || "");
+    return ["admin", "hr", "manager", "team_lead"].includes(normalizedUserRole || "");
   }, [normalizedUserRole]);
 
   const [authToken, setAuthToken] = useState<string>(() => {
@@ -960,15 +952,27 @@ const TaskManagement: React.FC = () => {
   useEffect(() => {
     fetchEmployees();
     setIsProjectsLoading(true);
-    apiService.getProjects().then(data => {
+    apiService.getProjects().then(async data => {
       const projectList = Array.isArray(data) ? data : (data as any)?.projects || (data as any)?.data || [];
-      const normalizedProjects = projectList.map((p: any) => ({
-        ...p,
-        project_id: p.project_id || p.id,
-        name: p.name || "Untitled Project",
-        task_count: p.task_count || 0,
-        tasks: [],
-        isExpanded: false,
+      const normalizedProjects = await Promise.all(projectList.map(async (p: any) => {
+        let members = p.members || [];
+        const pid = p.project_id || p.id;
+        if (!members.length && pid) {
+          try {
+            members = await apiService.getProjectMembers(pid);
+          } catch (e) {
+            console.error(`Failed to fetch members for project ${pid}`, e);
+          }
+        }
+        return {
+          ...p,
+          project_id: pid,
+          name: p.name || "Untitled Project",
+          task_count: p.task_count || 0,
+          members: Array.isArray(members) ? members : [],
+          tasks: [],
+          isExpanded: false,
+        };
       }));
       setProjects(normalizedProjects);
     }).catch(err => console.error("Failed to fetch projects", err))
@@ -1418,6 +1422,14 @@ const TaskManagement: React.FC = () => {
       return true;
     }
 
+    // Project-based visibility: If user is a member of the project, they should see the task
+    if (task.projectId && projects.length > 0) {
+      const project = projects.find(p => String(p.project_id || p.id) === String(task.projectId));
+      if (project && project.members?.some((m: any) => String(m.user_id || m.userId || m.id) === String(userId))) {
+        return true;
+      }
+    }
+
     // Role-based organizational access
     if (normalizedUserRole === "manager" && user.department) {
       const userDepts = user.department.split(",").map(d => d.trim().toLowerCase());
@@ -1434,7 +1446,7 @@ const TaskManagement: React.FC = () => {
     }
 
     if (normalizedUserRole === "team_lead" && user.department) {
-      // Team leads see tasks within their department (same logic as manager for now, or could be stricter)
+      // Team leads see tasks within their department
       const userDepts = user.department.split(",").map(d => d.trim().toLowerCase());
       const creator = employees.find(emp => String(emp.userId) === String(task.assignedBy));
       const assignees = task.assignedTo.map(id => employees.find(emp => String(emp.userId) === String(id)));
@@ -1448,13 +1460,11 @@ const TaskManagement: React.FC = () => {
     }
 
     if (normalizedUserRole === "hr") {
-      // HR sees all tasks (like admin) or potentially just recruitment tasks? 
-      // Most implementations allow HR broad view.
       return true;
     }
 
     return false;
-  }, [userId, user, normalizedUserRole, employees]);
+  }, [userId, user, normalizedUserRole, employees, projects]);
 
   // 1. Base Visibility & Search Filter (Status-independent)
   const baseVisibleTasks = useMemo(() => {
@@ -1468,7 +1478,6 @@ const TaskManagement: React.FC = () => {
   }, [searchQuery, tasks, isTaskVisible]);
 
   // 2. Ownership & Department Scoped Filter (Status-independent)
-  // 2. Ownership & Department Scoped Filter (Intermediate list for stats)
   const scopedTasks = useMemo(() => {
     let base = [...baseVisibleTasks];
 
@@ -1555,9 +1564,7 @@ const TaskManagement: React.FC = () => {
       }
 
       // Within same status, sort by deadline
-      const aDeadline = a.deadline ? new Date(a.deadline).getTime() : Number.MAX_SAFE_INTEGER;
-      const bDeadline = b.deadline ? new Date(b.deadline).getTime() : Number.MAX_SAFE_INTEGER;
-      return aDeadline - bDeadline;
+      return Number(b.id) - Number(a.id);
     });
   }, [scopedTasks, filterStatus, isOverdueFilterActive]);
 
@@ -1607,13 +1614,12 @@ const TaskManagement: React.FC = () => {
           (p.description || "").toLowerCase().includes(query);
 
         // Filter tasks within this project based on current filters AND visibility
-        // Instead of p.tasks (which might be empty on load), we pull from the authoritative tasks list
         const projectTasksFromMain = tasks.filter(t => t.projectId && String(t.projectId) === String(p.project_id || p.id));
         const filteredProjectTasks = projectTasksFromMain.filter((task: any) => {
           // 1. Visibility Check
           if (!isTaskVisible(task)) return false;
 
-          // 2. Ownership Filter
+          // 2. Ownership Filter - For project view, we might want to be more inclusive if "all" is selected
           if (taskOwnershipFilter === "created") {
             if (String(task.assignedBy) !== String(userId)) return false;
           } else if (taskOwnershipFilter === "received") {
@@ -1670,7 +1676,6 @@ const TaskManagement: React.FC = () => {
     };
   }, [filteredProjects]);
 
-
   const selectedTaskHistory = useMemo(() => {
     if (!selectedTask) return [];
     return taskHistory[selectedTask.id] ?? [];
@@ -1699,10 +1704,42 @@ const TaskManagement: React.FC = () => {
   );
 
   // Create new task
+  const canAssignToEdit = useMemo(() => {
+    let base = assignableEmployees;
+    if (editTaskForm.projectId) {
+      const selectedProject = projects.find(p => String(p.project_id || p.id) === String(editTaskForm.projectId));
+      if (selectedProject?.members) {
+        const memberIds = selectedProject.members.map((m: any) => String(m.user_id || m.userId || m.id || ''));
+        base = base.filter(emp => memberIds.includes(String(emp.userId)));
+      }
+    }
+    return base;
+  }, [assignableEmployees, editTaskForm.projectId, projects]);
+
+  const canAssignToReassign = useMemo(() => {
+    let base = assignableEmployees;
+    if (reassignForm.projectId) {
+      const selectedProject = projects.find(p => String(p.project_id || p.id) === String(reassignForm.projectId));
+      if (selectedProject?.members) {
+        const memberIds = selectedProject.members.map((m: any) => String(m.user_id || m.userId || m.id || ''));
+        base = base.filter(emp => memberIds.includes(String(emp.userId)));
+      }
+    }
+    return base;
+  }, [assignableEmployees, reassignForm.projectId, projects]);
+
   const canAssignToSelection = useMemo(() => {
     if (!user || !userId) return [];
-    return assignableEmployees;
-  }, [assignableEmployees, user, userId]);
+    let base = assignableEmployees;
+    if (newTask.projectId) {
+      const selectedProject = projects.find(p => String(p.project_id || p.id) === String(newTask.projectId));
+      if (selectedProject?.members) {
+        const memberIds = selectedProject.members.map((m: any) => String(m.user_id || m.userId || m.id || ''));
+        base = base.filter(emp => memberIds.includes(String(emp.userId)));
+      }
+    }
+    return base;
+  }, [assignableEmployees, user, userId, newTask.projectId, projects]);
 
   const departmentOptions = useMemo(() => {
     const sanitized = assignableDepartments.filter(
@@ -3318,6 +3355,7 @@ const TaskManagement: React.FC = () => {
                         {/* Current User (Self) */}
                         {userId &&
                           user &&
+                          canAssignToSelection.some((e) => e.userId === userId) &&
                           (!assigneeSearchQuery ||
                             user.name
                               .toLowerCase()
@@ -3472,9 +3510,9 @@ const TaskManagement: React.FC = () => {
         </div>
       </div>
 
-      <Tabs value={activeViewTab} onValueChange={(value) => setActiveViewTab(value as "all" | "project" | "notifications")} className="w-full">
+      <Tabs value={activeViewTab} onValueChange={(value) => setActiveViewTab(value as "all" | "project")} className="w-full">
         <TabsList
-          className="grid w-full grid-cols-3 h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm"
+          className="grid w-full grid-cols-2 h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm"
         >
           <TabsTrigger
             value="all"
@@ -3488,133 +3526,10 @@ const TaskManagement: React.FC = () => {
           >
             Project Tasks
           </TabsTrigger>
-          <TabsTrigger
-            value="notifications"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold text-black dark:text-white data-[state=inactive]:font-bold text-[14px] transition-all duration-300 rounded-md gap-2"
-          >
-            Notifications
-            {taskUnreadNotifications.length > 0 && (
-              <Badge className="bg-red-500 text-white border-0 h-5 px-1.5 min-w-[20px] justify-center text-[10px] animate-pulse">
-                {taskUnreadNotifications.length}
-              </Badge>
-            )}
-          </TabsTrigger>
+
         </TabsList>
 
-        <TabsContent value="notifications" className="space-y-6 mt-6">
-          <Card className="border-2 border-[#000000] shadow-lg rounded-xl overflow-hidden min-h-[400px]">
-            <CardHeader className="border-b-2 border-[#000000] bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg">
-                    <Bell className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl font-black text-black dark:text-white uppercase tracking-wider">
-                      Task Notifications
-                    </CardTitle>
-                    <CardDescription className="text-xs font-bold text-slate-500">
-                      Recent activity and alerts for your tasks
-                    </CardDescription>
-                  </div>
-                </div>
-                {taskUnreadNotifications.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => taskUnreadNotifications.forEach(n => markAsRead(n.id))}
-                    className="h-8 border-2 border-black/10 dark:border-white/10 font-bold text-xs hover:bg-white dark:hover:bg-slate-900"
-                  >
-                    Mark all as read
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {taskNotifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                  <div className="h-20 w-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
-                    <Bell className="h-10 w-10 text-slate-300" />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                    No notifications yet
-                  </h3>
-                  <p className="text-sm text-slate-500 max-w-[250px] mx-auto mt-2">
-                    When you are assigned tasks or when task status changes, you'll see them here.
-                  </p>
-                </div>
-              ) : (
-                <div className="divide-y-2 divide-black/5 dark:divide-white/5">
-                  {taskNotifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      onClick={() => {
-                        if (notification.metadata?.taskId) {
-                          const task = tasks.find(t => t.id === notification.metadata?.taskId);
-                          if (task) {
-                            setSelectedTask(task);
-                          }
-                        }
-                        if (!notification.read) markAsRead(notification.id);
-                      }}
-                      className={cn(
-                        "p-4 flex items-start gap-4 cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-900/50 relative",
-                        !notification.read && "bg-blue-50/30 dark:bg-blue-900/10"
-                      )}
-                    >
-                      {!notification.read && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600" />
-                      )}
-                      <div className={cn(
-                        "h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm",
-                        notification.read ? "bg-slate-100 dark:bg-slate-800" : "bg-blue-100 dark:bg-blue-900/30"
-                      )}>
-                        <FileText className={cn("h-5 w-5", notification.read ? "text-slate-400" : "text-blue-600")} />
-                      </div>
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <h4 className={cn(
-                            "text-sm font-bold truncate",
-                            notification.read ? "text-slate-700 dark:text-slate-300" : "text-black dark:text-white"
-                          )}>
-                            {notification.title}
-                          </h4>
-                          <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">
-                            {formatDateTimeIST(notification.createdAt, "MMM dd, HH:mm")}
-                          </span>
-                        </div>
-                        <p className="text-[13px] text-slate-500 line-clamp-2 leading-snug">
-                          {notification.message}
-                        </p>
-                        <div className="flex items-center gap-3 pt-1">
-                          {notification.read ? (
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Read</span>
-                          ) : (
-                            <Badge className="bg-blue-600 text-white border-0 h-4 px-1.5 text-[9px] font-black uppercase tracking-widest">New</Badge>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-5 px-0 text-[10px] font-black text-blue-600 hover:bg-transparent underline underline-offset-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (notification.metadata?.taskId) {
-                                const task = tasks.find(t => t.id === notification.metadata?.taskId);
-                                if (task) setSelectedTask(task);
-                              }
-                            }}
-                          >
-                            View Task
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+
 
         <TabsContent value="all" className="space-y-6 mt-6">
           {/* Stats Cards - Clickable Filters */}
@@ -4693,6 +4608,7 @@ const TaskManagement: React.FC = () => {
                                                 <SelectContent className="border-2 shadow-xl">
                                                   <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
                                                   <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+                                                  <SelectItem value="overdue" disabled>Overdue</SelectItem>
                                                   <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
                                                   <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
                                                 </SelectContent>
@@ -4985,12 +4901,12 @@ const TaskManagement: React.FC = () => {
                     <SelectValue placeholder="Select assignee" />
                   </SelectTrigger>
                   <SelectContent className="border-2 shadow-xl">
-                    {userId && user && (
+                    {userId && user && canAssignToEdit.some(e => e.userId === userId) && (
                       <SelectItem value={userId} className="cursor-pointer">
                         {user.name} (Self)
                       </SelectItem>
                     )}
-                    {assignableEmployees
+                    {canAssignToEdit
                       .filter((emp) => emp.userId !== userId)
                       .map((emp) => (
                         <SelectItem
@@ -5228,7 +5144,7 @@ const TaskManagement: React.FC = () => {
                       <SelectValue placeholder="Select assignee" />
                     </SelectTrigger>
                     <SelectContent>
-                      {assignableEmployees.map((employee) => (
+                      {canAssignToReassign.map((employee) => (
                         <SelectItem
                           key={employee.userId}
                           value={employee.userId}

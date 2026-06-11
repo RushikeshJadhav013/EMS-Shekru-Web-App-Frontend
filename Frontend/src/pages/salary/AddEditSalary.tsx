@@ -82,16 +82,18 @@ const salarySchema = z.object({
     message: "Variable pay cannot exceed 50% of CTC",
     path: ["variablePayValue"],
 }).refine((data) => {
-    // Require PF and UAN if PF is deducted (in Guided Mode or if pfAnnual is set in Manual)
-    const isPfDeducted = data.pfType !== 'none' || (data.pfAnnual && data.pfAnnual > 0);
-    if (isPfDeducted && !data.pfNo) return false;
+    // Require PF Number only when admin has explicitly enabled PF deduction (pfType is not 'none')
+    // Do NOT rely on pfAnnual > 0 since it is auto-populated by the preview calculation
+    const isPfExplicitlyEnabled = data.pfType !== 'none';
+    if (isPfExplicitlyEnabled && !data.pfNo) return false;
     return true;
 }, {
     message: "PF Number is required when PF is deducted",
     path: ["pfNo"],
 }).refine((data) => {
-    const isPfDeducted = data.pfType !== 'none' || (data.pfAnnual && data.pfAnnual > 0);
-    if (isPfDeducted && !data.uanNumber) return false;
+    // Require UAN Number only when admin has explicitly enabled PF deduction (pfType is not 'none')
+    const isPfExplicitlyEnabled = data.pfType !== 'none';
+    if (isPfExplicitlyEnabled && !data.uanNumber) return false;
     return true;
 }, {
     message: "UAN Number is required when PF is deducted",

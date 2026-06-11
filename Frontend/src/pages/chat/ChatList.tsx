@@ -333,7 +333,7 @@ const ChatList: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <p className={cn("truncate text-xs font-medium max-w-[200px] lg:max-w-[280px]", themeClasses.textSecondary)}>
                       {chat.type === 'group'
-                        ? (chat.participants?.map((p: any) => p.userName || 'Member').filter((n: string) => n !== 'string').slice(0, 3).join(', ') + (chat.participants?.length > 3 ? ` +${chat.participants.length - 3}` : ''))
+                        ? ((chat.participants || []).map((p: any) => p.userName || 'Member').filter((n: string) => n !== 'string').slice(0, 3).join(', ') + (chat.participants?.length > 3 ? ` +${chat.participants.length - 3}` : ''))
                         : getLastMessagePreview(chat)}
                     </p>
                     {chat.unreadCount > 0 && (

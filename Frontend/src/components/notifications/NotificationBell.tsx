@@ -62,16 +62,10 @@ export const NotificationBell: React.FC = () => {
     return null;
   }
 
-  // Show ALL notifications - sorted by created_at (latest first)
-  // Also prioritize unread notifications at the top
-  const allNotifications = [...notifications].sort((a, b) => {
-    // First sort by read status (unread first)
-    if (a.read !== b.read) {
-      return a.read ? 1 : -1;
-    }
-    // Then sort by date (newest first)
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
+  // Show ONLY unread notifications - sorted by date (newest first)
+  const allNotifications = notifications
+    .filter(n => !n.read)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   // Group notifications by type (maintaining sort order)
   const leaveNotifications = allNotifications.filter(n => n.type === 'leave');
@@ -230,17 +224,34 @@ export const NotificationBell: React.FC = () => {
                 })()}
               </p>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900 transition-all rounded-md flex-shrink-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                clearNotification(notification.id);
-              }}
-            >
-              <X className="h-3 w-3" />
-            </Button>
+            <div className="flex items-center gap-1">
+              {!notification.read && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 hover:bg-green-100 hover:text-green-600 dark:hover:bg-green-900 transition-all rounded-md flex-shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    markAsRead(notification.id);
+                  }}
+                  title="Mark as read"
+                >
+                  <Check className="h-3 w-3" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900 transition-all rounded-md flex-shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  clearNotification(notification.id);
+                }}
+                title="Remove notification"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>

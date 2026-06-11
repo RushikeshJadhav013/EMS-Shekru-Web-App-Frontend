@@ -2561,6 +2561,18 @@ class ApiService {
     });
   }
 
+  async updateProjectTaskStatus(
+    projectId: number,
+    taskId: number | string,
+    status: string,
+    additionalData?: any
+  ): Promise<any> {
+    return this.request(`/tasks/${taskId}/status`, {
+      method: "PUT",
+      body: JSON.stringify({ task_id: Number(taskId), status, ...additionalData }),
+    });
+  }
+
   async updateTask(taskId: number | string, taskData: any): Promise<any> {
     return this.request(`/tasks/${taskId}`, {
       method: "PUT",

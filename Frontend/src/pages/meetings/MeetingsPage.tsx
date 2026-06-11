@@ -303,7 +303,9 @@ const MeetingsPage: React.FC = () => {
         if (!m || !m.title) return false;
         const matchesSearch =
             m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (m.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+            (m.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+            (m.team_name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+            (m.project_name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
 
         let matchesDate = true;
         if (dateFilter && m.start_time) {
@@ -471,8 +473,15 @@ const MeetingsPage: React.FC = () => {
         if (formData.type === 'team' && formData.team_id) {
             const teamMembers = employees.filter(emp => {
                 const dept = departments.find((d: any) => d.id === formData.team_id);
-                const deptName = dept?.name || '';
-                return Number(emp.department_id) === formData.team_id || emp.branch === deptName || emp.department === deptName;
+                const targetDeptName = (dept?.name || "").toLowerCase().trim();
+
+                const empDeptId = Number(emp.department_id || emp.departmentId || emp.branch_id || emp.branchId);
+                if (empDeptId === formData.team_id) return true;
+
+                const empDeptStr = (emp.department || emp.department_name || emp.branch || emp.branches || "").toLowerCase();
+                const empDepts = empDeptStr.split(',').map(d => d.trim()).filter(Boolean);
+
+                return targetDeptName && empDepts.some(ed => ed.includes(targetDeptName) || targetDeptName.includes(ed));
             }).map(emp => Number(emp.user_id || emp.id)).filter(id => !isNaN(id));
             setFormData(prev => ({ ...prev, participant_ids: teamMembers }));
         } else if (formData.type === 'project' && formData.project_id) {
@@ -543,7 +552,7 @@ const MeetingsPage: React.FC = () => {
                                                 const userDepts = (user.department || "").split(',').map(d => d.trim().toLowerCase());
                                                 const myDept = departments.find(d => {
                                                     const deptName = (d.name || "").toLowerCase().trim();
-                                                    return userDepts.includes(deptName) ||
+                                                    return userDepts.some(ud => ud && (deptName.includes(ud) || ud.includes(deptName))) ||
                                                         ((user as any).department_id && d.id === Number((user as any).department_id));
                                                 });
 
@@ -657,14 +666,14 @@ const MeetingsPage: React.FC = () => {
                                             const dept = departments.find((d: any) => d.id === formData.team_id);
                                             const targetDeptName = (dept?.name || "").toLowerCase().trim();
 
-                                            const empDeptId = Number(emp.department_id || emp.departmentId);
+                                            const empDeptId = Number(emp.department_id || emp.departmentId || emp.branch_id || emp.branchId);
                                             if (empDeptId === formData.team_id) return true;
 
-                                            const empDeptStr = (emp.department || emp.department_name || emp.branch || "").toLowerCase();
+                                            const empDeptStr = (emp.department || emp.department_name || emp.branch || emp.branches || "").toLowerCase();
                                             // Support comma-separated departments (e.g., "Engineering, HR")
                                             const empDepts = empDeptStr.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
 
-                                            return targetDeptName && empDepts.includes(targetDeptName);
+                                            return targetDeptName && empDepts.some(ed => ed.includes(targetDeptName) || targetDeptName.includes(ed));
                                         }
                                         // Show all employees for other meeting types (Project, 1:1, etc.)
                                         // But exclude the current user as they are the meeting creator.
