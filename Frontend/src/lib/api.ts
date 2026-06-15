@@ -2174,10 +2174,10 @@ class ApiService {
               ? response.professional_tax_annual / 12
               : response.professional_tax || 0,
           pfEmployer: response.pf_annual
-            ? response.pf_annual / 2 / 12
+            ? response.pf_annual / 12
             : response.pf_employer || 0,
           pfEmployee: response.pf_annual
-            ? response.pf_annual / 2 / 12
+            ? response.pf_annual / 12
             : response.pf_employee || 0,
           otherDeduction: response.other_deduction_annual
             ? response.other_deduction_annual / 12
@@ -2458,9 +2458,18 @@ class ApiService {
   }
 
   async updateProject(projectId: number, projectData: any): Promise<any> {
+    const branchId = localStorage.getItem("branchId");
+    const companyId = localStorage.getItem("companyId");
+    const companySlug = localStorage.getItem("company_slug");
     return this.request(`/projects/${projectId}`, {
       method: "PUT",
-      body: JSON.stringify({ project_id: projectId, ...projectData }),
+      body: JSON.stringify({
+        project_id: projectId,
+        "X-Branch-Id": branchId,
+        "X-Company-Id": companyId,
+        company_slug: companySlug || undefined,
+        ...projectData
+      }),
     });
   }
 
@@ -2468,9 +2477,18 @@ class ApiService {
     projectId: number,
     isActive: boolean,
   ): Promise<any> {
+    const branchId = localStorage.getItem("branchId");
+    const companyId = localStorage.getItem("companyId");
+    const companySlug = localStorage.getItem("company_slug");
     return this.request(`/projects/${projectId}/status`, {
       method: "PUT",
-      body: JSON.stringify({ project_id: projectId, is_active: isActive }),
+      body: JSON.stringify({
+        project_id: projectId,
+        is_active: isActive,
+        "X-Branch-Id": branchId,
+        "X-Company-Id": companyId,
+        company_slug: companySlug || undefined
+      }),
     });
   }
 
@@ -2479,9 +2497,18 @@ class ApiService {
     projectId: number,
     status: string,
   ): Promise<any> {
+    const branchId = localStorage.getItem("branchId");
+    const companyId = localStorage.getItem("companyId");
+    const companySlug = localStorage.getItem("company_slug");
     return this.request(`/projects/${projectId}/status`, {
       method: "PATCH",
-      body: JSON.stringify({ project_id: projectId, status }),
+      body: JSON.stringify({
+        project_id: projectId,
+        status,
+        "X-Branch-Id": branchId,
+        "X-Company-Id": companyId,
+        company_slug: companySlug || undefined
+      }),
     });
   }
 
@@ -2554,11 +2581,44 @@ class ApiService {
 
   async updateTaskStatus(
     taskId: number | string,
-    status: string
+    status: string,
+    extraFields?: {
+      title?: string;
+      assigned_to?: string | number;
+      priority?: string;
+      description?: string;
+    }
   ): Promise<any> {
-    return this.request(`/tasks/${taskId}/status`, {
+    const branchId = localStorage.getItem("branchId");
+    const companyId = localStorage.getItem("companyId");
+    const companySlug = localStorage.getItem("company_slug");
+
+    const params = new URLSearchParams();
+    params.append("status", status);
+    if (companySlug) params.append("company_slug", companySlug);
+
+    const body: Record<string, any> = {
+      task_id: Number(taskId),
+      status: status, // Keep it in body too as fallback
+      "X-Branch-Id": branchId,
+      "X-Company-Id": companyId,
+      company_slug: companySlug || undefined
+    };
+
+    if (extraFields) {
+      if (extraFields.title) body.title = extraFields.title;
+      if (extraFields.priority) body.priority = extraFields.priority;
+      if (extraFields.description !== undefined) body.description = extraFields.description;
+      if (extraFields.assigned_to !== undefined) {
+        body.assigned_to = extraFields.assigned_to === null || extraFields.assigned_to === ""
+          ? null
+          : Number(extraFields.assigned_to);
+      }
+    }
+
+    return this.request(`/tasks/${taskId}/status?${params.toString()}`, {
       method: "PUT",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(body),
     });
   }
 
@@ -2568,16 +2628,40 @@ class ApiService {
     status: string,
     additionalData?: any
   ): Promise<any> {
-    return this.request(`/tasks/${taskId}/status`, {
+    const branchId = localStorage.getItem("branchId");
+    const companyId = localStorage.getItem("companyId");
+    const companySlug = localStorage.getItem("company_slug");
+
+    const params = new URLSearchParams();
+    params.append("status", status);
+    if (companySlug) params.append("company_slug", companySlug);
+
+    return this.request(`/tasks/${taskId}/status?${params.toString()}`, {
       method: "PUT",
-      body: JSON.stringify({ status, ...additionalData }),
+      body: JSON.stringify({
+        status,
+        task_id: Number(taskId),
+        "X-Branch-Id": branchId,
+        "X-Company-Id": companyId,
+        company_slug: companySlug || undefined,
+        ...additionalData
+      }),
     });
   }
 
   async updateTask(taskId: number | string, taskData: any): Promise<any> {
+    const branchId = localStorage.getItem("branchId");
+    const companyId = localStorage.getItem("companyId");
+    const companySlug = localStorage.getItem("company_slug");
     return this.request(`/tasks/${taskId}`, {
       method: "PUT",
-      body: JSON.stringify(taskData),
+      body: JSON.stringify({
+        task_id: Number(taskId),
+        "X-Branch-Id": branchId,
+        "X-Company-Id": companyId,
+        company_slug: companySlug || undefined,
+        ...taskData
+      }),
     });
   }
 

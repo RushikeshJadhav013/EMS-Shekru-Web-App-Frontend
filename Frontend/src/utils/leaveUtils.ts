@@ -41,11 +41,10 @@ export const isLeaveTypeDisabled = (
     case 'annual':
       return leaveBalance.annual.remaining <= 0;
     case 'sick':
-      return leaveBalance.sick.remaining <= 0;
+    case 'unpaid':
+      return false; // Sick and Unpaid leaves are always available as per user request
     case 'casual':
       return leaveBalance.casual.remaining <= 0;
-    case 'unpaid':
-      return false; // Unpaid leave is always available
     default:
       return false;
   }
@@ -95,7 +94,12 @@ export const validateLeaveRequest = (
   leaveBalance: LeaveBalance,
   reason: string
 ): { valid: boolean; error?: string } => {
-  // Check reason length
+  // Unpaid and Sick leaves can be applicable any time and without restrictions as per user request
+  if (['sick', 'unpaid'].includes(leaveType)) {
+    return { valid: true };
+  }
+
+  // Check reason length for other leaves
   if (!reason.trim() || reason.trim().length < 10) {
     return { valid: false, error: 'Leave reason must be at least 10 characters long' };
   }
@@ -121,37 +125,18 @@ export const validateLeaveRequest = (
         error: 'Casual, Maternity, and Paternity leaves must be applied at least 24 hours before the office day starts.',
       };
     }
-  } else if (leaveType === 'sick') {
-    if (hoursNotice < 2 || hoursNotice > 24) {
-      return {
-        valid: false,
-        error: 'Sick leave must be applied between 2 to 24 hours before the office day starts.',
-      };
-    }
-  } else if (leaveType === 'unpaid') {
-    // Unpaid leaves can be applicable any time as per user request
-    return { valid: true };
   }
 
   // Check balance for specific leave types
-  if (leaveType === 'sick') {
-    if (leaveDays > leaveBalance.sick.remaining) {
-      return {
-        valid: false,
-        error: `You need ${leaveDays} days but only have ${leaveBalance.sick.remaining} days remaining in your Sick Leave balance.`,
-      };
-    }
-  } else if (leaveType === 'casual') {
+  if (leaveType === 'casual') {
     if (leaveDays > leaveBalance.casual.remaining) {
       return {
         valid: false,
         error: `You need ${leaveDays} days but only have ${leaveBalance.casual.remaining} days remaining in your Casual Leave balance.`,
       };
     }
-  } else if (leaveType !== 'unpaid') {
+  } else if (!['unpaid', 'sick'].includes(leaveType)) {
     // For other types like Annual (if applicable) or fallbacks, check annual balance
-    // Note: In this system, 'annual' is the aggregate of sick + casual, but if a distinct 'annual' type exists, check it here.
-    // If 'annual' type is used as a generic bucket, checking annual.remaining is safe.
     if (leaveDays > leaveBalance.annual.remaining) {
       return {
         valid: false,

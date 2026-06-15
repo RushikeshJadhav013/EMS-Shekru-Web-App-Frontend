@@ -2078,15 +2078,19 @@ export default function LeaveManagement() {
                   <div className="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
                     <p className="text-[14px] text-black dark:text-white flex items-center gap-2 mb-2" style={{}}>
                       <AlertCircle className="h-4 w-4" />
-                      <strong style={{ color: '#92400E' }}>Leave Restrictions:</strong>
+                      <strong style={{ color: '#92400E' }}>Leave Instructions:</strong>
                     </p>
                     <div className="text-[14px] text-black dark:text-white space-y-2 pl-1 font-medium" style={{}}>
-                      {/* Sick Leave Warning Removed */}
                       <div className="flex items-start gap-2">
                         <div className="h-1 w-1 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
                         <p>
-                          <strong>Other Leaves:</strong> must be applied at
-                          least 24 hours in advance.
+                          <strong>Sick & Unpaid Leaves:</strong> can be applied at any time.
+                        </p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="h-1 w-1 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
+                        <p>
+                          <strong>Other Leaves:</strong> must be applied at least 24 hours in advance.
                         </p>
                       </div>
                     </div>
@@ -2116,10 +2120,7 @@ export default function LeaveManagement() {
                           value="sick"
                           disabled={isLeaveTypeDisabled("sick", leaveBalance)}
                         >
-                          Sick Leave{" "}
-                          {leaveBalance.sick.remaining <= 0
-                            ? "(No balance)"
-                            : `(${leaveBalance.sick.remaining} days)`}
+                          Sick Leave
                         </SelectItem>
                         <SelectItem
                           value="casual"
@@ -2193,22 +2194,8 @@ export default function LeaveManagement() {
                     message: string;
                   }[] = [];
 
-                  // Check advance notice requirements
-                  if (formData.type === "sick") {
-                    // For non-admin roles, skip the minimum 3 days requirement check entirely
-                    const officeStartTime = new Date(formData.startDate);
-                    officeStartTime.setHours(9, 30, 0, 0);
-                    const diffToOfficeHours =
-                      (officeStartTime.getTime() - now.getTime()) /
-                      (1000 * 60 * 60);
-
-                    // Admin: enforce 3-day minimum; HR/Manager/TeamLead/Employee: skip this check
-                    // Sick leave warning removed
-                    if (user?.role === "admin" && leaveDays < 3) {
-                      // Logic kept for admin but warning removed for others
-                    }
-                  } else {
-                    // Other leaves require 24 hours advance notice
+                  // Check advance notice requirements for other leaves
+                  if (!['sick', 'unpaid'].includes(formData.type)) {
                     if (hoursDifference < 24 && hoursDifference >= 0) {
                       const hoursRemaining = Math.ceil(24 - hoursDifference);
                       validationMessages.push({
@@ -2220,15 +2207,10 @@ export default function LeaveManagement() {
 
                   // Show success message when valid
                   if (validationMessages.length === 0 && leaveDays > 0) {
-                    if (formData.type === "sick") {
-                      const officeStartTime = new Date(formData.startDate);
-                      officeStartTime.setHours(9, 30, 0, 0);
-                      const diffToOfficeHours =
-                        (officeStartTime.getTime() - now.getTime()) /
-                        (1000 * 60 * 60);
+                    if (['sick', 'unpaid'].includes(formData.type)) {
                       validationMessages.push({
                         type: "success",
-                        message: `Valid sick leave request for ${leaveDays} day${leaveDays === 1 ? "" : "s"}. Applied ${diffToOfficeHours.toFixed(1)} hours before office hours.`,
+                        message: `Valid ${formData.type} leave request for ${leaveDays} day${leaveDays === 1 ? "" : "s"}.`,
                       });
                     } else if (hoursDifference >= 24) {
                       validationMessages.push({
@@ -2286,25 +2268,32 @@ export default function LeaveManagement() {
                     style={{}}
                   />
                   <div className="flex justify-between text-sm">
-                    <span
-                      className={`text-[12px] font-bold ${formData.reason.trim().length < 10 ? "text-[#EF4444]" : "text-[#16A34A]"}`}
-                      style={{}}
-                    >
-                      {formData.reason.trim().length < 10
-                        ? `${formData.reason.trim().length}/10 characters (minimum required)`
-                        : `${formData.reason.trim().length}/200 characters`}
-                    </span>
-                    {formData.reason.trim().length < 10 &&
-                      formData.reason.trim().length > 0 && (
-                        <span className="text-red-500 text-xs">
-                          Minimum 10 characters required
+                    {!['sick', 'unpaid'].includes(formData.type) ? (
+                      <>
+                        <span
+                          className={`text-[12px] font-bold ${formData.reason.trim().length < 10 ? "text-[#EF4444]" : "text-[#16A34A]"}`}
+                        >
+                          {formData.reason.trim().length < 10
+                            ? `${formData.reason.trim().length}/10 characters (minimum required)`
+                            : `${formData.reason.trim().length}/200 characters`}
                         </span>
-                      )}
+                        {formData.reason.trim().length < 10 &&
+                          formData.reason.trim().length > 0 && (
+                            <span className="text-red-500 text-xs">
+                              Minimum 10 characters required
+                            </span>
+                          )}
+                      </>
+                    ) : (
+                      <span className="text-[12px] font-bold text-[#16A34A]">
+                        {formData.reason.trim().length}/200 characters
+                      </span>
+                    )}
                   </div>
                 </div>
                 <Button
                   onClick={handleSubmitRequest}
-                  disabled={isSubmitting || formData.reason.trim().length < 10}
+                  disabled={isSubmitting || (!['sick', 'unpaid'].includes(formData.type) && formData.reason.trim().length < 10)}
                   className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md disabled:opacity-50 text-[14px]"
                   style={{}}
                 >
@@ -3749,19 +3738,27 @@ export default function LeaveManagement() {
                 }
               />
               <div className="flex justify-between text-sm mt-1">
-                <span
-                  className={`${editFormData.reason.trim().length < 10 ? "text-red-500" : "text-green-600"}`}
-                >
-                  {editFormData.reason.trim().length < 10
-                    ? `${editFormData.reason.trim().length}/10 characters (minimum required)`
-                    : `${editFormData.reason.trim().length}/200 characters`}
-                </span>
-                {editFormData.reason.trim().length < 10 &&
-                  editFormData.reason.trim().length > 0 && (
-                    <span className="text-red-500 text-xs">
-                      Minimum 10 characters required
+                {editingLeave && !['sick', 'unpaid'].includes(editingLeave.type) ? (
+                  <>
+                    <span
+                      className={`${editFormData.reason.trim().length < 10 ? "text-red-500" : "text-green-600"}`}
+                    >
+                      {editFormData.reason.trim().length < 10
+                        ? `${editFormData.reason.trim().length}/10 characters (minimum required)`
+                        : `${editFormData.reason.trim().length}/200 characters`}
                     </span>
-                  )}
+                    {editFormData.reason.trim().length < 10 &&
+                      editFormData.reason.trim().length > 0 && (
+                        <span className="text-red-500 text-xs">
+                          Minimum 10 characters required
+                        </span>
+                      )}
+                  </>
+                ) : (
+                  <span className="text-green-600">
+                    {editFormData.reason.trim().length}/200 characters
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -3776,7 +3773,7 @@ export default function LeaveManagement() {
             <Button
               onClick={handleEditSubmit}
               disabled={
-                isUpdatingLeave || editFormData.reason.trim().length < 10
+                isUpdatingLeave || (editingLeave && !['sick', 'unpaid'].includes(editingLeave.type) && editFormData.reason.trim().length < 10)
               }
             >
               {isUpdatingLeave ? "Saving..." : "Save Changes"}

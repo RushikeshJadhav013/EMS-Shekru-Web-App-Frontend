@@ -364,18 +364,6 @@ export const NotificationBell: React.FC = () => {
                   </TabsTrigger>
                 )}
 
-                {taskNotifications.length > 0 && (
-                  <TabsTrigger
-                    value="task"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent px-4 py-3 transition-colors hover:bg-muted/50"
-                  >
-                    <FileText className="h-3.5 w-3.5 mr-2 text-blue-500" />
-                    <span className="text-xs font-semibold uppercase tracking-wider">Tasks</span>
-                    <Badge className="ml-2 h-5 min-w-[20px] rounded-full p-0 flex items-center justify-center text-[10px] bg-blue-500 text-white border-0">
-                      {taskNotifications.length}
-                    </Badge>
-                  </TabsTrigger>
-                )}
 
                 {shiftNotifications.length > 0 && (
                   <TabsTrigger
@@ -508,18 +496,6 @@ export const NotificationBell: React.FC = () => {
                 )}
               </TabsContent>
 
-              <TabsContent value="task" className="m-0 divide-y">
-                {taskNotifications.length === 0 ? (
-                  <div className="flex items-center justify-center py-8 text-muted-foreground">
-                    <p className="text-sm">No task notifications</p>
-                  </div>
-                ) : (
-                  taskNotifications.map((notification) => (
-                    <NotificationItem key={notification.id} notification={notification} />
-                  ))
-                )}
-              </TabsContent>
-
               <TabsContent value="shift" className="m-0 divide-y">
                 {shiftNotifications.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
@@ -615,6 +591,7 @@ export const NotificationBell: React.FC = () => {
                   ))
                 )}
               </TabsContent>
+
             </ScrollArea>
           </Tabs>
         )}

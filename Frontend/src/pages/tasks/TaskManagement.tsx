@@ -895,7 +895,10 @@ const TaskManagement: React.FC = () => {
         try {
           // Use formatted status for backend
           const backendStatus = frontendToBackendStatus["overdue"];
-          await apiService.updateTaskStatus(task.id, backendStatus);
+          await apiService.updateTaskStatus(task.id, backendStatus, {
+            title: task.title,
+            assigned_to: task.assignedTo[0]
+          });
         } catch (error) {
           console.error(
             `Failed to update task ${task.id} to overdue status`,
@@ -2346,7 +2349,10 @@ const TaskManagement: React.FC = () => {
       // Explicitly update status to 'Pending' (todo) via the dedicated status endpoint
       // This is necessary because the general update endpoint might not process status changes for overdue tasks
       try {
-        await apiService.updateTaskStatus(reassignTask.id, "Pending");
+        await apiService.updateTaskStatus(reassignTask.id, "Pending", {
+          title: trimmedTitle,
+          assigned_to: assignedToNumber
+        });
       } catch (statusError) {
         console.warn(
           "Failed to explicitly reset status during reassignment:",
@@ -2668,7 +2674,10 @@ const TaskManagement: React.FC = () => {
       currentStatus: BaseTask["status"],
       newStatus: BaseTask["status"],
     ): boolean => {
-      // 1. All roles have full control over status transitions for tasks they can see
+      // 1. If task is overdue, it cannot be changed (locked)
+      if (currentStatus === "overdue") return false;
+
+      // 2. All other transitions allowed
       return true;
 
       // Define status hierarchy
@@ -2758,7 +2767,40 @@ const TaskManagement: React.FC = () => {
     setUpdatingTaskId(taskId);
     try {
       const backendStatus = frontendToBackendStatus[newStatus];
-      const updatedTask: BackendTask = await apiService.updateTaskStatus(taskId, backendStatus);
+
+      // Find the task to get required backend fields (title + assigned_to)
+      let taskTitle: string | undefined;
+      let taskAssignedTo: string | undefined;
+      const foundTask = tasks.find(t => t.id === taskId);
+      if (foundTask) {
+        taskTitle = foundTask.title;
+        taskAssignedTo = foundTask.assignedTo?.[0] || String(foundTask.assignedBy || "");
+      } else {
+        // Search in projects as fallback
+        for (const project of projects) {
+          const ptask = (project.tasks || []).find((t: any) => String(t.id || t.task_id) === taskId);
+          if (ptask) {
+            taskTitle = ptask.title || ptask.task_name || ptask.taskTitle || "Task";
+            taskAssignedTo = ptask.assignedTo?.[0] ?? String(ptask.assigned_to ?? ptask.user_id ?? "");
+            break;
+          }
+        }
+      }
+
+      // Final fallback if still not found
+      if (!taskTitle) taskTitle = "Task";
+      if (taskAssignedTo === undefined) taskAssignedTo = "";
+
+      const updatedTask: BackendTask = await apiService.updateTaskStatus(
+        taskId,
+        backendStatus,
+        {
+          title: taskTitle,
+          assigned_to: taskAssignedTo,
+          priority: foundTask?.priority || "Medium",
+          description: foundTask?.description || ""
+        }
+      );
       const convertedTask = mapBackendTaskToFrontend(updatedTask);
 
       // Update tasks list immediately
@@ -3135,7 +3177,7 @@ const TaskManagement: React.FC = () => {
                     )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {canSeeAdminFilters && (
+                      {canSeeAdminFilters && normalizedUserRole !== "team_lead" && (
                         <>
                           <div className="space-y-2">
                             <Label

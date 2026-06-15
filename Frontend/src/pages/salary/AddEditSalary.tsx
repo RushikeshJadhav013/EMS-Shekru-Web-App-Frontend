@@ -48,13 +48,13 @@ const salarySchema = z.object({
     variablePayValue: z.preprocess(preprocessNumber, z.number().min(0).default(0)),
     workingDays: z.preprocess(preprocessNumber, z.number().min(1).max(31).default(22)),
     pfType: z.enum(['none', 'fixed', 'percentage']).default('none'),
-    pfValue: z.preprocess(preprocessNumber, z.number().min(0).default(0)),
+    pfValue: z.preprocess(preprocessNumber, z.number().optional().default(0)),
     // Bank & Statutory Details
-    uanNumber: z.string().optional().or(z.literal('')),
-    pfNo: z.string().optional().or(z.literal('')),
-    bankName: z.string().optional(),
-    bankAccount: z.string().optional(),
-    ifscCode: z.string().optional(),
+    uanNumber: z.string().optional().or(z.literal('')).default(''),
+    pfNo: z.string().optional().or(z.literal('')).default(''),
+    bankName: z.string().optional().or(z.literal('')).default(''),
+    bankAccount: z.string().optional().or(z.literal('')).default(''),
+    ifscCode: z.string().optional().or(z.literal('')).default(''),
     paymentMode: z.string().default('Bank Transfer'),
     // Manual Entry Fields (Annual)
     basicAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
@@ -65,7 +65,7 @@ const salarySchema = z.object({
     otherAllowanceAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
     professionalTaxAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
     otherDeductionAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
-    pfAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
+    pfAnnual: z.preprocess(preprocessNumber, z.number().optional().default(0)),
     variablePayAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
 }).refine((data) => {
     // Only validate variable pay rules for 'auto' mode if ctc is present
@@ -609,8 +609,8 @@ const AddEditSalary = () => {
                     paymentMode: data.paymentMode || 'bank_transfer',
 
                     // Restore PF Settings for Guided Mode
-                    pfType: data.pfEmployer > 0 ? (data.variablePayType === 'percentage' ? 'percentage' : 'fixed') : 'none',
-                    pfValue: data.pfEmployer || 0,
+                    pfType: data.employer_pf_percentage ? 'percentage' : (data.pfEmployer > 0 ? 'fixed' : 'none'),
+                    pfValue: data.employer_pf_percentage || data.pfEmployer || 0,
 
                     // Manual entry fields (annual values) - from Salary API
                     basicAnnual: (data.monthlyBasic || 0) * 12,
@@ -693,11 +693,11 @@ const AddEditSalary = () => {
                     pf_annual: data.pfAnnual || 0,
                     variable_pay: calculatedVariablePay,
                     working_days_per_month: data.workingDays || 22,
-                    ...(data.uanNumber ? { uan_number: data.uanNumber } : {}),
-                    ...(data.pfNo ? { pf_no: data.pfNo } : {}),
-                    ...(data.bankName ? { bank_name: data.bankName } : {}),
-                    ...(data.bankAccount ? { bank_account: data.bankAccount } : {}),
-                    ...(data.ifscCode ? { ifsc_code: data.ifscCode } : {}),
+                    uan_number: data.uanNumber || '',
+                    pf_no: data.pfNo || '',
+                    bank_name: data.bankName || '',
+                    bank_account: data.bankAccount || '',
+                    ifsc_code: data.ifscCode || '',
                     payment_mode: data.paymentMode || 'Bank Transfer',
                     ...pfPayload
                 };
@@ -739,11 +739,11 @@ const AddEditSalary = () => {
                     variable_pay_type: data.variablePayType,
                     variable_pay_value: data.variablePayValue,
                     working_days_per_month: data.workingDays,
-                    ...(data.uanNumber ? { uan_number: data.uanNumber } : {}),
-                    ...(data.pfNo ? { pf_no: data.pfNo } : {}),
-                    ...(data.bankName ? { bank_name: data.bankName } : {}),
-                    ...(data.bankAccount ? { bank_account: data.bankAccount } : {}),
-                    ...(data.ifscCode ? { ifsc_code: data.ifscCode } : {}),
+                    uan_number: data.uanNumber || '',
+                    pf_no: data.pfNo || '',
+                    bank_name: data.bankName || '',
+                    bank_account: data.bankAccount || '',
+                    ifsc_code: data.ifscCode || '',
                     payment_mode: data.paymentMode || 'Bank Transfer',
                     ...pfPayload,
                 };
@@ -767,11 +767,11 @@ const AddEditSalary = () => {
 
                     // Update non-calculated fields (Bank details, PF numbers, etc.)
                     response = await apiService.updateSalaryDetails(data.userId, {
-                        ...(data.uanNumber ? { uan_number: data.uanNumber } : {}),
-                        ...(data.pfNo ? { pf_no: data.pfNo } : {}),
-                        ...(data.bankName ? { bank_name: data.bankName } : {}),
-                        ...(data.bankAccount ? { bank_account: data.bankAccount } : {}),
-                        ...(data.ifscCode ? { ifsc_code: data.ifscCode } : {}),
+                        uan_number: data.uanNumber || '',
+                        pf_no: data.pfNo || '',
+                        bank_name: data.bankName || '',
+                        bank_account: data.bankAccount || '',
+                        ifsc_code: data.ifscCode || '',
                         working_days_per_month: data.workingDays,
                         payment_mode: data.paymentMode,
                         variable_pay_type: data.variablePayType,

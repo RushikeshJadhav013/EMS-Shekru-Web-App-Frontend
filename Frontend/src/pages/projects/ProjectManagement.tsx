@@ -130,136 +130,138 @@ const TaskFormSection = ({
 }: TaskFormSectionProps) => {
   return (
     <div className="space-y-4">
-      <div className="space-y-3 prose-slate">
-        {taskList.map((task, index) => (
-          <div
-            key={index}
-            className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border-2 border-[#000000] space-y-3 shadow-sm"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-              <div className="md:col-span-4 space-y-1.5">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Name</p>
-                <Input
-                  placeholder="Task name *"
-                  value={task.task_name}
-                  onChange={(e) =>
-                    updateTaskRow(index, "task_name", e.target.value)
-                  }
-                  className="shadow-inner"
-                />
-              </div>
-              <div className="md:col-span-3 space-y-1.5">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Start Date</p>
-                <Input
-                  type="date"
-                  value={task.start_date || ""}
-                  onChange={(e) =>
-                    updateTaskRow(index, "start_date", e.target.value)
-                  }
-                  className="shadow-inner"
-                />
-              </div>
-              <div className="md:col-span-3 space-y-1.5">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Due Date</p>
-                <Input
-                  type="date"
-                  value={task.due_date || ""}
-                  onChange={(e) =>
-                    updateTaskRow(index, "due_date", e.target.value)
-                  }
-                  className="shadow-inner"
-                />
-              </div>
-              <div className="md:col-span-2 space-y-1.5">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Priority</p>
-                <div className="flex gap-2">
-                  <Select
-                    value={task.priority}
-                    onValueChange={(v) => updateTaskRow(index, "priority", v)}
-                  >
-                    <SelectTrigger className="h-10 text-xs shadow-inner">
-                      <SelectValue placeholder="Priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRIORITY_OPTIONS.map((opt) => (
-                        <SelectItem key={opt} value={opt}>
-                          {opt}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {taskList.length > 1 && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10 hover:bg-red-50 hover:text-red-600 border border-slate-100 dark:border-slate-800 rounded-lg flex-shrink-0"
-                      onClick={() => removeTaskRow(index)}
+      <div className="space-y-3 prose-slate overflow-x-auto scrollbar-visible pb-2 px-1">
+        <div className="min-w-[800px] space-y-3">
+          {taskList.map((task, index) => (
+            <div
+              key={index}
+              className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border-2 border-[#000000] space-y-3 shadow-sm"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                <div className="md:col-span-4 space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Name</p>
+                  <Input
+                    placeholder="Task name *"
+                    value={task.task_name}
+                    onChange={(e) =>
+                      updateTaskRow(index, "task_name", e.target.value)
+                    }
+                    className="shadow-inner"
+                  />
+                </div>
+                <div className="md:col-span-3 space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Start Date</p>
+                  <Input
+                    type="date"
+                    value={task.start_date || ""}
+                    onChange={(e) =>
+                      updateTaskRow(index, "start_date", e.target.value)
+                    }
+                    className="shadow-inner"
+                  />
+                </div>
+                <div className="md:col-span-3 space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Due Date</p>
+                  <Input
+                    type="date"
+                    value={task.due_date || ""}
+                    onChange={(e) =>
+                      updateTaskRow(index, "due_date", e.target.value)
+                    }
+                    className="shadow-inner"
+                  />
+                </div>
+                <div className="md:col-span-2 space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Priority</p>
+                  <div className="flex gap-2">
+                    <Select
+                      value={task.priority}
+                      onValueChange={(v) => updateTaskRow(index, "priority", v)}
                     >
-                      <Trash2 className="h-5 w-5" />
-                    </Button>
+                      <SelectTrigger className="h-10 text-xs shadow-inner">
+                        <SelectValue placeholder="Priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PRIORITY_OPTIONS.map((opt) => (
+                          <SelectItem key={opt} value={opt}>
+                            {opt}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {taskList.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 hover:bg-red-50 hover:text-red-600 border border-slate-100 dark:border-slate-800 rounded-lg flex-shrink-0"
+                        onClick={() => removeTaskRow(index)}
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {/* Description */}
+              <Input
+                placeholder="Description (optional)"
+                value={task.description || ""}
+                onChange={(e) =>
+                  updateTaskRow(index, "description", e.target.value)
+                }
+                className="text-xs shadow-inner"
+              />
+              {/* Multi-employee assignee */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Assign to employees *
+                  </p>
+                  {task.assigned_to_ids.length > 0 && (
+                    <Badge className="text-[10px] bg-violet-600 text-white border-0 px-2 py-0.5">
+                      {task.assigned_to_ids.length} selected
+                    </Badge>
+                  )}
+                </div>
+                <div className="max-h-40 overflow-y-auto border-2 border-[#000000] rounded-xl divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-950 shadow-inner">
+                  {assignableEmployees.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-6 text-slate-400 gap-1">
+                      <User className="h-5 w-5 opacity-20" />
+                      <p className="text-[10px]">No employees found.</p>
+                    </div>
+                  ) : (
+                    assignableEmployees.map((emp) => (
+                      <label
+                        key={emp.user_id}
+                        className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer transition-colors"
+                      >
+                        <Checkbox
+                          checked={task.assigned_to_ids.includes(emp.user_id)}
+                          onCheckedChange={() =>
+                            toggleTaskAssignee(index, emp.user_id)
+                          }
+                          className="h-5 w-5 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
+                        />
+                        <div className="h-6 w-6 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 shadow-sm">
+                          {emp.name?.[0]?.toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
+                            {emp.name}
+                          </p>
+                          <p className="text-[10px] text-slate-400 capitalize truncate">
+                            {emp.role || "Employee"}
+                          </p>
+                        </div>
+                      </label>
+                    ))
                   )}
                 </div>
               </div>
             </div>
-            {/* Description */}
-            <Input
-              placeholder="Description (optional)"
-              value={task.description || ""}
-              onChange={(e) =>
-                updateTaskRow(index, "description", e.target.value)
-              }
-              className="text-xs shadow-inner"
-            />
-            {/* Multi-employee assignee */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Assign to employees *
-                </p>
-                {task.assigned_to_ids.length > 0 && (
-                  <Badge className="text-[10px] bg-violet-600 text-white border-0 px-2 py-0.5">
-                    {task.assigned_to_ids.length} selected
-                  </Badge>
-                )}
-              </div>
-              <div className="max-h-40 overflow-y-auto border-2 border-[#000000] rounded-xl divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-950 shadow-inner">
-                {assignableEmployees.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-6 text-slate-400 gap-1">
-                    <User className="h-5 w-5 opacity-20" />
-                    <p className="text-[10px]">No employees found.</p>
-                  </div>
-                ) : (
-                  assignableEmployees.map((emp) => (
-                    <label
-                      key={emp.user_id}
-                      className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer transition-colors"
-                    >
-                      <Checkbox
-                        checked={task.assigned_to_ids.includes(emp.user_id)}
-                        onCheckedChange={() =>
-                          toggleTaskAssignee(index, emp.user_id)
-                        }
-                        className="h-5 w-5 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
-                      />
-                      <div className="h-6 w-6 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 shadow-sm">
-                        {emp.name?.[0]?.toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
-                          {emp.name}
-                        </p>
-                        <p className="text-[10px] text-slate-400 capitalize truncate">
-                          {emp.role || "Employee"}
-                        </p>
-                      </div>
-                    </label>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
       <Button
         variant="outline"
@@ -511,11 +513,11 @@ function TaskRow({
   return (
     <TableRow className="hover:bg-slate-50/60 dark:hover:bg-slate-900/30 transition-colors">
       <TableCell className="pl-4">
-        <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+        <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate" title={task.task_name}>
           {task.task_name}
         </p>
         {task.description && (
-          <p className="text-xs text-slate-400 mt-0.5">{task.description}</p>
+          <p className="text-xs text-slate-400 mt-0.5 truncate" title={task.description}>{task.description}</p>
         )}
       </TableCell>
       <TableCell className="text-sm text-slate-600 dark:text-slate-300">
@@ -546,8 +548,9 @@ function TaskRow({
       <TableCell>
         {(canManageProjects || isAssignedToMe || isAssigner) ? (
           <Select
-            value={normalizeStatus(task.status) === "Pending" ? "Pending" : task.status}
+            value={effectiveStatus}
             onValueChange={(v) => onStatusChange(id, v)}
+            disabled={isOverdue}
           >
             <SelectTrigger className="h-7 w-32 text-xs border-slate-200 dark:border-slate-700">
               <SelectValue />
@@ -563,6 +566,12 @@ function TaskRow({
                 <span className="flex items-center gap-1.5 text-blue-600 font-medium">
                   <Clock className="h-3 w-3" />
                   In Progress
+                </span>
+              </SelectItem>
+              <SelectItem value="Overdue">
+                <span className="flex items-center gap-1.5 text-rose-600 font-medium">
+                  <AlertCircle className="h-3 w-3" />
+                  Overdue
                 </span>
               </SelectItem>
               <SelectItem value="Completed">
@@ -768,42 +777,33 @@ function ProjectCard({
                   value={normalizeStatus(project.status)}
                   onValueChange={(v) => onProjectStatusChange(project.project_id, v)}
                 >
-                  <SelectTrigger className="h-8 border-none bg-slate-50 dark:bg-slate-900/40 rounded-full px-3 text-[10px] font-bold uppercase tracking-wider min-w-[120px] focus:ring-0 shadow-sm border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center gap-1.5 truncate">
-                      {project.status === "completed" ? (
-                        <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                      ) : project.status === "in_progress" || project.status === "active" ? (
-                        <Clock className="h-3 w-3 text-blue-500" />
-                      ) : (
-                        <Clock className="h-3 w-3 text-amber-500" />
-                      )}
-                      <SelectValue />
-                    </div>
+                  <SelectTrigger className="h-7 border-none bg-slate-50 dark:bg-slate-900/40 rounded-full px-1.5 text-[9px] font-bold uppercase tracking-tighter w-fit min-w-[75px] focus:ring-0 shadow-sm border-slate-100 dark:border-slate-800">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl shadow-xl border-slate-100 dark:border-slate-800">
                     <SelectItem value="Pending">
-                      <span className="flex items-center gap-2 text-amber-600 text-[10px] font-black uppercase">
-                        <Clock className="h-3.5 w-3.5" /> Pending
+                      <span className="flex items-center gap-1 text-amber-600 text-[9px] font-black uppercase">
+                        <Clock className="h-3 w-3" /> Pending
                       </span>
                     </SelectItem>
                     <SelectItem value="In Progress">
-                      <span className="flex items-center gap-2 text-blue-600 text-[10px] font-black uppercase">
-                        <Clock className="h-3.5 w-3.5" /> In Progress
+                      <span className="flex items-center gap-1 text-blue-600 text-[9px] font-black uppercase">
+                        <Clock className="h-3 w-3" /> In Progress
                       </span>
                     </SelectItem>
                     <SelectItem value="Completed">
-                      <span className="flex items-center gap-2 text-emerald-600 text-[10px] font-black uppercase">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Completed
+                      <span className="flex items-center gap-1 text-emerald-600 text-[9px] font-black uppercase">
+                        <CheckCircle2 className="h-3 w-3" /> Completed
                       </span>
                     </SelectItem>
                     <SelectItem value="Archived">
-                      <span className="flex items-center gap-2 text-slate-600 text-[10px] font-black uppercase">
-                        <ArchiveIcon className="h-3.5 w-3.5" /> Archived
+                      <span className="flex items-center gap-1 text-slate-600 text-[9px] font-black uppercase">
+                        <ArchiveIcon className="h-3 w-3" /> Archived
                       </span>
                     </SelectItem>
                     <SelectItem value="Cancelled">
-                      <span className="flex items-center gap-2 text-red-600 text-[10px] font-black uppercase">
-                        <XCircle className="h-3.5 w-3.5" /> Cancelled
+                      <span className="flex items-center gap-1 text-red-600 text-[9px] font-black uppercase">
+                        <XCircle className="h-3 w-3" /> Cancelled
                       </span>
                     </SelectItem>
                   </SelectContent>
@@ -1042,44 +1042,53 @@ function ProjectCard({
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-5 pt-3 mb-2 flex items-center gap-1.5">
                   <ClipboardList className="h-5 w-5" /> Tasks
                 </p>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-slate-50/80 dark:bg-slate-900/40">
-                        <TableHead className="pl-4 text-xs">Task</TableHead>
-                        <TableHead className="text-xs">Assigned To</TableHead>
-                        <TableHead className="text-xs">Start Date</TableHead>
-                        <TableHead className="text-xs">Due Date</TableHead>
-                        <TableHead className="text-xs">Status</TableHead>
-                        <TableHead className="text-xs text-right pr-4">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {tasks.map((task, idx) => (
-                        <TaskRow
-                          key={task.task_id ?? task.id ?? idx}
-                          task={task}
-                          project={project}
-                          canManageProjects={canManageProjects}
-                          onStatusChange={(taskId, status) =>
-                            onTaskStatusChange(
-                              project.project_id,
-                              taskId,
-                              status,
-                            )
-                          }
-                          onReassign={(t) =>
-                            onReassignTask?.(t, project.project_id)
-                          }
-                          onView={onViewTask}
-                          onEdit={onEditTask}
-                          onPass={onPassTask}
-                          onDelete={(t) => onDeleteTask?.(t, project.project_id)}
-                        />
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <Table
+                  wrapperClassName="w-full border-2 border-[#000000] rounded-2xl shadow-sm overflow-x-auto scrollbar-visible max-h-[400px]"
+                  className="w-[1100px] table-fixed"
+                >
+                  <colgroup>
+                    <col className="w-[250px]" />
+                    <col className="w-[160px]" />
+                    <col className="w-[140px]" />
+                    <col className="w-[140px]" />
+                    <col className="w-[150px]" />
+                    <col className="w-[160px]" />
+                  </colgroup>
+                  <TableHeader>
+                    <TableRow className="bg-slate-50/80 dark:bg-slate-900/40">
+                      <TableHead className="pl-4 text-[11px] font-bold uppercase text-slate-600">Task</TableHead>
+                      <TableHead className="text-[11px] font-bold uppercase text-slate-600">Assigned To</TableHead>
+                      <TableHead className="text-[11px] font-bold uppercase text-slate-600">Start Date</TableHead>
+                      <TableHead className="text-[11px] font-bold uppercase text-slate-600">Due Date</TableHead>
+                      <TableHead className="text-[11px] font-bold uppercase text-slate-600">Status</TableHead>
+                      <TableHead className="text-[11px] font-bold uppercase text-right pr-6 text-slate-600">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tasks.map((task, idx) => (
+                      <TaskRow
+                        key={task.task_id ?? task.id ?? idx}
+                        task={task}
+                        project={project}
+                        canManageProjects={canManageProjects}
+                        onStatusChange={(taskId, status) =>
+                          onTaskStatusChange(
+                            project.project_id,
+                            taskId,
+                            status,
+                          )
+                        }
+                        onReassign={(t) =>
+                          onReassignTask?.(t, project.project_id)
+                        }
+                        onView={onViewTask}
+                        onEdit={onEditTask}
+                        onPass={onPassTask}
+                        onDelete={(t) => onDeleteTask?.(t, project.project_id)}
+                      />
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             )}
 
@@ -1823,7 +1832,9 @@ export default function ProjectManagement() {
 
       await apiService.updateProjectTaskStatus(projectId, taskId, backendStatus, {
         title: taskObj?.task_name || taskObj?.title || "Project Task",
-        assigned_to: taskObj?.assigned_to || null
+        assigned_to: taskObj?.assigned_to || taskObj?.user_id || null,
+        description: taskObj?.description || "",
+        priority: taskObj?.priority || "Medium"
       });
       toast({ title: "Success", description: "Task status updated" });
       fetchProjects();
@@ -2328,7 +2339,7 @@ export default function ProjectManagement() {
           PROJECT DETAILS DIALOG
          ══════════════════════════════════════ */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl border-0 shadow-2xl p-0">
+        <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto rounded-3xl border-0 shadow-2xl p-0 min-w-0">
           <div className="bg-gradient-to-br from-violet-600 to-indigo-700 p-8 text-white relative">
             <div className="flex items-center gap-4 mb-4">
               <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-lg">
@@ -2424,7 +2435,6 @@ export default function ProjectManagement() {
                       </p>
                     </div>
                   </div>
-                  {/* Planned & Done counts removed per user request */}
                 </div>
 
                 {/* Team Section */}
@@ -2489,15 +2499,19 @@ export default function ProjectManagement() {
                 </section>
 
                 {/* Tasks Section */}
-                <section>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <ClipboardList className="h-5 w-5 text-amber-500" />
-                      Project Tasks
-                      <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-600 text-[10px] px-2 py-0.5 rounded-full ml-1">
-                        {selectedProject?.tasks?.length || 0}
-                      </span>
-                    </h3>
+                <div className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-[#000000] p-6 shadow-md mx-auto w-full max-w-6xl">
+                  <div className="flex items-center justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                        <ClipboardList className="h-6 w-6 text-amber-600" />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        Project Tasks
+                        <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-600 text-[10px] px-2 py-0.5 rounded-full ml-1">
+                          {selectedProject?.tasks?.length || 0}
+                        </span>
+                      </h3>
+                    </div>
                     {canManageProjects && (
                       <Button
                         size="sm"
@@ -2520,29 +2534,41 @@ export default function ProjectManagement() {
                       </p>
                     </div>
                   ) : (
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-[#000000] shadow-sm overflow-hidden">
-                      <Table>
+                    <div className="w-full overflow-x-auto scrollbar-visible rounded-2xl border-2 border-[#000000] shadow-sm">
+                      <Table
+                        wrapperClassName="w-full max-h-[500px] overflow-auto"
+                        className="w-[1100px] table-fixed"
+                      >
+                        <colgroup>
+                          <col className="w-[200px]" />
+                          <col className="w-[150px]" />
+                          <col className="w-[150px]" />
+                          <col className="w-[150px]" />
+                          <col className="w-[150px]" />
+                          <col className="w-[150px]" />
+                          <col className="w-[150px]" />
+                        </colgroup>
                         <TableHeader>
                           <TableRow className="bg-slate-50/50 dark:bg-slate-900/50 border-0">
-                            <TableHead className="text-[10px] font-bold uppercase tracking-wider text-slate-500 pl-6">
+                            <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-600 pl-6">
                               Task Details
                             </TableHead>
-                            <TableHead className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                            <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
                               Assignee
                             </TableHead>
-                            <TableHead className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                            <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
                               Assigned By
                             </TableHead>
-                            <TableHead className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                            <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
                               Start Date
                             </TableHead>
-                            <TableHead className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                            <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
                               End Date
                             </TableHead>
-                            <TableHead className="text-[10px] font-bold uppercase tracking-wider text-slate-500 text-center">
+                            <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-600 text-center">
                               Status
                             </TableHead>
-                            <TableHead className="text-[10px] font-bold uppercase tracking-wider text-slate-500 pr-6 text-right">
+                            <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-600 pr-6 text-right">
                               Actions
                             </TableHead>
                           </TableRow>
@@ -2583,7 +2609,7 @@ export default function ProjectManagement() {
                       </Table>
                     </div>
                   )}
-                </section>
+                </div>
 
                 {/* Meetings Section */}
                 <section>
