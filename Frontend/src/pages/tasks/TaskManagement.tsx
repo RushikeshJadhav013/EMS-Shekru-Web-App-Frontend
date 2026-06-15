@@ -234,7 +234,19 @@ const mapBackendTaskToFrontend = (task: BackendTask): TaskWithPassMeta => {
     : "";
   const priority =
     backendToFrontendPriority[task.priority ?? "Medium"] ?? "medium";
-  const status = backendToFrontendStatus[task.status ?? "Pending"] ?? "todo";
+  const statusRaw = backendToFrontendStatus[task.status ?? "Pending"] ?? "todo";
+
+  // Automatically determine if task is overdue based on deadline
+  let status = statusRaw;
+  if (statusRaw !== "completed" && statusRaw !== "cancelled" && task.due_date) {
+    const deadlineDate = new Date(task.due_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (deadlineDate < today) {
+      status = "overdue";
+    }
+  }
+
   const assignedTo =
     task.assigned_to !== undefined && task.assigned_to !== null
       ? [String(task.assigned_to)]
@@ -538,6 +550,7 @@ const TaskManagement: React.FC = () => {
     title: "",
     description: "",
     assignedTo: "",
+    startDate: "",
     deadline: "",
     priority: "medium" as BaseTask["priority"],
     projectId: "",
@@ -1215,9 +1228,21 @@ const TaskManagement: React.FC = () => {
   );
 
   const getAssignedByInfo = useCallback(
-    (assignedById: string, role?: UserRole) => {
+    (assignedById: string, role?: UserRole, directName?: string) => {
       if (!assignedById) {
         return { name: "Unknown", roleLabel: undefined };
+      }
+
+      // Priority 0: Direct name from backend task payload (assigned_by_name) - most reliable
+      // But only if it's not just a numeric ID
+      if (directName && isNaN(Number(directName))) {
+        const assigner = employeesById.get(assignedById);
+        const cachedUser = userCache.get(assignedById);
+        const resolvedRole = role || assigner?.role || cachedUser?.role;
+        return {
+          name: directName,
+          roleLabel: resolvedRole ? formatRoleLabel(resolvedRole) : undefined,
+        };
       }
 
       // Priority 1: Backend-provided role from task (most reliable)
@@ -1276,9 +1301,21 @@ const TaskManagement: React.FC = () => {
   );
 
   const getAssignedToInfo = useCallback(
-    (assignedToId: string, role?: UserRole) => {
+    (assignedToId: string, role?: UserRole, directName?: string) => {
       if (!assignedToId) {
         return { name: "Unassigned", roleLabel: undefined };
+      }
+
+      // Priority 0: Direct name from backend task payload (assigned_to_name) - most reliable
+      // But only if it's not just a numeric ID
+      if (directName && isNaN(Number(directName))) {
+        const assignee = employeesById.get(assignedToId);
+        const cachedUser = userCache.get(assignedToId);
+        const resolvedRole = role || assignee?.role || cachedUser?.role;
+        return {
+          name: directName,
+          roleLabel: resolvedRole ? formatRoleLabel(resolvedRole) : undefined,
+        };
       }
 
       // Priority 1: Backend-provided role from task (most reliable)
@@ -1620,6 +1657,7 @@ const TaskManagement: React.FC = () => {
     return getAssignedByInfo(
       selectedTask.assignedBy,
       selectedTask.assignedByRole,
+      selectedTask.assignedByName,
     );
   }, [getAssignedByInfo, selectedTask]);
 
@@ -1628,6 +1666,7 @@ const TaskManagement: React.FC = () => {
     return getAssignedToInfo(
       selectedTask.assignedTo[0] || "",
       selectedTask.assignedToRole,
+      selectedTask.assignedToName,
     );
   }, [getAssignedToInfo, selectedTask]);
 
@@ -2231,10 +2270,12 @@ const TaskManagement: React.FC = () => {
 
   const handleReassignClick = useCallback((task: TaskWithPassMeta) => {
     setReassignTask(task);
-    // Set default deadline to today if no existing deadline or if existing deadline is in the past
+    // Set default deadline and start date
     const today = new Date();
     const todayString = today.toISOString().split("T")[0];
     const existingDeadline = formatDateForInput(task.deadline);
+    const existingStartDate = formatDateForInput(task.startDate);
+
     const defaultDeadline =
       existingDeadline && new Date(existingDeadline) >= today
         ? existingDeadline
@@ -2244,6 +2285,7 @@ const TaskManagement: React.FC = () => {
       title: task.title,
       description: task.description,
       assignedTo: task.assignedTo[0] || "",
+      startDate: existingStartDate || todayString,
       deadline: defaultDeadline,
       priority: task.priority,
       projectId: task.projectId ? String(task.projectId) : "",
@@ -2258,6 +2300,7 @@ const TaskManagement: React.FC = () => {
       title: "",
       description: "",
       assignedTo: "",
+      startDate: new Date().toISOString().split("T")[0],
       deadline: new Date().toISOString().split("T")[0], // Reset to today's date
       priority: "medium",
       projectId: "",
@@ -2335,7 +2378,9 @@ const TaskManagement: React.FC = () => {
       title: trimmedTitle,
       description: trimmedDescription,
       assigned_to: assignedToNumber,
+      start_date: reassignForm.startDate || null,
       due_date: reassignForm.deadline || null,
+      priority: frontendToBackendPriority[reassignForm.priority || "medium"],
       status: "Pending", // Reset status to Pending when reassigning
       project_id: reassignForm.projectId
         ? Number(reassignForm.projectId)
@@ -2511,11 +2556,11 @@ const TaskManagement: React.FC = () => {
       priority: frontendToBackendPriority[editTaskForm.priority || editingTask.priority || "medium"],
       due_date: editTaskForm.deadline || null,
       start_date: editTaskForm.startDate || null,
+      // Always send project_id — null when task has no project (API spec requires the field)
+      project_id: editTaskForm.projectId
+        ? Number(editTaskForm.projectId)
+        : (editingTask.projectId ? Number(editingTask.projectId) : null),
     };
-
-    if (editTaskForm.projectId) {
-      payload.project_id = Number(editTaskForm.projectId);
-    }
 
     setIsUpdatingTask(true);
     try {
@@ -2674,8 +2719,10 @@ const TaskManagement: React.FC = () => {
       currentStatus: BaseTask["status"],
       newStatus: BaseTask["status"],
     ): boolean => {
-      // 1. If task is overdue, it cannot be changed (locked)
-      if (currentStatus === "overdue") return false;
+      // 1. If task is overdue, it cannot be changed anymore
+      if (currentStatus === "overdue") {
+        return false;
+      }
 
       // 2. All other transitions allowed
       return true;
@@ -2729,14 +2776,13 @@ const TaskManagement: React.FC = () => {
     (task: TaskWithPassMeta): boolean => {
       if (!userId) return false;
 
-      // Only the creator can delete
+      // Creator and Admin/HR can delete
       const isCreator = task.assignedBy === userId;
-      if (!isCreator) return false;
+      const isAdminOrHR = ["admin", "hr"].includes(normalizedUserRole);
 
-      // Can only delete if task is still in 'todo' status (not started)
-      return task.status === "todo";
+      return isCreator || isAdminOrHR;
     },
-    [userId],
+    [userId, normalizedUserRole],
   );
 
   // Check if task can be reassigned
@@ -2745,18 +2791,13 @@ const TaskManagement: React.FC = () => {
     (task: TaskWithPassMeta): boolean => {
       if (!userId) return false;
 
-      // Only the creator can reassign
+      // Creator and Admin/HR can reassign
       const isCreator = task.assignedBy === userId;
-      if (!isCreator) return false;
+      const isAdminOrHR = ["admin", "hr"].includes(normalizedUserRole);
 
-      // Can only reassign if task is completed, cancelled, or overdue
-      return (
-        task.status === "completed" ||
-        task.status === "cancelled" ||
-        task.status === "overdue"
-      );
+      return isCreator || isAdminOrHR;
     },
-    [userId],
+    [userId, normalizedUserRole],
   );
 
   // Update task status
@@ -2768,10 +2809,21 @@ const TaskManagement: React.FC = () => {
     try {
       const backendStatus = frontendToBackendStatus[newStatus];
 
+      const foundTask = tasks.find(t => t.id === taskId);
+      // Guard: If task is overdue, block ANY change
+      if (foundTask && (foundTask.status as string) === "overdue") {
+        toast({
+          title: "Status Locked",
+          description: "Overdue tasks cannot be changed to any other status.",
+          variant: "destructive"
+        });
+        setUpdatingTaskId(null);
+        return;
+      }
+
       // Find the task to get required backend fields (title + assigned_to)
       let taskTitle: string | undefined;
       let taskAssignedTo: string | undefined;
-      const foundTask = tasks.find(t => t.id === taskId);
       if (foundTask) {
         taskTitle = foundTask.title;
         taskAssignedTo = foundTask.assignedTo?.[0] || String(foundTask.assignedBy || "");
@@ -3862,22 +3914,22 @@ const TaskManagement: React.FC = () => {
                               const assignedByInfo = getAssignedByInfo(
                                 task.assignedBy,
                                 task.assignedByRole,
+                                task.assignedByName,
                               );
                               const assignedToInfo = getAssignedToInfo(
                                 task.assignedTo[0] || "",
                                 task.assignedToRole,
                               );
-                              // Management roles can manage tasks they created or all tasks if they have appropriate permissions
+                              const isCreator = task.assignedBy === userId;
                               const canManageTask = Boolean(
-                                userId && (task.assignedBy === userId || ["admin", "hr", "manager", "team_lead"].includes(normalizedUserRole)),
+                                userId && (isCreator || ["admin", "hr", "manager", "team_lead"].includes(normalizedUserRole)),
                               );
                               const isReceivedTask = Boolean(
                                 userId && task.assignedTo.includes(userId),
                               );
-                              // Don't allow passing completed, cancelled, or overdue tasks
+                              // Creators can pass tasks too
                               const canPassTask =
-                                isReceivedTask &&
-                                task.assignedTo[0] === userId &&
+                                (isReceivedTask || isCreator) &&
                                 passEligibleEmployees.length > 0 &&
                                 task.status !== "completed" &&
                                 task.status !== "cancelled" &&
@@ -3972,7 +4024,7 @@ const TaskManagement: React.FC = () => {
                                       onValueChange={(value: BaseTask["status"]) =>
                                         updateTaskStatus(task.id, value)
                                       }
-                                      disabled={updatingTaskId === task.id}
+                                      disabled={updatingTaskId === task.id || (task.status as string) === "overdue"}
                                     >
                                       <SelectTrigger
                                         className={`w-[170px] h-10 border-2 bg-white dark:bg-gray-950 px-3 transition-all text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm`}
@@ -3986,7 +4038,9 @@ const TaskManagement: React.FC = () => {
                                       <SelectContent className="border-2 shadow-xl">
                                         <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
                                         <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
-                                        <SelectItem value="overdue" disabled={!isStatusTransitionAllowed(task.status, "overdue")}>Overdue</SelectItem>
+                                        {task.status === "overdue" && (
+                                          <SelectItem value="overdue" disabled>Overdue</SelectItem>
+                                        )}
                                         <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
                                         <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
                                       </SelectContent>
@@ -4026,7 +4080,7 @@ const TaskManagement: React.FC = () => {
                                       >
                                         👁
                                       </Button>
-                                      {task.status !== "completed" && canPassTask && (
+                                      {canPassTask && (
                                         <Button
                                           variant="ghost"
                                           size="icon"
@@ -4037,8 +4091,8 @@ const TaskManagement: React.FC = () => {
                                           <Share2 className="h-4 w-4" />
                                         </Button>
                                       )}
-                                      {task.status !== "completed" &&
-                                        (task.status as string) !== "cancelled" &&
+                                      {((task.status !== "completed" &&
+                                        (task.status as string) !== "cancelled") || isCreator) &&
                                         canManageTask && (
                                           <>
                                             {(task.status as string) !==
@@ -4121,22 +4175,23 @@ const TaskManagement: React.FC = () => {
                       const assignedByInfo = getAssignedByInfo(
                         task.assignedBy,
                         task.assignedByRole,
+                        task.assignedByName,
                       );
                       const assignedToInfo = getAssignedToInfo(
                         task.assignedTo[0] || "",
                         task.assignedToRole,
+                        task.assignedToName,
                       );
-                      // Management roles can manage tasks they created or all tasks if they have appropriate permissions
+                      const isCreator = task.assignedBy === userId;
                       const canManageTask = Boolean(
-                        userId && (task.assignedBy === userId || ["admin", "hr", "manager", "team_lead"].includes(normalizedUserRole)),
+                        userId && (isCreator || ["admin", "hr", "manager", "team_lead"].includes(normalizedUserRole)),
                       );
                       const isReceivedTask = Boolean(
                         userId && task.assignedTo.includes(userId),
                       );
-                      // Don't allow passing completed, cancelled, or overdue tasks
+                      // Creators can pass tasks too
                       const canPassTask =
-                        isReceivedTask &&
-                        task.assignedTo[0] === userId &&
+                        (isReceivedTask || isCreator) &&
                         passEligibleEmployees.length > 0 &&
                         task.status !== "completed" &&
                         task.status !== "cancelled" &&
@@ -4202,7 +4257,7 @@ const TaskManagement: React.FC = () => {
                                   onValueChange={(value: BaseTask["status"]) =>
                                     updateTaskStatus(task.id, value)
                                   }
-                                  disabled={updatingTaskId === task.id}
+                                  disabled={updatingTaskId === task.id || (task.status as string) === "overdue"}
                                 >
                                   <SelectTrigger
                                     className="h-8 border-2 bg-white dark:bg-gray-950 px-2 transition-all text-[11px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm w-auto min-w-[100px]"
@@ -4215,7 +4270,9 @@ const TaskManagement: React.FC = () => {
                                   <SelectContent className="border-2 shadow-xl">
                                     <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
                                     <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
-                                    <SelectItem value="overdue" disabled={!isStatusTransitionAllowed(task.status, "overdue")}>Overdue</SelectItem>
+                                    {task.status === "overdue" && (
+                                      <SelectItem value="overdue" disabled>Overdue</SelectItem>
+                                    )}
                                     <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
                                     <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
                                   </SelectContent>
@@ -4330,7 +4387,7 @@ const TaskManagement: React.FC = () => {
                                 </Button>
 
                                 {/* Pass Button */}
-                                {task.status !== "completed" && canPassTask && (
+                                {canPassTask && (
                                   <Button
                                     variant="ghost"
                                     size="icon"
@@ -4346,10 +4403,10 @@ const TaskManagement: React.FC = () => {
                                 )}
 
                                 {/* Edit Button */}
-                                {task.status !== "completed" &&
-                                  (task.status as string) !== "cancelled" &&
+                                {((task.status !== "completed" &&
+                                  (task.status as string) !== "cancelled") || isCreator) &&
                                   canManageTask &&
-                                  (task.status as string) !== "overdue" && (
+                                  ((task.status as string) !== "overdue" || isCreator) && (
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -4381,8 +4438,8 @@ const TaskManagement: React.FC = () => {
                                 )}
 
                                 {/* Delete Button */}
-                                {task.status !== "completed" &&
-                                  (task.status as string) !== "cancelled" &&
+                                {((task.status !== "completed" &&
+                                  (task.status as string) !== "cancelled") || isCreator) &&
                                   canManageTask && (
                                     <Button
                                       variant="ghost"
@@ -4613,11 +4670,12 @@ const TaskManagement: React.FC = () => {
                                   <TableBody>
                                     {project.filteredTasks && project.filteredTasks.length > 0 ? (
                                       project.filteredTasks.map((task: any) => {
-                                        const assignedByInfo = getAssignedByInfo(task.assignedBy, task.assignedByRole);
-                                        const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || "", task.assignedToRole);
-                                        const canManageTask = Boolean(userId && (task.assignedBy === userId || ["admin", "hr", "manager", "team_lead"].includes(normalizedUserRole)));
+                                        const assignedByInfo = getAssignedByInfo(task.assignedBy, task.assignedByRole, task.assignedByName);
+                                        const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || "", task.assignedToRole, task.assignedToName);
+                                        const isCreator = task.assignedBy === userId;
+                                        const canManageTask = Boolean(userId && (isCreator || ["admin", "hr", "manager", "team_lead"].includes(normalizedUserRole)));
                                         const isReceivedTask = Boolean(userId && task.assignedTo.includes(userId));
-                                        const canPassTask = isReceivedTask && task.assignedTo[0] === userId && passEligibleEmployees.length > 0 &&
+                                        const canPassTask = (isReceivedTask || isCreator) && passEligibleEmployees.length > 0 &&
                                           task.status !== "completed" && task.status !== "cancelled" && task.status !== "overdue";
 
                                         return (
@@ -4663,7 +4721,7 @@ const TaskManagement: React.FC = () => {
                                                 onValueChange={(value: BaseTask["status"]) =>
                                                   updateTaskStatus(task.id, value)
                                                 }
-                                                disabled={updatingTaskId === task.id}
+                                                disabled={updatingTaskId === task.id || (task.status as string) === "overdue"}
                                               >
                                                 <SelectTrigger
                                                   className={`w-[160px] h-9 border-2 bg-white dark:bg-gray-950 px-3 transition-all text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm`}
@@ -4694,13 +4752,13 @@ const TaskManagement: React.FC = () => {
                                               <div className="flex items-center gap-1">
                                                 <Button variant="ghost" size="icon" onClick={() => setSelectedTask(task)} className="h-8 w-8 text-black dark:text-white hover:bg-slate-100" title="View details">👁</Button>
                                                 {canPassTask && <Button variant="ghost" size="icon" onClick={() => openPassDialog(task)} className="h-8 w-8 text-black hover:bg-slate-100" title="Pass task"><Share2 className="h-4 w-4" /></Button>}
-                                                {canManageTask && task.status !== "completed" && task.status !== "cancelled" && (
+                                                {((task.status !== "completed" && task.status !== "cancelled") || isCreator) && canManageTask && (
                                                   <Button variant="ghost" size="icon" onClick={() => handleEditClick(task)} className="h-8 w-8 text-blue-600 hover:bg-blue-50" title="Edit task"><Pencil className="h-4 w-4" /></Button>
                                                 )}
                                                 {canReassignTask(task) && (
                                                   <Button variant="ghost" size="icon" onClick={() => handleReassignClick(task)} className="h-8 w-8 text-emerald-600 hover:bg-emerald-50" title="Reassign task"><RefreshCcw className="h-4 w-4" /></Button>
                                                 )}
-                                                {canManageTask && canDeleteTask(task) && (
+                                                {((task.status !== "completed" && task.status !== "cancelled") || isCreator) && canManageTask && canDeleteTask(task) && (
                                                   <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(task.id)} disabled={deletingTaskId === task.id} className="h-8 w-8 text-rose-600 hover:bg-rose-50" title="Delete task">
                                                     {deletingTaskId === task.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                                   </Button>
@@ -5251,26 +5309,49 @@ const TaskManagement: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <Label
-                  htmlFor="reassign-deadline"
-                  className="text-sm font-medium"
-                >
-                  Deadline (Optional)
-                </Label>
-                <Input
-                  id="reassign-deadline"
-                  type="date"
-                  value={reassignForm.deadline}
-                  min={new Date().toISOString().split("T")[0]}
-                  onChange={(e) =>
-                    setReassignForm((prev) => ({
-                      ...prev,
-                      deadline: e.target.value,
-                    }))
-                  }
-                  className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label
+                    htmlFor="reassign-startDate"
+                    className="text-sm font-medium"
+                  >
+                    Start Date
+                  </Label>
+                  <Input
+                    id="reassign-startDate"
+                    type="date"
+                    value={reassignForm.startDate}
+                    onChange={(e) =>
+                      setReassignForm((prev) => ({
+                        ...prev,
+                        startDate: e.target.value,
+                      }))
+                    }
+                    className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400"
+                  />
+                </div>
+
+                <div>
+                  <Label
+                    htmlFor="reassign-deadline"
+                    className="text-sm font-medium"
+                  >
+                    Deadline
+                  </Label>
+                  <Input
+                    id="reassign-deadline"
+                    type="date"
+                    value={reassignForm.deadline}
+                    min={reassignForm.startDate || new Date().toISOString().split("T")[0]}
+                    onChange={(e) =>
+                      setReassignForm((prev) => ({
+                        ...prev,
+                        deadline: e.target.value,
+                      }))
+                    }
+                    className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400"
+                  />
+                </div>
               </div>
 
               {canSeeAdminFilters && (

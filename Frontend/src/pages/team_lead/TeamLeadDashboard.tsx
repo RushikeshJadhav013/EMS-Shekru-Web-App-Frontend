@@ -12,7 +12,8 @@ import {
   CalendarDays,
   ClipboardList,
   AlertCircle,
-  ChevronRight,
+  ChevronRight as ChevronRightIcon,
+  ChevronLeft,
   Activity,
   CheckCircle2,
   TrendingUp,
@@ -63,6 +64,8 @@ const TeamLeadDashboard: React.FC = () => {
   });
 
   const [recentActivities, setRecentActivities] = useState<{ id: number; type: string; user: string; time: string; status: string; }[]>([]);
+  const [activitiesPage, setActivitiesPage] = useState(1);
+  const ACTIVITIES_PER_PAGE = 10;
   const [teamMembers, setTeamMembers] = useState<TeamMemberStatus[]>([]);
   const [isLoadingTeamMembers, setIsLoadingTeamMembers] = useState(false);
   const [projectGroups, setProjectGroups] = useState<{ projectId: number; projectName: string; members: TeamMemberStatus[] }[]>([]);
@@ -541,16 +544,24 @@ const TeamLeadDashboard: React.FC = () => {
         }
 
         // Calculate aggregate stats for summary cards
-        const totalTasksGlobal = tasks.length;
-        const completedTasksGlobal = tasks.filter((t: any) => {
-          const s = (t.status || '').toLowerCase();
-          return s === 'completed' || s === 'done';
+        const activeTasks = tasks.filter((t: any) => {
+          const s = (t.status || '').toLowerCase().replace(/[-_]/g, ' ');
+          return ['pending', 'in progress', 'overdue', 'todo', 'started'].includes(s);
         }).length;
 
-        const inProgressTasksGlobal = tasks.filter((t: any) => {
+        const totalValidTasks = tasks.filter((t: any) => {
           const s = (t.status || '').toLowerCase();
-          return s === 'in-progress' || s === 'inprogress' || s === 'in_progress';
+          return s !== 'cancelled' && s !== 'canceled';
         }).length;
+
+        const completedTasksCount = tasks.filter((t: any) => {
+          const s = (t.status || '').toLowerCase();
+          return s === 'completed' || s === 'complete' || s === 'achieved' || s === 'done';
+        }).length;
+
+        const efficiency = totalValidTasks > 0
+          ? Math.round((completedTasksCount / totalValidTasks) * 100)
+          : 0;
 
         // Pending reviews: tasks with status pending, review, or submitted
         const pendingReviewsCount = tasks.filter((t: any) => {
@@ -558,17 +569,13 @@ const TeamLeadDashboard: React.FC = () => {
           return s === 'pending' || s === 'review' || s === 'submitted';
         }).length;
 
-        const efficiency = totalTasksGlobal > 0
-          ? Math.round((completedTasksGlobal / totalTasksGlobal) * 100)
-          : 0;
-
         // Update stats based on filtered data
         setStats(prev => ({
           ...prev,
           teamSize: allTrackedMembers.length,
           employeeCount: departmentEmployees.length,
           presentToday: teamMembersData.filter(m => m.status === 'present').length,
-          tasksInProgress: inProgressTasksGlobal,
+          tasksInProgress: activeTasks,
           pendingReviews: pendingReviewsCount,
           teamEfficiency: efficiency
         }));
@@ -798,28 +805,64 @@ const TeamLeadDashboard: React.FC = () => {
             <CardDescription className="text-xs font-medium mt-1" style={{ color: '#000000' }}>Recent updates from your team</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
-            {recentActivities.map((activity, i) => (
-              <div key={activity.id} className="relative pl-8 pb-4 last:pb-0">
-                {i !== recentActivities.length - 1 && (
-                  <div className="absolute left-[15px] top-8 bottom-0 w-px bg-gray-100 dark:bg-gray-700" />
-                )}
-                <div className={`absolute left-0 top-1 h-8 w-8 rounded-full flex items-center justify-center shadow-sm z-10 ${activity.type === 'success' ? 'bg-emerald-50 text-emerald-600' :
-                  activity.type === 'warning' ? 'bg-amber-50 text-amber-600' :
-                    'bg-blue-50 text-blue-600'
-                  }`}>
-                  {activity.type === 'success' && <CheckCircle2 className="h-4 w-4" />}
-                  {activity.type === 'warning' && <AlertCircle className="h-4 w-4" />}
-                  {activity.type === 'info' && <Clock className="h-4 w-4" />}
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-sm font-bold" style={{ color: '#000000' }}>{activity.user}</p>
-                  <div className="text-xs leading-relaxed" style={{ color: '#000000' }}>
-                    <TruncatedText text={activity.status} maxLength={50} showToggle={false} />
+            {recentActivities
+              .slice((activitiesPage - 1) * ACTIVITIES_PER_PAGE, activitiesPage * ACTIVITIES_PER_PAGE)
+              .map((activity, i) => (
+                <div key={activity.id} className="relative pl-8 pb-4 last:pb-0">
+                  {i !== (recentActivities.slice((activitiesPage - 1) * ACTIVITIES_PER_PAGE, activitiesPage * ACTIVITIES_PER_PAGE).length - 1) && (
+                    <div className="absolute left-[15px] top-8 bottom-0 w-px bg-gray-100 dark:bg-gray-700" />
+                  )}
+                  <div className={`absolute left-0 top-1 h-8 w-8 rounded-full flex items-center justify-center shadow-sm z-10 ${activity.type === 'success' ? 'bg-emerald-50 text-emerald-600' :
+                    activity.type === 'warning' ? 'bg-amber-50 text-amber-600' :
+                      'bg-blue-50 text-blue-600'
+                    }`}>
+                    {activity.type === 'success' && <CheckCircle2 className="h-4 w-4" />}
+                    {activity.type === 'warning' && <AlertCircle className="h-4 w-4" />}
+                    {activity.type === 'info' && <Clock className="h-4 w-4" />}
                   </div>
-                  <p className="text-[12px] font-bold uppercase tracking-tight pt-1 text-black">{activity.time}</p>
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-bold" style={{ color: '#000000' }}>{activity.user}</p>
+                    <div className="text-xs leading-relaxed" style={{ color: '#000000' }}>
+                      <TruncatedText text={activity.status} maxLength={50} showToggle={false} />
+                    </div>
+                    <p className="text-[12px] font-bold uppercase tracking-tight pt-1 text-black">{activity.time}</p>
+                  </div>
                 </div>
+              ))}
+
+            {recentActivities.length > ACTIVITIES_PER_PAGE && (
+              <div className="mt-6 pt-4 border-t flex items-center justify-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActivitiesPage(p => Math.max(1, p - 1))}
+                  disabled={activitiesPage === 1}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                {Array.from({ length: Math.ceil(recentActivities.length / ACTIVITIES_PER_PAGE) }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={activitiesPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActivitiesPage(page)}
+                    className="h-8 w-8 p-0"
+                  >
+                    {page}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActivitiesPage(p => Math.min(Math.ceil(recentActivities.length / ACTIVITIES_PER_PAGE), p + 1))}
+                  disabled={activitiesPage === Math.ceil(recentActivities.length / ACTIVITIES_PER_PAGE)}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronRightIcon className="h-4 w-4" />
+                </Button>
               </div>
-            ))}
+            )}
             {recentActivities.length === 0 && (
               <div className="text-center py-6">
                 <p className="text-sm text-muted-foreground font-medium">No recent updates</p>

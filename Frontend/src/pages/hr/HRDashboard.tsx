@@ -37,6 +37,7 @@ type HRActivity = {
   time?: string;
   status?: string;
   description?: string;
+  checkInStatus?: string;
 };
 
 const HRDashboard: React.FC = () => {
@@ -59,7 +60,7 @@ const HRDashboard: React.FC = () => {
   const [recentActivities, setRecentActivities] = useState<HRActivity[]>([]);
   const [isLoadingActivities, setIsLoadingActivities] = useState(true);
   const [activitiesPage, setActivitiesPage] = useState(1);
-  const ACTIVITIES_PER_PAGE = 15;
+  const ACTIVITIES_PER_PAGE = 10;
 
   const [wfhRequests, setWfhRequests] = useState<any[]>([]);
   const [isLoadingWfhRequests, setIsLoadingWfhRequests] = useState(false);
@@ -288,6 +289,15 @@ const HRDashboard: React.FC = () => {
       return activity.status;
     }
 
+    // Prioritize backend-provided status if available
+    if (activity.checkInStatus) {
+      const normalizedStatus = activity.checkInStatus.toLowerCase();
+      if (normalizedStatus === 'on-time' || normalizedStatus === 'on_time') return 'on-time';
+      if (normalizedStatus === 'late') return 'late';
+      return normalizedStatus;
+    }
+
+    // Fallback to time-based calculation if no status provided by backend
     // Default scheduled check-in time is 10:00 AM
     const SCHEDULED_CHECK_IN_HOUR = 10;
     const SCHEDULED_CHECK_IN_MINUTE = 0;
@@ -413,7 +423,14 @@ const HRDashboard: React.FC = () => {
               <p className="text-xs font-medium" style={{ color: '#000000' }}>
                 {formatActivityTime(activity.time)}
               </p>
-              <Badge className="bg-yellow-500 text-white hover:bg-yellow-600 border-0 font-bold uppercase text-[10px] h-5 mt-1">
+              <Badge
+                className={`text-white border-0 font-bold uppercase text-[10px] h-5 mt-1 ${getCorrectAttendanceStatus(activity) === 'on-time'
+                  ? 'bg-emerald-500 hover:bg-emerald-600'
+                  : getCorrectAttendanceStatus(activity) === 'late'
+                    ? 'bg-rose-500 hover:bg-rose-600'
+                    : 'bg-amber-500 hover:bg-amber-600'
+                  }`}
+              >
                 {formatStatusLabel(getCorrectAttendanceStatus(activity))}
               </Badge>
             </div>

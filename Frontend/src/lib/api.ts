@@ -2090,30 +2090,7 @@ class ApiService {
     params.append("variable_pay_type", variablePayType);
     params.append("variable_pay_value", variablePayValue.toString());
 
-    // Fallback to GET as originally designed if POST fails or if backend supports GET query params
-    // Based on user request history, it seems GET was the original intention for preview.
-    // However, the error 'Method Not Allowed' suggests POST might be needed OR the endpoint is wrong.
-    // Let's re-read the request. The user provided a list of APIs.
-    // There isn't a specific 'calculate-preview' in the provided list!
-    // But there is '/salary/employee/from-ctc' which calculates.
-    // The previous error was 405 Method Not Allowed on /salary/calculate-preview.
-    // This implies the endpoint might not exist or supports a different method.
-    // But since I don't see 'calculate-preview' in the 'SR.NO.' list provided by the user,
-    // I should probably stick to what I have or try to find the correct endpoint.
-    // Wait, the user provided a list of APIs *just now*.
-    // Item 7 is POST "/salary/employee/from-ctc". This creates a salary.
-    // It doesn't explicitly say "preview".
-    // However, typically preview endpoints are GET.
-    // If the user provided list is EXHAUSTIVE, then `calculate-preview` might be missing or custom.
-    // Let's assume the previous change to POST was correct for `calculate-preview` if it exists.
-    // BUT the user just pasted a big list of APIs.
-    // Let's look at the `createSalary` (Item 7). It takes `user_id`, `package_ctc_annual`, etc.
-    // Maybe I should use `POST /salary/calculate-preview` if it exists.
-    // I will keep the POST change I made but ensure types are correct.
-
-    return this.request(`/salary/calculate-preview?${params.toString()}`, {
-      method: "POST",
-    });
+    return this.request(`/salary/calculate-preview?${params.toString()}`);
   }
 
   // 3. View Salary Details
@@ -2188,9 +2165,7 @@ class ApiService {
           monthlyInHand: finalMonthlyInHand,
           monthly_ctc: response.monthly_ctc || annualCtc / 12,
           workingDays: response.working_days_per_month || 26,
-          paymentMode:
-            response.payment_mode?.toLowerCase().replace(" ", "_") ||
-            "bank_transfer",
+          paymentMode: response.payment_mode || "Bank Transfer",
           bankName: response.bank_name || "",
           accountNumber: response.bank_account || "",
           ifscCode: response.ifsc_code || "",
@@ -2653,15 +2628,33 @@ class ApiService {
     const branchId = localStorage.getItem("branchId");
     const companyId = localStorage.getItem("companyId");
     const companySlug = localStorage.getItem("company_slug");
-    return this.request(`/tasks/${taskId}`, {
+
+    // Build the body exactly as the API spec requires:
+    // PUT /{company_slug}/tasks/{task_id}
+    const body: Record<string, any> = {
+      task_id: Number(taskId),
+      company_slug: companySlug || undefined,
+      "X-Branch-Id": branchId || undefined,
+      "X-Company-Id": companyId || undefined,
+    };
+
+    // Spread provided task fields (title, description, assigned_to, start_date, due_date, priority, project_id, etc.)
+    Object.entries(taskData).forEach(([key, val]) => {
+      // Skip internal duplicate fields already set above
+      if (!["task_id", "company_slug", "X-Branch-Id", "X-Company-Id"].includes(key)) {
+        body[key] = val;
+      }
+    });
+
+    // Ensure company_slug is injected into the URL path segment as well
+    // (the base request() already does this automatically, but we set it explicitly for clarity)
+    const endpoint = companySlug
+      ? `/${companySlug}/tasks/${taskId}`
+      : `/tasks/${taskId}`;
+
+    return this.request(endpoint, {
       method: "PUT",
-      body: JSON.stringify({
-        task_id: Number(taskId),
-        "X-Branch-Id": branchId,
-        "X-Company-Id": companyId,
-        company_slug: companySlug || undefined,
-        ...taskData
-      }),
+      body: JSON.stringify(body),
     });
   }
 

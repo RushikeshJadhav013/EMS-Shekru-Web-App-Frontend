@@ -56,6 +56,7 @@ const salarySchema = z.object({
     bankAccount: z.string().optional().or(z.literal('')).default(''),
     ifscCode: z.string().optional().or(z.literal('')).default(''),
     paymentMode: z.string().default('Bank Transfer'),
+    panNumber: z.string().optional().or(z.literal('')).default(''),
     // Manual Entry Fields (Annual)
     basicAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
     hraAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
@@ -150,6 +151,7 @@ const AddEditSalary = () => {
             bankAccount: '',
             ifscCode: '',
             paymentMode: 'Bank Transfer',
+            panNumber: '',
             basicAnnual: 0,
             hraAnnual: 0,
             specialAllowanceAnnual: 0,
@@ -606,7 +608,8 @@ const AddEditSalary = () => {
                     bankName: data.bankName || '',
                     bankAccount: data.accountNumber || '',
                     ifscCode: data.ifscCode || '',
-                    paymentMode: data.paymentMode || 'bank_transfer',
+                    paymentMode: data.paymentMode || 'Bank Transfer',
+                    panNumber: data.panNumber || '',
 
                     // Restore PF Settings for Guided Mode
                     pfType: data.employer_pf_percentage ? 'percentage' : (data.pfEmployer > 0 ? 'fixed' : 'none'),
@@ -669,6 +672,7 @@ const AddEditSalary = () => {
             } else if (data.pfType === 'fixed') {
                 pfPayload.pf_annual = parseNumber(data.pfValue) * 12;
             }
+            // If pfType is 'none', pfPayload remains empty {} so neither field is sent.
 
             if (activeTab === "manual") {
                 // Calculate variable pay for manual mode
@@ -693,12 +697,13 @@ const AddEditSalary = () => {
                     pf_annual: data.pfAnnual || 0,
                     variable_pay: calculatedVariablePay,
                     working_days_per_month: data.workingDays || 22,
-                    uan_number: data.uanNumber || '',
-                    pf_no: data.pfNo || '',
-                    bank_name: data.bankName || '',
-                    bank_account: data.bankAccount || '',
-                    ifsc_code: data.ifscCode || '',
+                    uan_number: data.uanNumber || null,
+                    pf_no: data.pfNo || null,
+                    bank_name: data.bankName || null,
+                    bank_account: data.bankAccount || null,
+                    ifsc_code: data.ifscCode || null,
                     payment_mode: data.paymentMode || 'Bank Transfer',
+                    pan_number: data.panNumber || null,
                     ...pfPayload
                 };
 
@@ -739,11 +744,11 @@ const AddEditSalary = () => {
                     variable_pay_type: data.variablePayType,
                     variable_pay_value: data.variablePayValue,
                     working_days_per_month: data.workingDays,
-                    uan_number: data.uanNumber || '',
-                    pf_no: data.pfNo || '',
-                    bank_name: data.bankName || '',
-                    bank_account: data.bankAccount || '',
-                    ifsc_code: data.ifscCode || '',
+                    uan_number: data.uanNumber || null,
+                    pf_no: data.pfNo || null,
+                    bank_name: data.bankName || null,
+                    bank_account: data.bankAccount || null,
+                    ifsc_code: data.ifscCode || null,
                     payment_mode: data.paymentMode || 'Bank Transfer',
                     ...pfPayload,
                 };
@@ -767,11 +772,11 @@ const AddEditSalary = () => {
 
                     // Update non-calculated fields (Bank details, PF numbers, etc.)
                     response = await apiService.updateSalaryDetails(data.userId, {
-                        uan_number: data.uanNumber || '',
-                        pf_no: data.pfNo || '',
-                        bank_name: data.bankName || '',
-                        bank_account: data.bankAccount || '',
-                        ifsc_code: data.ifscCode || '',
+                        uan_number: data.uanNumber || null,
+                        pf_no: data.pfNo || null,
+                        bank_name: data.bankName || null,
+                        bank_account: data.bankAccount || null,
+                        ifsc_code: data.ifscCode || null,
                         working_days_per_month: data.workingDays,
                         payment_mode: data.paymentMode,
                         variable_pay_type: data.variablePayType,
@@ -800,24 +805,26 @@ const AddEditSalary = () => {
             }
 
         } catch (error: any) {
-            console.error("Form Submission Error:", error);
-
-            // Parse backend validation errors if available
             let errorMessage = "Failed to save salary details. Please check all fields.";
-
             if (error && typeof error === 'object' && error.message) {
                 errorMessage = error.message;
 
-                // Map to form field error if it's a known validation error
-                if (errorMessage.toLowerCase().includes("ctc")) {
+                // Try to parse field-specific errors if it's a 422 or similar
+                if (errorMessage.toLowerCase().includes("user_id") || errorMessage.toLowerCase().includes("employee")) {
+                    form.setError('userId', { message: errorMessage });
+                } else if (errorMessage.toLowerCase().includes("ctc")) {
                     form.setError('annualCtc', { message: errorMessage });
+                } else if (errorMessage.toLowerCase().includes("uan")) {
+                    form.setError('uanNumber', { message: errorMessage });
+                } else if (errorMessage.toLowerCase().includes("pf")) {
+                    form.setError('pfNo', { message: errorMessage });
                 }
             } else if (typeof error === 'string') {
                 errorMessage = error;
             }
 
             toast({
-                title: "Error",
+                title: "Failed to Save",
                 description: errorMessage,
                 variant: "destructive"
             });
@@ -1437,6 +1444,11 @@ const AddEditSalary = () => {
                                                 <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>UAN Number</Label>
                                                 <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. 975610472162" {...form.register("uanNumber")} />
                                                 {form.formState.errors.uanNumber && <p className="text-red-500 text-xs mt-1">{form.formState.errors.uanNumber.message}</p>}
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PAN Number</Label>
+                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. ABCDE1234F" {...form.register("panNumber")} />
+                                                {form.formState.errors.panNumber && <p className="text-red-500 text-xs mt-1">{form.formState.errors.panNumber.message}</p>}
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PF Number</Label>

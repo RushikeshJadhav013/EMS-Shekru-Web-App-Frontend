@@ -78,6 +78,9 @@ type TaskStatus = (typeof TASK_STATUSES)[number];
 const PRIORITY_OPTIONS = ["Low", "Medium", "High", "Urgent"] as const;
 type Priority = (typeof PRIORITY_OPTIONS)[number];
 
+const ROLE_ORDER = ["admin", "hr", "manager", "team_lead", "employee"] as const;
+type UserRole = (typeof ROLE_ORDER)[number];
+
 // Form-only type: supports multiple assignees per task row
 interface TaskFormRow {
   task_name: string;
@@ -506,8 +509,22 @@ function TaskRow({
       ? "Pending"
       : normalizeStatus(task.status);
 
-  // Buttons Need to Appear For Person Who Assigned Tasks
-  const isAssigner = String(task.assigned_by) === String(user?.id);
+  // Buttons Need to Appear For Person Who Assigned Tasks or has management role
+  const normalizedUserRole = useMemo(() => {
+    const role = user?.role?.toLowerCase() || "";
+    if (role === "admin") return "admin";
+    if (role === "hr") return "hr";
+    if (role.includes("manager")) return "manager";
+    if (role.includes("lead")) return "team_lead";
+    return "employee";
+  }, [user?.role]);
+
+  const canManage = Boolean(
+    user?.id &&
+    (String(task.assigned_by) === String(user.id) ||
+      ["admin", "hr", "manager"].includes(normalizedUserRole))
+  );
+  const isAssigner = canManage;
   const isAssignedToMe = String(task.user_id || task.assigned_to) === String(user?.id);
 
   return (
@@ -536,7 +553,16 @@ function TaskRow({
               return "A";
             })()}
           </div>
-          <span className="truncate">{task.assigned_by_name || "Admin"}</span>
+          <span className="truncate">
+            {(() => {
+              if (task.assigned_by_name && isNaN(Number(task.assigned_by_name))) {
+                return task.assigned_by_name;
+              }
+              const assigner = (project?.members || []).find(m => String(m.user_id) === String(task.assigned_by));
+              if (assigner) return assigner.name;
+              return task.assigned_by_name || "Admin";
+            })()}
+          </span>
         </div>
       </TableCell>
       <TableCell className="text-xs font-bold text-slate-600 dark:text-slate-400 tabular-nums">
@@ -550,7 +576,7 @@ function TaskRow({
           <Select
             value={effectiveStatus}
             onValueChange={(v) => onStatusChange(id, v)}
-            disabled={isOverdue}
+            disabled={effectiveStatus === "Overdue"}
           >
             <SelectTrigger className="h-7 w-32 text-xs border-slate-200 dark:border-slate-700">
               <SelectValue />
@@ -568,12 +594,14 @@ function TaskRow({
                   In Progress
                 </span>
               </SelectItem>
-              <SelectItem value="Overdue">
-                <span className="flex items-center gap-1.5 text-rose-600 font-medium">
-                  <AlertCircle className="h-3 w-3" />
-                  Overdue
-                </span>
-              </SelectItem>
+              {effectiveStatus === "Overdue" && (
+                <SelectItem value="Overdue" disabled>
+                  <span className="flex items-center gap-1.5 text-rose-600 font-medium font-bold">
+                    <AlertCircle className="h-3 w-3" />
+                    Overdue
+                  </span>
+                </SelectItem>
+              )}
               <SelectItem value="Completed">
                 <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
                   <CheckCircle2 className="h-3 w-3" />
@@ -584,12 +612,6 @@ function TaskRow({
                 <span className="flex items-center gap-1.5 text-slate-600 font-medium">
                   <XCircle className="h-3 w-3" />
                   Cancelled
-                </span>
-              </SelectItem>
-              <SelectItem value="Overdue">
-                <span className="flex items-center gap-1.5 text-red-600 font-medium font-bold">
-                  <AlertCircle className="h-3 w-3" />
-                  Overdue
                 </span>
               </SelectItem>
             </SelectContent>
@@ -609,6 +631,17 @@ function TaskRow({
               title="View Task"
             >
               <Eye className="h-4 w-4" />
+            </Button>
+          )}
+          {(isAssigner || isAssignedToMe) && onPass && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+              onClick={() => onPass(task)}
+              title="Pass Task"
+            >
+              <ArrowRight className="h-4 w-4" />
             </Button>
           )}
           {isAssigner && (
@@ -633,17 +666,6 @@ function TaskRow({
                   title="Reassign & Update"
                 >
                   <RefreshCcw className="h-4 w-4" />
-                </Button>
-              )}
-              {onPass && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-                  onClick={() => onPass(task)}
-                  title="Pass Task"
-                >
-                  <ArrowRight className="h-4 w-4" />
                 </Button>
               )}
               {onDelete && (
@@ -1047,17 +1069,19 @@ function ProjectCard({
                   className="w-[1100px] table-fixed"
                 >
                   <colgroup>
-                    <col className="w-[250px]" />
-                    <col className="w-[160px]" />
+                    <col className="w-[200px]" />
                     <col className="w-[140px]" />
                     <col className="w-[140px]" />
-                    <col className="w-[150px]" />
-                    <col className="w-[160px]" />
+                    <col className="w-[120px]" />
+                    <col className="w-[120px]" />
+                    <col className="w-[130px]" />
+                    <col className="w-[140px]" />
                   </colgroup>
                   <TableHeader>
                     <TableRow className="bg-slate-50/80 dark:bg-slate-900/40">
                       <TableHead className="pl-4 text-[11px] font-bold uppercase text-slate-600">Task</TableHead>
                       <TableHead className="text-[11px] font-bold uppercase text-slate-600">Assigned To</TableHead>
+                      <TableHead className="text-[11px] font-bold uppercase text-slate-600">Assigned By</TableHead>
                       <TableHead className="text-[11px] font-bold uppercase text-slate-600">Start Date</TableHead>
                       <TableHead className="text-[11px] font-bold uppercase text-slate-600">Due Date</TableHead>
                       <TableHead className="text-[11px] font-bold uppercase text-slate-600">Status</TableHead>
@@ -1193,13 +1217,41 @@ export default function ProjectManagement() {
             m.title ||
             null,
         })),
-        tasks: (p.tasks || []).filter((t: any) => {
-          const pId = p.project_id || p.id;
-          const tPid = t.project_id ?? t.projectId ?? t.project?.id ?? t.project?.project_id;
-          // If task has no project ID info, we assume it belongs if it was returned in the project's payload
-          if (tPid === undefined || tPid === null) return true;
-          return String(tPid) === String(pId);
-        }),
+        tasks: (p.tasks || [])
+          .map((t: any) => {
+            const normStatus = normalizeStatus(t.status || "Pending");
+            let effectiveStatus = t.status || "Pending";
+
+            // Detect overdue automatically
+            if (
+              normStatus !== "Completed" &&
+              normStatus !== "Cancelled" &&
+              t.due_date
+            ) {
+              const due = new Date(t.due_date);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              if (due < today) {
+                effectiveStatus = "Overdue";
+              }
+            }
+
+            return {
+              ...t,
+              status: effectiveStatus,
+            };
+          })
+          .filter((t: any) => {
+            const pId = p.project_id || p.id;
+            const tPid =
+              t.project_id ??
+              t.projectId ??
+              t.project?.id ??
+              t.project?.project_id;
+            // If task has no project ID info, we assume it belongs if it was returned in the project's payload
+            if (tPid === undefined || tPid === null) return true;
+            return String(tPid) === String(pId);
+          }),
       }));
       setProjects(normalizedProjects);
     } catch (err: any) {
@@ -1562,22 +1614,40 @@ export default function ProjectManagement() {
 
       // Normalize task field names — backend may use `title` instead of `task_name`,
       // and assignee name may be in several different fields
-      const tasks = tasksArr.map((t: any) => ({
-        ...t,
-        task_id: t.task_id || t.id,
-        task_name: t.task_name || t.title || t.name || "Untitled Task",
-        assigned_to_name:
-          t.assigned_to_name ||
-          t.assignee_name ||
-          t.assigned_name ||
-          t.employee_name ||
-          t.user_name ||
-          (t.assigned_to_first_name
-            ? `${t.assigned_to_first_name} ${t.assigned_to_last_name || ""}`.trim()
-            : null) ||
-          null,
-        status: t.status || "Pending",
-      }));
+      const tasks = tasksArr.map((t: any) => {
+        const normStatus = normalizeStatus(t.status || "Pending");
+        let effectiveStatus = t.status || "Pending";
+
+        // Detect overdue automatically
+        if (normStatus !== "Completed" && normStatus !== "Cancelled" && t.due_date) {
+          const due = new Date(t.due_date);
+          const now = new Date();
+          // Reset time to start of day for inclusive comparison if needed, 
+          // but here we just follow the same logic as TaskRow
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          if (due < today) {
+            effectiveStatus = "Overdue";
+          }
+        }
+
+        return {
+          ...t,
+          task_id: t.task_id || t.id,
+          task_name: t.task_name || t.title || t.name || "Untitled Task",
+          assigned_to_name:
+            t.assigned_to_name ||
+            t.assignee_name ||
+            t.assigned_name ||
+            t.employee_name ||
+            t.user_name ||
+            (t.assigned_to_first_name
+              ? `${t.assigned_to_first_name} ${t.assigned_to_last_name || ""}`.trim()
+              : null) ||
+            null,
+          status: effectiveStatus,
+        };
+      });
 
       // Normalise Meetings — getProjectMeetings returns any[] directly
       const meetingsRaw =
@@ -1813,6 +1883,29 @@ export default function ProjectManagement() {
       if (!project) throw new Error("Project context not found");
 
       const taskObj: any = project.tasks?.find(t => (t.task_id === taskId || t.id === taskId));
+
+      // ── LOCK OVERDUE STATUS ──
+      // If task is currently overdue (by date or status), don't allow ANY change
+      const isCurrentlyOverdue = (() => {
+        if (!taskObj) return false;
+        const s = (taskObj.status || "").toLowerCase();
+        if (s === "overdue") return true;
+        if (s === "completed" || s === "cancelled") return false;
+        if (!taskObj.due_date) return false;
+        const due = new Date(taskObj.due_date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return due < today;
+      })();
+
+      if (isCurrentlyOverdue) {
+        toast({
+          title: "Status Locked",
+          description: "Overdue tasks cannot be changed to any other status.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       // Map UI status back to backend-friendly status
       const lowStatus = status.toLowerCase().replace(/-/g, " ").replace(/_/g, " ").trim();
@@ -3523,11 +3616,27 @@ export default function ProjectManagement() {
                   <SelectValue placeholder="Choose a member" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  {selectedProject?.members?.map((m) => (
-                    <SelectItem key={m.user_id} value={String(m.user_id)}>
-                      {m.name}
-                    </SelectItem>
-                  ))}
+                  {(() => {
+                    const myRole = normalizeRole(user?.role) as UserRole;
+                    const myIndex = ROLE_ORDER.indexOf(myRole);
+
+                    return selectedProject?.members?.filter(m => {
+                      // Don't show myself
+                      if (String(m.user_id) === String(user?.id)) return false;
+
+                      // If admin, show everyone else
+                      if (myRole === "admin") return true;
+
+                      // Otherwise, only show those with lower hierarchy (higher index)
+                      const theirRole = normalizeRole(m.role) as UserRole;
+                      const theirIndex = ROLE_ORDER.indexOf(theirRole);
+                      return theirIndex > myIndex;
+                    }).map((m) => (
+                      <SelectItem key={m.user_id} value={String(m.user_id)}>
+                        {m.name}
+                      </SelectItem>
+                    ));
+                  })()}
                 </SelectContent>
               </Select>
             </div>
