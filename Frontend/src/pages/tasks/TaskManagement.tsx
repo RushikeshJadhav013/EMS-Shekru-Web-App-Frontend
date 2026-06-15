@@ -83,7 +83,6 @@ import {
   ChevronUp,
   ClipboardList,
   LayoutGrid,
-  Bell,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -235,7 +234,19 @@ const mapBackendTaskToFrontend = (task: BackendTask): TaskWithPassMeta => {
     : "";
   const priority =
     backendToFrontendPriority[task.priority ?? "Medium"] ?? "medium";
-  const status = backendToFrontendStatus[task.status ?? "Pending"] ?? "todo";
+  const statusRaw = backendToFrontendStatus[task.status ?? "Pending"] ?? "todo";
+
+  // Automatically determine if task is overdue based on deadline
+  let status = statusRaw;
+  if (statusRaw !== "completed" && statusRaw !== "cancelled" && task.due_date) {
+    const deadlineDate = new Date(task.due_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (deadlineDate < today) {
+      status = "overdue";
+    }
+  }
+
   const assignedTo =
     task.assigned_to !== undefined && task.assigned_to !== null
       ? [String(task.assigned_to)]
@@ -283,7 +294,7 @@ const mapBackendTaskToFrontend = (task: BackendTask): TaskWithPassMeta => {
     assignedByRole: task.assigned_by_role
       ? normalizeRole(task.assigned_by_role)
       : undefined,
-    projectId: task.project_id ?? null,
+    projectId: task.project_id ?? (task as any).projectId ?? (task as any).project?.project_id ?? (task as any).project?._id ?? null,
   };
 };
 
@@ -438,7 +449,7 @@ const TaskManagement: React.FC = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
   const location = useLocation();
-  const { notifications, addNotification, markAsRead, clearNotification } = useNotifications();
+  const { addNotification } = useNotifications();
   const [tasks, setTasks] = useState<TaskWithPassMeta[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [isOverdueFilterActive, setIsOverdueFilterActive] = useState(false);
@@ -455,7 +466,7 @@ const TaskManagement: React.FC = () => {
   >("received");
   const [selectedDepartmentFilter, setSelectedDepartmentFilter] =
     useState<string>("all");
-  const [activeViewTab, setActiveViewTab] = useState<"all" | "project" | "notifications">("all");
+  const [activeViewTab, setActiveViewTab] = useState<"all" | "project">("all");
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
@@ -539,10 +550,12 @@ const TaskManagement: React.FC = () => {
     title: "",
     description: "",
     assignedTo: "",
+    startDate: "",
     deadline: "",
     priority: "medium" as BaseTask["priority"],
     projectId: "",
   });
+
   const [isReassigning, setIsReassigning] = useState(false);
 
   // Task Comments State
@@ -602,15 +615,7 @@ const TaskManagement: React.FC = () => {
     return String(user.id);
   }, [user?.id]);
 
-  const taskNotifications = useMemo(() => {
-    return notifications
-      .filter((n) => n.type === "task")
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [notifications]);
 
-  const taskUnreadNotifications = useMemo(() => {
-    return taskNotifications.filter(n => !n.read);
-  }, [taskNotifications]);
 
   const normalizedUserRole = useMemo(
     () => normalizeRole(user?.role),
@@ -618,7 +623,7 @@ const TaskManagement: React.FC = () => {
   );
 
   const canSeeAdminFilters = useMemo(() => {
-    return ["admin", "hr", "manager"].includes(normalizedUserRole || "");
+    return ["admin", "hr", "manager", "team_lead"].includes(normalizedUserRole || "");
   }, [normalizedUserRole]);
 
   const [authToken, setAuthToken] = useState<string>(() => {
@@ -903,7 +908,10 @@ const TaskManagement: React.FC = () => {
         try {
           // Use formatted status for backend
           const backendStatus = frontendToBackendStatus["overdue"];
-          await apiService.updateTaskStatus(task.id, backendStatus);
+          await apiService.updateTaskStatus(task.id, backendStatus, {
+            title: task.title,
+            assigned_to: task.assignedTo[0]
+          });
         } catch (error) {
           console.error(
             `Failed to update task ${task.id} to overdue status`,
@@ -960,17 +968,53 @@ const TaskManagement: React.FC = () => {
   useEffect(() => {
     fetchEmployees();
     setIsProjectsLoading(true);
-    apiService.getProjects().then(data => {
+    apiService.getProjects().then(async data => {
       const projectList = Array.isArray(data) ? data : (data as any)?.projects || (data as any)?.data || [];
-      const normalizedProjects = projectList.map((p: any) => ({
-        ...p,
-        project_id: p.project_id || p.id,
-        name: p.name || "Untitled Project",
-        task_count: p.task_count || 0,
-        tasks: [],
-        isExpanded: false,
+      const normalizedProjects = await Promise.all(projectList.map(async (p: any) => {
+        let members = p.members || [];
+        let projectTasks: any[] = [];
+        const pid = p.project_id || p.id;
+
+        if (pid) {
+          try {
+            // Fetch members if not present
+            if (!members.length) {
+              members = await apiService.getProjectMembers(pid);
+            }
+            // Fetch tasks specifically linked to this project
+            const tasksData = await apiService.getProjectTasks(pid);
+            projectTasks = Array.isArray(tasksData) ? tasksData : (tasksData as any)?.tasks || [];
+          } catch (e) {
+            console.error(`Failed to fetch supplementary data for project ${pid}`, e);
+          }
+        }
+
+        return {
+          ...p,
+          project_id: pid,
+          name: p.name || "Untitled Project",
+          task_count: p.task_count || projectTasks.length || 0,
+          members: Array.isArray(members) ? members : [],
+          tasks: projectTasks.map(mapBackendTaskToFrontend),
+          isExpanded: false,
+        };
       }));
+
       setProjects(normalizedProjects);
+
+      // Also merge all project tasks into the main tasks state to ensure they show up in stats and global list if visible
+      const allProjectTasks = normalizedProjects.flatMap(p => p.tasks || []);
+      if (allProjectTasks.length > 0) {
+        setTasks(prev => {
+          const combined = [...prev];
+          allProjectTasks.forEach(pt => {
+            if (!combined.some(t => t.id === pt.id)) {
+              combined.push(pt);
+            }
+          });
+          return combined;
+        });
+      }
     }).catch(err => console.error("Failed to fetch projects", err))
       .finally(() => setIsProjectsLoading(false));
   }, [fetchEmployees]);
@@ -1184,9 +1228,21 @@ const TaskManagement: React.FC = () => {
   );
 
   const getAssignedByInfo = useCallback(
-    (assignedById: string, role?: UserRole) => {
+    (assignedById: string, role?: UserRole, directName?: string) => {
       if (!assignedById) {
         return { name: "Unknown", roleLabel: undefined };
+      }
+
+      // Priority 0: Direct name from backend task payload (assigned_by_name) - most reliable
+      // But only if it's not just a numeric ID
+      if (directName && isNaN(Number(directName))) {
+        const assigner = employeesById.get(assignedById);
+        const cachedUser = userCache.get(assignedById);
+        const resolvedRole = role || assigner?.role || cachedUser?.role;
+        return {
+          name: directName,
+          roleLabel: resolvedRole ? formatRoleLabel(resolvedRole) : undefined,
+        };
       }
 
       // Priority 1: Backend-provided role from task (most reliable)
@@ -1245,9 +1301,21 @@ const TaskManagement: React.FC = () => {
   );
 
   const getAssignedToInfo = useCallback(
-    (assignedToId: string, role?: UserRole) => {
+    (assignedToId: string, role?: UserRole, directName?: string) => {
       if (!assignedToId) {
         return { name: "Unassigned", roleLabel: undefined };
+      }
+
+      // Priority 0: Direct name from backend task payload (assigned_to_name) - most reliable
+      // But only if it's not just a numeric ID
+      if (directName && isNaN(Number(directName))) {
+        const assignee = employeesById.get(assignedToId);
+        const cachedUser = userCache.get(assignedToId);
+        const resolvedRole = role || assignee?.role || cachedUser?.role;
+        return {
+          name: directName,
+          roleLabel: resolvedRole ? formatRoleLabel(resolvedRole) : undefined,
+        };
       }
 
       // Priority 1: Backend-provided role from task (most reliable)
@@ -1418,6 +1486,14 @@ const TaskManagement: React.FC = () => {
       return true;
     }
 
+    // Project-based visibility: If user is a member of the project, they should see the task
+    if (task.projectId && projects.length > 0) {
+      const project = projects.find(p => String(p.project_id || p.id) === String(task.projectId));
+      if (project && project.members?.some((m: any) => String(m.user_id || m.userId || m.id) === String(userId))) {
+        return true;
+      }
+    }
+
     // Role-based organizational access
     if (normalizedUserRole === "manager" && user.department) {
       const userDepts = user.department.split(",").map(d => d.trim().toLowerCase());
@@ -1434,7 +1510,7 @@ const TaskManagement: React.FC = () => {
     }
 
     if (normalizedUserRole === "team_lead" && user.department) {
-      // Team leads see tasks within their department (same logic as manager for now, or could be stricter)
+      // Team leads see tasks within their department
       const userDepts = user.department.split(",").map(d => d.trim().toLowerCase());
       const creator = employees.find(emp => String(emp.userId) === String(task.assignedBy));
       const assignees = task.assignedTo.map(id => employees.find(emp => String(emp.userId) === String(id)));
@@ -1448,13 +1524,11 @@ const TaskManagement: React.FC = () => {
     }
 
     if (normalizedUserRole === "hr") {
-      // HR sees all tasks (like admin) or potentially just recruitment tasks? 
-      // Most implementations allow HR broad view.
       return true;
     }
 
     return false;
-  }, [userId, user, normalizedUserRole, employees]);
+  }, [userId, user, normalizedUserRole, employees, projects]);
 
   // 1. Base Visibility & Search Filter (Status-independent)
   const baseVisibleTasks = useMemo(() => {
@@ -1468,7 +1542,6 @@ const TaskManagement: React.FC = () => {
   }, [searchQuery, tasks, isTaskVisible]);
 
   // 2. Ownership & Department Scoped Filter (Status-independent)
-  // 2. Ownership & Department Scoped Filter (Intermediate list for stats)
   const scopedTasks = useMemo(() => {
     let base = [...baseVisibleTasks];
 
@@ -1555,9 +1628,7 @@ const TaskManagement: React.FC = () => {
       }
 
       // Within same status, sort by deadline
-      const aDeadline = a.deadline ? new Date(a.deadline).getTime() : Number.MAX_SAFE_INTEGER;
-      const bDeadline = b.deadline ? new Date(b.deadline).getTime() : Number.MAX_SAFE_INTEGER;
-      return aDeadline - bDeadline;
+      return Number(b.id) - Number(a.id);
     });
   }, [scopedTasks, filterStatus, isOverdueFilterActive]);
 
@@ -1586,6 +1657,7 @@ const TaskManagement: React.FC = () => {
     return getAssignedByInfo(
       selectedTask.assignedBy,
       selectedTask.assignedByRole,
+      selectedTask.assignedByName,
     );
   }, [getAssignedByInfo, selectedTask]);
 
@@ -1594,6 +1666,7 @@ const TaskManagement: React.FC = () => {
     return getAssignedToInfo(
       selectedTask.assignedTo[0] || "",
       selectedTask.assignedToRole,
+      selectedTask.assignedToName,
     );
   }, [getAssignedToInfo, selectedTask]);
 
@@ -1607,13 +1680,12 @@ const TaskManagement: React.FC = () => {
           (p.description || "").toLowerCase().includes(query);
 
         // Filter tasks within this project based on current filters AND visibility
-        // Instead of p.tasks (which might be empty on load), we pull from the authoritative tasks list
         const projectTasksFromMain = tasks.filter(t => t.projectId && String(t.projectId) === String(p.project_id || p.id));
         const filteredProjectTasks = projectTasksFromMain.filter((task: any) => {
           // 1. Visibility Check
           if (!isTaskVisible(task)) return false;
 
-          // 2. Ownership Filter
+          // 2. Ownership Filter - For project view, we might want to be more inclusive if "all" is selected
           if (taskOwnershipFilter === "created") {
             if (String(task.assignedBy) !== String(userId)) return false;
           } else if (taskOwnershipFilter === "received") {
@@ -1670,7 +1742,6 @@ const TaskManagement: React.FC = () => {
     };
   }, [filteredProjects]);
 
-
   const selectedTaskHistory = useMemo(() => {
     if (!selectedTask) return [];
     return taskHistory[selectedTask.id] ?? [];
@@ -1699,10 +1770,42 @@ const TaskManagement: React.FC = () => {
   );
 
   // Create new task
+  const canAssignToEdit = useMemo(() => {
+    let base = assignableEmployees;
+    if (editTaskForm.projectId) {
+      const selectedProject = projects.find(p => String(p.project_id || p.id) === String(editTaskForm.projectId));
+      if (selectedProject?.members) {
+        const memberIds = selectedProject.members.map((m: any) => String(m.user_id || m.userId || m.id || ''));
+        base = base.filter(emp => memberIds.includes(String(emp.userId)));
+      }
+    }
+    return base;
+  }, [assignableEmployees, editTaskForm.projectId, projects]);
+
+  const canAssignToReassign = useMemo(() => {
+    let base = assignableEmployees;
+    if (reassignForm.projectId) {
+      const selectedProject = projects.find(p => String(p.project_id || p.id) === String(reassignForm.projectId));
+      if (selectedProject?.members) {
+        const memberIds = selectedProject.members.map((m: any) => String(m.user_id || m.userId || m.id || ''));
+        base = base.filter(emp => memberIds.includes(String(emp.userId)));
+      }
+    }
+    return base;
+  }, [assignableEmployees, reassignForm.projectId, projects]);
+
   const canAssignToSelection = useMemo(() => {
     if (!user || !userId) return [];
-    return assignableEmployees;
-  }, [assignableEmployees, user, userId]);
+    let base = assignableEmployees;
+    if (newTask.projectId) {
+      const selectedProject = projects.find(p => String(p.project_id || p.id) === String(newTask.projectId));
+      if (selectedProject?.members) {
+        const memberIds = selectedProject.members.map((m: any) => String(m.user_id || m.userId || m.id || ''));
+        base = base.filter(emp => memberIds.includes(String(emp.userId)));
+      }
+    }
+    return base;
+  }, [assignableEmployees, user, userId, newTask.projectId, projects]);
 
   const departmentOptions = useMemo(() => {
     const sanitized = assignableDepartments.filter(
@@ -2167,10 +2270,12 @@ const TaskManagement: React.FC = () => {
 
   const handleReassignClick = useCallback((task: TaskWithPassMeta) => {
     setReassignTask(task);
-    // Set default deadline to today if no existing deadline or if existing deadline is in the past
+    // Set default deadline and start date
     const today = new Date();
     const todayString = today.toISOString().split("T")[0];
     const existingDeadline = formatDateForInput(task.deadline);
+    const existingStartDate = formatDateForInput(task.startDate);
+
     const defaultDeadline =
       existingDeadline && new Date(existingDeadline) >= today
         ? existingDeadline
@@ -2180,6 +2285,7 @@ const TaskManagement: React.FC = () => {
       title: task.title,
       description: task.description,
       assignedTo: task.assignedTo[0] || "",
+      startDate: existingStartDate || todayString,
       deadline: defaultDeadline,
       priority: task.priority,
       projectId: task.projectId ? String(task.projectId) : "",
@@ -2194,6 +2300,7 @@ const TaskManagement: React.FC = () => {
       title: "",
       description: "",
       assignedTo: "",
+      startDate: new Date().toISOString().split("T")[0],
       deadline: new Date().toISOString().split("T")[0], // Reset to today's date
       priority: "medium",
       projectId: "",
@@ -2271,7 +2378,9 @@ const TaskManagement: React.FC = () => {
       title: trimmedTitle,
       description: trimmedDescription,
       assigned_to: assignedToNumber,
+      start_date: reassignForm.startDate || null,
       due_date: reassignForm.deadline || null,
+      priority: frontendToBackendPriority[reassignForm.priority || "medium"],
       status: "Pending", // Reset status to Pending when reassigning
       project_id: reassignForm.projectId
         ? Number(reassignForm.projectId)
@@ -2285,7 +2394,10 @@ const TaskManagement: React.FC = () => {
       // Explicitly update status to 'Pending' (todo) via the dedicated status endpoint
       // This is necessary because the general update endpoint might not process status changes for overdue tasks
       try {
-        await apiService.updateTaskStatus(reassignTask.id, "Pending");
+        await apiService.updateTaskStatus(reassignTask.id, "Pending", {
+          title: trimmedTitle,
+          assigned_to: assignedToNumber
+        });
       } catch (statusError) {
         console.warn(
           "Failed to explicitly reset status during reassignment:",
@@ -2444,11 +2556,11 @@ const TaskManagement: React.FC = () => {
       priority: frontendToBackendPriority[editTaskForm.priority || editingTask.priority || "medium"],
       due_date: editTaskForm.deadline || null,
       start_date: editTaskForm.startDate || null,
+      // Always send project_id — null when task has no project (API spec requires the field)
+      project_id: editTaskForm.projectId
+        ? Number(editTaskForm.projectId)
+        : (editingTask.projectId ? Number(editingTask.projectId) : null),
     };
-
-    if (editTaskForm.projectId) {
-      payload.project_id = Number(editTaskForm.projectId);
-    }
 
     setIsUpdatingTask(true);
     try {
@@ -2607,8 +2719,13 @@ const TaskManagement: React.FC = () => {
       currentStatus: BaseTask["status"],
       newStatus: BaseTask["status"],
     ): boolean => {
-      // 1. Admins should always have full control
-      if (normalizedUserRole === "admin") return true;
+      // 1. If task is overdue, it cannot be changed anymore
+      if (currentStatus === "overdue") {
+        return false;
+      }
+
+      // 2. All other transitions allowed
+      return true;
 
       // Define status hierarchy
       const statusHierarchy: BaseTask["status"][] = [
@@ -2659,14 +2776,13 @@ const TaskManagement: React.FC = () => {
     (task: TaskWithPassMeta): boolean => {
       if (!userId) return false;
 
-      // Only the creator can delete
+      // Creator and Admin/HR can delete
       const isCreator = task.assignedBy === userId;
-      if (!isCreator) return false;
+      const isAdminOrHR = ["admin", "hr"].includes(normalizedUserRole);
 
-      // Can only delete if task is still in 'todo' status (not started)
-      return task.status === "todo";
+      return isCreator || isAdminOrHR;
     },
-    [userId],
+    [userId, normalizedUserRole],
   );
 
   // Check if task can be reassigned
@@ -2675,18 +2791,13 @@ const TaskManagement: React.FC = () => {
     (task: TaskWithPassMeta): boolean => {
       if (!userId) return false;
 
-      // Only the creator can reassign
+      // Creator and Admin/HR can reassign
       const isCreator = task.assignedBy === userId;
-      if (!isCreator) return false;
+      const isAdminOrHR = ["admin", "hr"].includes(normalizedUserRole);
 
-      // Can only reassign if task is completed, cancelled, or overdue
-      return (
-        task.status === "completed" ||
-        task.status === "cancelled" ||
-        task.status === "overdue"
-      );
+      return isCreator || isAdminOrHR;
     },
-    [userId],
+    [userId, normalizedUserRole],
   );
 
   // Update task status
@@ -2697,7 +2808,51 @@ const TaskManagement: React.FC = () => {
     setUpdatingTaskId(taskId);
     try {
       const backendStatus = frontendToBackendStatus[newStatus];
-      const updatedTask: BackendTask = await apiService.updateTaskStatus(taskId, backendStatus);
+
+      const foundTask = tasks.find(t => t.id === taskId);
+      // Guard: If task is overdue, block ANY change
+      if (foundTask && (foundTask.status as string) === "overdue") {
+        toast({
+          title: "Status Locked",
+          description: "Overdue tasks cannot be changed to any other status.",
+          variant: "destructive"
+        });
+        setUpdatingTaskId(null);
+        return;
+      }
+
+      // Find the task to get required backend fields (title + assigned_to)
+      let taskTitle: string | undefined;
+      let taskAssignedTo: string | undefined;
+      if (foundTask) {
+        taskTitle = foundTask.title;
+        taskAssignedTo = foundTask.assignedTo?.[0] || String(foundTask.assignedBy || "");
+      } else {
+        // Search in projects as fallback
+        for (const project of projects) {
+          const ptask = (project.tasks || []).find((t: any) => String(t.id || t.task_id) === taskId);
+          if (ptask) {
+            taskTitle = ptask.title || ptask.task_name || ptask.taskTitle || "Task";
+            taskAssignedTo = ptask.assignedTo?.[0] ?? String(ptask.assigned_to ?? ptask.user_id ?? "");
+            break;
+          }
+        }
+      }
+
+      // Final fallback if still not found
+      if (!taskTitle) taskTitle = "Task";
+      if (taskAssignedTo === undefined) taskAssignedTo = "";
+
+      const updatedTask: BackendTask = await apiService.updateTaskStatus(
+        taskId,
+        backendStatus,
+        {
+          title: taskTitle,
+          assigned_to: taskAssignedTo,
+          priority: foundTask?.priority || "Medium",
+          description: foundTask?.description || ""
+        }
+      );
       const convertedTask = mapBackendTaskToFrontend(updatedTask);
 
       // Update tasks list immediately
@@ -3074,7 +3229,7 @@ const TaskManagement: React.FC = () => {
                     )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {canSeeAdminFilters && (
+                      {canSeeAdminFilters && normalizedUserRole !== "team_lead" && (
                         <>
                           <div className="space-y-2">
                             <Label
@@ -3318,6 +3473,7 @@ const TaskManagement: React.FC = () => {
                         {/* Current User (Self) */}
                         {userId &&
                           user &&
+                          canAssignToSelection.some((e) => e.userId === userId) &&
                           (!assigneeSearchQuery ||
                             user.name
                               .toLowerCase()
@@ -3472,9 +3628,9 @@ const TaskManagement: React.FC = () => {
         </div>
       </div>
 
-      <Tabs value={activeViewTab} onValueChange={(value) => setActiveViewTab(value as "all" | "project" | "notifications")} className="w-full">
+      <Tabs value={activeViewTab} onValueChange={(value) => setActiveViewTab(value as "all" | "project")} className="w-full">
         <TabsList
-          className="grid w-full grid-cols-3 h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm"
+          className="grid w-full grid-cols-2 h-14 bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-800 dark:to-gray-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-1 gap-1 shadow-sm"
         >
           <TabsTrigger
             value="all"
@@ -3488,133 +3644,10 @@ const TaskManagement: React.FC = () => {
           >
             Project Tasks
           </TabsTrigger>
-          <TabsTrigger
-            value="notifications"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:font-semibold text-black dark:text-white data-[state=inactive]:font-bold text-[14px] transition-all duration-300 rounded-md gap-2"
-          >
-            Notifications
-            {taskUnreadNotifications.length > 0 && (
-              <Badge className="bg-red-500 text-white border-0 h-5 px-1.5 min-w-[20px] justify-center text-[10px] animate-pulse">
-                {taskUnreadNotifications.length}
-              </Badge>
-            )}
-          </TabsTrigger>
+
         </TabsList>
 
-        <TabsContent value="notifications" className="space-y-6 mt-6">
-          <Card className="border-2 border-[#000000] shadow-lg rounded-xl overflow-hidden min-h-[400px]">
-            <CardHeader className="border-b-2 border-[#000000] bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg">
-                    <Bell className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl font-black text-black dark:text-white uppercase tracking-wider">
-                      Task Notifications
-                    </CardTitle>
-                    <CardDescription className="text-xs font-bold text-slate-500">
-                      Recent activity and alerts for your tasks
-                    </CardDescription>
-                  </div>
-                </div>
-                {taskUnreadNotifications.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => taskUnreadNotifications.forEach(n => markAsRead(n.id))}
-                    className="h-8 border-2 border-black/10 dark:border-white/10 font-bold text-xs hover:bg-white dark:hover:bg-slate-900"
-                  >
-                    Mark all as read
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {taskNotifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                  <div className="h-20 w-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
-                    <Bell className="h-10 w-10 text-slate-300" />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                    No notifications yet
-                  </h3>
-                  <p className="text-sm text-slate-500 max-w-[250px] mx-auto mt-2">
-                    When you are assigned tasks or when task status changes, you'll see them here.
-                  </p>
-                </div>
-              ) : (
-                <div className="divide-y-2 divide-black/5 dark:divide-white/5">
-                  {taskNotifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      onClick={() => {
-                        if (notification.metadata?.taskId) {
-                          const task = tasks.find(t => t.id === notification.metadata?.taskId);
-                          if (task) {
-                            setSelectedTask(task);
-                          }
-                        }
-                        if (!notification.read) markAsRead(notification.id);
-                      }}
-                      className={cn(
-                        "p-4 flex items-start gap-4 cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-900/50 relative",
-                        !notification.read && "bg-blue-50/30 dark:bg-blue-900/10"
-                      )}
-                    >
-                      {!notification.read && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600" />
-                      )}
-                      <div className={cn(
-                        "h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm",
-                        notification.read ? "bg-slate-100 dark:bg-slate-800" : "bg-blue-100 dark:bg-blue-900/30"
-                      )}>
-                        <FileText className={cn("h-5 w-5", notification.read ? "text-slate-400" : "text-blue-600")} />
-                      </div>
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <h4 className={cn(
-                            "text-sm font-bold truncate",
-                            notification.read ? "text-slate-700 dark:text-slate-300" : "text-black dark:text-white"
-                          )}>
-                            {notification.title}
-                          </h4>
-                          <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">
-                            {formatDateTimeIST(notification.createdAt, "MMM dd, HH:mm")}
-                          </span>
-                        </div>
-                        <p className="text-[13px] text-slate-500 line-clamp-2 leading-snug">
-                          {notification.message}
-                        </p>
-                        <div className="flex items-center gap-3 pt-1">
-                          {notification.read ? (
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Read</span>
-                          ) : (
-                            <Badge className="bg-blue-600 text-white border-0 h-4 px-1.5 text-[9px] font-black uppercase tracking-widest">New</Badge>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-5 px-0 text-[10px] font-black text-blue-600 hover:bg-transparent underline underline-offset-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (notification.metadata?.taskId) {
-                                const task = tasks.find(t => t.id === notification.metadata?.taskId);
-                                if (task) setSelectedTask(task);
-                              }
-                            }}
-                          >
-                            View Task
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+
 
         <TabsContent value="all" className="space-y-6 mt-6">
           {/* Stats Cards - Clickable Filters */}
@@ -3881,22 +3914,22 @@ const TaskManagement: React.FC = () => {
                               const assignedByInfo = getAssignedByInfo(
                                 task.assignedBy,
                                 task.assignedByRole,
+                                task.assignedByName,
                               );
                               const assignedToInfo = getAssignedToInfo(
                                 task.assignedTo[0] || "",
                                 task.assignedToRole,
                               );
-                              // In "All Tasks" view, admin can only manage tasks they created
+                              const isCreator = task.assignedBy === userId;
                               const canManageTask = Boolean(
-                                userId && (task.assignedBy === userId || normalizedUserRole === "admin"),
+                                userId && (isCreator || ["admin", "hr", "manager", "team_lead"].includes(normalizedUserRole)),
                               );
                               const isReceivedTask = Boolean(
                                 userId && task.assignedTo.includes(userId),
                               );
-                              // Don't allow passing completed, cancelled, or overdue tasks
+                              // Creators can pass tasks too
                               const canPassTask =
-                                isReceivedTask &&
-                                task.assignedTo[0] === userId &&
+                                (isReceivedTask || isCreator) &&
                                 passEligibleEmployees.length > 0 &&
                                 task.status !== "completed" &&
                                 task.status !== "cancelled" &&
@@ -3991,7 +4024,7 @@ const TaskManagement: React.FC = () => {
                                       onValueChange={(value: BaseTask["status"]) =>
                                         updateTaskStatus(task.id, value)
                                       }
-                                      disabled={updatingTaskId === task.id}
+                                      disabled={updatingTaskId === task.id || (task.status as string) === "overdue"}
                                     >
                                       <SelectTrigger
                                         className={`w-[170px] h-10 border-2 bg-white dark:bg-gray-950 px-3 transition-all text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm`}
@@ -4005,6 +4038,9 @@ const TaskManagement: React.FC = () => {
                                       <SelectContent className="border-2 shadow-xl">
                                         <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
                                         <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+                                        {task.status === "overdue" && (
+                                          <SelectItem value="overdue" disabled>Overdue</SelectItem>
+                                        )}
                                         <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
                                         <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
                                       </SelectContent>
@@ -4044,7 +4080,7 @@ const TaskManagement: React.FC = () => {
                                       >
                                         👁
                                       </Button>
-                                      {task.status !== "completed" && canPassTask && (
+                                      {canPassTask && (
                                         <Button
                                           variant="ghost"
                                           size="icon"
@@ -4055,8 +4091,8 @@ const TaskManagement: React.FC = () => {
                                           <Share2 className="h-4 w-4" />
                                         </Button>
                                       )}
-                                      {task.status !== "completed" &&
-                                        (task.status as string) !== "cancelled" &&
+                                      {((task.status !== "completed" &&
+                                        (task.status as string) !== "cancelled") || isCreator) &&
                                         canManageTask && (
                                           <>
                                             {(task.status as string) !==
@@ -4139,22 +4175,23 @@ const TaskManagement: React.FC = () => {
                       const assignedByInfo = getAssignedByInfo(
                         task.assignedBy,
                         task.assignedByRole,
+                        task.assignedByName,
                       );
                       const assignedToInfo = getAssignedToInfo(
                         task.assignedTo[0] || "",
                         task.assignedToRole,
+                        task.assignedToName,
                       );
-                      // In "All Tasks" view, admin can only manage tasks they created
+                      const isCreator = task.assignedBy === userId;
                       const canManageTask = Boolean(
-                        userId && (task.assignedBy === userId || normalizedUserRole === "admin"),
+                        userId && (isCreator || ["admin", "hr", "manager", "team_lead"].includes(normalizedUserRole)),
                       );
                       const isReceivedTask = Boolean(
                         userId && task.assignedTo.includes(userId),
                       );
-                      // Don't allow passing completed, cancelled, or overdue tasks
+                      // Creators can pass tasks too
                       const canPassTask =
-                        isReceivedTask &&
-                        task.assignedTo[0] === userId &&
+                        (isReceivedTask || isCreator) &&
                         passEligibleEmployees.length > 0 &&
                         task.status !== "completed" &&
                         task.status !== "cancelled" &&
@@ -4220,7 +4257,7 @@ const TaskManagement: React.FC = () => {
                                   onValueChange={(value: BaseTask["status"]) =>
                                     updateTaskStatus(task.id, value)
                                   }
-                                  disabled={updatingTaskId === task.id || (!isReceivedTask && !canManageTask)}
+                                  disabled={updatingTaskId === task.id || (task.status as string) === "overdue"}
                                 >
                                   <SelectTrigger
                                     className="h-8 border-2 bg-white dark:bg-gray-950 px-2 transition-all text-[11px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm w-auto min-w-[100px]"
@@ -4233,6 +4270,9 @@ const TaskManagement: React.FC = () => {
                                   <SelectContent className="border-2 shadow-xl">
                                     <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
                                     <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+                                    {task.status === "overdue" && (
+                                      <SelectItem value="overdue" disabled>Overdue</SelectItem>
+                                    )}
                                     <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
                                     <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
                                   </SelectContent>
@@ -4347,7 +4387,7 @@ const TaskManagement: React.FC = () => {
                                 </Button>
 
                                 {/* Pass Button */}
-                                {task.status !== "completed" && canPassTask && (
+                                {canPassTask && (
                                   <Button
                                     variant="ghost"
                                     size="icon"
@@ -4363,10 +4403,10 @@ const TaskManagement: React.FC = () => {
                                 )}
 
                                 {/* Edit Button */}
-                                {task.status !== "completed" &&
-                                  (task.status as string) !== "cancelled" &&
+                                {((task.status !== "completed" &&
+                                  (task.status as string) !== "cancelled") || isCreator) &&
                                   canManageTask &&
-                                  (task.status as string) !== "overdue" && (
+                                  ((task.status as string) !== "overdue" || isCreator) && (
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -4398,8 +4438,8 @@ const TaskManagement: React.FC = () => {
                                 )}
 
                                 {/* Delete Button */}
-                                {task.status !== "completed" &&
-                                  (task.status as string) !== "cancelled" &&
+                                {((task.status !== "completed" &&
+                                  (task.status as string) !== "cancelled") || isCreator) &&
                                   canManageTask && (
                                     <Button
                                       variant="ghost"
@@ -4630,11 +4670,12 @@ const TaskManagement: React.FC = () => {
                                   <TableBody>
                                     {project.filteredTasks && project.filteredTasks.length > 0 ? (
                                       project.filteredTasks.map((task: any) => {
-                                        const assignedByInfo = getAssignedByInfo(task.assignedBy, task.assignedByRole);
-                                        const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || "", task.assignedToRole);
-                                        const canManageTask = Boolean(userId && (task.assignedBy === userId || normalizedUserRole === "admin"));
+                                        const assignedByInfo = getAssignedByInfo(task.assignedBy, task.assignedByRole, task.assignedByName);
+                                        const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || "", task.assignedToRole, task.assignedToName);
+                                        const isCreator = task.assignedBy === userId;
+                                        const canManageTask = Boolean(userId && (isCreator || ["admin", "hr", "manager", "team_lead"].includes(normalizedUserRole)));
                                         const isReceivedTask = Boolean(userId && task.assignedTo.includes(userId));
-                                        const canPassTask = isReceivedTask && task.assignedTo[0] === userId && passEligibleEmployees.length > 0 &&
+                                        const canPassTask = (isReceivedTask || isCreator) && passEligibleEmployees.length > 0 &&
                                           task.status !== "completed" && task.status !== "cancelled" && task.status !== "overdue";
 
                                         return (
@@ -4680,7 +4721,7 @@ const TaskManagement: React.FC = () => {
                                                 onValueChange={(value: BaseTask["status"]) =>
                                                   updateTaskStatus(task.id, value)
                                                 }
-                                                disabled={updatingTaskId === task.id || (!isReceivedTask && !canManageTask)}
+                                                disabled={updatingTaskId === task.id || (task.status as string) === "overdue"}
                                               >
                                                 <SelectTrigger
                                                   className={`w-[160px] h-9 border-2 bg-white dark:bg-gray-950 px-3 transition-all text-[14px] font-bold text-black dark:text-white border-black/10 dark:border-white/10 shadow-sm`}
@@ -4693,6 +4734,7 @@ const TaskManagement: React.FC = () => {
                                                 <SelectContent className="border-2 shadow-xl">
                                                   <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
                                                   <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+                                                  <SelectItem value="overdue" disabled={!isStatusTransitionAllowed(task.status, "overdue")}>Overdue</SelectItem>
                                                   <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
                                                   <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
                                                 </SelectContent>
@@ -4710,13 +4752,13 @@ const TaskManagement: React.FC = () => {
                                               <div className="flex items-center gap-1">
                                                 <Button variant="ghost" size="icon" onClick={() => setSelectedTask(task)} className="h-8 w-8 text-black dark:text-white hover:bg-slate-100" title="View details">👁</Button>
                                                 {canPassTask && <Button variant="ghost" size="icon" onClick={() => openPassDialog(task)} className="h-8 w-8 text-black hover:bg-slate-100" title="Pass task"><Share2 className="h-4 w-4" /></Button>}
-                                                {canManageTask && task.status !== "completed" && task.status !== "cancelled" && (
+                                                {((task.status !== "completed" && task.status !== "cancelled") || isCreator) && canManageTask && (
                                                   <Button variant="ghost" size="icon" onClick={() => handleEditClick(task)} className="h-8 w-8 text-blue-600 hover:bg-blue-50" title="Edit task"><Pencil className="h-4 w-4" /></Button>
                                                 )}
                                                 {canReassignTask(task) && (
                                                   <Button variant="ghost" size="icon" onClick={() => handleReassignClick(task)} className="h-8 w-8 text-emerald-600 hover:bg-emerald-50" title="Reassign task"><RefreshCcw className="h-4 w-4" /></Button>
                                                 )}
-                                                {canManageTask && canDeleteTask(task) && (
+                                                {((task.status !== "completed" && task.status !== "cancelled") || isCreator) && canManageTask && canDeleteTask(task) && (
                                                   <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(task.id)} disabled={deletingTaskId === task.id} className="h-8 w-8 text-rose-600 hover:bg-rose-50" title="Delete task">
                                                     {deletingTaskId === task.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                                   </Button>
@@ -4985,12 +5027,12 @@ const TaskManagement: React.FC = () => {
                     <SelectValue placeholder="Select assignee" />
                   </SelectTrigger>
                   <SelectContent className="border-2 shadow-xl">
-                    {userId && user && (
+                    {userId && user && canAssignToEdit.some(e => e.userId === userId) && (
                       <SelectItem value={userId} className="cursor-pointer">
                         {user.name} (Self)
                       </SelectItem>
                     )}
-                    {assignableEmployees
+                    {canAssignToEdit
                       .filter((emp) => emp.userId !== userId)
                       .map((emp) => (
                         <SelectItem
@@ -5228,7 +5270,7 @@ const TaskManagement: React.FC = () => {
                       <SelectValue placeholder="Select assignee" />
                     </SelectTrigger>
                     <SelectContent>
-                      {assignableEmployees.map((employee) => (
+                      {canAssignToReassign.map((employee) => (
                         <SelectItem
                           key={employee.userId}
                           value={employee.userId}
@@ -5267,26 +5309,49 @@ const TaskManagement: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <Label
-                  htmlFor="reassign-deadline"
-                  className="text-sm font-medium"
-                >
-                  Deadline (Optional)
-                </Label>
-                <Input
-                  id="reassign-deadline"
-                  type="date"
-                  value={reassignForm.deadline}
-                  min={new Date().toISOString().split("T")[0]}
-                  onChange={(e) =>
-                    setReassignForm((prev) => ({
-                      ...prev,
-                      deadline: e.target.value,
-                    }))
-                  }
-                  className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label
+                    htmlFor="reassign-startDate"
+                    className="text-sm font-medium"
+                  >
+                    Start Date
+                  </Label>
+                  <Input
+                    id="reassign-startDate"
+                    type="date"
+                    value={reassignForm.startDate}
+                    onChange={(e) =>
+                      setReassignForm((prev) => ({
+                        ...prev,
+                        startDate: e.target.value,
+                      }))
+                    }
+                    className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400"
+                  />
+                </div>
+
+                <div>
+                  <Label
+                    htmlFor="reassign-deadline"
+                    className="text-sm font-medium"
+                  >
+                    Deadline
+                  </Label>
+                  <Input
+                    id="reassign-deadline"
+                    type="date"
+                    value={reassignForm.deadline}
+                    min={reassignForm.startDate || new Date().toISOString().split("T")[0]}
+                    onChange={(e) =>
+                      setReassignForm((prev) => ({
+                        ...prev,
+                        deadline: e.target.value,
+                      }))
+                    }
+                    className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400"
+                  />
+                </div>
               </div>
 
               {canSeeAdminFilters && (

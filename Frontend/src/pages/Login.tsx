@@ -82,6 +82,8 @@ const Login: React.FC = () => {
   const [confirmPin, setConfirmPin] = useState('');
   const [requiresPinSetup, setRequiresPinSetup] = useState(false);
   const [isResettingPin, setIsResettingPin] = useState(false);
+  const [pinAttemptsLeft, setPinAttemptsLeft] = useState(5);
+  const [otpAttemptsLeft, setOtpAttemptsLeft] = useState(5);
   const [loginMode, setLoginMode] = useState<'email' | 'otp' | 'pin' | 'set-pin' | 'reset-pin'>('email');
   const otpInputRef = React.useRef<HTMLInputElement>(null);
   const pinInputRef = React.useRef<HTMLInputElement>(null);
@@ -408,6 +410,7 @@ const Login: React.FC = () => {
         const userData = response.data;
         setLastShownError('');
         setLastOtpAttempt('');
+        setOtpAttemptsLeft(5);
 
         if (userData.requires_pin_setup) {
           setTempAuthData(userData);
@@ -420,13 +423,29 @@ const Login: React.FC = () => {
       }
     } catch (err: any) {
       console.error('OTP verification error:', err);
+      const newAttempts = otpAttemptsLeft - 1;
+      setOtpAttemptsLeft(newAttempts > 0 ? newAttempts : 5);
       const errorMessage = formatErrorMessage(err, 'Failed to verify OTP');
-      setError(errorMessage);
-      toast({
-        variant: "destructive",
-        title: "Verification Failed",
-        description: errorMessage,
-      });
+
+      if (newAttempts <= 0) {
+        toast({
+          variant: "destructive",
+          title: "Account Locked",
+          description: "Too many failed attempts. Please start again.",
+        });
+        setOtpSent(false);
+        setLoginMode('email');
+        setOtp('');
+        setError('Too many failed attempts. Please start again.');
+      } else {
+        const finalMessage = `${errorMessage}, ${newAttempts} Attempts Left`;
+        setError(finalMessage);
+        toast({
+          variant: "destructive",
+          title: "Verification Failed",
+          description: finalMessage,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -447,16 +466,32 @@ const Login: React.FC = () => {
       });
 
       if (response.status === 200 || response.status === 201) {
+        setPinAttemptsLeft(5);
         await completeLogin(response.data);
       }
     } catch (err: any) {
+      const newAttempts = pinAttemptsLeft - 1;
+      setPinAttemptsLeft(newAttempts > 0 ? newAttempts : 5);
       const errorMessage = formatErrorMessage(err, 'Invalid PIN');
-      setError(errorMessage);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: errorMessage,
-      });
+
+      if (newAttempts <= 0) {
+        toast({
+          variant: "destructive",
+          title: "Account Locked",
+          description: "Too many failed attempts. Please start again.",
+        });
+        setLoginMode('email');
+        setPinValue('');
+        setError('Too many failed attempts. Please start again.');
+      } else {
+        const finalMessage = `${errorMessage}, ${newAttempts} Attempts Left`;
+        setError(finalMessage);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: finalMessage,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -1114,6 +1149,7 @@ const Login: React.FC = () => {
                       className="w-full h-12 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl"
                       onClick={() => {
                         setOtpSent(false);
+                        setLoginMode('email');
                         setOtp('');
                         setError('');
                         setOtpExpiryTime(0);

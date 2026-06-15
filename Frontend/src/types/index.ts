@@ -244,7 +244,7 @@ export interface SalaryStructure {
   monthlyCtc?: number;
   monthlyInHand: number;
   workingDays: number;
-  paymentMode: "bank_transfer" | "cash" | "cheque";
+  paymentMode: string;
   bankName: string;
   accountNumber: string;
   ifscCode: string;
@@ -329,5 +329,5 @@ export interface SalaryCreateData {
   accountNumber: string;
   ifscCode: string;
   workingDays: number;
-  paymentMode: "bank_transfer" | "cash" | "cheque";
+  paymentMode: string;
 }

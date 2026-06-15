@@ -7,6 +7,7 @@ import { formatTimeIST } from '@/utils/timezone';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -78,7 +79,6 @@ function openInTab(url: string) {
 
 function downloadBlob(url: string, filename: string) {
   if (url.startsWith('data:')) {
-    // Direct download from data URL
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
@@ -87,7 +87,9 @@ function downloadBlob(url: string, filename: string) {
     document.body.removeChild(a);
     return;
   }
-  dataUrlToBlob(url)
+
+  fetch(url, { mode: 'cors' })
+    .then(res => res.blob())
     .then(blob => {
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -96,11 +98,13 @@ function downloadBlob(url: string, filename: string) {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 5_000);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
     })
     .catch(() => {
+      // Fallback for CORS restricted or failed fetches
       const a = document.createElement('a');
       a.href = url;
+      a.target = '_blank';
       a.download = filename;
       a.click();
     });
@@ -128,23 +132,84 @@ interface LightboxProps {
 export const ImageLightbox: React.FC<LightboxProps> = ({ src, alt, onClose }) => {
   const [scale, setScale] = useState(1);
 
+  const { toast } = useToast();
+
   const handleDownload = useCallback(() => {
     downloadBlob(src, fileNameFromUrl(src));
   }, [src]);
 
   const handleCopy = useCallback(async () => {
     try {
-      const blob = await dataUrlToBlob(src);
-      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-    } catch { await navigator.clipboard.writeText(src); }
-  }, [src]);
+      const response = await fetch(src);
+      const blob = await response.blob();
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob })
+      ]);
+      toast({
+        title: "Copied!",
+        description: "Image copied to clipboard.",
+      });
+    } catch (err) {
+      // Fallback to copying URL
+      try {
+        await navigator.clipboard.writeText(src);
+        toast({
+          title: "Link Copied",
+          description: "Could not copy image data, so the link was copied instead.",
+        });
+      } catch (copyErr) {
+        console.error("Copy failed:", copyErr);
+      }
+    }
+  }, [src, toast]);
+
+
 
   const handleShare = useCallback(async () => {
-    if (navigator.share) {
-      try { await navigator.share({ url: src, title: alt || 'Image' }); return; } catch { }
+    // Try to share as a file first (better UX on mobile)
+    if (navigator.share && navigator.canShare) {
+      try {
+        const response = await fetch(src);
+        const blob = await response.blob();
+        const file = new File([blob], fileNameFromUrl(src), { type: blob.type });
+
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: alt || 'Shared Image',
+            text: 'Check out this image from Staffly'
+          });
+          return;
+        }
+      } catch (err) {
+        console.error("File share failed, falling back to URL:", err);
+      }
     }
-    await navigator.clipboard.writeText(src);
-  }, [src, alt]);
+
+    // Fallback 1: Share as URL
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          url: src,
+          title: alt || 'Shared Image',
+        });
+        return;
+      } catch (err) {
+        console.error("URL share failed:", err);
+      }
+    }
+
+    // Fallback 2: Copy to clipboard
+    try {
+      await navigator.clipboard.writeText(src);
+      toast({
+        title: "Link Copied",
+        description: "Image link copied to clipboard as sharing is unavailable.",
+      });
+    } catch (err) {
+      console.error("Clipboard copy failed:", err);
+    }
+  }, [src, alt, toast]);
 
   // Close on backdrop click
   const handleBackdrop = (e: React.MouseEvent) => {

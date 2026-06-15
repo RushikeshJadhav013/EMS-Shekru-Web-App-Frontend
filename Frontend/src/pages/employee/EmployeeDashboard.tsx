@@ -86,24 +86,18 @@ const EmployeeDashboard: React.FC = () => {
           ).length;
         }
 
-        // Recalculate attendance rate if it seems incorrect (e.g., > 100%) or as a standard fetch
-        let attendancePercentage = dashboardData.attendancePercentage || 0;
+        // Recalculate attendance rate if it seems incorrect (e.g., > 100%) or missing
+        let attendancePercentage = dashboardData.attendancePercentage || dashboardData.attendance_percentage || 0;
+
         try {
-          const userIdNum = user?.id ? (typeof user.id === 'string' ? parseInt(user.id) : user.id) : null;
-          if (userIdNum) {
-            const attendSummary = await apiService.getWorkingHoursSummary({
-              user_id: userIdNum,
-              period: 'current_month'
-            });
-            if (attendSummary && attendSummary.days && attendSummary.days.length > 0) {
-              const presentDays = attendSummary.days.filter(d => d.working_hours > 0).length;
-              const totalDaysSoFar = attendSummary.days.length;
-              attendancePercentage = Math.round((presentDays / totalDaysSoFar) * 100);
-            }
+          const summary = await apiService.getAttendanceSummary();
+          if (summary && (summary.attendance_rate !== undefined || summary.attendanceRate !== undefined)) {
+            attendancePercentage = summary.attendance_rate ?? summary.attendanceRate;
+          } else if (summary && summary.attendance_percentage !== undefined) {
+            attendancePercentage = summary.attendance_percentage;
           }
         } catch (e) {
-          console.error("Error recalibrating attendance rate:", e);
-          // Fallback to capping at 100 if the re-calculation fails
+          console.error("Error fetching attendance summary:", e);
           if (attendancePercentage > 100) attendancePercentage = 100;
         }
 

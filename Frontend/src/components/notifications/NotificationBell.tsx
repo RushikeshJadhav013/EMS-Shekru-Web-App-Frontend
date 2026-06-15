@@ -62,16 +62,10 @@ export const NotificationBell: React.FC = () => {
     return null;
   }
 
-  // Show ALL notifications - sorted by created_at (latest first)
-  // Also prioritize unread notifications at the top
-  const allNotifications = [...notifications].sort((a, b) => {
-    // First sort by read status (unread first)
-    if (a.read !== b.read) {
-      return a.read ? 1 : -1;
-    }
-    // Then sort by date (newest first)
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
+  // Show ONLY unread notifications - sorted by date (newest first)
+  const allNotifications = notifications
+    .filter(n => !n.read)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   // Group notifications by type (maintaining sort order)
   const leaveNotifications = allNotifications.filter(n => n.type === 'leave');
@@ -230,17 +224,34 @@ export const NotificationBell: React.FC = () => {
                 })()}
               </p>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900 transition-all rounded-md flex-shrink-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                clearNotification(notification.id);
-              }}
-            >
-              <X className="h-3 w-3" />
-            </Button>
+            <div className="flex items-center gap-1">
+              {!notification.read && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 hover:bg-green-100 hover:text-green-600 dark:hover:bg-green-900 transition-all rounded-md flex-shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    markAsRead(notification.id);
+                  }}
+                  title="Mark as read"
+                >
+                  <Check className="h-3 w-3" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900 transition-all rounded-md flex-shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  clearNotification(notification.id);
+                }}
+                title="Remove notification"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -353,18 +364,6 @@ export const NotificationBell: React.FC = () => {
                   </TabsTrigger>
                 )}
 
-                {taskNotifications.length > 0 && (
-                  <TabsTrigger
-                    value="task"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent px-4 py-3 transition-colors hover:bg-muted/50"
-                  >
-                    <FileText className="h-3.5 w-3.5 mr-2 text-blue-500" />
-                    <span className="text-xs font-semibold uppercase tracking-wider">Tasks</span>
-                    <Badge className="ml-2 h-5 min-w-[20px] rounded-full p-0 flex items-center justify-center text-[10px] bg-blue-500 text-white border-0">
-                      {taskNotifications.length}
-                    </Badge>
-                  </TabsTrigger>
-                )}
 
                 {shiftNotifications.length > 0 && (
                   <TabsTrigger
@@ -497,18 +496,6 @@ export const NotificationBell: React.FC = () => {
                 )}
               </TabsContent>
 
-              <TabsContent value="task" className="m-0 divide-y">
-                {taskNotifications.length === 0 ? (
-                  <div className="flex items-center justify-center py-8 text-muted-foreground">
-                    <p className="text-sm">No task notifications</p>
-                  </div>
-                ) : (
-                  taskNotifications.map((notification) => (
-                    <NotificationItem key={notification.id} notification={notification} />
-                  ))
-                )}
-              </TabsContent>
-
               <TabsContent value="shift" className="m-0 divide-y">
                 {shiftNotifications.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
@@ -604,6 +591,7 @@ export const NotificationBell: React.FC = () => {
                   ))
                 )}
               </TabsContent>
+
             </ScrollArea>
           </Tabs>
         )}

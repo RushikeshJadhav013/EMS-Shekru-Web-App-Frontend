@@ -1510,6 +1510,8 @@ export default function EmployeeManagement() {
 
       const filtersWithScope = {
         ...exportFilters,
+        // Explicitly map status to is_active if status is set
+        is_active: exportFilters.status === 'active' ? true : (exportFilters.status === 'inactive' ? false : undefined),
         branch_id: branchId || undefined,
         company_id: companyId || undefined
       };

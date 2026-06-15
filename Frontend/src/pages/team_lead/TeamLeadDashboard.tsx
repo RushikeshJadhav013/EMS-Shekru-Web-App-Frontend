@@ -12,7 +12,8 @@ import {
   CalendarDays,
   ClipboardList,
   AlertCircle,
-  ChevronRight,
+  ChevronRight as ChevronRightIcon,
+  ChevronLeft,
   Activity,
   CheckCircle2,
   TrendingUp,
@@ -63,8 +64,11 @@ const TeamLeadDashboard: React.FC = () => {
   });
 
   const [recentActivities, setRecentActivities] = useState<{ id: number; type: string; user: string; time: string; status: string; }[]>([]);
+  const [activitiesPage, setActivitiesPage] = useState(1);
+  const ACTIVITIES_PER_PAGE = 10;
   const [teamMembers, setTeamMembers] = useState<TeamMemberStatus[]>([]);
   const [isLoadingTeamMembers, setIsLoadingTeamMembers] = useState(false);
+  const [projectGroups, setProjectGroups] = useState<{ projectId: number; projectName: string; members: TeamMemberStatus[] }[]>([]);
 
   useEffect(() => {
     apiService.getTeamLeadDashboard()
@@ -489,17 +493,75 @@ const TeamLeadDashboard: React.FC = () => {
 
         setTeamMembers(sortedMembers);
 
+        // ── Group members by project ──
+        try {
+          const projectsData = await apiService.getProjects();
+          const projectList = Array.isArray(projectsData) ? projectsData : projectsData?.projects || [];
+
+          // Build a map: userId -> list of projects
+          const userProjectMap: Record<string, { projectId: number; projectName: string }[]> = {};
+          const groups: { projectId: number; projectName: string; members: TeamMemberStatus[] }[] = [];
+
+          for (const proj of projectList) {
+            // Try to fetch project members
+            let projMembers: any[] = proj.members || [];
+            if (!projMembers.length) {
+              try {
+                projMembers = await apiService.getProjectMembers(proj.project_id);
+              } catch (_) { projMembers = []; }
+            }
+
+            const memberIds = projMembers.map((m: any) => String(m.user_id || m.userId || m.id || ''));
+
+            // Track which project(s) each user belongs to
+            memberIds.forEach(uid => {
+              if (!userProjectMap[uid]) userProjectMap[uid] = [];
+              userProjectMap[uid].push({ projectId: proj.project_id, projectName: proj.name });
+            });
+
+            // Match with teamMembers by userId
+            const matchedMembers = sortedMembers.filter(m => memberIds.includes(m.userId));
+            if (matchedMembers.length > 0) {
+              groups.push({
+                projectId: proj.project_id,
+                projectName: proj.name,
+                members: matchedMembers,
+              });
+            }
+          }
+
+          // Members not in any project → "Unassigned" group
+          const assignedUserIds = new Set(Object.keys(userProjectMap));
+          const unassigned = sortedMembers.filter(m => !assignedUserIds.has(m.userId));
+          if (unassigned.length > 0) {
+            groups.push({ projectId: -1, projectName: 'Unassigned', members: unassigned });
+          }
+
+          setProjectGroups(groups);
+        } catch (_) {
+          // If project fetch fails, fall back to ungrouped
+          setProjectGroups([{ projectId: -1, projectName: 'All Members', members: sortedMembers }]);
+        }
+
         // Calculate aggregate stats for summary cards
-        const totalTasksGlobal = tasks.length;
-        const completedTasksGlobal = tasks.filter((t: any) => {
-          const s = (t.status || '').toLowerCase();
-          return s === 'completed' || s === 'done';
+        const activeTasks = tasks.filter((t: any) => {
+          const s = (t.status || '').toLowerCase().replace(/[-_]/g, ' ');
+          return ['pending', 'in progress', 'overdue', 'todo', 'started'].includes(s);
         }).length;
 
-        const inProgressTasksGlobal = tasks.filter((t: any) => {
+        const totalValidTasks = tasks.filter((t: any) => {
           const s = (t.status || '').toLowerCase();
-          return s === 'in-progress' || s === 'inprogress' || s === 'in_progress';
+          return s !== 'cancelled' && s !== 'canceled';
         }).length;
+
+        const completedTasksCount = tasks.filter((t: any) => {
+          const s = (t.status || '').toLowerCase();
+          return s === 'completed' || s === 'complete' || s === 'achieved' || s === 'done';
+        }).length;
+
+        const efficiency = totalValidTasks > 0
+          ? Math.round((completedTasksCount / totalValidTasks) * 100)
+          : 0;
 
         // Pending reviews: tasks with status pending, review, or submitted
         const pendingReviewsCount = tasks.filter((t: any) => {
@@ -507,17 +569,13 @@ const TeamLeadDashboard: React.FC = () => {
           return s === 'pending' || s === 'review' || s === 'submitted';
         }).length;
 
-        const efficiency = totalTasksGlobal > 0
-          ? Math.round((completedTasksGlobal / totalTasksGlobal) * 100)
-          : 0;
-
         // Update stats based on filtered data
         setStats(prev => ({
           ...prev,
           teamSize: allTrackedMembers.length,
           employeeCount: departmentEmployees.length,
           presentToday: teamMembersData.filter(m => m.status === 'present').length,
-          tasksInProgress: inProgressTasksGlobal,
+          tasksInProgress: activeTasks,
           pendingReviews: pendingReviewsCount,
           teamEfficiency: efficiency
         }));
@@ -644,9 +702,9 @@ const TeamLeadDashboard: React.FC = () => {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-        {/* Team Members Tracker */}
-        <Card className="lg:col-span-3 border-2 border-[#000000] shadow-xl bg-white dark:bg-gray-900 rounded-2xl overflow-hidden flex flex-col h-full">
+      <div className="space-y-6">
+        {/* Team Members Grouped by Project */}
+        <Card className="border-2 border-[#000000] shadow-xl bg-white dark:bg-gray-900 rounded-2xl overflow-hidden">
           <CardHeader className="border-b border-slate-100 bg-slate-50 dark:bg-gray-950 px-6 py-4">
             <div className="flex justify-between items-center">
               <div>
@@ -656,7 +714,7 @@ const TeamLeadDashboard: React.FC = () => {
                   </div>
                   <span className="text-[16px] font-bold uppercase tracking-tight">{t.navigation.teamMembers}</span>
                 </CardTitle>
-                <CardDescription className="text-[14px] font-medium mt-1 text-black">Real-time status and task monitoring</CardDescription>
+                <CardDescription className="text-[14px] font-medium mt-1 text-black">Members grouped by project</CardDescription>
               </div>
               <Badge variant="outline" className="rounded-full px-4 h-8 bg-white dark:bg-gray-800 border-2 border-black">
                 <span className="text-[14px] font-bold text-black">{teamMembers.length} Total</span>
@@ -676,34 +734,57 @@ const TeamLeadDashboard: React.FC = () => {
                 </div>
                 <p className="text-muted-foreground font-medium">{t.common.noTeamMembers}</p>
               </div>
-            ) : (
+            ) : projectGroups.length === 0 ? (
+              /* fallback: flat list while groups are loading */
               <div className="divide-y">
                 {teamMembers.map((member) => (
-                  <div
-                    key={member.userId}
-                    className={`group transition-colors p-5 ${member.hasUpcomingDeadline && member.deadlinePriority === 'today'
-                      ? 'bg-red-50/50 dark:bg-red-950/20 hover:bg-red-50 dark:hover:bg-red-950/30 border-l-4 border-red-500'
-                      : member.hasUpcomingDeadline && member.deadlinePriority === 'soon'
-                        ? 'bg-orange-50/50 dark:bg-orange-950/20 hover:bg-orange-50 dark:hover:bg-orange-950/30 border-l-4 border-orange-500'
-                        : 'hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10'
-                      }`}
-                  >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className="relative flex-shrink-0">
-                          <div className="h-12 w-12 rounded-full bg-gradient-to-br from-emerald-100 to-teal-200 dark:from-emerald-800 dark:to-teal-900 flex items-center justify-center border-2 border-white shadow-sm font-bold text-emerald-700 dark:text-emerald-300">
+                  <div key={member.userId} className="flex items-center gap-4 p-4 hover:bg-emerald-50/30 transition-colors">
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-100 to-teal-200 flex items-center justify-center border-2 border-white shadow-sm font-bold text-emerald-700 flex-shrink-0">
+                      {member.name.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[14px] font-bold truncate" style={{ color: '#000000' }}>{member.name}</p>
+                      <p className="text-[12px] font-medium text-slate-500">{member.designation}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {projectGroups.map((group) => (
+                  <div key={group.projectId}>
+                    {/* Project group header */}
+                    <div className="flex items-center gap-2 px-5 py-3 bg-slate-50 dark:bg-slate-900/60 sticky top-0 z-10 border-b border-slate-100 dark:border-slate-800">
+                      <div className={`h-7 w-7 rounded-lg flex items-center justify-center shadow-sm ${group.projectId === -1 ? 'bg-slate-400' : 'bg-gradient-to-br from-violet-500 to-indigo-600'}`}>
+                        <ClipboardList className="h-4 w-4 text-white" />
+                      </div>
+                      <span className="text-[13px] font-bold tracking-tight truncate" style={{ color: '#000000' }}>
+                        {group.projectName}
+                      </span>
+                      <Badge className="ml-auto text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 border-0 font-bold rounded-full">
+                        {group.members.length} {group.members.length === 1 ? 'member' : 'members'}
+                      </Badge>
+                    </div>
+                    {/* Members under this project */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-0 divide-y sm:divide-y-0">
+                      {group.members.map((member) => (
+                        <div
+                          key={member.userId}
+                          className="flex items-center gap-3 p-4 hover:bg-emerald-50/30 transition-colors border-b border-slate-50 dark:border-slate-800"
+                        >
+                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-100 to-teal-200 dark:from-emerald-800 dark:to-teal-900 flex items-center justify-center border-2 border-white shadow-sm font-bold text-emerald-700 dark:text-emerald-300 text-sm flex-shrink-0">
                             {member.name.charAt(0)}
                           </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[13px] font-bold truncate" style={{ color: '#000000' }}>
+                              {member.name}
+                            </p>
+                            <p className="text-[11px] font-medium text-slate-500 truncate">
+                              {member.designation}
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-[14px] font-bold truncate" style={{ color: '#000000' }}>
-                            {member.name}
-                          </h4>
-                          <p className="text-[12px] font-medium text-black">
-                            {member.designation}
-                          </p>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 ))}
@@ -712,22 +793,23 @@ const TeamLeadDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Activity Sidebar */}
-        <div className="lg:col-span-2 space-y-6 flex flex-col h-full">
-          <Card className="border-2 border-[#000000] shadow-xl bg-white dark:bg-gray-900 rounded-2xl overflow-hidden flex flex-col h-full">
-            <CardHeader className="border-b border-slate-100 bg-slate-50 dark:bg-gray-950 px-6 py-4">
-              <CardTitle className="flex items-center gap-2" style={{ color: '#000000' }}>
-                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
-                  <Activity className="h-5 w-5 text-white" />
-                </div>
-                <span className="text-[16px] font-bold uppercase tracking-tight">Team Activity</span>
-              </CardTitle>
-              <CardDescription className="text-xs font-medium mt-1" style={{ color: '#000000' }}>Recent updates from your team</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {recentActivities.map((activity, i) => (
+        {/* Activity Feed */}
+        <Card className="border-2 border-[#000000] shadow-xl bg-white dark:bg-gray-900 rounded-2xl overflow-hidden">
+          <CardHeader className="border-b border-slate-100 bg-slate-50 dark:bg-gray-950 px-6 py-4">
+            <CardTitle className="flex items-center gap-2" style={{ color: '#000000' }}>
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
+                <Activity className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-[16px] font-bold uppercase tracking-tight">Team Activity</span>
+            </CardTitle>
+            <CardDescription className="text-xs font-medium mt-1" style={{ color: '#000000' }}>Recent updates from your team</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
+            {recentActivities
+              .slice((activitiesPage - 1) * ACTIVITIES_PER_PAGE, activitiesPage * ACTIVITIES_PER_PAGE)
+              .map((activity, i) => (
                 <div key={activity.id} className="relative pl-8 pb-4 last:pb-0">
-                  {i !== recentActivities.length - 1 && (
+                  {i !== (recentActivities.slice((activitiesPage - 1) * ACTIVITIES_PER_PAGE, activitiesPage * ACTIVITIES_PER_PAGE).length - 1) && (
                     <div className="absolute left-[15px] top-8 bottom-0 w-px bg-gray-100 dark:bg-gray-700" />
                   )}
                   <div className={`absolute left-0 top-1 h-8 w-8 rounded-full flex items-center justify-center shadow-sm z-10 ${activity.type === 'success' ? 'bg-emerald-50 text-emerald-600' :
@@ -741,29 +823,53 @@ const TeamLeadDashboard: React.FC = () => {
                   <div className="space-y-0.5">
                     <p className="text-sm font-bold" style={{ color: '#000000' }}>{activity.user}</p>
                     <div className="text-xs leading-relaxed" style={{ color: '#000000' }}>
-                      <TruncatedText
-                        text={activity.status}
-                        maxLength={50}
-                        showToggle={false}
-                      />
+                      <TruncatedText text={activity.status} maxLength={50} showToggle={false} />
                     </div>
-                    <p className="text-[12px] font-bold uppercase tracking-tight pt-1 text-black">
-                      {activity.time}
-                    </p>
+                    <p className="text-[12px] font-bold uppercase tracking-tight pt-1 text-black">{activity.time}</p>
                   </div>
                 </div>
               ))}
-              {recentActivities.length === 0 && (
-                <div className="text-center py-6">
-                  <p className="text-sm text-muted-foreground font-medium">No recent updates</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
-          {/* Productivity Tip or Quick Links */}
-
-        </div>
+            {recentActivities.length > ACTIVITIES_PER_PAGE && (
+              <div className="mt-6 pt-4 border-t flex items-center justify-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActivitiesPage(p => Math.max(1, p - 1))}
+                  disabled={activitiesPage === 1}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                {Array.from({ length: Math.ceil(recentActivities.length / ACTIVITIES_PER_PAGE) }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={activitiesPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActivitiesPage(page)}
+                    className="h-8 w-8 p-0"
+                  >
+                    {page}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActivitiesPage(p => Math.min(Math.ceil(recentActivities.length / ACTIVITIES_PER_PAGE), p + 1))}
+                  disabled={activitiesPage === Math.ceil(recentActivities.length / ACTIVITIES_PER_PAGE)}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronRightIcon className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            {recentActivities.length === 0 && (
+              <div className="text-center py-6">
+                <p className="text-sm text-muted-foreground font-medium">No recent updates</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

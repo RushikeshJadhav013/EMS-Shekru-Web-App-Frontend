@@ -58,7 +58,7 @@ const ManagerDashboard: React.FC = () => {
   const [isLoadingTeamMembers, setIsLoadingTeamMembers] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activitiesPage, setActivitiesPage] = useState(1);
-  const ACTIVITIES_PER_PAGE = 15;
+  const ACTIVITIES_PER_PAGE = 10;
 
   const loadDashboardData = useCallback(async (isSilent = false) => {
     try {
@@ -91,7 +91,8 @@ const ManagerDashboard: React.FC = () => {
       let activities = (data.teamActivities || data.recentActivities || []).filter((a: any) => {
         if (!a.time) return false;
         // Avoid duplicate check-ins/outs as we fetch fresh ones next
-        if (a.type === 'check-in' || a.type === 'check-out') return false;
+        const type = (a.type || '').toLowerCase();
+        if (['check-in', 'check-out', 'attendance', 'checkin', 'checkout'].includes(type)) return false;
         return a.time.split('T')[0] === todayDateStr;
       });
 
@@ -271,6 +272,14 @@ const ManagerDashboard: React.FC = () => {
   const getCorrectAttendanceStatus = (activity: any) => {
     if (activity.type !== 'check-in') {
       return activity.status;
+    }
+
+    // Prioritize backend-provided status if available
+    if (activity.checkInStatus) {
+      const normalizedStatus = activity.checkInStatus.toLowerCase();
+      if (normalizedStatus === 'on-time' || normalizedStatus === 'on_time') return 'on-time';
+      if (normalizedStatus === 'late') return 'late';
+      return normalizedStatus;
     }
 
     // Default scheduled check-in time is 10:00 AM

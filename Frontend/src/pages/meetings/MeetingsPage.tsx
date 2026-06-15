@@ -99,6 +99,7 @@ const MeetingsPage: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+    const [participantSearchQuery, setParticipantSearchQuery] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [formData, setFormData] = useState({
@@ -303,7 +304,9 @@ const MeetingsPage: React.FC = () => {
         if (!m || !m.title) return false;
         const matchesSearch =
             m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (m.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+            (m.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+            (m.team_name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+            (m.project_name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
 
         let matchesDate = true;
         if (dateFilter && m.start_time) {
@@ -396,6 +399,7 @@ const MeetingsPage: React.FC = () => {
             project_id: undefined,
         });
         setSelectedMeeting(null);
+        setParticipantSearchQuery("");
     };
 
     const openEditDialog = (meeting: Meeting) => {
@@ -468,14 +472,39 @@ const MeetingsPage: React.FC = () => {
     };
 
     const selectAllParticipants = async () => {
-        if (formData.type === 'team' && formData.team_id) {
-            const teamMembers = employees.filter(emp => {
-                const dept = departments.find((d: any) => d.id === formData.team_id);
-                const deptName = dept?.name || '';
-                return Number(emp.department_id) === formData.team_id || emp.branch === deptName || emp.department === deptName;
-            }).map(emp => Number(emp.user_id || emp.id)).filter(id => !isNaN(id));
-            setFormData(prev => ({ ...prev, participant_ids: teamMembers }));
-        } else if (formData.type === 'project' && formData.project_id) {
+        const query = participantSearchQuery.toLowerCase().trim();
+        const filtered = employees.filter(emp => {
+            // Respect existing Team logic
+            if (formData.type === 'team' && formData.team_id) {
+                const dept = departments.find((d: any) => String(d.id) === String(formData.team_id));
+                const targetDeptName = (dept?.name || "").toLowerCase().trim();
+                const targetClean = targetDeptName.replace(/[^\p{L}\p{N}]/gu, "");
+
+                const empDeptId = emp.department_id || emp.departmentId || emp.branch_id || emp.branchId;
+                const empDeptStr = (emp.department || emp.department_name || emp.branch || emp.branches || "").toLowerCase();
+                const empDepts = empDeptStr.split(/[,/]+/).map(d => d.trim().toLowerCase()).filter(Boolean);
+                const empDeptsClean = empDepts.map(d => d.replace(/[^\p{L}\p{N}]/gu, ""));
+
+                const matchesId = empDeptId && String(empDeptId) === String(formData.team_id);
+                const matchesName = targetDeptName && (
+                    empDepts.some(ed => ed.includes(targetDeptName) || targetDeptName.includes(ed)) ||
+                    (targetClean && empDeptsClean.some(ed => ed.includes(targetClean) || targetClean.includes(ed)))
+                );
+
+                if (!matchesId && !matchesName) return false;
+            }
+
+            // Respect Search Query
+            if (query) {
+                const name = (emp.name || "").toLowerCase();
+                const dept = (emp.department || emp.department_name || emp.branch || "").toLowerCase();
+                if (!name.includes(query) && !dept.includes(query)) return false;
+            }
+
+            return Number(emp.user_id || emp.id) !== Number(user?.id);
+        });
+
+        if (formData.type === 'project' && formData.project_id) {
             try {
                 const members = await apiService.getProjectMembers(formData.project_id);
                 const memberList = Array.isArray(members) ? members : (members?.members || []);
@@ -487,8 +516,8 @@ const MeetingsPage: React.FC = () => {
             } catch (error) { console.error('Failed to fetch project members:', error); }
 
         } else {
-            const allIds = employees.map(emp => Number(emp.user_id || emp.id)).filter(id => !isNaN(id));
-            setFormData(prev => ({ ...prev, participant_ids: allIds }));
+            const ids = filtered.map(emp => Number(emp.user_id || emp.id)).filter(id => !isNaN(id));
+            setFormData(prev => ({ ...prev, participant_ids: ids }));
         }
     };
 
@@ -543,7 +572,7 @@ const MeetingsPage: React.FC = () => {
                                                 const userDepts = (user.department || "").split(',').map(d => d.trim().toLowerCase());
                                                 const myDept = departments.find(d => {
                                                     const deptName = (d.name || "").toLowerCase().trim();
-                                                    return userDepts.includes(deptName) ||
+                                                    return userDepts.some(ud => ud && (deptName.includes(ud) || ud.includes(deptName))) ||
                                                         ((user as any).department_id && d.id === Number((user as any).department_id));
                                                 });
 
@@ -583,7 +612,7 @@ const MeetingsPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            {formData.type === 'team' && (
+                            {formData.type === 'team' && !isTeamLead && (
                                 <div className="grid gap-2">
                                     <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Select Department</Label>
                                     <Select value={formData.team_id?.toString() || ""} onValueChange={(v) => {
@@ -651,23 +680,44 @@ const MeetingsPage: React.FC = () => {
                                         )}
                                     </div>
                                 </Label>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                                    <Input
+                                        placeholder="Filter by name or department..."
+                                        className="pl-9 h-9 rounded-xl text-[10px]"
+                                        value={participantSearchQuery}
+                                        onChange={(e) => setParticipantSearchQuery(e.target.value)}
+                                    />
+                                </div>
+
                                 <div className="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto custom-scrollbar">
                                     {employees.filter(emp => {
+                                        const query = participantSearchQuery.toLowerCase().trim();
+                                        const name = (emp.name || "").toLowerCase();
+                                        const deptStr = (emp.department || emp.department_name || emp.branch || emp.branches || "").toLowerCase();
+
+                                        // Apply search query match
+                                        if (query && !name.includes(query) && !deptStr.includes(query)) return false;
+
                                         if (formData.type === 'team' && formData.team_id) {
-                                            const dept = departments.find((d: any) => d.id === formData.team_id);
+                                            const dept = departments.find((d: any) => String(d.id) === String(formData.team_id));
                                             const targetDeptName = (dept?.name || "").toLowerCase().trim();
+                                            const targetClean = targetDeptName.replace(/[^\p{L}\p{N}]/gu, "");
 
-                                            const empDeptId = Number(emp.department_id || emp.departmentId);
-                                            if (empDeptId === formData.team_id) return true;
+                                            const empDeptId = emp.department_id || emp.departmentId || emp.branch_id || emp.branchId;
+                                            const empDeptStr = (emp.department || emp.department_name || emp.branch || emp.branches || "").toLowerCase();
+                                            const empDepts = empDeptStr.split(/[,/]+/).map(d => d.trim().toLowerCase()).filter(Boolean);
+                                            const empDeptsClean = empDepts.map(d => d.replace(/[^\p{L}\p{N}]/gu, ""));
 
-                                            const empDeptStr = (emp.department || emp.department_name || emp.branch || "").toLowerCase();
-                                            // Support comma-separated departments (e.g., "Engineering, HR")
-                                            const empDepts = empDeptStr.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+                                            const matchesId = empDeptId && String(empDeptId) === String(formData.team_id);
+                                            const matchesName = targetDeptName && (
+                                                empDepts.some(ed => ed.includes(targetDeptName) || targetDeptName.includes(ed)) ||
+                                                (targetClean && empDeptsClean.some(ed => ed.includes(targetClean) || targetClean.includes(ed)))
+                                            );
 
-                                            return targetDeptName && empDepts.includes(targetDeptName);
+                                            if (!matchesId && !matchesName) return false;
                                         }
-                                        // Show all employees for other meeting types (Project, 1:1, etc.)
-                                        // But exclude the current user as they are the meeting creator.
+
                                         return Number(emp.user_id || emp.id) !== Number(user?.id);
                                     }).map((emp: any) => {
 

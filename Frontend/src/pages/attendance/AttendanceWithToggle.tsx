@@ -2689,6 +2689,10 @@ const AttendanceWithToggle: React.FC = () => {
           setOnlineStartTime(null);
           setAccumulatedOfflineSeconds(effectiveOfflineSeconds);
           setOfflineStartTime(now);
+          // Only update lastStatusChangeTime if it's null (e.g. on first load)
+          if (!lastStatusChangeTime) {
+            setLastStatusChangeTime(now);
+          }
 
           console.log(
             `Offline sync (Sync-to-Now): Total=${effectiveOnlineSeconds}s, Offline=${effectiveOfflineSeconds}s`,
@@ -2801,11 +2805,13 @@ const AttendanceWithToggle: React.FC = () => {
         const currentOnlineSeconds = Math.floor(
           (now.getTime() - onlineStartTime.getTime()) / 1000,
         );
-        const totalOnlineSeconds =
-          accumulatedOnlineSeconds + currentOnlineSeconds;
+        // Offline time deducts from online time
+        const totalOnlineSeconds = Math.max(0,
+          accumulatedOnlineSeconds + currentOnlineSeconds - accumulatedOfflineSeconds
+        );
         const onlineDisplay = formatTimeDisplay(totalOnlineSeconds);
         setOnlineWorkingHours(onlineDisplay);
-        setWorkingHours(onlineDisplay); // Main working hours shows online time
+        setWorkingHours(onlineDisplay); // Main working hours shows net online time
 
         // When online, show only accumulated offline time (current session is 0)
         const offlineDisplay = formatTimeDisplay(accumulatedOfflineSeconds);
@@ -2818,10 +2824,10 @@ const AttendanceWithToggle: React.FC = () => {
       } else if (!isOnline && offlineStartTime) {
         // Update offline time displays - current session + accumulated
         const currentOfflineSeconds = Math.floor(
-          (now.getTime() - offlineStartTime.getTime()) / 1000,
+          (now.getTime() - (lastStatusChangeTime?.getTime() || offlineStartTime.getTime())) / 1000,
         );
         const totalOfflineSeconds =
-          accumulatedOfflineSeconds + currentOfflineSeconds;
+          accumulatedOfflineSeconds + Math.floor((now.getTime() - offlineStartTime.getTime()) / 1000);
         const offlineDisplay = formatTimeDisplay(totalOfflineSeconds);
         setTotalOfflineTime(offlineDisplay);
 
@@ -2833,10 +2839,10 @@ const AttendanceWithToggle: React.FC = () => {
           `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`,
         );
 
-        // When offline, online time remains at accumulated value (no current session)
-        const onlineDisplay = formatTimeDisplay(accumulatedOnlineSeconds);
+        // When offline, online time remains at accumulated value minus total offline time
+        const onlineDisplay = formatTimeDisplay(Math.max(0, accumulatedOnlineSeconds - totalOfflineSeconds));
         setOnlineWorkingHours(onlineDisplay);
-        setWorkingHours(onlineDisplay); // Main working hours shows accumulated online time only
+        setWorkingHours(onlineDisplay); // Main working hours shows accumulated net online time
 
         console.log(
           `Timer Update (Offline): Online=${onlineDisplay}, Offline=${offlineDisplay}, Current Session=${currentOfflineSeconds}s`,
@@ -2861,6 +2867,7 @@ const AttendanceWithToggle: React.FC = () => {
     offlineStartTime,
     accumulatedOnlineSeconds,
     accumulatedOfflineSeconds,
+    lastStatusChangeTime,
   ]);
 
   // Fetch user's online status when they have an active attendance record

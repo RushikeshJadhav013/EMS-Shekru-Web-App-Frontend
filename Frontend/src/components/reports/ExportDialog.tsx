@@ -23,6 +23,7 @@ type TimeRange = 'monthly' | 'last3months' | 'last6months' | 'yearly' | 'custom'
 interface Employee {
   id: string;
   name: string;
+  employee_id?: string;
   department: string;
 }
 
@@ -49,8 +50,9 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
       const data = await apiService.getAllEmployees();
       const emps = Array.isArray(data) ? data : data.employees || [];
       setEmployees(emps.map((emp: any) => ({
-        id: emp.id || emp.user_id,
+        id: String(emp.id || emp.user_id || ""),
         name: emp.name,
+        employee_id: emp.employee_id || emp.employeeId,
         department: emp.department,
       })));
     } catch (error) {
@@ -103,11 +105,15 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
           startDate.setMonth(startDate.getMonth() - 1);
       }
 
+      const employeeId = selectedEmployee?.employee_id ||
+        selectedEmployee?.id ||
+        (selectedUser !== 'all' ? (employees.find(e => e.id === selectedUser)?.employee_id || selectedUser) : undefined);
+
       const blob = await apiService.exportPerformanceReport({
         format: exportFormat,
         start_date: format(startDate, 'yyyy-MM-dd'),
         end_date: format(endDate, 'yyyy-MM-dd'),
-        employee_id: selectedEmployee?.id || (selectedUser !== 'all' ? selectedUser : undefined)
+        employee_id: employeeId
       });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');

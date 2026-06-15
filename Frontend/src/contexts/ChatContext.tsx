@@ -95,6 +95,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadChats = useCallback(async (silent = false) => {
     if (!user) return;
 
+    if (!silent && chats.length === 0) setIsLoading(true);
     try {
       const fetchedChats = await chatService.getChats();
       setChats(prev => {

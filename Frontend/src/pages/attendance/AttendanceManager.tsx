@@ -1424,54 +1424,59 @@ const AttendanceManager: React.FC = () => {
   const getStatusBadge = (record: EmployeeAttendance) => {
     const badges: React.ReactNode[] = [];
 
-    if (!record.checkOutTime) {
-      badges.push(
+    // Absent status
+    if (record.status === "absent" || (record.date < todayIST() && !record.checkInTime)) {
+      return [
         <Badge
-          key="active"
-          variant="default"
-          className="bg-blue-500 hover:bg-blue-600 text-white text-[10px] flex items-center gap-0.5 px-1.5 py-0.5 shadow-sm"
-        >
-          <Timer className="h-2.5 w-2.5" />
-          {t.attendance.awaiting}
-        </Badge>,
-      );
-    }
-
-    if (record.checkInStatus === "late" || record.status === "late") {
-      badges.push(
-        <Badge
-          key="late"
+          key="absent"
           variant="destructive"
           className="bg-red-500 hover:bg-red-600 text-white text-[10px] flex items-center gap-0.5 px-1.5 py-0.5 shadow-sm"
         >
-          <AlertTriangle className="h-2.5 w-2.5" />
-          {t.attendance.late}
+          <XCircle className="h-2.5 w-2.5" />
+          {t.attendance.absent}
+        </Badge>,
+      ];
+    }
+
+    // Check-In Status
+    if (record.checkInTime) {
+      const isLate = record.checkInStatus === "late" || record.status === "late";
+      badges.push(
+        <Badge
+          key="checkin"
+          variant={isLate ? "destructive" : "default"}
+          className={`${isLate ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"} text-white text-[10px] flex items-center gap-0.5 px-1.5 py-0.5 shadow-sm`}
+        >
+          {isLate ? <AlertTriangle className="h-2.5 w-2.5" /> : <CheckCircle2 className="h-2.5 w-2.5" />}
+          {isLate ? `In: ${t.attendance.late}` : `In: ${t.attendance.onTime}`}
         </Badge>,
       );
     }
 
-    if (record.checkOutStatus === "early") {
+    // Check-Out Status
+    if (!record.checkOutTime) {
+      if (record.date === todayIST() || record.date >= todayIST()) {
+        badges.push(
+          <Badge
+            key="checkout-awaiting"
+            variant="default"
+            className="bg-blue-500 hover:bg-blue-600 text-white text-[10px] flex items-center gap-0.5 px-1.5 py-0.5 shadow-sm"
+          >
+            <Timer className="h-2.5 w-2.5" />
+            {`Out: ${t.attendance.awaiting}`}
+          </Badge>,
+        );
+      }
+    } else {
+      const isEarly = record.checkOutStatus === "early";
       badges.push(
         <Badge
-          key="early"
-          variant="outline"
-          className="border-orange-500 bg-orange-50 text-orange-600 hover:bg-orange-100 text-[10px] flex items-center gap-0.5 px-1.5 py-0.5 shadow-sm"
+          key="checkout"
+          variant={isEarly ? "outline" : "default"}
+          className={`${isEarly ? "border-orange-500 bg-orange-50 text-orange-600 hover:bg-orange-100" : "bg-green-500 hover:bg-green-600 text-white"} text-[10px] flex items-center gap-0.5 px-1.5 py-0.5 shadow-sm`}
         >
-          <LogOut className="h-2.5 w-2.5" />
-          {t.attendance.early}
-        </Badge>,
-      );
-    }
-
-    if (badges.length === 0) {
-      badges.push(
-        <Badge
-          key="ontime"
-          variant="default"
-          className="bg-green-500 hover:bg-green-600 text-white text-[10px] flex items-center gap-0.5 px-1.5 py-0.5 shadow-sm"
-        >
-          <CheckCircle2 className="h-2.5 w-2.5" />
-          {t.attendance.onTime}
+          {isEarly ? <LogOut className="h-2.5 w-2.5" /> : <CheckCircle2 className="h-2.5 w-2.5" />}
+          {isEarly ? `Out: ${t.attendance.early}` : `Out: ${t.attendance.onTime}`}
         </Badge>,
       );
     }
@@ -1607,8 +1612,10 @@ const AttendanceManager: React.FC = () => {
     const today = new Date();
     today.setHours(23, 59, 59, 999);
     setEndDate(today);
-    setStartDate(undefined);
-    setQuickFilter("custom");
+    const beginningOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    beginningOfMonth.setHours(0, 0, 0, 0);
+    setStartDate(beginningOfMonth);
+    setQuickFilter("current_month");
     setGridMonth(String(today.getMonth() + 1));
     setGridYear(String(today.getFullYear()));
     setEmployeeFilter("all");
@@ -1619,7 +1626,7 @@ const AttendanceManager: React.FC = () => {
   };
 
   const performExport = async () => {
-    if (!startDate && !endDate) {
+    if (!startDate && !endDate && (reportLayout !== "grid" && reportLayout !== "detailed_grid")) {
       toast({
         title: "Date Range Required",
         description:
@@ -1650,8 +1657,8 @@ const AttendanceManager: React.FC = () => {
       } = {};
 
       if (employeeFilter === "specific" && selectedEmployee) {
-        exportParams.employee_id =
-          selectedEmployee.employee_id || selectedEmployee.user_id.toString();
+        // Use user_id as it's the standard for filtering across most APIs
+        exportParams.employee_id = selectedEmployee.user_id.toString();
         if (selectedDepartmentFilter) {
           exportParams.department = selectedDepartmentFilter;
         }
@@ -2064,7 +2071,7 @@ const AttendanceManager: React.FC = () => {
         <div className="relative flex gap-3 shrink-0 mt-6 xl:mt-0">
           {(user?.role === "admin" || user?.role === "hr") && (
             <Button
-              onClick={() => setExportModalOpen(true)}
+              onClick={openExportModal}
               size="lg"
               className="rounded-xl px-6 h-12 bg-[#000000] hover:bg-[#333333] text-white shadow-md transition-all active:scale-95 gap-2 font-bold text-xs tracking-wide border-2 border-black"
               disabled={isExporting}
@@ -2221,7 +2228,7 @@ const AttendanceManager: React.FC = () => {
             )}
 
           <div className="rounded-2xl border-2 border-black overflow-hidden bg-white dark:bg-slate-900 shadow-lg">
-            <div className="overflow-x-auto max-h-[calc(100vh-450px)]">
+            <div className="overflow-x-auto">
               <table className="w-full table-auto border-collapse min-w-[1400px]">
                 <thead className="bg-slate-50 dark:bg-slate-900 border-b-2 border-black sticky top-0 z-20">
                   <tr className="hover:bg-transparent">
@@ -2865,7 +2872,7 @@ const AttendanceManager: React.FC = () => {
                           <SelectValue placeholder="Select Year" />
                         </SelectTrigger>
                         <SelectContent className="border-2 border-black rounded-xl">
-                          {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((yr) => (
+                          {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map((yr) => (
                             <SelectItem key={yr} value={String(yr)} className="font-bold">{yr}</SelectItem>
                           ))}
                         </SelectContent>
@@ -2893,7 +2900,26 @@ const AttendanceManager: React.FC = () => {
                   </div>
                 )}
 
-
+                {/* Employee Selection Scope */}
+                <div className="space-y-2 w-full">
+                  <Label className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest ml-1">Export Scope</Label>
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border-2 border-black">
+                    <button
+                      type="button"
+                      onClick={() => setEmployeeFilter("all")}
+                      className={`h-9 rounded-lg text-[10px] font-black uppercase transition-all ${employeeFilter === "all" ? "bg-black text-white shadow-sm" : "bg-transparent text-slate-500 hover:text-black"}`}
+                    >
+                      All Employees
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEmployeeFilter("specific")}
+                      className={`h-9 rounded-lg text-[10px] font-black uppercase transition-all ${employeeFilter === "specific" ? "bg-black text-white shadow-sm" : "bg-transparent text-slate-500 hover:text-black"}`}
+                    >
+                      Specific
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Custom Date Selection */}
@@ -2994,7 +3020,7 @@ const AttendanceManager: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 
   const officeHoursContent = (

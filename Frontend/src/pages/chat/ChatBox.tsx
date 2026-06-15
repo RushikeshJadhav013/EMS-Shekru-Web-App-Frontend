@@ -556,7 +556,7 @@ const ChatBox: React.FC = () => {
                 <LogOut className="h-4 w-4 text-slate-500" />
                 <span style={{ color: "#000000", fontSize: "14px" }}>Exit Chat</span>
               </DropdownMenuItem>
-              {displayedChat.type === 'group' && (displayedChat.participants.find(p => p.userId === user?.id)?.isAdmin || user?.role === 'admin' || user?.role === 'hr') && (
+              {displayedChat.type === 'group' && (displayedChat.participants?.find(p => p.userId === user?.id)?.isAdmin || user?.role === 'admin' || user?.role === 'hr') && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -829,7 +829,7 @@ const ChatBox: React.FC = () => {
 
             <div className="space-y-4">
               <div className="flex items-center justify-between px-1">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Members ({activeChat?.participants.length})</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Members ({(activeChat?.participants || []).length})</label>
                 {user?.role && ['admin', 'hr', 'manager'].includes(user.role) && (
                   <Button
                     variant="ghost"
@@ -844,7 +844,7 @@ const ChatBox: React.FC = () => {
 
               <ScrollArea className="h-[200px] rounded-2xl border-2 p-2">
                 <div className="space-y-1">
-                  {activeChat?.participants.map((p) => (
+                  {(activeChat?.participants || []).map((p) => (
                     <div key={p.userId} className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9">
@@ -860,7 +860,7 @@ const ChatBox: React.FC = () => {
                         {p.isAdmin && (
                           <Badge variant="outline" className="text-[8px] font-black uppercase bg-amber-50 text-amber-600 border-amber-200">Admin</Badge>
                         )}
-                        {(activeChat.participants.find(part => part.userId === user?.id)?.isAdmin || (user?.role && ['admin', 'hr', 'manager'].includes(user.role))) && p.userId !== user?.id && (
+                        {(displayedChat.participants?.find(part => part.userId === user?.id)?.isAdmin || (user?.role && ['admin', 'hr', 'manager'].includes(user.role))) && p.userId !== user?.id && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -879,7 +879,7 @@ const ChatBox: React.FC = () => {
           </div>
 
           <div className="p-6 bg-slate-50 dark:bg-slate-900 border-t mt-auto flex flex-col gap-3">
-            {(activeChat.participants.find(p => p.userId === user?.id)?.isAdmin || user?.role === 'admin' || user?.role === 'hr') && (
+            {(displayedChat.participants?.find(p => p.userId === user?.id)?.isAdmin || user?.role === 'admin' || user?.role === 'hr') && (
               <Button
                 variant="destructive"
                 className="w-full rounded-xl font-bold py-6 bg-red-500 hover:bg-red-600 text-white border-none shadow-lg shadow-red-500/20"
@@ -930,7 +930,7 @@ const ChatBox: React.FC = () => {
               <div className="space-y-1">
                 {availableUsers
                   .filter(u =>
-                    !activeChat?.participants.some(p => p.userId === u.id) &&
+                    !(activeChat?.participants || []).some(p => p.userId === u.id) &&
                     ((u.name || '').toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
                       (u.department || '').toLowerCase().includes(memberSearchTerm.toLowerCase()))
                   )
