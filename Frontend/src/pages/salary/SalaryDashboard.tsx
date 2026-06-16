@@ -69,19 +69,37 @@ const SalaryDashboard = () => {
                 let salary = (salariesData || []).find((s: any) => String(s.user_id) === String(id));
 
                 if (salary) {
-                    // Ensure core fields are present for analytics and table display
+                    // Core fields for analytics
                     const annualCtc = salary.annualCtc || salary.package_ctc_annual || salary.ctc_annual || 0;
+                    const monthlyCtc = annualCtc / 12;
 
-                    // Improved calculation for dashboard consistency
-                    const monthlyCtc = salary.monthlyCtc || salary.monthly_ctc || (annualCtc > 0 ? annualCtc / 12 : 0);
+                    // Improved Monthly In-Hand calculation for dashboard
+                    // 1. Calculate Monthly Gross (including Employer PF share)
+                    // If stored earnings are yearly, convert to monthly.
+                    // We assume earnings_annual already includes the full package except variable.
+                    let monthlyGross = (salary.total_earnings_annual || (annualCtc - (salary.variable_pay_annual || 0))) / 12;
 
-                    // Calculate in-hand from earnings/deductions if direct field is 0 or missing
-                    let monthlyInHand = salary.monthlyInHand || salary.monthly_in_hand || salary.net_salary || 0;
-                    if (monthlyInHand <= 0 && salary.total_earnings_annual) {
-                        monthlyInHand = (salary.total_earnings_annual - (salary.total_deductions_annual || 0)) / 12;
-                    }
+                    // 2. Calculate Deductions (Professional Tax: Force 200 as per user request)
+                    const monthlyPt = 200;
 
-                    salary = { ...salary, annualCtc, monthlyCtc, monthlyInHand };
+                    // Other Deductions (excluding PF)
+                    // total_deductions_annual usually includes PF + PT + Other. 
+                    // We want only PT + Other.
+                    const annualPt = 2500;
+                    const annualPfTotal = salary.pf_annual || 0;
+                    const otherDeductionsAnnual = Math.max(0, (salary.total_deductions_annual || 0) - annualPt - annualPfTotal);
+                    const monthlyOtherDeductions = otherDeductionsAnnual / 12;
+
+                    const monthlyInHand = monthlyGross - (monthlyPt + monthlyOtherDeductions);
+
+                    salary = {
+                        ...salary,
+                        annualCtc,
+                        monthlyCtc,
+                        monthlyInHand,
+                        monthlyGross,
+                        professionalTax: monthlyPt
+                    };
                 }
 
                 const department = (emp.department || '').trim();

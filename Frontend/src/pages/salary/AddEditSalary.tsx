@@ -56,7 +56,6 @@ const salarySchema = z.object({
     bankAccount: z.string().optional().or(z.literal('')).default(''),
     ifscCode: z.string().optional().or(z.literal('')).default(''),
     paymentMode: z.string().default('Bank Transfer'),
-    panNumber: z.string().optional().or(z.literal('')).default(''),
     // Manual Entry Fields (Annual)
     basicAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
     hraAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
@@ -151,7 +150,6 @@ const AddEditSalary = () => {
             bankAccount: '',
             ifscCode: '',
             paymentMode: 'Bank Transfer',
-            panNumber: '',
             basicAnnual: 0,
             hraAnnual: 0,
             specialAllowanceAnnual: 0,
@@ -240,101 +238,7 @@ const AddEditSalary = () => {
         watchPTAnn, watchDeductionAnn, activeTab, watchPfNo
     ]);
 
-    // Sync manual components when CTC changes in both Guided and Manual modes
-    useEffect(() => {
-        if (parseNumber(watchCtc) > 0) {
-            // Try to use API calculation first for consistency with guided mode
-            const calculateUsingApi = async () => {
-                const ctc = parseNumber(watchCtc);
-                const variableValue = parseNumber(watchVarValue);
-                try {
-                    const data = await apiService.calculateSalaryPreview(ctc, watchVarType, variableValue);
-                    if (data) {
-                        // Use API-calculated values for consistency
-                        const mb = data.monthly_basic || data.monthlyBasic || (data.basic_annual ? data.basic_annual / 12 : 0);
-                        const h = data.hra || (data.hra_annual ? data.hra_annual / 12 : (data.monthly_hra || 0));
-                        const sa = data.special_allowance || data.specialAllowance || (data.special_allowance_annual ? data.special_allowance_annual / 12 : 0);
-                        const ma = data.medical_allowance || data.medicalAllowance || (data.medical_allowance_annual ? data.medical_allowance_annual / 12 : 0);
-                        const ca = data.conveyance_allowance || data.conveyanceAllowance || (data.conveyance_annual ? data.conveyance_annual / 12 : 0);
-                        const oa = data.other_allowance || data.otherAllowance || (data.other_allowance_annual ? data.other_allowance_annual / 12 : 0);
-                        const pt = data.professional_tax || data.professionalTax || (data.professional_tax_annual ? data.professional_tax_annual / 12 : 0);
-                        const od = data.other_deduction || data.otherDeduction || (data.other_deduction_annual ? data.other_deduction_annual / 12 : 0);
-                        const pfa = data.pf_annual || (((data.pf_employee || data.pfEmployee || 0) + (data.pf_employer || data.pfEmployer || 0)) * 12);
-                        const vp = data.variable_pay || data.variablePay || (data.variable_pay_annual || 0);
-
-                        form.setValue('basicAnnual', mb * 12, { shouldValidate: true });
-                        form.setValue('hraAnnual', h * 12, { shouldValidate: true });
-                        form.setValue('pfAnnual', pfa, { shouldValidate: true });
-                        form.setValue('professionalTaxAnnual', pt * 12, { shouldValidate: true });
-                        form.setValue('otherDeductionAnnual', od * 12, { shouldValidate: true });
-                        form.setValue('specialAllowanceAnnual', sa * 12, { shouldValidate: true });
-                        form.setValue('conveyanceAnnual', ca * 12, { shouldValidate: true });
-                        form.setValue('medicalAllowanceAnnual', ma * 12, { shouldValidate: true });
-                        form.setValue('otherAllowanceAnnual', oa * 12, { shouldValidate: true });
-                        form.setValue('variablePayAnnual', vp, { shouldValidate: true });
-
-                        handleCalculatePreview();
-                        return;
-                    }
-                } catch (error) {
-                    console.warn('API calculation failed, using fallback:', error);
-                }
-
-                // 1. Basic: 50% of CTC
-                const annualBasic = Math.round(ctc * 0.5);
-
-                // 2. HRA: 50% of Basic
-                const annualHra = Math.round(annualBasic * 0.5);
-
-                // 3. Medical, Conveyance, Other (Monthly: 1100, 1250, 250)
-                const annualMedical = 1100 * 12;
-                const annualConveyance = 1250 * 12;
-                const annualOtherAllowance = 250 * 12;
-
-                // 4. PF calculation
-                let annualPfOneSide = 0;
-                if (watchPfType === 'percentage') {
-                    annualPfOneSide = Math.round(annualBasic * (parseNumber(watchPfValue) / 100));
-                } else if (watchPfType === 'fixed') {
-                    annualPfOneSide = parseNumber(watchPfValue) * 12;
-                } else if (watchCtc > 0) {
-                    // Default fallback PF if no type selected? Usually 12% of basic
-                    annualPfOneSide = Math.round(annualBasic * 0.12);
-                }
-                const annualPfTotal = annualPfOneSide * 2;
-
-                // 5. Professional Tax: 200*11 + 300 = 2500
-                const annualPt = 2500;
-
-                // 6. Other Taxes / Deductions: 1000 per month
-                const annualOtherDed = 12000;
-
-                // 7. Special Allowance: The balancing figure to match CTC exactly
-                // CTC = Basic + HRA + Medical + Conveyance + Other + Special + PF_Employer + Variable
-                // (Variable pay part of CTC is already subtracted in some contexts, but let's be safe)
-                const variablePart = (watchVarType === 'percentage' ? ctc * (parseNumber(watchVarValue) / 100) : parseNumber(watchVarValue));
-
-                const annualSpecial = Math.max(0, ctc - annualBasic - annualHra - annualMedical - annualConveyance - annualOtherAllowance);
-
-                // Always populate manual fields regardless of active tab
-                form.setValue('basicAnnual', annualBasic, { shouldValidate: true });
-                form.setValue('hraAnnual', annualHra, { shouldValidate: true });
-                form.setValue('pfAnnual', annualPfTotal, { shouldValidate: true });
-                form.setValue('professionalTaxAnnual', annualPt, { shouldValidate: true });
-                form.setValue('otherDeductionAnnual', annualOtherDed, { shouldValidate: true });
-                form.setValue('specialAllowanceAnnual', annualSpecial, { shouldValidate: true });
-                form.setValue('medicalAllowanceAnnual', annualMedical, { shouldValidate: true });
-                form.setValue('conveyanceAnnual', annualConveyance, { shouldValidate: true });
-                form.setValue('otherAllowanceAnnual', annualOtherAllowance, { shouldValidate: true });
-                form.setValue('variablePayAnnual', variablePart, { shouldValidate: true });
-
-                // Trigger calculation preview refresh
-                handleCalculatePreview();
-            };
-
-            calculateUsingApi();
-        }
-    }, [watchCtc, watchVarType, watchVarValue]);
+    // Note: Automatic syncing between Guided and Manual modes has been removed to keep modes separate.
 
 
 
@@ -428,26 +332,25 @@ const AddEditSalary = () => {
                 const other = Math.round(parseNumber(values.otherAllowanceAnnual || 0) / 12);
                 const ptAnnual = parseNumber(values.professionalTaxAnnual || 0);
                 let pt = Math.round(ptAnnual / 12);
-                if (ptAnnual === 2500) {
-                    const isFeb = new Date().getMonth() === 1;
-                    pt = isFeb ? 300 : 200;
+                if (ptAnnual >= 2400 && ptAnnual <= 2500) {
+                    // Force 200 as per user request (instead of 208 or the 200/300 split)
+                    pt = 200;
                 }
                 const otherDed = Math.round(parseNumber(values.otherDeductionAnnual || 0) / 12);
 
-                // PF Calculation: Split Annual Total into Employer and Employee shares (50/50)
+                // PF Calculation: Use Annual Total for each share as per user request (not dividing by 2)
                 const pfAnnTotal = parseNumber(values.pfAnnual || 0);
-                const pfAnnOneSide = pfAnnTotal / 2;
-                const pfEmp = Math.round(pfAnnOneSide / 12);
-                const pfEmpr = Math.round(pfAnnOneSide / 12);
+                const pfEmp = Math.round(pfAnnTotal / 12);
+                const pfEmpr = Math.round(pfAnnTotal / 12);
 
                 const vPay = Math.round(parseNumber(values.variablePayAnnual || 0) / 12);
 
-                const monthlyGross = basic + hra + special + medical + conveyance + other;
-                const monthlyDeductions = pfEmp + pt + otherDed;
+                const monthlyGross = basic + hra + special + medical + conveyance + other + pfEmpr;
+                const monthlyDeductions = pt + otherDed; // Stopped deducting pfEmp from monthly earnings
                 const monthlyInHand = monthlyGross - monthlyDeductions;
-                // CTC = Monthly Gross * 12 + Employer PF * 12 + Annual Variable Pay
-                // (Note: Employer PF is outside Gross, but part of CTC)
-                const calculatedAnnualCtc = (monthlyGross + pfEmpr) * 12 + parseNumber(values.variablePayAnnual || 0);
+                // CTC = Monthly Gross * 12 + Annual Variable Pay
+                // (Note: Employer PF is now part of the Gross coverage in terms of CTC balancing)
+                const calculatedAnnualCtc = monthlyGross * 12 + parseNumber(values.variablePayAnnual || 0);
 
                 setPreviewData({
                     annualCtc: parseNumber(values.annualCtc) > 0 ? parseNumber(values.annualCtc) : calculatedAnnualCtc,
@@ -480,23 +383,30 @@ const AddEditSalary = () => {
                     const conveyanceAllowance = data.conveyance_allowance || data.conveyanceAllowance || (data.conveyance_annual ? data.conveyance_annual / 12 : 0);
                     const otherAllowance = data.other_allowance || data.otherAllowance || (data.other_allowance_annual ? data.other_allowance_annual / 12 : 0);
 
-                    const pfEmployer = data.pf_employer || data.pfEmployer || (data.pf_annual ? (data.pf_annual / 2) / 12 : (monthlyBasic > 0 ? Math.round(monthlyBasic * 0.12) : 0));
-                    const pfEmployee = data.pf_employee || data.pfEmployee || (data.pf_annual ? (data.pf_annual / 2) / 12 : (monthlyBasic > 0 ? Math.round(monthlyBasic * 0.12) : 0));
-                    const isFeb = new Date().getMonth() === 1; // 0-indexed, February = 1
-                    const professionalTax = data.professional_tax || data.professionalTax || (isFeb ? 300 : 200);
+                    const pfEmployer = data.pf_employer || data.pfEmployer || (data.pf_annual ? (data.pf_annual / 12) : (monthlyBasic > 0 ? Math.round(monthlyBasic * 0.12) : 0));
+                    const pfEmployee = data.pf_employee || data.pfEmployee || (data.pf_annual ? (data.pf_annual / 12) : (monthlyBasic > 0 ? Math.round(monthlyBasic * 0.12) : 0));
+                    const professionalTax = (data.professional_tax_annual >= 2400 && data.professional_tax_annual <= 2500) ? 200 : (data.professional_tax || data.professionalTax || 200);
                     const otherDeduction = data.other_deduction || data.otherDeduction || (data.other_deduction_annual ? data.other_deduction_annual / 12 : 0);
 
-                    const monthlyGross = data.monthly_gross || data.monthlyGross || (monthlyBasic + hra + specialAllowance + medicalAllowance + conveyanceAllowance + otherAllowance);
-                    // Re-calculate monthly deductions with mapped values
-                    const totalMonthlyDeductions = pfEmployee + professionalTax + otherDeduction;
-                    const monthlyInHand = data.monthly_in_hand || data.monthlyInHand || (monthlyGross - totalMonthlyDeductions);
-                    const annualCtc = data.package_ctc_annual || data.annualCtc || (data.ctc_annual || ctcVal);
+                    // Recalculate monthly components proportionally if they seem outdated
+                    const currentAnnualCtc = data.package_ctc_annual || data.annualCtc || (data.ctc_annual || ctcVal);
+                    const monthlyFixedCtc = currentAnnualCtc / 12 - (data.variable_pay_annual || 0) / 12;
+
+                    // Recalculate special allowance on frontend to ensure it's not already reduced by PF employer share
+                    const knownComponents = monthlyBasic + hra + (medicalAllowance || 0) + (conveyanceAllowance || 0) + (otherAllowance || 0);
+                    const calculatedSpecial = Math.max(0, monthlyFixedCtc - knownComponents);
+
+                    // Monthly Gross now includes pfEmployer as part of the earnings side
+                    const monthlyGross = (monthlyBasic + hra + (calculatedSpecial || specialAllowance) + medicalAllowance + conveyanceAllowance + otherAllowance + pfEmployer);
+                    const totalMonthlyDeductions = professionalTax + otherDeduction;
+                    const monthlyInHand = monthlyGross - totalMonthlyDeductions;
+                    const annualCtc = currentAnnualCtc;
 
                     setPreviewData({
                         ...data,
                         monthlyBasic,
                         hra,
-                        specialAllowance,
+                        specialAllowance: calculatedSpecial || specialAllowance,
                         medicalAllowance,
                         conveyanceAllowance,
                         otherAllowance,
@@ -550,10 +460,11 @@ const AddEditSalary = () => {
 
                     // Special Allowance balance calculation
                     const monthlyVariable = (vType === 'percentage' ? (ctcVal * (vValueVal / 100)) : vValueVal) / 12;
-                    const monthlySpecial = Math.max(0, monthlyCtc - (monthlyBasic + monthlyHra + monthlyMedical + monthlyConveyance + monthlyOtherAllowance + monthlyPfOneSide + monthlyVariable));
+                    // Stopped subtracting monthlyPfOneSide from balancing to keep it part of Gross/CTC
+                    const monthlySpecial = Math.max(0, monthlyCtc - (monthlyBasic + monthlyHra + monthlyMedical + monthlyConveyance + monthlyOtherAllowance + monthlyVariable));
 
                     const monthlyGross = monthlyBasic + monthlyHra + monthlySpecial + monthlyMedical + monthlyConveyance + monthlyOtherAllowance;
-                    const monthlyDeductions = monthlyPfOneSide + monthlyPt + monthlyOtherTax;
+                    const monthlyDeductions = monthlyPt + monthlyOtherTax; // Stopped deducting monthlyPfOneSide from monthly earnings as per user request
                     const monthlyInHand = monthlyGross - monthlyDeductions;
 
                     setPreviewData({
@@ -609,7 +520,6 @@ const AddEditSalary = () => {
                     bankAccount: data.accountNumber || '',
                     ifscCode: data.ifscCode || '',
                     paymentMode: data.paymentMode || 'Bank Transfer',
-                    panNumber: data.panNumber || '',
 
                     // Restore PF Settings for Guided Mode
                     pfType: data.employer_pf_percentage ? 'percentage' : (data.pfEmployer > 0 ? 'fixed' : 'none'),
@@ -697,13 +607,12 @@ const AddEditSalary = () => {
                     pf_annual: data.pfAnnual || 0,
                     variable_pay: calculatedVariablePay,
                     working_days_per_month: data.workingDays || 22,
-                    uan_number: data.uanNumber || null,
-                    pf_no: data.pfNo || null,
-                    bank_name: data.bankName || null,
-                    bank_account: data.bankAccount || null,
-                    ifsc_code: data.ifscCode || null,
+                    uan_number: data.uanNumber || "",
+                    pf_no: data.pfNo || "",
+                    bank_name: data.bankName || "",
+                    bank_account: data.bankAccount || "",
+                    ifsc_code: data.ifscCode || "",
                     payment_mode: data.paymentMode || 'Bank Transfer',
-                    pan_number: data.panNumber || null,
                     ...pfPayload
                 };
 
@@ -729,10 +638,6 @@ const AddEditSalary = () => {
                 if (response) {
                     setExistingSalary(response);
                     await loadExistingSalary(data.userId);
-                    // Sync manual fields after successful save
-                    if (previewData) {
-                        syncManualFieldsFromPreview();
-                    }
                 }
 
             } else {
@@ -744,11 +649,11 @@ const AddEditSalary = () => {
                     variable_pay_type: data.variablePayType,
                     variable_pay_value: data.variablePayValue,
                     working_days_per_month: data.workingDays,
-                    uan_number: data.uanNumber || null,
-                    pf_no: data.pfNo || null,
-                    bank_name: data.bankName || null,
-                    bank_account: data.bankAccount || null,
-                    ifsc_code: data.ifscCode || null,
+                    uan_number: data.uanNumber || "",
+                    pf_no: data.pfNo || "",
+                    bank_name: data.bankName || "",
+                    bank_account: data.bankAccount || "",
+                    ifsc_code: data.ifscCode || "",
                     payment_mode: data.paymentMode || 'Bank Transfer',
                     ...pfPayload,
                 };
@@ -772,11 +677,11 @@ const AddEditSalary = () => {
 
                     // Update non-calculated fields (Bank details, PF numbers, etc.)
                     response = await apiService.updateSalaryDetails(data.userId, {
-                        uan_number: data.uanNumber || null,
-                        pf_no: data.pfNo || null,
-                        bank_name: data.bankName || null,
-                        bank_account: data.bankAccount || null,
-                        ifsc_code: data.ifscCode || null,
+                        uan_number: data.uanNumber || "",
+                        pf_no: data.pfNo || "",
+                        bank_name: data.bankName || "",
+                        bank_account: data.bankAccount || "",
+                        ifsc_code: data.ifscCode || "",
                         working_days_per_month: data.workingDays,
                         payment_mode: data.paymentMode,
                         variable_pay_type: data.variablePayType,
@@ -944,93 +849,6 @@ const AddEditSalary = () => {
                                 <Tabs value={activeTab} onValueChange={(val) => {
                                     if (val === "auto" || val === "manual") {
                                         setActiveTab(val);
-                                    }
-                                    // Sync manual fields when switching from guided to manual
-                                    if (val === "manual" && activeTab === "auto") {
-                                        setTimeout(async () => {
-                                            const ctc = parseNumber(watchCtc);
-                                            const vValue = parseNumber(watchVarValue);
-                                            if (previewData) {
-                                                syncManualFieldsFromPreview();
-                                            } else if (ctc > 0) {
-                                                // Use API calculation for consistency
-                                                try {
-                                                    const data = await apiService.calculateSalaryPreview(ctc, watchVarType, vValue);
-                                                    if (data) {
-                                                        form.setValue('basicAnnual', (data.monthly_basic || data.monthlyBasic || 0) * 12, { shouldValidate: true });
-                                                        form.setValue('hraAnnual', (data.hra || 0) * 12, { shouldValidate: true });
-                                                        form.setValue('pfAnnual', ((data.pf_employee || data.pfEmployee || 0) + (data.pf_employer || data.pfEmployer || 0)) * 12, { shouldValidate: true });
-                                                        form.setValue('professionalTaxAnnual', (data.professional_tax || data.professionalTax || 0) * 12, { shouldValidate: true });
-                                                        form.setValue('otherDeductionAnnual', (data.other_deduction || data.otherDeduction || 0) * 12, { shouldValidate: true });
-                                                        form.setValue('specialAllowanceAnnual', (data.special_allowance || data.specialAllowance || 0) * 12, { shouldValidate: true });
-                                                        form.setValue('conveyanceAnnual', (data.conveyance_allowance || data.conveyanceAllowance || 0) * 12, { shouldValidate: true });
-                                                        form.setValue('medicalAllowanceAnnual', (data.medical_allowance || data.medicalAllowance || 0) * 12, { shouldValidate: true });
-                                                        form.setValue('otherAllowanceAnnual', (data.other_allowance || data.otherAllowance || 0) * 12, { shouldValidate: true });
-                                                        form.setValue('variablePayAnnual', data.variable_pay || data.variablePay || 0, { shouldValidate: true });
-
-                                                        handleCalculatePreview();
-                                                        return;
-                                                    }
-                                                } catch (error) {
-                                                    console.warn('API calculation failed during tab switch, using fallback:', error);
-
-                                                    // Fallback calculation
-                                                    const variablePart = parseNumber(form.getValues('variablePayAnnual')) || 0;
-                                                    const fixedCtc = ctc - variablePart;
-
-                                                    const annualBasic = Math.round(fixedCtc * 0.5);
-                                                    const annualHra = Math.round(annualBasic * 0.5);
-                                                    // PF: 12% Emp + 12% Empr = 24% Total
-                                                    const annualPfOneSide = Math.round(annualBasic * 0.12);
-                                                    const annualPfTotal = annualPfOneSide * 2;
-
-                                                    const annualPt = 2400;
-                                                    const annualOtherDed = 0;
-                                                    const annualSpecial = Math.max(0, fixedCtc - annualBasic - annualHra - annualPfOneSide - annualPt - annualOtherDed); // Subtract Employer PF only from CTC for Special Allowance balance? No wait.
-                                                    // CTC = Basic + HRA + Special + EmprPF + Variable.
-                                                    // So Special = CTC - Variable - Basic - HRA - EmprPF.
-                                                    // EmprPF is annualPfOneSide.
-                                                    // Wait, in previous fix I used: annualSpecial = Math.max(0, fixedCtc - annualBasic - annualHra - annualPfOneSide);
-                                                    // But here I see annualPt and annualOtherDed being subtracted too.
-                                                    // PT and OtherDed usually come from Gross (Basic+HRA+Special). They don't INCREASE CTC.
-                                                    // Gross = CTC - EmprPF.
-                                                    // Gross = Basic + HRA + Special.
-                                                    // So CTC = Basic + HRA + Special + EmprPF.
-                                                    // So Special = CTC - Basic - HRA - EmprPF.
-                                                    // PT is a deduction FROM Gross. It doesn't affect the CTC equation directly (it's part of Gross).
-                                                    // So subtracting annualPt here reduces Special Allowance? 
-                                                    // If we subtract PT from Special, then Gross decreases. 
-                                                    // If Gross decreases, but PT is deducted from Gross... 
-                                                    // Wait. If Annual PT is 2400. This is paid by Employee. It's part of Gross.
-                                                    // So it should NOT be subtracted when calculating Special Allowance to match CTC.
-                                                    // Correct: Special = FixedCtc - Basic - HRA - PF_Employer.
-
-                                                    // HOWEVER, if the previous code was subtracting it, maybe it was assuming Cost To Company included PT reimbursement? No, usually PT is employee deduction.
-                                                    // I will stick to the logic: Special = FixedCtc - Basic - HRA - PF_Employer (annualPfOneSide).
-                                                    // But I will verify what I did in Step 68.
-                                                    // Step 68 Sync Logic: const annualSpecial = Math.max(0, fixedCtc - annualBasic - annualHra - annualPfOneSide);
-                                                    // Step 68 Fallback Logic: const annualSpecial = Math.max(0, fixedCtc - annualBasic - annualHra - annualPfOneSide);
-                                                    // So I should REMOVE -annualPt -annualOtherDed from this calculation to be consistent.
-
-                                                    let annualVariablePay = 0;
-                                                    if (watchVarType === 'percentage') {
-                                                        annualVariablePay = ctc * (vValue / 100);
-                                                    } else if (watchVarType === 'fixed') {
-                                                        annualVariablePay = vValue;
-                                                    }
-
-                                                    form.setValue('basicAnnual', annualBasic, { shouldValidate: true });
-                                                    form.setValue('hraAnnual', annualHra, { shouldValidate: true });
-                                                    form.setValue('pfAnnual', annualPfTotal, { shouldValidate: true });
-                                                    form.setValue('professionalTaxAnnual', annualPt, { shouldValidate: true });
-                                                    form.setValue('otherDeductionAnnual', annualOtherDed, { shouldValidate: true });
-                                                    form.setValue('specialAllowanceAnnual', annualSpecial, { shouldValidate: true });
-                                                    form.setValue('variablePayAnnual', annualVariablePay, { shouldValidate: true });
-
-                                                    handleCalculatePreview();
-                                                }
-                                            }
-                                        }, 100);
                                     }
                                 }} className="w-full">
                                     {(userRole === 'admin' || userRole === 'hr') && (
@@ -1446,11 +1264,6 @@ const AddEditSalary = () => {
                                                 {form.formState.errors.uanNumber && <p className="text-red-500 text-xs mt-1">{form.formState.errors.uanNumber.message}</p>}
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PAN Number</Label>
-                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. ABCDE1234F" {...form.register("panNumber")} />
-                                                {form.formState.errors.panNumber && <p className="text-red-500 text-xs mt-1">{form.formState.errors.panNumber.message}</p>}
-                                            </div>
-                                            <div className="space-y-2">
                                                 <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PF Number</Label>
                                                 <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. MH/PUN/9673924/168/1039756" {...form.register("pfNo")} />
                                                 {form.formState.errors.pfNo && <p className="text-red-500 text-xs mt-1">{form.formState.errors.pfNo.message}</p>}
@@ -1556,8 +1369,8 @@ const AddEditSalary = () => {
                                                         <h4 className="uppercase tracking-wider" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>STATUTARY DEDUCTION</h4>
                                                         <div className="space-y-3">
                                                             <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
-                                                                <span className="text-sm text-muted-foreground line-through">EPF (Employer)</span>
-                                                                <span className="text-xs italic text-muted-foreground">Incl. in CTC</span>
+                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>EPF (Employer)</span>
+                                                                <span className="text-[10px] text-green-600 font-bold uppercase tracking-tighter text-right">Included in Gross</span>
                                                             </div>
                                                             <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
                                                                 <div className="flex flex-col">
@@ -1566,7 +1379,10 @@ const AddEditSalary = () => {
                                                                         <span className="text-[10px] text-muted-foreground uppercase tracking-widest">PF NO: {previewData.pfNo}</span>
                                                                     )}
                                                                 </div>
-                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>-{formatCurrency(previewData.pfEmployee)}</span>
+                                                                <div className="flex flex-col items-end">
+                                                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>{formatCurrency(previewData.pfEmployee)}</span>
+                                                                    <span className="text-[10px] text-blue-600 font-bold uppercase tracking-tighter">Not Deducted</span>
+                                                                </div>
                                                             </div>
                                                             <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
                                                                 <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Professional Tax</span>
@@ -1588,7 +1404,7 @@ const AddEditSalary = () => {
                                                 <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border-2 border-[#000000] flex items-start gap-3">
                                                     <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                                                     <p className="leading-relaxed" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#A16207", fontSize: "14px" }}>
-                                                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000" }}>Values are estimates based on standard Indian payroll regulations.</span> Employer Provident Fund (EPF) of {formatCurrency(previewData.pfEmployer)} is included in the Annual CTC but deducted before calculating Monthly Gross.
+                                                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000" }}>Values are estimates based on standard Indian payroll regulations.</span> EPF (Employee share) is shown for reference but is not deducted from monthly earnings per company policy.
                                                     </p>
                                                 </div>
                                             </div>

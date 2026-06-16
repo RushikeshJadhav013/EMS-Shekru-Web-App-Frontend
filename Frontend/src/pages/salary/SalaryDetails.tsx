@@ -392,16 +392,12 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 const expectedMonthlyOtherAllowance = (data.other_allowance_annual || 0) / 12 || data.otherAllowance || 0;
 
                 // PF Calculation Fallback: use pf_annual if available, otherwise calculate 12% of basic
-                const annualPfTotal = data.pf_annual || (expectedMonthlyBasic * 0.12 * 2 * 12);
-                const expectedMonthlyPfEmployer = annualPfTotal / 24;
-                const expectedMonthlyPfEmployee = annualPfTotal / 24;
+                const annualPfTotal = data.pf_annual || (expectedMonthlyBasic * 0.12 * 12); // Assuming 12% is one side
+                const expectedMonthlyPfEmployer = annualPfTotal / 12;
+                const expectedMonthlyPfEmployee = annualPfTotal / 12;
 
-                // Professional Tax: 200 for 11 months, 300 for February (Total 2500)
+                // Professional Tax: Force 200 per month as per user request
                 let expectedMonthlyPt = 200;
-                const currentMonth = selectedMonth === "all" ? (new Date().getMonth() + 1).toString() : selectedMonth;
-                if (currentMonth === "2") {
-                    expectedMonthlyPt = 300;
-                }
 
                 const expectedMonthlyOtherDed = (data.other_deduction_annual || 0) / 12 || data.otherDeduction || 0;
 
@@ -418,6 +414,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
 
                 // Recalculate special allowance as the balancing component
                 const monthlyFixedCtc = currentAnnualCtc / 12 - (data.variable_pay || 0) / 12;
+                // Include pfEmployer in knownComponents so SpecialAllowance is "clean"
                 const knownComponents = data.monthlyBasic + data.hra + (data.medicalAllowance || 0) +
                     (data.conveyanceAllowance || 0) + (data.otherAllowance || 0) + data.pfEmployer;
 
@@ -426,9 +423,11 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 data.specialAllowance = storedMonthlySpecial > 0 ? storedMonthlySpecial : Math.max(0, monthlyFixedCtc - knownComponents);
 
                 // Recalculate totals
+                // Monthly Gross now explicitly includes pfEmployer as part of the earnings
                 data.monthlyGross = data.monthlyBasic + data.hra + data.specialAllowance +
-                    (data.medicalAllowance || 0) + (data.conveyanceAllowance || 0) + (data.otherAllowance || 0);
-                data.monthlyDeductions = data.professionalTax + data.pfEmployee + data.otherDeduction;
+                    (data.medicalAllowance || 0) + (data.conveyanceAllowance || 0) + (data.otherAllowance || 0) + data.pfEmployer;
+                // Stopped deducting data.pfEmployee from monthlyInHand as per user request
+                data.monthlyDeductions = data.professionalTax + data.otherDeduction;
                 data.monthlyInHand = data.monthlyGross - data.monthlyDeductions;
 
                 // Update CTC values
@@ -1445,7 +1444,12 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                             )}
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="text-right pr-6 font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>-{formatCurrency(displaySalaryData.pfEmployee)}</TableCell>
+                                                    <TableCell className="text-right pr-6 py-4">
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{formatCurrency(displaySalaryData.pfEmployee)}</span>
+                                                            <span className="text-[10px] text-blue-600 font-bold uppercase tracking-tighter">Not Deducted</span>
+                                                        </div>
+                                                    </TableCell>
                                                 </TableRow>
 
                                                 {displaySalaryData.otherDeduction > 0 && (
