@@ -1,5 +1,5 @@
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://api.staffly.space";
+  import.meta.env.VITE_API_BASE_URL || "https://api-testing.staffly.space";
 
 interface EmployeeData {
   name: string;
