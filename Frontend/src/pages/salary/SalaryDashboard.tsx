@@ -71,31 +71,38 @@ const SalaryDashboard = () => {
                 if (salary) {
                     // Core fields for analytics
                     const annualCtc = salary.annualCtc || salary.package_ctc_annual || salary.ctc_annual || 0;
-                    const monthlyCtc = annualCtc / 12;
 
-                    // Improved Monthly In-Hand calculation for dashboard
-                    // 1. Calculate Monthly Gross (including Employer PF share)
-                    // If stored earnings are yearly, convert to monthly.
-                    // We assume earnings_annual already includes the full package except variable.
-                    let monthlyGross = (salary.total_earnings_annual || (annualCtc - (salary.variable_pay_annual || 0))) / 12;
-
-                    // 2. Calculate Deductions (Professional Tax: Force 200 as per user request)
-                    const monthlyPt = 200;
-
-                    // Other Deductions (excluding PF)
-                    // total_deductions_annual usually includes PF + PT + Other. 
-                    // We want only PT + Other.
-                    const annualPt = 2500;
+                    // PF Split (Annual Total / 24 for each side)
                     const annualPfTotal = salary.pf_annual || 0;
-                    const otherDeductionsAnnual = Math.max(0, (salary.total_deductions_annual || 0) - annualPt - annualPfTotal);
-                    const monthlyOtherDeductions = otherDeductionsAnnual / 12;
+                    const monthlyPfEmployer = annualPfTotal / 24;
+                    const monthlyPfEmployee = annualPfTotal / 24;
 
-                    const monthlyInHand = monthlyGross - (monthlyPt + monthlyOtherDeductions);
+                    // Monthly Fixed CTC (Excluding variable pay)
+                    const annualVariable = salary.variable_pay_annual || 0;
+                    const monthlyFixedCtc = (annualCtc - annualVariable) / 12;
+
+                    // Monthly Gross = Monthly Fixed CTC - Employer PF
+                    const monthlyGross = monthlyFixedCtc - monthlyPfEmployer;
+
+                    // Professional Tax (PT)
+                    const currentMonth = new Date().getMonth() + 1; // 1-indexed
+                    let monthlyPt = 200;
+                    if (salary.professional_tax_annual >= 2400) {
+                        monthlyPt = (currentMonth === 2) ? 300 : 200;
+                    }
+
+                    // Other Deductions: Use stored other_deduction_annual if it exists, otherwise back-calculate from total
+                    const salaryOtherDedAnnual = salary.other_deduction_annual !== undefined ? salary.other_deduction_annual : 0;
+                    const backCalcOtherDeductionsAnnual = Math.max(0, (salary.total_deductions_annual || 0) - (salary.professional_tax_annual || 2500) - (annualPfTotal / 2));
+                    const monthlyOtherDeductions = (salaryOtherDedAnnual || backCalcOtherDeductionsAnnual) / 12;
+
+                    // Monthly In-Hand = Monthly Gross - (Employee PF + PT + Other Deductions)
+                    const monthlyInHand = monthlyGross - (monthlyPfEmployee + monthlyPt + monthlyOtherDeductions);
 
                     salary = {
                         ...salary,
                         annualCtc,
-                        monthlyCtc,
+                        monthlyCtc: annualCtc / 12,
                         monthlyInHand,
                         monthlyGross,
                         professionalTax: monthlyPt

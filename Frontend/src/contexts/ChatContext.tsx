@@ -106,11 +106,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const localTime = new Date(localMatch.lastMessage.timestamp).getTime();
             const fetchedTime = new Date(fc.lastMessage.timestamp).getTime();
 
-            if (localTime > fetchedTime && (Date.now() - localTime < 20000)) {
+            if (localTime > fetchedTime) {
               return {
                 ...fc,
                 lastMessage: localMatch.lastMessage,
-                updatedAt: localMatch.updatedAt,
+                updatedAt: localMatch.updatedAt || localMatch.lastMessage.timestamp,
                 unreadCount: fc.unreadCount
               };
             }
@@ -119,16 +119,18 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       });
 
-      const chatsNeedingSync = fetchedChats.filter(c => c.lastMessage && !c.lastMessage.content && c.lastMessage.timestamp);
-      if (chatsNeedingSync.length > 0) {
-        Promise.all(chatsNeedingSync.map(async chat => {
+      const chatsToSync = fetchedChats.filter(c => c.lastMessage && c.lastMessage.timestamp);
+      if (chatsToSync.length > 0) {
+        Promise.all(chatsToSync.map(async chat => {
           try {
-            const msgs = await chatService.getChatMessages(chat.id, chat.type, 1, 5);
+            // Fetch the truly latest message for each chat
+            const msgs = await chatService.getChatMessages(chat.id, chat.type, 1, 1);
             if (msgs.length > 0) {
-              const actualLatestMessage = msgs[msgs.length - 1];
+              // API returns [newest, second newest, ...] so index 0 is the latest
+              const actualLatestMessage = msgs[0];
               setChats(prev => prev.map(c =>
                 c.id === chat.id
-                  ? { ...c, lastMessage: actualLatestMessage }
+                  ? { ...c, lastMessage: actualLatestMessage, updatedAt: actualLatestMessage.timestamp }
                   : c
               ));
             }
@@ -184,7 +186,21 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           Math.abs(Date.now() - new Date(m.timestamp).getTime()) < 15000
         );
 
-        return [...mergedServerMessages, ...unsyncedLocals, ...missingButRecent];
+        const finalMessages = [...mergedServerMessages, ...unsyncedLocals, ...missingButRecent];
+
+        // Sync the latest message back to the chats sidebar state
+        if (finalMessages.length > 0) {
+          // Since mergedServerMessages is already reversed (oldest -> newest), 
+          // the last item is the latest.
+          const latest = finalMessages[finalMessages.length - 1];
+          setChats(prevChats => prevChats.map(c =>
+            c.id === chatId
+              ? { ...c, lastMessage: latest, updatedAt: latest.timestamp }
+              : c
+          ));
+        }
+
+        return finalMessages;
       });
     } catch (error) {
       console.error('Failed to load messages:', error);

@@ -128,11 +128,25 @@ const ChatBox: React.FC = () => {
   }, [setIsLightboxOpen]);
 
   // ── Effects ────────────────────────────────────────────────────────────────
+  // Scroll to bottom when messages change if we were already at bottom
   useEffect(() => {
     if (isScrolledToBottom.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      // Use requestAnimationFrame to ensure the DOM has updated and layout is calculated
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      });
     }
   }, [messages]);
+
+  // Force scroll to bottom when switching chats to ensure we start at the newest message
+  useEffect(() => {
+    if (chatId) {
+      isScrolledToBottom.current = true;
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      });
+    }
+  }, [chatId]);
 
 
   useEffect(() => {
@@ -188,9 +202,14 @@ const ChatBox: React.FC = () => {
   const handleSendMessage = async () => {
     if (!messageText.trim() || !activeChat) return;
     try {
+      isScrolledToBottom.current = true;
       await sendMessage(messageText, 'text', replyingTo || undefined);
       setMessageText('');
       setReplyingTo(null);
+      // Extra insurance to scroll after state update
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
 
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -220,9 +239,15 @@ const ChatBox: React.FC = () => {
 
     setIsUploading(true);
     try {
+      isScrolledToBottom.current = true;
       // Use the new dedicated file upload API
       await sendMessageWithFile(file, '', replyingTo || undefined);
       setReplyingTo(null);
+
+      // Extra insurance to scroll after state update
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
 
       toast({
         title: file.type.startsWith('image/') ? '📷 Image sent' : '📄 File sent',

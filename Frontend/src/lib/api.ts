@@ -2147,14 +2147,14 @@ class ApiService {
             : response.other_allowance || 0,
           professionalTax: response.monthly_professional_tax !== undefined
             ? response.monthly_professional_tax
-            : response.professional_tax_annual
-              ? response.professional_tax_annual / 12
-              : response.professional_tax || 0,
+            : (month === 2)
+              ? (response.professional_tax_annual >= 2400 ? 300 : response.professional_tax || 0)
+              : (response.professional_tax_annual >= 2400 ? 200 : (response.professional_tax_annual ? response.professional_tax_annual / 12 : response.professional_tax || 0)),
           pfEmployer: response.pf_annual
-            ? response.pf_annual / 12
+            ? response.pf_annual / 24
             : response.pf_employer || 0,
           pfEmployee: response.pf_annual
-            ? response.pf_annual / 12
+            ? response.pf_annual / 24
             : response.pf_employee || 0,
           otherDeduction: response.other_deduction_annual
             ? response.other_deduction_annual / 12
@@ -2591,7 +2591,11 @@ class ApiService {
       }
     }
 
-    return this.request(`/tasks/${taskId}/status?${params.toString()}`, {
+    const endpoint = companySlug
+      ? `/${companySlug}/tasks/${taskId}/status?${params.toString()}`
+      : `/tasks/${taskId}/status?${params.toString()}`;
+
+    return this.request(endpoint, {
       method: "PUT",
       body: JSON.stringify(body),
     });
@@ -2611,7 +2615,11 @@ class ApiService {
     params.append("status", status);
     if (companySlug) params.append("company_slug", companySlug);
 
-    return this.request(`/tasks/${taskId}/status?${params.toString()}`, {
+    const endpoint = companySlug
+      ? `/${companySlug}/tasks/${taskId}/status?${params.toString()}`
+      : `/tasks/${taskId}/status?${params.toString()}`;
+
+    return this.request(endpoint, {
       method: "PUT",
       body: JSON.stringify({
         status,
@@ -2895,13 +2903,13 @@ class ApiService {
 
   async markNotificationAsRead(type: string, notificationId: number) {
     let module = type;
-    // Map internal types to backend modules if different
+    // Map internal types to backend module path prefixes (must match GET endpoints exactly)
     if (type === 'meeting') module = 'meetings';
     if (type === 'chat') module = 'chats';
     if (type === 'project') module = 'projects';
     if (type === 'task') module = 'tasks';
-    if (type === 'leave') module = 'leaves';
-    if (type === 'shift') module = 'shifts';
+    if (type === 'leave') module = 'leave';       // GET: /leave/notifications  → PUT: /leave/notifications/{id}/read
+    if (type === 'shift') module = 'shift';       // GET: /shift/notifications  → PUT: /shift/notifications/{id}/read
     if (type === 'wfh') module = 'wfh';
     if (type === 'salary') module = 'salary';
     if (type === 'attendance') module = 'attendance';

@@ -51,6 +51,7 @@ const salarySchema = z.object({
     pfValue: z.preprocess(preprocessNumber, z.number().optional().default(0)),
     // Bank & Statutory Details
     uanNumber: z.string().optional().or(z.literal('')).default(''),
+    panNumber: z.string().optional().or(z.literal('')).default(''),
     pfNo: z.string().optional().or(z.literal('')).default(''),
     bankName: z.string().optional().or(z.literal('')).default(''),
     bankAccount: z.string().optional().or(z.literal('')).default(''),
@@ -145,6 +146,7 @@ const AddEditSalary = () => {
             pfType: 'none',
             pfValue: 0,
             uanNumber: '',
+            panNumber: '',
             pfNo: '',
             bankName: '',
             bankAccount: '',
@@ -297,7 +299,9 @@ const AddEditSalary = () => {
             form.setValue('medicalAllowanceAnnual', (previewData.medicalAllowance || 0) * 12, { shouldValidate: true });
             form.setValue('otherAllowanceAnnual', (previewData.otherAllowance || 0) * 12, { shouldValidate: true });
             form.setValue('pfAnnual', ((previewData.pfEmployee || 0) + (previewData.pfEmployer || 0)) * 12, { shouldValidate: true });
-            form.setValue('professionalTaxAnnual', (previewData.professionalTax || 0) * 12, { shouldValidate: true });
+            // Professional Tax should be forced to 2500 total if it matches the 200/300 pattern
+            const ptAnnual = previewData.professionalTax === 200 || previewData.professionalTax === 300 ? 2500 : (previewData.professionalTax || 0) * 12;
+            form.setValue('professionalTaxAnnual', ptAnnual, { shouldValidate: true });
             form.setValue('otherDeductionAnnual', (previewData.otherDeduction || 0) * 12, { shouldValidate: true });
             form.setValue('variablePayAnnual', previewData.variablePay || 0, { shouldValidate: true });
         }
@@ -330,27 +334,29 @@ const AddEditSalary = () => {
                 const medical = Math.round(parseNumber(values.medicalAllowanceAnnual || 0) / 12);
                 const conveyance = Math.round(parseNumber(values.conveyanceAnnual || 0) / 12);
                 const other = Math.round(parseNumber(values.otherAllowanceAnnual || 0) / 12);
+
+                // Professional Tax (PT): Handle 200/300 split
                 const ptAnnual = parseNumber(values.professionalTaxAnnual || 0);
+                const currentMonth = new Date().getMonth(); // 0-indexed, Jan=0, Feb=1
                 let pt = Math.round(ptAnnual / 12);
                 if (ptAnnual >= 2400 && ptAnnual <= 2500) {
-                    // Force 200 as per user request (instead of 208 or the 200/300 split)
-                    pt = 200;
+                    pt = (currentMonth === 1) ? 300 : 200;
                 }
                 const otherDed = Math.round(parseNumber(values.otherDeductionAnnual || 0) / 12);
 
-                // PF Calculation: Use Annual Total for each share as per user request (not dividing by 2)
+                // PF Calculation: Annual Total represents sum of both shares (12% + 12%)
                 const pfAnnTotal = parseNumber(values.pfAnnual || 0);
-                const pfEmp = Math.round(pfAnnTotal / 12);
-                const pfEmpr = Math.round(pfAnnTotal / 12);
+                const pfEmp = Math.round(pfAnnTotal / 24);
+                const pfEmpr = Math.round(pfAnnTotal / 24);
 
                 const vPay = Math.round(parseNumber(values.variablePayAnnual || 0) / 12);
 
-                const monthlyGross = basic + hra + special + medical + conveyance + other + pfEmpr;
-                const monthlyDeductions = pt + otherDed; // Stopped deducting pfEmp from monthly earnings
+                const monthlyGross = basic + hra + special + medical + conveyance + other;
+                const monthlyDeductions = pt + otherDed + pfEmp;
                 const monthlyInHand = monthlyGross - monthlyDeductions;
-                // CTC = Monthly Gross * 12 + Annual Variable Pay
-                // (Note: Employer PF is now part of the Gross coverage in terms of CTC balancing)
-                const calculatedAnnualCtc = monthlyGross * 12 + parseNumber(values.variablePayAnnual || 0);
+
+                // CTC = (Monthly Gross + Employer PF) * 12 + Annual Variable Pay
+                const calculatedAnnualCtc = (monthlyGross + pfEmpr) * 12 + parseNumber(values.variablePayAnnual || 0);
 
                 setPreviewData({
                     annualCtc: parseNumber(values.annualCtc) > 0 ? parseNumber(values.annualCtc) : calculatedAnnualCtc,
@@ -385,20 +391,21 @@ const AddEditSalary = () => {
 
                     const pfEmployer = data.pf_employer || data.pfEmployer || (data.pf_annual ? (data.pf_annual / 12) : (monthlyBasic > 0 ? Math.round(monthlyBasic * 0.12) : 0));
                     const pfEmployee = data.pf_employee || data.pfEmployee || (data.pf_annual ? (data.pf_annual / 12) : (monthlyBasic > 0 ? Math.round(monthlyBasic * 0.12) : 0));
-                    const professionalTax = (data.professional_tax_annual >= 2400 && data.professional_tax_annual <= 2500) ? 200 : (data.professional_tax || data.professionalTax || 200);
+                    const professionalTax = (data.professional_tax_annual >= 2400 && data.professional_tax_annual <= 2500) ? ((new Date().getMonth() === 1) ? 300 : 200) : (data.professional_tax || data.professionalTax || 200);
                     const otherDeduction = data.other_deduction || data.otherDeduction || (data.other_deduction_annual ? data.other_deduction_annual / 12 : 0);
 
                     // Recalculate monthly components proportionally if they seem outdated
                     const currentAnnualCtc = data.package_ctc_annual || data.annualCtc || (data.ctc_annual || ctcVal);
                     const monthlyFixedCtc = currentAnnualCtc / 12 - (data.variable_pay_annual || 0) / 12;
 
-                    // Recalculate special allowance on frontend to ensure it's not already reduced by PF employer share
-                    const knownComponents = monthlyBasic + hra + (medicalAllowance || 0) + (conveyanceAllowance || 0) + (otherAllowance || 0);
+                    // Recalculate special allowance on frontend to ensure it's balanced correctly
+                    // Gross includes Basic, HRA, Medical, Conveyance, Other, Special.
+                    // CTC includes Gross + Employer PF.
+                    const knownComponents = monthlyBasic + hra + (medicalAllowance || 0) + (conveyanceAllowance || 0) + (otherAllowance || 0) + (pfEmployer || 0);
                     const calculatedSpecial = Math.max(0, monthlyFixedCtc - knownComponents);
 
-                    // Monthly Gross now includes pfEmployer as part of the earnings side
-                    const monthlyGross = (monthlyBasic + hra + (calculatedSpecial || specialAllowance) + medicalAllowance + conveyanceAllowance + otherAllowance + pfEmployer);
-                    const totalMonthlyDeductions = professionalTax + otherDeduction;
+                    const monthlyGross = (monthlyBasic + hra + (calculatedSpecial || specialAllowance) + medicalAllowance + conveyanceAllowance + otherAllowance);
+                    const totalMonthlyDeductions = professionalTax + otherDeduction + pfEmployee;
                     const monthlyInHand = monthlyGross - totalMonthlyDeductions;
                     const annualCtc = currentAnnualCtc;
 
@@ -460,11 +467,12 @@ const AddEditSalary = () => {
 
                     // Special Allowance balance calculation
                     const monthlyVariable = (vType === 'percentage' ? (ctcVal * (vValueVal / 100)) : vValueVal) / 12;
-                    // Stopped subtracting monthlyPfOneSide from balancing to keep it part of Gross/CTC
-                    const monthlySpecial = Math.max(0, monthlyCtc - (monthlyBasic + monthlyHra + monthlyMedical + monthlyConveyance + monthlyOtherAllowance + monthlyVariable));
+                    // Balance against CTC: CTC = MonthlyFixedCtc + MonthlyVariable
+                    // MonthlyFixedCtc = Basic + HRA + Medical + Conveyance + Other + PF_Empr + Special
+                    const monthlySpecial = Math.max(0, monthlyCtc - (monthlyBasic + monthlyHra + monthlyMedical + monthlyConveyance + monthlyOtherAllowance + monthlyPfOneSide + monthlyVariable));
 
                     const monthlyGross = monthlyBasic + monthlyHra + monthlySpecial + monthlyMedical + monthlyConveyance + monthlyOtherAllowance;
-                    const monthlyDeductions = monthlyPt + monthlyOtherTax; // Stopped deducting monthlyPfOneSide from monthly earnings as per user request
+                    const monthlyDeductions = monthlyPt + monthlyOtherTax + monthlyPfOneSide;
                     const monthlyInHand = monthlyGross - monthlyDeductions;
 
                     setPreviewData({
@@ -515,6 +523,7 @@ const AddEditSalary = () => {
 
                     // Restore Bank & Statutory Details
                     uanNumber: data.uanNumber || '',
+                    panNumber: data.panNumber || '',
                     pfNo: data.pfNumber || '',
                     bankName: data.bankName || '',
                     bankAccount: data.accountNumber || '',
@@ -608,6 +617,7 @@ const AddEditSalary = () => {
                     variable_pay: calculatedVariablePay,
                     working_days_per_month: data.workingDays || 22,
                     uan_number: data.uanNumber || "",
+                    pan_number: data.panNumber || "",
                     pf_no: data.pfNo || "",
                     bank_name: data.bankName || "",
                     bank_account: data.bankAccount || "",
@@ -650,6 +660,7 @@ const AddEditSalary = () => {
                     variable_pay_value: data.variablePayValue,
                     working_days_per_month: data.workingDays,
                     uan_number: data.uanNumber || "",
+                    pan_number: data.panNumber || "",
                     pf_no: data.pfNo || "",
                     bank_name: data.bankName || "",
                     bank_account: data.bankAccount || "",
@@ -678,6 +689,7 @@ const AddEditSalary = () => {
                     // Update non-calculated fields (Bank details, PF numbers, etc.)
                     response = await apiService.updateSalaryDetails(data.userId, {
                         uan_number: data.uanNumber || "",
+                        pan_number: data.panNumber || "",
                         pf_no: data.pfNo || "",
                         bank_name: data.bankName || "",
                         bank_account: data.bankAccount || "",
@@ -1259,25 +1271,30 @@ const AddEditSalary = () => {
                                     <CardContent className="space-y-5">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                             <div className="space-y-2">
-                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>UAN Number</Label>
+                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>UAN Number (Optional)</Label>
                                                 <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. 975610472162" {...form.register("uanNumber")} />
                                                 {form.formState.errors.uanNumber && <p className="text-red-500 text-xs mt-1">{form.formState.errors.uanNumber.message}</p>}
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PF Number</Label>
+                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PAN Number (Optional)</Label>
+                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. ABCDE1234F" {...form.register("panNumber")} />
+                                                {form.formState.errors.panNumber && <p className="text-red-500 text-xs mt-1">{form.formState.errors.panNumber.message}</p>}
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PF Number (Optional)</Label>
                                                 <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. MH/PUN/9673924/168/1039756" {...form.register("pfNo")} />
                                                 {form.formState.errors.pfNo && <p className="text-red-500 text-xs mt-1">{form.formState.errors.pfNo.message}</p>}
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Bank Name</Label>
+                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Bank Name (Optional)</Label>
                                                 <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. SBI" {...form.register("bankName")} />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Bank Account Number</Label>
+                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Bank Account Number (Optional)</Label>
                                                 <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. 910383452746" {...form.register("bankAccount")} />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>IFSC Code</Label>
+                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>IFSC Code (Optional)</Label>
                                                 <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. SBIN0002638" {...form.register("ifscCode")} />
                                             </div>
                                             <div className="space-y-2">
@@ -1370,7 +1387,7 @@ const AddEditSalary = () => {
                                                         <div className="space-y-3">
                                                             <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
                                                                 <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>EPF (Employer)</span>
-                                                                <span className="text-[10px] text-green-600 font-bold uppercase tracking-tighter text-right">Included in Gross</span>
+                                                                <span className="text-[10px] text-blue-600 font-bold uppercase tracking-tighter text-right">Contribution</span>
                                                             </div>
                                                             <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
                                                                 <div className="flex flex-col">
@@ -1380,8 +1397,8 @@ const AddEditSalary = () => {
                                                                     )}
                                                                 </div>
                                                                 <div className="flex flex-col items-end">
-                                                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>{formatCurrency(previewData.pfEmployee)}</span>
-                                                                    <span className="text-[10px] text-blue-600 font-bold uppercase tracking-tighter">Not Deducted</span>
+                                                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>-{formatCurrency(previewData.pfEmployee)}</span>
+                                                                    <span className="text-[10px] text-rose-600 font-bold uppercase tracking-tighter">Statutory Deduction</span>
                                                                 </div>
                                                             </div>
                                                             <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
@@ -1394,9 +1411,14 @@ const AddEditSalary = () => {
                                                                     <span className="font-semibold text-destructive">-{formatCurrency(previewData.otherDeduction)}</span>
                                                                 </div>
                                                             )}
-                                                            <div className="flex justify-between items-center py-2 mt-4 bg-rose-100/50 dark:bg-rose-900/30 px-2 rounded font-semibold">
-                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Total Deductions</span>
-                                                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>-{formatCurrency(previewData.monthlyDeductions)}</span>
+                                                            <div className="flex flex-col py-2 mt-4 bg-rose-100/50 dark:bg-rose-900/30 px-2 rounded">
+                                                                <div className="flex justify-between items-center font-semibold">
+                                                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Total Deductions</span>
+                                                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>-{formatCurrency(previewData.monthlyDeductions)}</span>
+                                                                </div>
+                                                                <div className="text-[10px] text-rose-600 mt-1 font-bold text-right italic">
+                                                                    ({Math.round(previewData.pfEmployee)} EPF + {Math.round(previewData.professionalTax)} PT + {Math.round(previewData.otherDeduction)} Other = {Math.round(previewData.monthlyDeductions)})
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1404,7 +1426,7 @@ const AddEditSalary = () => {
                                                 <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border-2 border-[#000000] flex items-start gap-3">
                                                     <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                                                     <p className="leading-relaxed" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#A16207", fontSize: "14px" }}>
-                                                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000" }}>Values are estimates based on standard Indian payroll regulations.</span> EPF (Employee share) is shown for reference but is not deducted from monthly earnings per company policy.
+                                                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000" }}>Values are estimates based on standard Indian payroll regulations.</span> EPF (Employee share), Professional Tax, and Other Taxes are deducted from the Monthly Gross to calculate the final In-Hand pay.
                                                     </p>
                                                 </div>
                                             </div>
@@ -1512,8 +1534,8 @@ const AddEditSalary = () => {
                                     </CardContent>
                                 </Card>
                             </div>
-                        </div>
-                    </form>
+                        </div >
+                    </form >
                 )
             }
             {
@@ -1523,7 +1545,7 @@ const AddEditSalary = () => {
                     </div>
                 )
             }
-        </div>
+        </div >
     );
 };
 

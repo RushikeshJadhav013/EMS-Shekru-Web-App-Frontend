@@ -392,12 +392,16 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 const expectedMonthlyOtherAllowance = (data.other_allowance_annual || 0) / 12 || data.otherAllowance || 0;
 
                 // PF Calculation Fallback: use pf_annual if available, otherwise calculate 12% of basic
-                const annualPfTotal = data.pf_annual || (expectedMonthlyBasic * 0.12 * 12); // Assuming 12% is one side
-                const expectedMonthlyPfEmployer = annualPfTotal / 12;
-                const expectedMonthlyPfEmployee = annualPfTotal / 12;
+                const annualPfTotal = data.pf_annual || (expectedMonthlyBasic * 0.12 * 12 * 2); // Assuming 12% is one side, so * 2 for both
+                const expectedMonthlyPfEmployer = annualPfTotal / 24;
+                const expectedMonthlyPfEmployee = annualPfTotal / 24;
 
-                // Professional Tax: Force 200 per month as per user request
+                // Professional Tax: Handle 200/300 split
+                const currentMonth = new Date().getMonth() + 1; // 1-indexed for display logic
                 let expectedMonthlyPt = 200;
+                if (data.professional_tax_annual >= 2400 && data.professional_tax_annual <= 2500) {
+                    expectedMonthlyPt = (currentMonth === 2) ? 300 : 200;
+                }
 
                 const expectedMonthlyOtherDed = (data.other_deduction_annual || 0) / 12 || data.otherDeduction || 0;
 
@@ -414,7 +418,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
 
                 // Recalculate special allowance as the balancing component
                 const monthlyFixedCtc = currentAnnualCtc / 12 - (data.variable_pay || 0) / 12;
-                // Include pfEmployer in knownComponents so SpecialAllowance is "clean"
+                // Balancing: CTC_fixed = Basic + HRA + Medical + Conveyance + Other + PF_Employer + Special
                 const knownComponents = data.monthlyBasic + data.hra + (data.medicalAllowance || 0) +
                     (data.conveyanceAllowance || 0) + (data.otherAllowance || 0) + data.pfEmployer;
 
@@ -423,11 +427,12 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 data.specialAllowance = storedMonthlySpecial > 0 ? storedMonthlySpecial : Math.max(0, monthlyFixedCtc - knownComponents);
 
                 // Recalculate totals
-                // Monthly Gross now explicitly includes pfEmployer as part of the earnings
+                // Monthly Gross is sum of earnings (excluding employer PF)
                 data.monthlyGross = data.monthlyBasic + data.hra + data.specialAllowance +
-                    (data.medicalAllowance || 0) + (data.conveyanceAllowance || 0) + (data.otherAllowance || 0) + data.pfEmployer;
-                // Stopped deducting data.pfEmployee from monthlyInHand as per user request
-                data.monthlyDeductions = data.professionalTax + data.otherDeduction;
+                    (data.medicalAllowance || 0) + (data.conveyanceAllowance || 0) + (data.otherAllowance || 0);
+
+                // Monthly Deductions include PT, Employee PF, and other deductions
+                data.monthlyDeductions = data.professionalTax + data.otherDeduction + data.pfEmployee;
                 data.monthlyInHand = data.monthlyGross - data.monthlyDeductions;
 
                 // Update CTC values
@@ -1446,8 +1451,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                     </TableCell>
                                                     <TableCell className="text-right pr-6 py-4">
                                                         <div className="flex flex-col items-end">
-                                                            <span className="font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{formatCurrency(displaySalaryData.pfEmployee)}</span>
-                                                            <span className="text-[10px] text-blue-600 font-bold uppercase tracking-tighter">Not Deducted</span>
+                                                            <span className="font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>-{formatCurrency(displaySalaryData.pfEmployee)}</span>
+                                                            <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-tighter">Statutory Deduction</span>
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>
@@ -1465,7 +1470,12 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                         <div className="p-6 bg-rose-50/40 dark:bg-rose-900/10 border-t border-rose-100 dark:border-rose-800/50 rounded-b-3xl">
                                             <div className="flex justify-between items-center">
                                                 <span className="uppercase tracking-widest font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Total Deductions</span>
-                                                <h4 className="tracking-tight font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{formatCurrency(displaySalaryData.monthlyDeductions)}</h4>
+                                                <div className="flex flex-col items-end">
+                                                    <h4 className="tracking-tight font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{formatCurrency(displaySalaryData.monthlyDeductions)}</h4>
+                                                    <span className="text-[10px] text-rose-600 font-bold italic mt-1">
+                                                        ({Math.round(displaySalaryData.pfEmployee)} EPF + {Math.round(displaySalaryData.professionalTax)} PT + {Math.round(displaySalaryData.otherDeduction)} Other = {Math.round(displaySalaryData.monthlyDeductions)})
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

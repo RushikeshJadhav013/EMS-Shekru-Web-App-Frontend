@@ -332,9 +332,7 @@ const ChatList: React.FC = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <p className={cn("truncate text-xs font-medium max-w-[200px] lg:max-w-[280px]", themeClasses.textSecondary)}>
-                      {chat.type === 'group'
-                        ? ((chat.participants || []).map((p: any) => p.userName || 'Member').filter((n: string) => n !== 'string').slice(0, 3).join(', ') + (chat.participants?.length > 3 ? ` +${chat.participants.length - 3}` : ''))
-                        : getLastMessagePreview(chat)}
+                      {getLastMessagePreview(chat)}
                     </p>
                     {chat.unreadCount > 0 && (
                       <Badge className="h-4 min-w-[16px] px-1 bg-green-500 hover:bg-green-600 text-[9px] font-black pointer-events-none">
